@@ -71,7 +71,7 @@ void ScrollingFrame::onContentSizeChanged()
     // 否则自己按子节点累加算一个高度：这对"少量子节点"的场景够用，
     // 大量数据的列表请显式设置高度（RecyclerFrame 就是这么做的）。
     float total = 0.0f;
-    if (Box* content = dynamic_cast<Box*>(this->contentView))
+    if (Box* content = this->contentView->asBox())
     {
         const size_t count = content->getChildrenCount();
         for (size_t i = 0; i < count; ++i)

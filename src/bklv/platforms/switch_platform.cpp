@@ -1,0 +1,286 @@
+#include "bklv/platforms/switch_platform.hpp"
+
+#if defined(BKLV_SWITCH)
+
+#include <switch.h>
+
+#include <cstdio>
+#include <memory>
+
+#include "bklv/backends/gles3_backend.hpp"
+#include "bklv/backends/imgui_impl_libnx.hpp"
+#include "bklv/core/gamepad.hpp"
+#include "bklv/core/input.hpp"
+#include "bklv/core/logger.hpp"
+#include "bklv/platforms/switch_gamepad.hpp"
+
+namespace bklv
+{
+
+// EGL 相关的东西都放在 cpp 里，头文件不需要包含 EGL。
+struct PlatformSwitch::Impl
+{
+    std::unique_ptr<GLES3Backend> backend;
+    std::unique_ptr<SwitchGamepadSource> gamepadSource;
+
+    uint32_t width  = 1280;
+    uint32_t height = 720;
+};
+
+PlatformSwitch::PlatformSwitch(GraphicsBackendType graphics)
+{
+    this->graphicsType = graphics;
+    this->impl         = new Impl();
+}
+
+PlatformSwitch::~PlatformSwitch()
+{
+    if (this->impl != nullptr)
+    {
+        // 先摘掉手柄源，避免 InputManager 持有已析构的对象。
+        setGamepadSource(nullptr);
+        this->impl->gamepadSource.reset();
+        this->impl->backend.reset();
+
+        delete this->impl;
+        this->impl = nullptr;
+    }
+
+    // 息屏抑制是全局状态，退出前恢复。
+    if (this->dimmingDisabled)
+        appletSetLcdBacklightOffEnabled(true);
+}
+
+bool PlatformSwitch::createWindow(const std::string& /*title*/, uint32_t width, uint32_t height,
+    float /*x*/, float /*y*/)
+{
+    // Switch 没有"创建窗口"：默认 NWindow 就是全屏。
+    // 这里只决定分辨率（手持/底座都是 1280x720 逻辑分辨率）。
+    this->impl->width  = width;
+    this->impl->height = height;
+
+    NWindow* window = nwindowGetDefault();
+    nwindowSetDimensions(window, (int)width, (int)height);
+
+    // 图形后端：Switch 用 EGL + GLES3。
+    this->impl->backend = std::make_unique<GLES3Backend>();
+    if (!this->impl->backend->initContext((void*)window))
+    {
+        Logger::error("Switch: 图形上下文初始化失败");
+        return false;
+    }
+
+    // ImGui 平台后端（把按键与触摸喂进 ImGuiIO）。
+    if (!ImGui_ImplLibnx_Init())
+    {
+        Logger::error("Switch: ImGui 平台后端初始化失败");
+        return false;
+    }
+
+    // 手柄输入源。
+    this->impl->gamepadSource = std::make_unique<SwitchGamepadSource>();
+    setGamepadSource(this->impl->gamepadSource.get());
+
+    // 玩游戏不能被息屏打断。
+    this->disableScreenDimming(true, "bklv 应用运行中");
+
+    Logger::info("Switch 平台初始化完成");
+    return true;
+}
+
+void PlatformSwitch::restoreWindow()
+{
+    // 手持/底座切换后分辨率不变，但要把尺寸重新告诉 NWindow。
+    if (this->impl->backend != nullptr)
+    {
+        NWindow* window = nwindowGetDefault();
+        nwindowSetDimensions(window, (int)this->impl->width, (int)this->impl->height);
+    }
+}
+
+void PlatformSwitch::setWindowSize(uint32_t width, uint32_t height)
+{
+    this->impl->width  = width;
+    this->impl->height = height;
+    this->restoreWindow();
+}
+
+bool PlatformSwitch::mainLoopIteration()
+{
+    // libnx 标准事件循环：HOME 键退出、applet 挂起/恢复都靠它。
+    if (!appletMainLoop())
+        return false;
+
+    return true;
+}
+
+void PlatformSwitch::shutdownImGuiPlatformBackend()
+{
+    ImGui_ImplLibnx_Shutdown();
+}
+
+RenderBackend* PlatformSwitch::getGraphicsBackend()
+{
+    return this->impl->backend.get();
+}
+
+InputManager* PlatformSwitch::getInputManager()
+{
+    return &bklv::getInputManager();
+}
+
+// ---------------------------------------------------------------------------
+// 系统能力
+// ---------------------------------------------------------------------------
+
+BatteryStatus PlatformSwitch::getBatteryStatus()
+{
+    BatteryStatus status;
+    status.supported = true;
+
+    if (R_SUCCEEDED(psmInitialize()))
+    {
+        u32 percentage = 0;
+        if (R_SUCCEEDED(psmGetBatteryChargePercentage(&percentage)))
+            status.level = (int)percentage;
+
+        bool charging = false;
+        if (R_SUCCEEDED(psmIsBatteryChargingEnabled(&charging)))
+            status.charging = charging;
+
+        psmExit();
+    }
+
+    return status;
+}
+
+NetworkStatus PlatformSwitch::getNetworkStatus()
+{
+    NetworkStatus status;
+
+    // 普通应用用 User 权限就够（Admin 才能读 SSID 之类）。
+    if (R_FAILED(nifmInitialize(NifmServiceType_User)))
+        return status;
+
+    NifmInternetConnectionType type = NifmInternetConnectionType_WiFi;
+    u32 wifiStrength                = 0;
+    NifmInternetConnectionStatus connectionStatus = NifmInternetConnectionStatus_ConnectingUnknown1;
+
+    if (R_SUCCEEDED(nifmGetInternetConnectionStatus(&type, &wifiStrength, &connectionStatus)))
+    {
+        status.wireless      = type == NifmInternetConnectionType_WiFi;
+        status.ethernet      = type == NifmInternetConnectionType_Ethernet;
+        status.wirelessLevel = (int)wifiStrength;
+
+        u32 ip = 0;
+        if (R_SUCCEEDED(nifmGetCurrentIpAddress(&ip)))
+        {
+            char buffer[16];
+            std::snprintf(buffer, sizeof(buffer), "%u.%u.%u.%u", ip & 0xFF, (ip >> 8) & 0xFF,
+                (ip >> 16) & 0xFF, (ip >> 24) & 0xFF);
+            status.ipAddress = buffer;
+        }
+    }
+
+    nifmExit();
+    return status;
+}
+
+void PlatformSwitch::disableScreenDimming(bool disable, const std::string& reason)
+{
+    // appletSetLcdBacklightOffEnabled(false) 表示"不要自动关背光"。
+    appletSetLcdBacklightOffEnabled(!disable);
+    this->dimmingDisabled = disable;
+
+    if (disable && !reason.empty())
+        Logger::info("已禁止息屏：" + reason);
+}
+
+void PlatformSwitch::setBacklightBrightness(float brightness)
+{
+    // lbl 服务只在部分 AppletMode 下可用，拿不到就静默忽略，不影响其他功能。
+    if (R_FAILED(lblInitialize()))
+        return;
+
+    lblSetCurrentBrightnessSetting(brightness);
+    lblExit();
+}
+
+float PlatformSwitch::getBacklightBrightness()
+{
+    if (R_FAILED(lblInitialize()))
+        return 1.0f;
+
+    float value = 1.0f;
+    lblGetCurrentBrightnessSetting(&value);
+    lblExit();
+    return value;
+}
+
+bool PlatformSwitch::isDarkTheme()
+{
+    return appletGetThemeColorType() == AppletThemeColorType_Default;
+}
+
+std::string PlatformSwitch::getLocale()
+{
+    if (R_FAILED(setInitialize()))
+        return "en-US";
+
+    u64 languageCode = 0;
+    std::string locale = "en-US";
+
+    if (R_SUCCEEDED(setGetSystemLanguage(&languageCode)))
+    {
+        SetLanguage language = SetLanguage_ENUS;
+        if (R_SUCCEEDED(setMakeLanguage(languageCode, &language)))
+        {
+            switch (language)
+            {
+                case SetLanguage_JA:
+                    locale = "ja-JP";
+                    break;
+                case SetLanguage_ENUS:
+                    locale = "en-US";
+                    break;
+                case SetLanguage_ENGB:
+                    locale = "en-GB";
+                    break;
+                case SetLanguage_FR:
+                    locale = "fr-FR";
+                    break;
+                case SetLanguage_DE:
+                    locale = "de-DE";
+                    break;
+                case SetLanguage_ES:
+                    locale = "es-ES";
+                    break;
+                case SetLanguage_ZHCN:
+                    locale = "zh-Hans";
+                    break;
+                case SetLanguage_ZHTW:
+                    locale = "zh-Hant";
+                    break;
+                case SetLanguage_KO:
+                    locale = "ko-KR";
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    setExit();
+    return locale;
+}
+
+void PlatformSwitch::openBrowser(const std::string& url)
+{
+    // Switch 上要打开网页需要通过 LibraryApplet 或者启动浏览器应用（按标题 ID），
+    // 这两种都强依赖具体系统版本与权限，这里先不做，只记一条日志。
+    Logger::warning("Switch 暂不支持打开浏览器：" + url);
+}
+
+} // namespace bklv
+
+#endif // BKLV_SWITCH

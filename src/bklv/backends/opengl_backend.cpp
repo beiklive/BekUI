@@ -1,5 +1,7 @@
 #include "bklv/backends/opengl_backend.hpp"
 
+#if !defined(BKLV_SWITCH)
+
 #include <OpenGL/gl3.h>
 #include <SDL3/SDL.h>
 
@@ -175,3 +177,5 @@ void OpenGLBackend::destroyTexture(TextureHandle& handle)
 }
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH

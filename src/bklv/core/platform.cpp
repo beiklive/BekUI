@@ -6,10 +6,11 @@
 #include "bklv/core/platform.hpp"
 
 #include "bklv/core/logger.hpp"
-#include "bklv/platforms/sdl3_platform.hpp"
 
-#ifdef __SWITCH__
+#if defined(BKLV_SWITCH)
 #include "bklv/platforms/switch_platform.hpp"
+#else
+#include "bklv/platforms/sdl3_platform.hpp"
 #endif
 
 namespace bklv
@@ -32,11 +33,16 @@ Platform* createPlatform(PlatformType type, GraphicsBackendType graphics)
     switch (type)
     {
         case PlatformType::DESKTOP_SDL3:
+#if defined(BKLV_SWITCH)
+            Logger::error("Switch 构建不含 SDL3 平台");
+            return nullptr;
+#else
             return new PlatformSDL3(graphics);
+#endif
 
         case PlatformType::SWITCH:
-#ifdef __SWITCH__
-            return new PlatformSwitch();
+#if defined(BKLV_SWITCH)
+            return new PlatformSwitch(graphics);
 #else
             // Switch 平台只用 devkitA64 编译（见 scripts/build_switch.sh）。
             Logger::error("当前构建不含 Switch 平台支持，请用 Switch 工具链编译");

@@ -1,5 +1,7 @@
 #include "bklv/platforms/sdl3_gamepad.hpp"
 
+#if !defined(BKLV_SWITCH)
+
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -90,3 +92,5 @@ bool SDL3GamepadSource::isConnected() const
 }
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH

@@ -13,6 +13,9 @@
 
 #include <memory>
 
+// Switch 用 switch_platform / switch_gamepad，不含 SDL3 实现。
+#if !defined(BKLV_SWITCH)
+
 #include "bklv/core/platform.hpp"
 #include "bklv/platforms/sdl3_gamepad.hpp"
 
@@ -66,3 +69,5 @@ class PlatformSDL3 : public Platform
 };
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH

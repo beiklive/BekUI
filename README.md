@@ -47,8 +47,14 @@ Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `
 | `core/theme.hpp/.cpp` | 样式数值表与颜色主题 |
 | `core/time.hpp/.cpp` | `Animatable` 补间（自带实现，不依赖 tweeny） |
 | `core/font.hpp/.cpp` | 字体加载：优先系统中文字体，否则退回内置字体 |
+| `core/platform.hpp/.cpp` | **平台接口**：窗口、事件循环、子系统工厂、系统能力 |
+| `platforms/sdl3_platform.*` | macOS/Linux/Windows 的 SDL3 平台实现 |
+| `platforms/switch_platform.*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言） |
+| `core/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
-| `backends/opengl_backend.*` | OpenGL 后端（当前唯一图形后端） |
+| `backends/opengl_backend.*` | 桌面 OpenGL 后端 |
+| `backends/gles3_backend.*` | Switch 的 EGL + OpenGL ES 3 后端 |
+| `backends/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
 | `backends/null_backend.*` | 空后端：开窗不渲染，用于无图形环境自检 |
 | `core/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
 | `core/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
@@ -146,6 +152,59 @@ app.setIniPersistenceEnabled(true);
    否则滚动距离会被算两次（之前 500 的偏移变成了 1000）。
 5. **回收的 cell 可能正是当前焦点。** 被回收时必须清掉"已自动滚动"标记，否则焦点转回来时不会滚动。
 
+## 平台支持
+
+| 平台 | 实现方式 | 状态 |
+|---|---|---|
+| macOS | SDL3（`platforms/sdl3_platform.*`） | 已跑通 |
+| Linux / Windows | 同上，SDL3 | 待验证（代码路径相同） |
+| Nintendo Switch | libnx + EGL/GLES3（`platforms/switch_platform.*`） | 编译产出 .nro 通过；画面待真机确认 |
+| Android / iOS | 待定（SDL3 支持，需各自工程骨架） | 未开始 |
+
+Switch 上为什么不用 SDL3：SDL3 上游没有 Switch 后端（`src/video/` 下没有对应实现，
+CMake 里也没有分支），devkitPro 的 portlibs 里只有 SDL2。所以 Switch 直接走原生：
+窗口用 libnx 的 `NWindow`，图形用 EGL + OpenGL ES 3，输入用 `padUpdate` + 触摸屏；
+ImGui 的平台后端也得自己写（`backends/imgui_impl_libnx.*`，ImGui 只有 SDL 的）。
+
+### Switch 构建与运行
+
+```bash
+./scripts/build_switch.sh            # 默认 demo_07，产出 dist/switch/demo_07.nro
+./scripts/build_switch.sh demo_06    # 指定 demo
+./scripts/build_switch.sh demo_07 --clean
+nxlink -s dist/switch/demo_07.nro    # 推到机器（需机器上开着 hbmenu 的网络加载）
+```
+
+## 渲染后端
+
+绘制代码分三层，上层完全不接触图形 API：
+
+```
+src/bklv/views/*            Image / Label / ScrollingFrame / RecyclerFrame
+                            只认 ImDrawList 和 ImTextureID
+        ↓
+src/bklv/core/graphics.hpp  RenderBackend 接口 + 纹理管理
+src/bklv/core/platform.hpp  Platform 接口（窗口 / 事件循环 / 系统能力）
+        ↓
+src/bklv/backends/*         OpenGLBackend（桌面）/ GLES3Backend（Switch）/ NullBackend
+src/bklv/platforms/*        PlatformSDL3（桌面）/ PlatformSwitch（libnx）
+```
+
+切换后端与平台：
+
+```bash
+./dist/demo_07_bklv_showcase -b opengl   # 默认
+./dist/demo_07_bklv_showcase -b none     # 空后端：只开窗不画，用于自检
+```
+
+```cpp
+bklv::App app;
+app.setGraphicsBackend(bklv::GraphicsBackendType::OPENGL);
+app.setPlatform(bklv::PlatformType::DESKTOP_SDL3);   // Switch 构建里默认是 SWITCH
+```
+
+加 Vulkan / Metal 后端的步骤见 `notes/adding-render-backend.md`。
+
 ## 初始化与编译
 
 克隆已有项目时初始化全部子模块：
@@ -160,6 +219,8 @@ git submodule update --init --recursive
 brew install cmake
 ./build.sh
 ```
+
+Switch 另需 devkitPro（devkitA64 + libnx），用 `scripts/build_switch.sh` 单独构建。
 
 `build.sh` 会按需依次做四件事：
 
@@ -178,6 +239,7 @@ SDL3 是静态链接的，产物不依赖任何动态库形式的 SDL；`otool -
 ./dist/demo_04_yoga
 ./dist/demo_05_tweeny
 ./dist/demo_06_bklv_layout
+./dist/demo_07_bklv_showcase          # 加 -v 启动即开调试层
 ```
 
 每个程序会打开独立窗口，关闭窗口即可退出。
@@ -186,4 +248,6 @@ SDL3 是静态链接的，产物不依赖任何动态库形式的 SDL；`otool -
 
 - Yoga：先配置父节点的 `FlexDirection`、`JustifyContent`、`AlignItems`、`Gap` 和 `Padding`；再设置子节点尺寸约束或 `FlexGrow`；调用 `YGNodeCalculateLayout()` 后读取 `YGNodeLayoutGetLeft/Top/Width/Height()`。Yoga 只算几何布局，不负责绘制。
 - Tweeny：用 `tweeny::from(start).to(end).via(easing).during(frames).build()` 创建动画；每帧按经过时间调用 `step(frames)`，通过 `peek()` 读取插值，并把数值用于 ImGui 绘制。继续调用 `to()` 可添加关键帧，使用 `on(tweeny::event::complete, callback)` 监听完成事件。
-- Dear ImGui：负责接收输入、生成控件和绘制命令；本项目窗口由 SDL3 后端支持，绘制由 OpenGL3 后端完成。
+- Dear ImGui：负责接收输入、生成控件和绘制命令；窗口由平台层（SDL3 或 libnx）支持，绘制由图形后端（OpenGL / GLES3）完成。
+- 平台层：上层只跟 `Platform` 与 `RenderBackend` 两个接口打交道。加平台写一个 `Platform` 子类，加图形 API 写一个 `RenderBackend` 子类，view 层不用动。
+- Switch 特有：`-fno-rtti` 所以类型判断用 `View::asBox()` 虚函数而不是 `dynamic_cast`；Yoga 需要单独用 C++20 编译。

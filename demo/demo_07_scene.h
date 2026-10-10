@@ -63,9 +63,8 @@ class VideoCardCell : public RecyclerCell
 
         // 焦点高亮：注册一个 A 键动作，顺便让提示栏有内容
         this->registerAction(ControllerButton::A, "播放", [](View* view) {
-            auto* cell = dynamic_cast<VideoCardCell*>(view);
-            if (cell != nullptr)
-                cell->activated = true;
+            // 这个动作是 cell 自己注册的，回调参数就是它本身。
+            static_cast<VideoCardCell*>(view)->activated = true;
         });
     }
 

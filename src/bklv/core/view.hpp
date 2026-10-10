@@ -11,6 +11,7 @@
 //   - 去掉阴影、渐变、焦点高亮、点击动画等 NanoVG 专有能力
 //   - 去掉 XML 反序列化与主题文件叠加
 
+#include <cmath>
 #include <functional>
 #include <string>
 #include <vector>
@@ -241,6 +242,10 @@ class View
 
     // 按 id 在自己的子树里查找，找不到返回 nullptr。
     virtual View* getView(const std::string& id);
+
+    // 类型判断用虚函数而不是 dynamic_cast：
+    // Switch 工具链按 devkitPro 惯例带 -fno-rtti，用不了 dynamic_cast。
+    virtual Box* asBox() { return nullptr; }
 
     // ---- 布局失效 ----
     // 修改任何影响布局的属性后必须调用，冒泡到根后触发一次全树重算。

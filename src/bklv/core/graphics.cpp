@@ -6,21 +6,30 @@
 
 #include "bklv/core/graphics.hpp"
 
-#include <OpenGL/gl3.h>
+#include <cstdlib>
 
+// 图片解码目前用 macOS 的 ImageIO。
+// Switch 上要换成 stb_image 或 SDL_image，届时把这一段也抽成解码器接口。
+#if !defined(BKLV_NO_IMAGEIO)
 #include <CoreGraphics/CoreGraphics.h>
 #include <ImageIO/ImageIO.h>
 
 #include <climits>
-#include <cstdlib>
+#include <vector>
+#endif
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include "bklv/backends/null_backend.hpp"
-#include "bklv/backends/opengl_backend.hpp"
 #include "bklv/core/logger.hpp"
+
+#if defined(BKLV_SWITCH)
+#include "bklv/backends/gles3_backend.hpp"
+#else
+#include "bklv/backends/opengl_backend.hpp"
+#endif
 
 namespace bklv
 {
@@ -77,7 +86,12 @@ RenderBackend* createRenderBackend(GraphicsBackendType type)
         case GraphicsBackendType::NONE:
             return new NullBackend();
         case GraphicsBackendType::OPENGL:
+#if defined(BKLV_SWITCH)
+            // Switch 上 OPENGL 这个名字对应的是 OpenGL ES 3 + EGL。
+            return new GLES3Backend();
+#else
             return new OpenGLBackend();
+#endif
         case GraphicsBackendType::VULKAN:
             return nullptr; // 预留
         case GraphicsBackendType::METAL:
@@ -108,7 +122,7 @@ std::vector<TextureEntry> g_textures;
 // 路径 -> 索引，做加载缓存。
 std::map<std::string, int> g_pathCache;
 
-int registerTexture(const TextureHandle& handle)
+[[maybe_unused]] int registerTexture(const TextureHandle& handle)
 {
     // 复用已经释放的位置，避免长跑时数组无限增长。
     for (size_t i = 0; i < g_textures.size(); ++i)
@@ -125,7 +139,7 @@ int registerTexture(const TextureHandle& handle)
     return static_cast<int>(g_textures.size()) - 1;
 }
 
-TextureRef makeRef(int index)
+[[maybe_unused]] TextureRef makeRef(int index)
 {
     TextureRef ref;
     if (index < 0 || index >= static_cast<int>(g_textures.size()) || !g_textures[index].alive)
@@ -140,8 +154,9 @@ TextureRef makeRef(int index)
     return ref;
 }
 
+#if !defined(BKLV_NO_IMAGEIO)
 // 用 ImageIO 把 PNG/JPEG 解成 RGBA8 像素，再交给当前后端上传。
-// 解码部分与图形 API 无关，所以换后端不用动这里。
+// 解码部分与图形 API 无关，所以换图形后端不用动这里。
 TextureHandle decodeAndUpload(CGImageSourceRef source)
 {
     TextureHandle handle;
@@ -174,6 +189,7 @@ TextureHandle decodeAndUpload(CGImageSourceRef source)
     CGImageRelease(image);
     return handle;
 }
+#endif // BKLV_NO_IMAGEIO
 
 } // namespace
 
@@ -223,6 +239,11 @@ static constexpr int TEXTURE_CACHE_FAILED = -2;
 
 TextureRef loadTexture(const std::string& path)
 {
+#if defined(BKLV_NO_IMAGEIO)
+    // 当前平台的图片解码还没接上，直接返回无效引用（不会崩，UI 显示占位色块）。
+    (void)path;
+    return TextureRef();
+#else
     auto cached = g_pathCache.find(path);
     if (cached != g_pathCache.end())
     {
@@ -265,10 +286,16 @@ TextureRef loadTexture(const std::string& path)
     const int index = registerTexture(handle);
     g_pathCache[path] = index;
     return makeRef(index);
+#endif // BKLV_NO_IMAGEIO
 }
 
 TextureRef loadTextureFromMemory(const void* data, size_t size)
 {
+#if defined(BKLV_NO_IMAGEIO)
+    (void)data;
+    (void)size;
+    return TextureRef();
+#else
     if (data == nullptr || size == 0)
         return TextureRef();
 
@@ -288,6 +315,7 @@ TextureRef loadTextureFromMemory(const void* data, size_t size)
 
     // 内存加载不进路径缓存，但仍登记句柄，保证能被正确释放。
     return makeRef(registerTexture(handle));
+#endif // BKLV_NO_IMAGEIO
 }
 
 void releaseTexture(TextureRef& ref)

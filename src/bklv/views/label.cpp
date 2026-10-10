@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 #include "bklv/core/font.hpp"
 #include "bklv/core/logger.hpp"
@@ -34,7 +35,8 @@ ImFont* Label::resolveFont() const
 }
 
 // 计算"…"的宽度时用的字符。
-static constexpr const char* ELLIPSIS = "\xE2\x80\xA6";
+static constexpr const char* ELLIPSIS      = "\xE2\x80\xA6";
+static constexpr size_t ELLIPSIS_BYTES     = 3; // "…" 的 UTF-8 字节数
 
 // 宽度未定义时使用的虚拟上限，避免逐字循环无限展开。
 static constexpr float UNBOUNDED_WIDTH = 100000.0f;
@@ -298,7 +300,7 @@ void Label::updateTruncated(float width) const
         return;
     }
 
-    const float ellipsisWidth = this->measureWidth(ELLIPSIS, 0, std::strlen(ELLIPSIS));
+    const float ellipsisWidth = this->measureWidth(ELLIPSIS, 0, ELLIPSIS_BYTES);
     const float budget        = width - ellipsisWidth;
 
     if (budget <= 0.0f)

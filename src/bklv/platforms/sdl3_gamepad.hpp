@@ -2,9 +2,11 @@
 
 // SDL3 的手柄输入源。桌面平台（macOS / Linux / Windows）使用。
 
-#include <SDL3/SDL.h>
-
 #include "bklv/core/gamepad.hpp"
+
+#if !defined(BKLV_SWITCH)
+
+#include <SDL3/SDL.h>
 
 namespace bklv
 {
@@ -33,3 +35,5 @@ class SDL3GamepadSource : public GamepadSource
 };
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH

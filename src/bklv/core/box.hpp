@@ -35,6 +35,9 @@ class Box : public View
     // 移除并删除全部子节点。
     void clearViews();
 
+    // 见 View::asBox 的说明。
+    Box* asBox() override { return this; }
+
     std::vector<View*>& getChildren() { return this->children; }
     const std::vector<View*>& getChildren() const { return this->children; }
     size_t getChildrenCount() const { return this->children.size(); }

@@ -5,9 +5,12 @@
 // 它把 app.cpp 里原来散落的 GL 上下文创建、imgui_impl_opengl3 调用、
 // 以及 texture.cpp 里的 glGenTextures/glTexImage2D 全部收进这一个类。
 
-#include <SDL3/SDL.h>
-
 #include "bklv/core/graphics.hpp"
+
+// 桌面 OpenGL 后端（依赖 SDL3）。Switch 用 gles3_backend。
+#if !defined(BKLV_SWITCH)
+
+#include <SDL3/SDL.h>
 
 namespace bklv
 {
@@ -46,3 +49,5 @@ class OpenGLBackend : public RenderBackend
 };
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH

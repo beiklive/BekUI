@@ -33,7 +33,7 @@ class App
     // 设置根视图，App 接管其所有权。
     void setRootView(View* view);
     View* getRootView() const { return this->root; }
-    Box* getRootBox() const { return dynamic_cast<Box*>(this->root); }
+    Box* getRootBox() const { return this->root != nullptr ? this->root->asBox() : nullptr; }
 
     // ---- 平台与渲染后端 ----
 

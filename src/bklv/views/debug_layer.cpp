@@ -69,7 +69,7 @@ void collectLines(View* view, int depth, std::vector<TreeLine>& out)
     line.text        = buffer;
     out.push_back(line);
 
-    if (Box* box = dynamic_cast<Box*>(view))
+    if (Box* box = view->asBox())
     {
         for (View* child : box->getChildren())
             collectLines(child, depth + 1, out);

@@ -14,6 +14,7 @@
 //   Switch                  —— libnx + EGL/GLES3（SDL3 上游不支持 Switch）
 //   Android / iOS           —— 待定（SDL3 支持，但需要各自的工程骨架）
 
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <string>

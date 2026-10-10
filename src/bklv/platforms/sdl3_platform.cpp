@@ -1,5 +1,7 @@
 #include "bklv/platforms/sdl3_platform.hpp"
 
+#if !defined(BKLV_SWITCH)
+
 #include <cstdlib>
 
 #include "backends/imgui_impl_sdl3.h"
@@ -217,3 +219,5 @@ void PlatformSDL3::openBrowser(const std::string& url)
 }
 
 } // namespace bklv
+
+#endif // !BKLV_SWITCH
