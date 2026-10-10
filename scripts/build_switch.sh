@@ -67,13 +67,14 @@ ARCH=(-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE)
 # IMGUI_DISABLE_DEBUG_TOOLS 与 IMGUI_DISABLE_DEMO_WINDOWS 之外，
 # 还要关掉 ImGui 的 shell 执行工具：它引用了 Switch 上没有的 waitpid/execvp。
 # __SWITCH__：devkitPro 的 EGL 头靠它选择平台分支，必须显式定义。
-DEFINES=(-D__SWITCH__ -DBKLV_SWITCH -DBKLV_GLES3 -DBKLV_NO_IMAGEIO -DIMGUI_IMPL_OPENGL_ES3
+DEFINES=(-D__SWITCH__ -DBKLV_SWITCH -DBKLV_GLES3 -DBKLV_USE_STB_IMAGE -DIMGUI_IMPL_OPENGL_ES3
     -DIMGUI_DISABLE_DEBUG_TOOLS
     -DIMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
-    -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM='<bklv/backends/gles3_loader.hpp>')
+    -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 
 INCLUDES=(-I"${ROOT_DIR}/3rd/imgui"
     -I"${ROOT_DIR}/3rd/yoga"
+    -I"${ROOT_DIR}/3rd/stb"
     -I"${ROOT_DIR}/src"
     -I"${ROOT_DIR}/demo"
     -I"${PORTLIBS}/include"
@@ -91,6 +92,7 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/core/time.cpp"
     "${ROOT_DIR}/src/bklv/core/font.cpp"
     "${ROOT_DIR}/src/bklv/core/graphics.cpp"
+    "${ROOT_DIR}/src/bklv/core/image_decoder.cpp"
     "${ROOT_DIR}/src/bklv/core/platform.cpp"
     "${ROOT_DIR}/src/bklv/core/view.cpp"
     "${ROOT_DIR}/src/bklv/core/box.cpp"
@@ -115,7 +117,7 @@ IMGUI_SOURCES=(
     "${ROOT_DIR}/3rd/imgui/imgui_draw.cpp"
     "${ROOT_DIR}/3rd/imgui/imgui_tables.cpp"
     "${ROOT_DIR}/3rd/imgui/imgui_widgets.cpp"
-    "${ROOT_DIR}/3rd/imgui/backends/imgui_impl_opengl3.cpp"
+    "${ROOT_DIR}/src/bklv/backends/imgui_impl_opengl3_wrapper.cpp"
 )
 
 # Yoga 源码（与桌面一致）

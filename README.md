@@ -10,6 +10,7 @@
 | `3rd/yoga` | `v3.2.1` | Flexbox 自动布局、尺寸约束和间距 | MIT |
 | `3rd/tweeny` | `v4.1.0`（上游实际标签） | C++17 头文件动画插值、缓动和关键帧 | MIT |
 | `3rd/SDL` | `release-3.4.16` | 窗口、输入事件、手柄和 OpenGL 上下文（源码编译成静态库） | zlib |
+| `3rd/stb` | 上游 master | `stb_image.h`：Linux / Switch 的图片解码 | public domain / MIT |
 
 Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `v4.1.0`，本项目固定在该标签对应提交 `68a7f44`。Yoga 固定在 `v3.2.1` 对应提交 `042f501`。Git 子模块记录精确提交，因此克隆项目后可复现相同版本。
 
@@ -56,6 +57,9 @@ Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `
 | `backends/gles3_backend.*` | Switch 的 EGL + OpenGL ES 3 后端 |
 | `backends/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
 | `backends/null_backend.*` | 空后端：开窗不渲染，用于无图形环境自检 |
+| `backends/gl_loader.hpp` | 跨平台 GL 头（macOS framework / Linux libGL），不引入 glad/gl3w |
+| `backends/gles3_loader.hpp` | Switch 的 GLES3 头 |
+| `core/image_decoder.hpp/.cpp` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |
 | `core/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
 | `core/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
 | `core/app.hpp/.cpp` | SDL3 窗口 + 帧循环，整棵树画在 `GetForegroundDrawList()` 上 |
@@ -154,12 +158,13 @@ app.setIniPersistenceEnabled(true);
 
 ## 平台支持
 
-| 平台 | 实现方式 | 状态 |
-|---|---|---|
-| macOS | SDL3（`platforms/sdl3_platform.*`） | 已跑通 |
-| Linux / Windows | 同上，SDL3 | 待验证（代码路径相同） |
-| Nintendo Switch | libnx + EGL/GLES3（`platforms/switch_platform.*`） | 编译产出 .nro 通过；画面待真机确认 |
-| Android / iOS | 待定（SDL3 支持，需各自工程骨架） | 未开始 |
+| 平台 | 实现方式 | 图片解码 | 状态 |
+|---|---|---|---|
+| macOS | SDL3（`platforms/sdl3_platform.*`） | ImageIO（系统） | 已跑通 |
+| Linux | 同上 | stb_image | 已在 Ubuntu 24.04 容器验证构建 |
+| Nintendo Switch | libnx + EGL/GLES3（`platforms/switch_platform.*`） | stb_image | 编译产出 .nro 通过；画面待真机确认 |
+| Windows | 待做（SDL3） | 待定 | 未开始 |
+| Android / iOS | 待定（SDL3 支持，需各自工程骨架） | stb_image | 未开始 |
 
 Switch 上为什么不用 SDL3：SDL3 上游没有 Switch 后端（`src/video/` 下没有对应实现，
 CMake 里也没有分支），devkitPro 的 portlibs 里只有 SDL2。所以 Switch 直接走原生：
@@ -221,6 +226,21 @@ brew install cmake
 ```
 
 Switch 另需 devkitPro（devkitA64 + libnx），用 `scripts/build_switch.sh` 单独构建。
+
+### Linux
+
+`build.sh` 会自动识别平台（`uname -s`）：编译器用 `g++`，图片解码切到 stb_image，
+链接参数改由 SDL3 自己的 pkg-config 解析（静态链接 SDL3 需要一串系统子库）。
+
+```bash
+sudo apt install build-essential cmake pkg-config \
+    libgl1-mesa-dev libglx-dev libx11-dev libxext-dev \
+    libwayland-dev libxkbcommon-dev
+./build.sh
+```
+
+SDL3 在 Linux 的可选依赖很多（X11 的 xcursor/xi/xfixes/xrandr、Wayland、各类音频后端），
+`scripts/build_sdl3.sh` 会自动检测：有对应开发包就编，没有就关掉，因此不需要把它们装全。
 
 `build.sh` 会按需依次做四件事：
 

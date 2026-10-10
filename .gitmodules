@@ -10,3 +10,6 @@
 [submodule "3rd/SDL"]
 	path = 3rd/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "3rd/stb"]
+	path = 3rd/stb
+	url = https://github.com/nothings/stb.git

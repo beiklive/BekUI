@@ -4,7 +4,7 @@
 #include "backends/imgui_impl_sdl3.h" // 引入 SDL3 平台后端。
 #include "backends/imgui_impl_opengl3.h" // 引入 OpenGL3 渲染后端。
 #include <SDL3/SDL.h> // 引入 SDL3 的窗口、事件和 OpenGL API。
-#include <OpenGL/gl3.h> // 引入 macOS OpenGL 3 Core API。
+#include "bklv/backends/gl_loader.hpp" // 跨平台 OpenGL 3 头（macOS framework / Linux libGL）。
 
 namespace learn_imgui { // 将学习代码放进独立命名空间，避免名称冲突。
 

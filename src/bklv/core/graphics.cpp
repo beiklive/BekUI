@@ -6,17 +6,11 @@
 
 #include "bklv/core/graphics.hpp"
 
-#include <cstdlib>
-
-// 图片解码目前用 macOS 的 ImageIO。
-// Switch 上要换成 stb_image 或 SDL_image，届时把这一段也抽成解码器接口。
-#if !defined(BKLV_NO_IMAGEIO)
-#include <CoreGraphics/CoreGraphics.h>
-#include <ImageIO/ImageIO.h>
-
-#include <climits>
+#include <map>
+#include <string>
 #include <vector>
-#endif
+
+#include "bklv/core/image_decoder.hpp"
 
 #include <map>
 #include <string>
@@ -154,43 +148,6 @@ std::map<std::string, int> g_pathCache;
     return ref;
 }
 
-#if !defined(BKLV_NO_IMAGEIO)
-// 用 ImageIO 把 PNG/JPEG 解成 RGBA8 像素，再交给当前后端上传。
-// 解码部分与图形 API 无关，所以换图形后端不用动这里。
-TextureHandle decodeAndUpload(CGImageSourceRef source)
-{
-    TextureHandle handle;
-    if (source == nullptr || g_backend == nullptr)
-        return handle;
-
-    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
-    if (image == nullptr)
-        return handle;
-
-    const size_t width  = CGImageGetWidth(image);
-    const size_t height = CGImageGetHeight(image);
-
-    std::vector<unsigned char> pixels(width * height * 4, 0);
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-
-    // kCGImageAlphaPremultipliedLast | ByteOrder32Big => RGBA 顺序
-    CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big;
-    CGContextRef context =
-        CGBitmapContextCreate(pixels.data(), width, height, 8, width * 4, colorSpace, bitmapInfo);
-
-    if (context != nullptr)
-    {
-        CGContextDrawImage(context, CGRectMake(0, 0, (CGFloat)width, (CGFloat)height), image);
-        CGContextRelease(context);
-        handle = g_backend->createTexture(pixels.data(), (int)width, (int)height);
-    }
-
-    CGColorSpaceRelease(colorSpace);
-    CGImageRelease(image);
-    return handle;
-}
-#endif // BKLV_NO_IMAGEIO
-
 } // namespace
 
 void initTextureStore(RenderBackend* backend)
@@ -239,11 +196,6 @@ static constexpr int TEXTURE_CACHE_FAILED = -2;
 
 TextureRef loadTexture(const std::string& path)
 {
-#if defined(BKLV_NO_IMAGEIO)
-    // 当前平台的图片解码还没接上，直接返回无效引用（不会崩，UI 显示占位色块）。
-    (void)path;
-    return TextureRef();
-#else
     auto cached = g_pathCache.find(path);
     if (cached != g_pathCache.end())
     {
@@ -253,32 +205,20 @@ TextureRef loadTexture(const std::string& path)
         return makeRef(cached->second);
     }
 
-    TextureHandle handle;
-
-    // 必须先转成绝对路径：CFURLCreateWithFileSystemPath 不会解析相对路径，
-    // 直接传 "resources/xxx.png" 会得到一个打不开的 URL。
-    char absolute[PATH_MAX] = { 0 };
-    const char* resolved  = realpath(path.c_str(), absolute);
-    const std::string fullPath = resolved != nullptr ? std::string(resolved) : path;
-
-    CFStringRef cfPath = CFStringCreateWithCString(nullptr, fullPath.c_str(), kCFStringEncodingUTF8);
-    if (cfPath != nullptr)
+    // 解码交给平台相关的解码器（macOS ImageIO / 其他平台 stb_image）。
+    const DecodedImage decoded = decodeImageFile(path.c_str());
+    if (!decoded.isValid() || g_backend == nullptr)
     {
-        CFURLRef url = CFURLCreateWithFileSystemPath(nullptr, cfPath, kCFURLPOSIXPathStyle, false);
-        if (url != nullptr)
-        {
-            CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
-            handle = decodeAndUpload(source);
-            if (source != nullptr)
-                CFRelease(source);
-            CFRelease(url);
-        }
-        CFRelease(cfPath);
+        Logger::error("图片加载失败：" + path);
+        g_pathCache[path] = TEXTURE_CACHE_FAILED;
+        return TextureRef();
     }
+
+    TextureHandle handle =
+        g_backend->createTexture(decoded.pixels.data(), decoded.width, decoded.height);
 
     if (!handle.isValid())
     {
-        Logger::error("图片加载失败：" + fullPath);
         g_pathCache[path] = TEXTURE_CACHE_FAILED;
         return TextureRef();
     }
@@ -286,36 +226,25 @@ TextureRef loadTexture(const std::string& path)
     const int index = registerTexture(handle);
     g_pathCache[path] = index;
     return makeRef(index);
-#endif // BKLV_NO_IMAGEIO
 }
 
 TextureRef loadTextureFromMemory(const void* data, size_t size)
 {
-#if defined(BKLV_NO_IMAGEIO)
-    (void)data;
-    (void)size;
-    return TextureRef();
-#else
-    if (data == nullptr || size == 0)
+    if (data == nullptr || size == 0 || g_backend == nullptr)
         return TextureRef();
 
-    CFDataRef cfData = CFDataCreate(nullptr, static_cast<const UInt8*>(data), (CFIndex)size);
-    if (cfData == nullptr)
+    const DecodedImage decoded = decodeImageMemory(data, size);
+    if (!decoded.isValid())
         return TextureRef();
 
-    CGImageSourceRef source = CGImageSourceCreateWithData(cfData, nullptr);
-    TextureHandle handle = decodeAndUpload(source);
-
-    if (source != nullptr)
-        CFRelease(source);
-    CFRelease(cfData);
+    TextureHandle handle =
+        g_backend->createTexture(decoded.pixels.data(), decoded.width, decoded.height);
 
     if (!handle.isValid())
         return TextureRef();
 
     // 内存加载不进路径缓存，但仍登记句柄，保证能被正确释放。
     return makeRef(registerTexture(handle));
-#endif // BKLV_NO_IMAGEIO
 }
 
 void releaseTexture(TextureRef& ref)

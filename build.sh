@@ -4,8 +4,16 @@ set -euo pipefail
 
 # 取得脚本所在目录，确保从任意工作目录执行都能找到项目文件。
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 允许用户通过环境变量替换编译器，默认使用 macOS 的 clang++。
-CXX="${CXX:-clang++}"
+# 目标平台：Darwin（macOS）或 Linux。编译器、链接参数、图片解码器都按它选。
+HOST_OS="$(uname -s)"
+# 允许用环境变量替换编译器；默认 macOS 用 clang++，Linux 用 g++。
+if [[ -z "${CXX:-}" ]]; then
+    if [[ "${HOST_OS}" == "Darwin" ]]; then
+        CXX="clang++"
+    else
+        CXX="g++"
+    fi
+fi
 # SDL3 从源码构建（3rd/SDL 子模块），不使用系统安装的版本。
 SDL_SRC="${ROOT_DIR}/3rd/SDL"
 SDL_LIB="${ROOT_DIR}/dist/libSDL3.a"
@@ -18,7 +26,14 @@ if [[ ! -f "${SDL_LIB}" ]]; then
     "${ROOT_DIR}/scripts/build_sdl3.sh"
 fi
 # 指定 C++ 标准、警告选项以及 Dear ImGui、SDL3、Yoga 和 Tweeny 头文件目录。
-CXXFLAGS=(-Wall -Wextra -Wpedantic -DGL_SILENCE_DEPRECATION -I"${ROOT_DIR}/3rd/imgui" -I"${ROOT_DIR}/3rd/yoga" -I"${ROOT_DIR}/3rd/tweeny/include" -I"${ROOT_DIR}/src" -I"${SDL_SRC}/include")
+CXXFLAGS=(-Wall -Wextra -Wpedantic -DGL_SILENCE_DEPRECATION -I"${ROOT_DIR}/3rd/imgui" -I"${ROOT_DIR}/3rd/yoga" -I"${ROOT_DIR}/3rd/tweeny/include" -I"${ROOT_DIR}/3rd/stb" -I"${ROOT_DIR}/src" -I"${SDL_SRC}/include")
+# macOS 用系统 ImageIO 解码图片；其余平台用 stb_image（随仓库，无外部依赖）。
+if [[ "${HOST_OS}" != "Darwin" ]]; then
+    CXXFLAGS+=(-DBKLV_USE_STB_IMAGE)
+fi
+# ImGui 的 OpenGL3 后端通过包装文件包含我们的 GL 头，
+# 这里只需要告诉它别用自带的 loader。
+CXXFLAGS+=(-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 # 指定 Dear ImGui 核心实现及 SDL3/OpenGL3 平台、渲染后端实现文件。
 IMGUI_SOURCES=(
     "${ROOT_DIR}/3rd/imgui/imgui.cpp"
@@ -26,7 +41,7 @@ IMGUI_SOURCES=(
     "${ROOT_DIR}/3rd/imgui/imgui_tables.cpp"
     "${ROOT_DIR}/3rd/imgui/imgui_widgets.cpp"
     "${ROOT_DIR}/3rd/imgui/backends/imgui_impl_sdl3.cpp"
-    "${ROOT_DIR}/3rd/imgui/backends/imgui_impl_opengl3.cpp"
+    "${ROOT_DIR}/src/bklv/backends/imgui_impl_opengl3_wrapper.cpp"
 )
 # 指定 bklv 移植层的实现文件，它们会被编译成目标文件供各示例复用。
 BKLV_SOURCES=(
@@ -36,6 +51,7 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/core/time.cpp"
     "${ROOT_DIR}/src/bklv/core/font.cpp"
     "${ROOT_DIR}/src/bklv/core/graphics.cpp"
+    "${ROOT_DIR}/src/bklv/core/image_decoder.cpp"
     "${ROOT_DIR}/src/bklv/core/platform.cpp"
     "${ROOT_DIR}/src/bklv/core/gamepad.cpp"
     "${ROOT_DIR}/src/bklv/core/view.cpp"
@@ -96,7 +112,13 @@ while IFS= read -r -d '' source; do
     YOGA_OBJECTS+=("${object}")
 done < <(find "${ROOT_DIR}/3rd/yoga/yoga" -type f -name '*.cpp' -print0)
 # 将 Yoga 目标文件打包为供示例链接的静态库。
-libtool -static -o "${ROOT_DIR}/dist/libyogacore.a" "${YOGA_OBJECTS[@]}"
+# macOS 用 libtool，Linux 用 ar（GNU ar 不需要额外参数）。
+if [[ "${HOST_OS}" == "Darwin" ]]; then
+    libtool -static -o "${ROOT_DIR}/dist/libyogacore.a" "${YOGA_OBJECTS[@]}"
+else
+    rm -f "${ROOT_DIR}/dist/libyogacore.a"
+    ar rcs "${ROOT_DIR}/dist/libyogacore.a" "${YOGA_OBJECTS[@]}"
+fi
 
 # 编译 bklv 移植层：每个文件一个目标文件，避免每个示例重复编译。
 BKLV_OBJECTS=()
@@ -108,32 +130,56 @@ for source in "${BKLV_SOURCES[@]}"; do
     BKLV_OBJECTS+=("${object}")
 done
 
-# 链接参数：SDL3 静态库 + 它依赖的 macOS framework + OpenGL 与图片解码。
+# 链接参数：SDL3 静态库 + 平台相关的系统库。
 # framework 列表取自 SDL3 的 sdl3.pc 的 Libs.private。
-LINK_FLAGS=(
-    "${SDL_LIB}"
-    -framework OpenGL
-    -framework ImageIO
-    -framework CoreGraphics
-    -framework CoreFoundation
-    -framework CoreMedia
-    -framework CoreVideo
-    -framework Cocoa
-    -weak_framework UniformTypeIdentifiers
-    -framework IOKit
-    -weak_framework ForceFeedback
-    -framework Carbon
-    -framework CoreAudio
-    -framework AudioToolbox
-    -framework AVFoundation
-    -framework Foundation
-    -framework GameController
-    -framework Metal
-    -framework QuartzCore
-    -weak_framework CoreHaptics
-    -lpthread
-    -lm
-)
+if [[ "${HOST_OS}" == "Darwin" ]]; then
+    LINK_FLAGS=(
+        "${SDL_LIB}"
+        -framework OpenGL
+        -framework ImageIO
+        -framework CoreGraphics
+        -framework CoreFoundation
+        -framework CoreMedia
+        -framework CoreVideo
+        -framework Cocoa
+        -weak_framework UniformTypeIdentifiers
+        -framework IOKit
+        -weak_framework ForceFeedback
+        -framework Carbon
+        -framework CoreAudio
+        -framework AudioToolbox
+        -framework AVFoundation
+        -framework Foundation
+        -framework GameController
+        -framework Metal
+        -framework QuartzCore
+        -weak_framework CoreHaptics
+        -lpthread
+        -lm
+    )
+else
+    # Linux：静态链接 SDL3 需要一串系统子库（X11 / Wayland / ALSA / ...）。
+    # 由 SDL3 自己生成的 pkg-config 文件解析，避免手写漏项。
+    SDL3_PC_DIR="${ROOT_DIR}/dist/sdl3-prefix"
+    SDL3_PC="$(find "${SDL3_PC_DIR}" -name 'sdl3.pc' -type f 2>/dev/null | head -1)"
+    if [[ -n "${SDL3_PC}" ]] && command -v pkg-config >/dev/null 2>&1; then
+        # 用 SDL3 自己的 .pc 解析出全部系统依赖。
+        # 注意要过滤掉它自己带的 -lSDL3（我们已经显式链接静态库）。
+        # shellcheck disable=SC2207
+        SDL3_SYSTEM_LIBS=($(PKG_CONFIG_PATH="$(dirname "${SDL3_PC}")" pkg-config --static --libs sdl3 2>/dev/null | tr ' ' '\n' | grep -v '^-lSDL3$' | grep -v '^-L.*/dist/sdl3-prefix' | tr '\n' ' '))
+    else
+        echo "警告：未找到 sdl3.pc 或 pkg-config，SDL3 的系统依赖可能不全" >&2
+        SDL3_SYSTEM_LIBS=(-ldl -lpthread -lm -lrt -lX11)
+    fi
+
+    LINK_FLAGS=(
+        "${SDL_LIB}"
+        "${SDL3_SYSTEM_LIBS[@]}"
+        -lGL
+        -lpthread
+        -lm
+    )
+fi
 # 逐个编译目标程序，并把可执行文件放进 dist 目录。
 for target in "${TARGETS[@]}"; do
     name="${target%%:*}"

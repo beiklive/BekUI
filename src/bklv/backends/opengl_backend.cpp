@@ -2,8 +2,9 @@
 
 #if !defined(BKLV_SWITCH)
 
-#include <OpenGL/gl3.h>
 #include <SDL3/SDL.h>
+
+#include "bklv/backends/gl_loader.hpp"
 
 #include "backends/imgui_impl_opengl3.h"
 
