@@ -1,0 +1,19 @@
+# macOS 系统文件。
+.DS_Store
+
+# 构建产物和临时目录。
+dist/
+build/
+
+# C/C++ 编译中间文件。
+*.o
+*.obj
+*.d
+*.dSYM/
+
+# 常见编辑器配置。
+.vscode/
+.idea/
+
+# Dear ImGui 的窗口位置和布局状态文件。
+imgui.ini

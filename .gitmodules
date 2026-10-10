@@ -1,0 +1,9 @@
+[submodule "3rd/imgui"]
+	path = 3rd/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "3rd/yoga"]
+	path = 3rd/yoga
+	url = https://github.com/facebook/yoga.git
+[submodule "3rd/tweeny"]
+	path = 3rd/tweeny
+	url = https://github.com/mobius3/tweeny.git
