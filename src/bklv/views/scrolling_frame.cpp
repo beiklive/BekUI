@@ -62,6 +62,7 @@ void ScrollingFrame::setContentView(View* view)
     // 用 clearViews() 会 delete 旧内容，而调用方（比如切页逻辑）可能还留着它的指针，
     // 之后再用就是 use-after-free（这个坑实测踩过：切回旧页时崩在野指针上）。
     this->evictContentView();
+    this->contentView = view;
 
     if (this->contentView == nullptr)
         return;
