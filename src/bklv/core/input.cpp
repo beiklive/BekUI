@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/gamepad.hpp"
 #include "bklv/core/view.hpp"
 
 namespace bklv
@@ -63,6 +64,9 @@ bool InputManager::isKeyPressedEdge(int imguiKey, bool* state)
 
 void InputManager::update()
 {
+    // 先让手柄刷新一次按键状态，后面的"按下沿"判断才准确。
+    getGamepadSource().update();
+
     // 指针位置每帧刷新。
     const ImVec2 mouse = ImGui::GetIO().MousePos;
     this->pointerPosition = Point(mouse.x, mouse.y);
@@ -83,14 +87,24 @@ void InputManager::handleNavigation()
     dirLeft  = isKeyPressedEdge(ImGuiKey_LeftArrow, &kLeft) || isKeyPressedEdge(ImGuiKey_A, &kLeft);
     dirRight = isKeyPressedEdge(ImGuiKey_RightArrow, &kRight) || isKeyPressedEdge(ImGuiKey_D, &kRight);
 
-    // 手柄方向键（SDL3）
-    if (this->gamepad != nullptr)
-    {
-        dirUp    = dirUp || SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP);
-        dirDown  = dirDown || SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
-        dirLeft  = dirLeft || SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
-        dirRight = dirRight || SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
-    }
+    // 手柄方向键：由平台提供的 GamepadSource 决定（桌面 SDL3 / Switch libnx）。
+    // 方向键是"持续按住即连续移动"，所以用按住状态而不是按下沿。
+    static bool gUp = false, gDown = false, gLeft = false, gRight = false;
+    GamepadSource& gamepad = getGamepadSource();
+    const bool nowUp    = gamepad.isDirectionHeld(FocusDirection::UP);
+    const bool nowDown  = gamepad.isDirectionHeld(FocusDirection::DOWN);
+    const bool nowLeft  = gamepad.isDirectionHeld(FocusDirection::LEFT);
+    const bool nowRight = gamepad.isDirectionHeld(FocusDirection::RIGHT);
+
+    dirUp    = dirUp || (nowUp && !gUp);
+    dirDown  = dirDown || (nowDown && !gDown);
+    dirLeft  = dirLeft || (nowLeft && !gLeft);
+    dirRight = dirRight || (nowRight && !gRight);
+
+    gUp    = nowUp;
+    gDown  = nowDown;
+    gLeft  = nowLeft;
+    gRight = nowRight;
 
     if (dirUp)
         this->navigate(FocusDirection::UP);
@@ -216,23 +230,10 @@ void InputManager::handleActions()
     confirm = confirm || isKeyPressedEdge(ImGuiKey_Space, &this->stateA);
     back    = back || isKeyPressedEdge(ImGuiKey_Escape, &this->stateB);
 
-    if (this->gamepad != nullptr)
-    {
-        // 手柄按钮用"按下沿"判断，这里简化为直接读状态并在下一帧比较。
-        static bool gpA = false, gpB = false, gpX = false, gpY = false;
-        const bool nowA = SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
-        const bool nowB = SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_EAST);
-        const bool nowX = SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_WEST);
-        const bool nowY = SDL_GetGamepadButton(this->gamepad, SDL_GAMEPAD_BUTTON_NORTH);
-        confirm = confirm || (nowA && !gpA);
-        back    = back || (nowB && !gpB);
-        gpA = nowA;
-        gpB = nowB;
-        gpX = nowX;
-        gpY = nowY;
-        (void)gpX;
-        (void)gpY;
-    }
+    // 手柄的确认/返回：GamepadSource 内部已经做了按下沿判断。
+    GamepadSource& gamepad = getGamepadSource();
+    confirm = confirm || gamepad.isConfirmPressed();
+    back    = back || gamepad.isBackPressed();
 
     if (this->currentFocus == nullptr)
         return;
@@ -266,32 +267,6 @@ std::vector<HintItem> InputManager::getHints() const
 Point InputManager::getPointerPosition() const
 {
     return this->pointerPosition;
-}
-
-// ---------------------------------------------------------------------------
-// 手柄
-// ---------------------------------------------------------------------------
-
-void InputManager::setupGamepad()
-{
-    int count = 0;
-    SDL_JoystickID* ids = SDL_GetGamepads(&count);
-    if (ids == nullptr)
-        return;
-
-    if (count > 0 && this->gamepad == nullptr)
-        this->gamepad = SDL_OpenGamepad(ids[0]);
-
-    SDL_free(ids);
-}
-
-void InputManager::shutdownGamepad()
-{
-    if (this->gamepad != nullptr)
-    {
-        SDL_CloseGamepad(this->gamepad);
-        this->gamepad = nullptr;
-    }
 }
 
 } // namespace bklv

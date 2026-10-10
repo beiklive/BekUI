@@ -184,7 +184,6 @@ int App::run(const std::string& title, int width, int height)
     }
 
     loadFonts();
-    getInputManager().setupGamepad();
 
     RenderBackend* backend = platform->getGraphicsBackend();
 
@@ -219,7 +218,6 @@ int App::run(const std::string& title, int width, int height)
 
     backend->shutdownImGuiRenderer();
     platform->shutdownImGuiPlatformBackend();
-    getInputManager().shutdownGamepad();
     ImGui::DestroyContext();
 
     // 平台析构负责销毁窗口与图形上下文。

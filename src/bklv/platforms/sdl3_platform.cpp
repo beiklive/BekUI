@@ -5,6 +5,7 @@
 #include "backends/imgui_impl_sdl3.h"
 #include "imgui.h"
 
+#include "bklv/core/gamepad.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
 
@@ -19,23 +20,6 @@ PlatformSDL3::PlatformSDL3(GraphicsBackendType graphics)
     this->graphicsBackend.reset(createRenderBackend(graphics));
     if (this->graphicsBackend == nullptr)
         Logger::error(std::string("图形后端创建失败：") + getGraphicsBackendName(graphics));
-}
-
-PlatformSDL3::~PlatformSDL3()
-{
-    // ImGui 平台后端的 Shutdown 由 App 在销毁 ImGui 上下文之前调用，
-    // 这里只负责窗口和 SDL 本身。
-    if (this->window != nullptr)
-    {
-        SDL_DestroyWindow(this->window);
-        this->window = nullptr;
-    }
-
-    if (this->sdlReady)
-    {
-        SDL_Quit();
-        this->sdlReady = false;
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +69,10 @@ bool PlatformSDL3::createWindow(const std::string& title, uint32_t width, uint32
 
     // ImGui 的平台后端：键鼠与窗口事件。与图形 API 无关。
     ImGui_ImplSDL3_InitForOther(this->window);
+
+    // 手柄是可选的，没有手柄时键鼠照常工作。
+    this->gamepadSource = std::make_unique<SDL3GamepadSource>();
+    setGamepadSource(this->gamepadSource.get());
 
     return true;
 }
@@ -140,6 +128,25 @@ bool PlatformSDL3::mainLoopIteration()
     }
 
     return running;
+}
+
+PlatformSDL3::~PlatformSDL3()
+{
+    // 先摘掉手柄源，避免 InputManager 持有已经析构的对象。
+    setGamepadSource(nullptr);
+    this->gamepadSource.reset();
+
+    if (this->window != nullptr)
+    {
+        SDL_DestroyWindow(this->window);
+        this->window = nullptr;
+    }
+
+    if (this->sdlReady)
+    {
+        SDL_Quit();
+        this->sdlReady = false;
+    }
 }
 
 void PlatformSDL3::shutdownImGuiPlatformBackend()

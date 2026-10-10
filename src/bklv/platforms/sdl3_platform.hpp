@@ -11,7 +11,10 @@
 
 #include <SDL3/SDL.h>
 
+#include <memory>
+
 #include "bklv/core/platform.hpp"
+#include "bklv/platforms/sdl3_gamepad.hpp"
 
 namespace bklv
 {
@@ -59,6 +62,7 @@ class PlatformSDL3 : public Platform
     SDL_Window* window  = nullptr;
     bool sdlReady       = false;
     std::unique_ptr<RenderBackend> graphicsBackend;
+    std::unique_ptr<SDL3GamepadSource> gamepadSource;
 };
 
 } // namespace bklv

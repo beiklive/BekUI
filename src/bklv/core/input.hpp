@@ -5,15 +5,14 @@
 // 设计要点（与 borealis 一致）：
 //   - 焦点是一棵独立的"当前选中路径"，Application 持有 currentFocus，Box 负责在其中导航
 //   - 每个 View 自己注册动作（registerAction），底部提示栏统一展示
-//   - 键鼠事件直接读 ImGui 后端已经收好的 ImGuiIO
-//   - 手柄目前直接读 SDL3：这块在第二步接 Switch 时会抽成 InputSource 接口
-//     （Switch 用 libnx 的 padUpdate，桌面用 SDL3），届时本文件不再依赖 SDL
+//   - 键鼠事件读 ImGui 后端已经收好的 ImGuiIO
+//   - 手柄走 GamepadSource 抽象（见 core/gamepad.hpp）：
+//     桌面是 SDL3，Switch 是 libnx，本文件因此不依赖任何平台 API
 
 #include <functional>
 #include <string>
 #include <vector>
 
-#include <SDL3/SDL.h>
 #include "imgui.h"
 
 #include "bklv/core/geometry.hpp"
@@ -79,10 +78,6 @@ class InputManager
     // 每帧调用一次：处理导航、鼠标点击、动作派发。
     void update();
 
-    // 手柄热插拔时调用；不接手柄也不影响键鼠。
-    void setupGamepad();
-    void shutdownGamepad();
-
     // 焦点管理
     void giveFocus(View* view);
     View* getCurrentFocus() const { return this->currentFocus; }
@@ -123,10 +118,8 @@ class InputManager
     bool pointerActive = false;
     Point pointerPosition;
 
-    // 按键"按下沿"的上一帧状态
+    // 键盘"按下沿"的上一帧状态
     bool stateA = false, stateB = false;
-
-    SDL_Gamepad* gamepad = nullptr;
 };
 
 // 全局输入管理器
