@@ -27,9 +27,30 @@ ScrollingFrame::ScrollingFrame()
 
 ScrollingFrame::~ScrollingFrame()
 {
-    // contentView 的所有权归 ScrollingFrame；Box 的 children 里也有它，
-    // 这里只要保证不留悬空指针即可。
+    // 内容视图不是本类 new 出来的（由调用方创建），所以这里只清指针，
+    // 真正的释放交给 Box 的析构（它会 clearViews）。
     this->contentView = nullptr;
+}
+
+View* ScrollingFrame::evictContentView()
+{
+    if (this->contentView == nullptr)
+        return nullptr;
+
+    View* view = this->contentView;
+    this->contentView = nullptr;
+
+    // 只从树上摘下来，不销毁。
+    if (view->getParent() == this)
+        this->removeView(view, false);
+    else
+        view->setParent(nullptr);
+
+    this->contentOffsetY       = 0.0f;
+    this->velocity             = 0.0f;
+    this->lastAutoScrolledView = nullptr;
+
+    return view;
 }
 
 void ScrollingFrame::setContentView(View* view)
@@ -37,9 +58,10 @@ void ScrollingFrame::setContentView(View* view)
     if (this->contentView == view)
         return;
 
-    // 旧内容清掉（Box::clearViews 会同步 Yoga 树并释放对象）
-    this->clearViews();
-    this->contentView = view;
+    // 旧内容只"摘下"，不销毁 —— ScrollingFrame 不拥有内容视图的所有权。
+    // 用 clearViews() 会 delete 旧内容，而调用方（比如切页逻辑）可能还留着它的指针，
+    // 之后再用就是 use-after-free（这个坑实测踩过：切回旧页时崩在野指针上）。
+    this->evictContentView();
 
     if (this->contentView == nullptr)
         return;

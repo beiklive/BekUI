@@ -35,6 +35,10 @@ class Box : public View
     // 移除并删除全部子节点。
     void clearViews();
 
+    // 摘下全部子节点但不销毁，所有权交回调用方。
+    // 需要在容器之间搬动视图、或容器不拥有子节点时使用。
+    void removeAllViews();
+
     // 见 View::asBox 的说明。
     Box* asBox() override { return this; }
 

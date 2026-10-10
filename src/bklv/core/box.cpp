@@ -91,6 +91,13 @@ void Box::removeView(View* view, bool free)
         delete view;
 }
 
+void Box::removeAllViews()
+{
+    // 逐个摘除并同步 Yoga 树，但不 delete。
+    while (!this->children.empty())
+        this->removeView(this->children.back(), false);
+}
+
 void Box::clearViews()
 {
     // 逐个摘除：removeView 会同步 Yoga 树，也可以安全地触发子节点析构。

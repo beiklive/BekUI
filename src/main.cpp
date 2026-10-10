@@ -1014,35 +1014,47 @@ View* buildScene()
     contentHost->setGrow(1.0f);
     contentHost->addView(content);
 
-    // 切页：换内容视图 + 更新 tab 高亮 + 回到顶部。
+    // 切页。
     //
-    // 注意 pages / selfScrolling 必须**按值**捕获：它们是 buildScene 的局部变量，
-    // 而这个 lambda 要活到程序结束（tab 回调持有它）。
-    // 捕获引用的话函数一返回就悬空，切 tab 会读到野内存（这个是实测出来的 bug）。
+    // 两个要点：
+    //   1. pages / selfScrolling 必须**按值**捕获：它们是 buildScene 的局部变量，
+    //      而这个 lambda 要活到程序结束（tab 回调持有它）。捕获引用会悬空。
+    //   2. 视图在 contentHost 与 ScrollingFrame 之间搬动时，必须先"取走"再"放入"。
+    //      ScrollingFrame::setContentView 会销毁旧内容；直接覆盖会让另一方
+    //      留下悬空指针（实测崩在 removeView 里的野指针上）。
     auto selectPage = [content, contentHost, tabBar, pages, selfScrolling](size_t index) {
         if (index >= pages.size())
             return;
 
         tabBar->setSelectedIndex(index);
 
+        Box* holder = contentHost;
+        View* target = pages[index];
+
+        // 已经在目标位置就不用动
+        if (target->getParent() == holder)
+            return;
+
+        // 从旧的父节点取走（ScrollingFrame 用 evict，避免被销毁）
+        if (content->getContentView() == target)
+            content->evictContentView();
+        else if (target->getParent() != nullptr)
+            target->getParent()->removeView(target, false);
+
+        // 把 ScrollingFrame 自己也从内容区取走（它是普通页的容器）
+        if (content->getParent() == holder)
+            holder->removeView(content, false);
+
         if (selfScrolling[index])
         {
-            // 自滚动页：直接放进内容区，占满
-            contentHost->removeView(content, false);
-            if (pages[index]->getParent() != nullptr)
-                pages[index]->getParent()->removeView(pages[index], false);
-            contentHost->addView(pages[index]);
+            // 自滚动页（内部已有 ScrollingFrame）：直接铺满内容区
+            holder->addView(target);
         }
         else
         {
-            // 普通页：放回 ScrollingFrame 里
-            if (pages[index]->getParent() != nullptr)
-                pages[index]->getParent()->removeView(pages[index], false);
-
-            if (content->getParent() == nullptr)
-                contentHost->addView(content);
-
-            content->setContentView(pages[index]);
+            // 普通页：交给 ScrollingFrame 包滚动
+            holder->addView(content);
+            content->setContentView(target);
             content->setContentOffsetY(0.0f, false);
         }
     };

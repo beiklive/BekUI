@@ -33,8 +33,13 @@ class ScrollingFrame : public Box
     ScrollingFrame();
     ~ScrollingFrame() override;
 
-    // 设置内容视图，ScrollingFrame 接管其所有权。
+    // 设置内容视图，ScrollingFrame 接管其所有权（替换时旧内容会被销毁）。
     void setContentView(View* view);
+
+    // 取走当前内容视图：从树上摘下但不销毁，所有权交回调用方。
+    // 需要在不同容器之间搬同一个视图时必须用它，不能直接 setContentView 覆盖
+    // ——那样旧内容会被销毁，而别处可能还持有它。
+    View* evictContentView();
     View* getContentView() const { return this->contentView; }
 
     void setScrollingBehavior(ScrollingBehavior behavior) { this->behavior = behavior; }
