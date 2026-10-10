@@ -54,6 +54,7 @@ Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `
 | `core/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
 | `backends/opengl_backend.*` | 桌面 OpenGL 后端 |
+| `backends/vulkan_backend.*` | Vulkan 后端（占位，待实现） |
 | `backends/gles3_backend.*` | Switch 的 EGL + OpenGL ES 3 后端 |
 | `backends/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
 | `backends/null_backend.*` | 空后端：开窗不渲染，用于无图形环境自检 |
@@ -195,23 +196,29 @@ src/bklv/backends/*         OpenGLBackend（桌面）/ GLES3Backend（Switch）/
 src/bklv/platforms/*        PlatformSDL3（桌面）/ PlatformSwitch（libnx）
 ```
 
-**后端是编译期确定的，没有运行时开关。** 后端代码、链接库、shader 版本都不同，
-运行时切换在一个构建里没有意义：
+**每个 demo 都编 GL 和 Vulkan 两个版本**（约定见 `AGENTS.md`）。
+后端是编译期确定的，没有运行时开关——后端代码、链接库、shader 版本都不同，
+运行时切换在一个构建里没有意义。
 
-| 构建 | 图形后端 |
-|---|---|
-| macOS / Linux / Windows | `backends/opengl_backend`（OpenGL 3.2 Core） |
-| Switch | `backends/gles3_backend`（EGL + OpenGL ES 3） |
-| 自检 | `BKLV_NULL_BACKEND=1 ./build.sh` 编入不绘制的空后端 |
+```bash
+./build.sh                # GL，产物在 dist/
+./build.sh --vk           # Vulkan，产物在 dist/vk/
+BKLV_NULL_BACKEND=1 ./build.sh   # 空后端：开窗但不绘制，用于自检
+```
+
+| 构建 | 图形后端 | 输出目录 | 状态 |
+|---|---|---|---|
+| 默认 | `backends/opengl_backend`（OpenGL 3.2 Core） | `dist/` | 可用 |
+| `--vk` | `backends/vulkan_backend`（Vulkan） | `dist/vk/` | 后端待实现，构建系统已就位 |
+| Switch | `backends/gles3_backend`（EGL + OpenGL ES 3） | `dist/switch/` | 编译通过 |
+| `BKLV_NULL_BACKEND=1` | `backends/null_backend` | `dist/` | 可用 |
+
+Vulkan 构建需要 SDK：macOS 用 `brew install vulkan-headers vulkan-loader molten-vk`，
+Linux 用 `apt install libvulkan-dev`，或用 `VULKAN_SDK` 指定。缺 SDK 时构建会明确报错。
 
 选择逻辑就在各平台的 `createBackend()` 里（`platforms/sdl3_platform.cpp` /
 `platforms/switch_platform.cpp`），是几行 `#if`，没有注册表、没有优先级列表。
-
-```bash
-BKLV_NULL_BACKEND=1 ./build.sh   # 空后端：开窗但不绘制，用于无图形环境自检
-```
-
-加 Vulkan / Metal 后端的步骤见 `notes/adding-render-backend.md`。
+加后端的步骤见 `notes/adding-render-backend.md`。
 
 ## 初始化与编译
 

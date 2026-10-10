@@ -11,6 +11,7 @@
 
 #include "bklv/backends/null_backend.hpp"
 #include "bklv/backends/opengl_backend.hpp"
+#include "bklv/backends/vulkan_backend.hpp"
 #include "bklv/core/gamepad.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
@@ -31,6 +32,8 @@ void PlatformSDL3::createBackend()
 #if defined(BKLV_NULL_BACKEND)
     // 自检构建：开窗但不绘制，用来在没有图形环境的机器上验证布局/焦点/滚动逻辑。
     this->graphicsBackend = std::make_unique<NullBackend>();
+#elif defined(BKLV_VULKAN)
+    this->graphicsBackend = std::make_unique<VulkanBackend>();
 #else
     this->graphicsBackend = std::make_unique<OpenGLBackend>();
 #endif

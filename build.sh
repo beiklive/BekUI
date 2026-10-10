@@ -1,9 +1,35 @@
 #!/usr/bin/env bash
+# 构建桌面版（macOS / Linux）。
+#
+# 每个 demo 都编 GL 与 Vulkan 两个版本，产物分目录：
+#   ./build.sh        -> dist/     （OpenGL）
+#   ./build.sh --vk   -> dist/vk/  （Vulkan，需要 Vulkan SDK）
+#   加 BKLV_NULL_BACKEND=1 则不绘制，用于无图形环境自检。
+#
 # 使用严格模式，让脚本在命令失败或变量未定义时立即停止。
 set -euo pipefail
 
 # 取得脚本所在目录，确保从任意工作目录执行都能找到项目文件。
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 图形后端：gl（默认）或 vk。两种都编，产物分目录，互不覆盖。
+#   ./build.sh               -> dist/      （OpenGL）
+#   ./build.sh --vk          -> dist/vk/   （Vulkan）
+#   BKLV_GRAPHICS=vk ./build.sh
+GRAPHICS="${BKLV_GRAPHICS:-gl}"
+for arg in "$@"; do
+    case "${arg}" in
+        --vk|--vulkan) GRAPHICS="vk" ;;
+        --gl|--opengl) GRAPHICS="gl" ;;
+        *) echo "未知参数：${arg}" >&2; exit 1 ;;
+    esac
+done
+
+case "${GRAPHICS}" in
+    gl) OUT_DIR="${ROOT_DIR}/dist" ;;
+    vk) OUT_DIR="${ROOT_DIR}/dist/vk" ;;
+    *)  echo "错误：BKLV_GRAPHICS 只能是 gl 或 vk（当前：${GRAPHICS}）" >&2; exit 1 ;;
+esac
 # 目标平台：Darwin（macOS）或 Linux。编译器、链接参数、图片解码器都按它选。
 HOST_OS="$(uname -s)"
 # 允许用环境变量替换编译器；默认 macOS 用 clang++，Linux 用 g++。
@@ -25,6 +51,42 @@ fi
 if [[ ! -f "${SDL_LIB}" ]]; then
     "${ROOT_DIR}/scripts/build_sdl3.sh"
 fi
+# Vulkan 构建需要 SDK（头文件 + loader）。macOS 上是 MoltenVK。
+VULKAN_LIBS=()
+if [[ "${GRAPHICS}" == "vk" ]]; then
+    VULKAN_INCLUDE=""
+    for candidate in "${VULKAN_SDK:-}/include" /opt/homebrew/include /usr/local/include /usr/include; do
+        if [[ -n "${candidate}" && -f "${candidate}/vulkan/vulkan.h" ]]; then
+            VULKAN_INCLUDE="${candidate}"
+            break
+        fi
+    done
+
+    if [[ -z "${VULKAN_INCLUDE}" ]]; then
+        echo "错误：Vulkan 构建需要 SDK（找不到 vulkan/vulkan.h）" >&2
+        echo "  macOS:  brew install vulkan-loader vulkan-headers molten-vk" >&2
+        echo "  Ubuntu: sudo apt install libvulkan-dev" >&2
+        echo "  或设置 VULKAN_SDK 环境变量指向 SDK 根目录" >&2
+        exit 1
+    fi
+
+    VULKAN_LIB_DIR=""
+    for candidate in "${VULKAN_SDK:-}/lib" /opt/homebrew/lib /usr/local/lib /usr/lib; do
+        if [[ -n "${candidate}" && -e "${candidate}/libvulkan.dylib" || -n "${candidate}" && -e "${candidate}/libvulkan.so" ]]; then
+            VULKAN_LIB_DIR="${candidate}"
+            break
+        fi
+    done
+
+    if [[ -z "${VULKAN_LIB_DIR}" ]]; then
+        echo "错误：找到 Vulkan 头文件但找不到 loader 库（libvulkan）" >&2
+        exit 1
+    fi
+
+    VULKAN_LIBS=(-L"${VULKAN_LIB_DIR}" -lvulkan)
+    echo "Vulkan SDK: ${VULKAN_INCLUDE}"
+fi
+
 # 指定 C++ 标准、警告选项以及 Dear ImGui、SDL3、Yoga 和 Tweeny 头文件目录。
 CXXFLAGS=(-Wall -Wextra -Wpedantic -DGL_SILENCE_DEPRECATION -I"${ROOT_DIR}/3rd/imgui" -I"${ROOT_DIR}/3rd/yoga" -I"${ROOT_DIR}/3rd/tweeny/include" -I"${ROOT_DIR}/3rd/stb" -I"${ROOT_DIR}/src" -I"${SDL_SRC}/include")
 # macOS 用系统 ImageIO 解码图片；其余平台用 stb_image（随仓库，无外部依赖）。
@@ -34,10 +96,14 @@ fi
 # ImGui 的 OpenGL3 后端通过包装文件包含我们的 GL 头，
 # 这里只需要告诉它别用自带的 loader。
 CXXFLAGS+=(-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
-# BKLV_NULL_BACKEND=1：编入不绘制的空后端，用于无图形环境下的自检。
-# 例：BKLV_NULL_BACKEND=1 ./build.sh
+# 图形后端选择（编译期）。
+# BKLV_NULL_BACKEND=1 优先：编入不绘制的空后端，用于无图形环境自检。
 if [[ "${BKLV_NULL_BACKEND:-0}" == "1" ]]; then
     CXXFLAGS+=(-DBKLV_NULL_BACKEND)
+elif [[ "${GRAPHICS}" == "vk" ]]; then
+    CXXFLAGS+=(-DBKLV_VULKAN -I"${VULKAN_INCLUDE}")
+else
+    CXXFLAGS+=(-DBKLV_OPENGL)
 fi
 # 指定 Dear ImGui 核心实现及 SDL3/OpenGL3 平台、渲染后端实现文件。
 IMGUI_SOURCES=(
@@ -71,6 +137,7 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/platforms/sdl3_platform.cpp"
     "${ROOT_DIR}/src/bklv/platforms/sdl3_gamepad.cpp"
     "${ROOT_DIR}/src/bklv/backends/opengl_backend.cpp"
+    "${ROOT_DIR}/src/bklv/backends/vulkan_backend.cpp"
     "${ROOT_DIR}/src/bklv/backends/null_backend.cpp"
     "${ROOT_DIR}/src/bklv/views/hints.cpp"
     "${ROOT_DIR}/src/bklv/views/debug_layer.cpp"
@@ -105,7 +172,7 @@ if [[ ! -f "${ROOT_DIR}/3rd/tweeny/include/tweeny/tweeny.h" ]]; then
 fi
 
 # 创建构建输出目录；已有其他文件会保留。
-mkdir -p "${ROOT_DIR}/dist"
+mkdir -p "${OUT_DIR}"
 
 # 编译 Yoga 的所有核心 C++ 源文件，保存中间目标文件供后续重编使用。
 YOGA_OBJECTS=()
@@ -119,17 +186,17 @@ done < <(find "${ROOT_DIR}/3rd/yoga/yoga" -type f -name '*.cpp' -print0)
 # 将 Yoga 目标文件打包为供示例链接的静态库。
 # macOS 用 libtool，Linux 用 ar（GNU ar 不需要额外参数）。
 if [[ "${HOST_OS}" == "Darwin" ]]; then
-    libtool -static -o "${ROOT_DIR}/dist/libyogacore.a" "${YOGA_OBJECTS[@]}"
+    libtool -static -o "${OUT_DIR}/libyogacore.a" "${YOGA_OBJECTS[@]}"
 else
-    rm -f "${ROOT_DIR}/dist/libyogacore.a"
-    ar rcs "${ROOT_DIR}/dist/libyogacore.a" "${YOGA_OBJECTS[@]}"
+    rm -f "${OUT_DIR}/libyogacore.a"
+    ar rcs "${OUT_DIR}/libyogacore.a" "${YOGA_OBJECTS[@]}"
 fi
 
 # 编译 bklv 移植层：每个文件一个目标文件，避免每个示例重复编译。
 BKLV_OBJECTS=()
 for source in "${BKLV_SOURCES[@]}"; do
     relative_path="${source#"${ROOT_DIR}/src/"}"
-    object="${ROOT_DIR}/dist/bklv-objects/${relative_path%.cpp}.o"
+    object="${ROOT_DIR}/dist/bklv-objects/${GRAPHICS}/${relative_path%.cpp}.o"
     mkdir -p "$(dirname "${object}")"
     "${CXX}" -std=c++17 -O2 "${CXXFLAGS[@]}" -c "${source}" -o "${object}"
     BKLV_OBJECTS+=("${object}")
@@ -197,11 +264,11 @@ for target in "${TARGETS[@]}"; do
         EXTRA_LINK=("${BKLV_OBJECTS[@]}")
     fi
     if [[ "${name}" == "demo_04_yoga" ]]; then
-        "${CXX}" -std=c++20 "${CXXFLAGS[@]}" "${source}" "${IMGUI_SOURCES[@]}" "${EXTRA_LINK[@]}" "${LINK_FLAGS[@]}" "${ROOT_DIR}/dist/libyogacore.a" -o "${ROOT_DIR}/dist/${name}"
+        "${CXX}" -std=c++20 "${CXXFLAGS[@]}" "${source}" "${IMGUI_SOURCES[@]}" "${EXTRA_LINK[@]}" "${LINK_FLAGS[@]}" "${OUT_DIR}/libyogacore.a" "${VULKAN_LIBS[@]}" -o "${OUT_DIR}/${name}"
     else
-        "${CXX}" -std=c++17 "${CXXFLAGS[@]}" "${source}" "${IMGUI_SOURCES[@]}" "${EXTRA_LINK[@]}" "${LINK_FLAGS[@]}" "${ROOT_DIR}/dist/libyogacore.a" -o "${ROOT_DIR}/dist/${name}"
+        "${CXX}" -std=c++17 "${CXXFLAGS[@]}" "${source}" "${IMGUI_SOURCES[@]}" "${EXTRA_LINK[@]}" "${LINK_FLAGS[@]}" "${OUT_DIR}/libyogacore.a" "${VULKAN_LIBS[@]}" -o "${OUT_DIR}/${name}"
     fi
 done
 
 # 输出构建完成提示。
-echo "构建完成：${ROOT_DIR}/dist"
+echo "构建完成（${GRAPHICS}）：${OUT_DIR}"
