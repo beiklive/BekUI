@@ -675,15 +675,20 @@ void View::unregisterAction(ActionIdentifier identifier)
     }
 }
 
-bool View::triggerAction(ControllerButton button)
+bool View::triggerAction(ControllerButton button, bool pointer)
 {
     for (const InputAction& action : this->actions)
     {
-        if (action.button == button && action.listener)
-        {
-            action.listener(this);
-            return true;
-        }
+        if (action.button != button || !action.listener)
+            continue;
+
+        // 鼠标点击默认只"选中"，不执行动作 —— 否则点一下列表项就会误触发。
+        // 控件想支持点一下就执行，把 onPointerAction 覆写成 true 即可。
+        if (pointer && !this->onPointerAction)
+            return false;
+
+        action.listener(this);
+        return true;
     }
     return false;
 }

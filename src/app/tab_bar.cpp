@@ -24,6 +24,9 @@ TabCell::TabCell()
     this->label = makeText("", 15.0f, rgb(170, 180, 195), true);
     this->label->setHorizontalAlign(HorizontalAlign::CENTER);
     this->addView(this->label);
+
+    // tab 也是"点一下就切"更自然
+    this->onPointerAction = true;
 }
 
 void TabCell::setTab(const std::string& name, bool selected)

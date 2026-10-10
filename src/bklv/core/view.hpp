@@ -226,7 +226,8 @@ class View
         const ActionListener& listener, bool hidden = false);
     void unregisterAction(ActionIdentifier identifier);
     // 返回是否消费了这次按键。
-    bool triggerAction(ControllerButton button);
+    // pointer = true 表示由鼠标点击触发。控件可以用它区分"点一下就执行"和"只选中"。
+    bool triggerAction(ControllerButton button, bool pointer = false);
 
     const std::vector<InputAction>& getActions() const { return this->actions; }
 
@@ -279,6 +280,10 @@ class View
     YGNode* getYGNode() const { return this->ygNode; }
 
   protected:
+    // 鼠标点击本视图时是否直接执行动作（默认 false：点击只聚焦，不执行）。
+    // 按钮类控件覆写为 true 更符合直觉；列表项保持默认，避免点一下就被触发。
+    bool onPointerAction = false;
+
     // 自定义测量函数。第一个参数是触发测量的节点，实现里一般用不到。
     using MeasureFunction = std::function<YGSize(const void* node, float width, YGMeasureMode widthMode,
         float height, YGMeasureMode heightMode)>;

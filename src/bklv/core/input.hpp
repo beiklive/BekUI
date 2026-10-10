@@ -115,6 +115,7 @@ class InputManager
     View* currentFocus = nullptr;
     View* root         = nullptr;
 
+    bool pointerDown = false;
     bool pointerActive = false;
     Point pointerPosition;
 

@@ -209,16 +209,35 @@ void InputManager::notifyViewDeleted(View* view)
 void InputManager::handlePointer()
 {
     ImGuiIO& io = ImGui::GetIO();
+
     if (!io.MouseDown[0])
+    {
+        this->pointerDown = false;
         return;
+    }
 
     this->pointerActive = true;
 
     if (this->root == nullptr)
         return;
 
-    if (View* hit = this->root->hitTest(this->pointerPosition))
-        this->focusFromPointer(hit);
+    View* hit = this->root->hitTest(this->pointerPosition);
+    if (hit == nullptr)
+        return;
+
+    // 只在按下的那一刻处理，按住不放不重复触发。
+    const bool pressed = !this->pointerDown;
+    this->pointerDown   = true;
+
+    if (!pressed)
+        return;
+
+    // 先聚焦，再执行动作。
+    // 每次都尝试执行（不判断焦点是否变化）：否则第二次点同一个按钮就没反应了，
+    // 而"是否响应指针"由 View::onPointerAction 决定，
+    // "重复点击是否安全"由各控件自己的动作逻辑决定（比如 tab 同页切换会直接返回）。
+    this->focusFromPointer(hit);
+    hit->triggerAction(ControllerButton::A, true);
 }
 
 void InputManager::handleActions()

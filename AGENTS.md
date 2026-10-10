@@ -81,6 +81,8 @@ BKLV_GRAPHICS=vk ./build.sh     # 等价写法
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
+- 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
+  `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
 
 ## 目录
 

@@ -25,6 +25,9 @@ TextButton::TextButton(const std::string& text)
 
     this->label = makeText(text, 14.0f, rgb(215, 222, 232), true);
     this->addView(this->label);
+
+    // 按钮：点一下就执行，不用先聚焦再按回车
+    this->onPointerAction = true;
 }
 
 void TextButton::onFocusGained()
