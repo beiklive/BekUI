@@ -9,7 +9,7 @@
 | `3rd/imgui` | 上游固定提交 | 即时模式 GUI、控件和绘制 | MIT |
 | `3rd/yoga` | `v3.2.1` | Flexbox 自动布局、尺寸约束和间距 | MIT |
 | `3rd/tweeny` | `v4.1.0`（上游实际标签） | C++17 头文件动画插值、缓动和关键帧 | MIT |
-| SDL3（Homebrew） | 本机安装版本 | 窗口、输入事件和 OpenGL 上下文 | zlib |
+| `3rd/SDL` | `release-3.4.16` | 窗口、输入事件、手柄和 OpenGL 上下文（源码编译成静态库） | zlib |
 
 Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `v4.1.0`，本项目固定在该标签对应提交 `68a7f44`。Yoga 固定在 `v3.2.1` 对应提交 `042f501`。Git 子模块记录精确提交，因此克隆项目后可复现相同版本。
 
@@ -154,16 +154,23 @@ app.setIniPersistenceEnabled(true);
 git submodule update --init --recursive
 ```
 
-安装 SDL3（只需安装一次），然后编译：
+只需要 `cmake`（用来编译 SDL3），**不需要 `brew install sdl3`**：
 
 ```bash
-brew install sdl3
+brew install cmake
 ./build.sh
 ```
 
-脚本会把 Yoga 核心源码（按 Yoga 3.2.1 要求使用 C++20）构建成 `dist/libyogacore.a`，
-再把 bklv 移植层编译成 `dist/bklv-objects/**.o`，最后链接出七个 demo 和 `src/main.cpp`。
+`build.sh` 会按需依次做四件事：
+
+1. `scripts/build_sdl3.sh` 把 `3rd/SDL`（release-3.4.16）编译成 `dist/libSDL3.a`，
+   已存在则跳过；`--force` 可强制重编
+2. Yoga 核心源码（按 Yoga 3.2.1 要求使用 C++20）编译成 `dist/libyogacore.a`
+3. bklv 移植层编译成 `dist/bklv-objects/**.o`
+4. 链接出七个 demo 和 `src/main.cpp`
+
 Tweeny 是头文件库，示例按 C++17 编译，无需单独编译或链接。
+SDL3 是静态链接的，产物不依赖任何动态库形式的 SDL；`otool -L` 只会看到系统 framework。
 
 ## 运行
 

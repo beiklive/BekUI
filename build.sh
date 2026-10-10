@@ -6,15 +6,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 允许用户通过环境变量替换编译器，默认使用 macOS 的 clang++。
 CXX="${CXX:-clang++}"
-# 查找 Homebrew 安装的 SDL3 路径。
-SDL_ROOT="$(brew --prefix sdl3 2>/dev/null || true)"
-# 检查 SDL3 是否已安装，并给出一条可直接执行的安装命令。
-if [[ -z "${SDL_ROOT}" || ! -d "${SDL_ROOT}/include/SDL3" ]]; then
-    echo "错误：未找到 SDL3，请先执行 brew install sdl3" >&2
+# SDL3 从源码构建（3rd/SDL 子模块），不使用系统安装的版本。
+SDL_SRC="${ROOT_DIR}/3rd/SDL"
+SDL_LIB="${ROOT_DIR}/dist/libSDL3.a"
+if [[ ! -f "${SDL_SRC}/include/SDL3/SDL.h" ]]; then
+    echo "错误：3rd/SDL 不完整，请先执行 git submodule update --init --recursive" >&2
     exit 1
 fi
+# 静态库不存在就先编译一份（脚本内部会跳过已存在的情况）。
+if [[ ! -f "${SDL_LIB}" ]]; then
+    "${ROOT_DIR}/scripts/build_sdl3.sh"
+fi
 # 指定 C++ 标准、警告选项以及 Dear ImGui、SDL3、Yoga 和 Tweeny 头文件目录。
-CXXFLAGS=(-Wall -Wextra -Wpedantic -DGL_SILENCE_DEPRECATION -I"${ROOT_DIR}/3rd/imgui" -I"${ROOT_DIR}/3rd/yoga" -I"${ROOT_DIR}/3rd/tweeny/include" -I"${ROOT_DIR}/src" -I"${SDL_ROOT}/include")
+CXXFLAGS=(-Wall -Wextra -Wpedantic -DGL_SILENCE_DEPRECATION -I"${ROOT_DIR}/3rd/imgui" -I"${ROOT_DIR}/3rd/yoga" -I"${ROOT_DIR}/3rd/tweeny/include" -I"${ROOT_DIR}/src" -I"${SDL_SRC}/include")
 # 指定 Dear ImGui 核心实现及 SDL3/OpenGL3 平台、渲染后端实现文件。
 IMGUI_SOURCES=(
     "${ROOT_DIR}/3rd/imgui/imgui.cpp"
@@ -100,8 +104,32 @@ for source in "${BKLV_SOURCES[@]}"; do
     BKLV_OBJECTS+=("${object}")
 done
 
-# 指定 SDL3 和 macOS OpenGL 所需链接参数，并写入 SDL3 动态库运行路径。
-LINK_FLAGS=(-L"${SDL_ROOT}/lib" -lSDL3 -Wl,-rpath,"${SDL_ROOT}/lib" -framework OpenGL -framework ImageIO -framework CoreGraphics -framework CoreFoundation)
+# 链接参数：SDL3 静态库 + 它依赖的 macOS framework + OpenGL 与图片解码。
+# framework 列表取自 SDL3 的 sdl3.pc 的 Libs.private。
+LINK_FLAGS=(
+    "${SDL_LIB}"
+    -framework OpenGL
+    -framework ImageIO
+    -framework CoreGraphics
+    -framework CoreFoundation
+    -framework CoreMedia
+    -framework CoreVideo
+    -framework Cocoa
+    -weak_framework UniformTypeIdentifiers
+    -framework IOKit
+    -weak_framework ForceFeedback
+    -framework Carbon
+    -framework CoreAudio
+    -framework AudioToolbox
+    -framework AVFoundation
+    -framework Foundation
+    -framework GameController
+    -framework Metal
+    -framework QuartzCore
+    -weak_framework CoreHaptics
+    -lpthread
+    -lm
+)
 # 逐个编译目标程序，并把可执行文件放进 dist 目录。
 for target in "${TARGETS[@]}"; do
     name="${target%%:*}"

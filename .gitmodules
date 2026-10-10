@@ -7,3 +7,6 @@
 [submodule "3rd/tweeny"]
 	path = 3rd/tweeny
 	url = https://github.com/mobius3/tweeny.git
+[submodule "3rd/SDL"]
+	path = 3rd/SDL
+	url = https://github.com/libsdl-org/SDL.git
