@@ -22,25 +22,13 @@ int main(int argc, char** argv)
     bklv::App app;
     app.setRootView(buildScene());
 
+    // 图形后端是编译期确定的，没有运行时开关。
+    // 自检构建（不绘制）用：./build.sh 里加 -DBKLV_NULL_BACKEND
     for (int i = 1; i < argc; ++i)
     {
-        const std::string arg = argv[i];
-
         // -v 启动时直接打开调试层
-        if (arg == "-v")
+        if (std::string(argv[i]) == "-v")
             app.setDebugLayerEnabled(true);
-
-        // -b <后端> 选择渲染后端：opengl / none（none 用于无图形环境下自检）
-        if (arg == "-b" && i + 1 < argc)
-        {
-            const std::string name = argv[++i];
-            if (name == "opengl")
-                app.setGraphicsBackend(bklv::GraphicsBackendType::OPENGL);
-            else if (name == "none")
-                app.setGraphicsBackend(bklv::GraphicsBackendType::NONE);
-            else if (name == "vulkan")
-                app.setGraphicsBackend(bklv::GraphicsBackendType::VULKAN); // 尚未实现
-        }
     }
 
     return app.run("Demo 07 - bklv showcase", 1280, 800);

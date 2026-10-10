@@ -25,8 +25,7 @@ namespace bklv
 class PlatformSDL3 : public Platform
 {
   public:
-    // graphics 指定用哪个图形后端（默认 OpenGL）。切换后端不需要改平台代码。
-    explicit PlatformSDL3(GraphicsBackendType graphics = GraphicsBackendType::OPENGL);
+    PlatformSDL3();
     ~PlatformSDL3() override;
 
     PlatformType getType() const override { return PlatformType::DESKTOP_SDL3; }
@@ -62,6 +61,9 @@ class PlatformSDL3 : public Platform
     bool isApplicationMode() override { return true; }
 
   private:
+    // 创建图形后端。编译期决定：默认 OpenGL；加 -DBKLV_NULL_BACKEND 时空后端自检。
+    void createBackend();
+
     SDL_Window* window  = nullptr;
     bool sdlReady       = false;
     std::unique_ptr<RenderBackend> graphicsBackend;

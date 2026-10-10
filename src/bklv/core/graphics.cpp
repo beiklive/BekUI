@@ -1,8 +1,7 @@
 // 渲染后端注册表 + 纹理管理。
 //
-// 这个文件是"加 Vulkan"时唯一需要动的地方：新后端实现 RenderBackend 之后，
-// 在 createRenderBackend / isGraphicsBackendAvailable 里加一个分支即可，
-// 上层 view / image 的代码不需要改。
+// 后端由编译期决定（见 core/platform.hpp 里各平台的 createBackend），
+// 这里只负责把解码后的像素交给当前后端上传，并管理句柄生命周期。
 
 #include "bklv/core/graphics.hpp"
 
@@ -16,83 +15,10 @@
 #include <string>
 #include <vector>
 
-#include "bklv/backends/null_backend.hpp"
 #include "bklv/core/logger.hpp"
-
-#if defined(BKLV_SWITCH)
-#include "bklv/backends/gles3_backend.hpp"
-#else
-#include "bklv/backends/opengl_backend.hpp"
-#endif
 
 namespace bklv
 {
-
-// ---------------------------------------------------------------------------
-// 后端注册
-// ---------------------------------------------------------------------------
-
-const char* getGraphicsBackendName(GraphicsBackendType type)
-{
-    switch (type)
-    {
-        case GraphicsBackendType::NONE:
-            return "none";
-        case GraphicsBackendType::OPENGL:
-            return "OpenGL";
-        case GraphicsBackendType::VULKAN:
-            return "Vulkan";
-        case GraphicsBackendType::METAL:
-            return "Metal";
-    }
-    return "unknown";
-}
-
-bool isGraphicsBackendAvailable(GraphicsBackendType type)
-{
-    switch (type)
-    {
-        case GraphicsBackendType::NONE:
-            return true;
-        case GraphicsBackendType::OPENGL:
-            // macOS 从 10.14 起仍提供 OpenGL 3.2 Core，够这个项目用。
-            return true;
-        case GraphicsBackendType::VULKAN:
-            // 还没有实现。加 Vulkan 时：编译进 MoltenVK / 官方 SDK，
-            // 这里改成运行时探测（比如 dlopen libvulkan 看能否拿到 instance）。
-            return false;
-        case GraphicsBackendType::METAL:
-            return false;
-    }
-    return false;
-}
-
-RenderBackend* createRenderBackend(GraphicsBackendType type)
-{
-    if (!isGraphicsBackendAvailable(type))
-    {
-        Logger::warning(std::string("渲染后端不可用：") + getGraphicsBackendName(type));
-        return nullptr;
-    }
-
-    switch (type)
-    {
-        case GraphicsBackendType::NONE:
-            return new NullBackend();
-        case GraphicsBackendType::OPENGL:
-#if defined(BKLV_SWITCH)
-            // Switch 上 OPENGL 这个名字对应的是 OpenGL ES 3 + EGL。
-            return new GLES3Backend();
-#else
-            return new OpenGLBackend();
-#endif
-        case GraphicsBackendType::VULKAN:
-            return nullptr; // 预留
-        case GraphicsBackendType::METAL:
-            return nullptr; // 预留
-    }
-    return nullptr;
-}
 
 // ---------------------------------------------------------------------------
 // 纹理管理
@@ -141,7 +67,6 @@ std::map<std::string, int> g_pathCache;
 
     const TextureHandle& handle = g_textures[index].handle;
     ref.index   = index;
-    ref.backend = g_backend != nullptr ? g_backend->getType() : GraphicsBackendType::NONE;
     ref.texture = handle.texture;
     ref.width   = handle.width;
     ref.height  = handle.height;
@@ -180,6 +105,17 @@ void shutdownTextureStore()
 const char* getTextureBackendName()
 {
     return g_backend != nullptr ? g_backend->getName() : "none";
+}
+
+const char* getGraphicsBackendName()
+{
+#if defined(BKLV_NULL_BACKEND)
+    return "none";
+#elif defined(BKLV_SWITCH)
+    return "OpenGL ES 3";
+#else
+    return "OpenGL 3.2 Core";
+#endif
 }
 
 int getLiveTextureCount()

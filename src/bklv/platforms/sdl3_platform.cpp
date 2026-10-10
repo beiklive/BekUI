@@ -7,6 +7,10 @@
 #include "backends/imgui_impl_sdl3.h"
 #include "imgui.h"
 
+#include <memory>
+
+#include "bklv/backends/null_backend.hpp"
+#include "bklv/backends/opengl_backend.hpp"
 #include "bklv/core/gamepad.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
@@ -14,14 +18,24 @@
 namespace bklv
 {
 
-PlatformSDL3::PlatformSDL3(GraphicsBackendType graphics)
+PlatformSDL3::PlatformSDL3()
 {
     // 这里只准备图形后端。
     // SDL_Init 不能放在构造函数里：平台对象是在 ImGui::CreateContext() 之前创建的，
     // 而 SDL 的初始化和后续的 ImGui 平台后端初始化都必须在那之后。
-    this->graphicsBackend.reset(createRenderBackend(graphics));
-    if (this->graphicsBackend == nullptr)
-        Logger::error(std::string("图形后端创建失败：") + getGraphicsBackendName(graphics));
+    this->createBackend();
+}
+
+void PlatformSDL3::createBackend()
+{
+#if defined(BKLV_NULL_BACKEND)
+    // 自检构建：开窗但不绘制，用来在没有图形环境的机器上验证布局/焦点/滚动逻辑。
+    this->graphicsBackend = std::make_unique<NullBackend>();
+#else
+    this->graphicsBackend = std::make_unique<OpenGLBackend>();
+#endif
+
+    Logger::info(std::string("图形后端：") + this->graphicsBackend->getName());
 }
 
 // ---------------------------------------------------------------------------
@@ -32,7 +46,7 @@ bool PlatformSDL3::createWindow(const std::string& title, uint32_t width, uint32
 {
     if (this->graphicsBackend == nullptr)
     {
-        Logger::error("平台没有可用的图形后端");
+        Logger::error("图形后端未创建");
         return false;
     }
 

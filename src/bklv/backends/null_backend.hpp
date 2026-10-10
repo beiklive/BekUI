@@ -14,7 +14,7 @@ namespace bklv
 class NullBackend : public RenderBackend
 {
   public:
-    GraphicsBackendType getType() const override { return GraphicsBackendType::NONE; }
+    const char* getName() const override { return "none"; }
 
     unsigned long long getWindowFlags() const override { return 0; }
     bool initContext(void*) override;

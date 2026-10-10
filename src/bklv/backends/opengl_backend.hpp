@@ -20,7 +20,7 @@ class OpenGLBackend : public RenderBackend
   public:
     ~OpenGLBackend() override;
 
-    GraphicsBackendType getType() const override { return GraphicsBackendType::OPENGL; }
+    const char* getName() const override { return "OpenGL"; }
 
     // ---- 窗口 ----
     unsigned long long getWindowFlags() const override;

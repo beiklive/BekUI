@@ -1,16 +1,24 @@
 #pragma once
 
-// 渲染后端抽象层。
+// 渲染后端接口。
 //
 // 目的：让 View / Label / Image 这些上层代码完全不接触 OpenGL。
-// 目前只有 OpenGL 实现，加 Vulkan 时只要新写一个 RenderBackend 子类并在这里注册，
-// 上层的 view / image / texture 代码一行都不用改。
 //
 // 分工：
 //   RenderBackend  —— 图形 API 相关：窗口标记、GL/VK 上下文、ImGui 渲染后端、
 //                     "一段 RGBA 像素 -> 可绘制纹理"
-//   App            —— SDL 事件循环、ImGui 上下文与平台后端、帧调度
+//   Platform       —— 窗口、事件循环、系统能力，并决定用哪个后端（见 core/platform.hpp）
+//   App            —— ImGui 上下文与帧调度
 //   上层 View      —— 只认 ImTextureID / ImDrawList，不认具体图形 API
+//
+// 图形后端是**编译期**确定的，不做运行时选择：
+// 后端代码、链接库、shader 版本都不同，运行时切换在一个构建里没有意义。
+// 选择方式：
+//   macOS / Linux / Windows —— 编入 backends/opengl_backend（OpenGL 3.2 Core）
+//   Switch                  —— 编入 backends/gles3_backend（EGL + OpenGL ES 3）
+//   自检                    —— 加 -DBKLV_NULL_BACKEND，编入不绘制的空后端
+// 要加 Vulkan，就是新写一个 RenderBackend 子类并在对应平台的 createBackend 里换掉，
+// 链接库与 shader 版本随之改变，属于构建层面的选择。
 
 #include <cstddef>
 #include <string>
@@ -19,17 +27,6 @@
 
 namespace bklv
 {
-
-enum class GraphicsBackendType
-{
-    NONE,   // 空后端：开窗但不渲染，用于无显示环境下的自检
-    OPENGL,
-    VULKAN, // 预留：尚未实现
-    METAL,  // 预留
-};
-
-// 后端名字，用于日志与调试层显示。
-const char* getGraphicsBackendName(GraphicsBackendType type);
 
 // ---------------------------------------------------------------------------
 // 纹理句柄
@@ -56,8 +53,8 @@ class RenderBackend
   public:
     virtual ~RenderBackend() = default;
 
-    virtual GraphicsBackendType getType() const = 0;
-    const char* getName() const { return getGraphicsBackendName(this->getType()); }
+    // 后端名字，日志与调试层展示用（"OpenGL" / "OpenGL ES 3" / "none"）。
+    virtual const char* getName() const = 0;
 
     // ---- 窗口 ----
 
@@ -105,17 +102,6 @@ class RenderBackend
 };
 
 // ---------------------------------------------------------------------------
-// 后端注册
-// ---------------------------------------------------------------------------
-
-// 这个平台/构建下该后端是否可用。
-bool isGraphicsBackendAvailable(GraphicsBackendType type);
-
-// 创建后端。返回 nullptr 表示不可用；调用方依次尝试下一个即可。
-// 调用方负责 delete。
-RenderBackend* createRenderBackend(GraphicsBackendType type);
-
-// ---------------------------------------------------------------------------
 // 纹理管理
 // ---------------------------------------------------------------------------
 
@@ -124,7 +110,6 @@ RenderBackend* createRenderBackend(GraphicsBackendType type);
 struct TextureRef
 {
     int index = -1;
-    GraphicsBackendType backend = GraphicsBackendType::NONE;
     ImTextureID texture = ImTextureID_Invalid;
     int width  = 0;
     int height = 0;
@@ -138,6 +123,9 @@ void initTextureStore(RenderBackend* backend);
 void shutdownTextureStore();
 // 当前后端名，调试层展示用。
 const char* getTextureBackendName();
+
+// 当前编入的是哪个图形后端（编译期常量，用于日志）。
+const char* getGraphicsBackendName();
 
 // 从文件加载（带缓存）。失败返回无效引用。
 TextureRef loadTexture(const std::string& path);

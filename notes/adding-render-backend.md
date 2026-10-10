@@ -5,9 +5,13 @@
 ```
 src/bklv/views/*        Image / Label / ScrollingFrame ...   ← 只认 ImDrawList 和 ImTextureID
 src/bklv/core/graphics  RenderBackend 接口 + 纹理管理        ← 唯一的分界点
-src/bklv/backends/*     OpenGLBackend / NullBackend         ← 图形 API 相关代码全在这里
-src/bklv/core/app.cpp   窗口 + ImGui 平台后端 + 帧调度        ← 不碰图形 API
+src/bklv/backends/*     OpenGLBackend / GLES3Backend / NullBackend  ← 图形 API 代码全在这里
+src/bklv/platforms/*    PlatformSDL3 / PlatformSwitch        ← 窗口 + 事件循环 + 创建后端
+src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰图形 API
 ```
+
+**后端是编译期选择的**，没有运行时注册表。加 Vulkan 时的接法就是在对应平台的
+`createBackend()` 里换一个实现；链接库与 shader 版本随之改变，这属于构建层面的选择。
 
 `Image`、`Label`、`Box`、`ScrollingFrame`、`RecyclerFrame` 里**没有任何图形 API 调用**，
 所以加 Vulkan 时上层一行都不用改。全部改动集中在 3 个地方。
@@ -33,30 +37,21 @@ src/bklv/core/app.cpp   窗口 + ImGui 平台后端 + 帧调度        ← 不�
 
 构造函数里把 `this->ready = true` 放在设备建好之后——**`ready` 是 "能不能创建纹理" 的闸门**。
 
-## 第 2 步：注册
+## 第 2 步：在平台里换上它
 
-改 `src/bklv/core/graphics.cpp` 里的两个函数：
+图形后端由平台在 `createBackend()` 里创建，编译期决定。例如
+`src/bklv/platforms/sdl3_platform.cpp`：
 
 ```cpp
-bool isGraphicsBackendAvailable(GraphicsBackendType type)
+void PlatformSDL3::createBackend()
 {
-    switch (type)
-    {
-        ...
-        case GraphicsBackendType::VULKAN:
-            // 运行时探测：能加载到 libvulkan 且能建出 instance 才算可用
-            return VulkanBackend::isSupported();
-    }
-}
-
-RenderBackend* createRenderBackend(GraphicsBackendType type)
-{
-    switch (type)
-    {
-        ...
-        case GraphicsBackendType::VULKAN:
-            return new VulkanBackend();
-    }
+#if defined(BKLV_NULL_BACKEND)
+    this->graphicsBackend = std::make_unique<NullBackend>();
+#elif defined(BKLV_VULKAN)
+    this->graphicsBackend = std::make_unique<VulkanBackend>();
+#else
+    this->graphicsBackend = std::make_unique<OpenGLBackend>();
+#endif
 }
 ```
 
@@ -98,14 +93,11 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
 grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" src/bklv/views src/bklv/core/view.cpp src/bklv/core/box.cpp src/bklv/core/input.cpp
 
 # 2. 空后端自检：窗口能开、布局/焦点/滚动/回收都照常跑，只是不输出画面
-./dist/demo_07_bklv_showcase -b none
-
-# 3. 指定后端
-./dist/demo_07_bklv_showcase -b opengl
+BKLV_NULL_BACKEND=1 ./build.sh
 ```
 
-`-b vulkan` 目前会打印"渲染后端不可用"并退出，这是 `isGraphicsBackendAvailable`
-返回 false 的预期行为。
+Vulkan 后端在写出来之前，`-DBKLV_VULKAN` 会编译失败——这正是编译期选择的好处：
+配置错了当场暴露，而不是运行时某条日志。
 
 ---
 

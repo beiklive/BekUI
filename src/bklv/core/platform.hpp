@@ -133,10 +133,11 @@ class Platform
 // 平台名字，用于日志与调试层。
 const char* getPlatformName(PlatformType type);
 
-// 创建平台，并指定它使用的图形后端。
-// 返回 nullptr 表示该平台不可用；调用方依次尝试下一个。
-// 注意：平台选择在桌面端是编译期固定的，Switch 用独立构建脚本，所以不做运行时探测；
-// 而图形后端是要能切换的，所以作为参数传进来。
-Platform* createPlatform(PlatformType type, GraphicsBackendType graphics = GraphicsBackendType::OPENGL);
+// 创建平台。返回 nullptr 表示当前构建不含该平台。
+// 平台与图形后端都是编译期确定的：
+//   平台      —— 桌面构建编 sdl3_platform，Switch 构建编 switch_platform
+//   图形后端  —— 由平台自己在 createBackend 里选（OpenGL / OpenGL ES 3 / 空后端自检）
+// 所以这里没有"运行时挑一个可用后端"的逻辑。
+Platform* createPlatform(PlatformType type);
 
 } // namespace bklv

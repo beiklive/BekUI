@@ -18,38 +18,9 @@ namespace bklv
 float App::lastLayoutWidth  = 0.0f;
 float App::lastLayoutHeight = 0.0f;
 
-// ---------------------------------------------------------------------------
-// 后端选择
-// ---------------------------------------------------------------------------
-
-void App::setGraphicsBackend(GraphicsBackendType type)
+const char* App::getGraphicsBackendName()
 {
-    this->backendPriority = { type };
-}
-
-void App::setGraphicsBackendPriority(const std::vector<GraphicsBackendType>& priority)
-{
-    if (!priority.empty())
-        this->backendPriority = priority;
-}
-
-bool App::selectGraphicsBackend()
-{
-    for (GraphicsBackendType type : this->backendPriority)
-    {
-        if (!isGraphicsBackendAvailable(type))
-        {
-            Logger::info(std::string("跳过不可用的图形后端：") + getGraphicsBackendName(type));
-            continue;
-        }
-
-        this->graphicsType = type;
-        Logger::info(std::string("使用图形后端：") + getGraphicsBackendName(type));
-        return true;
-    }
-
-    Logger::error("没有可用的图形后端");
-    return false;
+    return bklv::getGraphicsBackendName();
 }
 
 // ---------------------------------------------------------------------------
@@ -151,11 +122,8 @@ void App::frame()
 
 int App::run(const std::string& title, int width, int height)
 {
-    if (!this->selectGraphicsBackend())
-        return 1;
-
-    // 平台负责窗口、事件循环与图形后端；上层只跟 Platform 打交道。
-    std::unique_ptr<Platform> platform(createPlatform(this->platformType, this->graphicsType));
+    // 平台负责窗口、事件循环与图形后端（后端在平台内部按编译期选择创建）。
+    std::unique_ptr<Platform> platform(createPlatform(this->platformType));
     if (platform == nullptr)
     {
         Logger::error("平台初始化失败");

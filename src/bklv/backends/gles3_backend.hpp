@@ -19,7 +19,7 @@ class GLES3Backend : public RenderBackend
     GLES3Backend();
     ~GLES3Backend() override;
 
-    GraphicsBackendType getType() const override { return GraphicsBackendType::OPENGL; }
+    const char* getName() const override { return "OpenGL ES 3"; }
 
     // Switch 不走 SDL 建窗口，这两个接口留空。
     unsigned long long getWindowFlags() const override { return 0; }

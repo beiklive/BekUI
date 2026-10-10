@@ -27,10 +27,16 @@ struct PlatformSwitch::Impl
     uint32_t height = 720;
 };
 
-PlatformSwitch::PlatformSwitch(GraphicsBackendType graphics)
+PlatformSwitch::PlatformSwitch()
 {
-    this->graphicsType = graphics;
-    this->impl         = new Impl();
+    this->impl = new Impl();
+}
+
+void PlatformSwitch::createBackend()
+{
+    // Switch 上只有 EGL + OpenGL ES 3 这一条路（SDL3 没有 Switch 后端）。
+    this->impl->backend = std::make_unique<GLES3Backend>();
+    Logger::info(std::string("图形后端：") + this->impl->backend->getName());
 }
 
 PlatformSwitch::~PlatformSwitch()
@@ -62,8 +68,8 @@ bool PlatformSwitch::createWindow(const std::string& /*title*/, uint32_t width, 
     NWindow* window = nwindowGetDefault();
     nwindowSetDimensions(window, (int)width, (int)height);
 
-    // 图形后端：Switch 用 EGL + GLES3。
-    this->impl->backend = std::make_unique<GLES3Backend>();
+    // 图形后端：Switch 用 EGL + GLES3（编译期已选好）。
+    this->createBackend();
     if (!this->impl->backend->initContext((void*)window))
     {
         Logger::error("Switch: 图形上下文初始化失败");

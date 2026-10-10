@@ -34,6 +34,11 @@ fi
 # ImGui 的 OpenGL3 后端通过包装文件包含我们的 GL 头，
 # 这里只需要告诉它别用自带的 loader。
 CXXFLAGS+=(-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
+# BKLV_NULL_BACKEND=1：编入不绘制的空后端，用于无图形环境下的自检。
+# 例：BKLV_NULL_BACKEND=1 ./build.sh
+if [[ "${BKLV_NULL_BACKEND:-0}" == "1" ]]; then
+    CXXFLAGS+=(-DBKLV_NULL_BACKEND)
+fi
 # 指定 Dear ImGui 核心实现及 SDL3/OpenGL3 平台、渲染后端实现文件。
 IMGUI_SOURCES=(
     "${ROOT_DIR}/3rd/imgui/imgui.cpp"

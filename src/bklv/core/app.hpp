@@ -8,7 +8,7 @@
 //   - 整棵 View 树画到 ImGui 的绘制列表上，不创建 ImGui 窗口
 //
 // 渲染后端：App 本身不碰任何图形 API，全部通过 RenderBackend 接口完成。
-// 换后端只要用 setGraphicsBackend() 指定，或在 run() 时传参。
+// 平台与图形后端都是编译期确定的，App 不做运行时选择。
 
 #include <functional>
 #include <memory>
@@ -35,20 +35,15 @@ class App
     View* getRootView() const { return this->root; }
     Box* getRootBox() const { return this->root != nullptr ? this->root->asBox() : nullptr; }
 
-    // ---- 平台与渲染后端 ----
+    // ---- 平台 ----
+    // 平台与图形后端都是编译期确定的，App 不做运行时选择。
+    // 默认平台：桌面构建是 DESKTOP_SDL3，Switch 构建是 SWITCH（见 core/platform.cpp）。
 
-    // 指定图形后端。默认 OpenGL。必须在 run() 之前调用。
-    void setGraphicsBackend(GraphicsBackendType type);
-    void setGraphicsBackendPriority(const std::vector<GraphicsBackendType>& priority);
-
-    // 指定平台。默认 DESKTOP_SDL3。Switch 需要独立构建，见 scripts/build_switch.sh。
     void setPlatform(PlatformType type) { this->platformType = type; }
     PlatformType getPlatformType() const { return this->platformType; }
 
-    GraphicsBackendType getGraphicsBackendType() const
-    {
-        return this->graphicsType;
-    }
+    // 当前编入的图形后端名，日志用。
+    static const char* getGraphicsBackendName();
 
     // 创建窗口并进入帧循环，窗口关闭后返回退出码。
     int run(const std::string& title, int width = 1280, int height = 800);
@@ -73,17 +68,11 @@ class App
     bool isDebugLayerEnabled() const { return this->debugLayerEnabled; }
 
   private:
-    // 按优先级挑选可用的图形后端，成功返回 true。
-    bool selectGraphicsBackend();
-
     void frame();
 
     View* root = nullptr;
 
-    // 后端优先级列表
-    std::vector<GraphicsBackendType> backendPriority = { GraphicsBackendType::OPENGL };
-    GraphicsBackendType graphicsType = GraphicsBackendType::NONE;
-    PlatformType platformType        = PlatformType::DESKTOP_SDL3;
+    PlatformType platformType = PlatformType::DESKTOP_SDL3;
 
     // 上一次布局所用的字体版本号；字体加载完成的那一帧会触发一次全树重算。
     unsigned int lastFontGeneration = 0;

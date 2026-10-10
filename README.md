@@ -195,17 +195,20 @@ src/bklv/backends/*         OpenGLBackend（桌面）/ GLES3Backend（Switch）/
 src/bklv/platforms/*        PlatformSDL3（桌面）/ PlatformSwitch（libnx）
 ```
 
-切换后端与平台：
+**后端是编译期确定的，没有运行时开关。** 后端代码、链接库、shader 版本都不同，
+运行时切换在一个构建里没有意义：
+
+| 构建 | 图形后端 |
+|---|---|
+| macOS / Linux / Windows | `backends/opengl_backend`（OpenGL 3.2 Core） |
+| Switch | `backends/gles3_backend`（EGL + OpenGL ES 3） |
+| 自检 | `BKLV_NULL_BACKEND=1 ./build.sh` 编入不绘制的空后端 |
+
+选择逻辑就在各平台的 `createBackend()` 里（`platforms/sdl3_platform.cpp` /
+`platforms/switch_platform.cpp`），是几行 `#if`，没有注册表、没有优先级列表。
 
 ```bash
-./dist/demo_07_bklv_showcase -b opengl   # 默认
-./dist/demo_07_bklv_showcase -b none     # 空后端：只开窗不画，用于自检
-```
-
-```cpp
-bklv::App app;
-app.setGraphicsBackend(bklv::GraphicsBackendType::OPENGL);
-app.setPlatform(bklv::PlatformType::DESKTOP_SDL3);   // Switch 构建里默认是 SWITCH
+BKLV_NULL_BACKEND=1 ./build.sh   # 空后端：开窗但不绘制，用于无图形环境自检
 ```
 
 加 Vulkan / Metal 后端的步骤见 `notes/adding-render-backend.md`。

@@ -22,7 +22,7 @@ namespace bklv
 class PlatformSwitch : public Platform
 {
   public:
-    explicit PlatformSwitch(GraphicsBackendType graphics = GraphicsBackendType::OPENGL);
+    PlatformSwitch();
     ~PlatformSwitch() override;
 
     PlatformType getType() const override { return PlatformType::SWITCH; }
@@ -69,8 +69,10 @@ class PlatformSwitch : public Platform
     bool isApplicationMode() override { return true; }
 
   private:
-    GraphicsBackendType graphicsType = GraphicsBackendType::OPENGL;
-    bool dimmingDisabled             = false;
+    // 创建图形后端。Switch 上编入的是 GLES3Backend（编译期决定）。
+    void createBackend();
+
+    bool dimmingDisabled = false;
 
     // 图形上下文相关（定义在 cpp 里，避免头文件包含 EGL）
     struct Impl;

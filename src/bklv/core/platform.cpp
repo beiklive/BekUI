@@ -1,7 +1,8 @@
 // 平台注册表。
 //
 // 加平台时改这里：新写一个 Platform 子类，然后在 createPlatform 里加一个分支。
-// Switch 走独立构建脚本，用 BOREALIS 式的条件编译切换，不在这里做运行时探测。
+// Switch 走独立构建脚本，用编译期条件切换，不做运行时探测。
+// 图形后端不在这里选：由各平台自己的 createBackend 决定（见 platforms/*.cpp）。
 
 #include "bklv/core/platform.hpp"
 
@@ -28,7 +29,7 @@ const char* getPlatformName(PlatformType type)
     return "unknown";
 }
 
-Platform* createPlatform(PlatformType type, GraphicsBackendType graphics)
+Platform* createPlatform(PlatformType type)
 {
     switch (type)
     {
@@ -37,12 +38,12 @@ Platform* createPlatform(PlatformType type, GraphicsBackendType graphics)
             Logger::error("Switch 构建不含 SDL3 平台");
             return nullptr;
 #else
-            return new PlatformSDL3(graphics);
+            return new PlatformSDL3();
 #endif
 
         case PlatformType::SWITCH:
 #if defined(BKLV_SWITCH)
-            return new PlatformSwitch(graphics);
+            return new PlatformSwitch();
 #else
             // Switch 平台只用 devkitA64 编译（见 scripts/build_switch.sh）。
             Logger::error("当前构建不含 Switch 平台支持，请用 Switch 工具链编译");
