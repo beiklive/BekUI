@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <cstdlib>
+
 #include "backends/imgui_impl_sdl3.h"
 #include "imgui.h"
 
@@ -190,6 +192,14 @@ int App::run(const std::string& title, int width, int height)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
+
+    // 必须在第一次 NewFrame 之前设置：ImGui 只在 io.IniFilename 非空时才读写 .ini。
+    // 置空后既不会读取已有的 imgui.ini，也不会在退出/定时保存时生成新的。
+    if (std::getenv("BKLV_USE_INI") != nullptr)
+        this->iniPersistenceEnabled = true;
+
+    if (!this->iniPersistenceEnabled)
+        ImGui::GetIO().IniFilename = nullptr;
 
     loadFonts();
 

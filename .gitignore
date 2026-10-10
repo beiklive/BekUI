@@ -15,5 +15,6 @@ build/
 .vscode/
 .idea/
 
-# Dear ImGui 的窗口位置和布局状态文件。
+# ImGui 的 ini 已在代码里通过 io.IniFilename = nullptr 关闭，正常不会生成。
+# 这里仍保留忽略规则，兜住手动打开 ini 持久化时产生的文件。
 imgui.ini

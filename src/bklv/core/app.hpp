@@ -58,6 +58,12 @@ class App
     static float getLayoutHeight() { return lastLayoutHeight; }
     static bool hasLayoutSize() { return lastLayoutWidth > 0.0f && lastLayoutHeight > 0.0f; }
 
+    // 是否允许 ImGui 自动读写 imgui.ini（保存窗口位置/尺寸/列宽等）。
+    // bklv 的绘制全部走 viewport 绘制列表，不依赖 ImGui 窗口布局，所以默认关闭，
+    // 避免在运行目录里生成 imgui.ini。需要时再打开，或用 BKLV_USE_INI=1 环境变量。
+    void setIniPersistenceEnabled(bool enabled) { this->iniPersistenceEnabled = enabled; }
+    bool isIniPersistenceEnabled() const { return this->iniPersistenceEnabled; }
+
     // 打开调试层（当前焦点 + 布局树）。
     void setDebugLayerEnabled(bool enabled) { this->debugLayerEnabled = enabled; }
     bool isDebugLayerEnabled() const { return this->debugLayerEnabled; }
@@ -80,6 +86,8 @@ class App
     static float lastLayoutWidth;
     static float lastLayoutHeight;
     bool debugLayerEnabled = false;
+    // 默认关闭：io.IniFilename 置空后 ImGui 不会加载也不会保存 .ini
+    bool iniPersistenceEnabled = false;
 };
 
 // 最简用法：创建窗口，把 root 塞进 App 跑起来。

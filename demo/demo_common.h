@@ -37,6 +37,10 @@ int RunDemo(const char* window_title, DrawFunction draw_function) { // 创建窗
     IMGUI_CHECKVERSION(); // 检查 ImGui 头文件和库的版本及数据结构布局。
     ImGui::CreateContext(); // 创建 ImGui 上下文。
     ImGuiIO& io = ImGui::GetIO(); // 取得 ImGui 输入输出配置。
+
+    // 关闭 ImGui 的 ini 自动读写，避免在运行目录生成 imgui.ini。
+    // 必须在第一次 NewFrame 之前设置：ImGui 只在 io.IniFilename 非空时才读写。
+    io.IniFilename = nullptr;
     io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/Hiragino Sans GB.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull()); // 加载 macOS 冬青黑体以显示中文。
     ImGui::StyleColorsDark(); // 使用内置深色主题。
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context); // 初始化 SDL3 输入与窗口事件后端。

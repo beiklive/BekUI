@@ -115,6 +115,24 @@ image->setImageFromFile("resources/testcard.png");
 
 键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回，F1 开关调试层。
 
+### 不生成 imgui.ini
+
+bklv 的绘制全部落在 viewport 的绘制列表上，不依赖 ImGui 窗口的位置和尺寸，
+所以默认把 `io.IniFilename` 置空，ImGui 既不会读取也不会写出 `imgui.ini`。
+
+```cpp
+// 默认就是关闭的，无需任何调用
+bklv::App app;
+
+// 想恢复 ImGui 默认行为（读写 imgui.ini）时：
+app.setIniPersistenceEnabled(true);
+// 或者用环境变量：BKLV_USE_INI=1 ./dist/demo_07_bklv_showcase
+```
+
+实现位置：`bklv::App::run()` 里 `ImGui::CreateContext()` 之后、
+第一次 `NewFrame()` 之前设置 `ImGui::GetIO().IniFilename = nullptr`。
+这个赋值必须在那之前完成，之后改无效。
+
 ### 已知的坑（都已处理）
 
 1. **字体必须惰性解析。** 视图树是在 `RunDemo` 的参数里构建的，而字体在 `App::run()`
