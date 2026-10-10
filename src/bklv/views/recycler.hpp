@@ -25,7 +25,9 @@ namespace bklv
 class RecyclerCell : public Box
 {
   public:
-    RecyclerCell();
+    // absolutePosition = true 时由 RecyclerFrame 手动摆位置（默认行为）。
+    // 子类如果拿它当普通流式控件用（而不是放进 RecyclerFrame），传 false。
+    explicit RecyclerCell(bool absolutePosition = true);
 
     // 这个 cell 当前承载的数据下标。
     size_t getIndex() const { return this->index; }

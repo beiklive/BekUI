@@ -16,11 +16,14 @@ static constexpr size_t MAX_CELLS_PER_FRAME = 12;
 // RecyclerCell
 // ---------------------------------------------------------------------------
 
-RecyclerCell::RecyclerCell()
+RecyclerCell::RecyclerCell(bool absolutePosition)
     : Box(Axis::ROW)
 {
-    // cell 由 RecyclerFrame 绝对定位摆放，不参与容器的普通流式布局。
-    this->setPositionType(PositionType::ABSOLUTE);
+    // 放进 RecyclerFrame 时由它手动摆位置，所以默认绝对定位、不参与流式布局。
+    // 但子类也可能只是想复用"可复用控件"这套接口（比如 tab 栏的格子），
+    // 那种情况要传 false，否则所有格子会叠在原点（这个坑实测踩过）。
+    if (absolutePosition)
+        this->setPositionType(PositionType::ABSOLUTE);
 }
 
 // ---------------------------------------------------------------------------

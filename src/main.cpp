@@ -224,7 +224,7 @@ class TabCell : public RecyclerCell
 {
   public:
     TabCell()
-        : RecyclerCell()
+        : RecyclerCell(false) // false：普通流式布局，不做绝对定位
     {
         this->setHeight(38.0f);
         this->setAlignItems(AlignItems::CENTER);
@@ -297,15 +297,26 @@ class TabBar : public HScrollingFrame
         this->focusHooks.push_back(onFocus);
     }
 
-    // 内容宽度 = 各 tab 宽度 + 间距，纵向撑满
-    void finish()
+    // 内容宽度必须按 tab 的实际宽度算。
+    // 不能在 addTab 之后就设——那时还没布局，量到的宽度是 0；
+    // 也不能留着默认值，否则 tab 之间会空一大截。
+    void onLayout() override
     {
+        HScrollingFrame::onLayout();
+
         float total = 0.0f;
         for (TabCell* cell : this->cells)
-            total += cell->getWidth() > 0.0f ? cell->getWidth() : 110.0f;
-        total += 8.0f * static_cast<float>(this->cells.size() > 0 ? this->cells.size() - 1 : 0);
-        this->content->setWidth(total);
+            total += cell->getWidth();
+
+        if (this->cells.size() > 1)
+            total += 8.0f * static_cast<float>(this->cells.size() - 1);
+
+        if (total > 0.0f)
+            this->content->setWidth(total);
     }
+
+    // 兼容旧调用点：布局会在下一帧把它算准。
+    void finish() { }
 
     void setSelectedIndex(size_t index)
     {
