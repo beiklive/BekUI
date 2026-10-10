@@ -245,6 +245,11 @@ sudo apt install build-essential cmake pkg-config \
 SDL3 在 Linux 的可选依赖很多（X11 的 xcursor/xi/xfixes/xrandr、Wayland、各类音频后端），
 `scripts/build_sdl3.sh` 会自动检测：有对应开发包就编，没有就关掉，因此不需要把它们装全。
 
+> **注意：`dist/` 是平台相关的，不要跨平台共用同一个工作区。**
+> `build.sh` 不去区分平台，`dist/libSDL3.a` 与 `dist/libyogacore.a` 会直接互相覆盖。
+> 在容器里验证 Linux 时请在容器内构建，别把容器的 `dist/` 留在宿主的工作区，
+> 否则回到 macOS 会报 `archive member not a mach-o file`。
+
 `build.sh` 会按需依次做四件事：
 
 1. `scripts/build_sdl3.sh` 把 `3rd/SDL`（release-3.4.16）编译成 `dist/libSDL3.a`，
