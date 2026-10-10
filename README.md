@@ -29,7 +29,7 @@ Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `
 - `resources/testcard.png`：Demo 07 用的测试图片。
 - `src/bklv/`：从 borealis 移植的视图层，见下一节。
 - `notes/`：架构与移植评估笔记。
-- `src/main.cpp`：综合入口。
+- `src/main.cpp`：**能力总览**。Tab 页面展示已实现的能力（控件 / 文本 / 布局 / 列表 / 调试）。
 - `build.sh`：一次性编译所有示例。
 - `dist/`：编译产物，不提交到 Git。
 

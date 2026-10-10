@@ -152,7 +152,7 @@ TARGETS=(
     "demo_05_tweeny:${ROOT_DIR}/demo/demo_05_tweeny.cpp:"
     "demo_06_bklv_layout:${ROOT_DIR}/demo/demo_06_bklv_layout.cpp:1"
     "demo_07_bklv_showcase:${ROOT_DIR}/demo/demo_07_bklv_showcase.cpp:1"
-    "imgui_main:${ROOT_DIR}/src/main.cpp:"
+    "imgui_main:${ROOT_DIR}/src/main.cpp:1"
 )
 
 # 检查 ImGui 子模块是否已经初始化。
