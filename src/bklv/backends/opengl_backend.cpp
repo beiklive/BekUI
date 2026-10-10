@@ -21,16 +21,17 @@ OpenGLBackend::~OpenGLBackend()
     }
 }
 
-SDL_WindowFlags OpenGLBackend::getWindowFlags() const
+unsigned long long OpenGLBackend::getWindowFlags() const
 {
     return SDL_WINDOW_OPENGL;
 }
 
-bool OpenGLBackend::initContext(SDL_Window* target)
+bool OpenGLBackend::initContext(void* nativeWindow)
 {
-    if (target == nullptr)
+    if (nativeWindow == nullptr)
         return false;
 
+    SDL_Window* target = static_cast<SDL_Window*>(nativeWindow);
     this->window = target;
 
     // macOS 上要显式请求 Core Profile 3.2，否则拿到的可能是 2.1 兼容上下文。

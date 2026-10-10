@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <string>
 
-#include <SDL3/SDL.h>
 #include "imgui.h"
 
 namespace bklv
@@ -63,11 +62,13 @@ class RenderBackend
     // ---- 窗口 ----
 
     // 创建窗口时要加的 SDL 标记（OpenGL 加 SDL_WINDOW_OPENGL，Vulkan 加 SDL_WINDOW_VULKAN）。
-    virtual SDL_WindowFlags getWindowFlags() const = 0;
+    // 这里返回 unsigned long long 是为了不让 core 依赖 SDL 类型；具体含义由平台实现解释。
+    virtual unsigned long long getWindowFlags() const = 0;
 
     // 窗口创建之后、进入循环之前调用。
-    // 返回 false 表示上下文初始化失败，App 会直接退出。
-    virtual bool initContext(SDL_Window* window) = 0;
+    // nativeWindow 在 SDL 平台上是 SDL_Window*，Switch 上是 NWindow*。
+    // 返回 false 表示上下文初始化失败。
+    virtual bool initContext(void* nativeWindow) = 0;
 
     // ---- ImGui 渲染后端 ----
 

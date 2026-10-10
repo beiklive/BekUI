@@ -18,6 +18,7 @@
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
 #include "bklv/core/graphics.hpp"
+#include "bklv/core/platform.hpp"
 #include "bklv/core/view.hpp"
 
 namespace bklv
@@ -34,16 +35,19 @@ class App
     View* getRootView() const { return this->root; }
     Box* getRootBox() const { return dynamic_cast<Box*>(this->root); }
 
-    // ---- 渲染后端 ----
+    // ---- 平台与渲染后端 ----
 
-    // 指定用哪个后端。按顺序尝试列表里的每一项，第一个可用的生效。
-    // 必须在 run() 之前调用。默认顺序：OpenGL。
+    // 指定图形后端。默认 OpenGL。必须在 run() 之前调用。
     void setGraphicsBackend(GraphicsBackendType type);
     void setGraphicsBackendPriority(const std::vector<GraphicsBackendType>& priority);
 
+    // 指定平台。默认 DESKTOP_SDL3。Switch 需要独立构建，见 scripts/build_switch.sh。
+    void setPlatform(PlatformType type) { this->platformType = type; }
+    PlatformType getPlatformType() const { return this->platformType; }
+
     GraphicsBackendType getGraphicsBackendType() const
     {
-        return this->backend != nullptr ? this->backend->getType() : GraphicsBackendType::NONE;
+        return this->graphicsType;
     }
 
     // 创建窗口并进入帧循环，窗口关闭后返回退出码。
@@ -69,8 +73,8 @@ class App
     bool isDebugLayerEnabled() const { return this->debugLayerEnabled; }
 
   private:
-    // 按优先级创建后端，成功返回 true。
-    bool createBackend();
+    // 按优先级挑选可用的图形后端，成功返回 true。
+    bool selectGraphicsBackend();
 
     void frame();
 
@@ -78,7 +82,8 @@ class App
 
     // 后端优先级列表
     std::vector<GraphicsBackendType> backendPriority = { GraphicsBackendType::OPENGL };
-    std::unique_ptr<RenderBackend> backend;
+    GraphicsBackendType graphicsType = GraphicsBackendType::NONE;
+    PlatformType platformType        = PlatformType::DESKTOP_SDL3;
 
     // 上一次布局所用的字体版本号；字体加载完成的那一帧会触发一次全树重算。
     unsigned int lastFontGeneration = 0;

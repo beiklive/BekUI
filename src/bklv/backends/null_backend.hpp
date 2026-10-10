@@ -8,8 +8,6 @@
 
 #include "bklv/core/graphics.hpp"
 
-struct SDL_Window;
-
 namespace bklv
 {
 
@@ -18,8 +16,8 @@ class NullBackend : public RenderBackend
   public:
     GraphicsBackendType getType() const override { return GraphicsBackendType::NONE; }
 
-    SDL_WindowFlags getWindowFlags() const override { return 0; }
-    bool initContext(SDL_Window*) override;
+    unsigned long long getWindowFlags() const override { return 0; }
+    bool initContext(void*) override;
 
     bool initImGuiRenderer() override;
     void shutdownImGuiRenderer() override;

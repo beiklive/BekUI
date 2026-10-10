@@ -5,7 +5,9 @@
 // 设计要点（与 borealis 一致）：
 //   - 焦点是一棵独立的"当前选中路径"，Application 持有 currentFocus，Box 负责在其中导航
 //   - 每个 View 自己注册动作（registerAction），底部提示栏统一展示
-//   - 键鼠事件直接读 ImGui 后端已经收好的 ImGuiIO；手柄另外读 SDL3，避免依赖 ImGui 的导航
+//   - 键鼠事件直接读 ImGui 后端已经收好的 ImGuiIO
+//   - 手柄目前直接读 SDL3：这块在第二步接 Switch 时会抽成 InputSource 接口
+//     （Switch 用 libnx 的 padUpdate，桌面用 SDL3），届时本文件不再依赖 SDL
 
 #include <functional>
 #include <string>

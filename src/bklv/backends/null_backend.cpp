@@ -8,7 +8,7 @@
 namespace bklv
 {
 
-bool NullBackend::initContext(SDL_Window*)
+bool NullBackend::initContext(void*)
 {
     this->ready = true;
     Logger::warning("使用空渲染后端：窗口会打开，但不会有任何绘制输出");

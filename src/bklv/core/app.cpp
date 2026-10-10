@@ -1,10 +1,8 @@
 #include "bklv/core/app.hpp"
 
-#include <SDL3/SDL.h>
-
 #include <cstdlib>
+#include <memory>
 
-#include "backends/imgui_impl_sdl3.h"
 #include "imgui.h"
 
 #include "bklv/core/input.hpp"
@@ -35,26 +33,22 @@ void App::setGraphicsBackendPriority(const std::vector<GraphicsBackendType>& pri
         this->backendPriority = priority;
 }
 
-bool App::createBackend()
+bool App::selectGraphicsBackend()
 {
     for (GraphicsBackendType type : this->backendPriority)
     {
         if (!isGraphicsBackendAvailable(type))
         {
-            Logger::info(std::string("跳过不可用的渲染后端：") + getGraphicsBackendName(type));
+            Logger::info(std::string("跳过不可用的图形后端：") + getGraphicsBackendName(type));
             continue;
         }
 
-        RenderBackend* created = createRenderBackend(type);
-        if (created != nullptr)
-        {
-            this->backend.reset(created);
-            Logger::info(std::string("使用渲染后端：") + created->getName());
-            return true;
-        }
+        this->graphicsType = type;
+        Logger::info(std::string("使用图形后端：") + getGraphicsBackendName(type));
+        return true;
     }
 
-    Logger::error("没有可用的渲染后端");
+    Logger::error("没有可用的图形后端");
     return false;
 }
 
@@ -157,38 +151,20 @@ void App::frame()
 
 int App::run(const std::string& title, int width, int height)
 {
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
+    if (!this->selectGraphicsBackend())
+        return 1;
+
+    // 平台负责窗口、事件循环与图形后端；上层只跟 Platform 打交道。
+    std::unique_ptr<Platform> platform(createPlatform(this->platformType, this->graphicsType));
+    if (platform == nullptr)
     {
-        Logger::error(std::string("SDL 初始化失败：") + SDL_GetError());
+        Logger::error("平台初始化失败");
         return 1;
     }
 
-    if (!this->createBackend())
-    {
-        SDL_Quit();
-        return 1;
-    }
-
-    // 窗口标记由后端决定：OpenGL 要 SDL_WINDOW_OPENGL，Vulkan 要 SDL_WINDOW_VULKAN。
-    const SDL_WindowFlags windowFlags =
-        this->backend->getWindowFlags() | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-
-    SDL_Window* window = SDL_CreateWindow(title.c_str(), width, height, windowFlags);
-    if (window == nullptr)
-    {
-        Logger::error(std::string("创建窗口失败：") + SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    // 后端创建图形上下文（GL 上下文 / Vulkan instance + swapchain）。
-    if (!this->backend->initContext(window))
-    {
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
+    // ImGui 上下文必须先于平台建窗口：
+    // 图形上下文初始化会顺带初始化 ImGui 的 GL 后端（创建字体图集纹理），
+    // 以及 ImGui 平台后端的初始化，两者都要求上下文已存在。
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -201,66 +177,53 @@ int App::run(const std::string& title, int width, int height)
     if (!this->iniPersistenceEnabled)
         ImGui::GetIO().IniFilename = nullptr;
 
-    loadFonts();
+    if (!platform->createWindow(title, (uint32_t)width, (uint32_t)height))
+    {
+        ImGui::DestroyContext();
+        return 1;
+    }
 
-    // 手柄是可选的：没有手柄时键鼠照常工作。
+    loadFonts();
     getInputManager().setupGamepad();
 
-    // ImGui 的平台后端（键鼠/窗口事件），与图形 API 无关。
-    ImGui_ImplSDL3_InitForOther(window);
+    RenderBackend* backend = platform->getGraphicsBackend();
 
     // 图形 API 那一侧的渲染后端。
-    if (!this->backend->initImGuiRenderer())
+    if (backend == nullptr || !backend->initImGuiRenderer())
     {
         Logger::error("ImGui 渲染后端初始化失败");
-        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
-        SDL_DestroyWindow(window);
-        SDL_Quit();
         return 1;
     }
 
     // 到这里上下文与渲染后端都就绪了，图片可以上传纹理了。
-    initTextureStore(this->backend.get());
+    initTextureStore(backend);
 
     const float clearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
 
-    bool running = true;
-    while (running)
-    {
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
+    // 平台自己的循环包装：Switch 上需要先做 applet / EGL 初始化。
+    platform->runLoop([&]() {
+        while (platform->mainLoopIteration())
         {
-            ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT)
-                running = false;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
-                running = false;
+            backend->newFrame();
+            this->frame();
+            backend->clear(clearColor);
+            backend->renderDrawData(ImGui::GetDrawData());
+            backend->present();
         }
+        return true;
+    });
 
-        this->backend->newFrame();
-        ImGui_ImplSDL3_NewFrame();
-
-        this->frame();
-
-        this->backend->clear(clearColor);
-        this->backend->renderDrawData(ImGui::GetDrawData());
-        this->backend->present();
-    }
-
-    // 释放顺序很重要：先释放纹理（还需要上下文），再关渲染后端，最后销毁上下文。
+    // 释放顺序很重要：先释放纹理（还要用上下文），再关渲染后端，最后销毁平台。
     shutdownTextureStore();
 
-    this->backend->shutdownImGuiRenderer();
-    ImGui_ImplSDL3_Shutdown();
+    backend->shutdownImGuiRenderer();
+    platform->shutdownImGuiPlatformBackend();
     getInputManager().shutdownGamepad();
     ImGui::DestroyContext();
 
-    // 后端的析构负责销毁图形上下文。
-    this->backend.reset();
-
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    // 平台析构负责销毁窗口与图形上下文。
+    platform.reset();
 
     return 0;
 }
