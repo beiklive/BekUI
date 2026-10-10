@@ -8,7 +8,7 @@
 //   ProgressSpinner 加载指示器
 //   输入与焦点       方向键/WASD 导航，鼠标点击也可切换焦点
 //   提示栏          当前焦点注册的动作
-//   DebugLayer      F1 开关，显示布局树和当前焦点
+//   (调试窗口见 src/bklv/views/debug_window.hpp)
 //
 // 场景内容在 demo_07_scene.h，方便无窗口验证复用同一棵树。
 
@@ -24,12 +24,8 @@ int main(int argc, char** argv)
 
     // 图形后端是编译期确定的，没有运行时开关。
     // 自检构建（不绘制）用：./build.sh 里加 -DBKLV_NULL_BACKEND
-    for (int i = 1; i < argc; ++i)
-    {
-        // -v 启动时直接打开调试层
-        if (std::string(argv[i]) == "-v")
-            app.setDebugLayerEnabled(true);
-    }
+    (void)argc;
+    (void)argv;
 
     return app.run("Demo 07 - bklv showcase", 1280, 800);
 }

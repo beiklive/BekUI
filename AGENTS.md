@@ -77,6 +77,10 @@ BKLV_GRAPHICS=vk ./build.sh     # 等价写法
 - Switch 构建带 `-fno-rtti -fno-exceptions`，所以**不要用 `dynamic_cast` / RTTI**，
   类型判断用虚函数（见 `View::asBox()`）
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
+- 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
+  `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
+  **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
+- ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
 
 ## 目录
 

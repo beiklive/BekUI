@@ -16,9 +16,7 @@
 //   回车 / 空格 / 手柄 A 触发当前焦点控件的动作
 //   鼠标点击             直接选中 tab 或控件
 //   滚轮 / 拖拽          滚动页面
-//   F1                  开关调试层（布局树 + 当前焦点 + 后端信息）
-
-#include <string>
+//   右上角「显示日志」   开关 ImGui 日志窗口（可拖动、可缩放、可筛选级别）
 
 #include "app/page_host.hpp"
 #include "bklv/core/app.hpp"
@@ -33,11 +31,11 @@ int main(int argc, char** argv)
     // 每帧回调：刷新调试页上的统计信息
     app.onUpdate = [&host]() { host.update(); };
 
-    for (int i = 1; i < argc; ++i)
-    {
-        if (std::string(argv[i]) == "-v")
-            app.setDebugLayerEnabled(true);
-    }
+    // ImGui 窗口（日志窗口）必须在视图树画完后、ImGui::Render() 之前下发
+    app.onDrawWindows = [&host]() { host.drawWindows(); };
+
+    (void)argc;
+    (void)argv;
 
     return app.run("bklv 能力总览", 1280, 800);
 }

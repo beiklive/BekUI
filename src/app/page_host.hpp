@@ -13,12 +13,29 @@
 
 #include "app/pages/pages.hpp"
 #include "app/tab_bar.hpp"
+#include "bklv/views/debug_window.hpp"
 #include "bklv/core/app.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/views/scrolling_frame.hpp"
 
 namespace demo
 {
+
+// 一个可聚焦的按钮。用 Box + Label 手绘，跟 tab 格子同一套写法。
+class TextButton : public bklv::Box
+{
+  public:
+    explicit TextButton(const std::string& text);
+
+    void setText(const std::string& text) { this->label->setText(text); }
+
+    bool isFocusable() const override { return true; }
+    void onFocusGained() override;
+    void onFocusLost() override;
+
+  private:
+    bklv::Label* label = nullptr;
+};
 
 class PageHost
 {
@@ -28,8 +45,16 @@ class PageHost
     // 交给 App 的根视图
     bklv::View* getView() { return this->root; }
 
-    // 每帧刷新（目前只有调试页的统计文字）
+    // 每帧同步一次自滚动页的高度
     void update();
+
+    // 画 ImGui 调试窗口（日志窗口）。必须在 ImGui::Render() 之前调用。
+    void drawWindows() { this->debugWindow.draw(); }
+
+    // 日志窗口开关，供界面上的按钮切换
+    void setLogWindowEnabled(bool enabled) { this->debugWindow.setEnabled(enabled); }
+    bool isLogWindowEnabled() const { return this->debugWindow.isEnabled(); }
+    void toggleLogWindow() { this->debugWindow.toggle(); }
 
     // 供外部拿来做统计展示
     bklv::RecyclerFrame* getMainList() const { return this->mainList; }
@@ -56,9 +81,8 @@ class PageHost
     std::vector<bool> selfScrolling;
     size_t currentPage = static_cast<size_t>(-1);
 
+    bklv::DebugWindow debugWindow;
     bklv::RecyclerFrame* mainList = nullptr;
-    bklv::Label* statsLabel = nullptr;
-    float statsTimer        = 0.0f;
 };
 
 } // namespace demo

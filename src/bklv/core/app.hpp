@@ -51,6 +51,10 @@ class App
     // 每帧绘制前调用；默认实现是空的。
     std::function<void()> onUpdate;
 
+    // 视图树画完之后调用，用来下发 ImGui 窗口（比如调试窗口、日志窗口）。
+    // 必须在 ImGui::Render() 之前，所以单独给一个回调，不混在 onUpdate 里。
+    std::function<void()> onDrawWindows;
+
     // 触发一次布局重算时用的画布尺寸。
     // invalidate() 从根节点发起重算时需要它：传 Undefined 会让百分比尺寸全部失效。
     static float getLayoutWidth() { return lastLayoutWidth; }
@@ -62,10 +66,6 @@ class App
     // 避免在运行目录里生成 imgui.ini。需要时再打开，或用 BKLV_USE_INI=1 环境变量。
     void setIniPersistenceEnabled(bool enabled) { this->iniPersistenceEnabled = enabled; }
     bool isIniPersistenceEnabled() const { return this->iniPersistenceEnabled; }
-
-    // 打开调试层（当前焦点 + 布局树）。
-    void setDebugLayerEnabled(bool enabled) { this->debugLayerEnabled = enabled; }
-    bool isDebugLayerEnabled() const { return this->debugLayerEnabled; }
 
   private:
     void frame();
@@ -79,7 +79,6 @@ class App
 
     static float lastLayoutWidth;
     static float lastLayoutHeight;
-    bool debugLayerEnabled = false;
     // 默认关闭：io.IniFilename 置空后 ImGui 不会加载也不会保存 .ini
     bool iniPersistenceEnabled = false;
 };

@@ -134,6 +134,7 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/views/recycler.cpp"
     "${ROOT_DIR}/src/bklv/views/image.cpp"
     "${ROOT_DIR}/src/bklv/views/progress_spinner.cpp"
+    "${ROOT_DIR}/src/bklv/views/debug_window.cpp"
     "${ROOT_DIR}/src/app/widgets.cpp"
     "${ROOT_DIR}/src/app/page_helpers.cpp"
     "${ROOT_DIR}/src/app/tab_bar.cpp"
@@ -143,14 +144,12 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/app/pages/page_layout.cpp"
     "${ROOT_DIR}/src/app/pages/list_items.cpp"
     "${ROOT_DIR}/src/app/pages/page_list.cpp"
-    "${ROOT_DIR}/src/app/pages/page_debug.cpp"
     "${ROOT_DIR}/src/bklv/platforms/sdl3_platform.cpp"
     "${ROOT_DIR}/src/bklv/platforms/sdl3_gamepad.cpp"
     "${ROOT_DIR}/src/bklv/backends/opengl_backend.cpp"
     "${ROOT_DIR}/src/bklv/backends/vulkan_backend.cpp"
     "${ROOT_DIR}/src/bklv/backends/null_backend.cpp"
     "${ROOT_DIR}/src/bklv/views/hints.cpp"
-    "${ROOT_DIR}/src/bklv/views/debug_layer.cpp"
 )
 # 指定所有需要一次性编译的学习程序。
 # 第四列留空表示该示例不需要链接 bklv 移植层，填 1 表示需要。

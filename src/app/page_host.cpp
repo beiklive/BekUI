@@ -1,14 +1,44 @@
 #include "app/page_host.hpp"
 
-#include <cstdio>
-
 #include "app/page_helpers.hpp"
-#include "bklv/core/graphics.hpp"
+#include "bklv/core/input.hpp"
 
 using namespace bklv;
 
 namespace demo
 {
+
+// ---------------------------------------------------------------------------
+// TextButton
+// ---------------------------------------------------------------------------
+
+TextButton::TextButton(const std::string& text)
+    : Box(Axis::ROW)
+{
+    this->setHeight(30.0f);
+    this->setAlignItems(AlignItems::CENTER);
+    this->setJustifyContent(JustifyContent::CENTER);
+    this->setCornerRadius(7.0f);
+    this->setPadding(0.0f, 14.0f, 0.0f, 14.0f);
+    this->setShrink(0.0f);
+    this->setBackgroundColor(rgb(52, 58, 70));
+
+    this->label = makeText(text, 14.0f, rgb(215, 222, 232), true);
+    this->addView(this->label);
+}
+
+void TextButton::onFocusGained()
+{
+    this->setBackgroundColor(rgb(48, 86, 140));
+    this->setBorderColor(rgb(120, 190, 255));
+    this->setBorderThickness(2.0f);
+}
+
+void TextButton::onFocusLost()
+{
+    this->setBackgroundColor(rgb(52, 58, 70));
+    this->setBorderThickness(0.0f);
+}
 
 PageHost::PageHost()
 {
@@ -30,11 +60,23 @@ PageHost::PageHost()
     title->setSingleLine(true);
     header->addView(title);
 
-    Label* subtitle =
-        makeText("左右切换标签 · 上下移动焦点 · 回车触发 · F1 调试层", 13.0f, rgb(150, 160, 175));
+    Box* headerRight = new Box(Axis::ROW);
+    headerRight->setAlignItems(AlignItems::CENTER);
+    headerRight->setGap(14.0f);
+
+    Label* subtitle = makeText("左右切换标签 · 上下移动焦点 · 回车触发", 13.0f, rgb(150, 160, 175));
     subtitle->setSingleLine(true);
-    subtitle->setHorizontalAlign(HorizontalAlign::RIGHT);
-    header->addView(subtitle);
+    headerRight->addView(subtitle);
+
+    // 日志窗口开关。放在演示界面里，不用记快捷键。
+    TextButton* logButton = new TextButton("显示日志");
+    logButton->registerAction(ControllerButton::A, "显示日志", [this, logButton](View*) {
+        this->debugWindow.toggle();
+        logButton->setText(this->debugWindow.isEnabled() ? "隐藏日志" : "显示日志");
+    });
+    headerRight->addView(logButton);
+
+    header->addView(headerRight);
     this->root->addView(header);
 
     // 内容区：不自管滚动的页面放进 scroller，自管滚动的页面直接进 contentHost
@@ -64,9 +106,11 @@ PageHost::PageHost()
     this->addPage("列表", listPage.view, listPage.selfScrolling);
     this->mainList = listPage.list;
 
-    DebugPage debugPage = buildDebugPage();
-    this->addPage("调试", debugPage.view, false);
-    this->statsLabel = debugPage.stats;
+    BKLV_LOG_INFO("界面已就绪：%d 个页面", static_cast<int>(this->pages.size()));
+    BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
+    BKLV_LOG_DEBUG("这是 DEBUG 级别，默认会被过滤掉");
+    BKLV_LOG_WARNING("这是一条 WARNING 示例");
+    BKLV_LOG_ERROR("这是一条 ERROR 示例");
 
     // ---- 初始页 ----
     // contentHost 要先挂进 root，selectPage 里的 removeView/addView 才有意义。
@@ -145,33 +189,9 @@ void PageHost::selectPage(size_t index)
 
 void PageHost::update()
 {
-    if (this->statsLabel == nullptr)
-        return;
-
-    // 统计文字不需要每帧刷新，0.25 秒一次就够，省得每帧重排文本
-    this->statsTimer += ImGui::GetIO().DeltaTime;
-    if (this->statsTimer < 0.25f)
-        return;
-    this->statsTimer = 0.0f;
-
-    // 窗口尺寸变化后内容区高度会变，自滚动页要跟着重新定尺寸
-    if (this->selfScrolling[this->currentPage])
-    {
+    // 自滚动页的高度要跟着内容区走（窗口尺寸变化时会变）。
+    if (this->currentPage < this->selfScrolling.size() && this->selfScrolling[this->currentPage])
         this->sizeSlotToContent();
-    }
-
-    char text[512];
-    std::snprintf(text, sizeof(text),
-        "图形后端：%s\n"
-        "存活纹理：%d\n"
-        "帧率：%.0f FPS\n"
-        "主列表当前显示的 cell：%zu（固定 1000 条数据）\n"
-        "主列表累计创建的 cell：%zu",
-        getGraphicsBackendName(), getLiveTextureCount(), ImGui::GetIO().Framerate,
-        this->mainList != nullptr ? this->mainList->getVisibleCellCount() : 0,
-        this->mainList != nullptr ? this->mainList->getCreatedCellCount() : 0);
-
-    this->statsLabel->setText(text);
 }
 
 } // namespace demo

@@ -73,7 +73,7 @@ Tweeny 仓库当前没有 `tweeny-v4.1.0` 这个标签，实际发布标签为 `
 | `views/image.hpp/.cpp` | 图片：四种缩放模式、圆角 |
 | `views/progress_spinner.hpp/.cpp` | 加载转圈 |
 | `views/hints.hpp/.cpp` | 底部提示栏 |
-| `views/debug_layer.hpp/.cpp` | 调试层：布局树 + 当前焦点（F1 开关） |
+| `views/debug_window.hpp/.cpp` | 调试窗口：ImGui 窗口显示日志流与运行状态 |
 
 Box 提供的布局能力（全部直接透传给 Yoga）：
 
@@ -124,7 +124,7 @@ image->setScalingType(ImageScalingType::FILL); // FIT / FILL / STRETCH / CENTER
 image->setImageFromFile("resources/testcard.png");
 ```
 
-键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回，F1 开关调试层。
+键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回。
 
 ### 不生成 imgui.ini
 

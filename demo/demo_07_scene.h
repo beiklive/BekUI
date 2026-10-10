@@ -200,7 +200,7 @@ static View* buildScene()
 
     // ---- 说明文字 ----
     Label* hint = new Label();
-    hint->setText("方向键 / WASD 切换焦点，回车或鼠标点击触发；鼠标滚轮或拖拽滚动列表；F1 显示调试层。");
+    hint->setText("方向键 / WASD 切换焦点，回车或鼠标点击触发；鼠标滚轮或拖拽滚动列表。");
     hint->setFontSize(14.0f);
     hint->setTextColor(rgb(140, 150, 165));
     root->addView(hint);

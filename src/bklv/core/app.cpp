@@ -8,7 +8,6 @@
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/time.hpp"
-#include "bklv/views/debug_layer.hpp"
 #include "bklv/views/hints.hpp"
 
 namespace bklv
@@ -93,13 +92,6 @@ void App::frame()
         // 3. 输入与焦点（必须在绘制前，读取的是上一帧的命中结果）。
         getInputManager().update();
 
-        // F1 开关调试层
-        static bool f1Down = false;
-        const bool f1Now   = ImGui::IsKeyDown(ImGuiKey_F1);
-        if (f1Now && !f1Down)
-            this->debugLayerEnabled = !this->debugLayerEnabled;
-        f1Down = f1Now;
-
         // 4. 业务帧回调。
         if (this->onUpdate)
             this->onUpdate();
@@ -107,10 +99,13 @@ void App::frame()
         // 5. 绘制视图树。
         this->root->frame(&ctx);
 
-        // 6. 提示栏与调试层画在最上层。
+        // 6. 提示栏画在最上层。
         drawHints(ctx.drawList, width, height);
-        if (this->debugLayerEnabled)
-            drawDebugLayer(ctx.drawList, this->root, width);
+
+        // 7. ImGui 窗口（调试窗口、日志窗口）。
+        //    放在视图树之后，所以窗口浮在界面之上；必须在 ImGui::Render() 之前。
+        if (this->onDrawWindows)
+            this->onDrawWindows();
     }
 
     ImGui::Render();

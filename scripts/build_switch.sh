@@ -99,7 +99,7 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/core/app.cpp"
     "${ROOT_DIR}/src/bklv/views/label.cpp"
     "${ROOT_DIR}/src/bklv/views/hints.cpp"
-    "${ROOT_DIR}/src/bklv/views/debug_layer.cpp"
+    "${ROOT_DIR}/src/bklv/views/debug_window.cpp"
     "${ROOT_DIR}/src/bklv/views/scrolling_frame.cpp"
     "${ROOT_DIR}/src/bklv/views/h_scrolling_frame.cpp"
     "${ROOT_DIR}/src/bklv/views/recycler.cpp"

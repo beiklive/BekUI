@@ -29,14 +29,4 @@ struct ListPage
 
 ListPage buildListPage();
 
-// 页 5：布局与调试
-struct DebugPage
-{
-    bklv::Box* view           = nullptr;
-    bklv::RecyclerFrame* list = nullptr; // 内嵌的短列表
-    bklv::Label* stats        = nullptr; // 每帧刷新的统计文字
-};
-
-DebugPage buildDebugPage();
-
 } // namespace demo
