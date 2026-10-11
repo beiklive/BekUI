@@ -1,17 +1,31 @@
 #!/usr/bin/env bash
-# 用 devkitA64 把 demo_07 编成 Switch 的 .nro。
+# 用 devkitA64 把 demo 编成 Switch 的 .nro。
 #
 # 用法：
-#   ./scripts/build_switch.sh              # 默认 demo_07
-#   ./scripts/build_switch.sh demo_06      # 指定 demo
-#   ./scripts/build_switch.sh demo_07 --clean
+#   ./scripts/build_switch.sh              # 编译
+#   ./scripts/build_switch.sh --clean      # 丢掉中间产物重新编译
 #
 # 依赖：devkitPro（devkitA64 + libnx）。不需要 SDL3：
 # SDL3 上游没有 Switch 后端，所以 Switch 上直接用 libnx + EGL/GLES3。
+#
+# 为什么 Switch 不用 CMake：工具链、编译参数、链接库都和桌面完全不同，
+# 而且不能链 SDL3。CMake 覆盖不了，所以这是仓库里唯一保留的构建脚本。
+# 源文件列表按目录自动收集，只在"Switch 只取其中一个子集"的地方显式列举，
+# 避免和 CMakeLists.txt 手抄两份、加文件时漏掉。
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BKLV_DIR="${ROOT_DIR}/bklv"
+THIRD_DIR="${BKLV_DIR}/3rd"
+
+CLEAN=0
+for arg in "$@"; do
+    case "${arg}" in
+        --clean|--force) CLEAN=1 ;;
+        *) echo "未知参数：${arg}（只支持 --clean）" >&2; exit 1 ;;
+    esac
+done
 
 # ---- 工具链 ----
 export DEVKITPRO="${DEVKITPRO:-/opt/devkitpro}"
@@ -27,27 +41,6 @@ if [[ ! -x "${CXX}" ]]; then
     exit 1
 fi
 
-# ---- 选 demo ----
-DEMO="${1:-demo_07}"
-if [[ "${DEMO}" == "--clean" || "${DEMO}" == "--force" ]]; then
-    DEMO="demo_07"
-    CLEAN=1
-else
-    CLEAN=0
-    [[ "${2:-}" == "--clean" ]] && CLEAN=1
-fi
-
-case "${DEMO}" in
-    demo_06) DEMO_SRC="${ROOT_DIR}/demo/demo_06_bklv_layout.cpp" ;;
-    demo_07) DEMO_SRC="${ROOT_DIR}/demo/demo_07_bklv_showcase.cpp" ;;
-    *)       DEMO_SRC="${DEMO}" ;;
-esac
-
-if [[ ! -f "${DEMO_SRC}" ]]; then
-    echo "错误：找不到 demo 源文件 ${DEMO_SRC}" >&2
-    exit 1
-fi
-
 OUT_DIR="${ROOT_DIR}/dist/switch"
 BUILD_DIR="${ROOT_DIR}/build/switch"
 if [[ "${CLEAN}" -eq 1 ]]; then
@@ -60,23 +53,23 @@ mkdir -p "${OUT_DIR}" "${BUILD_DIR}"
 # 注意要拆成数组：整串加引号会被 gcc 当成一个参数。
 ARCH=(-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE)
 
-# BKLV_SWITCH 打开 Switch 相关代码；BKLV_GLES3 让 ImGui 的 OpenGL3 后端按 ES3 编。
-# 关键：ImGui 的 OpenGL3 后端需要指定加载器，桌面用它自带的，
-# Switch 用我们自己的 gles3_loader.hpp（直接包含 GLES3/gl3.h）。
-# BKLV_NO_IMAGEIO：Switch 上还没有图片解码器（桌面用 macOS ImageIO）。
-# IMGUI_DISABLE_DEBUG_TOOLS 与 IMGUI_DISABLE_DEMO_WINDOWS 之外，
-# 还要关掉 ImGui 的 shell 执行工具：它引用了 Switch 上没有的 waitpid/execvp。
+# BKLV_SWITCH 打开 Switch 相关代码；BKLV_GLES3 让 ImGui 的 OpenGL3 后端按 ES3 编，
+# 并让 bklv 的 GL 头走 gles3_loader.hpp。
+# BKLV_USE_STB_IMAGE：Switch 用 stb_image 解码图片（macOS 才用系统 ImageIO）。
+# 关掉 ImGui 的 shell 执行工具：它引用了 Switch 上没有的 waitpid/execvp。
 # __SWITCH__：devkitPro 的 EGL 头靠它选择平台分支，必须显式定义。
 DEFINES=(-D__SWITCH__ -DBKLV_SWITCH -DBKLV_GLES3 -DBKLV_USE_STB_IMAGE -DIMGUI_IMPL_OPENGL_ES3
     -DIMGUI_DISABLE_DEBUG_TOOLS
     -DIMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
     -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 
-INCLUDES=(-I"${ROOT_DIR}/3rd/imgui"
-    -I"${ROOT_DIR}/3rd/yoga"
-    -I"${ROOT_DIR}/3rd/stb"
-    -I"${ROOT_DIR}/src"
+# -I"${ROOT_DIR}"：让 #include "bklv/..." 生效
+# -I"${ROOT_DIR}/demo"：让 demo 的 #include "app/..." 生效
+INCLUDES=(-I"${ROOT_DIR}"
     -I"${ROOT_DIR}/demo"
+    -I"${THIRD_DIR}/imgui"
+    -I"${THIRD_DIR}/yoga"
+    -I"${THIRD_DIR}/stb"
     -I"${PORTLIBS}/include"
     -I"${LIBNX}/include")
 
@@ -84,48 +77,42 @@ CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti -fno-exce
     "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 
 # ---- 源文件 ----
-BKLV_SOURCES=(
-    "${ROOT_DIR}/src/bklv/core/logger.cpp"
-    "${ROOT_DIR}/src/bklv/core/input.cpp"
-    "${ROOT_DIR}/src/bklv/core/gamepad.cpp"
-    "${ROOT_DIR}/src/bklv/core/theme.cpp"
-    "${ROOT_DIR}/src/bklv/core/time.cpp"
-    "${ROOT_DIR}/src/bklv/core/font.cpp"
-    "${ROOT_DIR}/src/bklv/core/graphics.cpp"
-    "${ROOT_DIR}/src/bklv/core/image_decoder.cpp"
-    "${ROOT_DIR}/src/bklv/core/platform.cpp"
-    "${ROOT_DIR}/src/bklv/core/view.cpp"
-    "${ROOT_DIR}/src/bklv/core/box.cpp"
-    "${ROOT_DIR}/src/bklv/core/app.cpp"
-    "${ROOT_DIR}/src/bklv/views/label.cpp"
-    "${ROOT_DIR}/src/bklv/views/hints.cpp"
-    "${ROOT_DIR}/src/bklv/views/debug_window.cpp"
-    "${ROOT_DIR}/src/bklv/views/scrolling_frame.cpp"
-    "${ROOT_DIR}/src/bklv/views/h_scrolling_frame.cpp"
-    "${ROOT_DIR}/src/bklv/views/recycler.cpp"
-    "${ROOT_DIR}/src/bklv/views/image.cpp"
-    "${ROOT_DIR}/src/bklv/views/progress_spinner.cpp"
-    "${ROOT_DIR}/src/bklv/backends/gles3_backend.cpp"
-    "${ROOT_DIR}/src/bklv/backends/imgui_impl_libnx.cpp"
-    "${ROOT_DIR}/src/bklv/platforms/switch_platform.cpp"
-    "${ROOT_DIR}/src/bklv/platforms/switch_gamepad.cpp"
+# core 与 views 全都要，按目录收集。
+BKLV_SOURCES=()
+while IFS= read -r -d '' f; do
+    BKLV_SOURCES+=("$f")
+done < <(find "${BKLV_DIR}/core" "${BKLV_DIR}/views" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
+
+# backends / platforms 里 Switch 只取这几个：
+# 桌面的 opengl/vulkan/sdl3 那几份不参与（文件内部也有 BKLV_SWITCH 守卫，但不必编）。
+BKLV_SOURCES+=(
+    "${BKLV_DIR}/backends/gles3_backend.cpp"
+    "${BKLV_DIR}/backends/imgui_impl_libnx.cpp"
+    "${BKLV_DIR}/platforms/switch_platform.cpp"
+    "${BKLV_DIR}/platforms/switch_gamepad.cpp"
 )
 
 IMGUI_SOURCES=(
-    "${ROOT_DIR}/3rd/imgui/imgui.cpp"
-    "${ROOT_DIR}/3rd/imgui/imgui_draw.cpp"
-    "${ROOT_DIR}/3rd/imgui/imgui_tables.cpp"
-    "${ROOT_DIR}/3rd/imgui/imgui_widgets.cpp"
-    "${ROOT_DIR}/src/bklv/backends/imgui_impl_opengl3_wrapper.cpp"
+    "${THIRD_DIR}/imgui/imgui.cpp"
+    "${THIRD_DIR}/imgui/imgui_draw.cpp"
+    "${THIRD_DIR}/imgui/imgui_tables.cpp"
+    "${THIRD_DIR}/imgui/imgui_widgets.cpp"
+    "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp"
 )
+
+# demo：主程序 + app 层（页面 / tab / 列表项）
+DEMO_SOURCES=("${ROOT_DIR}/demo/main.cpp")
+while IFS= read -r -d '' f; do
+    DEMO_SOURCES+=("$f")
+done < <(find "${ROOT_DIR}/demo/app" -name '*.cpp' -print0 | sort -z)
 
 # Yoga 源码（与桌面一致）
 YOGA_SOURCES=()
 while IFS= read -r -d '' f; do
     YOGA_SOURCES+=("$f")
-done < <(find "${ROOT_DIR}/3rd/yoga/yoga" -type f -name '*.cpp' -print0)
+done < <(find "${THIRD_DIR}/yoga/yoga" -type f -name '*.cpp' -print0)
 
-echo "编译 ${DEMO} (Switch / devkitA64) ..."
+echo "编译 demo (Switch / devkitA64) ..."
 
 # 逐个编译成 .o，避免一次调用太多文件。
 OBJS=()
@@ -140,13 +127,12 @@ compile_one() {
     OBJS+=("${obj}")
 }
 
-for src in "${BKLV_SOURCES[@]}" "${IMGUI_SOURCES[@]}" "${DEMO_SRC}"; do
+for src in "${BKLV_SOURCES[@]}" "${IMGUI_SOURCES[@]}" "${DEMO_SOURCES[@]}"; do
     compile_one "${src}"
 done
 
 # Yoga 需要 C++20（与桌面构建一致），其余代码保持 C++17。
 YOGA_FLAGS=("${CXXFLAGS[@]}")
-# 去掉原来的 -std=c++17，换成 c++20
 YOGA_FLAGS=("${YOGA_FLAGS[@]/#-std=c++17/-std=c++20}")
 
 for src in "${YOGA_SOURCES[@]}"; do
@@ -165,13 +151,13 @@ LDFLAGS=(-specs="${LIBNX}/switch.specs" "${ARCH[@]}" -Wl,-Map,"${BUILD_DIR}/link
 # 顺序与 devkitPro 的 OpenGL 示例一致：libEGL 依赖 glapi 与 drm_nouveau。
 LIBS=(-L"${PORTLIBS}/lib" -L"${LIBNX}/lib" -lEGL -lglapi -ldrm_nouveau -lGLESv2 -lnx -lm)
 
-ELF="${OUT_DIR}/${DEMO}.elf"
-NRO="${OUT_DIR}/${DEMO}.nro"
+ELF="${OUT_DIR}/demo.elf"
+NRO="${OUT_DIR}/demo.nro"
 
 "${CXX}" "${OBJS[@]}" "${LDFLAGS[@]}" "${LIBS[@]}" -o "${ELF}"
 
 # 去掉调试符号：不 strip 的话 nro 会大出好几 MB（main.elf 保留符号便于调试）。
-ELF_STRIPPED="${BUILD_DIR}/${DEMO}.stripped.elf"
+ELF_STRIPPED="${BUILD_DIR}/demo.stripped.elf"
 cp "${ELF}" "${ELF_STRIPPED}"
 if [[ -x "${STRIP}" ]]; then
     "${STRIP}" --strip-all "${ELF_STRIPPED}"

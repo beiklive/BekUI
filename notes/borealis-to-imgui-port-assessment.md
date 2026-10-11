@@ -1,5 +1,9 @@
 # 移植评估：把 borealis 的设计搬到 imgui_learn，绘制从 NanoVG 换成 ImGui
 
+> 这份是动手前的移植评估记录，写的时候仓库里还有 `demo_01`~`demo_07`
+> 那批学习示例。那些示例后来已删除，仓库结构也改成了 `bklv/`（库）+ `demo/`（展示）。
+> 文中的路径与 demo 编号按当时的写法保留，作为决策依据，不代表当前状态。
+
 评估对象：`~/Code/C++/example/wiliwili/library/borealis`（Apache-2.0，下面引用的行号实测）
 目标：保留 borealis 的「Yoga 树 = View 树」设计，把 `draw(NVGcontext*, ...)` 换成 ImGui 的 `ImDrawList`
 工具链：macOS + SDL3 + OpenGL3 + Dear ImGui 1.93.0 WIP（imgui_learn 现有环境）

@@ -3,11 +3,11 @@
 现在的分层：
 
 ```
-src/bklv/views/*        Image / Label / ScrollingFrame ...   ← 只认 ImDrawList 和 ImTextureID
-src/bklv/core/graphics  RenderBackend 接口 + 纹理管理        ← 唯一的分界点
-src/bklv/backends/*     OpenGLBackend / VulkanBackend / GLES3Backend  ← 图形 API 代码全在这里
-src/bklv/platforms/*    PlatformSDL3 / PlatformSwitch        ← 窗口 + 事件循环 + 创建后端
-src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰图形 API
+bklv/views/*            Image / Label / ScrollingFrame ...   ← 只认 ImDrawList 和 ImTextureID
+bklv/core/graphics.*    RenderBackend 接口 + 纹理管理        ← 唯一的分界点
+bklv/backends/*         OpenGLBackend / VulkanBackend / GLES3Backend  ← 图形 API 代码全在这里
+bklv/platforms/*        PlatformSDL3 / PlatformSwitch        ← 窗口 + 事件循环 + 创建后端
+bklv/core/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰图形 API
 ```
 
 **后端是编译期选择的**，没有运行时注册表。加 Vulkan 时的接法就是在对应平台的
@@ -20,7 +20,7 @@ src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰�
 
 ## 第 1 步：写 VulkanBackend
 
-新建 `src/bklv/backends/vulkan_backend.hpp/.cpp`，实现 `RenderBackend` 的 10 个方法：
+新建 `bklv/backends/vulkan_backend.hpp/.cpp`，实现 `RenderBackend` 的 10 个方法：
 
 | 方法 | Vulkan 下要做的事 |
 |---|---|
@@ -37,7 +37,7 @@ src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰�
 
 构造函数里把 `this->ready = true` 放在设备建好之后——**`ready` 是 "能不能创建纹理" 的闸门**。
 
-`src/bklv/backends/vulkan_backend.cpp` 是这份清单的完整实现，写新后端时可以直接照着看。
+`bklv/backends/vulkan_backend.cpp` 是这份清单的完整实现，写新后端时可以直接照着看。
 实现时踩到、但清单里不容易一眼看出的几点：
 
 - **`appInfo.apiVersion` / `ImGui_ImplVulkan_InitInfo::ApiVersion` 别写 `VK_API_VERSION_1_0`。**
@@ -58,7 +58,7 @@ src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰�
 ## 第 2 步：在平台里换上它
 
 图形后端由平台在 `createBackend()` 里创建，编译期决定。例如
-`src/bklv/platforms/sdl3_platform.cpp`：
+`bklv/platforms/sdl3_platform.cpp`：
 
 ```cpp
 void PlatformSDL3::createBackend()
@@ -77,7 +77,7 @@ void PlatformSDL3::createBackend()
 
 ```cmake
 if(BKLV_GRAPHICS STREQUAL "vk")
-    list(APPEND IMGUI_SOURCES "${CMAKE_SOURCE_DIR}/3rd/imgui/backends/imgui_impl_vulkan.cpp")
+    list(APPEND BKLV_IMGUI_SOURCES "${BKLV_3RD}/imgui/backends/imgui_impl_vulkan.cpp")
 endif()
 ```
 
@@ -111,11 +111,11 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
 
 ```bash
 # 1. 上层不许出现图形 API 调用（应该没有输出）
-grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" src/bklv/views src/bklv/core/view.cpp src/bklv/core/box.cpp src/bklv/core/input.cpp
+grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" bklv/views bklv/core/view.cpp bklv/core/box.cpp bklv/core/input.cpp
 
 # 2. 两个后端都跑一遍同一个 demo：换后端能跑起来，才说明没有漏抽象
-./dist/demo_06_bklv_layout
-./dist/vk/demo_06_bklv_layout
+./dist/demo
+./dist/vk/demo
 ```
 
 Vulkan 后端已经写完，所以 `-DBKLV_VULKAN` 不再是"配置错了就会编译失败"的哨兵：
@@ -130,7 +130,7 @@ Vulkan 后端已经写完，所以 `-DBKLV_VULKAN` 不再是"配置错了就会�
 1. **图片是相对进程工作目录加载的，失败还会被缓存。**
    macOS 走 ImageIO，`loadTexture` 里对相对路径做过处理；Windows / Linux 走
    `stbi_load`，它按**进程当前工作目录**解析路径。所以可执行文件必须从仓库根目录
-   启动（`dist/demo_07_bklv_showcase`、`dist/vk/demo_07_bklv_showcase` 都一样），
+   启动（`dist/demo`、`dist/vk/demo` 都一样），
    否则图片全变成占位色块，而且**只打一条** `图片加载失败：<path>` 日志就再无声息
    （见下一条）。调试时先确认工作目录，不要一上来就怀疑渲染后端。
 

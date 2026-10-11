@@ -1,5 +1,9 @@
 # wiliwili 的分层架构：Yoga 与绘制是如何被逐层封装的
 
+> 这份是动手前的架构分析记录，写的时候仓库里还有 `demo_01`~`demo_07`
+> 那批学习示例。那些示例后来已删除，仓库结构也改成了 `bklv/`（库）+ `demo/`（展示）。
+> 文中的路径与 demo 编号按当时的写法保留，作为决策依据，不代表当前状态。
+
 阅读对象：`~/Code/C++/example/wiliwili`（GPL-3.0）及其子模块 `library/borealis`
 （`https://github.com/xfangfang/borealis`，commit `5f08b286`，分支 `wiliwili`）。
 

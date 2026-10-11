@@ -11,7 +11,7 @@ REM
 REM  Usage:
 REM    build.bat                    GL backend       -> dist\*.exe
 REM    build.bat --vk               Vulkan backend   -> dist\vk\*.exe
-REM    build.bat --gl --only=demo   only build the main program, skip demo_01~07
+REM    build.bat --gl --only=demo   only build the given target(s)
 REM    build.bat --gui              no console window (you lose BKLV_LOG_*)
 REM    build.bat --sdl-force        force a full reconfigure of SDL3
 REM

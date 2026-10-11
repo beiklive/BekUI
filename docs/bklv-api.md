@@ -1,6 +1,6 @@
 # bklv 速查
 
-`src/bklv` 是从 [borealis](https://github.com/xfangfang/borealis)（Apache-2.0，wiliwili 使用的框架）
+`bklv/` 是从 [borealis](https://github.com/xfangfang/borealis)（Apache-2.0，wiliwili 使用的框架）
 移植过来的视图层。这份文档是写代码时的速查表：文件职责、常用调用、以及踩过的坑。
 
 设计上跟 borealis 保持一致：**没有独立的渲染树，一个 View 持有一个 `YGNode`**，
@@ -10,6 +10,8 @@
 阴影、渐变、焦点高亮、点击动画、XML 布局和平台抽象层。
 
 ## 文件职责
+
+下表路径都相对 `bklv/`。
 
 | 文件 | 职责 |
 |---|---|
@@ -31,9 +33,9 @@
 | `core/image_decoder.hpp/.cpp` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |
 | `core/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
 | `core/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
-| `core/app.hpp/.cpp` | SDL3 窗口 + 帧循环，整棵树画在 `GetForegroundDrawList()` 上 |
+| `core/app.hpp/.cpp` | 帧循环：ImGui 上下文、布局、绘制调度。窗口由 `Platform` 负责 |
+| `core/logger.hpp/.cpp` | 日志：级别过滤、时间戳、文件行号、环形缓冲（日志窗口读它） |
 | `core/input.hpp/.cpp` | 输入与焦点：hitTest、方向导航、动作注册、手柄 |
-| `core/texture.hpp/.cpp` | 图片解码（macOS ImageIO）+ OpenGL 纹理上传 |
 | `views/label.hpp/.cpp` | 文本：自动换行、单行省略号、对齐、排版缓存 |
 | `views/scrolling_frame.hpp/.cpp` | 纵向滚动：惯性、拖拽、滚动条、焦点自动滚动 |
 | `views/h_scrolling_frame.hpp/.cpp` | 横向滚动 |
@@ -109,7 +111,7 @@ bklv::App app;
 
 // 想恢复 ImGui 默认行为（读写 imgui.ini）时：
 app.setIniPersistenceEnabled(true);
-// 或者用环境变量：BKLV_USE_INI=1 ./dist/demo_07_bklv_showcase
+// 或者用环境变量：BKLV_USE_INI=1 ./dist/demo
 ```
 
 实现位置：`bklv::App::run()` 里 `ImGui::CreateContext()` 之后、
@@ -122,7 +124,7 @@ app.setIniPersistenceEnabled(true);
 `Logger` 的环形缓冲，界面上的调试窗口（`views/debug_window.hpp`）读缓冲渲染。
 
 **不要为每条日志创建 View** —— borealis 那样做会不断触发 Yoga 重排。
-`demo_07` 加 `-v` 启动即开调试层。
+`demo` 界面上右上角的「显示日志」按钮开关日志窗口。
 
 ## 已知的坑（都已处理）
 
@@ -143,18 +145,18 @@ app.setIniPersistenceEnabled(true);
 ## 分层约定
 
 ```
-src/bklv/views/*            Image / Label / ScrollingFrame / RecyclerFrame
+bklv/views/*               Image / Label / ScrollingFrame / RecyclerFrame
                             只认 ImDrawList 和 ImTextureID
         ↓
-src/bklv/core/graphics.hpp  RenderBackend 接口 + 纹理管理
-src/bklv/core/platform.hpp  Platform 接口（窗口 / 事件循环 / 系统能力）
+bklv/core/graphics.hpp     RenderBackend 接口 + 纹理管理
+bklv/core/platform.hpp     Platform 接口（窗口 / 事件循环 / 系统能力）
         ↓
-src/bklv/backends/*         OpenGLBackend / VulkanBackend（桌面）/ GLES3Backend（Switch）
-src/bklv/platforms/*        PlatformSDL3（桌面）/ PlatformSwitch（libnx）
+bklv/backends/*            OpenGLBackend / VulkanBackend（桌面）/ GLES3Backend（Switch）
+bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）
 ```
 
 **后端选择是编译期的**，没有运行时开关——后端代码、链接库、shader 版本都不同。
-选择点在 `src/bklv/platforms/*.cpp` 的 `createBackend()`，是几行 `#if`，
+选择点在 `bklv/platforms/*.cpp` 的 `createBackend()`，是几行 `#if`，
 没有注册表、没有优先级列表。加后端的步骤见 [`notes/adding-render-backend.md`](../notes/adding-render-backend.md)。
 
 ## 学习提示

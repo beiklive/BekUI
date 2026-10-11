@@ -4,8 +4,8 @@
 // 这里就是那个编译单元。其他平台只用到 gl_loader.hpp 里的 inline 空实现，
 // 所以整个文件在非 Windows 上不产生任何符号。
 
-// 只要在 Windows 上就编。这里不带后端宏：demo/demo_common.h 无论选哪个后端都会
-// 调 loadGLFunctions()（那些示例本来就是 OpenGL 的），符号必须始终存在。
+// Windows 上无论是哪个图形后端都要编：opengl_backend.cpp 与 ImGui 的 OpenGL3
+// 后端都在库内部，它们无条件调用 loadGLFunctions()，符号必须始终存在。
 #if defined(_WIN32) && !defined(BKLV_GLES3) && !defined(BKLV_SWITCH)
 
 // imgl3w 的实现段用了 sscanf 解析 GL_VERSION，但它自己没带 <cstdio>。

@@ -1,15 +1,15 @@
-[submodule "3rd/imgui"]
-	path = 3rd/imgui
+[submodule "bklv/3rd/imgui"]
+	path = bklv/3rd/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "3rd/yoga"]
-	path = 3rd/yoga
+[submodule "bklv/3rd/yoga"]
+	path = bklv/3rd/yoga
 	url = https://github.com/facebook/yoga.git
-[submodule "3rd/tweeny"]
-	path = 3rd/tweeny
+[submodule "bklv/3rd/tweeny"]
+	path = bklv/3rd/tweeny
 	url = https://github.com/mobius3/tweeny.git
-[submodule "3rd/SDL"]
-	path = 3rd/SDL
+[submodule "bklv/3rd/SDL"]
+	path = bklv/3rd/SDL
 	url = https://github.com/libsdl-org/SDL.git
-[submodule "3rd/stb"]
-	path = 3rd/stb
+[submodule "bklv/3rd/stb"]
+	path = bklv/3rd/stb
 	url = https://github.com/nothings/stb.git

@@ -20,7 +20,8 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 # Vulkan
 cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
 
-# 只编主程序 demo，跳过 demo_01~07（BKLV_TARGETS 按完整名字匹配，可逗号分隔多个）
+# 只编某个目标（BKLV_TARGETS 按完整名字匹配，可逗号分隔多个）；
+# 目前只有一个目标 demo，这个开关留着是为了以后加示例程序时不用改构建
 cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=demo && cmake --build build/gl
 ```
 
@@ -58,25 +59,33 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 ```cmake
 "demo_08_xxx|demo/demo_08_xxx.cpp|core"
-#                                ↑ core = 只依赖 bklv 核心；app = 还要 src/app 那层
+#                                ↑ core = 只依赖 bklv 库；app = 还要 demo/app 那层
 ```
+
+每个目标都链接 `bklv::bklv`；SDL3 / OpenGL / Vulkan / ImGui 都由它带出来，
+不要在目标上重复列。
 
 ### 改构建时注意
 
-- 加了新的 `.cpp` 必须同时加进对应的源文件列表（`BKLV_CORE_SOURCES` /
-  `BKLV_APP_SOURCES` / `IMGUI_SOURCES`）。**别手抄**——`build.sh` 已经删掉了，
-  但如果从历史提交里对照，记得用 diff 复核一遍，漏一个文件会以
-  `undefined reference` 的形式在链接期才暴露。
-- `3rd/yoga/yoga` **不要** `add_subdirectory`：它自己的 `cmake/project-defaults.cmake`
+- 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
+  （`BKLV_CORE_SOURCES` / `BKLV_IMGUI_SOURCES`），**demo** 的加根 `CMakeLists.txt`
+  （`BKLV_APP_SOURCES`）。漏一个会以 `undefined reference` 的形式在链接期才暴露。
+  Switch 的 `scripts/build_switch.sh` 对 core / views 是按目录收集的，
+  只有 backends / platforms 需要手列——新增文件时留意它是否也要加进去。
+- `bklv/3rd/yoga/yoga` **不要** `add_subdirectory`：它自己的 `cmake/project-defaults.cmake`
   会 `add_compile_options(-Wall -Werror -fno-rtti)` 并设 `CMAKE_CXX_STANDARD 20`，
   作用域是目录级，会污染整个工程（`-Werror` 直接破坏零警告约定）。
-  项目里是把它编成自己的 `yogacore` 目标、用 C++20 编译。
-- ImGui 编成 OBJECT 库而不是 STATIC 库：原来是内联进每个目标的，改成静态库后
-  链接器可能丢掉没人引用的成员，连带丢掉 ImGui 的静态初始化注册。
+  项目里是把它编成自己的 `bklv_yoga` 目标、用 C++20 编译。
+- ImGui 编成 OBJECT 库而不是 STATIC 库：编进静态库后链接器会按需抽取目标文件，
+  可能丢掉没人引用的成员，连带丢掉 ImGui 里靠静态初始化注册的东西。
+- **OBJECT 库的目标文件不会透过 INTERFACE 库传给调用方**。`bklv::bklv` 是
+  INTERFACE 目标，所以它的接口里必须显式写 `$<TARGET_OBJECTS:bklv_core>` 与
+  `$<TARGET_OBJECTS:bklv_imgui>`；只写 `target_link_libraries(... bklv_core)` 的话
+  调用方链接时一个库对象都拿不到，报一堆 `bklv::*` / `ImDrawList::*` undefined。
 
 ### 后端选择是编译期的事
 
-见 `notes/adding-render-backend.md`。选择点在 `src/bklv/platforms/*.cpp` 的
+见 `notes/adding-render-backend.md`。选择点在 `bklv/platforms/*.cpp` 的
 `createBackend()`，不在 App 里做运行时切换。
 
 ---
@@ -104,13 +113,12 @@ Windows 上有几条平台约定，改相关代码时要留意：
 - CMake 里的平台判定不能只看 `WIN32`：在 MSYS 终端里 `CMAKE_SYSTEM_NAME` 是 `MSYS`
   而 `WIN32` 为空。需要跨平台分支时用 `WIN32`，需要区分 MSYS 用 `CMAKE_SYSTEM_NAME`。
 - `opengl32.dll` 只导出 GL 1.1，GL 3.2 Core 的函数必须在 `loadGLFunctions()`
-  里运行时取地址（`backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
+  里运行时取地址（`bklv/backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
   **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
 - 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
-- 需要中文的字体路径要分平台（`core/font.cpp`、`demo/demo_common.h`），
-  别只写 macOS 的系统字体路径。
+- 需要中文的字体路径要分平台（`bklv/core/font.cpp`），别只写 macOS 的系统字体路径。
 
-Vulkan 后端（`backends/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
+Vulkan 后端（`bklv/backends/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
 
 - `appInfo.apiVersion` 与 `ImGui_ImplVulkan_InitInfo::ApiVersion` **不要写
   `VK_API_VERSION_1_0`**：实例请求的版本决定 loader 能返回哪些 core 函数名，
@@ -134,11 +142,11 @@ Vulkan 后端（`backends/vulkan_backend.cpp`）有几条不好从代码一眼�
 
 | 子模块 | 用途 |
 |---|---|
-| `3rd/imgui` | GUI 与绘制（Windows 的 GL 运行时加载也复用它自带的 imgl3w） |
-| `3rd/yoga` | Flexbox 布局 |
-| `3rd/tweeny` | 补间动画（仅老 demo 直接用） |
-| `3rd/SDL` | 桌面的窗口/输入/GL 上下文（源码编译成静态库） |
-| `3rd/stb` | Linux/Windows/Switch 的图片解码 |
+| `bklv/3rd/imgui` | GUI 与绘制（Windows 的 GL 运行时加载也复用它自带的 imgl3w） |
+| `bklv/3rd/yoga` | Flexbox 布局 |
+| `bklv/3rd/tweeny` | 补间动画（库本身不用，保留给后续的属性动画） |
+| `bklv/3rd/SDL` | 桌面的窗口/输入/GL 上下文（源码编译成静态库） |
+| `bklv/3rd/stb` | Linux/Windows/Switch 的图片解码 |
 
 系统只要求：`cmake`（编 SDL3）、以及平台本身的工具链。
 **不要引入需要手动安装的开发库**，除非在 README 里写清楚安装命令。
@@ -147,7 +155,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 
 ## 代码
 
-- C++17；`3rd/yoga` 单独用 C++20 编译
+- C++17；`bklv/3rd/yoga` 单独用 C++20 编译
 - `-Wall -Wextra -Wpedantic` 必须零警告
 - Switch 构建带 `-fno-rtti -fno-exceptions`，所以**不要用 `dynamic_cast` / RTTI**，
   类型判断用虚函数（见 `View::asBox()`）
@@ -162,15 +170,23 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 ## 目录
 
 ```
-src/bklv/core       接口层：view / box / app / platform / graphics / input / ...
-src/bklv/views      控件：label / image / scrolling_frame / recycler / ...
-src/bklv/backends   图形 API 实现：opengl / vulkan / gles3 / imgui 后端
-src/bklv/platforms  平台实现：sdl3 / switch
-demo/               示例
+bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
+  core/             接口层：view / box / app / platform / graphics / input / ...
+  views/            控件：label / image / scrolling_frame / recycler / ...
+  backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
+  platforms/        平台实现：sdl3 / switch
+  3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb
+  CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
+demo/               展示程序：main.cpp + app/（页面 / tab / 列表项）
+CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
 scripts/            构建脚本（只剩 Switch 的）
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑
 notes/              设计笔记与移植评估
+resources/          demo 用的图片等素材（相对工作目录读取）
 ```
+
+`bklv/` 要能被整个目录拷到别的项目里用，所以**它自己的构建逻辑必须留在
+`bklv/CMakeLists.txt`**，不要往根 `CMakeLists.txt` 里加库相关的东西。
 
 README 只讲项目介绍、拉取编译、怎么用到别的项目里；**代码层面的说明（文件职责表、
 API 速查、踩坑记录）写在 `docs/`**，别往 README 里堆。

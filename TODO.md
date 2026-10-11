@@ -38,18 +38,17 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ## P0 —— 库化（做别的事之前的前提）
 
-现在 bklv 是「跟着这个仓库一起编译的源码」，不是库：没有 `install()`，
-没有导出的 CMake target，`src/app/`（总览程序的应用层）混在库源码树里。
+已经做到：`bklv/` 自包含（代码 + `3rd/` + 自己的 `CMakeLists.txt`），
+`demo/` 是展示程序，`add_subdirectory(bklv)` + `target_link_libraries(app PRIVATE bklv::bklv)`
+可用。剩下的是「能被 install 出去」这一层。
 
-- [ ] **库与 demo 分层**
-      `src/bklv` 是库；`src/app`（页面 / tab / 列表项）是应用层 demo 代码。
-      把 `src/app` 移到 `demo/app/`，让库源码树只含库。
-      *验收*：`src/` 下只有 bklv；`demo/` 能独立编译。
-- [ ] **导出 CMake target**
-      提供 `bklv::bklv`（STATIC 库 + 公共头 + 传递依赖），并支持
-      `add_subdirectory` 与 `find_package(bklv)` 两种用法。
-      *验收*：另建一个空工程，`find_package(bklv REQUIRED)` +
-      `target_link_libraries(app PRIVATE bklv::bklv)` 后能编出可运行程序。
+- [x] **库与 demo 分层** —— 已做：`bklv/` 只含库，demo 在 `demo/`。
+- [ ] **`bklv::bklv` 变成真正的库** —— 现在是 INTERFACE 目标：它把几个 OBJECT 库
+      的目标文件用 `$<TARGET_OBJECTS:>` 带出去，因为 OBJECT 库的目标文件不会透过
+      INTERFACE 传递（踩过）。要做 `install()` 就得解决"静态库会丢掉 ImGui
+      静态初始化注册"的问题（见「改构建时注意」与下文技术债）。
+      *验收*：`find_package(bklv REQUIRED)` 后能编出可运行程序。
+- [ ] **`install()` 规则**
 - [ ] **`install()` 规则**
       头文件装到 `include/bklv/`，库装到 `lib/`，导出 `bklvConfig.cmake` /
       `bklvConfigVersion.cmake`。
@@ -142,7 +141,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       borealis 用 XML，bklv 按约定用 C++ 表（`bklv::i18n::get("key")`）。
       *验收*：切换语言后界面文案即时更新。
 - [ ] **手势层**
-      Switch 触摸屏的原始状态已经在 `imgui_impl_libnx.cpp` 里取到了，
+      Switch 触摸屏的原始状态已经在 `bklv/backends/imgui_impl_libnx.cpp` 里取到了，
       缺上层：点击 / 长按 / 滑动 / 捏合，并接入焦点系统（点选、拖拽滚动）。
 - [ ] **属性动画**
       有 `Animatable` + tweeny，但缺 borealis `animation.hpp` 那种
@@ -193,8 +192,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | 5 | `ScrollingFrame` 不拥有内容视图 | 换内容必须用 `evictContentView()`，直接 `setContentView()` 覆盖会销毁旧内容而调用方可能仍持有指针（踩过：use-after-free 崩溃） | 语义已写进注释；更好的做法是让内容视图的所有权显式化（`std::unique_ptr` 或 `shared_ptr` 参数） |
 | 6 | `Logger` 的格式化缓冲 1024 / 512 字节 | 超长日志被静默截断 | 截断时补一个提示，或按需扩容 |
 | 7 | 无测试、无 CI | 回归靠人跑 demo；本会话里三个 bug 都是靠临时写的无窗口测试才定位到的 | 见 P3；把这次写的那些 headless 验证脚本整理成 `tests/` |
-| 8 | `src/app` 是 demo 代码却在 `src/` 下 | 使用者容易误以为它是库的一部分 | P0 第 1 条 |
-| 9 | `demo_01` ~ `demo_05` 与 bklv 无关 | 它们是纯 ImGui / Yoga / Tweeny 的学习示例，走的是 `demo_common.h` 那条路 | 库化后移到 `demo/learn/` 并在 README 里标明定位 |
+| 8 | ~~`src/app` 是 demo 代码却在库源码树里~~ | 已解决：库在 `bklv/`，demo 在 `demo/` | — |
+| 9 | 库里的 `bklv_app` 层已经搬走，但 `demo/app` 仍然耦合在根 `CMakeLists.txt` 里 | 加第二个示例程序时要复制一遍源文件列表 | 等真有第二个示例时再抽成 `demo/CMakeLists.txt` |
 | 10 | 多后端产物目录靠不同构建目录区分 | 两个构建目录若指向同一输出目录，会互相覆盖同名文件，而 CMake 认为目标最新不会重链，得到「另一个后端编出来的程序」且无提示 | 现在是 `dist/`、`dist/vk/`、`dist/switch/` 三份；加新构建配置时注意别和已有的合并 |
 
 ---
