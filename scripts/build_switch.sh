@@ -34,6 +34,7 @@ PORTLIBS="${DEVKITPRO}/portlibs/switch"
 LIBNX="${DEVKITPRO}/libnx"
 CXX="${DEVKITA64}/bin/aarch64-none-elf-g++"
 ELF2NRO="${DEVKITPRO}/tools/bin/elf2nro"
+BUILD_ROMFS="${DEVKITPRO}/tools/bin/build_romfs"
 STRIP="${DEVKITA64}/bin/aarch64-none-elf-strip"
 
 if [[ ! -x "${CXX}" ]]; then
@@ -188,8 +189,35 @@ if [[ -x "${STRIP}" ]]; then
     "${STRIP}" --strip-all "${ELF_STRIPPED}"
 fi
 
+# ---- 资源打进 romfs ----
+#
+# 分两步：build_romfs 生成镜像，elf2nro --romfs 嵌进去。
+#
+# 为什么不用 elf2nro 的 --romfsdir：devkitPro 的例子是那么写的，但这个工具链里的
+# elf2nro 会**静默忽略** --romfsdir（参数能解析——同时给 --romfs 和 --romfsdir 会报
+# "Cannot have a RomFS and a RomFS Directory at the same time"——但产物和不带参数时
+# 逐字节相同，NRO 里既没有 ASET 段也没有 IVFC）。用两步法产物正确：
+# ASET 段存在，romfs 内容与镜像 sha256 一致。
+#
+# staging 目录里保留 resources/ 这一层，使 romfs 内路径（romfs:/resources/xxx）
+# 与桌面的相对路径（resources/xxx）完全一致。
+# 运行时由 romfsInit() 把 nro 里的 romfs 挂成 romfs:/。
+ROMFS_DIR="${BUILD_DIR}/romfs"
+ROMFS_IMAGE="${BUILD_DIR}/romfs.img"
+rm -rf "${ROMFS_DIR}" "${ROMFS_IMAGE}"
+mkdir -p "${ROMFS_DIR}"
+ELF2NRO_ARGS=()
+if [[ -d "${ROOT_DIR}/resources" ]]; then
+    cp -R "${ROOT_DIR}/resources" "${ROMFS_DIR}/resources"
+    "${BUILD_ROMFS}" "${ROMFS_DIR}" "${ROMFS_IMAGE}"
+    ELF2NRO_ARGS+=(--romfs="${ROMFS_IMAGE}")
+    echo "romfs：resources/ 已打进镜像（$(find "${ROOT_DIR}/resources" -type f | wc -l | tr -d ' ') 个文件，镜像 $(stat -f%z "${ROMFS_IMAGE}" 2>/dev/null || stat -c%s "${ROMFS_IMAGE}") 字节）"
+else
+    echo "警告：没有 resources/ 目录，nro 里将不带资源" >&2
+fi
+
 # ---- 打包成 nro ----
-"${ELF2NRO}" "${ELF_STRIPPED}" "${NRO}"
+"${ELF2NRO}" "${ELF_STRIPPED}" "${NRO}" "${ELF2NRO_ARGS[@]}"
 
 echo "Switch 产物：${NRO}  ($(du -h "${NRO}" | cut -f1))"
 echo "推送到机器：nxlink -s ${NRO}"

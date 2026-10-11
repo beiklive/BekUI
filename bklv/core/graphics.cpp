@@ -75,6 +75,11 @@ std::map<std::string, int> g_pathCache;
 
 } // namespace
 
+bool isTextureStoreReady()
+{
+    return g_backend != nullptr;
+}
+
 void initTextureStore(RenderBackend* backend)
 {
     // 换后端时缓存全部作废：旧句柄属于上一个后端，不能再拿来用；
@@ -143,9 +148,15 @@ TextureRef loadTexture(const std::string& path)
         return makeRef(cached->second);
     }
 
+    // 上传需要图形后端。视图树常在 App::run() 之前就建好，那时仓库还没就绪——
+    // 这种情况**不能**当成"解码失败"缓存起来，否则图永远加载不出来（踩过）。
+    // 返回无效引用，交由调用方（Image）在每帧里重试。
+    if (g_backend == nullptr)
+        return TextureRef();
+
     // 解码交给平台相关的解码器（macOS ImageIO / 其他平台 stb_image）。
     const DecodedImage decoded = decodeImageFile(path.c_str());
-    if (!decoded.isValid() || g_backend == nullptr)
+    if (!decoded.isValid())
     {
         Logger::error("图片加载失败：" + path);
         g_pathCache[path] = TEXTURE_CACHE_FAILED;

@@ -98,7 +98,23 @@ cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk   # 产物�
 `demo` 右上角有「显示日志」按钮，点开是 ImGui 日志窗口（可拖动、可缩放、
 按级别过滤）。没有快捷键开关。
 
-`resources/testcard.png` 是相对**工作目录**读的，所以请在项目根目录下运行。
+### 资源文件
+
+`resources/` 下的素材（demo 用了一张 `testcard.png`）按**资源目录**解析，不是工作目录，
+所以从哪个目录启动都能找到：
+
+| 平台 | 资源怎么到程序旁边 | 运行时路径 |
+|---|---|---|
+| macOS / Linux / Windows | 构建后 `resources/` 自动复制到可执行文件目录（CMake 的 POST_BUILD） | `<可执行文件目录>/resources/...` |
+| Switch | 用 `build_romfs` 打包，再由 `elf2nro --romfs` 嵌进 nro | `romfs:/resources/...`（`romfsInit()` 挂载） |
+
+代码里统一写相对路径，由 `bklv::resourcePath()` 按平台解析（见 `bklv/core/resource.hpp`）：
+
+```cpp
+image->setImageFromFile("resources/testcard.png");
+```
+
+`Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
 ### Linux
 

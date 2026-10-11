@@ -116,6 +116,14 @@ Windows 上有几条平台约定，改相关代码时要留意：
   里运行时取地址（`bklv/backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
   **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
 - 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
+- **资源文件按"资源目录"解析，不是工作目录**（`bklv/core/resource.hpp`）：
+  桌面由 CMake 的 POST_BUILD 把 `resources/` 复制到可执行文件目录；
+  Switch 用 `build_romfs` + `elf2nro --romfs` 打进 nro，运行时 `romfsInit()` 挂成 `romfs:/`。
+  代码里统一写 `"resources/xxx"`，`Image::setImageFromFile()` 会自己解析。
+  **不要用 elf2nro 的 `--romfsdir`**：这个工具链里的 elf2nro 会静默忽略它
+  （参数能解析，但同时给 `--romfs` 与 `--romfsdir` 会报冲突；而只用 `--romfsdir`
+  时产物与不带参数逐字节相同，NRO 里既无 ASET 段也无 IVFC）。必须两步：
+  `build_romfs <dir> <img>` 再 `elf2nro ... --romfs=<img>`。
 - 中文字体各平台拿法不同（`bklv/core/font.cpp`），别只写 macOS 的系统字体路径：
   桌面读系统字体文件；**Switch 上没有可读的系统字体目录**，要用 `pl` 系统服务
   （`plInitialize(PlServiceType_User)` + `plGetSharedFontByType`）拿内置共享字体，
@@ -187,7 +195,7 @@ CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
 scripts/            构建脚本（只剩 Switch 的）
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑
 notes/              设计笔记与移植评估
-resources/          demo 用的图片等素材（相对工作目录读取）
+resources/          demo 用的图片等素材（桌面复制到可执行文件目录，Switch 打进 romfs）
 ```
 
 `bklv/` 要能被整个目录拷到别的项目里用，所以**它自己的构建逻辑必须留在

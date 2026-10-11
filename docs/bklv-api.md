@@ -31,6 +31,7 @@
 | `backends/gl_loader.hpp/.cpp` | 跨平台 GL 入口：macOS framework / Linux libGL 直接用原型，Windows 用运行时加载（复用 ImGui 自带的 imgl3w，不引入 glad/gl3w） |
 | `backends/gles3_loader.hpp` | Switch 的 GLES3 头 |
 | `core/image_decoder.hpp/.cpp` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |
+| `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
 | `core/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
 | `core/app.hpp/.cpp` | 帧循环：ImGui 上下文、布局、绘制调度。窗口由 `Platform` 负责 |
@@ -93,6 +94,8 @@ Image* image = new Image();
 image->setDimensions(96.0f, 60.0f);
 image->setCornerRadius(6.0f);
 image->setScalingType(ImageScalingType::FILL); // FIT / FILL / STRETCH / CENTER
+// 路径相对"资源目录"：桌面 = 可执行文件目录（构建会复制 resources/ 过去），
+// Switch = romfs:/（资源打进 nro）。setImageFromFile 内部会解析，不用自己拼。
 image->setImageFromFile("resources/testcard.png");
 ```
 

@@ -118,6 +118,11 @@ struct TextureRef
 
 // 设置当前后端。纹理的创建与释放都会走它。
 void initTextureStore(RenderBackend* backend);
+
+// 纹理仓库是否已就绪（也就是图形后端是否已经能上传纹理）。
+// 视图树常常在 App::run() 之前就建好了，那时上传还做不了；
+// Image 靠这个判断"要不要在每帧里重试加载"。
+bool isTextureStoreReady();
 // 释放全部缓存纹理并清空引用表（后端 shutdown 之前调用）。
 void shutdownTextureStore();
 // 当前后端名，调试层展示用。

@@ -1,5 +1,7 @@
 #include "bklv/core/app.hpp"
 
+#include "bklv/core/resource.hpp"
+
 #include <cstdlib>
 #include <memory>
 
@@ -61,6 +63,7 @@ App::App()
     // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
     // 这样后面任何一步失败（甚至崩溃）都能留下线索。
     enablePlatformLog();
+    initResources();
     BKLV_LOG_INFO("bklv 启动");
 }
 

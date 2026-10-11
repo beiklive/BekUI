@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "bklv/core/resource.hpp"
+
 namespace bklv
 {
 
@@ -17,11 +19,15 @@ Image::~Image() = default;
 
 bool Image::setImageFromFile(const std::string& path)
 {
-    TextureRef loaded = loadTexture(path);
+    // 记下路径：仓库没就绪时这一句会失败，但要留着让 update() 重试。
+    this->pendingPath = path;
+
+    const TextureRef loaded = loadTexture(resourcePath(path));
     if (!loaded.isValid())
         return false;
 
     this->texture = loaded;
+    this->pendingPath.clear();
 
     // 没有显式尺寸时，用图片原始尺寸，避免退化成 0x0。
     if (this->getWidth() <= 0.0f)
@@ -30,6 +36,29 @@ bool Image::setImageFromFile(const std::string& path)
         this->setHeight(static_cast<float>(loaded.height));
 
     return true;
+}
+
+void Image::update()
+{
+    // 视图树通常在 App::run() 之前就建好了，那时图形后端还没创建、纹理传不上去。
+    // 这里在仓库就绪后补加载一次；成功后不再重试。
+    if (this->texture.isValid() || this->pendingPath.empty() || !isTextureStoreReady())
+        return;
+
+    const std::string loading = this->pendingPath;
+    const TextureRef loaded   = loadTexture(resourcePath(loading));
+    if (!loaded.isValid())
+        return;
+
+    this->texture = loaded;
+    this->pendingPath.clear();
+
+    if (this->getWidth() <= 0.0f)
+        this->setWidth(static_cast<float>(loaded.width));
+    if (this->getHeight() <= 0.0f)
+        this->setHeight(static_cast<float>(loaded.height));
+
+    this->invalidate();
 }
 
 void Image::setImage(const TextureRef& ref)

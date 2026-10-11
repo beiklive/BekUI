@@ -161,6 +161,17 @@ foreach(entry IN LISTS BKLV_TARGET_LIST)
         target_link_options(${target_name} PRIVATE -mwindows)
     endif()
 
+    # 把 resources/ 复制到可执行文件旁边：资源按"可执行文件目录"解析
+    # （见 bklv/core/resource.hpp），这样从哪个目录启动都能找到。
+    if(EXISTS "${CMAKE_SOURCE_DIR}/resources")
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/resources"
+                "$<TARGET_FILE_DIR:${target_name}>/resources"
+            COMMENT "复制 resources/ 到输出目录"
+        )
+    endif()
+
     set_target_properties(${target_name} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"

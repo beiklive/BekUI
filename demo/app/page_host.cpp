@@ -192,6 +192,7 @@ void PageHost::selectPage(size_t index)
 
 void PageHost::update()
 {
+
     // 自滚动页的高度要跟着内容区走（窗口尺寸变化时会变）。
     if (this->currentPage < this->selfScrolling.size() && this->selfScrolling[this->currentPage])
         this->sizeSlotToContent();

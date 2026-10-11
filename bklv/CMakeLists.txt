@@ -259,6 +259,7 @@ set(BKLV_CORE_SOURCES
     core/font.cpp
     core/graphics.cpp
     core/image_decoder.cpp
+    core/resource.cpp
     core/platform.cpp
     core/gamepad.cpp
     core/view.cpp

@@ -28,12 +28,19 @@ class Image : public View
     ~Image() override;
 
     // 从文件加载。失败时保持原图不变。
+    // path 是**相对资源目录**的路径（如 "resources/testcard.png"），
+    // 内部会按平台解析成 romfs:/... 或 <可执行文件目录>/...
+    // 见 core/resource.hpp；绝对路径原样使用。
     bool setImageFromFile(const std::string& path);
     // 直接用一个外部纹理（比如自己上传的）。
     void setImage(const TextureRef& ref);
 
     const TextureRef& getTexture() const { return this->texture; }
     bool hasImage() const { return this->texture.isValid(); }
+
+    // 视图树可能先于图形后端就绪而建好，那时图片上传不了。
+    // update() 会在仓库就绪后把没加载上的图补一次。
+    void update() override;
 
     void setScalingType(ImageScalingType type) { this->scalingType = type; }
     ImageScalingType getScalingType() const { return this->scalingType; }
@@ -52,6 +59,7 @@ class Image : public View
         FrameContext* ctx) override;
 
     TextureRef texture;
+    std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
     ImageScalingType scalingType = ImageScalingType::FIT;
     float imageCornerRadius      = 0.0f;
     ImU32 placeholderColor       = IM_COL32(45, 49, 56, 255);
