@@ -170,8 +170,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 
 - C++17；`bklv/3rd/yoga` 单独用 C++20 编译
 - `-Wall -Wextra -Wpedantic` 必须零警告
-- Switch 构建带 `-fno-rtti -fno-exceptions`，所以**不要用 `dynamic_cast` / RTTI**，
-  类型判断用虚函数（见 `View::asBox()`）
+- Switch 构建带 `-fno-rtti`（**不关异常**），所以**不要用 `dynamic_cast` / RTTI**，
+  类型判断用虚函数（见 `View::asBox()`）。
+  异常保留的原因：`std::filesystem` 出错只能 terminate，JSON 解析这类"输入不可信"的代码
+  需要可控失败路径。代价已实测：NRO +24576 字节。
+  约定：**库公开 API 不向外抛异常**，失败用返回值 + 日志；内部可用 try/catch，
+  但跨越「创建视图树」这类中途可能失败的操作必须 RAII（用 `std::unique_ptr<View>` 持有，
+  交给父节点后再 release），否则抛出时会泄漏半棵树。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。

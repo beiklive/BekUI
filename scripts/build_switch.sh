@@ -74,7 +74,11 @@ INCLUDES=(-I"${ROOT_DIR}"
     -I"${PORTLIBS}/include"
     -I"${LIBNX}/include")
 
-CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti -fno-exceptions
+# 注意：只关 RTTI，**不关异常**。
+# 关掉异常会让 C++ 标准库的部分设施不能用（std::filesystem 出错只能 terminate），
+# 而 JSON 解析这类"输入不可信"的代码需要可控的失败路径。保留异常后仍约定：
+# 库的公开 API 不向外抛异常，失败用返回值 + 日志表达。
+CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti
     "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 
 # ---- 源文件 ----
