@@ -1,0 +1,528 @@
+#include "bklv/core/json_view.hpp"
+
+#include <algorithm>
+#include <fstream>
+#include <list>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include <nlohmann/json.hpp>
+
+#include "bklv/core/attributes.hpp"
+#include "bklv/core/logger.hpp"
+#include "bklv/core/resource.hpp"
+#include "bklv/core/view.hpp"
+#include "bklv/views/h_scrolling_frame.hpp"
+#include "bklv/views/image.hpp"
+#include "bklv/views/label.hpp"
+#include "bklv/views/progress_spinner.hpp"
+#include "bklv/views/scrolling_frame.hpp"
+
+namespace bklv
+{
+
+namespace
+{
+
+using Json = nlohmann::json;
+
+// 规模上限：畸形或恶意描述不该把 Switch 拖死。
+constexpr int MAX_DEPTH     = 32;
+constexpr int MAX_NODES     = 4096;
+constexpr size_t MAX_CACHED = 32; // 模板缓存上限（borealis 的 XML 缓存无上限）
+
+std::unordered_map<std::string, std::function<View*()>>& viewRegistry()
+{
+    static std::unordered_map<std::string, std::function<View*()>> registry;
+    return registry;
+}
+
+// 内置类型注册。放在函数里而不是散在各个 .cpp 的静态初始化里：
+// 静态初始化顺序不可控，而这里只在第一次用到时注册，顺序天然安全。
+void registerBuiltinViewTypes()
+{
+    static bool done = false;
+    if (done)
+        return;
+    done = true;
+
+    registerViewType("Box", [] { return (View*)new Box(Axis::COLUMN); });
+    registerViewType("Row", [] { return (View*)new Box(Axis::ROW); });
+    registerViewType("Label", [] { return (View*)new Label(); });
+    registerViewType("Image", [] { return (View*)new Image(); });
+    registerViewType("ScrollingFrame", [] { return (View*)new ScrollingFrame(); });
+    registerViewType("HScrollingFrame", [] { return (View*)new HScrollingFrame(); });
+    registerViewType("ProgressSpinner", [] { return (View*)new ProgressSpinner(); });
+    // RecyclerFrame 不注册：它必须先有数据源才能用，光有类型没有意义（做法见 P3 的 cell）。
+}
+
+// 模板缓存：key 是完整路径（**不是 hash**——borealis 用 std::hash 当 key，
+// 碰撞会静默返回别人的文档），带 LRU 淘汰与失败负缓存。
+struct CacheEntry
+{
+    std::shared_ptr<const ViewTemplate> tmpl; // 失败时为 nullptr（负缓存）
+    bool failed = false;
+};
+
+std::unordered_map<std::string, CacheEntry>& templateCache()
+{
+    static std::unordered_map<std::string, CacheEntry> cache;
+    return cache;
+}
+
+std::list<std::string>& templateCacheOrder()
+{
+    static std::list<std::string> order;
+    return order;
+}
+
+int& templateParseCount()
+{
+    static int count = 0;
+    return count;
+}
+
+// 上一次实例化的诊断信息（错误 + 未知属性警告都收在这里）
+int& lastErrorCount()
+{
+    static int count = 0;
+    return count;
+}
+
+std::string& lastErrorText()
+{
+    static std::string text;
+    return text;
+}
+
+// 解析/读盘阶段的失败也走同一套诊断，否则调用方只能拿到一个 nullptr，
+// 完全不知道是"文件没有""语法错误"还是"结构不合法"。
+void recordLoadError(const std::string& message)
+{
+    lastErrorText() = message + "\n";
+    lastErrorCount() = 1;
+}
+
+void touchCacheOrder(const std::string& key)
+{
+    std::list<std::string>& order = templateCacheOrder();
+    order.remove(key);
+    order.push_back(key);
+
+    while (order.size() > MAX_CACHED)
+    {
+        templateCache().erase(order.front());
+        order.pop_front();
+    }
+}
+
+// 实例化过程中的现场：include 栈（循环检测）、节点计数、错误收集。
+struct InstantiateContext
+{
+    std::vector<std::string> includeStack;
+    int nodeCount = 0;
+    std::vector<std::string> errors;
+};
+
+// 正在进行的实例化。**必须整棵树共享**：include 会调回 ViewTemplate::instantiate()，
+// 如果每次调用都新建现场，include 栈就被重置了，a -> b -> a 这种循环检测不出来，
+// 会一路递归到爆栈（测试抓过）。
+//
+// 不用线程局部：界面构建是单线程的；真要多线程建树，这里得换成每线程一份。
+InstantiateContext* g_activeContext = nullptr;
+
+void addError(InstantiateContext& ctx, const std::string& pointer, const std::string& message)
+{
+    const std::string full = pointer + ": " + message;
+    ctx.errors.push_back(full);
+    BKLV_LOG_ERROR("JSON 视图 %s", full.c_str());
+}
+
+// "#RRGGBB" 这类之外，json 的标量都能当属性值。
+bool toValue(const Json& node, Value& out, std::string& error)
+{
+    switch (node.type())
+    {
+        case Json::value_t::string:
+            out = Value(node.get<std::string>());
+            return true;
+        case Json::value_t::boolean:
+            out = Value(node.get<bool>());
+            return true;
+        case Json::value_t::number_integer:
+        case Json::value_t::number_unsigned:
+            out = Value((long long)node.get<long long>());
+            return true;
+        case Json::value_t::number_float:
+            out = Value(node.get<double>());
+            return true;
+        case Json::value_t::null:
+            error = "属性值是 null";
+            return false;
+        default:
+            error = "属性值只能是字符串/数字/布尔，不能是数组或对象";
+            return false;
+    }
+}
+
+std::string stripPrefix(std::string type)
+{
+    // 允许写 "bklv:Box"，也允许直接写 "Box"
+    if (type.rfind("bklv:", 0) == 0)
+        type = type.substr(5);
+    return type;
+}
+
+View* instantiateNode(const Json& node, const std::string& pointer, int depth, InstantiateContext& ctx);
+
+// include：把另一个描述文件整棵接进来。
+//
+// 注意：被引入的模板从它自己的深度 0 开始算，所以单靠 MAX_DEPTH 拦不住
+// 一长串 include（A include B include C ...）。这里用 include 栈长度再兜一层，
+// 循环检测负责"A->B->A"这种，栈深负责"足够长但不重复"这种。
+View* instantiateInclude(const Json& node, const std::string& pointer, InstantiateContext& ctx)
+{
+    if (ctx.includeStack.size() >= (size_t)MAX_DEPTH)
+    {
+        addError(ctx, pointer, "include 嵌套超过 " + std::to_string(MAX_DEPTH) + " 层");
+        return nullptr;
+    }
+
+    const std::string raw = node.value("include", "");
+    if (raw.empty() || !node["include"].is_string())
+    {
+        addError(ctx, pointer, "include 必须是非空字符串");
+        return nullptr;
+    }
+
+    const std::string path = resourcePath(raw);
+
+    // 循环检测：A include B include A 要报错，不能栈溢出
+    if (std::find(ctx.includeStack.begin(), ctx.includeStack.end(), path) != ctx.includeStack.end())
+    {
+        std::string chain;
+        for (const std::string& entry : ctx.includeStack)
+            chain += entry + " -> ";
+        chain += path;
+        addError(ctx, pointer, "循环 include：" + chain);
+        return nullptr;
+    }
+
+    const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::load(raw);
+    if (tmpl == nullptr)
+    {
+        addError(ctx, pointer, "include 的文件装载失败：" + raw);
+        return nullptr;
+    }
+
+    ctx.includeStack.push_back(path);
+    View* view = tmpl->instantiate();
+    ctx.includeStack.pop_back();
+
+    return view;
+}
+
+View* instantiateNode(const Json& node, const std::string& pointer, int depth, InstantiateContext& ctx)
+{
+    if (depth > MAX_DEPTH)
+    {
+        addError(ctx, pointer, "嵌套超过 " + std::to_string(MAX_DEPTH) + " 层");
+        return nullptr;
+    }
+    if (++ctx.nodeCount > MAX_NODES)
+    {
+        addError(ctx, pointer, "节点数超过 " + std::to_string(MAX_NODES) + " 个");
+        return nullptr;
+    }
+    if (!node.is_object())
+    {
+        addError(ctx, pointer, "节点必须是对象");
+        return nullptr;
+    }
+
+    if (node.contains("include"))
+        return instantiateInclude(node, pointer, ctx);
+
+    if (!node.contains("type"))
+    {
+        addError(ctx, pointer, "缺少 \"type\"（或改用 \"include\"）");
+        return nullptr;
+    }
+
+    const std::string type = stripPrefix(node.value("type", ""));
+    const auto creator     = viewRegistry().find(type);
+    if (creator == viewRegistry().end())
+    {
+        addError(ctx, pointer, "未知类型 \"" + type + "\"，可用：" + getViewTypeNames());
+        return nullptr;
+    }
+
+    // unique_ptr 持有：中途任何一步失败/抛出都不会漏掉子树
+    std::unique_ptr<View> view(creator->second());
+    if (view == nullptr)
+    {
+        addError(ctx, pointer, "类型 \"" + type + "\" 的构造函数返回了空指针");
+        return nullptr;
+    }
+
+    // ---- 属性 ----
+    for (auto it = node.begin(); it != node.end(); ++it)
+    {
+        const std::string& key = it.key();
+        // 特殊键：type / children / include / bind（bind 给 P3 的 cell 用）
+        if (key == "type" || key == "children" || key == "include" || key == "bind")
+            continue;
+
+        Value value;
+        std::string convertError;
+        if (!toValue(it.value(), value, convertError))
+        {
+            addError(ctx, pointer + "/" + key, convertError);
+            return nullptr;
+        }
+
+        std::string error;
+        const ApplyResult result = view->applyAttribute(key, value, error);
+
+        if (result == ApplyResult::Failed)
+        {
+            addError(ctx, pointer + "/" + key, error);
+            return nullptr;
+        }
+        if (result == ApplyResult::NotHandled)
+        {
+            // 未知属性只警告，不中断——多写一个键不该让整个界面建不出来
+            std::string message = "未知属性 \"" + key + "\"";
+            const std::string hint = view->attributes().suggest(key);
+            if (!hint.empty())
+                message += "，是否想写 \"" + hint + "\"？";
+            message += "（" + view->getClassString() + "，公共属性也认）";
+            ctx.errors.push_back(pointer + "/" + key + ": " + message);
+            BKLV_LOG_WARNING("JSON 视图 %s", (pointer + "/" + key + ": " + message).c_str());
+        }
+    }
+
+    // ---- 子节点 ----
+    if (node.contains("children"))
+    {
+        const Json& children = node["children"];
+        if (!children.is_array())
+        {
+            addError(ctx, pointer + "/children", "children 必须是数组");
+            return nullptr;
+        }
+
+        Box* box = view->asBox();
+        if (!children.empty() && box == nullptr)
+        {
+            addError(ctx, pointer + "/children",
+                "类型 \"" + type + "\" 不是容器，不能有 children");
+            return nullptr;
+        }
+
+        for (size_t i = 0; i < children.size(); i++)
+        {
+            const std::string childPointer = pointer + "/children/" + std::to_string(i);
+            std::unique_ptr<View> child(instantiateNode(children[i], childPointer, depth + 1, ctx));
+            if (child == nullptr)
+                return nullptr; // 整棵失败：上层 unique_ptr 会把已建好的部分一起释放
+
+            box->addView(child.get());
+            child.release(); // 所有权移交给父节点
+        }
+    }
+
+    return view.release();
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// 类型注册
+// ---------------------------------------------------------------------------
+
+void registerViewType(const std::string& name, std::function<View*()> creator)
+{
+    viewRegistry()[name] = std::move(creator);
+}
+
+bool isViewTypeRegistered(const std::string& name)
+{
+    registerBuiltinViewTypes();
+    return viewRegistry().find(name) != viewRegistry().end();
+}
+
+std::string getViewTypeNames()
+{
+    registerBuiltinViewTypes();
+
+    std::vector<std::string> names;
+    names.reserve(viewRegistry().size());
+    for (const auto& entry : viewRegistry())
+        names.push_back(entry.first);
+
+    std::sort(names.begin(), names.end());
+
+    std::string joined;
+    for (size_t i = 0; i < names.size(); i++)
+    {
+        if (i > 0)
+            joined += " / ";
+        joined += names[i];
+    }
+    return joined;
+}
+
+// ---------------------------------------------------------------------------
+// 模板
+// ---------------------------------------------------------------------------
+
+struct ViewTemplate::Impl
+{
+    Json document;
+};
+
+ViewTemplate::ViewTemplate(std::shared_ptr<const Impl> sharedImpl, std::string source)
+    : impl(std::move(sharedImpl))
+    , origin(std::move(source))
+{
+}
+
+ViewTemplate::~ViewTemplate() = default;
+
+std::shared_ptr<const ViewTemplate> ViewTemplate::load(const std::string& path)
+{
+    registerBuiltinViewTypes();
+
+    const std::string resolved = resourcePath(path);
+
+    auto& cache = templateCache();
+    const auto cached = cache.find(resolved);
+    if (cached != cache.end())
+    {
+        if (!cached->second.failed)
+            touchCacheOrder(resolved);
+        return cached->second.tmpl; // 失败时是 nullptr（负缓存，不重复读盘/刷日志）
+    }
+
+    std::ifstream file(resolved, std::ios::binary);
+    if (!file.is_open())
+    {
+        BKLV_LOG_ERROR("JSON 视图文件打不开：%s", resolved.c_str());
+        recordLoadError(resolved + ": 文件打不开");
+        cache[resolved] = CacheEntry { nullptr, true };
+        touchCacheOrder(resolved);
+        return nullptr;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+
+    std::shared_ptr<const ViewTemplate> tmpl = fromString(buffer.str(), resolved);
+    cache[resolved] = CacheEntry { tmpl, tmpl == nullptr };
+    touchCacheOrder(resolved);
+    return tmpl;
+}
+
+std::shared_ptr<const ViewTemplate> ViewTemplate::fromString(const std::string& json,
+    const std::string& source)
+{
+    registerBuiltinViewTypes();
+
+    auto shared = std::make_shared<Impl>();
+
+    try
+    {
+        shared->document = Json::parse(json);
+        templateParseCount()++;
+    }
+    catch (const Json::parse_error& e)
+    {
+        // parse_error.byte 是字节偏移，折算成行号便于直接定位
+        size_t line = 1;
+        for (size_t i = 0; i < e.byte && i < json.size(); i++)
+            if (json[i] == '\n')
+                line++;
+
+        BKLV_LOG_ERROR("JSON 视图语法错误：%s:%zu  %s", source.c_str(), line, e.what());
+        recordLoadError(source + ":" + std::to_string(line) + ": " + e.what());
+        return nullptr;
+    }
+
+    return std::shared_ptr<const ViewTemplate>(new ViewTemplate(shared, source));
+}
+
+View* ViewTemplate::instantiate() const
+{
+    if (this->impl == nullptr)
+        return nullptr;
+
+    // 嵌套调用（被 include 引入）：复用外层现场，让 include 栈与节点计数覆盖整棵树。
+    // 错误也由最外层统一上报。
+    if (g_activeContext != nullptr)
+        return instantiateNode(this->impl->document, this->origin, 0, *g_activeContext);
+
+    InstantiateContext ctx;
+    // 根模板自身入栈，这样 include 绕回自己也能被检测到（fromString 的 origin 是 "<string>"）
+    if (this->origin != "<string>")
+        ctx.includeStack.push_back(this->origin);
+
+    g_activeContext = &ctx;
+    View* view     = instantiateNode(this->impl->document, this->origin, 0, ctx);
+    g_activeContext = nullptr;
+
+    // 成功也记：未知属性是警告，不中断构建，但要让调用方/测试看得见
+    std::string joined;
+    for (const std::string& error : ctx.errors)
+        joined += error + "\n";
+    lastErrorText()  = joined;
+    lastErrorCount() = (int)ctx.errors.size();
+
+    return view;
+}
+
+View* createFromJSONFile(const std::string& path)
+{
+    const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::load(path);
+    if (tmpl == nullptr)
+        return nullptr;
+    return tmpl->instantiate();
+}
+
+View* createFromJSONString(const std::string& json)
+{
+    const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::fromString(json, "<string>");
+    if (tmpl == nullptr)
+        return nullptr;
+    return tmpl->instantiate();
+}
+
+int getTemplateCacheSize()
+{
+    return (int)templateCache().size();
+}
+
+int getTemplateParseCount()
+{
+    return templateParseCount();
+}
+
+void clearTemplateCache()
+{
+    templateCache().clear();
+    templateCacheOrder().clear();
+}
+
+int getLastLoadErrorCount()
+{
+    return lastErrorCount();
+}
+
+std::string getLastLoadErrors()
+{
+    return lastErrorText();
+}
+
+} // namespace bklv

@@ -1,0 +1,3 @@
+{"type":"Box","padding":4,"children":[
+            {"include":"views/_test_inner.json"},
+            {"type":"Label","text":"外层"}]}

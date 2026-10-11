@@ -421,4 +421,71 @@ void Label::draw(ImDrawList* drawList, float x, float y, float width, float heig
     }
 }
 
+
+namespace
+{
+
+void setTextAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Label*>(v)->setText(r.text);
+}
+
+void setFontSizeAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Label*>(v)->setFontSize(r.number);
+}
+
+void setTextColorAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Label*>(v)->setTextColor(r.color);
+}
+
+void setSingleLineAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Label*>(v)->setSingleLine(r.boolean);
+}
+
+void setLineHeightAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Label*>(v)->setLineHeight(r.number);
+}
+
+void setHorizontalAlignAttr(View* v, const ResolvedValue& r)
+{
+    Label* label = static_cast<Label*>(v);
+    if (r.text == "center")
+        label->setHorizontalAlign(HorizontalAlign::CENTER);
+    else if (r.text == "right")
+        label->setHorizontalAlign(HorizontalAlign::RIGHT);
+    else
+        label->setHorizontalAlign(HorizontalAlign::LEFT);
+}
+
+void setVerticalAlignAttr(View* v, const ResolvedValue& r)
+{
+    Label* label = static_cast<Label*>(v);
+    if (r.text == "center")
+        label->setVerticalAlign(VerticalAlign::CENTER);
+    else if (r.text == "bottom")
+        label->setVerticalAlign(VerticalAlign::BOTTOM);
+    else
+        label->setVerticalAlign(VerticalAlign::TOP);
+}
+
+} // namespace
+
+const AttributeTable& Label::attributes() const
+{
+    static const AttributeTable table = {
+        { "text", AttributeKind::Text, setTextAttr, nullptr },
+        { "fontSize", AttributeKind::Number, setFontSizeAttr, nullptr },
+        { "textColor", AttributeKind::Color, setTextColorAttr, nullptr },
+        { "singleLine", AttributeKind::Bool, setSingleLineAttr, nullptr },
+        { "lineHeight", AttributeKind::Number, setLineHeightAttr, nullptr },
+        { "horizontalAlign", AttributeKind::Enum, setHorizontalAlignAttr, "left|center|right" },
+        { "verticalAlign", AttributeKind::Enum, setVerticalAlignAttr, "top|center|bottom" },
+    };
+    return table;
+}
+
 } // namespace bklv

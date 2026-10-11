@@ -106,6 +106,8 @@ class Box : public View
 
     std::string getClassString() const override { return "bklv::Box"; }
 
+    const bklv::AttributeTable& attributes() const override;
+
   protected:
     void drawChildren(ImDrawList* drawList, float x, float y, float width, float height, Style style,
         FrameContext* ctx) override;

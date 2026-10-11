@@ -67,6 +67,8 @@ class Label : public View
 
     std::string getClassString() const override { return "bklv::Label"; }
 
+    const bklv::AttributeTable& attributes() const override;
+
   protected:
     void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
         FrameContext* ctx) override;

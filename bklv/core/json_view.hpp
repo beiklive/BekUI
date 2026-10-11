@@ -1,0 +1,88 @@
+#pragma once
+
+// JSON 视图描述：把 JSON 文件/字符串变成视图树。
+//
+// 对应 borealis 的 `View::createFromXMLFile` 那一套（它用 tinyxml2），
+// 这里用 JSON，但**两段式**是必须的：
+//
+//   ViewTemplate（解析一次、可缓存、与语言/主题无关）
+//         ↓ instantiate()
+//   视图树（每次实例化新建，@i18n/ @style/ @theme/ 在这一步才解析）
+//
+// 为什么不能只做一段：模板缓存的存在意义就是"同一份描述实例化很多次"
+// （列表里每个 cell 都是同一份模板）。如果解析期就把 `@i18n/` 替换掉，
+// 缓存里就烤死了当时的语言，切语言或第二次复用时全是旧文案。
+//
+// 结构（属性直接平铺在节点上，特殊键只有四个）：
+//   {
+//     "type": "Box",              // 视图类型，见 registerViewType()
+//     "axis": "column",           // 其余键都是属性
+//     "children": [ {...} ],      // 子节点，保序（布局依赖顺序）
+//     "include": "views/x.json"   // 与 type 互斥：引入另一个描述文件
+//   }
+//
+// 错误处理：结构错误返回 nullptr 并记日志（borealis 是直接 fatal 崩进程）；
+// 未知属性只警告，并给出最接近的名字。
+
+#include <functional>
+#include <memory>
+#include <string>
+
+namespace bklv
+{
+
+class View;
+
+// 注册一个视图类型，供 JSON 的 "type" 使用。
+void registerViewType(const std::string& name, std::function<View*()> creator);
+bool isViewTypeRegistered(const std::string& name);
+
+// 已注册的类型名（错误提示与文档用）。
+std::string getViewTypeNames();
+
+class ViewTemplate
+{
+  public:
+    struct Impl; // 真正的 json 文档藏在这里，公开头文件不引 nlohmann
+
+    // 按资源路径装载（内部带缓存；同一个路径只解析一次）。
+    // 路径走 resourcePath()，所以桌面是 <exe目录>/...、Switch 是 romfs:/...
+    // 失败返回 nullptr（文件缺失 / 语法错误都算失败，且会被负缓存）。
+    static std::shared_ptr<const ViewTemplate> load(const std::string& path);
+
+    // 从内存里的 JSON 文本装载。origin 只用于日志与错误信息。
+    static std::shared_ptr<const ViewTemplate> fromString(const std::string& json, const std::string& origin);
+
+    ~ViewTemplate();
+    ViewTemplate(const ViewTemplate&) = delete;
+    ViewTemplate& operator=(const ViewTemplate&) = delete;
+
+    // 实例化一棵视图树。失败返回 nullptr（错误已进日志）。
+    View* instantiate() const;
+
+    const std::string& getOrigin() const { return this->origin; }
+
+  private:
+    ViewTemplate(std::shared_ptr<const Impl> impl, std::string origin);
+
+    std::shared_ptr<const Impl> impl;
+    std::string origin;
+};
+
+// 便捷入口：装载 + 实例化。只用一次时用这两个就够了。
+View* createFromJSONFile(const std::string& path);
+View* createFromJSONString(const std::string& json);
+
+// ---- 测试与诊断 ----
+
+// 模板缓存条目数 / 实际解析次数。解析次数的意义：
+// 同一份模板实例化 N 次，解析次数必须仍是 1。
+int getTemplateCacheSize();
+int getTemplateParseCount();
+void clearTemplateCache();
+
+// 上一次实例化遇到的错误条数（结构错误会把整次实例化判为失败）。
+int getLastLoadErrorCount();
+std::string getLastLoadErrors();
+
+} // namespace bklv

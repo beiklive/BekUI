@@ -693,4 +693,241 @@ bool View::triggerAction(ControllerButton button, bool pointer)
     return false;
 }
 
+
+namespace
+{
+
+// ---- 公共属性：任何 View 都能用的那批（尺寸 / 间距 / 定位 / 外观 / 可见性）----
+//
+// 表是函数内 static：整个进程一份，不随实例分配内存
+// （borealis 是每个 View 实例挂 7 个 unordered_map，回收列表里纯属浪费）。
+
+void setWidthAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setWidthPercentage(r.number);
+    else
+        v->setWidth(r.number);
+}
+
+void setHeightAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setHeightPercentage(r.number);
+    else
+        v->setHeight(r.number);
+}
+
+void setMinWidthAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setMinWidthPercentage(r.number);
+    else
+        v->setMinWidth(r.number);
+}
+
+void setMinHeightAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setMinHeightPercentage(r.number);
+    else
+        v->setMinHeight(r.number);
+}
+
+void setMaxWidthAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setMaxWidthPercentage(r.number);
+    else
+        v->setMaxWidth(r.number);
+}
+
+void setMaxHeightAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setMaxHeightPercentage(r.number);
+    else
+        v->setMaxHeight(r.number);
+}
+
+void setPositionTopAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setPositionTopPercentage(r.number);
+    else
+        v->setPositionTop(r.number);
+}
+
+void setPositionLeftAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setPositionLeftPercentage(r.number);
+    else
+        v->setPositionLeft(r.number);
+}
+
+void setPositionRightAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setPositionRightPercentage(r.number);
+    else
+        v->setPositionRight(r.number);
+}
+
+void setPositionBottomAttr(View* v, const ResolvedValue& r)
+{
+    if (r.percent)
+        v->setPositionBottomPercentage(r.number);
+    else
+        v->setPositionBottom(r.number);
+}
+
+void setVisibilityAttr(View* v, const ResolvedValue& r)
+{
+    if (r.text == "visible")
+        v->setVisibility(Visibility::VISIBLE);
+    else if (r.text == "invisible")
+        v->setVisibility(Visibility::INVISIBLE);
+    else
+        v->setVisibility(Visibility::GONE);
+}
+
+void setPositionTypeAttr(View* v, const ResolvedValue& r)
+{
+    v->setPositionType(r.text == "absolute" ? PositionType::ABSOLUTE : PositionType::RELATIVE);
+}
+
+void setAlignSelfAttr(View* v, const ResolvedValue& r)
+{
+    // 注意 setAlignSelf 收的是 AlignSelf，不是 AlignItems——两者值集不同，别混。
+    if (r.text == "flexStart")
+        v->setAlignSelf(AlignSelf::FLEX_START);
+    else if (r.text == "center")
+        v->setAlignSelf(AlignSelf::CENTER);
+    else if (r.text == "flexEnd")
+        v->setAlignSelf(AlignSelf::FLEX_END);
+    else if (r.text == "stretch")
+        v->setAlignSelf(AlignSelf::STRETCH);
+    else if (r.text == "baseline")
+        v->setAlignSelf(AlignSelf::BASELINE);
+    else
+        v->setAlignSelf(AlignSelf::AUTO);
+}
+
+void setMarginAttr(View* v, const ResolvedValue& r)
+{
+    v->setMargins(r.number, r.number, r.number, r.number);
+}
+
+void setBackgroundColorAttr(View* v, const ResolvedValue& r)
+{
+    v->setBackgroundColor(r.color);
+}
+
+void setBorderColorAttr(View* v, const ResolvedValue& r)
+{
+    v->setBorderColor(r.color);
+}
+
+void setBorderThicknessAttr(View* v, const ResolvedValue& r)
+{
+    v->setBorderThickness(r.number);
+}
+
+void setCornerRadiusAttr(View* v, const ResolvedValue& r)
+{
+    v->setCornerRadius(r.number);
+}
+
+void setAlphaAttr(View* v, const ResolvedValue& r)
+{
+    v->setAlpha(r.number);
+}
+
+void setClipsToBoundsAttr(View* v, const ResolvedValue& r)
+{
+    v->setClipsToBounds(r.boolean);
+}
+
+void setMarginTopAttr(View* v, const ResolvedValue& r)
+{
+    v->setMarginTop(r.number);
+}
+
+void setMarginRightAttr(View* v, const ResolvedValue& r)
+{
+    v->setMarginRight(r.number);
+}
+
+void setMarginBottomAttr(View* v, const ResolvedValue& r)
+{
+    v->setMarginBottom(r.number);
+}
+
+void setMarginLeftAttr(View* v, const ResolvedValue& r)
+{
+    v->setMarginLeft(r.number);
+}
+
+void setGrowAttr(View* v, const ResolvedValue& r)
+{
+    v->setGrow(r.number);
+}
+
+void setShrinkAttr(View* v, const ResolvedValue& r)
+{
+    v->setShrink(r.number);
+}
+
+const AttributeTable& commonAttributes()
+{
+    static const AttributeTable table = {
+        { "width", AttributeKind::Size, setWidthAttr, nullptr },
+        { "height", AttributeKind::Size, setHeightAttr, nullptr },
+        { "minWidth", AttributeKind::Size, setMinWidthAttr, nullptr },
+        { "minHeight", AttributeKind::Size, setMinHeightAttr, nullptr },
+        { "maxWidth", AttributeKind::Size, setMaxWidthAttr, nullptr },
+        { "maxHeight", AttributeKind::Size, setMaxHeightAttr, nullptr },
+        { "margin", AttributeKind::Number, setMarginAttr, nullptr },
+        { "marginTop", AttributeKind::Number, setMarginTopAttr, nullptr },
+        { "marginRight", AttributeKind::Number, setMarginRightAttr, nullptr },
+        { "marginBottom", AttributeKind::Number, setMarginBottomAttr, nullptr },
+        { "marginLeft", AttributeKind::Number, setMarginLeftAttr, nullptr },
+        { "grow", AttributeKind::Number, setGrowAttr, nullptr },
+        { "shrink", AttributeKind::Number, setShrinkAttr, nullptr },
+        { "alignSelf", AttributeKind::Enum, setAlignSelfAttr, "auto|flexStart|center|flexEnd|stretch|baseline" },
+        { "position", AttributeKind::Enum, setPositionTypeAttr, "relative|absolute" },
+        { "top", AttributeKind::Size, setPositionTopAttr, nullptr },
+        { "left", AttributeKind::Size, setPositionLeftAttr, nullptr },
+        { "right", AttributeKind::Size, setPositionRightAttr, nullptr },
+        { "bottom", AttributeKind::Size, setPositionBottomAttr, nullptr },
+        { "visibility", AttributeKind::Enum, setVisibilityAttr, "visible|invisible|gone" },
+        { "backgroundColor", AttributeKind::Color, setBackgroundColorAttr, nullptr },
+        { "borderColor", AttributeKind::Color, setBorderColorAttr, nullptr },
+        { "borderThickness", AttributeKind::Number, setBorderThicknessAttr, nullptr },
+        { "cornerRadius", AttributeKind::Number, setCornerRadiusAttr, nullptr },
+        { "alpha", AttributeKind::Number, setAlphaAttr, nullptr },
+        { "clipsToBounds", AttributeKind::Bool, setClipsToBoundsAttr, nullptr },
+    };
+    return table;
+}
+
+} // namespace
+
+const AttributeTable& View::attributes() const
+{
+    static const AttributeTable empty = {};
+    return empty;
+}
+
+ApplyResult View::applyAttribute(const std::string& name, const Value& value, std::string& error)
+{
+    // 子类表优先：子类可以覆盖公共属性的语义
+    const ApplyResult own = applyFromTable(this, this->attributes(), name, value, error);
+    if (own != ApplyResult::NotHandled)
+        return own;
+
+    return applyFromTable(this, commonAttributes(), name, value, error);
+}
+
 } // namespace bklv

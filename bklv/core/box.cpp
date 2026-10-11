@@ -479,4 +479,126 @@ void Box::drawChildren(ImDrawList*, float x, float y, float width, float height,
     }
 }
 
+
+namespace
+{
+
+// ---- Box 自己的属性：Flexbox 容器相关 ----
+
+void setAxisAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setAxis(r.text == "row" ? Axis::ROW : Axis::COLUMN);
+}
+
+void setDirectionAttr(View* v, const ResolvedValue& r)
+{
+    Box* box          = v->asBox();
+    const Direction d = r.text == "ltr" ? Direction::LEFT_TO_RIGHT
+                                        : (r.text == "rtl" ? Direction::RIGHT_TO_LEFT : Direction::INHERIT);
+    box->setDirection(d);
+}
+
+void setAlignItemsAttr(View* v, const ResolvedValue& r)
+{
+    Box* box = v->asBox();
+    if (r.text == "flexStart")
+        box->setAlignItems(AlignItems::FLEX_START);
+    else if (r.text == "center")
+        box->setAlignItems(AlignItems::CENTER);
+    else if (r.text == "flexEnd")
+        box->setAlignItems(AlignItems::FLEX_END);
+    else if (r.text == "baseline")
+        box->setAlignItems(AlignItems::BASELINE);
+    else if (r.text == "auto")
+        box->setAlignItems(AlignItems::AUTO);
+    else
+        box->setAlignItems(AlignItems::STRETCH);
+}
+
+void setJustifyContentAttr(View* v, const ResolvedValue& r)
+{
+    Box* box = v->asBox();
+    if (r.text == "center")
+        box->setJustifyContent(JustifyContent::CENTER);
+    else if (r.text == "flexEnd")
+        box->setJustifyContent(JustifyContent::FLEX_END);
+    else if (r.text == "spaceBetween")
+        box->setJustifyContent(JustifyContent::SPACE_BETWEEN);
+    else if (r.text == "spaceAround")
+        box->setJustifyContent(JustifyContent::SPACE_AROUND);
+    else if (r.text == "spaceEvenly")
+        box->setJustifyContent(JustifyContent::SPACE_EVENLY);
+    else
+        box->setJustifyContent(JustifyContent::FLEX_START);
+}
+
+void setFlexWrapAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setFlexWrap(r.boolean);
+}
+
+void setGapAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setGap(r.number);
+}
+
+void setGapRowAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setGapRow(r.number);
+}
+
+void setGapColumnAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setGapColumn(r.number);
+}
+
+void setPaddingAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setPadding(r.number, r.number, r.number, r.number);
+}
+
+void setPaddingTopAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setPaddingTop(r.number);
+}
+
+void setPaddingRightAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setPaddingRight(r.number);
+}
+
+void setPaddingBottomAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setPaddingBottom(r.number);
+}
+
+void setPaddingLeftAttr(View* v, const ResolvedValue& r)
+{
+    v->asBox()->setPaddingLeft(r.number);
+}
+
+} // namespace
+
+const AttributeTable& Box::attributes() const
+{
+    static const AttributeTable table = {
+        { "axis", AttributeKind::Enum, setAxisAttr, "row|column" },
+        { "direction", AttributeKind::Enum, setDirectionAttr, "inherit|ltr|rtl" },
+        { "alignItems", AttributeKind::Enum, setAlignItemsAttr,
+            "stretch|flexStart|center|flexEnd|baseline|auto" },
+        { "justifyContent", AttributeKind::Enum, setJustifyContentAttr,
+            "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly" },
+        { "flexWrap", AttributeKind::Bool, setFlexWrapAttr, nullptr },
+        { "gap", AttributeKind::Number, setGapAttr, nullptr },
+        { "gapRow", AttributeKind::Number, setGapRowAttr, nullptr },
+        { "gapColumn", AttributeKind::Number, setGapColumnAttr, nullptr },
+        { "padding", AttributeKind::Number, setPaddingAttr, nullptr },
+        { "paddingTop", AttributeKind::Number, setPaddingTopAttr, nullptr },
+        { "paddingRight", AttributeKind::Number, setPaddingRightAttr, nullptr },
+        { "paddingBottom", AttributeKind::Number, setPaddingBottomAttr, nullptr },
+        { "paddingLeft", AttributeKind::Number, setPaddingLeftAttr, nullptr },
+    };
+    return table;
+}
+
 } // namespace bklv

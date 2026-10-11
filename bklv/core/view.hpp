@@ -18,6 +18,7 @@
 
 #include <yoga/Yoga.h>
 
+#include "bklv/core/attributes.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/theme.hpp"
@@ -236,6 +237,16 @@ class View
     const std::string& getId() const { return this->id; }
     virtual std::string getClassString() const;
     std::string describe() const;
+
+    // ---- JSON 视图描述用的属性系统（见 core/attributes.hpp）----
+
+    // 该类的属性表。子类重写成返回自己的静态表；基类返回空表。
+    virtual const AttributeTable& attributes() const;
+
+    // 应用一个属性：先查子类表，再查公共表（尺寸/间距/外观/可见性等，见 view.cpp）。
+    // NotHandled 表示两张表都不认识这个属性，由调用方决定记账方式。
+    // Failed 表示认识但值不合法，error 里是给人看的说明。
+    ApplyResult applyAttribute(const std::string& name, const Value& value, std::string& error);
 
     Box* getParent() { return this->parent; }
     const Box* getParent() const { return this->parent; }

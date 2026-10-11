@@ -141,4 +141,51 @@ void Image::draw(ImDrawList* drawList, float x, float y, float width, float heig
         drawList->AddImage(this->texture.texture, destMin, destMax, uvMin, uvMax, tint);
 }
 
+
+namespace
+{
+
+void setImageSrcAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Image*>(v)->setImageFromFile(r.text);
+}
+
+void setImageRadiusAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Image*>(v)->setCornerRadius(r.number);
+}
+
+void setImagePlaceholderAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Image*>(v)->setPlaceholderColor(r.color);
+}
+
+void setScalingTypeAttr(View* v, const ResolvedValue& r)
+{
+    Image* image = static_cast<Image*>(v);
+    if (r.text == "fill")
+        image->setScalingType(ImageScalingType::FILL);
+    else if (r.text == "stretch")
+        image->setScalingType(ImageScalingType::STRETCH);
+    else if (r.text == "center")
+        image->setScalingType(ImageScalingType::CENTER);
+    else
+        image->setScalingType(ImageScalingType::FIT);
+}
+
+} // namespace
+
+const AttributeTable& Image::attributes() const
+{
+    static const AttributeTable table = {
+        { "src", AttributeKind::ResourcePath, setImageSrcAttr, nullptr },
+        // Image 上的 cornerRadius 指**图片本身的圆角**（子类表优先于公共表里
+        // 那个背景圆角），这才是 Image 上看得见的东西。
+        { "cornerRadius", AttributeKind::Number, setImageRadiusAttr, nullptr },
+        { "scalingType", AttributeKind::Enum, setScalingTypeAttr, "fit|fill|stretch|center" },
+        { "placeholderColor", AttributeKind::Color, setImagePlaceholderAttr, nullptr },
+    };
+    return table;
+}
+
 } // namespace bklv

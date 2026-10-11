@@ -1,0 +1,127 @@
+#pragma once
+
+// JSON 视图描述里的属性系统。
+//
+// 设计要点（相对 borealis 的 XML 属性表）：
+//   - **属性表按类静态**：borealis 给每个 View 实例挂 7 个 unordered_map
+//     （float/percentage/color/bool/string/filePath/auto），回收列表里几百个 cell 时
+//     全是纯开销。这里改成每个类一张静态表，handler 是普通函数指针、带 this。
+//   - **值带类型**：JSON 里可以写原生数字/布尔（`"fontSize": 24`），
+//     也可以写带单位的字符串（`"24px"`、`"50%"`），统一转成 ResolvedValue 再分派。
+//   - **前缀在解析期处理**：`@i18n/` `@style/` `@theme/` `@res/` 与 `#RRGGBB`。
+//   - **认识但值不对**（类型不符 / 枚举值非法）会报错并给出允许值，
+//     而不是像 borealis 那样静默丢弃。
+
+#include <initializer_list>
+#include <string>
+#include <vector>
+
+#include "imgui.h" // ImU32
+
+namespace bklv
+{
+
+class View;
+
+// 属性值的原始形态。字符串一律保留原样（可能带前缀），转换在使用时进行。
+class Value
+{
+  public:
+    enum class Kind
+    {
+        String,
+        Number,
+        Bool,
+    };
+
+    Value() = default;
+    Value(const char* text) : kind(Kind::String), text(text != nullptr ? text : "") { }
+    Value(const std::string& value) : kind(Kind::String), text(value) { }
+    Value(bool boolean) : kind(Kind::Bool), boolean(boolean) { }
+
+    // 整数/浮点都走这里；bool 由上面的重载精确匹配，避免二义。
+    template <typename T,
+        typename = typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value>::type>
+    Value(T number) : kind(Kind::Number), number(static_cast<double>(number))
+    {
+    }
+
+    Kind getKind() const { return this->kind; }
+
+    // 原样文本，仅用于错误信息（数字/布尔会转成字符串）。
+    std::string raw() const;
+
+    // 下面三个只在 getKind() 对应时才有效。
+    const std::string& getString() const { return this->text; }
+    double getNumber() const { return this->number; }
+    bool getBool() const { return this->boolean; }
+
+  private:
+    Kind kind = Kind::String;
+    std::string text;
+    double number = 0.0;
+    bool boolean = false;
+};
+
+// 属性声明的类型。决定值怎么转换、以及出错时的措辞。
+enum class AttributeKind
+{
+    Number,       // 12 / "12" / "12px" / "@style/brls/xxx"
+    Size,         // AUTO / "auto" / 12 / "50%"
+    Bool,         // true / "true"
+    Color,        // "#RRGGBB" / "#RRGGBBAA" / "@theme/xxx"
+    Text,         // 字符串，`@i18n/key` 会被翻译
+    String,       // 字符串，不做任何解析
+    ResourcePath, // `@res/xxx` -> resourcePath()
+    Enum,         // 取值必须落在 allowed 里（"row|column"）
+};
+
+// 转换好的值，交给 setter。按 kind 只填其中一部分。
+struct ResolvedValue
+{
+    float number  = 0.0f; // Number / Size（AUTO 时是 NAN）
+    bool percent  = false; // Size："50%" -> number=50, percent=true
+    bool boolean  = false;
+    ImU32 color   = 0;
+    std::string text;
+};
+
+using AttributeSetter = void (*)(View* view, const ResolvedValue& value);
+
+struct AttributeDef
+{
+    const char* name;
+    AttributeKind kind;
+    AttributeSetter set;
+    const char* allowed; // 仅 Enum 用，"row|column" 这种
+};
+
+// 一个类的属性表。静态存续（函数内 static），不随实例分配。
+class AttributeTable
+{
+  public:
+    AttributeTable(std::initializer_list<AttributeDef> defs) : defs(defs) { }
+
+    const AttributeDef* find(const std::string& name) const;
+    const std::vector<AttributeDef>& all() const { return this->defs; }
+    bool empty() const { return this->defs.empty(); }
+
+    // 拼错属性名时给个候选（编辑距离最近的）。
+    std::string suggest(const std::string& name) const;
+
+  private:
+    std::vector<AttributeDef> defs;
+};
+
+enum class ApplyResult
+{
+    NotHandled, // 这张表里没有这个属性
+    Applied,    // 认了，也设好了
+    Failed,     // 认识这个属性，但值不合法（error 里是人话）
+};
+
+// 在表里查并应用。类型不符 / 枚举非法 -> Failed 并填 error。
+ApplyResult applyFromTable(View* view, const AttributeTable& table, const std::string& name,
+    const Value& value, std::string& error);
+
+} // namespace bklv
