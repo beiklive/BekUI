@@ -1,34 +1,44 @@
-# ImGui / Yoga / Tweeny 学习项目
+# bklv
 
-用 SDL3 创建窗口、用 Dear ImGui 绘制界面的 C++17 学习项目：一边练 ImGui 的控件与布局，
-一边用 Yoga 和 Tweeny 练自动布局与动画插值，逐步长出一层自己写的视图层 `bklv`。
+**bklv** 是一个跨平台 C++17 界面库：布局交给 [Yoga](https://github.com/facebook/yoga)
+算 Flexbox，绘制交给 [Dear ImGui](https://github.com/ocornut/imgui) 的 `ImDrawList`。
+本仓库既是这个库本身，也是一组用它写的 demo。
 
-也是 [wiliwili](https://github.com/xfangfang/wiliwili) 那套界面想在桌面上复用的一个试验：
-`src/bklv` 是从 [borealis](https://github.com/xfangfang/borealis) 按需移植的视图层，
-绘制后端从 NanoVG 换成 ImGui 的 `ImDrawList`。
+- **视图即布局节点**：一个 `View` 持有一个 `YGNode`，尺寸与位置全部由 Yoga 递归算出，
+  不需要手写坐标；绘制由 `View::draw()` 递归完成。
+- **上层不认图形 API**：控件只接触 `ImDrawList` 和 `ImTextureID`，
+  换后端（OpenGL / Vulkan / GLES3 / 空后端）不用改一行业务代码。
+- **桌面三平台 + Switch**：macOS / Linux / Windows 走 SDL3，
+  Switch 走 libnx + EGL/OpenGL ES 3（SDL3 上游没有 Switch 后端）。
+- **手柄与键鼠同一套焦点系统**：方向键导航、动作注册、底部按键提示，Switch 与桌面行为一致。
 
-## 这个项目里有什么
+bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https://github.com/xfangfang/wiliwili)
+的界面框架）按需移植的，绘制后端从 NanoVG 换成 ImGui 的 `ImDrawList`。
+两者的取舍、以及后续开发计划见 [`TODO.md`](TODO.md)。
 
-- **七个示例 + 一个总览程序**，从最基础的控件到完整的虚拟列表：
+## 仓库里有什么
 
-  | 程序 | 内容 |
-  |---|---|
-  | `demo_01_widgets` | 基础控件 |
-  | `demo_02_layout` | ImGui 布局 API |
-  | `demo_03_custom_widget` | 自定义控件绘制 |
-  | `demo_04_yoga` | 用 Yoga 算 Flexbox 布局，再用 ImGui 画出来 |
-  | `demo_05_tweeny` | Tweeny 缓动、多段关键帧、循环动画 |
-  | `demo_06_bklv_layout` | 用 `src/bklv` 移植层搭布局 |
-  | `demo_07_bklv_showcase` | 虚拟列表 + 滚动 + 图片 + 焦点导航 + 调试层 |
-  | `imgui_main` | `src/main.cpp`，按 Tab 展示已实现的能力 |
+### 库：`src/bklv`
 
-- **一层与图形 API 无关的视图层**：`View` 持有一个 `YGNode`，布局交给 Yoga 递归算，
-  绘制由 `View::draw` 递归完成。上层只认 `ImDrawList` 和 `ImTextureID`，
-  换后端（OpenGL / Vulkan / GLES3 / 空后端）不用动 view 层。
-- **每个 demo 都编 GL 和 Vulkan 两个版本**。两条渲染路径的后端代码、链接库、
-  shader 版本都不同，只在一个后端上验证过的界面代码不算验证过。
-  后端是编译期决定的，所以靠两个构建目录各编一份，没有运行时开关。
-- **桌面三平台 + Switch**：macOS / Linux / Windows 走 SDL3，Switch 走 libnx + EGL/GLES3。
+| 目录 | 内容 |
+|---|---|
+| `core/` | `View` / `Box`（Flexbox 与节点管理）/ `Style`·`Theme` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / `Logger` |
+| `views/` | `Label`（换行·省略号·对齐）、`Image`、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`、`DebugWindow` |
+| `backends/` | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、空后端、Windows 的 GL 运行时加载 |
+| `platforms/` | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现 |
+
+### demo
+
+| 程序 | 内容 | 说明 |
+|---|---|---|
+| `imgui_main` | 按 Tab 展示库的能力：控件 / 文本 / 布局 / 列表 | **推荐先看这个**，右上角「显示日志」可开日志窗口 |
+| `demo_06_bklv_layout` | 用 bklv 搭一个完整布局 | 库的最小用法示例 |
+| `demo_07_bklv_showcase` | 虚拟列表 + 滚动 + 图片 + 焦点导航 | RecyclerFrame 的实战 |
+| `demo_01` ~ `demo_05` | ImGui 控件、布局、自定义绘制、Yoga、Tweeny | **纯学习示例**，不依赖 bklv，走 `demo_common.h` 那条路 |
+
+每个 demo 都编 GL 和 Vulkan 两个版本。两条渲染路径的后端代码、链接库、shader 版本
+都不同，只在一个后端上验证过的界面代码不算验证过；后端是编译期决定的，
+所以靠两个构建目录各编一份，没有运行时开关。
 
 ## 平台支持
 
@@ -84,9 +94,13 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=main && cmake --build b
 ### 运行
 
 ```bash
-./dist/demo_07_bklv_showcase      # 加 -v 启动即开调试层
-./dist/imgui_main
+./dist/imgui_main                 # 能力总览，推荐先跑这个
+./dist/demo_07_bklv_showcase      # 虚拟列表 / 滚动 / 图片
+./dist/demo_06_bklv_layout        # 最小布局示例
 ```
+
+`imgui_main` 右上角有「显示日志」按钮，点开是 ImGui 日志窗口（可拖动、可缩放、
+按级别过滤）。没有快捷键开关。
 
 `resources/testcard.png` 是相对**工作目录**读的，所以请在项目根目录下运行。
 
@@ -173,7 +187,11 @@ MSYS2 装的层放在 `mingw64\bin`，还要同时设 `VK_LAYER_PATH`。
 
 ## 用到自己的项目里
 
-构建是「源码级依赖」：第三方一律走 git submodule，由构建自己编译，不依赖系统安装的库。
+> **当前状态：源码级依赖。** bklv 还没有 `install()` 与导出的 CMake target，
+> 把它加进自己的构建时，采用「把 `src/bklv` 加进自己的源码树 / 子目录」的方式。
+> 提供 `bklv::bklv` 与 `find_package(bklv)` 已列在 [`TODO.md`](TODO.md) 的 P0。
+
+第三方一律走 git submodule，由构建自己编译，不依赖系统安装的库。
 
 ### 只要 ImGui 那部分
 
@@ -242,6 +260,7 @@ view 层和业务代码不用动。想按自己的需求裁剪，照这几条来
 
 ## 文档
 
+- [`TODO.md`](TODO.md) —— 开发计划：库化、控件补全、技术债、与 borealis 的取舍
 - [`docs/bklv-api.md`](docs/bklv-api.md) —— bklv 速查：文件职责、Box 布局调用、
   交互与内容控件、日志约定、已知的坑
 - [`docs/README.md`](docs/README.md) —— 文档索引
