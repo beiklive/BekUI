@@ -27,11 +27,22 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace bklv
 {
 
 class View;
+
+// 一条数据绑定：JSON 节点上写 `"bind": "字段名"`（可用 `"bindTo"` 指定属性，
+// 默认取该类型的主属性——Label 是 text、Image 是 src）。
+// 实例化时会把"哪个视图绑了哪个字段"收集出来，交给列表项在 setIndex 时填值。
+struct Binding
+{
+    std::string field;     // 数据字段名，由 binder 解读
+    std::string attribute; // 要设置的属性名
+    View* view = nullptr;  // 目标视图（实例化出来的树里的节点）
+};
 
 // 注册一个视图类型，供 JSON 的 "type" 使用。
 void registerViewType(const std::string& name, std::function<View*()> creator);
@@ -46,7 +57,9 @@ class ViewTemplate
     struct Impl; // 真正的 json 文档藏在这里，公开头文件不引 nlohmann
 
     // 按资源路径装载（内部带缓存；同一个路径只解析一次）。
-    // 路径走 resourcePath()，所以桌面是 <exe目录>/...、Switch 是 romfs:/...
+    // 路径走 resourcePath()，**要写出 resources/ 这一层**（和图片一样）：
+    //   load("resources/views/card.json")
+    // 桌面解析成 <exe目录>/resources/views/card.json，Switch 是 romfs:/resources/...
     // 失败返回 nullptr（文件缺失 / 语法错误都算失败，且会被负缓存）。
     static std::shared_ptr<const ViewTemplate> load(const std::string& path);
 
@@ -58,7 +71,8 @@ class ViewTemplate
     ViewTemplate& operator=(const ViewTemplate&) = delete;
 
     // 实例化一棵视图树。失败返回 nullptr（错误已进日志）。
-    View* instantiate() const;
+    // bindings 非空时，收集模板里所有 `"bind"` 节点（含 include 进来的）。
+    View* instantiate(std::vector<Binding>* bindings = nullptr) const;
 
     const std::string& getOrigin() const { return this->origin; }
 

@@ -293,8 +293,12 @@ void Label::updateTruncated(float width) const
     this->truncatedWidth    = width;
     this->truncatedFontSize = this->fontSize;
 
+    // 容差 0.5px：文本宽度和布局宽度是由两条路径算出来的
+    // （测量函数 vs Yoga 的布局结果），父容器又常常把子节点定成"恰好等于文字宽度"。
+    // 不留容差的话，只要有一点浮点误差就会判定放不下 ——
+    // 表现为一段明明够短的文字被截成一个省略号（tab 标题踩过）。
     if (this->resolveFont() == nullptr || this->text.empty()
-        || this->measureWidth(this->text, 0, this->text.size()) <= width)
+        || this->measureWidth(this->text, 0, this->text.size()) <= width + 0.5f)
     {
         this->truncated = this->text;
         return;

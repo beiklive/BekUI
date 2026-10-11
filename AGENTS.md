@@ -188,6 +188,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   资源名只用规范名；③ **不要扫目录**列语言文件——romfs 上的目录迭代真机未验证，
   要拆文件就在主文件里用 `"$files"` 清单显式列出。
   装载点是 `App::App()`（早于视图树构建），探测语言不依赖 `Platform` 实例。
+- **JSON 视图描述**（`core/json_view.*` + `core/attributes.*`）：JSON 用 `"type"` 指定
+  类型、其余键是属性、`"children"` 是子节点、`"include"` 引别的文件。
+  三条必须记住的：
+  ① **两段式**：`ViewTemplate`（可缓存、与语言无关）→ `instantiate()`（解析 `@i18n/` 等）。
+     解析期就替换 `@i18n/` 会把缓存里的语言烤死，列表 cell 复用同一模板时必现。
+  ② **路径要写出 `resources/` 这一层**（和图片一致）：`createFromJSONFile("resources/views/x.json")`；
+     属性里的 `@res/x` 则是**相对 `resources/` 目录**的（与 borealis 的 BRLS_RESOURCES 一致）。
+  ③ **属性表按类静态**：新控件要支持 JSON 就重写 `attributes()` 返回自己的静态表，
+     handler 写成不捕获的 lambda 或普通函数（会转成函数指针）；公共属性在 `view.cpp` 里。
+  结构错误返回 `nullptr` + 日志，未知属性只警告（带拼错提示）。上限：深度 32 / 节点 4096 / include 栈 32。
+- **单行 Label 的截断判断留了 0.5px 容差**（`views/label.cpp`）：文本宽度由测量函数算、
+  可用宽度由 Yoga 算，父容器又常把子节点定成"恰好等于文字宽度"，不留容差时一点浮点误差
+  就会把够短的文字截成一个省略号（tab 标题踩过：中文全变 `…`，ASCII 反而正常）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。

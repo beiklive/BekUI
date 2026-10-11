@@ -6,7 +6,8 @@
     "widgets": "Widgets",
     "text": "Text",
     "layout": "Layout",
-    "list": "List"
+    "list": "List",
+    "json": "JSON"
   },
   "demo": {
     "welcome": "Welcome to bklv",
@@ -19,5 +20,16 @@
     "ok": "OK",
     "back": "Back",
     "scroll": "Scroll"
+  },
+  "json": {
+    "hint": "This page comes from resources/views/*.json: attribute tables are per-class static, values accept native types and \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" prefixes. List items are the same idea, with values supplied by a binder.",
+    "file_section": "Whole section described by JSON",
+    "list_section": "List item template from JSON + data binding",
+    "load_failed": "JSON failed to load, see the log window",
+    "card_title": "Card from JSON",
+    "card_desc": "Text, spacing, radius and colors all live in JSON; copy changes need no rebuild.",
+    "badge": "JSON attributes",
+    "row_title": "Row {} (same template, different data)",
+    "row_subtitle": "fields title / subtitle / thumb come from a C++ binder"
   }
 }

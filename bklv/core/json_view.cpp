@@ -122,6 +122,7 @@ void touchCacheOrder(const std::string& key)
 struct InstantiateContext
 {
     std::vector<std::string> includeStack;
+    std::vector<Binding> bindings;
     int nodeCount = 0;
     std::vector<std::string> errors;
 };
@@ -165,6 +166,17 @@ bool toValue(const Json& node, Value& out, std::string& error)
             error = "属性值只能是字符串/数字/布尔，不能是数组或对象";
             return false;
     }
+}
+
+// 各类型的"主属性"：`"bind": "title"` 默认写到哪个属性上。
+// 写不清楚的（比如 Box）没默认值，必须显式用 "bindTo"。
+const char* primaryBindAttribute(const std::string& type)
+{
+    if (type == "Label")
+        return "text";
+    if (type == "Image")
+        return "src";
+    return nullptr;
 }
 
 std::string stripPrefix(std::string type)
@@ -267,12 +279,48 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         return nullptr;
     }
 
+    // ---- 数据绑定 ----
+    if (node.contains("bind"))
+    {
+        if (!node["bind"].is_string() || node["bind"].get<std::string>().empty())
+        {
+            addError(ctx, pointer + "/bind", "bind 必须是非空字符串");
+            return nullptr;
+        }
+
+        Binding binding;
+        binding.field = node["bind"].get<std::string>();
+        binding.view  = view.get();
+
+        if (node.contains("bindTo"))
+        {
+            if (!node["bindTo"].is_string())
+            {
+                addError(ctx, pointer + "/bindTo", "bindTo 必须是字符串");
+                return nullptr;
+            }
+            binding.attribute = node["bindTo"].get<std::string>();
+        }
+        else if (const char* primary = primaryBindAttribute(type))
+        {
+            binding.attribute = primary;
+        }
+        else
+        {
+            addError(ctx, pointer,
+                "类型 \"" + type + "\" 没有默认绑定属性，请用 \"bindTo\" 指定");
+            return nullptr;
+        }
+
+        ctx.bindings.push_back(binding);
+    }
+
     // ---- 属性 ----
     for (auto it = node.begin(); it != node.end(); ++it)
     {
         const std::string& key = it.key();
-        // 特殊键：type / children / include / bind（bind 给 P3 的 cell 用）
-        if (key == "type" || key == "children" || key == "include" || key == "bind")
+        // 特殊键：type / children / include / bind / bindTo
+        if (key == "type" || key == "children" || key == "include" || key == "bind" || key == "bindTo")
             continue;
 
         Value value;
@@ -454,7 +502,7 @@ std::shared_ptr<const ViewTemplate> ViewTemplate::fromString(const std::string& 
     return std::shared_ptr<const ViewTemplate>(new ViewTemplate(shared, source));
 }
 
-View* ViewTemplate::instantiate() const
+View* ViewTemplate::instantiate(std::vector<Binding>* bindings) const
 {
     if (this->impl == nullptr)
         return nullptr;
@@ -479,6 +527,10 @@ View* ViewTemplate::instantiate() const
         joined += error + "\n";
     lastErrorText()  = joined;
     lastErrorCount() = (int)ctx.errors.size();
+
+    // 只在成功时导出绑定：建树失败的话这些指针都指向已经释放的子树
+    if (bindings != nullptr && view != nullptr)
+        *bindings = ctx.bindings;
 
     return view;
 }

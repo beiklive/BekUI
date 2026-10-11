@@ -273,6 +273,7 @@ set(BKLV_CORE_SOURCES
     views/hints.cpp
     views/scrolling_frame.cpp
     views/h_scrolling_frame.cpp
+    views/json_cell.cpp
     views/recycler.cpp
     views/image.cpp
     views/progress_spinner.cpp

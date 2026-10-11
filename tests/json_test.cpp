@@ -19,6 +19,7 @@
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/views/image.hpp"
+#include "bklv/views/json_cell.hpp"
 #include "bklv/views/label.hpp"
 
 using namespace bklv;
@@ -338,6 +339,101 @@ int main()
 
         delete zh;
         delete en;
+    }
+
+    std::printf("\n== 9. 数据绑定（列表项用）==\n");
+    {
+        // 绑定收集：Label 默认绑 text，Image 默认绑 src，Box 必须显式 bindTo
+        std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::fromString(R"({
+            "type": "Box",
+            "children": [
+                { "type": "Label", "bind": "title" },
+                { "type": "Image", "bind": "thumb" },
+                { "type": "Box", "bind": "accent", "bindTo": "backgroundColor" }
+            ]
+        })", "<bind>");
+        check(tmpl != nullptr, "模板装载成功");
+
+        std::vector<Binding> bindings;
+        View* tree = tmpl->instantiate(&bindings);
+        check(tree != nullptr, "带绑定的模板实例化成功");
+        check(bindings.size() == 3, "三条绑定都被收集到");
+        if (bindings.size() == 3)
+        {
+            checkEqual(bindings[0].field, "title", "第 1 条字段名");
+            checkEqual(bindings[0].attribute, "text", "Label 的主属性是 text");
+            checkEqual(bindings[1].field, "thumb", "第 2 条字段名");
+            checkEqual(bindings[1].attribute, "src", "Image 的主属性是 src");
+            checkEqual(bindings[2].attribute, "backgroundColor", "bindTo 显式指定属性");
+        }
+        delete tree;
+
+        // Box 没有默认绑定属性，必须报错而不是猜一个
+        View* bad = createFromJSONString(R"({"type":"Box","bind":"whatever"})");
+        check(bad == nullptr, "Box 上只写 bind 会被拒绝（要求 bindTo）");
+        check(getLastLoadErrors().find("bindTo") != std::string::npos, "错误信息提示要用 bindTo");
+        delete bad;
+
+        // 实际填值：同一个 cell 复用，setIndex 换行号要换内容
+        std::shared_ptr<const ViewTemplate> cellTmpl = ViewTemplate::fromString(R"({
+            "type": "Box",
+            "children": [ { "type": "Label", "bind": "title" } ]
+        })", "<cell>");
+        check(cellTmpl != nullptr, "列表项模板装载成功");
+
+        JSONRecyclerCell* cell = JSONRecyclerCell::create(cellTmpl,
+            [](const std::string& field, size_t index) -> std::string {
+                if (field == "title")
+                    return "第 " + std::to_string(index) + " 行";
+                return {};
+            });
+        check(cell != nullptr, "JSON 列表项创建成功");
+        if (cell != nullptr)
+        {
+            check(cell->getBindings().size() == 1, "cell 里有一条绑定");
+
+            cell->setIndex(3);
+            Label* label = nullptr;
+            if (cell->getChildrenCount() > 0 && cell->getChildren()[0]->asBox() != nullptr
+                && cell->getChildren()[0]->asBox()->getChildrenCount() > 0)
+                label = asLabel(cell->getChildren()[0]->asBox()->getChildren()[0]);
+            check(label != nullptr, "能取到被绑定的 Label");
+            checkEqual(label != nullptr ? label->getText() : "<null>", "第 3 行", "setIndex(3) 填了值");
+
+            cell->setIndex(7);
+            checkEqual(label != nullptr ? label->getText() : "<null>", "第 7 行",
+                "复用同一 cell 换行号后内容更新");
+
+            delete cell;
+        }
+
+        // 空模板 / 空 binder 都不该造出半成品 cell
+        check(JSONRecyclerCell::create(nullptr, [](const std::string&, size_t) { return std::string(); })
+                == nullptr,
+            "空模板返回 nullptr");
+        check(JSONRecyclerCell::create(cellTmpl, nullptr) == nullptr, "空 binder 返回 nullptr");
+    }
+
+    std::printf("\n== 10. 随仓库发布的示例资源（防属性名打错）==\n");
+    {
+        // 手写 JSON 里写错属性名只会产生"未知属性"警告，不中断构建，
+        // 所以这里把 error 数当断言：0 才说明资源是干净的。
+        View* page = createFromJSONFile("resources/views/page_json.json");
+        check(page != nullptr, "resources/views/page_json.json 能建出视图");
+        checkEqual(std::to_string(getLastLoadErrorCount()), "0",
+            "page_json.json 没有未知属性/结构问题");
+        delete page;
+
+        std::shared_ptr<const ViewTemplate> item =
+            ViewTemplate::load("resources/views/list_item.json");
+        check(item != nullptr, "resources/views/list_item.json 能装载");
+
+        std::vector<Binding> bindings;
+        View* itemTree = item != nullptr ? item->instantiate(&bindings) : nullptr;
+        check(itemTree != nullptr, "列表项模板能实例化");
+        checkEqual(std::to_string(getLastLoadErrorCount()), "0", "list_item.json 没有未知属性");
+        check(bindings.size() == 3, "列表项模板有 3 条绑定（thumb/title/subtitle）");
+        delete itemTree;
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

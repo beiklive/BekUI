@@ -116,6 +116,13 @@ image->setImageFromFile("resources/testcard.png");
 
 `Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
+界面也可以用 JSON 描述（`resources/views/*.json`），demo 的 JSON 页就是整块界面来自 JSON，
+列表项模板也来自 JSON、数据由 C++ 侧的回调绑定：
+
+```cpp
+bklv::View* view = bklv::createFromJSONFile("resources/views/page_json.json");
+```
+
 文案也走同一套资源目录：`resources/i18n/zh-Hans.json`、`resources/i18n/en-US.json`，
 用 `bklv::getStr("demo/welcome")` 取；桌面可用 `BKLV_LOCALE=en-US` 覆盖系统语言。
 

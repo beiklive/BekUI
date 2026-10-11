@@ -6,7 +6,8 @@
     "widgets": "控件",
     "text": "文本",
     "layout": "布局",
-    "list": "列表"
+    "list": "列表",
+    "json": "JSON"
   },
   "demo": {
     "welcome": "欢迎使用 bklv",
@@ -19,5 +20,16 @@
     "ok": "确定",
     "back": "返回",
     "scroll": "滚动"
+  },
+  "json": {
+    "hint": "这一页的界面来自 resources/views/*.json：属性表按类静态注册，值支持原生类型与 \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" 前缀。列表项模板同理，只是把取值交给绑定回调。",
+    "file_section": "整块界面由 JSON 描述",
+    "list_section": "列表项模板由 JSON 描述 + 数据绑定",
+    "load_failed": "JSON 装载失败，详见日志窗口",
+    "card_title": "来自 JSON 的卡片",
+    "card_desc": "文字、间距、圆角、颜色都写在 JSON 里，改文案不用重新编译逻辑。",
+    "badge": "JSON 属性",
+    "row_title": "第 {} 行（模板相同，数据不同）",
+    "row_subtitle": "字段 title / subtitle / thumb 由 C++ 侧的 binder 提供"
   }
 }

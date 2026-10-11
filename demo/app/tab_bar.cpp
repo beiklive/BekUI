@@ -21,6 +21,10 @@ TabCell::TabCell()
     this->setCornerRadius(8.0f);
     this->setPadding(0.0f, 18.0f, 0.0f, 18.0f);
 
+    // 不参与压缩：tab 多了应该横向滚动（TabBar 本身就是 HScrollingFrame），
+    // 而不是把每个 tab 压扁到放不下文字。
+    this->setShrink(0.0f);
+
     this->label = makeText("", 15.0f, rgb(170, 180, 195), true);
     this->label->setHorizontalAlign(HorizontalAlign::CENTER);
     this->addView(this->label);
@@ -103,11 +107,13 @@ void TabBar::onLayout()
 
     if (total > 0.0f)
         this->content->setWidth(total);
+
 }
 
 void TabBar::update()
 {
     HScrollingFrame::update();
+
 
     // 焦点落到某个 tab 上就选中它
     View* focus = getInputManager().getCurrentFocus();

@@ -230,9 +230,11 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
 
         case AttributeKind::ResourcePath:
         {
+            // `@res/x` 是**相对 resources 目录**的（与 borealis 的 BRLS_RESOURCES 一致），
+            // 所以 "resources/" 前缀在这里补上，调用点只写文件名。
             std::string path = raw;
             if (startsWith(path, "@res/"))
-                path = path.substr(5);
+                path = "resources/" + path.substr(5);
             out.text = resourcePath(path);
             return true;
         }

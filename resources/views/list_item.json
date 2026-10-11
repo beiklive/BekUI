@@ -1,0 +1,41 @@
+{
+  "type": "Box",
+  "axis": "row",
+  "alignItems": "center",
+  "gap": 12,
+  "padding": 10,
+  "height": 64,
+  "cornerRadius": 8,
+  "children": [
+    {
+      "type": "Image",
+      "bind": "thumb",
+      "width": 76,
+      "height": 44,
+      "cornerRadius": 6,
+      "scalingType": "fill"
+    },
+    {
+      "type": "Box",
+      "axis": "column",
+      "grow": 1,
+      "children": [
+        {
+          "type": "Label",
+          "bind": "title",
+          "fontSize": 15,
+          "singleLine": true,
+          "textColor": "#ebeef2"
+        },
+        {
+          "type": "Label",
+          "bind": "subtitle",
+          "fontSize": 12,
+          "singleLine": true,
+          "marginTop": 3,
+          "textColor": "#96a0af"
+        }
+      ]
+    }
+  ]
+}

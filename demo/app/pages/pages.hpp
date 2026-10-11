@@ -29,4 +29,7 @@ struct ListPage
 
 ListPage buildListPage();
 
+// 页 5：整块界面 + 列表项模板都来自 JSON（属性表与数据绑定）
+bklv::Box* buildJsonPage();
+
 } // namespace demo

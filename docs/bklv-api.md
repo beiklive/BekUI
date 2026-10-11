@@ -23,6 +23,9 @@
 | `platforms/sdl3_platform.*` | macOS/Linux/Windows 的 SDL3 平台实现 |
 | `platforms/switch_platform.*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言） |
 | `core/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
+| `core/json_view.hpp/.cpp` | JSON 视图描述：类型注册、模板缓存、实例化、include、错误 |
+| `core/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/` `@theme/` `@res/` 前缀 |
+| `views/json_cell.*` | JSON 模板驱动的列表项（数据绑定 + 焦点视觉） |
 | `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
 | `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
@@ -134,6 +137,63 @@ bklv::getLocale();                         // 规范化后的当前语言
 
 `initI18n()` 在 `App` 构造时调用，早于视图树构建；也可以在测试里单独调
 `setLocale()`，默认语言表是懒加载的。
+
+## JSON 视图描述
+
+用 JSON 描述界面，运行时装成视图树。属性直接平铺在节点上，特殊键只有四个
+（`type` / `children` / `include` / `bind`）：
+
+```json
+{
+  "type": "Box", "axis": "row", "gap": 12, "padding": 12,
+  "backgroundColor": "#252a33", "cornerRadius": 10,
+  "children": [
+    { "type": "Image", "src": "@res/testcard.png", "width": 96, "height": 54,
+      "cornerRadius": 8, "scalingType": "fill" },
+    { "type": "Label", "text": "@i18n/json/card_title", "fontSize": 16, "singleLine": true }
+  ]
+}
+```
+
+```cpp
+bklv::View* view = bklv::createFromJSONFile("resources/views/page_json.json");
+if (view != nullptr)
+    box->addView(view);           // 失败时返回 nullptr，原因已在日志里
+```
+
+值可以写原生 JSON 类型，也可以写带单位的字符串：
+`24` 与 `"24px"` 等价，`"50%"` 走百分比，`"auto"` 由内容决定，`true`/`false` 是布尔。
+
+四条要记住的：
+
+1. **两段式**。`ViewTemplate` 是可缓存的"解析结果"，`instantiate()` 才把 `@i18n/`
+   这类上下文相关的前缀解析掉。同一模板实例化多次只解析一次
+   （`resources/views/list_item.json` 被 8 个 cell 共用）。
+2. **路径写全**：`createFromJSONFile("resources/views/x.json")`——和图片一样带 `resources/`
+   这一层（桌面解析到可执行文件目录，Switch 在 romfs）；属性里的 `@res/x` 则相对
+   `resources/` 目录。
+3. **出错不会崩**：语法错误带行号、结构错误带 `json_pointer` 路径，都返回 `nullptr`；
+   未知属性只是警告并提示最接近的属性名。多打一个键不会让整个界面建不出来。
+4. **新控件要能被 JSON 用**，重写 `attributes()` 返回一张静态表即可；公共属性
+   （尺寸/间距/定位/外观/可见性）在 `View` 层已经都有。
+
+列表项模板配合数据绑定（JSON 只管字段名，取值在 C++ 侧）：
+
+```json
+{ "type": "Label", "bind": "title" }
+```
+
+```cpp
+auto tmpl = bklv::ViewTemplate::load("resources/views/list_item.json");
+list->registerCell(bklv::RecyclerDataSource::DEFAULT_CELL_ID, [tmpl] {
+    return bklv::JSONRecyclerCell::create(tmpl, [](const std::string& field, size_t index) {
+        if (field == "title") return titles[index];
+        return std::string();
+    });
+});
+```
+
+`bind` 的默认目标属性：`Label` → `text`，`Image` → `src`；其他类型要显式写 `bindTo`。
 
 ## 不生成 imgui.ini
 

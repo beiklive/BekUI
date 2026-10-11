@@ -163,14 +163,26 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 对应用户确认的方案：bklv 不用 XML，用 JSON 描述视图树；i18n 同样用 JSON。
 依赖 `bklv/3rd/json`（nlohmann/json，与 borealis 同版本）。
 
-- [ ] **Template / instantiate 两阶段**
+- [x] **Template / instantiate 两阶段**
       模板缓存只存**未经语言/主题解析**的 JSON，`@i18n/` `@style/` `@theme/` 在实例化时才解析。
       否则缓存会把当前语言烤死（列表 cell 复用同一模板时必现）。
-- [ ] **属性值带类型**：`24` 与 `"24px"` 等价，`"50%"` 走百分比；类型不符报错而非静默忽略。
-- [ ] **错误可定位**：语法错误用 `json::parse_error.byte` 折算行号，属性错误用 `json_pointer` 路径。
+- [x] **属性值带类型**：`24` 与 `"24px"` 等价，`"50%"` 走百分比；类型不符报错而非静默忽略。
+- [x] **错误可定位**：语法错误用 `json::parse_error.byte` 折算行号，属性错误用 `json_pointer` 路径。
       未知属性=警告，未知 type / 结构错误=返回 nullptr（borealis 是 `fatal()` 崩进程）。
-- [ ] **cell 数据绑定**：JSON 节点 `"bind": "title"` + app 侧回调，复用现有 `RecyclerDataSource`。
-- [ ] **include + 循环检测**、**深度/节点上限**、**异常安全（RAII）**。
+- [x] **cell 数据绑定**：JSON 节点 `"bind": "title"` + app 侧回调，复用现有 `RecyclerDataSource`。
+      默认目标属性按类型定（Label→text / Image→src），其他类型要求显式 `bindTo`。
+- [x] **include + 循环检测**、**深度/节点上限**、**异常安全（RAII）**。
+
+已完成（P0–P3 + demo 接入）：
+- 依赖：`bklv/3rd/json`（nlohmann/json v3.11.3，单头模式）。实测 NRO +65536 字节
+- 代码：`core/attributes.*`、`core/json_view.*`、`views/json_cell.*`、
+  `resources/views/{page_json,list_item}.json`、`demo/app/pages/page_json.cpp`（第 5 个 tab）
+- 测试：`tests/json_test.cpp`（80 项断言）+ `tests/i18n_test.cpp`（30 项），
+  CMake 开关 `-DBKLV_BUILD_TESTS=ON`，产物在 `dist/` 用 ctest 或直接执行
+- 文档：`notes/json-view-design.md`、`docs/bklv-api.md`、README、AGENTS.md
+
+移植期间测试抓到的真 bug（都已修）：`"12px"` 声明支持但没实现、语法错误没进诊断通道、
+include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成省略号。
 
 ---
 

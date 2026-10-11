@@ -109,6 +109,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_layout.cpp
     app/pages/list_items.cpp
     app/pages/page_list.cpp
+    app/pages/page_json.cpp
 )
 
 set(BKLV_APP_ABS "")
