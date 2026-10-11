@@ -11,6 +11,7 @@
 
 #include "backends/imgui_impl_opengl3.h"
 
+#include "bklv/backends/imgui_impl_libnx.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -59,7 +60,12 @@ bool GLES3Backend::initContext(void* /*nativeWindow*/)
     // Switch 的"窗口"是默认的 NWindow，全屏，不需要创建。
     NWindow* window = nwindowGetDefault();
 
-    // 双缓冲；层数要跟像素格式一起设置。
+    // 尺寸以 NWindow 的实际尺寸为准，不要用调用方传的桌面窗口尺寸
+    // （demo 按桌面习惯请求 1280x800，而 Switch 屏幕是 1280x720）。
+    u32 actualWidth = 0, actualHeight = 0;
+    nwindowGetDimensions(window, &actualWidth, &actualHeight);
+    this->impl->width  = (int)actualWidth;
+    this->impl->height = (int)actualHeight;
     nwindowSetDimensions(window, this->impl->width, this->impl->height);
 
     this->impl->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -152,6 +158,10 @@ void GLES3Backend::shutdownImGuiRenderer()
 
 void GLES3Backend::newFrame()
 {
+    // 必须先喂平台后端：它更新 DeltaTime / DisplaySize，并把 libnx 的按键与触摸
+    // 翻译成 ImGui 事件。漏掉它的话手柄和触摸完全无响应（曾经就漏了）。
+    // 顺序也不能反：这两个都必须在 ImGui::NewFrame() 之前。
+    ImGui_ImplLibnx_NewFrame();
     ImGui_ImplOpenGL3_NewFrame();
 }
 

@@ -61,12 +61,17 @@ bool PlatformSwitch::createWindow(const std::string& /*title*/, uint32_t width, 
     float /*x*/, float /*y*/)
 {
     // Switch 没有"创建窗口"：默认 NWindow 就是全屏。
-    // 这里只决定分辨率（手持/底座都是 1280x720 逻辑分辨率）。
-    this->impl->width  = width;
-    this->impl->height = height;
+    // 调用方传的是桌面窗口尺寸（demo 请求 1280x800），Switch 屏幕是 1280x720，
+    // 所以这里**以 NWindow 的实际尺寸为准**，不要把请求值套上去。
+    (void)width;
+    (void)height;
 
     NWindow* window = nwindowGetDefault();
-    nwindowSetDimensions(window, (int)width, (int)height);
+    u32 actualWidth = 0, actualHeight = 0;
+    nwindowGetDimensions(window, &actualWidth, &actualHeight);
+    this->impl->width  = actualWidth;
+    this->impl->height = actualHeight;
+    nwindowSetDimensions(window, (int)actualWidth, (int)actualHeight);
 
     // 图形后端：Switch 用 EGL + GLES3（编译期已选好）。
     this->createBackend();

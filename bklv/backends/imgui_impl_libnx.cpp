@@ -14,9 +14,15 @@ namespace bklv
 namespace
 {
 
-// Switch 的屏幕尺寸（手持与底座都是 1280x720 的逻辑分辨率）。
-constexpr float SWITCH_WIDTH  = 1280.0f;
-constexpr float SWITCH_HEIGHT = 720.0f;
+// 屏幕尺寸不写死：从默认 NWindow 查，和平台层/渲染后端保持同一个来源。
+// Switch 手持与底座都是 1280x720，但写死三份容易在改动时对不上。
+void getScreenSize(float& width, float& height)
+{
+    u32 w = 0, h = 0;
+    nwindowGetDimensions(nwindowGetDefault(), &w, &h);
+    width  = w > 0 ? (float)w : 1280.0f;
+    height = h > 0 ? (float)h : 720.0f;
+}
 
 PadState g_pad {};
 HidTouchScreenState g_touchState {};
@@ -51,7 +57,10 @@ bool ImGui_ImplLibnx_Init()
 
     ImGuiIO& io = ImGui::GetIO();
     io.BackendPlatformName = "bklv_libnx";
-    io.DisplaySize         = ImVec2(SWITCH_WIDTH, SWITCH_HEIGHT);
+
+    float screenWidth = 0.0f, screenHeight = 0.0f;
+    getScreenSize(screenWidth, screenHeight);
+    io.DisplaySize = ImVec2(screenWidth, screenHeight);
 
     g_time        = armGetSystemTick();
     g_lastTime    = g_time;
@@ -79,7 +88,11 @@ void ImGui_ImplLibnx_NewFrame()
 
     ImGuiIO& io = ImGui::GetIO();
     io.DeltaTime = deltaTime > 0.0f ? deltaTime : (1.0f / 60.0f);
-    io.DisplaySize = ImVec2(SWITCH_WIDTH, SWITCH_HEIGHT);
+
+    // 每帧刷新：手持/底座切换后尺寸可能变。
+    float screenWidth = 0.0f, screenHeight = 0.0f;
+    getScreenSize(screenWidth, screenHeight);
+    io.DisplaySize = ImVec2(screenWidth, screenHeight);
 
     padUpdate(&g_pad);
     const u64 buttons = padGetButtons(&g_pad);
