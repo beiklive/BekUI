@@ -72,7 +72,11 @@ class App
 
     View* root = nullptr;
 
+#if defined(BKLV_SWITCH)
+    PlatformType platformType = PlatformType::SWITCH;
+#else
     PlatformType platformType = PlatformType::DESKTOP_SDL3;
+#endif
 
     // 上一次布局所用的字体版本号；字体加载完成的那一帧会触发一次全树重算。
     unsigned int lastFontGeneration = 0;

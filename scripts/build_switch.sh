@@ -116,13 +116,37 @@ echo "编译 demo (Switch / devkitA64) ..."
 
 # 逐个编译成 .o，避免一次调用太多文件。
 OBJS=()
+# 是否需要重编。**必须连头文件一起比**：只看 .cpp 的话，改头文件不会触发重编，
+# 会链进旧的目标文件——踩过一次：App 的默认平台改成了分平台的 SWITCH，
+# 但 app.o 没重编，nro 里还是旧值，现象是"改了代码重新编译，行为一点没变"。
+# 这里用 -MMD -MP 生成 make 格式的依赖文件，再逐个比其中头文件的时间戳。
+needs_rebuild() {
+    local src="$1" obj="$2" dep="$3"
+
+    if [[ ! -f "${obj}" || ! -f "${dep}" ]]; then
+        return 0
+    fi
+    if [[ "${src}" -nt "${obj}" ]]; then
+        return 0
+    fi
+
+    local prereq
+    for prereq in $(tr '\\\n' '  ' < "${dep}" | sed 's/^[^:]*://'); do
+        if [[ -f "${prereq}" && "${prereq}" -nt "${obj}" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 compile_one() {
     local src="$1"
     local rel="${src#"${ROOT_DIR}/"}"
     local obj="${BUILD_DIR}/${rel%.cpp}.o"
+    local dep="${obj%.o}.d"
     mkdir -p "$(dirname "${obj}")"
-    if [[ ! -f "${obj}" || "${src}" -nt "${obj}" ]]; then
-        "${CXX}" "${CXXFLAGS[@]}" -c "${src}" -o "${obj}"
+    if needs_rebuild "${src}" "${obj}" "${dep}"; then
+        "${CXX}" "${CXXFLAGS[@]}" -MMD -MP -c "${src}" -o "${obj}"
     fi
     OBJS+=("${obj}")
 }
@@ -138,9 +162,10 @@ YOGA_FLAGS=("${YOGA_FLAGS[@]/#-std=c++17/-std=c++20}")
 for src in "${YOGA_SOURCES[@]}"; do
     rel="${src#"${ROOT_DIR}/"}"
     obj="${BUILD_DIR}/${rel%.cpp}.o"
+    dep="${obj%.o}.d"
     mkdir -p "$(dirname "${obj}")"
-    if [[ ! -f "${obj}" || "${src}" -nt "${obj}" ]]; then
-        "${CXX}" "${YOGA_FLAGS[@]}" -c "${src}" -o "${obj}"
+    if needs_rebuild "${src}" "${obj}" "${dep}"; then
+        "${CXX}" "${YOGA_FLAGS[@]}" -MMD -MP -c "${src}" -o "${obj}"
     fi
     OBJS+=("${obj}")
 done
