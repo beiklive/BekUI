@@ -133,6 +133,14 @@ class Platform
 // 平台名字，用于日志与调试层。
 const char* getPlatformName(PlatformType type);
 
+// 尽早打开"平台侧"的日志通道。
+//
+// Switch 上没有终端，桌面上的 stdout 又可能没人看，所以这里给平台一个机会把日志
+// 落到别处（Switch 上是 sdmc:/bklv.log）。**必须在任何其它初始化之前调用**，
+// 否则早期崩溃就什么线索都没有——这个函数存在的唯一原因就是这点。
+// 桌面/无特殊通道的平台是空实现。
+void enablePlatformLog();
+
 // 创建平台。返回 nullptr 表示当前构建不含该平台。
 // 平台与图形后端都是编译期确定的：
 //   平台      —— 桌面构建编 sdl3_platform，Switch 构建编 switch_platform

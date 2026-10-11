@@ -17,6 +17,19 @@
 namespace bklv
 {
 
+void enablePlatformLog()
+{
+#if defined(BKLV_SWITCH)
+    // sdmc 由 libnx 的默认 init（fsdevMountSdmc）挂好，不需要额外初始化。
+    // 用 "w" 重开：文件里就是本次运行的完整日志。
+    if (Logger::setFileOutput("sdmc:/bklv.log"))
+        Logger::info("日志文件：sdmc:/bklv.log");
+    else
+        Logger::warning("无法写入 sdmc:/bklv.log（检查 SD 卡是否可写）");
+#endif
+}
+
+
 const char* getPlatformName(PlatformType type)
 {
     switch (type)

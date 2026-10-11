@@ -25,8 +25,10 @@ int main(int argc, char** argv)
 {
     bklv::App app;
 
+    BKLV_LOG_INFO("开始构建界面");
     demo::PageHost host;
     app.setRootView(host.getView());
+    BKLV_LOG_INFO("界面构建完成");
 
     // 每帧回调：刷新调试页上的统计信息
     app.onUpdate = [&host]() { host.update(); };

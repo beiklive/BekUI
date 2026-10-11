@@ -36,15 +36,8 @@ PlatformSwitch::PlatformSwitch()
 {
     this->impl = new Impl();
 
-    // ---- 先把日志落到 SD 卡 ----
-    //
-    // Switch 上没有终端；nxlink 又要求电脑侧连着、并且 NRO 是被 netloader 拉起的。
-    // 落一份到 sdmc:/bklv.log 就不依赖任何外部条件：初始化失败、甚至崩溃，
-    // 拔卡都能看到最后几行。sdmc 由 libnx 的默认 init（fsdevMountSdmc）挂好。
-    if (Logger::setFileOutput("sdmc:/bklv.log"))
-        Logger::info("日志文件：sdmc:/bklv.log");
-    else
-        Logger::warning("无法写入 sdmc:/bklv.log（检查 SD 卡是否可写）");
+    // SD 卡日志已在 App::App() 里开了（那是最早能执行到的用户代码）。
+    // 这里只负责 nxlink 的 stdout 重定向。
 
     // ---- nxlink 的 stdout/stderr 重定向 ----
     //

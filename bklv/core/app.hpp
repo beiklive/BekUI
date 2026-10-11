@@ -27,7 +27,7 @@ namespace bklv
 class App
 {
   public:
-    App() = default;
+    App();
     ~App();
 
     // 设置根视图，App 接管其所有权。

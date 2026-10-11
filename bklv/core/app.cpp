@@ -56,6 +56,14 @@ void App::setRootView(View* view)
 // 帧
 // ---------------------------------------------------------------------------
 
+App::App()
+{
+    // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
+    // 这样后面任何一步失败（甚至崩溃）都能留下线索。
+    enablePlatformLog();
+    BKLV_LOG_INFO("bklv 启动");
+}
+
 void App::frame()
 {
     ImGui::NewFrame();
@@ -118,6 +126,7 @@ void App::frame()
 int App::run(const std::string& title, int width, int height)
 {
     // 平台负责窗口、事件循环与图形后端（后端在平台内部按编译期选择创建）。
+    BKLV_LOG_INFO("创建平台");
     std::unique_ptr<Platform> platform(createPlatform(this->platformType));
     if (platform == nullptr)
     {
@@ -142,9 +151,11 @@ int App::run(const std::string& title, int width, int height)
 
     if (!platform->createWindow(title, (uint32_t)width, (uint32_t)height))
     {
+        BKLV_LOG_ERROR("窗口/图形上下文创建失败，退出");
         ImGui::DestroyContext();
         return 1;
     }
+    BKLV_LOG_INFO("窗口与图形上下文就绪");
 
     loadFonts();
 
@@ -153,10 +164,11 @@ int App::run(const std::string& title, int width, int height)
     // 图形 API 那一侧的渲染后端。
     if (backend == nullptr || !backend->initImGuiRenderer())
     {
-        Logger::error("ImGui 渲染后端初始化失败");
+        BKLV_LOG_ERROR("ImGui 渲染后端初始化失败，退出");
         ImGui::DestroyContext();
         return 1;
     }
+    BKLV_LOG_INFO("ImGui 渲染后端就绪，进入主循环");
 
     // 到这里上下文与渲染后端都就绪了，图片可以上传纹理了。
     initTextureStore(backend);
