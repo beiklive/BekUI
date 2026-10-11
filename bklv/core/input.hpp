@@ -82,6 +82,22 @@ class InputManager
     void giveFocus(View* view);
     View* getCurrentFocus() const { return this->currentFocus; }
 
+    // ---- 模态层（弹窗 / 下拉 / applet 面板）----
+    //
+    // pushModal() 会把当前焦点存起来，并把"指针命中"和"方向导航"限制在 modal 子树内
+    // （点到外面等于点空白，不会穿透到下面的界面）；popModal() 恢复之前的焦点。
+    // 传 closeOnBack=true 时按 B 会直接关闭这一层（modal 自己也可以注册 B 动作先处理）。
+    void pushModal(View* modal, bool closeOnBack = true);
+    void popModal();
+    View* getTopModal() const;
+    bool hasModal() const { return !this->modals.empty(); }
+    // view 是否在最上层模态的子树里（模态生效时用来限制导航）
+    bool isInsideModal(View* view) const;
+
+    // 清空模态栈与焦点（App 销毁 / 换根视图时调）。
+    // 不清的话模态栈里会留着已经被 delete 的视图，之后的指针命中与导航会踩野指针。
+    void resetFocusState();
+
     // 底部提示栏内容（来自当前焦点视图注册的动作）
     std::vector<HintItem> getHints() const;
 
@@ -113,6 +129,14 @@ class InputManager
     void navigate(FocusDirection direction);
 
     View* currentFocus = nullptr;
+
+    struct ModalEntry
+    {
+        View* modal         = nullptr;
+        View* savedFocus    = nullptr;
+        bool closeOnBack    = true;
+    };
+    std::vector<ModalEntry> modals;
     View* root         = nullptr;
 
     bool pointerDown = false;

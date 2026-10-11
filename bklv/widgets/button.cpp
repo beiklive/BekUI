@@ -6,6 +6,7 @@
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/core/time.hpp"
 
 namespace bklv
 {
@@ -44,6 +45,7 @@ Button::Button(const std::string& text, const std::string& variant)
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, getStr("hints/ok"), [this](View*) { this->trigger(); });
 
+    this->enableContentMeasurement();
     this->applyTheme();
 }
 
@@ -67,8 +69,8 @@ void Button::trigger()
     // 按下反馈：打开 pressed 状态，过一小段时间由 update() 关掉。
     // 外观 JSON 里可以给 pressed 定义颜色/位移等动效。
     this->setAppearanceState("pressed", true);
-    this->pressedUntil = ImGui::GetTime()
-        + (double)getTheme().number("metric.anim.fast", 90.0f) / 1000.0;
+    const double now = ImGui::GetCurrentContext() != nullptr ? ImGui::GetTime() : 0.0;
+    this->pressedUntil = now + (double)getTheme().number("metric.anim.fast", 90.0f) / 1000.0;
 
     if (this->onClick)
         this->onClick();
@@ -78,7 +80,11 @@ void Button::update()
 {
     AppearanceView::update();
 
-    if (this->isAppearanceStateActive("pressed") && ImGui::GetTime() >= (double)this->pressedUntil)
+    static double clock = 0.0; // 没有 ImGui 上下文时自己累计（测试用）
+    clock += getFrameDeltaSeconds();
+
+    const double now = ImGui::GetCurrentContext() != nullptr ? ImGui::GetTime() : clock;
+    if (this->isAppearanceStateActive("pressed") && now >= this->pressedUntil)
         this->setAppearanceState("pressed", false);
 }
 

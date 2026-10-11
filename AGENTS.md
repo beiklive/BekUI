@@ -236,6 +236,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ⑤ **装饰件用显式 `width`/`height`**：层默认铺满"控件范围按 inset 收缩后"的区域，
      给了 `width`（如色条 4）或 `height`（如下边线 1）就按 `align`/`valign` 摆放。
   缺项回退链：当前主题 → default → 控件空外观（警告，不崩）。
+- **弹层与模态输入**（`core/input.cpp` 的模态栈 + `core/app.cpp` 的 `pushOverlay`）：
+  `App::pushOverlay(view)` 把弹层挂到根视图最上层并切模态；`popOverlay` 摘下并恢复焦点。
+  三条：
+  ① **模态生效时指针命中从模态根开始**（点到外面等于点空白，不穿透），
+     方向导航也会被挡在模态外（`isInsideModal`）。
+  ② **App 销毁 / 换根视图时必须 `resetFocusState()`**：模态栈是进程级静态，
+     根视图一删里面的指针就是野指针，之后的导航/命中会踩崩（测试里踩过）。
+  ③ **关掉弹层要等动效播完再摘**：摘掉就脱离视图树，`update()` 不再跑，
+     关闭动效根本播不出来。Dialog 是"先切状态、播完再 popOverlay"。
+- **状态动效的取消要撤掉旧补间**（`core/appearance.cpp` 的 `setState`）：
+  重算目标时**先撤该通道正在跑的补间，再决定要不要建新的**。
+  不能等"目标与当前值不同"才撤——刚打开又马上关掉时当前值还等于初值，
+  旧补间会被漏掉、继续往旧目标跑（弹窗面板整块补到透明就是这么来的）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
@@ -265,6 +278,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   core/             接口层：view / box / app / platform / graphics / input / ...
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
+                    / slider / tab_frame / sidebar / dialog
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

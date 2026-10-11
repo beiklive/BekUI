@@ -68,6 +68,17 @@ class App
     // 了，会冒泡到根立刻重算一次。
     static void requestLayout();
 
+    // 当前进程里的 App 实例（弹窗这类控件要挂到根视图上，就得找到它）。
+    // 由 App 构造时登记、析构时清掉；没有实例时返回 nullptr。
+    static App* getCurrent();
+
+    // ---- 弹层（Dialog / Dropdown / applet 面板都用它）----
+    //
+    // 挂到根视图最上层（绝对定位铺满画布），并把输入层切到模态：
+    // 指针只命中弹层内部，方向导航不会跑出弹层，关闭后焦点自动回到打开前的视图。
+    bool pushOverlay(View* overlay, bool closeOnBack = true);
+    void popOverlay(View* overlay, bool free = false);
+
     // 运行时换肤：重新装载主题、让整棵视图树重新套用外观、并重排一次。
     // 已建好的视图会更新（applyTheme），但**文案不会重译**（那是 i18n 的事）。
     bool setTheme(const std::string& name);

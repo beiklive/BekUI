@@ -10,6 +10,8 @@
     "widgets/header.json",
     "widgets/bottom_bar.json",
     "widgets/slider.json",
-    "widgets/tab_cell.json"
+    "widgets/tab_cell.json",
+    "widgets/dialog_backdrop.json",
+    "widgets/dialog.json"
   ]
 }

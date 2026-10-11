@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "bklv/core/appearance.hpp"
+#include "bklv/core/box.hpp"
 #include "bklv/core/graphics.hpp" // TextureRef
-#include "bklv/core/view.hpp"
 
 namespace bklv
 {
 
-class AppearanceView : public View
+class AppearanceView : public Box
 {
   public:
     // appearanceName 是主题里 widgets/<name>.json 的名字（如 "button"）。
@@ -60,6 +60,12 @@ class AppearanceView : public View
     {
     }
 
+    // 开启"按内容算固有尺寸"：文字层用字号量文本 + 两侧 inset。
+    //
+    // **只能给叶子控件开**：Yoga 不允许带测量函数的节点再有子节点
+    // （DialogPanel 这类要装按钮行的容器就不能开，得用自己的尺寸）。
+    void enableContentMeasurement();
+
     const AppearanceInstance& getAppearanceInstance() const { return this->appearance; }
     const std::string& getAppearanceName() const { return this->appearanceName; }
 
@@ -77,9 +83,7 @@ class AppearanceView : public View
   protected:
 
   private:
-    // 外观驱动控件要能自己算固有尺寸：文字层用字号量文本 + 两侧 inset，
-    // 装饰层用显式 width/height 参与。没有内容时退化为 0，由父容器决定。
-    void installMeasureFunction();
+
 
     // 取层在给定控件矩形里的实际绘制范围（应用 inset 与 offset）
     void layerRect(const AppearanceLayer& layer, float x, float y, float width, float height,

@@ -30,6 +30,7 @@ BottomBar::BottomBar(const std::string& text, const std::string& variant)
     this->setText(text);
     this->setWidthPercentage(100.0f);
     this->setHeight(getTheme().number("metric.bottomBar.height", 36.0f));
+    this->enableContentMeasurement();
 
     this->applyTheme();
 }

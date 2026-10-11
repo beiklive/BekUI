@@ -132,8 +132,69 @@ void InputManager::navigate(FocusDirection direction)
     if (next == nullptr)
         next = this->root->getNextFocus(direction, this->currentFocus);
 
+    // 有模态层时不许把焦点移到模态外面去
+    if (this->hasModal() && next != nullptr && !isInsideModal(next))
+        next = nullptr;
+
     if (next != nullptr && next != this->currentFocus)
         this->giveFocus(next);
+}
+
+void InputManager::resetFocusState()
+{
+    this->modals.clear();
+    this->currentFocus = nullptr;
+}
+
+bool InputManager::isInsideModal(View* view) const
+{
+    if (!this->hasModal())
+        return true;
+
+    View* modal = this->getTopModal();
+    for (View* v = view; v != nullptr; v = v->getParent())
+        if (v == modal)
+            return true;
+    return false;
+}
+
+void InputManager::pushModal(View* modal, bool closeOnBack)
+{
+    if (modal == nullptr)
+        return;
+
+    ModalEntry entry;
+    entry.modal       = modal;
+    entry.savedFocus  = this->currentFocus;
+    entry.closeOnBack = closeOnBack;
+    this->modals.push_back(entry);
+
+    // 焦点先进模态里的默认焦点（否则第一次方向键会从外面开始算）
+    if (View* inner = modal->getDefaultFocus())
+        this->giveFocus(inner);
+    else if (modal->isFocusable())
+        this->giveFocus(modal);
+}
+
+void InputManager::popModal()
+{
+    if (this->modals.empty())
+        return;
+
+    ModalEntry entry = this->modals.back();
+    this->modals.pop_back();
+
+    // 恢复打开模态之前的焦点；那个视图可能已经不在了（被销毁），所以先确认它还在树上
+    View* restore = entry.savedFocus;
+    while (restore != nullptr && restore->getParent() == nullptr && restore != this->root)
+        restore = nullptr;
+
+    this->giveFocus(restore);
+}
+
+View* InputManager::getTopModal() const
+{
+    return this->modals.empty() ? nullptr : this->modals.back().modal;
 }
 
 void InputManager::giveFocus(View* view)
@@ -221,7 +282,10 @@ void InputManager::handlePointer()
     if (this->root == nullptr)
         return;
 
-    View* hit = this->root->hitTest(this->pointerPosition);
+    // 有模态层时，命中判定从最上层模态开始：点到模态外面等于点空白，
+    // 不会穿透到底下的界面（这是弹窗/下拉能"拦住输入"的关键）。
+    View* hitRoot = this->hasModal() ? this->getTopModal() : this->root;
+    View* hit     = hitRoot->hitTest(this->pointerPosition);
     if (hit == nullptr)
         return;
 

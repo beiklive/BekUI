@@ -59,6 +59,15 @@ void Box::addView(View* view, size_t position)
         return;
     }
 
+    // Yoga 不允许带测量函数的节点再有子节点（会直接抛异常崩掉）。
+    // 这里提前拦成一条明确报错：外观驱动控件默认是叶子，容器就不该开测量。
+    if (YGNodeHasMeasureFunc(this->ygNode))
+    {
+        Logger::error("Box::addView: " + this->getClassString()
+            + " 注册了测量函数，不能再有子节点（Yoga 限制）");
+        return;
+    }
+
     // 1. C++ 对象树
     this->children.insert(this->children.begin() + static_cast<ptrdiff_t>(position), view);
 

@@ -32,6 +32,7 @@ Header::Header(const std::string& variant)
     // 高度来自主题；宽度铺满父容器
     this->setWidthPercentage(100.0f);
     this->setHeight(getTheme().number("metric.header.height", 48.0f));
+    this->enableContentMeasurement();
 
     this->applyTheme();
 }

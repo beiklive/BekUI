@@ -8,6 +8,7 @@
 #include "bklv/core/theme_data.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/dialog.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
@@ -137,7 +138,38 @@ Box* buildThemePage()
     statePanel->addView(stateRow);
     page->addView(statePanel);
 
-    // ---- 4. 底栏：上边线 + 一行提示（结构同样来自 JSON）----
+    // ---- 4. 弹窗：遮罩 + 面板 + 按钮行，开关也是外观状态动效 ----
+    ThemePanel* dialogPanel = new ThemePanel();
+    dialogPanel->addView(makeText(getStr("theme/dialog_title"), 16.0f, rgb(200, 208, 220)));
+    dialogPanel->addView(makeText(getStr("theme/dialog_desc"), 14.0f, getTheme().color("color.text.dim")));
+
+    // 复用同一个实例：关掉之后还能再开，不用每次新建
+    static Dialog* dialog = nullptr;
+    Button* openDialog     = new Button(getStr("theme/open_dialog"));
+    openDialog->setOnClick([] {
+        if (dialog == nullptr)
+        {
+            dialog = new Dialog();
+            dialog->setTitle(getStr("theme/dialog_demo_title"));
+            dialog->setText(getStr("theme/dialog_demo_text"));
+            dialog->addButton(getStr("hints/ok"), []( ) {
+                if (dialog != nullptr)
+                    dialog->close();
+            });
+            dialog->addButton(getStr("theme/dialog_cancel"), [] {
+                if (dialog != nullptr)
+                    dialog->close();
+            });
+        }
+        dialog->open();
+    });
+    Box* dialogRow = makeRow(12.0f);
+    dialogRow->setAlignItems(AlignItems::CENTER);
+    dialogRow->addView(openDialog);
+    dialogPanel->addView(dialogRow);
+    page->addView(dialogPanel);
+
+    // ---- 5. 底栏：上边线 + 一行提示（结构同样来自 JSON）----
     BottomBar* bottom = new BottomBar();
     bottom->showHintsFromFocus();
     if (bottom->getText().empty()) // 还没有焦点时没有提示，用静态文案兜底

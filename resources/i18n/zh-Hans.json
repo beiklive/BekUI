@@ -46,7 +46,13 @@
     "states_title": "状态动效",
     "states_desc": "方向键左右移动焦点，观察颜色补间；按回车看按下反馈。",
     "focus_sample": "按钮 {}",
-    "bottom_hint": "底栏也是外观驱动的：上边线 + 一行文字，结构在 widgets/bottom_bar.json"
+    "bottom_hint": "底栏也是外观驱动的：上边线 + 一行文字，结构在 widgets/bottom_bar.json",
+    "dialog_title": "弹窗",
+    "dialog_desc": "遮罩与面板都是外观驱动的：透明度与位移的补间写在 JSON 里。打开时输入切到模态——点外面、方向键都不会穿透到下面的界面，关闭后焦点自动回到原来那个按钮。",
+    "open_dialog": "打开弹窗",
+    "dialog_demo_title": "这是一个弹窗",
+    "dialog_demo_text": "面板、标题、正文、按钮的位置与动效都来自主题 JSON。试试点遮罩外面：不会穿透。",
+    "dialog_cancel": "取消"
   },
   "nav": {
     "hint": "TabFrame 与 Sidebar 都是库级控件：tab 格子、选中态、面板底色都由主题 JSON 描述。切页时旧页面只脱离不销毁，状态会保留。",

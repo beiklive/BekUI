@@ -1,0 +1,27 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "dim",
+      "fill": "#00000000",
+      "width": 0,
+      "height": 0
+    }
+  ],
+  "states": {
+    "open": {
+      "dim.fill": {
+        "to": "#00000099",
+        "duration": 160,
+        "easing": "quadraticOut"
+      }
+    },
+    "closed": {
+      "dim.fill": {
+        "to": "#00000000",
+        "duration": 140,
+        "easing": "quadraticOut"
+      }
+    }
+  }
+}

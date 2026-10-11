@@ -4,6 +4,7 @@
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/widgets/appearance_view.hpp"
 
 #include <cstdlib>
 #include <functional>
@@ -18,6 +19,12 @@
 
 namespace bklv
 {
+
+namespace
+{
+// 当前进程里的 App 实例（弹窗这类控件要挂到根视图上就得找到它）
+App* g_currentApp = nullptr;
+} // namespace
 
 // 最近一次布局使用的画布尺寸。
 float App::lastLayoutWidth  = 0.0f;
@@ -34,6 +41,13 @@ const char* App::getGraphicsBackendName()
 
 App::~App()
 {
+    if (g_currentApp == this)
+        g_currentApp = nullptr;
+
+    // 先清掉输入层的焦点与模态栈：模态栈是进程级的静态，
+    // 根视图一删，里面的指针就是野指针了（再导航/命中就踩崩）。
+    getInputManager().resetFocusState();
+
     delete this->root;
     this->root = nullptr;
 }
@@ -42,6 +56,9 @@ void App::setRootView(View* view)
 {
     if (this->root == view)
         return;
+
+    // 换根视图 = 旧树整棵作废，输入层里指向旧树的焦点/模态必须先清掉
+    getInputManager().resetFocusState();
 
     delete this->root;
     this->root = view;
@@ -110,8 +127,51 @@ unsigned int App::getLayoutCount()
     return g_layoutCount;
 }
 
+App* App::getCurrent()
+{
+    return g_currentApp;
+}
+
+bool App::pushOverlay(View* overlay, bool closeOnBack)
+{
+    if (overlay == nullptr || this->root == nullptr)
+        return false;
+
+    Box* rootBox = this->root->asBox();
+    if (rootBox == nullptr)
+    {
+        BKLV_LOG_ERROR("根视图不是容器，挂不了弹层");
+        return false;
+    }
+
+    // 铺满画布、盖在最上层（后加的子节点后绘制）
+    overlay->setPositionType(PositionType::ABSOLUTE);
+    overlay->setPositionTop(0.0f);
+    overlay->setPositionLeft(0.0f);
+    overlay->setWidthPercentage(100.0f);
+    overlay->setHeightPercentage(100.0f);
+
+    rootBox->addView(overlay);
+    getInputManager().pushModal(overlay, closeOnBack);
+    return true;
+}
+
+void App::popOverlay(View* overlay, bool free)
+{
+    if (overlay == nullptr || this->root == nullptr)
+        return;
+
+    // 只在它确实是当前最上层模态时才弹栈，避免栈错位
+    if (getInputManager().getTopModal() == overlay)
+        getInputManager().popModal();
+
+    if (Box* rootBox = this->root->asBox())
+        rootBox->removeView(overlay, free);
+}
+
 App::App()
 {
+    g_currentApp = this;
     // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
     // 这样后面任何一步失败（甚至崩溃）都能留下线索。
     enablePlatformLog();

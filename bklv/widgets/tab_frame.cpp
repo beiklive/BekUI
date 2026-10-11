@@ -18,6 +18,9 @@ TabCell::TabCell()
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, "切换", [this](View*) { this->trigger(); });
 
+    // tab 格子是叶子控件：宽度按"文字 + 两侧 inset"算出来
+    this->enableContentMeasurement();
+
     this->applyTheme();
 }
 

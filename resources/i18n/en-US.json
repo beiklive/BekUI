@@ -46,7 +46,13 @@
     "states_title": "State animation",
     "states_desc": "Move focus with left/right, watch the color tween; press A to see the press feedback.",
     "focus_sample": "Button {}",
-    "bottom_hint": "The bottom bar is appearance-driven too: top line + one line of text, structure in widgets/bottom_bar.json"
+    "bottom_hint": "The bottom bar is appearance-driven too: top line + one line of text, structure in widgets/bottom_bar.json",
+    "dialog_title": "Dialog",
+    "dialog_desc": "Backdrop and panel are appearance-driven: opacity and offset tweens live in JSON. While open, input is modal - clicks outside and arrow keys do not reach the page below, and focus returns to the button that opened it.",
+    "open_dialog": "Open dialog",
+    "dialog_demo_title": "This is a dialog",
+    "dialog_demo_text": "Panel, title, body and button placement all come from theme JSON. Try clicking outside: it will not pass through.",
+    "dialog_cancel": "Cancel"
   },
   "nav": {
     "hint": "TabFrame and Sidebar are library-level widgets: tab cells, selected state and panel colors are all described by theme JSON. Switching tabs detaches the old page instead of destroying it.",

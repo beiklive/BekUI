@@ -11,6 +11,12 @@
 namespace bklv
 {
 
+// 这一帧的间隔（秒）。
+//
+// **带 ImGui 上下文保护**：无窗口测试里没有 ImGui 上下文，直接调 ImGui::GetIO()
+// 会踩空指针（测试里踩过）。没有上下文时按 60fps 估算，测试也就能跑动画。
+float getFrameDeltaSeconds();
+
 // 返回自进程启动以来的微秒数，对应 borealis 的 getCPUTimeUsec()。
 uint64_t getCPUTimeUsec();
 

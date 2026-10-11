@@ -178,6 +178,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] `Slider` / `TabFrame` / `Sidebar`
 - [x] **`@theme/` 引用写错会硬失败**（不再静默回退成洋红），
       并由 theme_test 第 8 节逐个编译两套主题的全部外观兜底
+- [x] **弹层 + 焦点栈**（`InputManager` 模态栈 + `App::pushOverlay`/`popOverlay`）：
+      模态内命中与导航限制、焦点保存/恢复、App 销毁时清态
+- [x] `Dialog`（遮罩 + 面板 + 按钮行，开关走外观状态动效）
 
 ### 控件移植清单（对照 borealis 的 20 个）
 
@@ -197,8 +200,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | sidebar | `widgets/sidebar` | 新增（条目复用 tab_cell 外观） |
 | slider | `widgets/slider` | 新增（外观分段 track/fill/knob，进度几何留 C++） |
 | applet_frame | `widgets/` | **待做**（Switch 宿主窗口；桌面空实现） |
-| dialog | `widgets/` | **待做**：先补弹层 + 焦点栈 |
-| dropdown | `widgets/` | **待做**：先补弹层 + 焦点栈 |
+| dialog | `widgets/dialog` | 新增（含弹层 + 焦点栈：模态输入、焦点保存/恢复） |
+| dropdown | `widgets/` | **待做**：弹层能力已就绪，直接用 |
 | edit_text_dialog | `widgets/` | **待做**：先补 IME |
 
 ## JSON 视图系统（移植 borealis 的 XML 视图）

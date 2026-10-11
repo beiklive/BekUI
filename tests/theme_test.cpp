@@ -170,6 +170,20 @@ int main()
             "文字色补到 onAccent");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
+        // 先单独验一个容易漏的情况：刚打开就马上关掉——这时当前值还等于初值，
+        // 旧补间必须被撤掉，否则它会继续往状态目标跑（弹窗面板整块补透明就是这么来的）
+        {
+            AppearanceInstance quick;
+            quick.setAppearance(button);
+            quick.setState("focused", true);   // 启动 1 -> 目标色 的补间
+            quick.setState("focused", false);  // 立刻撤销：当前值还没动
+            for (int i = 0; i < 30; i++)
+                quick.update(0.05f);
+            checkColor(quick.getColor(0, AppearanceProp::Fill), IM_COL32(0x2E, 0x33, 0x3C, 255),
+                "开了又马上关：停在初值，不会继续跑到状态目标");
+            check(!quick.isAnimating(), "撤销后不该还有补间在跑");
+        }
+
         instance.setState("focused", false);
         instance.update(0.3f);
         checkColor(instance.getColor(0, AppearanceProp::Fill), idleFill, "取消聚焦后底色回到初值");
@@ -221,7 +235,7 @@ int main()
         // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
         // 选中态整块变成洋红，就是这个错误。
         const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
-            "slider", "tab_cell" };
+            "slider", "tab_cell", "dialog", "dialog_backdrop" };
 
         for (const char* themeName : { "default", "ocean" })
         {

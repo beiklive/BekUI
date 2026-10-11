@@ -9,6 +9,14 @@
 namespace bklv
 {
 
+float getFrameDeltaSeconds()
+{
+    if (ImGui::GetCurrentContext() == nullptr)
+        return 1.0f / 60.0f;
+
+    return ImGui::GetIO().DeltaTime;
+}
+
 // ---- Ticking 全局注册表 ----
 
 static std::vector<Ticking*>& tickingRegistry()

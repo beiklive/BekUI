@@ -65,6 +65,9 @@ void Slider::update()
 
 void Slider::applyPointer()
 {
+    if (ImGui::GetCurrentContext() == nullptr)
+        return; // 无窗口测试没有指针输入
+
     ImGuiIO& io = ImGui::GetIO();
     if (!io.MouseDown[0] && !io.MouseDown[1])
     {

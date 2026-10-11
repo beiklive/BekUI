@@ -7,19 +7,22 @@
 #include "bklv/core/font.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/time.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
 {
 
 AppearanceView::AppearanceView(std::string appearanceName, bool focusable)
-    : appearanceName(std::move(appearanceName))
+    : Box(Axis::COLUMN) // 外观驱动控件也是容器：弹窗要在里面放按钮行
+    , appearanceName(std::move(appearanceName))
     , focusable(focusable)
 {
-    this->installMeasureFunction();
+    // 默认不装测量函数：装了之后 Yoga 不许这个节点再有子节点。
+    // 需要"按内容定尺寸"的叶子控件（Button / TabCell / Header …）自己调 enableContentMeasurement()。
 }
 
-void AppearanceView::installMeasureFunction()
+void AppearanceView::enableContentMeasurement()
 {
     // 固有尺寸 = 各层里最大的那个"内容尺寸 + 两侧 inset"。
     // 文字层的宽度随字号变，所以字号改了要 markMeasureDirty（applyTheme/setText 里会做）。
@@ -142,8 +145,10 @@ void AppearanceView::update()
     if (!this->appearance.isAnimating())
         return;
 
-    // 补间在跑：用帧间隔推进（tweeny 内部按毫秒插值）
-    this->appearance.update(ImGui::GetIO().DeltaTime);
+    // 补间在跑：用帧间隔推进（tweeny 内部按毫秒插值）。
+    // getFrameDeltaSeconds() 在没有 ImGui 上下文时给 60fps 的估算值，
+    // 所以无窗口测试里也能让动效往前走。
+    this->appearance.update(getFrameDeltaSeconds());
 }
 
 std::string AppearanceView::getLayerText(const std::string& source)

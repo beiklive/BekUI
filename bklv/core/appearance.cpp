@@ -721,10 +721,11 @@ void AppearanceInstance::setState(const std::string& state, bool active)
             for (int c = 0; c < channels; c++)
             {
                 const float current = this->impl->values[layerIndex][propIndex(prop)].channel[c];
-                if (std::fabs(current - target[c]) < 0.01f)
-                    continue;
 
-                // 同一属性通道重复触发时替换旧的
+                // **先撤掉这个通道上正在跑的补间**，再看要不要建新的。
+                // 不能等到"目标与当前值不同"才撤：刚打开又马上关掉时，
+                // 当前值还等于初值，旧的补间就会被漏掉，继续往旧目标跑
+                // （弹窗面板整块补到透明就是这么来的）。
                 this->impl->tweens.erase(
                     std::remove_if(this->impl->tweens.begin(), this->impl->tweens.end(),
                         [&](const Impl::ActiveTween& other) {
@@ -732,6 +733,10 @@ void AppearanceInstance::setState(const std::string& state, bool active)
                                 && other.channel == c;
                         }),
                     this->impl->tweens.end());
+
+                // 目标与当前值一致就不用补了（保持当前值）
+                if (std::fabs(current - target[c]) < 0.01f)
+                    continue;
 
                 this->impl->tweens.push_back(Impl::ActiveTween { (int)layerIndex, propIndex(prop), c,
                     makeTween(current, target[c], frames, easing) });
