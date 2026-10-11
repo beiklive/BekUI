@@ -23,6 +23,8 @@ ScrollingFrame::ScrollingFrame()
 {
     // 这是滚动容器的核心：裁剪掉超出自身的部分。
     this->setClipsToBounds(true);
+    // 内边距设置
+    this->setPadding(5.0f, 15.0f, 5.0f, 15.0f);
 }
 
 ScrollingFrame::~ScrollingFrame()
