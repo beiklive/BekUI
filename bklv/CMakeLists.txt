@@ -266,6 +266,7 @@ set(BKLV_CORE_SOURCES
     core/json_view.cpp
     core/theme_data.cpp
     core/ime.cpp
+    core/ui_scale.cpp
     core/appearance.cpp
     core/platform.cpp
     core/gamepad.cpp

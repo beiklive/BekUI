@@ -19,6 +19,7 @@
     "widgets/text_field.json",
     "widgets/edit_text_dialog.json",
     "widgets/hint_item.json",
-    "widgets/hints_bar.json"
+    "widgets/hints_bar.json",
+    "widgets/rectangle.card.json"
   ]
 }

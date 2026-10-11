@@ -125,11 +125,16 @@ int main()
         check(button != nullptr, "button 外观能取到");
         if (button != nullptr)
         {
-            check(button->getLayers().size() == 2, "两层：底 + 文字");
-            if (button->getLayers().size() == 2)
+            // 新结构：底 / 高亮底 / 文字 / 辉光 / 描边（后三层是 borealis 的焦点高亮）
+            check(button->getLayers().size() == 5, "五层：底 + 高亮底 + 文字 + 辉光 + 描边");
+            if (button->getLayers().size() == 5)
             {
                 const AppearanceLayer& bg    = button->getLayers()[0];
-                const AppearanceLayer& title = button->getLayers()[1];
+                const AppearanceLayer& title = button->getLayers()[2];
+
+                checkEqual(button->getLayers()[1].id, "hlBg", "第 1 层是高亮底");
+                checkEqual(button->getLayers()[3].id, "hlGlow", "第 3 层是辉光");
+                checkEqual(button->getLayers()[4].id, "hlBorder", "第 4 层是描边");
 
                 checkEqual(bg.id, "bg", "第 1 层 id");
                 check(bg.op == AppearanceLayer::Op::Rect, "第 1 层是 rect");
@@ -144,7 +149,8 @@ int main()
             }
 
             check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
-            check(button->getTransitions("focused").size() == 2, "focused 有两条属性动效");
+            check(button->getTransitions("focused").size() == 5,
+                "focused 有五条属性动效（高亮底 + 辉光 + 描边）");
         }
     }
 
@@ -156,7 +162,13 @@ int main()
         AppearanceInstance instance;
         instance.setAppearance(button);
         checkColor(instance.getColor(0, AppearanceProp::Fill),
-            getTheme().color("color.surface.raised"), "初值：底是 surface.raised");
+            getTheme().color("color.button.defaultBg"), "初值：底是主题的按钮底色");
+
+        const int hlBgIndex     = button->indexOfLayer("hlBg");
+        const int hlBorderIndex = button->indexOfLayer("hlBorder");
+        check(hlBgIndex > 0 && hlBorderIndex > 0, "找得到高亮层");
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), 0,
+            "初始不聚焦：高亮底是透明的");
         check(!instance.isAnimating(), "没触发状态时不该有补间在跑");
 
         instance.setState("focused", true);
@@ -165,24 +177,32 @@ int main()
         // 目标色
         // 断言"补到了主题里那个颜色"，而不是写死色值：
         // 主题是数据，测试不该因为改色就被误伤
-        const ImU32 focusedFill = getTheme().color("color.state.focus");
-        const ImU32 idleFill    = getTheme().color("color.surface.raised");
+        const ImU32 focusedFill = getTheme().color("color.highlight.background");
+        const ImU32 idleFill    = 0; // 高亮底初始是全透明
 
         // 推进 60ms（该动效 120ms），应该处在中间：既不是初值也不是终值
         instance.update(0.06f);
-        const ImU32 mid = instance.getColor(0, AppearanceProp::Fill);
-        check(mid != idleFill && mid != focusedFill, "60ms 时颜色在中间态（不是跳变）");
+        const ImU32 mid = instance.getColor(hlBgIndex, AppearanceProp::Fill);
+        check(mid != idleFill && mid != focusedFill, "60ms 时高亮底色在中间态（不是跳变）");
         check(instance.isAnimating(), "动效还没结束");
+
+        // 描边宽度同样在补
+        const float midStroke = instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth);
+        check(midStroke > 0.0f && midStroke < 5.0f, "描边宽度在 0 与 5 之间");
 
         // 再推进到结束
         instance.update(0.2f);
-        checkColor(instance.getColor(0, AppearanceProp::Fill), focusedFill,
-            "结束值：聚焦色（color.state.focus）");
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), focusedFill,
+            "结束值：高亮底 = color.highlight.background");
+        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth), 5.0f,
+            "结束值：描边 5px（borealis 的 highlight/stroke_width）");
+        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::Stroke),
+            getTheme().color("color.highlight.border"), "结束值：描边色 = color1");
         check(!instance.isAnimating(), "动效结束后不再是 animating");
 
         // 文字颜色同样按各自动效插值
-        checkColor(instance.getColor(1, AppearanceProp::TextColor),
-            getTheme().color("color.button.highlightText"), "文字色补到高亮字色");
+        checkColor(instance.getColor(2, AppearanceProp::TextColor),
+            getTheme().color("color.button.defaultText"), "文字色保持按钮字色（高亮不改字色）");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
         // 先单独验一个容易漏的情况：刚打开就马上关掉——这时当前值还等于初值，
@@ -194,17 +214,17 @@ int main()
             quick.setState("focused", false);  // 立刻撤销：当前值还没动
             for (int i = 0; i < 30; i++)
                 quick.update(0.05f);
-            checkColor(quick.getColor(0, AppearanceProp::Fill),
-                getTheme().color("color.surface.raised"),
-                "开了又马上关：停在初值，不会继续跑到状态目标");
+            checkColor(quick.getColor(button->indexOfLayer("hlBg"), AppearanceProp::Fill), 0,
+                "开了又马上关：停在初值（高亮底仍是透明），不会继续跑到状态目标");
             check(!quick.isAnimating(), "撤销后不该还有补间在跑");
         }
 
         instance.setState("focused", false);
         instance.update(0.3f);
-        checkColor(instance.getColor(0, AppearanceProp::Fill), idleFill, "取消聚焦后底色回到初值");
-        checkColor(instance.getColor(1, AppearanceProp::TextColor),
-            getTheme().color("color.text.primary"), "文字色回到初值");
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), idleFill,
+            "取消聚焦后高亮底回到透明");
+        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth), 0.0f,
+            "取消聚焦后描边宽度归零");
     }
 
     std::printf("\n== 7. 换肤：复制 default 改名改 JSON ==\n");

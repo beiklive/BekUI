@@ -27,7 +27,10 @@
   },
   "highlight": {
     "color1": "#198ac6",
-    "color2": "#89f1f2"
+    "color2": "#89f1f2",
+    "background": "#1f2227",
+    "border": "#198ac6",
+    "glow": "#89f1f233"
   },
   "backdrop": {
     "fill": "#000000b2"
@@ -45,7 +48,13 @@
     "value": "#58c3a9"
   },
   "button": {
-    "highlightText": "#07f7c6"
+    "highlightText": "#07f7c6",
+    "defaultBg": "#505050",
+    "defaultText": "#ffffff",
+    "defaultBorder": "#ffffff",
+    "disabledBorder": "#ffffff",
+    "primaryBg": "#01ffc9",
+    "primaryText": "#342937"
   },
   "card": {
     "blue": "#396091",

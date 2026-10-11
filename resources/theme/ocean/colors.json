@@ -29,5 +29,19 @@
     "green": "#1d5c45",
     "orange": "#5c3f1d",
     "purple": "#3d2a5c"
+  },
+  "button": {
+    "defaultBg": "#1d2b3f",
+    "defaultText": "#e3ecf7",
+    "defaultBorder": "#2f4257",
+    "disabledBorder": "#3a4553",
+    "primaryBg": "#4fd1c5",
+    "primaryText": "#0d1420",
+    "highlightText": "#0d1420"
+  },
+  "highlight": {
+    "background": "#101a26",
+    "border": "#4fd1c5",
+    "glow": "#4fd1c533"
   }
 }

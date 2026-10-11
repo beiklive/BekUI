@@ -14,7 +14,8 @@
     "json": "JSON",
     "theme": "主题",
     "nav": "导航",
-    "applet": "框架"
+    "applet": "框架",
+    "overlay": "弹层"
   },
   "demo": {
     "welcome": "欢迎使用 bklv",
@@ -76,7 +77,7 @@
     "input_hint": "在这里输入…"
   },
   "nav": {
-    "hint": "TabFrame 与 Sidebar 都是库级控件：tab 格子、选中态、面板底色都由主题 JSON 描述。切页时旧页面只脱离不销毁，状态会保留。",
+    "hint": "TabFrame：tab 栏 + 内容区，切页时旧页面只脱离不销毁。",
     "tab_a": "第一页",
     "tab_b": "第二页",
     "tab_c": "第三页",
@@ -85,7 +86,7 @@
     "page_c": "第三页内容",
     "body_a": "切到别的 tab 再切回来，这一页不会被重建。",
     "body_b": "页面内容由使用方提供，TabFrame 只管切换与外观。",
-    "body_c": "侧栏的条目和 tab 共用同一份格子外观（widgets/tab_cell.json）。",
+    "body_c": "tab 格子的外观来自主题里的 widgets/tab_cell.json。",
     "sidebar_title": "导航",
     "item_1": "第一个条目",
     "item_2": "第二个条目",
@@ -104,7 +105,20 @@
     "header_regular": "换成 Popup 页头"
   },
   "widgets": {
-    "cancel": "取消"
+    "cancel": "取消",
+    "hint": "这些都是库里的控件：外观（底/描边/焦点高亮/状态动效）由主题 JSON 描述。",
+    "buttons": "按钮",
+    "ok": "确定",
+    "ghost": "描边按钮",
+    "disabled": "禁用",
+    "slider": "滑块",
+    "volume": "音量：{}%",
+    "dropdown": "下拉选择",
+    "progress": "进度与加载",
+    "download": "下载 {}%",
+    "cache": "缓存 {}%",
+    "usage": "占用 {}%",
+    "image": "图片"
   },
   "page": {
     "theme_sub": "换肤与外观驱动的控件",
@@ -114,6 +128,32 @@
     "list_sub": "回收列表（单元格复用）",
     "json_sub": "整块界面来自 JSON 描述",
     "nav_sub": "TabFrame 与 Sidebar",
-    "applet_sub": "AppletFrame 的内容栈"
+    "applet_sub": "AppletFrame 的内容栈",
+    "overlay_sub": "弹窗与文本输入"
+  },
+  "text": {
+    "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
+    "sizes": "字号档位",
+    "sample": "示例文字 Aa 字样 {}",
+    "truncate": "单行截断",
+    "truncate_desc": "宽度不够时截断并加省略号；下面这条被限制在 280px。",
+    "long": "这是一段比较长的中文文字，用来演示截断与自动换行在中文下的表现。",
+    "wrap": "自动换行",
+    "wrap_desc": "宽度限制在 360px，超出自动折行（容差 0.5px）。",
+    "colors": "颜色档位"
+  },
+  "layout": {
+    "hint": "Yoga/Flexbox：主轴排列、交叉轴对齐、grow 分配剩余空间、百分比尺寸。",
+    "justify": "主轴排列（justifyContent）",
+    "align": "交叉轴对齐（alignItems）",
+    "grow": "剩余空间（grow）",
+    "grow_desc": "左边固定 80px，右边 grow 吃掉剩下全部。",
+    "percent": "百分比宽度"
+  },
+  "list": {
+    "hint": "1000 条数据，滚出视口的行回收进对象池，新进入的行复用池里的控件。"
+  },
+  "overlay": {
+    "hint": "弹层与模态输入：打开时输入切模态（点外面、方向键都不会穿透），关闭后焦点回到原处。"
   }
 }

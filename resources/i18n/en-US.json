@@ -14,7 +14,8 @@
     "json": "JSON",
     "theme": "Theme",
     "nav": "Nav",
-    "applet": "Frame"
+    "applet": "Frame",
+    "overlay": "Overlays"
   },
   "demo": {
     "welcome": "Welcome to bklv",
@@ -76,7 +77,7 @@
     "input_hint": "Type here..."
   },
   "nav": {
-    "hint": "TabFrame and Sidebar are library-level widgets: tab cells, selected state and panel colors are all described by theme JSON. Switching tabs detaches the old page instead of destroying it.",
+    "hint": "TabFrame: tab bar + content area; switching detaches the old page instead of destroying it.",
     "tab_a": "First",
     "tab_b": "Second",
     "tab_c": "Third",
@@ -84,8 +85,8 @@
     "page_b": "Second page",
     "page_c": "Third page",
     "body_a": "Switch away and back - this page is not rebuilt.",
-    "body_b": "Page content is provided by the caller; TabFrame only handles switching and appearance.",
-    "body_c": "Sidebar items share the same cell appearance as tabs (widgets/tab_cell.json).",
+    "body_b": "Content is provided by the caller; TabFrame only handles switching and appearance.",
+    "body_c": "Tab cell appearance comes from widgets/tab_cell.json in the theme.",
     "sidebar_title": "Nav",
     "item_1": "Item one",
     "item_2": "Item two",
@@ -104,7 +105,20 @@
     "header_regular": "Switch to Popup header"
   },
   "widgets": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "hint": "All of these are library widgets: their look (background, border, focus highlight, state animation) comes from theme JSON.",
+    "buttons": "Buttons",
+    "ok": "OK",
+    "ghost": "Ghost",
+    "disabled": "Disabled",
+    "slider": "Slider",
+    "volume": "Volume: {}%",
+    "dropdown": "Dropdown",
+    "progress": "Progress",
+    "download": "Download {}%",
+    "cache": "Cache {}%",
+    "usage": "Usage {}%",
+    "image": "Image"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",
@@ -114,6 +128,32 @@
     "list_sub": "Recycler list (cell reuse)",
     "json_sub": "A whole screen described in JSON",
     "nav_sub": "TabFrame and Sidebar",
-    "applet_sub": "AppletFrame content stack"
+    "applet_sub": "AppletFrame content stack",
+    "overlay_sub": "Dialogs and text input"
+  },
+  "text": {
+    "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
+    "sizes": "Size scale",
+    "sample": "Sample Aa {} ",
+    "truncate": "Single-line truncation",
+    "truncate_desc": "Truncated with an ellipsis when too narrow; the one below is limited to 280px.",
+    "long": "This is a fairly long line of text used to show truncation and wrapping.",
+    "wrap": "Wrapping",
+    "wrap_desc": "Limited to 360px, wraps automatically (0.5px tolerance).",
+    "colors": "Color scale"
+  },
+  "layout": {
+    "hint": "Yoga/Flexbox: main axis, cross axis, grow, percentage sizes.",
+    "justify": "Main axis (justifyContent)",
+    "align": "Cross axis (alignItems)",
+    "grow": "Remaining space (grow)",
+    "grow_desc": "80px fixed on the left, grow takes the rest.",
+    "percent": "Percentage widths"
+  },
+  "list": {
+    "hint": "1000 items; rows leaving the viewport go back to a pool and are reused."
+  },
+  "overlay": {
+    "hint": "Overlays and modal input: input becomes modal while open (clicks outside and arrows do not pass through), and focus returns afterwards."
   }
 }

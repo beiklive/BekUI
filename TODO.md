@@ -158,6 +158,19 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ---
 
+## 对齐 borealis 的视觉与 demo 重做
+
+- [x] **UI 按 720p 比例缩放**（`core/ui_scale.*`）：主题尺寸按 1280x720 写，
+      运行时 `uiScale = 宽/1280`；metric 与外观里的像素量都跟着缩放
+- [x] **还原 borealis 的焦点高亮**：每个可聚焦控件三层高亮
+      （高亮底 / 辉光 / 描边），参数取 `brls/highlight/*`（描边 5、圆角 6、外扩 2.5）
+- [x] 默认主题 = borealis 暗色 / Switch 风格（色值 + 尺寸 + 各控件语义）
+- [x] 提示栏按 borealis 的 hint.xml：内边距 4/16、图标 25.5、文字 21.5、间距 8；
+      底栏高度取 `brls/applet_frame/footer_height`（73）——不再被压扁
+- [x] 侧栏是**菜单语义**：上下只移动焦点，A 才切页，切页后焦点自动进子页第一个控件
+- [x] **demo 推倒重做**：`demo/app/demo_app.*`（AppletFrame + 侧栏 + 子页面）+
+      `demo/app/ui.*`；页面全部基于库控件重写，删掉手搓控件与旧外壳
+
 ## 交互手感与默认主题对齐 borealis
 
 - [x] 按键重复改成 borealis 的节奏（首次立刻响应，250ms 后每 100ms 一次），

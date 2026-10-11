@@ -35,10 +35,10 @@
     "paddingX": 20
   },
   "header": {
-    "height": 52
+    "height": 55
   },
   "bottomBar": {
-    "height": 36
+    "height": 73
   },
   "slider": {
     "height": 32
@@ -51,13 +51,38 @@
     "height": 220
   },
   "dropdown": {
-    "height": 44,
-    "itemHeight": 38
+    "height": 70,
+    "itemHeight": 60,
+    "itemTextSize": 20
   },
   "textField": {
     "height": 48
   },
   "editTextDialog": {
     "width": 560
+  },
+  "button": {
+    "textSize": 18,
+    "borderThickness": 2
+  },
+  "highlight": {
+    "radius": 6,
+    "strokeWidth": 5
+  },
+  "hintItem": {
+    "paddingX": 16,
+    "paddingY": 4,
+    "gap": 8
+  },
+  "appletFrame": {
+    "headerHeight": 88,
+    "footerHeight": 73,
+    "paddingSides": 30
+  },
+  "card": {
+    "padding": 16
+  },
+  "list": {
+    "itemHeight": 64
   }
 }

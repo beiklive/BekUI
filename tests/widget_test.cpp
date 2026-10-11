@@ -82,9 +82,11 @@ int main()
     {
         Button button("点我");
         const Appearance& appearance = button.getActiveAppearance();
-        check(appearance.getLayers().size() == 2, "Button 取到两层外观（底 + 文字）");
+        check(appearance.getLayers().size() == 5,
+            "Button 取到五层外观（底 + 高亮底 + 文字 + 辉光 + 描边）");
         checkEqual(button.getText(), "点我", "文字进了按钮");
-        checkEqual(appearance.getLayers()[1].source, "text", "文字层从 source=text 取内容");
+        checkEqual(appearance.getLayers()[2].source, "text", "文字层从 source=text 取内容");
+        check(appearance.indexOfLayer("hlBorder") > 0, "带焦点高亮描边层");
         // getHeight() 读的是 Yoga 的**布局**结果，所以要先真的跑一次布局
         YGNodeCalculateLayout(button.getYGNode(), 300.0f, 100.0f, YGDirectionLTR);
         checkFloat(button.getHeight(), getTheme().number("metric.control.height", 0.0f),
@@ -97,7 +99,7 @@ int main()
 
         // variant 指向另一份外观文件
         Button ghost("描边", "ghost");
-        check(ghost.getActiveAppearance().getLayers().size() == 2,
+        check(ghost.getActiveAppearance().getLayers().size() == 5,
             "ghost 变体取到自己的外观文件");
         checkEqual(ghost.getActiveAppearance().getLayers()[0].id, "bg",
             "ghost 变体的底是 bg 层");
@@ -133,8 +135,8 @@ int main()
         Button* button = new Button("换肤对象");
         root.addView(button);
 
-        check(button->getActiveAppearance().getLayers().size() == 2,
-            "换肤前：两层外观");
+        check(button->getActiveAppearance().getLayers().size() == 5,
+            "换肤前：五层外观");
 
         check(setTheme("widget-skin"), "切到 widget-skin");
         root.applyThemeRecursive();
@@ -145,7 +147,7 @@ int main()
 
         setTheme("default");
         root.applyThemeRecursive();
-        check(button->getActiveAppearance().getLayers().size() == 2,
+        check(button->getActiveAppearance().getLayers().size() == 5,
             "切回 default 后外观也回来了");
     }
 

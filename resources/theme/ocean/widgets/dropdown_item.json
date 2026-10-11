@@ -3,7 +3,7 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.surface.raised",
+      "fill": "@theme/color.button.defaultBg",
       "radius": 0
     },
     {
@@ -11,27 +11,27 @@
       "id": "label",
       "source": "text",
       "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.md",
+      "fontSize": "@theme/metric/dropdown.itemTextSize",
       "align": "left",
-      "valign": "center"
+      "valign": "center",
+      "inset": [
+        0,
+        20,
+        0,
+        20
+      ]
     }
   ],
   "states": {
     "focused": {
       "bg.fill": {
-        "to": "@theme/color.state.focus",
-        "duration": 100,
-        "easing": "quadraticOut"
+        "to": "@theme/color.highlight.background",
+        "duration": 100
       }
     },
     "selected": {
       "bg.fill": {
-        "to": "@theme/color.accent.base",
-        "duration": 140,
-        "easing": "quadraticOut"
-      },
-      "label.color": {
-        "to": "@theme/color.text.onAccent",
+        "to": "@theme/color.state.focus",
         "duration": 140
       }
     }

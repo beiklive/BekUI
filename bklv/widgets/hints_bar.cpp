@@ -13,6 +13,11 @@ namespace bklv
 HintItemView::HintItemView()
     : AppearanceView("hint_item", false)
 {
+    // borealis 的 hint.xml：内边距 4/16、圆角 6、图标 25.5、文字 21.5、两者间距 8
+    this->setPadding(getTheme().number("metric.hintItem.paddingY", 4.0f),
+        getTheme().number("metric.hintItem.paddingX", 16.0f),
+        getTheme().number("metric.hintItem.paddingY", 4.0f),
+        getTheme().number("metric.hintItem.paddingX", 16.0f));
     this->setHeight(AUTO);
     this->enableContentMeasurement();
     this->applyTheme();
@@ -59,6 +64,10 @@ HintsBar::HintsBar(const std::string&)
     // 不是提示栏（压了就只剩半条，图标都放不下）
     this->setShrink(0.0f);
     this->setAlignItems(AlignItems::CENTER);
+    // 条目间距：borealis 的 footer 里 hint 之间留的是 side padding 量级
+    this->setHeight(getTheme().number("metric.appletFrame.footerHeight", 73.0f));
+    // borealis 的 applet_frame/footer_padding_sides = 25
+    this->setPadding(0.0f, 25.0f, 0.0f, 25.0f);
     this->setGap(getTheme().number("metric.spacing.lg", 16.0f));
 }
 
@@ -109,6 +118,7 @@ void HintsBar::refresh()
 void HintsBar::update()
 {
     Box::update();
+
 
 
     this->refresh();

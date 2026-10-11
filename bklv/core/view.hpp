@@ -248,6 +248,9 @@ class View
     // 递归套用（含子节点）。App::setTheme 会调。
     void applyThemeRecursive();
 
+    // 递归把整棵子树的测量标脏（字体/UI 缩放变了要重算文本尺寸）
+    void markMeasureDirtyRecursive();
+
     // ---- JSON 视图描述用的属性系统（见 core/attributes.hpp）----
 
     // 该类的属性表。子类重写成返回自己的静态表；基类返回空表。

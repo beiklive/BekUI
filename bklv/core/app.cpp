@@ -2,6 +2,7 @@
 
 #include "bklv/core/resource.hpp"
 #include "bklv/core/appearance.hpp"
+#include "bklv/core/ui_scale.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/views/label.hpp"
 #include "bklv/widgets/appearance_view.hpp"
@@ -216,6 +217,18 @@ void App::frame()
         App::lastLayoutHeight = height;
 
         const bool canvasChanged = (this->lastCanvasWidth != width || this->lastCanvasHeight != height);
+
+        // 720p 缩放：主题尺寸按 1280x720 写，窗口宽度变了要重新算缩放。
+        // 缩放变了必须重新套用外观（外观值在 applyTheme 时就取定了）
+        if (canvasChanged && updateUiScaleFromCanvas(width, height))
+        {
+            if (this->root != nullptr)
+                this->root->applyThemeRecursive();
+            if (this->root != nullptr)
+                this->root->markMeasureDirtyRecursive();
+            g_layoutDirty = true;
+        }
+
         if (forceRelayout() || g_layoutDirty || canvasChanged)
         {
             g_layoutDirty         = false;

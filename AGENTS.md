@@ -222,6 +222,23 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      现象消失就说明有地方改了布局状态却没 invalidate。
   ④ `App::getLayoutCount()` 是累计布局次数，调试窗口的状态行里能看到：
      界面静止时这个数应该停住。
+- **UI 尺寸按 720p 写**（`core/ui_scale.*`）：主题里所有尺寸/字号都按 **1280x720** 写
+  （和 borealis 的 `ORIGINAL_WINDOW_WIDTH/HEIGHT` 一致），运行时 `uiScale = 画布宽 / 1280`。
+  缩放点在**取值**这一层：
+  ① `ThemeData::number()` 里 `metric.*` 会乘缩放（`metric.anim.*` 是毫秒、
+     `metric.font.lineHeight` 是系数，都不缩放）；
+  ② 外观 JSON 里的 radius/strokeWidth/width/height/fontSize/inset/offset 会乘缩放
+     （opacity 是系数、duration 是毫秒，不缩放）。
+  代码里写死的像素值**不缩放**——想跟随比例就用主题 metric 或把数字写进外观 JSON。
+  画布尺寸变了要重新套用外观（外观值在 `applyTheme()` 时就取定了）并重排，
+  这个由 `App::frame` 里调 `updateUiScaleFromCanvas()` 统一处理。
+- **控件外观要还原 borealis 的焦点高亮**：每个可聚焦控件的外观里有三层高亮
+  （`hlBg` / `hlGlow` / `hlBorder`），focus 态把它们补到
+  `color.highlight.background`、`color.highlight.glow`、`color.highlight.border`，
+  描边宽度 `metric.highlight.strokeWidth`（5，borealis 的 `brls/highlight/stroke_width`）、
+  圆角 `metric.highlight.radius`（6），并且**向外扩 2.5px**（inset 负数）。
+  顺序是：自己的底 → hlBg → 内容 → hlGlow → hlBorder（和 borealis 的
+  "高亮底画在内容之前、描边画在内容之后"一致）。
 - **主题与外观**（`core/theme_data.*` + `core/appearance.*` + `widgets/`）：
   换肤 = 复制 `resources/theme/default/` 改名 + 改 JSON，**不改 C++**。
   四条约定：
@@ -306,6 +323,7 @@ cmake --build build/gl -j 8
 ```
 bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
   core/             接口层：view / box / app / platform / graphics / input / ...
+  core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
                     / slider / tab_frame / sidebar / dialog / dropdown / applet_frame

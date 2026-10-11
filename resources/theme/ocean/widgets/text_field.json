@@ -2,11 +2,23 @@
   "layers": [
     {
       "op": "rect",
-      "id": "bg",
+      "id": "field",
       "fill": "@theme/color.surface.sunken",
-      "stroke": "@theme/color.border.default",
-      "strokeWidth": 1,
+      "stroke": "@theme/color.button.defaultBorder",
+      "strokeWidth": 2,
       "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
     },
     {
       "op": "text",
@@ -42,13 +54,66 @@
       "op": "custom",
       "id": "caret",
       "fill": "@theme/color.accent.base",
-      "fontSize": "@theme/metric.font.size.md",
+      "fontSize": "@theme/metric/font.size.md",
       "inset": [
         10,
         0,
         10,
         12
       ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -6.5,
+        -6.5,
+        -6.5,
+        -6.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
     }
-  ]
+  ],
+  "states": {
+    "focused": {
+      "hlBg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.stroke": {
+        "to": "@theme/color.highlight.glow",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.strokeWidth": {
+        "to": 11,
+        "duration": 120
+      },
+      "hlBorder.stroke": {
+        "to": "@theme/color.highlight.border",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlBorder.strokeWidth": {
+        "to": "@theme/metric.highlight.strokeWidth",
+        "duration": 120
+      }
+    }
+  }
 }

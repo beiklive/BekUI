@@ -14,12 +14,20 @@
 
 #include "bklv/core/logger.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/core/ui_scale.hpp"
 
 namespace bklv
 {
 
 namespace
 {
+
+// 外观 JSON 里的像素量（圆角/描边/显式宽高/字号/内边距/位移）要跟随 720p 缩放；
+// opacity 是系数、color 是颜色、duration 是毫秒，都不缩放。
+float scalePixels(float value)
+{
+    return value * getUiScale();
+}
 
 // 主题引用里的 key 归一：`color/a.b` 与 `color.a.b` 都当成 `color.a.b`。
 //
@@ -396,14 +404,15 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         {
             const char* key;
             float* target;
+            bool pixels; // 像素量要跟随 720p 缩放；opacity 是系数不缩放
         };
         const NumberField numberFields[] = {
-            { "strokeWidth", &layer.strokeWidth },
-            { "radius", &layer.radius },
-            { "opacity", &layer.opacity },
-            { "fontSize", &layer.fontSize },
-            { "width", &layer.width },
-            { "height", &layer.height },
+            { "strokeWidth", &layer.strokeWidth, true },
+            { "radius", &layer.radius, true },
+            { "opacity", &layer.opacity, false },
+            { "fontSize", &layer.fontSize, true },
+            { "width", &layer.width, true },
+            { "height", &layer.height, true },
         };
         for (const NumberField& field : numberFields)
         {
@@ -411,19 +420,27 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 continue;
             if (!resolveNumber(node[field.key], theme, *field.target, error, where + "." + field.key))
                 return nullptr;
+            if (field.pixels)
+                *field.target = scalePixels(*field.target);
         }
 
         if (node.contains("inset") && node["inset"].is_array() && node["inset"].size() == 4)
             for (size_t k = 0; k < 4; k++)
+            {
                 if (!resolveNumber(node["inset"][k], theme, layer.inset[k], error,
                         where + ".inset[" + std::to_string(k) + "]"))
                     return nullptr;
+                layer.inset[k] = scalePixels(layer.inset[k]);
+            }
 
         if (node.contains("offset") && node["offset"].is_array() && node["offset"].size() == 2)
             for (size_t k = 0; k < 2; k++)
+            {
                 if (!resolveNumber(node["offset"][k], theme, layer.offset[k], error,
                         where + ".offset[" + std::to_string(k) + "]"))
                     return nullptr;
+                layer.offset[k] = scalePixels(layer.offset[k]);
+            }
 
         appearance->layers.push_back(layer);
     }
@@ -494,6 +511,12 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                              "states." + stateName + "." + property + ".to"))
                 {
                     return nullptr;
+                }
+                else if (prop != AppearanceProp::Opacity)
+                {
+                    // 几何量（圆角/描边宽/字号/位移/内边距）的目标值也跟随 720p 缩放；
+                    // 颜色与 opacity 不缩放
+                    transition.target[0] = scalePixels(transition.target[0]);
                 }
 
                 transitions.push_back(transition);

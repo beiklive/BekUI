@@ -15,6 +15,7 @@ AppletFrame::AppletFrame(View* contentView)
     this->setHeightPercentage(100.0f);
 
     this->header = new Header();
+    this->header->setHeight(getTheme().number("metric.appletFrame.headerHeight", 88.0f));
     this->addView(this->header);
 
     // 内容区：撑满页头与底栏之间的空间

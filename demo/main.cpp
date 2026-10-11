@@ -4,7 +4,7 @@
 // 没有任何 ImGui 窗口调用，也没有任何图形 API 调用——全部走 View 树。
 //
 // 读写入口：
-//   app/page_host.*      页面宿主：标题 + tab 栏 + 内容区，负责切页
+//   app/demo_app.*       应用外壳：AppletFrame（页头 + 提示栏）+ 左侧栏 + 右侧子页面
 //   app/tab_bar.*        tab 栏与单个 tab 格子
 //   app/pages/*          五个页面，各自独立
 //   app/widgets.*        自定义控件（开关、环形/横向进度）
@@ -18,7 +18,8 @@
 //   滚轮 / 拖拽          滚动页面
 //   右上角「显示日志」   开关 ImGui 日志窗口（可拖动、可缩放、可筛选级别）
 
-#include "app/page_host.hpp"
+#include "app/demo_app.hpp"
+#include "app/pages.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/app.hpp"
 
@@ -30,7 +31,7 @@ int main(int argc, char** argv)
     // 主题页要切主题，把 App 递给它（在建树之前）
     demo::setThemeSwitchApp(&app);
 
-    demo::PageHost host;
+    demo::DemoApp host;
     app.setRootView(host.getView());
     BKLV_LOG_INFO("界面构建完成");
 
@@ -43,5 +44,5 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
-    return app.run(bklv::getStr("app/title"), 1280, 800);
+    return app.run(bklv::getStr("app/title"), 1280, 720);
 }

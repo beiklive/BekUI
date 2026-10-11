@@ -100,9 +100,8 @@ add_subdirectory(bklv)
 # 显式列源文件，不用 GLOB：加删文件比 glob 的便利更重要。
 
 set(BKLV_APP_SOURCES
-    app/widgets.cpp
-    app/page_helpers.cpp
-    app/page_host.cpp
+    app/demo_app.cpp
+    app/ui.cpp
     app/pages/page_widgets.cpp
     app/pages/page_text.cpp
     app/pages/page_layout.cpp
@@ -111,7 +110,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_json.cpp
     app/pages/page_theme.cpp
     app/pages/page_nav.cpp
-    app/pages/page_applet.cpp
+    app/pages/page_overlay.cpp
 )
 
 set(BKLV_APP_ABS "")

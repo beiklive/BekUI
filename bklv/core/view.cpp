@@ -944,6 +944,15 @@ const AttributeTable& commonAttributes()
 
 } // namespace
 
+void View::markMeasureDirtyRecursive()
+{
+    this->markMeasureDirty();
+
+    if (Box* box = this->asBox())
+        for (View* child : box->getChildren())
+            child->markMeasureDirtyRecursive();
+}
+
 void View::applyThemeRecursive()
 {
     this->applyTheme();

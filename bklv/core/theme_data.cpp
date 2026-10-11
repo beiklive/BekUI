@@ -1,5 +1,7 @@
 #include "bklv/core/theme_data.hpp"
 
+#include "bklv/core/ui_scale.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -274,15 +276,29 @@ ImU32 ThemeData::color(const std::string& key, ImU32 fallback) const
     return fallback;
 }
 
+// 主题里的尺寸都是按 1280x720 写的，取值时乘当前 UI 缩放。
+// 例外：metric.anim.*（毫秒）与 metric.font.lineHeight（行高系数）不是像素量。
+static bool isScalableMetricKey(const std::string& key)
+{
+    if (key.rfind("metric.", 0) != 0)
+        return false;
+    if (key.rfind("metric.anim.", 0) == 0)
+        return false;
+    if (key == "metric.font.lineHeight")
+        return false;
+
+    return true;
+}
+
 float ThemeData::number(const std::string& key, float fallback) const
 {
     const auto it = this->numbers.find(key);
     if (it != this->numbers.end())
-        return it->second;
+        return isScalableMetricKey(key) ? it->second * getUiScale() : it->second;
 
     const auto fallbackIt = this->defaultNumbers.find(key);
     if (fallbackIt != this->defaultNumbers.end())
-        return fallbackIt->second;
+        return isScalableMetricKey(key) ? fallbackIt->second * getUiScale() : fallbackIt->second;
 
     BKLV_LOG_DEBUG("主题数值缺失：%s", key.c_str());
     return fallback;
