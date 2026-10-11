@@ -123,6 +123,7 @@ target_include_directories(bklv_opts INTERFACE
     "${BKLV_3RD}/yoga"
     "${BKLV_3RD}/tweeny/include"
     "${BKLV_3RD}/stb"
+    "${BKLV_3RD}/json/single_include"   # nlohmann/json：单头文件、全 inline，不需要编源文件
 )
 
 target_compile_options(bklv_opts INTERFACE

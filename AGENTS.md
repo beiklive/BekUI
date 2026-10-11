@@ -116,6 +116,9 @@ Windows 上有几条平台约定，改相关代码时要留意：
   里运行时取地址（`bklv/backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
   **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
 - 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
+- JSON 用 `bklv/3rd/json`（nlohmann/json **v3.11.3**）。**不要降到 v3.11.2**：
+  那版在 Clang 下会对 `operator "" _json` 报 `-Wdeprecated-literal-operator`，
+  4 处警告都在库头里，直接破坏零警告约定（v3.11.3 已修）。
 - **资源文件按"资源目录"解析，不是工作目录**（`bklv/core/resource.hpp`）：
   桌面由 CMake 的 POST_BUILD 把 `resources/` 复制到可执行文件目录；
   Switch 用 `build_romfs` + `elf2nro --romfs` 打进 nro，运行时 `romfsInit()` 挂成 `romfs:/`。
@@ -160,6 +163,7 @@ Vulkan 后端（`bklv/backends/vulkan_backend.cpp`）有几条不好从代码一
 | `bklv/3rd/tweeny` | 补间动画（库本身不用，保留给后续的属性动画） |
 | `bklv/3rd/SDL` | 桌面的窗口/输入/GL 上下文（源码编译成静态库） |
 | `bklv/3rd/stb` | Linux/Windows/Switch 的图片解码 |
+| `bklv/3rd/json` | nlohmann/json：JSON 视图描述与 i18n 文案（单头文件，全 inline，无需编源文件） |
 
 系统只要求：`cmake`（编 SDL3）、以及平台本身的工具链。
 **不要引入需要手动安装的开发库**，除非在 README 里写清楚安装命令。
