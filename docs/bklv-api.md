@@ -18,7 +18,7 @@
 | `core/geometry.hpp` | Point / Size / Rect 与颜色辅助 |
 | `core/theme.hpp/.cpp` | 样式数值表与颜色主题 |
 | `core/time.hpp/.cpp` | `Animatable` 补间（自带实现，不依赖 tweeny） |
-| `core/font.hpp/.cpp` | 字体加载：优先系统中文字体，否则退回内置字体 |
+| `core/font.hpp/.cpp` | 字体加载：桌面读系统字体文件；Switch 用 `pl` 服务取内置共享字体并合并 fallback 链；都没有则退回内置字体 |
 | `core/platform.hpp/.cpp` | **平台接口**：窗口、事件循环、子系统工厂、系统能力 |
 | `platforms/sdl3_platform.*` | macOS/Linux/Windows 的 SDL3 平台实现 |
 | `platforms/switch_platform.*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言） |

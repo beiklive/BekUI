@@ -116,7 +116,12 @@ Windows 上有几条平台约定，改相关代码时要留意：
   里运行时取地址（`bklv/backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
   **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
 - 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
-- 需要中文的字体路径要分平台（`bklv/core/font.cpp`），别只写 macOS 的系统字体路径。
+- 中文字体各平台拿法不同（`bklv/core/font.cpp`），别只写 macOS 的系统字体路径：
+  桌面读系统字体文件；**Switch 上没有可读的系统字体目录**，要用 `pl` 系统服务
+  （`plInitialize(PlServiceType_User)` + `plGetSharedFontByType`）拿内置共享字体，
+  再把 Standard / 简中扩展 / 繁中 / 韩文合并成 fallback 链。
+  注意 `AddFontFromMemoryTTF` 默认接管内存所有权，共享内存必须设
+  `FontDataOwnedByAtlas = false`，否则销毁图集时会 free 掉系统内存。
 
 Vulkan 后端（`bklv/backends/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
 
