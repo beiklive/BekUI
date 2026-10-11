@@ -3,8 +3,10 @@
 #include "bklv/core/resource.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
+#include "bklv/views/label.hpp"
 
 #include <cstdlib>
+#include <functional>
 #include <memory>
 
 #include "imgui.h"
@@ -166,6 +168,7 @@ void App::frame()
             // 布局变化要通知子树（滚动条夹取、tab 栏反推内容宽等都挂在这里）
             this->root->notifyLayout();
         }
+
 
 
 

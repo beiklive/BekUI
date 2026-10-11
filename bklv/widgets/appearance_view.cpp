@@ -16,6 +16,61 @@ AppearanceView::AppearanceView(std::string appearanceName, bool focusable)
     : appearanceName(std::move(appearanceName))
     , focusable(focusable)
 {
+    this->installMeasureFunction();
+}
+
+void AppearanceView::installMeasureFunction()
+{
+    // 固有尺寸 = 各层里最大的那个"内容尺寸 + 两侧 inset"。
+    // 文字层的宽度随字号变，所以字号改了要 markMeasureDirty（applyTheme/setText 里会做）。
+    this->setMeasureFunction([this](const void*, float width, YGMeasureMode widthMode, float,
+                                 YGMeasureMode heightMode) -> YGSize {
+        const Appearance& current = this->appearance.getAppearance();
+        ImFont* font              = getDefaultFont();
+
+        float intrinsicWidth  = 0.0f;
+        float intrinsicHeight = 0.0f;
+
+        for (const AppearanceLayer& layer : current.getLayers())
+        {
+            float layerWidth  = layer.width;
+            float layerHeight = layer.height;
+
+            if (layer.op == AppearanceLayer::Op::Text && font != nullptr)
+            {
+                const std::string content = this->getLayerText(layer.source);
+                if (!content.empty())
+                {
+                    const float size = layer.fontSize > 0.0f ? layer.fontSize : 15.0f;
+                    const ImVec2 measured =
+                        font->CalcTextSizeA(size, FLT_MAX, 0.0f, content.c_str());
+                    layerWidth  = measured.x;
+                    layerHeight = measured.y;
+                }
+            }
+            else if (layer.op == AppearanceLayer::Op::Image)
+            {
+                const TextureRef texture = this->getLayerImage(layer.source);
+                if (texture.isValid() && layerWidth <= 0.0f)
+                    layerWidth = (float)texture.width;
+                if (texture.isValid() && layerHeight <= 0.0f)
+                    layerHeight = (float)texture.height;
+            }
+
+            intrinsicWidth  = std::max(intrinsicWidth, layerWidth + layer.inset[1] + layer.inset[3]);
+            intrinsicHeight = std::max(intrinsicHeight, layerHeight + layer.inset[0] + layer.inset[2]);
+        }
+
+        // 受约束时收缩到可用宽度（文字层会按自己的规则截断，这里只上报尺寸）
+        if (widthMode != YGMeasureModeUndefined && !std::isnan(width))
+            intrinsicWidth = std::min(intrinsicWidth, width);
+
+        YGSize size;
+        size.width  = intrinsicWidth;
+        size.height = intrinsicHeight;
+        (void)heightMode;
+        return size;
+    });
 }
 
 void AppearanceView::setText(const std::string& value)
@@ -24,6 +79,9 @@ void AppearanceView::setText(const std::string& value)
         return;
 
     this->text = value;
+
+    // 文字变了，固有尺寸跟着变（外观驱动控件靠测量函数定宽）
+    this->markMeasureDirty();
     this->invalidate();
 }
 
@@ -51,6 +109,10 @@ void AppearanceView::applyTheme()
     // 状态在换肤后重新打开，让新外观按当前状态补到位
     if (this->isAppearanceStateActive("focused"))
         this->appearance.setState("focused", true);
+
+    // 字号/内容可能变了，固有尺寸要重算
+    this->markMeasureDirty();
+    this->invalidate();
 }
 
 void AppearanceView::setAppearanceState(const std::string& state, bool active)

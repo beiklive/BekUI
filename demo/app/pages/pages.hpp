@@ -40,6 +40,9 @@ bklv::Box* buildJsonPage();
 // 页 6：主题与外观驱动的控件（换肤、外观 JSON 描述的绘制结构、状态动效）
 bklv::Box* buildThemePage();
 
+// 页 7：导航（库级 TabFrame + Sidebar）
+bklv::Box* buildNavPage();
+
 // 主题页要能切主题，所以需要 App；main.cpp 在建 PageHost 之前调用。
 void setThemeSwitchApp(bklv::App* app);
 

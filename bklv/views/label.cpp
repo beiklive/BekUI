@@ -259,8 +259,11 @@ void Label::rewrap(float width) const
 
         const float candidateWidth = this->measureWidth(this->text, lineBegin, index + charLength);
 
-        // 超过可用宽度且这一行已经有内容 → 断行
-        if (candidateWidth > width && index > lineBegin)
+        // 超过可用宽度且这一行已经有内容 → 断行。
+        // 容差 0.5px：可用宽度来自 Yoga、文字宽度来自测量函数，父容器又常把子节点
+        // 定成"恰好等于文字宽度"，不留容差时本该一行两字的标题会被拆成两行
+        // （侧栏标题"导航"踩过；单行截断当时也是同一个原因）。
+        if (candidateWidth > width + 0.5f && index > lineBegin)
         {
             size_t breakAt = index;
 

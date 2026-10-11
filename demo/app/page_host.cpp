@@ -110,6 +110,7 @@ PageHost::PageHost()
     this->addPage(bklv::getStr("tab/list"), listPage.view, listPage.selfScrolling);
     this->addPage(bklv::getStr("tab/json"), buildJsonPage(), false);
     this->addPage(bklv::getStr("tab/theme"), buildThemePage(), false);
+    this->addPage(bklv::getStr("tab/nav"), buildNavPage(), false);
     this->mainList = listPage.list;
 
     BKLV_LOG_INFO("界面已就绪：%d 个页面", static_cast<int>(this->pages.size()));

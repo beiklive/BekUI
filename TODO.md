@@ -173,6 +173,11 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] 测试：`tests/theme_test.cpp`（44）+ `tests/widget_test.cpp`（24）
 - [x] `Header` / `BottomBar`（多文字层 + 显式宽高的装饰件）
 - [x] 外观层支持显式 `width`/`height` + `align`/`valign`（色条、下边线这类装饰件要用）
+- [x] 外观驱动控件的**固有尺寸**：测量函数按"文字层宽度 + inset"上报，
+      所以 TabCell/Button 这类不用给死宽高
+- [x] `Slider` / `TabFrame` / `Sidebar`
+- [x] **`@theme/` 引用写错会硬失败**（不再静默回退成洋红），
+      并由 theme_test 第 8 节逐个编译两套主题的全部外观兜底
 
 ### 控件移植清单（对照 borealis 的 20 个）
 
@@ -188,9 +193,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | button | `widgets/button` | 新增（外观驱动 + ghost 变体） |
 | header | `widgets/header` | 新增 |
 | bottom_bar | `widgets/bottom_bar` | 新增 |
-| tab_frame | `widgets/` | **待做**（需要一个页面栈） |
-| sidebar | `widgets/` | **待做** |
-| slider | `widgets/` | **待做**（需要拖拽手势） |
+| tab_frame | `widgets/tab_frame` | 新增（tab 栏 + 内容区，切页只脱离不销毁） |
+| sidebar | `widgets/sidebar` | 新增（条目复用 tab_cell 外观） |
+| slider | `widgets/slider` | 新增（外观分段 track/fill/knob，进度几何留 C++） |
 | applet_frame | `widgets/` | **待做**（Switch 宿主窗口；桌面空实现） |
 | dialog | `widgets/` | **待做**：先补弹层 + 焦点栈 |
 | dropdown | `widgets/` | **待做**：先补弹层 + 焦点栈 |

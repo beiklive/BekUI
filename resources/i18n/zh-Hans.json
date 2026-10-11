@@ -8,7 +8,8 @@
     "layout": "布局",
     "list": "列表",
     "json": "JSON",
-    "theme": "主题"
+    "theme": "主题",
+    "nav": "导航"
   },
   "demo": {
     "welcome": "欢迎使用 bklv",
@@ -46,5 +47,21 @@
     "states_desc": "方向键左右移动焦点，观察颜色补间；按回车看按下反馈。",
     "focus_sample": "按钮 {}",
     "bottom_hint": "底栏也是外观驱动的：上边线 + 一行文字，结构在 widgets/bottom_bar.json"
+  },
+  "nav": {
+    "hint": "TabFrame 与 Sidebar 都是库级控件：tab 格子、选中态、面板底色都由主题 JSON 描述。切页时旧页面只脱离不销毁，状态会保留。",
+    "tab_a": "第一页",
+    "tab_b": "第二页",
+    "tab_c": "第三页",
+    "page_a": "第一页内容",
+    "page_b": "第二页内容",
+    "page_c": "第三页内容",
+    "body_a": "切到别的 tab 再切回来，这一页不会被重建。",
+    "body_b": "页面内容由使用方提供，TabFrame 只管切换与外观。",
+    "body_c": "侧栏的条目和 tab 共用同一份格子外观（widgets/tab_cell.json）。",
+    "sidebar_title": "导航",
+    "item_1": "第一个条目",
+    "item_2": "第二个条目",
+    "item_3": "第三个条目"
   }
 }

@@ -8,7 +8,8 @@
     "layout": "Layout",
     "list": "List",
     "json": "JSON",
-    "theme": "Theme"
+    "theme": "Theme",
+    "nav": "Nav"
   },
   "demo": {
     "welcome": "Welcome to bklv",
@@ -46,5 +47,21 @@
     "states_desc": "Move focus with left/right, watch the color tween; press A to see the press feedback.",
     "focus_sample": "Button {}",
     "bottom_hint": "The bottom bar is appearance-driven too: top line + one line of text, structure in widgets/bottom_bar.json"
+  },
+  "nav": {
+    "hint": "TabFrame and Sidebar are library-level widgets: tab cells, selected state and panel colors are all described by theme JSON. Switching tabs detaches the old page instead of destroying it.",
+    "tab_a": "First",
+    "tab_b": "Second",
+    "tab_c": "Third",
+    "page_a": "First page",
+    "page_b": "Second page",
+    "page_c": "Third page",
+    "body_a": "Switch away and back - this page is not rebuilt.",
+    "body_b": "Page content is provided by the caller; TabFrame only handles switching and appearance.",
+    "body_c": "Sidebar items share the same cell appearance as tabs (widgets/tab_cell.json).",
+    "sidebar_title": "Nav",
+    "item_1": "Item one",
+    "item_2": "Item two",
+    "item_3": "Item three"
   }
 }

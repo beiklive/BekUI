@@ -250,12 +250,14 @@ bool ThemeData::load(const std::string& requested)
 
 bool ThemeData::hasColor(const std::string& key) const
 {
-    return this->colors.find(key) != this->colors.end();
+    return this->colors.find(key) != this->colors.end()
+        || this->defaultColors.find(key) != this->defaultColors.end();
 }
 
 bool ThemeData::hasNumber(const std::string& key) const
 {
-    return this->numbers.find(key) != this->numbers.end();
+    return this->numbers.find(key) != this->numbers.end()
+        || this->defaultNumbers.find(key) != this->defaultNumbers.end();
 }
 
 ImU32 ThemeData::color(const std::string& key, ImU32 fallback) const

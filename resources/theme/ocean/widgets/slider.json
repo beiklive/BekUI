@@ -1,0 +1,57 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "track",
+      "fill": "@theme/color.surface.sunken",
+      "radius": 3,
+      "height": 6,
+      "valign": "center"
+    },
+    {
+      "op": "rect",
+      "id": "fill",
+      "fill": "@theme/color.accent.base",
+      "radius": 3,
+      "height": 6,
+      "valign": "center"
+    },
+    {
+      "op": "rect",
+      "id": "knob",
+      "fill": "@theme/color.text.primary",
+      "radius": 8,
+      "width": 16,
+      "height": 16,
+      "valign": "center"
+    },
+    {
+      "op": "custom",
+      "id": "geometry"
+    }
+  ],
+  "states": {
+    "focused": {
+      "fill.fill": {
+        "to": "@theme/color.accent.pressed",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "knob.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 120,
+        "easing": "quadraticOut"
+      }
+    },
+    "disabled": {
+      "fill.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      },
+      "knob.fill": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
+    }
+  }
+}

@@ -39,5 +39,11 @@
   },
   "bottomBar": {
     "height": 36
+  },
+  "slider": {
+    "height": 32
+  },
+  "tabCell": {
+    "height": 34
   }
 }

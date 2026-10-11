@@ -26,6 +26,8 @@
 | `core/json_view.hpp/.cpp` | JSON 视图描述：类型注册、模板缓存、实例化、include、错误 |
 | `core/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/` `@theme/` `@res/` 前缀 |
 | `views/json_cell.*` | JSON 模板驱动的列表项（数据绑定 + 焦点视觉） |
+| `widgets/appearance_view.*` | 外观驱动控件基类：解释 layers、状态动效、固有尺寸测量 |
+| `widgets/rectangle.*` `widgets/button.*` `widgets/header.*` `widgets/bottom_bar.*` `widgets/slider.*` `widgets/tab_frame.*` `widgets/sidebar.*` | 外观驱动的控件（绘制结构在主题 JSON 里） |
 | `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
 | `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |

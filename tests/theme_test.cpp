@@ -215,6 +215,27 @@ int main()
         check(setTheme("default"), "切回 default 成功");
     }
 
+    std::printf("\n== 8. 随仓库发布的两套主题：每份外观都必须能编译 ==\n");
+    {
+        // 这条是给"@theme/ 引用写错"兜底的：写错 key 会被 Appearance::compile 拒绝
+        // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
+        // 选中态整块变成洋红，就是这个错误。
+        const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
+            "slider", "tab_cell" };
+
+        for (const char* themeName : { "default", "ocean" })
+        {
+            check(setTheme(themeName), std::string("切到主题 ") + themeName);
+            for (const char* widget : widgets)
+            {
+                std::shared_ptr<const Appearance> appearance = getWidgetAppearance(widget);
+                const bool ok = appearance != nullptr && !appearance->getLayers().empty();
+                check(ok, std::string("  ") + themeName + " / " + widget + " 外观能编译且非空");
+            }
+        }
+        setTheme("default");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

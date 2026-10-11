@@ -8,6 +8,8 @@
     "widgets/button.json",
     "widgets/button.ghost.json",
     "widgets/header.json",
-    "widgets/bottom_bar.json"
+    "widgets/bottom_bar.json",
+    "widgets/slider.json",
+    "widgets/tab_cell.json"
   ]
 }

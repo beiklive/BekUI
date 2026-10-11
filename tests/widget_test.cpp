@@ -18,6 +18,9 @@
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/header.hpp"
+#include "bklv/widgets/sidebar.hpp"
+#include "bklv/widgets/slider.hpp"
+#include "bklv/widgets/tab_frame.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
 using namespace bklv;
@@ -210,6 +213,77 @@ int main()
             checkEqual(bar.getActiveAppearance().getLayers()[1].source, "text", "文字层数据源是 text");
         }
         checkEqual(bar.getText(), "A 确定    B 返回", "底栏文字");
+    }
+
+    std::printf("\n== 6. Slider：进度与外观分段 ==\n");
+    {
+        Slider slider;
+        checkFloat(slider.getProgress(), 0.0f, "初始进度 0");
+
+        slider.setProgress(0.4f);
+        checkFloat(slider.getProgress(), 0.4f, "设置进度");
+        slider.setProgress(2.0f);
+        checkFloat(slider.getProgress(), 1.0f, "进度会被夹到 1");
+        slider.setProgress(-1.0f);
+        checkFloat(slider.getProgress(), 0.0f, "进度会被夹到 0");
+
+        const Appearance& appearance = slider.getActiveAppearance();
+        check(appearance.indexOfLayer("track") >= 0, "外观里有 track 段");
+        check(appearance.indexOfLayer("fill") >= 0, "外观里有 fill 段");
+        check(appearance.indexOfLayer("knob") >= 0, "外观里有 knob 段");
+        check(appearance.getTransitions("focused").size() == 2, "聚焦有两条动效");
+    }
+
+    std::printf("\n== 7. TabFrame：切页只脱离不销毁 ==\n");
+    {
+        TabFrame frame;
+        View* pageA = new Box(Axis::COLUMN);
+        View* pageB = new Box(Axis::COLUMN);
+        View* pageC = new Box(Axis::COLUMN);
+
+        frame.addTab("A", pageA);
+        frame.addTab("B", pageB);
+        frame.addTab("C", pageC);
+
+        check(frame.getTabCount() == 3, "三个 tab");
+        check(frame.getSelectedIndex() == 0, "默认选第一个");
+        check(frame.getContentBox()->getChildrenCount() == 1, "内容区只挂当前页");
+        check(frame.getContentBox()->getChildren()[0] == pageA, "当前挂的是第一页");
+
+        frame.setSelectedIndex(2);
+        check(frame.getSelectedIndex() == 2, "切到第三页");
+        check(frame.getContentBox()->getChildrenCount() == 1, "内容区仍然只有一个页面");
+        check(frame.getContentBox()->getChildren()[0] == pageC, "挂的是第三页");
+
+        // 切回来：还是同一个对象（说明只是脱离，没有销毁重建）
+        frame.setSelectedIndex(0);
+        check(frame.getContentBox()->getChildren()[0] == pageA, "切回来还是同一个页面对象");
+
+        check(frame.getTabBar()->getChildrenCount() == 3, "tab 栏三个格子");
+        TabCell* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        check(!second->isSelected(), "未选中的格子 selected=false");
+        frame.setSelectedIndex(1);
+        check(second->isSelected(), "选中后 selected=true");
+    }
+
+    std::printf("\n== 8. Sidebar：条目与选中态 ==\n");
+    {
+        Sidebar sidebar("导航");
+        checkEqual(sidebar.getTitle(), "导航", "侧栏标题");
+
+        sidebar.addItem("条目一", nullptr);
+        sidebar.addItem("条目二", nullptr);
+        check(sidebar.getItemCount() == 2, "两个条目");
+        check(sidebar.getSelectedIndex() == 0, "默认选第一个");
+
+        sidebar.setSelectedIndex(1);
+        check(sidebar.getSelectedIndex() == 1, "选中第二个");
+
+        sidebar.setTitle("新标题");
+        checkEqual(sidebar.getTitle(), "新标题", "改标题");
+
+        sidebar.clearItems();
+        check(sidebar.getItemCount() == 0, "清空条目");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

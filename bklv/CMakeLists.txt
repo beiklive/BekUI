@@ -286,6 +286,9 @@ set(BKLV_CORE_SOURCES
     widgets/button.cpp
     widgets/header.cpp
     widgets/bottom_bar.cpp
+    widgets/slider.cpp
+    widgets/tab_frame.cpp
+    widgets/sidebar.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

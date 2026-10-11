@@ -66,11 +66,21 @@ class AppearanceView : public View
   public:
     // 当前生效的外观（只读）。测试与诊断用：换肤后这里应该换成新主题的那份。
     const Appearance& getActiveAppearance() const { return this->appearance.getAppearance(); }
+
+    // 按层 id 找索引（-1 表示没有）。滑块这类控件用它按名字取"轨道/进度/滑块"各段的颜色。
+    int indexOfLayer(const std::string& layerId) const
+    {
+        return this->appearance.getAppearance().indexOfLayer(layerId);
+    }
     const AppearanceInstance& getAppearanceInstanceForTest() const { return this->appearance; }
 
   protected:
 
   private:
+    // 外观驱动控件要能自己算固有尺寸：文字层用字号量文本 + 两侧 inset，
+    // 装饰层用显式 width/height 参与。没有内容时退化为 0，由父容器决定。
+    void installMeasureFunction();
+
     // 取层在给定控件矩形里的实际绘制范围（应用 inset 与 offset）
     void layerRect(const AppearanceLayer& layer, float x, float y, float width, float height,
         float out[4]) const;

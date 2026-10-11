@@ -3,7 +3,7 @@
     {
       "op": "rect",
       "id": "accent",
-      "fill": "@theme/color/accent.base",
+      "fill": "@theme/color.accent.base",
       "width": 4,
       "radius": 2,
       "inset": [
@@ -17,8 +17,8 @@
       "op": "text",
       "id": "title",
       "source": "title",
-      "color": "@theme/color/text.primary",
-      "fontSize": "@theme/metric/font.size.title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.title",
       "align": "left",
       "valign": "center",
       "inset": [
@@ -32,15 +32,15 @@
       "op": "text",
       "id": "subtitle",
       "source": "subtitle",
-      "color": "@theme/color/text.dim",
-      "fontSize": "@theme/metric/font.size.sm",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.sm",
       "align": "right",
       "valign": "center"
     },
     {
       "op": "rect",
       "id": "line",
-      "fill": "@theme/color/border.subtle",
+      "fill": "@theme/color.border.subtle",
       "height": 1,
       "valign": "bottom"
     }

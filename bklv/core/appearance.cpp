@@ -118,7 +118,15 @@ bool resolveColor(const Json& node, const ThemeData& theme, ImU32& out, std::str
     const std::string text = node.get<std::string>();
     if (text.rfind("@theme/", 0) == 0)
     {
-        out = theme.color(text.substr(7));
+        const std::string key = text.substr(7);
+        if (!theme.hasColor(key))
+        {
+            // 不静默回退：写错 key 会变成一块洋红，比报错难查得多
+            error = where + " 引用了主题里不存在的颜色：@theme/" + key
+                + "（当前主题 " + theme.getName() + "；写法是 @theme/color.a.b）";
+            return false;
+        }
+        out = theme.color(key);
         return true;
     }
     if (parseHex(text, out))
@@ -142,7 +150,14 @@ bool resolveNumber(const Json& node, const ThemeData& theme, float& out, std::st
         const std::string text = node.get<std::string>();
         if (text.rfind("@theme/", 0) == 0)
         {
-            out = theme.number(text.substr(7));
+            const std::string key = text.substr(7);
+            if (!theme.hasNumber(key))
+            {
+                error = where + " 引用了主题里不存在的数值：@theme/" + key
+                    + "（当前主题 " + theme.getName() + "；写法是 @theme/metric.a.b）";
+                return false;
+            }
+            out = theme.number(key);
             return true;
         }
         char* end = nullptr;

@@ -34,6 +34,8 @@ class ThemeData
     ImU32 color(const std::string& key, ImU32 fallback = IM_COL32(255, 0, 255, 255)) const;
     float number(const std::string& key, float fallback = 0.0f) const;
 
+    // "这个 key 能不能取到值"——包含 default 主题的回退。
+    // 外观编译用它做校验：引用不存在的主题 key 要报错，而不是静默回退成洋红。
     bool hasColor(const std::string& key) const;
     bool hasNumber(const std::string& key) const;
 
