@@ -4,6 +4,8 @@
 
 #include <switch.h>
 
+#include <arpa/inet.h> // struct in_addr：判断是不是 nxlink 启动的
+
 #include <cstdio>
 #include <memory>
 
@@ -25,11 +27,31 @@ struct PlatformSwitch::Impl
 
     uint32_t width  = 1280;
     uint32_t height = 720;
+
+    // nxlink 的输出连接；未连接时为 -1。
+    int nxlinkSocket = -1;
 };
 
 PlatformSwitch::PlatformSwitch()
 {
     this->impl = new Impl();
+
+    // ---- nxlink 的 stdout/stderr 重定向 ----
+    //
+    // 关键：`nxlink -s` 只是开了服务端在等连接，**重定向要由 NRO 自己发起**。
+    // 不调 nxlinkStdio() 的话，printf / BKLV_LOG_* 一个字节都到不了电脑，
+    // 现场就是"没有任何日志"。
+    //
+    // __nxlink_host 由 libnx 在启动时从 argv[1] 解析（nxlink 会把主机 IP 传进来）。
+    // 没通过 nxlink 启动时它是 0，此时不必碰 socket 服务，nxlinkStdio() 内部也会
+    // 直接提前返回，所以这个判断既省事又安全。
+    if (__nxlink_host.s_addr != 0)
+    {
+        socketInitializeDefault();
+        this->impl->nxlinkSocket = nxlinkStdio();
+        Logger::info(this->impl->nxlinkSocket >= 0 ? "nxlink: 日志已重定向到电脑"
+                                                  : "nxlink: 连接主机失败，日志仍在设备上");
+    }
 }
 
 void PlatformSwitch::createBackend()
@@ -43,6 +65,10 @@ PlatformSwitch::~PlatformSwitch()
 {
     if (this->impl != nullptr)
     {
+        // 关掉 nxlink 的 socket（重定向的 stdout 会随之失效，所以放在最后再关）。
+        if (this->impl->nxlinkSocket >= 0)
+            socketExit();
+
         // 先摘掉手柄源，避免 InputManager 持有已析构的对象。
         setGamepadSource(nullptr);
         this->impl->gamepadSource.reset();
