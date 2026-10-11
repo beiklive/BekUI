@@ -27,6 +27,9 @@ int main(int argc, char** argv)
     bklv::App app;
 
     BKLV_LOG_INFO("开始构建界面");
+    // 主题页要切主题，把 App 递给它（在建树之前）
+    demo::setThemeSwitchApp(&app);
+
     demo::PageHost host;
     app.setRootView(host.getView());
     BKLV_LOG_INFO("界面构建完成");

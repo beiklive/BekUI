@@ -1,0 +1,31 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.accent.base",
+      "radius": "@theme/metric.radius.md",
+      "stroke": "@theme/color.border.default",
+      "strokeWidth": 0
+    }
+  ],
+  "states": {
+    "focused": {
+      "bg.strokeWidth": {
+        "to": 2,
+        "duration": 90,
+        "easing": "quadraticOut"
+      },
+      "bg.stroke": {
+        "to": "@theme/color.text.primary",
+        "duration": 90
+      }
+    },
+    "disabled": {
+      "bg.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      }
+    }
+  }
+}

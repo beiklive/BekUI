@@ -158,6 +158,21 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ---
 
+## 主题与外观系统（数据驱动换肤）
+
+需求：`resources/theme/default/` 分类存 JSON，default 为默认主题，复制改名改 JSON 即换肤；
+控件外观（含绘制结构）由 JSON 描述，状态动效用 tweeny 插值；主题只覆盖未显式设置的值。
+
+- [x] 主题数据层：`themes.json` 清单 + `<name>/{theme.json,colors.json,metrics.json,widgets/*.json}`，
+      key 拍平成 `color.*` / `metric.*`，缺项回退 default
+- [x] 外观引擎：`layers`（rect/text/image/custom）+ `states`（`<层>.<属性>` → 目标值/时长/缓动），
+      13 个可插值属性，颜色 4 通道 + 标量 1 通道各自一个 tweeny tween，状态有优先级
+- [x] `View::applyTheme()` / `applyThemeRecursive()`；`App::setTheme()` 运行时换肤
+- [x] `bklv/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
+- [x] 第二套皮肤 `ocean`（复制 default 改出来的）用于验证换肤
+- [x] 测试：`tests/theme_test.cpp`（44）+ `tests/widget_test.cpp`（24）
+- [ ] 其余控件移植（见下）
+
 ## JSON 视图系统（移植 borealis 的 XML 视图）
 
 对应用户确认的方案：bklv 不用 XML，用 JSON 描述视图树；i18n 同样用 JSON。

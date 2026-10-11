@@ -7,7 +7,8 @@
     "text": "Text",
     "layout": "Layout",
     "list": "List",
-    "json": "JSON"
+    "json": "JSON",
+    "theme": "Theme"
   },
   "demo": {
     "welcome": "Welcome to bklv",
@@ -31,5 +32,18 @@
     "badge": "JSON attributes",
     "row_title": "Row {} (same template, different data)",
     "row_subtitle": "fields title / subtitle / thumb come from a C++ binder"
+  },
+  "theme": {
+    "hint": "Appearance comes from resources/theme/<name>/widgets/*.json: draw structure (background/border/text) and state animation (tweeny interpolation) all live in JSON. Copy default, rename, edit JSON - that is a new skin.",
+    "switch_title": "Switch theme",
+    "current": "Current theme: {}",
+    "widgets_title": "Appearance-driven widgets",
+    "widgets_desc": "Rectangle and Button contain no drawing code at all - background, radius, text and colors all come from JSON.",
+    "button_normal": "Normal",
+    "button_ghost": "Ghost",
+    "button_disabled": "Disabled",
+    "states_title": "State animation",
+    "states_desc": "Move focus with left/right, watch the color tween; press A to see the press feedback.",
+    "focus_sample": "Button {}"
   }
 }

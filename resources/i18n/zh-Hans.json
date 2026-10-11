@@ -7,7 +7,8 @@
     "text": "文本",
     "layout": "布局",
     "list": "列表",
-    "json": "JSON"
+    "json": "JSON",
+    "theme": "主题"
   },
   "demo": {
     "welcome": "欢迎使用 bklv",
@@ -31,5 +32,18 @@
     "badge": "JSON 属性",
     "row_title": "第 {} 行（模板相同，数据不同）",
     "row_subtitle": "字段 title / subtitle / thumb 由 C++ 侧的 binder 提供"
+  },
+  "theme": {
+    "hint": "外观由 resources/theme/<主题>/widgets/*.json 描述：绘制结构（底/边框/文字）、状态动效（tweeny 插值）都在 JSON 里。复制 default 改名改 JSON 就是一套新皮肤。",
+    "switch_title": "换肤",
+    "current": "当前主题：{}",
+    "widgets_title": "外观驱动的控件",
+    "widgets_desc": "Rectangle 与 Button 一行绘制代码都没有——底、圆角、文字、颜色全来自 JSON。",
+    "button_normal": "普通按钮",
+    "button_ghost": "描边按钮",
+    "button_disabled": "禁用按钮",
+    "states_title": "状态动效",
+    "states_desc": "方向键左右移动焦点，观察颜色补间；按回车看按下反馈。",
+    "focus_sample": "按钮 {}"
   }
 }

@@ -68,6 +68,10 @@ class App
     // 了，会冒泡到根立刻重算一次。
     static void requestLayout();
 
+    // 运行时换肤：重新装载主题、让整棵视图树重新套用外观、并重排一次。
+    // 已建好的视图会更新（applyTheme），但**文案不会重译**（那是 i18n 的事）。
+    bool setTheme(const std::string& name);
+
     // 每次真正执行 YGNodeCalculateLayout 后由内部调用。用来验证"静态页面不再每帧
     // 白算一次布局"（见 tests 与 DebugWindow 的统计）。
     static void noteLayoutPerformed();

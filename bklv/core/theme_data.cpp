@@ -185,6 +185,14 @@ bool ThemeData::loadInto(const std::string& themeName, bool isDefault)
 
 bool ThemeData::load(const std::string& requested)
 {
+    // 环境变量优先：桌面调试与验证用（BKLV_THEME=ocean ./dist/demo）
+    std::string wanted = requested;
+    if (wanted.empty())
+    {
+        if (const char* env = std::getenv("BKLV_THEME"); env != nullptr && *env != '\0')
+            wanted = env;
+    }
+
     // 1. 清单：可用主题与默认主题
     Json manifest;
     if (parseFile(std::string(THEME_DIR) + "themes.json", manifest))
@@ -195,15 +203,15 @@ bool ThemeData::load(const std::string& requested)
                 if (entry.is_string())
                     this->available.push_back(entry.get<std::string>());
 
-        if (requested.empty() && manifest.contains("default") && manifest["default"].is_string())
+        if (wanted.empty() && manifest.contains("default") && manifest["default"].is_string())
             this->name = manifest["default"].get<std::string>();
         else
-            this->name = requested;
+            this->name = wanted;
     }
     else
     {
         // 没有清单也能用：直接按名字找目录
-        this->name = requested.empty() ? "default" : requested;
+        this->name = wanted.empty() ? "default" : wanted;
     }
 
     if (this->name.empty())

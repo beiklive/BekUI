@@ -1,6 +1,7 @@
 #include "bklv/core/app.hpp"
 
 #include "bklv/core/resource.hpp"
+#include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
 
 #include <cstdlib>
@@ -76,6 +77,21 @@ bool forceRelayout()
 }
 
 } // namespace
+
+bool App::setTheme(const std::string& name)
+{
+    if (!bklv::setTheme(name))
+        return false;
+
+    // 外观是按（主题, 控件）缓存的，上面已经清掉；这里让每个控件重新取外观。
+    // 控件的 applyTheme() 只覆盖"没被显式设置过"的值。
+    if (this->root != nullptr)
+        this->root->applyThemeRecursive();
+
+    // 主题可能改了间距/字号，必须重排
+    App::requestLayout();
+    return true;
+}
 
 void App::requestLayout()
 {

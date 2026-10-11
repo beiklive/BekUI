@@ -280,6 +280,10 @@ set(BKLV_CORE_SOURCES
     views/image.cpp
     views/progress_spinner.cpp
     views/debug_window.cpp
+    # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
+    widgets/appearance_view.cpp
+    widgets/rectangle.cpp
+    widgets/button.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

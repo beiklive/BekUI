@@ -1,0 +1,10 @@
+{
+  "name": "ocean",
+  "version": 1,
+  "colorScheme": "dark",
+  "widgets": [
+    "widgets/rectangle.json",
+    "widgets/button.json",
+    "widgets/button.ghost.json"
+  ]
+}

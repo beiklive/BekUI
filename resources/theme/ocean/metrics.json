@@ -1,0 +1,37 @@
+{
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24
+  },
+  "radius": {
+    "sm": 2,
+    "md": 4,
+    "lg": 6,
+    "round": 999
+  },
+  "font": {
+    "size": {
+      "sm": 12,
+      "md": 15,
+      "lg": 18,
+      "title": 22
+    },
+    "lineHeight": 1.5
+  },
+  "border": {
+    "thickness": 2
+  },
+  "anim": {
+    "fast": 90,
+    "normal": 150,
+    "slow": 260
+  },
+  "control": {
+    "height": 44,
+    "minWidth": 132,
+    "paddingX": 20
+  }
+}

@@ -219,6 +219,47 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 界面不刷新时先怀疑"漏置脏"：用 `BKLV_FORCE_RELAYOUT=1` 跑一次，退回每帧全量重算，
 现象消失就说明有地方改了布局状态却没 `invalidate()`（或该用 `requestLayout()`）。
 
+## 主题与外观
+
+换肤不需要改代码：复制 `resources/theme/default/` 改名，改里面的 JSON，再在
+`themes.json` 里登记，就多了一套皮肤。桌面用 `BKLV_THEME=ocean ./dist/demo` 直接看效果。
+
+```json
+// resources/theme/ocean/widgets/button.json
+{ "layers": [
+    { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
+      "radius": "@theme/metric/radius.md" },
+    { "op": "text", "id": "title", "source": "text", "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric/font.size.md", "align": "center", "valign": "center" } ],
+  "states": {
+    "focused": { "bg.fill": { "to": "@theme/color.accent.base", "duration": 120,
+                              "easing": "quadraticOut" } } } }
+```
+
+```cpp
+// 控件：外观全在 JSON 里，C++ 只写语义
+bklv::Button* button = new bklv::Button("确定");
+button->setOnClick([] { /* ... */ });
+
+bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
+bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button.ghost.json
+
+app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
+```
+
+要记住的四条：
+
+1. **装饰走 JSON，语义留 C++**：底/边框/文字/图片/状态动效由 `layers` 描述；换行截断、
+   图片缩放、进度弧这类走 `custom` 层，由控件自己画。
+2. **外观值在 `applyTheme()` 时取定**，`draw()` 里不查主题（否则每帧几千次字符串查表）。
+3. **主题只覆盖没被显式设置过的值**：`label->setFontSize(18)` 之后换肤不会改它；
+   要让它跟随主题就 `label->setFontSizeExplicit(false)`。
+4. **加控件外观要在 `theme.json` 的 `widgets` 数组里登记**（不扫目录，romfs 限制）。
+
+写成 `@theme/color.x.y` / `@theme/metric.a.b` 的引用在**装载时**解析：
+`colors.json` 的 key 拍平成 `color.*`，`metrics.json` 拍平成 `metric.*`。
+皮肤缺的 key 回退 `default`。
+
 ## 不生成 imgui.ini
 
 bklv 的绘制全部落在 viewport 的绘制列表上，不依赖 ImGui 窗口的位置和尺寸，

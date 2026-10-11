@@ -216,6 +216,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      现象消失就说明有地方改了布局状态却没 invalidate。
   ④ `App::getLayoutCount()` 是累计布局次数，调试窗口的状态行里能看到：
      界面静止时这个数应该停住。
+- **主题与外观**（`core/theme_data.*` + `core/appearance.*` + `widgets/`）：
+  换肤 = 复制 `resources/theme/default/` 改名 + 改 JSON，**不改 C++**。
+  四条约定：
+  ① **不扫目录**：`themes.json` 列主题，各主题的 `theme.json` 列自己的外观文件。
+     romfs 上目录迭代真机未验证，加外观文件要记得登记。
+  ② **装饰层走 JSON，语义绘制留 C++**：底/边框/文字/图片/状态动效由 `layers` 描述；
+     Label 的换行、Image 的缩放、进度弧、滑块轨道走 `custom` 层
+     （`AppearanceView::drawCustomLayer`）。把语义绘制也塞进 JSON 等于写解释器，别做。
+  ③ **draw 里不查主题**：外观值在构造 / `applyTheme()` 时取到 `AppearanceInstance`，
+     绘制只读当前值。换肤靠 `App::setTheme()` → 重新取外观 + `applyThemeRecursive()` + 重排。
+  ④ **主题只覆盖未被显式设置过的值**：调过 `setFontSize/setTextColor` 的控件，
+     换肤不再动它；要跟随主题就 `setXxxExplicit(false)`。
+  缺项回退链：当前主题 → default → 控件空外观（警告，不崩）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。

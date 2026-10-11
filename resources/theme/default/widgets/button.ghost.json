@@ -1,0 +1,50 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "#00000000",
+      "stroke": "@theme/color.border.default",
+      "strokeWidth": 2,
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "text",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.md",
+      "align": "center",
+      "valign": "center"
+    }
+  ],
+  "states": {
+    "focused": {
+      "bg.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 140,
+        "easing": "quadraticOut"
+      },
+      "bg.strokeWidth": {
+        "to": 0,
+        "duration": 140
+      },
+      "title.color": {
+        "to": "@theme/color.text.onAccent",
+        "duration": 140
+      }
+    },
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.accent.pressed",
+        "duration": 60
+      }
+    },
+    "disabled": {
+      "title.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
+    }
+  }
+}

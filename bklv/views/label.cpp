@@ -6,6 +6,7 @@
 
 #include "bklv/core/font.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/theme_data.hpp"
 
 namespace bklv
 {
@@ -110,13 +111,34 @@ void Label::setFontSize(float value)
     if (this->fontSize == value)
         return;
 
-    this->fontSize = value;
+    this->fontSize         = value;
+    this->fontSizeExplicit = true;
     this->invalidate();
 }
 
 void Label::setTextColor(ImU32 color)
 {
-    this->textColor = color;
+    this->textColor        = color;
+    this->textColorExplicit = true;
+}
+
+void Label::applyTheme()
+{
+    const ThemeData& theme = getTheme();
+
+    // 主题给的是默认值：只填"用户没管过"的那部分
+    if (!this->fontSizeExplicit)
+    {
+        const float size = theme.number("metric.font.size.md", this->fontSize);
+        if (size != this->fontSize)
+        {
+            this->fontSize = size;
+            this->markMeasureDirty(); // 字号变了，文本要重新测量
+        }
+    }
+
+    if (!this->textColorExplicit)
+        this->textColor = theme.color("color.text.primary", this->textColor);
 }
 
 void Label::setLineHeight(float value)

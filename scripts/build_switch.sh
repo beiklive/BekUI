@@ -88,7 +88,7 @@ CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti
 BKLV_SOURCES=()
 while IFS= read -r -d '' f; do
     BKLV_SOURCES+=("$f")
-done < <(find "${BKLV_DIR}/core" "${BKLV_DIR}/views" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
+done < <(find "${BKLV_DIR}/core" "${BKLV_DIR}/views" "${BKLV_DIR}/widgets" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
 
 # backends / platforms 里 Switch 只取这几个：
 # 桌面的 opengl/vulkan/sdl3 那几份不参与（文件内部也有 BKLV_SWITCH 守卫，但不必编）。

@@ -28,5 +28,10 @@
     "fast": 90,
     "normal": 150,
     "slow": 260
+  },
+  "control": {
+    "height": 40,
+    "minWidth": 120,
+    "paddingX": 16
   }
 }

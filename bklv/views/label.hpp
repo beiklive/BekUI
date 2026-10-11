@@ -69,6 +69,17 @@ class Label : public View
 
     const bklv::AttributeTable& attributes() const override;
 
+    // 跟随主题：只在没被显式设置过时更新字号与颜色。
+    void applyTheme() override;
+
+    // 把字号/颜色的管理权交回主题（或收回）。
+    // 默认：调过 setFontSize/setTextColor 就算显式管理，换肤不再覆盖它。
+    // 想让某个 Label 跟着主题走，构造后调 setXxxExplicit(false) 即可。
+    void setFontSizeExplicit(bool value) { this->fontSizeExplicit = value; }
+    void setTextColorExplicit(bool value) { this->textColorExplicit = value; }
+    bool isFontSizeExplicit() const { return this->fontSizeExplicit; }
+    bool isTextColorExplicit() const { return this->textColorExplicit; }
+
   protected:
     void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
         FrameContext* ctx) override;
@@ -103,8 +114,12 @@ class Label : public View
     size_t textVersion = 0;
 
     ImFont* font    = nullptr;
-    float fontSize  = 20.0f;
-    ImU32 textColor = IM_COL32(235, 238, 242, 255);
+    // applyTheme() 只覆盖**没被显式设置过**的值：
+    // 用户代码 setFontSize(18) 之后，换肤不该把它冲掉。
+    float fontSize        = 20.0f;
+    ImU32 textColor       = IM_COL32(235, 238, 242, 255);
+    bool fontSizeExplicit = false;
+    bool textColorExplicit = false;
     float lineHeight = 1.35f;
     bool singleLine  = false;
 
