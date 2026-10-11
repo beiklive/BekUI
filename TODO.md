@@ -136,9 +136,10 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       borealis 的 `core/task`（含 Switch 用的线程封装）。Switch 上
       文件 IO / 网络必须先丢后台线程，主线程只做上传。
       与上一项配套；也是事件总线在跨线程方向的用途。
-- [ ] **i18n**
-      `Platform::getLocale()` 已经有了，缺文案表与切换机制。
-      borealis 用 XML，bklv 按约定用 C++ 表（`bklv::i18n::get("key")`）。
+- [x] **i18n**
+      `Platform::getLocale()` 已经有了。最终方案：文案用 JSON（`resources/i18n/<locale>.json`），
+      跟随 borealis 的资源布局但**不依赖目录枚举**（romfs 上的目录扫描真机未验证，
+      改为单文件 + 可选 `$files` 清单）。
       *验收*：切换语言后界面文案即时更新。
 - [ ] **手势层**
       Switch 触摸屏的原始状态已经在 `bklv/backends/imgui_impl_libnx.cpp` 里取到了，
@@ -151,6 +152,44 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       桌面候选框定位、Switch 软键盘。`EditText` 的前置条件。
 - [ ] **在库内补 `getClassString()` 的默认实现**
       见技术债第 1 条。
+
+---
+
+## JSON 视图系统（移植 borealis 的 XML 视图）
+
+对应用户确认的方案：bklv 不用 XML，用 JSON 描述视图树；i18n 同样用 JSON。
+依赖 `bklv/3rd/json`（nlohmann/json，与 borealis 同版本）。
+
+- [ ] **Template / instantiate 两阶段**
+      模板缓存只存**未经语言/主题解析**的 JSON，`@i18n/` `@style/` `@theme/` 在实例化时才解析。
+      否则缓存会把当前语言烤死（列表 cell 复用同一模板时必现）。
+- [ ] **属性值带类型**：`24` 与 `"24px"` 等价，`"50%"` 走百分比；类型不符报错而非静默忽略。
+- [ ] **错误可定位**：语法错误用 `json::parse_error.byte` 折算行号，属性错误用 `json_pointer` 路径。
+      未知属性=警告，未知 type / 结构错误=返回 nullptr（borealis 是 `fatal()` 崩进程）。
+- [ ] **cell 数据绑定**：JSON 节点 `"bind": "title"` + app 侧回调，复用现有 `RecyclerDataSource`。
+- [ ] **include + 循环检测**、**深度/节点上限**、**异常安全（RAII）**。
+
+---
+
+## P4 —— 布局与属性表优化（**已确认要做，本轮 JSON 移植完成后再动**）
+
+优先级说明：收益最大，但改动面最广（涉及所有 `invalidate()` 调用点），
+与 JSON 移植没有依赖关系。混在一起做会让「JSON 出问题」与「布局漏置脏」两类故障互相掩盖，
+所以单独一轮。
+
+- [ ] **脏标记布局**
+      现在 `App::frame()` 每帧无条件 `YGNodeCalculateLayout` 全树重算
+      （`bklv/core/app.cpp`，注释自认"比 borealis 保守"）。
+      borealis 的做法是 `invalidate()` 冒泡到根时才重算。
+      改法：`View` 加脏标志 + 冒泡；`App::frame()` 条件重算；
+      文本变更 / 子节点增删 / Style 主题切换 / 窗口 resize / 字体换代 全部置脏；
+      加 `App::requestLayout()` 兜底与 `BKLV_FORCE_RELAYOUT` 环境变量排查漏置脏。
+      *验收*：加 `getLayoutCount()` 计数器，控件页静止 1 秒布局次数 60 -> 0；
+      滚动帧为 0（滚动只改 translate）；切 tab / 回收 cell 时才 +1。GL 与 VK 都要跑回归。
+- [ ] **属性表类级静态化**
+      borealis 每个 View 实例挂 7 个 `unordered_map` + 1 个 `set<string>`。
+      改为虚函数 `attributes()` 返回类级 static 表，handler 带 `this`。
+      *验收*：`sizeof(View)` 下降，列表页内存下降（估算每实例省约 500B，以实测为准）。
 
 ---
 
