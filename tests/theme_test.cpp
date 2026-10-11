@@ -235,7 +235,8 @@ int main()
         // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
         // 选中态整块变成洋红，就是这个错误。
         const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
-            "slider", "tab_cell", "dialog", "dialog_backdrop" };
+            "slider", "tab_cell", "dialog", "dialog_backdrop",
+            "dropdown", "dropdown_item" };
 
         for (const char* themeName : { "default", "ocean" })
         {

@@ -49,5 +49,9 @@
   "dialog": {
     "width": 520,
     "height": 220
+  },
+  "dropdown": {
+    "height": 44,
+    "itemHeight": 38
   }
 }

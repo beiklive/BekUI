@@ -21,6 +21,26 @@ namespace bklv
 namespace
 {
 
+// 主题引用里的 key 归一：`color/a.b` 与 `color.a.b` 都当成 `color.a.b`。
+//
+// 分组名（color / metric）后面应该是点，写成斜杠的人不少（我自己就反复写错），
+// 所以这里容错，但会警告一句——**真正不存在的 key 仍然硬失败**，
+// 所以容错不会退回"静默变洋红"。
+std::string normalizeThemeKey(const std::string& key, const std::string& where)
+{
+    const size_t slash = key.find('/');
+    if (slash == std::string::npos)
+        return key;
+
+    std::string normalized = key;
+    normalized[slash]      = '.';
+
+    BKLV_LOG_WARNING("主题引用写法应带点：@theme/%s（%s）；已按 @theme/%s 解析", key.c_str(),
+        where.c_str(), normalized.c_str());
+    return normalized;
+}
+
+
 using Json = nlohmann::json;
 
 constexpr int PROP_COUNT = 13;
@@ -118,7 +138,7 @@ bool resolveColor(const Json& node, const ThemeData& theme, ImU32& out, std::str
     const std::string text = node.get<std::string>();
     if (text.rfind("@theme/", 0) == 0)
     {
-        const std::string key = text.substr(7);
+        const std::string key = normalizeThemeKey(text.substr(7), where);
         if (!theme.hasColor(key))
         {
             // 不静默回退：写错 key 会变成一块洋红，比报错难查得多
@@ -150,7 +170,7 @@ bool resolveNumber(const Json& node, const ThemeData& theme, float& out, std::st
         const std::string text = node.get<std::string>();
         if (text.rfind("@theme/", 0) == 0)
         {
-            const std::string key = text.substr(7);
+            const std::string key = normalizeThemeKey(text.substr(7), where);
             if (!theme.hasNumber(key))
             {
                 error = where + " 引用了主题里不存在的数值：@theme/" + key

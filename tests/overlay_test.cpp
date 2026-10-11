@@ -12,6 +12,7 @@
 #include "bklv/core/theme_data.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/dialog.hpp"
+#include "bklv/widgets/dropdown.hpp"
 
 using namespace bklv;
 
@@ -27,6 +28,18 @@ static void check(bool ok, const std::string& what)
     {
         g_failed++;
         std::printf("  [失败] %s\n", what.c_str());
+    }
+}
+
+static void checkEqual(const std::string& got, const std::string& want, const std::string& what)
+{
+    g_checks++;
+    if (got == want)
+        std::printf("  [通过] %s  =>  %s\n", what.c_str(), got.c_str());
+    else
+    {
+        g_failed++;
+        std::printf("  [失败] %s  期望 %s 实际 %s\n", what.c_str(), want.c_str(), got.c_str());
     }
 }
 
@@ -131,6 +144,44 @@ int main()
             dialog->update();
         check(closedCalled, "补间播完后调用了 onClose");
         check(!dialog->isOpen(), "弹窗回到关闭状态");
+    }
+
+    std::printf("\n== 5. Dropdown：选项与弹层 ==\n");
+    {
+        App app;
+        Box* root = new Box(Axis::COLUMN);
+        app.setRootView(root);
+
+        Dropdown* dropdown = new Dropdown();
+        root->addView(dropdown);
+        dropdown->setOptions({ "低", "中", "高" });
+
+        checkEqual(dropdown->getSelectedText(), "低", "默认选第一项");
+        check(dropdown->getSelectedIndex() == 0, "默认下标 0");
+
+        size_t changed = 99;
+        dropdown->setOnChange([&changed](size_t index) { changed = index; });
+        dropdown->setSelectedIndex(2);
+        checkEqual(dropdown->getSelectedText(), "高", "选中第三项");
+        check(changed == 2, "onChange 收到了新下标");
+
+        // 跑一次布局，让触发器有真实矩形（列表要锚在它下面）
+        YGNodeCalculateLayout(root->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        check(true, "先跑一次布局");
+
+        dropdown->open();
+        check(dropdown->isOpen(), "open() 之后是展开状态");
+        check(getInputManager().hasModal(), "展开时输入切模态");
+        check(getInputManager().getTopModal() == dropdown->getPopupForTest(), "最上层模态是这个列表");
+        check(root->getChildrenCount() == 2, "弹层挂到了根视图上");
+
+        // 选第三项：选中态转移 + 列表关掉
+        DropdownOption* third = dropdown->getPopupForTest()->getOptions()[2];
+        third->trigger();
+        check(!dropdown->isOpen(), "选完自动关掉");
+        check(!getInputManager().hasModal(), "关掉后模态退掉");
+        check(third->isSelected(), "被选中的选项进入 selected 状态");
+        checkEqual(dropdown->getSelectedText(), "高", "选中项没变");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

@@ -52,7 +52,15 @@
     "open_dialog": "Open dialog",
     "dialog_demo_title": "This is a dialog",
     "dialog_demo_text": "Panel, title, body and button placement all come from theme JSON. Try clicking outside: it will not pass through.",
-    "dialog_cancel": "Cancel"
+    "dialog_cancel": "Cancel",
+    "dropdown_title": "Dropdown",
+    "dropdown_desc": "Opens as an overlay: the list is anchored right below the trigger, input becomes modal, and it closes on outside click or selection. Option appearance (selected/focused colors) is in JSON too.",
+    "dropdown_label": "Quality",
+    "dropdown_picked": "Selected: {}",
+    "option_1": "Low",
+    "option_2": "Medium",
+    "option_3": "High",
+    "option_4": "Ultra"
   },
   "nav": {
     "hint": "TabFrame and Sidebar are library-level widgets: tab cells, selected state and panel colors are all described by theme JSON. Switching tabs detaches the old page instead of destroying it.",

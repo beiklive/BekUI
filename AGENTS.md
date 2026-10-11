@@ -204,8 +204,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ② 多行换行会把"两个字一行"的标题拆成两行（侧栏标题"导航"踩过）。
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，
   对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 解析不到 ——
-  现在这种写错会**编译外观时直接失败**（不静默回退成洋红），
-  theme_test 第 8 节会逐个编译两套主题的全部外观兜底。
+  写成 `@theme/color/a.b` 会被容错成点分（带一条警告提示正确写法），
+  **但真正不存在的 key 仍然编译失败**（不静默回退成洋红），
+  theme_test 第 8 节逐个编译两套主题的全部外观兜底。
 - **布局是延迟的，一帧最多算一次**（`core/view.cpp` 的 `invalidate()` + `core/app.cpp`）：
   `invalidate()` 只冒泡到根标记"要重算"，真正那一次由 `App::frame` 做。三个触发条件：
   画布尺寸变了 / 首帧 / 有人 invalidate 过。
@@ -278,7 +279,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   core/             接口层：view / box / app / platform / graphics / input / ...
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
-                    / slider / tab_frame / sidebar / dialog
+                    / slider / tab_frame / sidebar / dialog / dropdown
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

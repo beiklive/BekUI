@@ -52,7 +52,15 @@
     "open_dialog": "打开弹窗",
     "dialog_demo_title": "这是一个弹窗",
     "dialog_demo_text": "面板、标题、正文、按钮的位置与动效都来自主题 JSON。试试点遮罩外面：不会穿透。",
-    "dialog_cancel": "取消"
+    "dialog_cancel": "取消",
+    "dropdown_title": "下拉选择",
+    "dropdown_desc": "点开是一个弹层：列表锚在触发器正下方，输入切模态，点外面或选完自动关。选项外观（选中/聚焦配色）也在 JSON 里。",
+    "dropdown_label": "画质",
+    "dropdown_picked": "当前选择：{}",
+    "option_1": "低",
+    "option_2": "中",
+    "option_3": "高",
+    "option_4": "极高"
   },
   "nav": {
     "hint": "TabFrame 与 Sidebar 都是库级控件：tab 格子、选中态、面板底色都由主题 JSON 描述。切页时旧页面只脱离不销毁，状态会保留。",

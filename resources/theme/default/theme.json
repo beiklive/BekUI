@@ -12,6 +12,8 @@
     "widgets/slider.json",
     "widgets/tab_cell.json",
     "widgets/dialog_backdrop.json",
-    "widgets/dialog.json"
+    "widgets/dialog.json",
+    "widgets/dropdown.json",
+    "widgets/dropdown_item.json"
   ]
 }

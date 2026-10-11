@@ -9,6 +9,7 @@
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/dialog.hpp"
+#include "bklv/widgets/dropdown.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
@@ -169,7 +170,35 @@ Box* buildThemePage()
     dialogPanel->addView(dialogRow);
     page->addView(dialogPanel);
 
-    // ---- 5. 底栏：上边线 + 一行提示（结构同样来自 JSON）----
+    // ---- 5. 下拉：触发器 + 弹层列表（列表锚在触发器下方，可滚动）----
+    ThemePanel* dropdownPanel = new ThemePanel();
+    dropdownPanel->addView(makeText(getStr("theme/dropdown_title"), 16.0f, rgb(200, 208, 220)));
+    dropdownPanel->addView(
+        makeText(getStr("theme/dropdown_desc"), 14.0f, getTheme().color("color.text.dim")));
+
+    Label* picked = makeText(getStr("theme/dropdown_picked", getStr("theme/option_1")), 14.0f,
+        getTheme().color("color.text.dim"));
+    picked->setTextColorExplicit(false);
+
+    Dropdown* dropdown = new Dropdown();
+    dropdown->setTitle(getStr("theme/dropdown_label"));
+    dropdown->setOptions({ getStr("theme/option_1"), getStr("theme/option_2"),
+        getStr("theme/option_3"), getStr("theme/option_4") });
+    dropdown->setOnChange([picked, dropdown](size_t) {
+        picked->setText(getStr("theme/dropdown_picked", dropdown->getSelectedText()));
+    });
+
+    Box* dropdownRow = makeRow(16.0f);
+    dropdownRow->setAlignItems(AlignItems::CENTER);
+    Box* dropdownSlot = new Box(Axis::COLUMN);
+    dropdownSlot->setWidth(320.0f);
+    dropdownSlot->addView(dropdown);
+    dropdownRow->addView(dropdownSlot);
+    dropdownRow->addView(picked);
+    dropdownPanel->addView(dropdownRow);
+    page->addView(dropdownPanel);
+
+    // ---- 6. 底栏：上边线 + 一行提示（结构同样来自 JSON）----
     BottomBar* bottom = new BottomBar();
     bottom->showHintsFromFocus();
     if (bottom->getText().empty()) // 还没有焦点时没有提示，用静态文案兜底

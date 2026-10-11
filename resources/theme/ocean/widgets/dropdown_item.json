@@ -1,0 +1,39 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.raised",
+      "radius": 0
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "source": "text",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.md",
+      "align": "left",
+      "valign": "center"
+    }
+  ],
+  "states": {
+    "focused": {
+      "bg.fill": {
+        "to": "@theme/color.state.focus",
+        "duration": 100,
+        "easing": "quadraticOut"
+      }
+    },
+    "selected": {
+      "bg.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 140,
+        "easing": "quadraticOut"
+      },
+      "label.color": {
+        "to": "@theme/color.text.onAccent",
+        "duration": 140
+      }
+    }
+  }
+}
