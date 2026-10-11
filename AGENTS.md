@@ -203,8 +203,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ① 单行截断会把够短的文字截成一个省略号（tab 标题踩过：中文全变 `…`，ASCII 反而正常）；
   ② 多行换行会把"两个字一行"的标题拆成两行（侧栏标题"导航"踩过）。
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，
-  对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 解析不到 ——
-  写成 `@theme/color/a.b` 会被容错成点分（带一条警告提示正确写法），
+  对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 会被容错成点分
+  （带一条警告提示正确写法），
   **但真正不存在的 key 仍然编译失败**（不静默回退成洋红），
   theme_test 第 8 节逐个编译两套主题的全部外观兜底。
 - **布局是延迟的，一帧最多算一次**（`core/view.cpp` 的 `invalidate()` + `core/app.cpp`）：
