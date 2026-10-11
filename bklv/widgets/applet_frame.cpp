@@ -25,7 +25,12 @@ AppletFrame::AppletFrame(View* contentView)
     this->contentBox->setMarginTop(getTheme().number("metric.spacing.md", 12.0f));
     this->addView(this->contentBox);
 
+    // 底栏：默认是提示栏（[按键图标] 说明 …），这也正是 borealis 的做法
+    this->hintsBar = new HintsBar();
+    this->addView(this->hintsBar);
+
     this->footer = new BottomBar();
+    this->footer->setVisibility(Visibility::GONE); // 文字底栏默认不显示
     this->addView(this->footer);
 
     // B：逐层返回；已经在最外层就交给 onDismiss
@@ -78,6 +83,16 @@ void AppletFrame::setHeaderVisibility(Visibility visibility)
 void AppletFrame::setFooterVisibility(Visibility visibility)
 {
     this->footer->setVisibility(visibility);
+    this->hintsBar->setVisibility(visibility == Visibility::VISIBLE && this->useTextFooter
+            ? Visibility::GONE
+            : visibility);
+}
+
+void AppletFrame::setUseTextFooter(bool value)
+{
+    this->useTextFooter = value;
+    this->hintsBar->setVisibility(value ? Visibility::GONE : Visibility::VISIBLE);
+    this->footer->setVisibility(value ? Visibility::VISIBLE : Visibility::GONE);
 }
 
 void AppletFrame::setHeaderStyle(AppletHeaderStyle style)
@@ -130,13 +145,9 @@ void AppletFrame::popContentView(std::function<void()> callback)
 
 void AppletFrame::refreshFooter()
 {
-    if (this->footer == nullptr)
-        return;
-
-    // 底栏显示当前焦点的动作提示（和焦点绑定的提示由输入层给）
-    this->footer->showHintsFromFocus();
-    if (this->footer->getText().empty())
-        this->footer->setText(this->contentStack.size() > 1 ? "B 返回" : "");
+    // 提示栏的内容由 HintsBar::update() 按当前焦点刷新（这里是切页后的即时同步）
+    if (this->hintsBar != nullptr)
+        this->hintsBar->refresh();
 }
 
 void AppletFrame::update()

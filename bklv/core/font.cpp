@@ -6,6 +6,7 @@
 #include "imgui.h"
 
 #include "bklv/core/logger.hpp"
+#include "bklv/core/resource.hpp"
 
 #if defined(BKLV_SWITCH)
 #include <switch.h>
@@ -15,10 +16,18 @@ namespace bklv
 {
 
 static ImFont* g_defaultFont         = nullptr;
+static const float ICON_FONT_SIZE    = 22.0f; // 图标字形按这个字号栅格化
 static unsigned int g_fontGeneration = 0;
 
 namespace
 {
+
+// Switch 图标字体用的私有区（borealis 的字形都在 U+E000~U+F8FF 里）
+static const ImWchar PUA_RANGES[] = { 0xE000, 0xF8FF, 0 };
+
+// 图标字体：hint 栏的按键字形（A/B/X/Y、方向键…）从这里取。
+// Switch 上系统共享字体的 NintendoExt 就带这些字形，桌面则随包带 switch_icons.ttf。
+ImFont* g_iconFont = nullptr;
 
 // 界面基准字号。桌面与 Switch 用同一个值（布局按百分比算，改它会牵动所有文本排版）。
 constexpr float FONT_SIZE = 20.0f;
@@ -118,6 +127,18 @@ ImFont* getDefaultFont()
     return g_defaultFont;
 }
 
+ImFont* getIconFont()
+{
+    // 没单独加载图标字体时退回默认字体：Switch 的 NintendoExt 回退链能画出这些字形，
+    // 桌面上如果没找到 switch_icons.ttf 也是同理（至少不会崩）。
+    return g_iconFont != nullptr ? g_iconFont : g_defaultFont;
+}
+
+bool hasIconFont()
+{
+    return g_iconFont != nullptr;
+}
+
 void setDefaultFont(ImFont* font)
 {
     if (g_defaultFont == font)
@@ -175,6 +196,27 @@ void loadFonts()
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     };
 #endif
+
+    // 图标字体先加载：里面是按键字形（私有区），和正文字体分开方便各取所需
+    {
+        const std::string iconPath = bklv::resourcePath("resources/font/switch_icons.ttf");
+        if (fileExists(iconPath.c_str()))
+        {
+            ImFont* icon = io.Fonts->AddFontFromFileTTF(iconPath.c_str(), ICON_FONT_SIZE, nullptr,
+                PUA_RANGES);
+            if (icon != nullptr)
+            {
+                g_iconFont = icon;
+                Logger::info("已加载图标字体：resources/font/switch_icons.ttf");
+            }
+            else
+                Logger::warning("图标字体解析失败：resources/font/switch_icons.ttf");
+        }
+        else
+        {
+            Logger::info("没找到图标字体 resources/font/switch_icons.ttf，hint 图标用文字代替");
+        }
+    }
 
     for (const char* path : candidates)
     {

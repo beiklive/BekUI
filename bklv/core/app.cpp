@@ -15,7 +15,6 @@
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/time.hpp"
-#include "bklv/views/hints.hpp"
 
 namespace bklv
 {
@@ -246,8 +245,8 @@ void App::frame()
         // 5. 绘制视图树。
         this->root->frame(&ctx);
 
-        // 6. 提示栏画在最上层。
-        drawHints(ctx.drawList, width, height);
+        // （提示栏以前是画在最上层的覆盖层，现在改用 widgets/hints_bar 控件，
+        //   由 AppletFrame 的底栏承载；见 bklv/widgets/hints_bar.*）
 
         // 7. ImGui 窗口（调试窗口、日志窗口）。
         //    放在视图树之后，所以窗口浮在界面之上；必须在 ImGui::Render() 之前。

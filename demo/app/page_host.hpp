@@ -1,6 +1,11 @@
 #pragma once
 
-// 页面宿主：标题 + tab 栏 + 内容区，负责切页。
+// 页面宿主：**左侧栏 + 右侧子页面**，外面套 AppletFrame（页头 + 提示栏底栏）。
+//
+//   AppletFrame（页头=当前页标题，底栏=提示栏 [按键图标] 说明 …）
+//     └─ Box(ROW)
+//          ├─ Sidebar（页面列表，选中项带强调色条）
+//          └─ 内容区（当前页；不自管滚动的页放进 ScrollingFrame）
 //
 // 切页最容易踩的两个坑（都在下面实现了）：
 //   1. 视图在"内容区"和"ScrollingFrame"之间搬动时，必须先 evict 再 add。
@@ -12,7 +17,8 @@
 #include <vector>
 
 #include "app/pages/pages.hpp"
-#include "app/tab_bar.hpp"
+#include "bklv/widgets/applet_frame.hpp"
+#include "bklv/widgets/sidebar.hpp"
 #include "bklv/views/debug_window.hpp"
 #include "bklv/core/app.hpp"
 #include "bklv/core/box.hpp"
@@ -60,14 +66,15 @@ class PageHost
     bklv::RecyclerFrame* getMainList() const { return this->mainList; }
 
   private:
-    void addPage(const std::string& name, bklv::Box* view, bool selfScrolling);
+    void addPage(const std::string& name, const std::string& subtitle, bklv::Box* view,
+        bool selfScrolling);
 
     // 自滚动页要有一个确定高度才能撑满内容区（height:100% 在 Yoga 里依赖父高度）。
     void sizeSlotToContent();
     void selectPage(size_t index);
 
-    bklv::Box* root = nullptr;
-    TabBar* tabBar = nullptr;
+    bklv::AppletFrame* root = nullptr;
+    bklv::Sidebar* sidebar = nullptr;
 
     // 内容区用两个互斥的容器，而不是一个容器里来回换：
     //   scroller —— 容纳不自管滚动的页面（页面高度由内容决定）
@@ -79,6 +86,7 @@ class PageHost
 
     std::vector<bklv::Box*> pages;
     std::vector<bool> selfScrolling;
+    std::vector<std::string> pageSubtitles;
     size_t currentPage = static_cast<size_t>(-1);
 
     bklv::DebugWindow debugWindow;

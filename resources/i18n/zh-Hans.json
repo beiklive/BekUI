@@ -1,6 +1,10 @@
 {
   "app": {
-    "title": "bklv 能力总览"
+    "title": "bklv 能力总览",
+    "subtitle": "左侧栏切换页面 · 上下移动焦点 · 回车触发",
+    "pages": "页面",
+    "show_log": "显示日志",
+    "hide_log": "隐藏日志"
   },
   "tab": {
     "widgets": "控件",
@@ -101,5 +105,15 @@
   },
   "widgets": {
     "cancel": "取消"
+  },
+  "page": {
+    "theme_sub": "换肤与外观驱动的控件",
+    "widgets_sub": "基础控件与自定义绘制",
+    "text_sub": "换行、截断与对齐",
+    "layout_sub": "Flexbox 布局能力",
+    "list_sub": "回收列表（单元格复用）",
+    "json_sub": "整块界面来自 JSON 描述",
+    "nav_sub": "TabFrame 与 Sidebar",
+    "applet_sub": "AppletFrame 的内容栈"
   }
 }

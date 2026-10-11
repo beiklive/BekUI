@@ -1,6 +1,10 @@
 {
   "app": {
-    "title": "bklv capability overview"
+    "title": "bklv capability overview",
+    "subtitle": "Sidebar switches pages · arrows move focus · Enter activates",
+    "pages": "Pages",
+    "show_log": "Show log",
+    "hide_log": "Hide log"
   },
   "tab": {
     "widgets": "Widgets",
@@ -101,5 +105,15 @@
   },
   "widgets": {
     "cancel": "Cancel"
+  },
+  "page": {
+    "theme_sub": "Skinning and appearance-driven widgets",
+    "widgets_sub": "Basic widgets and custom drawing",
+    "text_sub": "Wrapping, truncation and alignment",
+    "layout_sub": "Flexbox layout capability",
+    "list_sub": "Recycler list (cell reuse)",
+    "json_sub": "A whole screen described in JSON",
+    "nav_sub": "TabFrame and Sidebar",
+    "applet_sub": "AppletFrame content stack"
   }
 }

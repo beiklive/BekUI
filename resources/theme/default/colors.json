@@ -1,33 +1,61 @@
 {
+  "$comment": "默认主题：对齐 borealis 的暗色主题（Switch 风格）。色值见 borealis core/theme.cpp 的 darkThemeValues。",
   "surface": {
-    "page": "#1a1c21",
-    "card": "#262a32",
-    "raised": "#2e333c",
-    "sunken": "#21242a"
+    "page": "#2d2d2d",
+    "card": "#1f2227",
+    "raised": "#505050",
+    "sunken": "#323232"
   },
   "text": {
-    "primary": "#ebeef2",
-    "dim": "#96a0af",
-    "disabled": "#828994",
-    "onAccent": "#ffffff"
+    "primary": "#ffffff",
+    "dim": "#a3a3a3",
+    "disabled": "#505050",
+    "onAccent": "#342937"
   },
   "accent": {
-    "base": "#5aaaf5",
-    "pressed": "#4a90e2"
+    "base": "#00ffcc",
+    "pressed": "#01ffc9"
   },
   "state": {
-    "focus": "#30568c",
-    "disabled": "#4a4f58",
+    "focus": "#198ac6",
+    "disabled": "#535756",
     "danger": "#e66a6a"
   },
   "border": {
-    "default": "#5a626e",
-    "subtle": "#464c56"
+    "default": "#4e4e4e",
+    "subtle": "#515151"
+  },
+  "highlight": {
+    "color1": "#198ac6",
+    "color2": "#89f1f2"
+  },
+  "backdrop": {
+    "fill": "#000000b2"
+  },
+  "slider": {
+    "pointer": "#505050",
+    "pointerBorder": "#787878",
+    "lineFilled": "#01ffc9",
+    "lineEmpty": "#8c8c8c"
+  },
+  "spinner": {
+    "bar": "#c0c0c050"
+  },
+  "list": {
+    "value": "#58c3a9"
+  },
+  "button": {
+    "highlightText": "#07f7c6"
   },
   "card": {
     "blue": "#396091",
     "green": "#467d64",
     "orange": "#915e43",
     "purple": "#695496"
+  },
+  "header": {
+    "rectangle": "#a0a0a0",
+    "subtitle": "#a3a3a3",
+    "border": "#4e4e4e"
   }
 }

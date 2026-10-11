@@ -102,7 +102,6 @@ add_subdirectory(bklv)
 set(BKLV_APP_SOURCES
     app/widgets.cpp
     app/page_helpers.cpp
-    app/tab_bar.cpp
     app/page_host.cpp
     app/pages/page_widgets.cpp
     app/pages/page_text.cpp

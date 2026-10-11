@@ -273,7 +273,6 @@ set(BKLV_CORE_SOURCES
     core/box.cpp
     core/app.cpp
     views/label.cpp
-    views/hints.cpp
     views/scrolling_frame.cpp
     views/h_scrolling_frame.cpp
     views/json_cell.cpp
@@ -294,6 +293,7 @@ set(BKLV_CORE_SOURCES
     widgets/dropdown.cpp
     widgets/applet_frame.cpp
     widgets/edit_text_dialog.cpp
+    widgets/hints_bar.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

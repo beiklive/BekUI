@@ -13,7 +13,9 @@ Sidebar::Sidebar(const std::string& title)
     , title(title)
 {
     this->setWidth(getTheme().number("metric.sidebar.width", 200.0f));
-    this->setHeightPercentage(100.0f);
+    // 高度不写 100%：父容器（通常是 grow 的行/列）会 stretch 它，
+    // 写 100% 而父高度又由内容决定时会形成循环，把底栏挤出可视区（踩过）
+    this->setHeight(AUTO);
     this->setShrink(0.0f);
     this->setGap(getTheme().number("metric.spacing.xs", 4.0f));
 
@@ -92,6 +94,13 @@ void Sidebar::setItemTitle(size_t index, const std::string& itemTitle)
     if (index >= this->cells.size())
         return;
     this->cells[index]->setTitle(itemTitle);
+}
+
+std::string Sidebar::getItemTitle(size_t index) const
+{
+    if (index >= this->cells.size())
+        return {};
+    return this->cells[index]->getText();
 }
 
 void Sidebar::setSelectedIndex(size_t index)

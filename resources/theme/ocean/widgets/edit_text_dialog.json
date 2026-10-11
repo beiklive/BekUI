@@ -3,17 +3,17 @@
     {
       "op": "rect",
       "id": "panel",
-      "fill": "@theme/color/surface.card",
-      "stroke": "@theme/color/border.default",
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.default",
       "strokeWidth": 1,
-      "radius": "@theme/metric/radius.lg"
+      "radius": "@theme/metric.radius.lg"
     },
     {
       "op": "text",
       "id": "title",
       "source": "title",
-      "color": "@theme/color/text.primary",
-      "fontSize": "@theme/metric/font.size.title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.title",
       "align": "left",
       "valign": "top",
       "inset": [

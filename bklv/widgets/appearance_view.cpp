@@ -33,7 +33,6 @@ void AppearanceView::enableContentMeasurement()
     this->setMeasureFunction([this](const void*, float width, YGMeasureMode widthMode, float,
                                  YGMeasureMode heightMode) -> YGSize {
         const Appearance& current = this->appearance.getAppearance();
-        ImFont* font              = getDefaultFont();
 
         float intrinsicWidth  = 0.0f;
         float intrinsicHeight = 0.0f;
@@ -43,6 +42,7 @@ void AppearanceView::enableContentMeasurement()
             float layerWidth  = layer.width;
             float layerHeight = layer.height;
 
+            ImFont* font = this->getLayerFont(layer);
             if (layer.op == AppearanceLayer::Op::Text && font != nullptr)
             {
                 const std::string content = this->getLayerText(layer.source);
@@ -167,6 +167,11 @@ TextureRef AppearanceView::getLayerImage(const std::string&)
     return TextureRef();
 }
 
+ImFont* AppearanceView::getLayerFont(const AppearanceLayer&)
+{
+    return getDefaultFont();
+}
+
 void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, float width,
     float height, float out[4]) const
 {
@@ -235,8 +240,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
     if (layers.empty())
         return;
 
-    ImFont* font = getDefaultFont();
-
     for (size_t i = 0; i < layers.size(); i++)
     {
         const AppearanceLayer& layer = layers[i];
@@ -278,6 +281,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
             case AppearanceLayer::Op::Text:
             {
+                ImFont* font = this->getLayerFont(layer);
                 const std::string content = this->getLayerText(layer.source);
                 if (content.empty() || font == nullptr || alphaScale <= 0.001f)
                     break;

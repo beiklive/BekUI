@@ -22,6 +22,10 @@ void loadFonts();
 
 // Label 默认使用的字体。
 ImFont* getDefaultFont();
+
+// 图标字体（hint 栏的按键字形）。没加载时退回默认字体；用 hasIconFont() 判断。
+ImFont* getIconFont();
+bool hasIconFont();
 void setDefaultFont(ImFont* font);
 
 // 字体版本号。每次默认字体变化时自增，用来判断"旧的布局是在没有字体时算的"。

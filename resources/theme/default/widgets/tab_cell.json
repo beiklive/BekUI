@@ -9,12 +9,26 @@
       "strokeWidth": 0
     },
     {
+      "op": "rect",
+      "id": "accent",
+      "fill": "#00000000",
+      "radius": 2,
+      "width": 4,
+      "inset": [
+        10,
+        0,
+        10,
+        6
+      ],
+      "align": "left"
+    },
+    {
       "op": "text",
       "id": "title",
       "source": "text",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.font.size.md",
-      "align": "center",
+      "align": "left",
       "valign": "center",
       "inset": [
         0,
@@ -45,6 +59,10 @@
         "to": "@theme/color.state.focus",
         "duration": 140,
         "easing": "quadraticOut"
+      },
+      "accent.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 140
       },
       "title.color": {
         "to": "@theme/color.text.primary",

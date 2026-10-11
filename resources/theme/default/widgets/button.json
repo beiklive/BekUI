@@ -4,8 +4,8 @@
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.surface.raised",
-      "stroke": "@theme/color.border.default",
-      "strokeWidth": 0,
+      "stroke": "@theme/color.text.primary",
+      "strokeWidth": "@theme/metric.border.thickness",
       "radius": "@theme/metric.radius.md"
     },
     {
@@ -18,30 +18,32 @@
       "valign": "center",
       "inset": [
         0,
-        16,
+        25,
         0,
-        16
+        25
       ]
     }
   ],
   "states": {
     "focused": {
       "bg.fill": {
-        "to": "@theme/color.accent.base",
+        "to": "@theme/color.state.focus",
         "duration": 120,
         "easing": "quadraticOut"
       },
       "title.color": {
-        "to": "@theme/color.text.onAccent",
-        "duration": 120,
-        "easing": "quadraticOut"
+        "to": "@theme/color.button.highlightText",
+        "duration": 120
       }
     },
     "pressed": {
       "bg.fill": {
         "to": "@theme/color.accent.pressed",
-        "duration": 60,
-        "easing": "quadraticOut"
+        "duration": 60
+      },
+      "title.color": {
+        "to": "@theme/color.text.onAccent",
+        "duration": 60
       }
     },
     "disabled": {

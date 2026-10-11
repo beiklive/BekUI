@@ -42,7 +42,12 @@ enum class ControllerButton
     Y,
     LB,
     RB,
+    LT, // Switch 上是 ZL
+    RT, // Switch 上是 ZR
+    LSB,
+    RSB,
     START,
+    BACK,
     UP,
     DOWN,
     LEFT,
@@ -50,6 +55,10 @@ enum class ControllerButton
 };
 
 const char* getControllerButtonName(ControllerButton button);
+
+// 按键字形：Switch 图标字体私有区里的码位（和 borealis 的 Hint::getKeyIcon 一致）。
+// 返回 UTF-8 字符串，用 getIconFont() 画。
+const char* getControllerButtonIcon(ControllerButton button);
 
 using ActionIdentifier = size_t;
 using ActionListener   = std::function<void(View*)>;
@@ -72,11 +81,69 @@ struct HintItem
     std::string hintText;
 };
 
+// 长按重复：首次按下立刻响应，按住则等 delay 毫秒后每隔 interval 毫秒响应一次。
+//
+// 抽成独立小类是为了能无窗口测——这类"手感"逻辑以前只能靠人肉试，
+// 结果"两个键共用一个边沿状态导致按住时每帧都触发"藏了很久。
+class KeyRepeater
+{
+  public:
+    KeyRepeater(int delayMs = 250, int intervalMs = 100)
+        : delayMs(delayMs)
+        , intervalMs(intervalMs)
+    {
+    }
+
+    void setDelay(int milliseconds) { this->delayMs = milliseconds; }
+    void setInterval(int milliseconds) { this->intervalMs = milliseconds; }
+
+    // now 是累计秒数；held 是"这个方向/动作这一帧是否被按住"
+    bool step(bool held, double now)
+    {
+        bool fire = false;
+
+        if (held)
+        {
+            if (!this->held)
+            {
+                fire      = true;
+                this->nextAt = now + (double)this->delayMs / 1000.0;
+            }
+            else if (now >= this->nextAt)
+            {
+                fire         = true;
+                this->nextAt = now + (double)this->intervalMs / 1000.0;
+            }
+        }
+
+        this->held = held;
+        return fire;
+    }
+
+    void reset() { this->held = false; this->nextAt = 0.0; }
+
+  private:
+    int delayMs       = 250;
+    int intervalMs    = 100;
+    bool held         = false;
+    double nextAt     = 0.0;
+};
+
 class InputManager
 {
   public:
     // 每帧调用一次：处理导航、鼠标点击、动作派发。
     void update();
+
+    // ---- 按键重复（长按连续移动）----
+    //
+    // 参考 borealis：**首次按下立刻响应一次**，按住不动的话等 repeatDelay 毫秒后
+    // 开始重复，之后每 repeatInterval 毫秒一次（borealis 是 250ms / 100ms）。
+    // 时间来自帧间隔，所以键盘、手柄、各平台共用同一套逻辑，不需要平台 API。
+    void setRepeatDelay(int milliseconds);
+    void setRepeatInterval(int milliseconds);
+    int getRepeatDelay() const { return this->repeatDelayMs; }
+    int getRepeatInterval() const { return this->repeatIntervalMs; }
 
     // 焦点管理
     void giveFocus(View* view);
@@ -124,11 +191,18 @@ class InputManager
     void handleActions();
 
     // 从 ImGuiIO 里读键盘边沿；keyIndex 用 ImGuiKey_*
-    static bool isKeyPressedEdge(int imguiKey, bool* state);
+    bool isKeyDownAny(int keyA, int keyB) const;
 
     void navigate(FocusDirection direction);
 
     View* currentFocus = nullptr;
+
+    // 长按重复：borealis 的 250ms 触发 / 100ms 重复
+    int repeatDelayMs    = 250;
+    int repeatIntervalMs = 100;
+    double clock         = 0.0; // 累计时间（秒），帧间隔累加
+    KeyRepeater repeatUp, repeatDown, repeatLeft, repeatRight;
+    KeyRepeater repeatConfirm, repeatBack;
 
     struct ModalEntry
     {
@@ -144,13 +218,13 @@ class InputManager
     Point pointerPosition;
 
     // 键盘"按下沿"的上一帧状态
-    bool stateA = false, stateB = false;
 };
 
 // 全局输入管理器
 InputManager& getInputManager();
 
 // 绘制底部提示栏（由 App 每帧调用）
-void drawHints(ImDrawList* drawList, float screenWidth, float screenHeight);
+// 提示栏不再由这里画：改用 widgets/hints_bar 控件（AppletFrame 的底栏）。
+// 输入层只负责提供"当前焦点有哪些动作"（getHints()）。
 
 } // namespace bklv

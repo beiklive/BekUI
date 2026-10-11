@@ -3,6 +3,7 @@
 #include "app/page_helpers.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/theme_data.hpp"
 
 using namespace bklv;
 
@@ -46,44 +47,27 @@ void TextButton::onFocusLost()
 
 PageHost::PageHost()
 {
-    // ---- 外层：标题 + tab 栏 + 内容区 ----
-    this->root = new Box(Axis::COLUMN);
-    this->root->setWidthPercentage(100.0f);
-    this->root->setHeightPercentage(100.0f);
-    this->root->setBackgroundColor(rgb(26, 28, 33));
-    this->root->setPadding(20.0f);
-    this->root->setGap(14.0f);
+    // ---- 外层：AppletFrame（页头 + 提示栏底栏）----
+    this->root = new AppletFrame();
+    this->root->setTitle(bklv::getStr("app/title"));
+    this->root->setSubtitle(bklv::getStr("app/subtitle"));
 
-    // 标题行
-    Box* header = new Box(Axis::ROW);
-    header->setWidthPercentage(100.0f);
-    header->setAlignItems(AlignItems::CENTER);
-    header->setJustifyContent(JustifyContent::SPACE_BETWEEN);
+    // ---- 内容：左 侧栏 + 右 子页面 ----
+    Box* body = new Box(Axis::ROW);
+    body->setWidthPercentage(100.0f);
+    body->setHeight(AUTO); // 由 AppletFrame 内容区的 stretch 决定高度
+    body->setGap(getTheme().number("metric.spacing.lg", 16.0f));
 
-    Label* title = makeText("bklv框架demo", 26.0f, rgb(255, 255, 255));
-    title->setSingleLine(true);
-    header->addView(title);
+    this->sidebar = new Sidebar(bklv::getStr("app/pages"));
+    body->addView(this->sidebar);
 
-    Box* headerRight = new Box(Axis::ROW);
-    headerRight->setAlignItems(AlignItems::CENTER);
-    headerRight->setGap(14.0f);
+    Box* right = new Box(Axis::COLUMN);
+    right->setGrow(1.0f);
+    right->setShrink(1.0f);
+    right->setHeight(AUTO);
 
-    Label* subtitle = makeText("左右切换标签 · 上下移动焦点 · 回车触发", 13.0f, rgb(150, 160, 175));
-    subtitle->setSingleLine(true);
-    headerRight->addView(subtitle);
-
-    // 日志窗口开关。放在演示界面里，不用记快捷键。
-    TextButton* logButton = new TextButton("显示日志");
-    logButton->registerAction(ControllerButton::A, "显示日志", [this, logButton](View*) {
-        this->debugWindow.toggle();
-        logButton->setText(this->debugWindow.isEnabled() ? "隐藏日志" : "显示日志");
-    });
-    headerRight->addView(logButton);
-
-    header->addView(headerRight);
-    this->root->addView(header);
-
-    // 内容区：不自管滚动的页面放进 scroller，自管滚动的页面直接进 contentHost
+    // 内容区：不自管滚动的页面放进 scroller，自管滚动的页面直接进 pageSlot。
+    // 两个容器互斥挂载的原因见下面 addPage/selectPage 的注释。
     this->contentHost = new Box(Axis::COLUMN);
     this->contentHost->setWidthPercentage(100.0f);
     this->contentHost->setGrow(1.0f);
@@ -97,46 +81,64 @@ PageHost::PageHost()
     this->pageSlot->setWidthPercentage(100.0f);
     this->pageSlot->setGrow(1.0f);
 
-    // tab 栏
-    this->tabBar = new TabBar();
-    this->root->addView(this->tabBar);
+    // 日志窗口开关：留在界面上，不用记快捷键
+    TextButton* logButton = new TextButton(bklv::getStr("app/show_log"));
+    logButton->registerAction(ControllerButton::A, bklv::getStr("app/show_log"),
+        [this, logButton](View*) {
+            this->debugWindow.toggle();
+            logButton->setText(this->debugWindow.isEnabled() ? bklv::getStr("app/hide_log")
+                                                            : bklv::getStr("app/show_log"));
+        });
+    Box* logRow = new Box(Axis::ROW);
+    logRow->setWidthPercentage(100.0f);
+    logRow->setJustifyContent(JustifyContent::FLEX_END);
+    logRow->setMarginBottom(getTheme().number("metric.spacing.md", 12.0f));
+    logRow->addView(logButton);
 
-    // ---- 页面 ----
-    this->addPage(bklv::getStr("tab/widgets"), buildWidgetsPage(), false);
-    this->addPage(bklv::getStr("tab/text"), buildTextPage(), false);
-    this->addPage(bklv::getStr("tab/layout"), buildLayoutPage(), false);
+    right->addView(logRow);
+    right->addView(this->contentHost);
+    body->addView(right);
+
+    // AppletFrame 的内容区（内容栈第一层）
+    this->root->pushContentView(body);
+
+    // ---- 页面（顺序就是侧栏顺序：先把"外观与主题"放前面，它是这套东西的重点）----
+    this->addPage(bklv::getStr("tab/theme"), bklv::getStr("page/theme_sub"), buildThemePage(), false);
+    this->addPage(bklv::getStr("tab/widgets"), bklv::getStr("page/widgets_sub"), buildWidgetsPage(), false);
+    this->addPage(bklv::getStr("tab/text"), bklv::getStr("page/text_sub"), buildTextPage(), false);
+    this->addPage(bklv::getStr("tab/layout"), bklv::getStr("page/layout_sub"), buildLayoutPage(), false);
 
     ListPage listPage = buildListPage();
-    this->addPage(bklv::getStr("tab/list"), listPage.view, listPage.selfScrolling);
-    this->addPage(bklv::getStr("tab/json"), buildJsonPage(), false);
-    this->addPage(bklv::getStr("tab/theme"), buildThemePage(), false);
-    this->addPage(bklv::getStr("tab/nav"), buildNavPage(), false);
-    this->addPage(bklv::getStr("tab/applet"), buildAppletPage(), false);
+    this->addPage(bklv::getStr("tab/list"), bklv::getStr("page/list_sub"), listPage.view,
+        listPage.selfScrolling);
+    this->addPage(bklv::getStr("tab/json"), bklv::getStr("page/json_sub"), buildJsonPage(), false);
+    this->addPage(bklv::getStr("tab/nav"), bklv::getStr("page/nav_sub"), buildNavPage(), false);
+    this->addPage(bklv::getStr("tab/applet"), bklv::getStr("page/applet_sub"), buildAppletPage(), false);
     this->mainList = listPage.list;
 
-    BKLV_LOG_INFO("界面已就绪：%d 个页面", static_cast<int>(this->pages.size()));
+    BKLV_LOG_INFO("界面已就绪：%d 个页面（左侧栏导航）", static_cast<int>(this->pages.size()));
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_DEBUG("这是 DEBUG 级别，默认会被过滤掉");
     BKLV_LOG_WARNING("这是一条 WARNING 示例");
     BKLV_LOG_ERROR("这是一条 ERROR 示例");
 
     // ---- 初始页 ----
-    // contentHost 要先挂进 root，selectPage 里的 removeView/addView 才有意义。
-    this->root->addView(this->contentHost);
+    // contentHost 要先挂进 body，selectPage 里的 removeView/addView 才有意义。
     this->selectPage(0);
 }
 
-void PageHost::addPage(const std::string& name, Box* view, bool selfScrolling)
+void PageHost::addPage(const std::string& name, const std::string& subtitle, Box* view,
+    bool selfScrolling)
 {
     const size_t index = this->pages.size();
 
     this->pages.push_back(view);
     this->selfScrolling.push_back(selfScrolling);
+    this->pageSubtitles.push_back(subtitle);
 
     // 捕获 this + index。PageHost 的生命周期覆盖整个程序，安全；
     // 用引用捕获局部下标则会悬空。
-    this->tabBar->addTab(name, [this, index] { this->selectPage(index); },
-        [this, index] { this->selectPage(index); });
+    this->sidebar->addItem(name, [this, index] { this->selectPage(index); });
 }
 
 void PageHost::sizeSlotToContent()
@@ -157,7 +159,14 @@ void PageHost::selectPage(size_t index)
         return;
 
     this->currentPage = index;
-    this->tabBar->setSelectedIndex(index);
+    this->sidebar->setSelectedIndex(index);
+
+    // 页头显示当前页的名字与说明
+    if (index < this->pageSubtitles.size())
+    {
+        this->root->setTitle(this->sidebar->getItemTitle(index));
+        this->root->setSubtitle(this->pageSubtitles[index]);
+    }
 
     Box* holder  = this->contentHost;
     View* target = this->pages[index];

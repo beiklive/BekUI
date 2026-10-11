@@ -1,5 +1,7 @@
 #include "bklv/core/input.hpp"
 
+#include "bklv/core/time.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -21,6 +23,31 @@ InputManager& getInputManager()
     return manager;
 }
 
+// 码位取自 borealis 的 views/hint.cpp（Switch 图标字体）
+const char* getControllerButtonIcon(ControllerButton button)
+{
+    switch (button)
+    {
+        case ControllerButton::A:     return "\uE0E0";
+        case ControllerButton::B:     return "\uE0E1";
+        case ControllerButton::X:     return "\uE0E2";
+        case ControllerButton::Y:     return "\uE0E3";
+        case ControllerButton::LSB:   return "\uE104";
+        case ControllerButton::RSB:   return "\uE105";
+        case ControllerButton::LT:    return "\uE0E6";
+        case ControllerButton::RT:    return "\uE0E7";
+        case ControllerButton::LB:    return "\uE0E4";
+        case ControllerButton::RB:    return "\uE0E5";
+        case ControllerButton::START: return "\uE0EF";
+        case ControllerButton::BACK:  return "\uE0F0";
+        case ControllerButton::LEFT:  return "\uE0ED";
+        case ControllerButton::UP:    return "\uE0EB";
+        case ControllerButton::RIGHT: return "\uE0EE";
+        case ControllerButton::DOWN:  return "\uE0EC";
+        default:                      return "\uE152"; // 未知键
+    }
+}
+
 const char* getControllerButtonName(ControllerButton button)
 {
     switch (button)
@@ -37,6 +64,16 @@ const char* getControllerButtonName(ControllerButton button)
             return "LB";
         case ControllerButton::RB:
             return "RB";
+        case ControllerButton::LT:
+            return "LT";
+        case ControllerButton::RT:
+            return "RT";
+        case ControllerButton::LSB:
+            return "LS";
+        case ControllerButton::RSB:
+            return "RS";
+        case ControllerButton::BACK:
+            return "BACK";
         case ControllerButton::START:
             return "START";
         case ControllerButton::UP:
@@ -54,14 +91,6 @@ const char* getControllerButtonName(ControllerButton button)
 }
 
 // 读取某个按键这一帧是否刚刚按下（边沿触发）。
-bool InputManager::isKeyPressedEdge(int imguiKey, bool* state)
-{
-    const bool pressed = ImGui::IsKeyDown(static_cast<ImGuiKey>(imguiKey));
-    const bool edge    = pressed && !*state;
-    *state             = pressed;
-    return edge;
-}
-
 void InputManager::update()
 {
     // 先让手柄刷新一次按键状态，后面的"按下沿"判断才准确。
@@ -76,43 +105,65 @@ void InputManager::update()
     this->handleActions();
 }
 
+bool InputManager::isKeyDownAny(int keyA, int keyB) const
+{
+    if (keyA >= 0 && ImGui::IsKeyDown(static_cast<ImGuiKey>(keyA)))
+        return true;
+    if (keyB >= 0 && ImGui::IsKeyDown(static_cast<ImGuiKey>(keyB)))
+        return true;
+    return false;
+}
+
+void InputManager::setRepeatDelay(int milliseconds)
+{
+    this->repeatDelayMs = milliseconds;
+    this->repeatUp.setDelay(milliseconds);
+    this->repeatDown.setDelay(milliseconds);
+    this->repeatLeft.setDelay(milliseconds);
+    this->repeatRight.setDelay(milliseconds);
+    this->repeatConfirm.setDelay(milliseconds);
+    this->repeatBack.setDelay(milliseconds);
+}
+
+void InputManager::setRepeatInterval(int milliseconds)
+{
+    this->repeatIntervalMs = milliseconds;
+    this->repeatUp.setInterval(milliseconds);
+    this->repeatDown.setInterval(milliseconds);
+    this->repeatLeft.setInterval(milliseconds);
+    this->repeatRight.setInterval(milliseconds);
+    this->repeatConfirm.setInterval(milliseconds);
+    this->repeatBack.setInterval(milliseconds);
+}
+
 void InputManager::handleNavigation()
 {
-    bool dirUp = false, dirDown = false, dirLeft = false, dirRight = false;
+    // 时间来自帧间隔累加：键盘、手柄、各平台共用同一套计时，不需要平台 API
+    this->clock += (double)getFrameDeltaSeconds();
+    const double now = this->clock;
 
-    // ImGui 的键盘边沿：用轮询差分成"刚按下"。
-    static bool kUp = false, kDown = false, kLeft = false, kRight = false;
-    dirUp    = isKeyPressedEdge(ImGuiKey_UpArrow, &kUp) || isKeyPressedEdge(ImGuiKey_W, &kUp);
-    dirDown  = isKeyPressedEdge(ImGuiKey_DownArrow, &kDown) || isKeyPressedEdge(ImGuiKey_S, &kDown);
-    dirLeft  = isKeyPressedEdge(ImGuiKey_LeftArrow, &kLeft) || isKeyPressedEdge(ImGuiKey_A, &kLeft);
-    dirRight = isKeyPressedEdge(ImGuiKey_RightArrow, &kRight) || isKeyPressedEdge(ImGuiKey_D, &kRight);
+    // 键盘：方向键与 WASD 都算"这个方向被按住"。
+    // **不要**给两个键共用一个边沿状态：它们会互相清状态，
+    // 结果按住一个键就变成每帧都"刚按下"（导航飙到帧率，踩过）。
+    const bool keysUp    = this->isKeyDownAny(ImGuiKey_UpArrow, ImGuiKey_W);
+    const bool keysDown  = this->isKeyDownAny(ImGuiKey_DownArrow, ImGuiKey_S);
+    const bool keysLeft  = this->isKeyDownAny(ImGuiKey_LeftArrow, ImGuiKey_A);
+    const bool keysRight = this->isKeyDownAny(ImGuiKey_RightArrow, ImGuiKey_D);
 
-    // 手柄方向键：由平台提供的 GamepadSource 决定（桌面 SDL3 / Switch libnx）。
-    // 方向键是"持续按住即连续移动"，所以用按住状态而不是按下沿。
-    static bool gUp = false, gDown = false, gLeft = false, gRight = false;
+    // 手柄方向键：由平台提供的 GamepadSource 决定（桌面 SDL3 / Switch libnx）
     GamepadSource& gamepad = getGamepadSource();
-    const bool nowUp    = gamepad.isDirectionHeld(FocusDirection::UP);
-    const bool nowDown  = gamepad.isDirectionHeld(FocusDirection::DOWN);
-    const bool nowLeft  = gamepad.isDirectionHeld(FocusDirection::LEFT);
-    const bool nowRight = gamepad.isDirectionHeld(FocusDirection::RIGHT);
+    const bool heldUp    = keysUp || gamepad.isDirectionHeld(FocusDirection::UP);
+    const bool heldDown  = keysDown || gamepad.isDirectionHeld(FocusDirection::DOWN);
+    const bool heldLeft  = keysLeft || gamepad.isDirectionHeld(FocusDirection::LEFT);
+    const bool heldRight = keysRight || gamepad.isDirectionHeld(FocusDirection::RIGHT);
 
-    dirUp    = dirUp || (nowUp && !gUp);
-    dirDown  = dirDown || (nowDown && !gDown);
-    dirLeft  = dirLeft || (nowLeft && !gLeft);
-    dirRight = dirRight || (nowRight && !gRight);
-
-    gUp    = nowUp;
-    gDown  = nowDown;
-    gLeft  = nowLeft;
-    gRight = nowRight;
-
-    if (dirUp)
+    if (this->repeatUp.step(heldUp, now))
         this->navigate(FocusDirection::UP);
-    else if (dirDown)
+    else if (this->repeatDown.step(heldDown, now))
         this->navigate(FocusDirection::DOWN);
-    else if (dirLeft)
+    else if (this->repeatLeft.step(heldLeft, now))
         this->navigate(FocusDirection::LEFT);
-    else if (dirRight)
+    else if (this->repeatRight.step(heldRight, now))
         this->navigate(FocusDirection::RIGHT);
 }
 
@@ -306,17 +357,19 @@ void InputManager::handlePointer()
 
 void InputManager::handleActions()
 {
-    bool confirm = false;
-    bool back    = false;
+    // 确认/返回也走重复模型（borealis 的 A/B 一样会重复）：
+    // 键盘的 Enter/Space、Esc，手柄的 A/B 合起来算"按住"
+    const bool keysConfirm = this->isKeyDownAny(ImGuiKey_Enter, ImGuiKey_Space);
+    const bool keysBack    = this->isKeyDownAny(ImGuiKey_Escape, -1);
 
-    confirm = confirm || isKeyPressedEdge(ImGuiKey_Enter, &this->stateA);
-    confirm = confirm || isKeyPressedEdge(ImGuiKey_Space, &this->stateA);
-    back    = back || isKeyPressedEdge(ImGuiKey_Escape, &this->stateB);
-
-    // 手柄的确认/返回：GamepadSource 内部已经做了按下沿判断。
     GamepadSource& gamepad = getGamepadSource();
-    confirm = confirm || gamepad.isConfirmPressed();
-    back    = back || gamepad.isBackPressed();
+    const bool heldConfirm = keysConfirm || gamepad.isConfirmPressed();
+    const bool heldBack    = keysBack || gamepad.isBackPressed();
+
+    const double now = this->clock;
+
+    const bool confirm = this->repeatConfirm.step(heldConfirm, now);
+    const bool back    = this->repeatBack.step(heldBack, now);
 
     if (this->currentFocus == nullptr)
         return;

@@ -91,12 +91,24 @@ int main()
     std::printf("\n== 2. 拍平成点分层 key ==\n");
     {
         const ThemeData& theme = getTheme();
-        checkColor(theme.color("color.surface.card"), IM_COL32(0x26, 0x2A, 0x32, 255),
-            "color.surface.card == #262a32");
-        checkColor(theme.color("color.accent.base"), IM_COL32(0x5A, 0xAA, 0xF5, 255),
-            "color.accent.base == #5aaaf5");
-        checkFloat(theme.number("metric.radius.md"), 8.0f, "metric.radius.md == 8");
-        checkFloat(theme.number("metric.font.size.md"), 15.0f, "metric.font.size.md == 15");
+        // 默认主题对齐 borealis 的暗色主题（Switch 风格）
+        checkColor(theme.color("color.surface.page"), IM_COL32(0x2D, 0x2D, 0x2D, 255),
+            "color.surface.page == #2d2d2d（brls/background）");
+        checkColor(theme.color("color.surface.card"), IM_COL32(0x1F, 0x22, 0x27, 255),
+            "color.surface.card == #1f2227（brls/highlight/background）");
+        checkColor(theme.color("color.accent.base"), IM_COL32(0x00, 0xFF, 0xCC, 255),
+            "color.accent.base == #00ffcc（brls/accent）");
+        checkColor(theme.color("color.text.primary"), IM_COL32(0xFF, 0xFF, 0xFF, 255),
+            "color.text.primary == #ffffff（brls/text）");
+        checkColor(theme.color("color.state.focus"), IM_COL32(0x19, 0x8A, 0xC6, 255),
+            "color.state.focus == #198ac6（brls/highlight/color1）");
+        checkFloat(theme.number("metric.radius.md"), 5.0f, "metric.radius.md == 5（brls/button/corner_radius）");
+        checkFloat(theme.number("metric.font.size.md"), 18.0f,
+            "metric.font.size.md == 18（brls/header/font_size）");
+        checkFloat(theme.number("metric.font.size.lg"), 22.0f,
+            "metric.font.size.lg == 22（brls/sidebar/item_font_size）");
+        checkFloat(theme.number("metric.control.height"), 48.0f,
+            "metric.control.height == 48（brls/button 的 15+15 内边距）");
     }
 
     std::printf("\n== 3. 缺 key 用兜底值（只警告不崩）==\n");
@@ -121,14 +133,14 @@ int main()
 
                 checkEqual(bg.id, "bg", "第 1 层 id");
                 check(bg.op == AppearanceLayer::Op::Rect, "第 1 层是 rect");
-                checkColor(bg.fill, IM_COL32(0x2E, 0x33, 0x3C, 255), "底：@theme/color.surface.raised");
-                checkFloat(bg.radius, 8.0f, "底：圆角来自 @theme/metric.radius.md");
+                checkColor(bg.fill, IM_COL32(0x50, 0x50, 0x50, 255), "底：@theme/color.surface.raised");
+                checkFloat(bg.radius, 5.0f, "底：圆角来自 @theme/metric.radius.md");
 
                 checkEqual(title.id, "title", "第 2 层 id");
                 check(title.op == AppearanceLayer::Op::Text, "第 2 层是 text");
                 checkEqual(title.source, "text", "文字层的数据来源是 text");
-                checkFloat(title.fontSize, 15.0f, "文字：字号来自主题");
-                checkColor(title.textColor, IM_COL32(0xEB, 0xEE, 0xF2, 255), "文字：颜色来自主题");
+                checkFloat(title.fontSize, 18.0f, "文字：字号来自主题");
+                checkColor(title.textColor, IM_COL32(0xFF, 0xFF, 0xFF, 255), "文字：颜色来自主题");
             }
 
             check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
@@ -143,16 +155,18 @@ int main()
 
         AppearanceInstance instance;
         instance.setAppearance(button);
-        checkColor(instance.getColor(0, AppearanceProp::Fill), IM_COL32(0x2E, 0x33, 0x3C, 255),
-            "初值：底是 surface.raised");
+        checkColor(instance.getColor(0, AppearanceProp::Fill),
+            getTheme().color("color.surface.raised"), "初值：底是 surface.raised");
         check(!instance.isAnimating(), "没触发状态时不该有补间在跑");
 
         instance.setState("focused", true);
         check(instance.isAnimating(), "聚焦后开始补间");
 
         // 目标色
-        const ImU32 focusedFill = IM_COL32(0x5A, 0xAA, 0xF5, 255);
-        const ImU32 idleFill    = IM_COL32(0x2E, 0x33, 0x3C, 255);
+        // 断言"补到了主题里那个颜色"，而不是写死色值：
+        // 主题是数据，测试不该因为改色就被误伤
+        const ImU32 focusedFill = getTheme().color("color.state.focus");
+        const ImU32 idleFill    = getTheme().color("color.surface.raised");
 
         // 推进 60ms（该动效 120ms），应该处在中间：既不是初值也不是终值
         instance.update(0.06f);
@@ -162,12 +176,13 @@ int main()
 
         // 再推进到结束
         instance.update(0.2f);
-        checkColor(instance.getColor(0, AppearanceProp::Fill), focusedFill, "结束值：accent.base");
+        checkColor(instance.getColor(0, AppearanceProp::Fill), focusedFill,
+            "结束值：聚焦色（color.state.focus）");
         check(!instance.isAnimating(), "动效结束后不再是 animating");
 
         // 文字颜色同样按各自动效插值
-        checkColor(instance.getColor(1, AppearanceProp::TextColor), IM_COL32(0xFF, 0xFF, 0xFF, 255),
-            "文字色补到 onAccent");
+        checkColor(instance.getColor(1, AppearanceProp::TextColor),
+            getTheme().color("color.button.highlightText"), "文字色补到高亮字色");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
         // 先单独验一个容易漏的情况：刚打开就马上关掉——这时当前值还等于初值，
@@ -179,7 +194,8 @@ int main()
             quick.setState("focused", false);  // 立刻撤销：当前值还没动
             for (int i = 0; i < 30; i++)
                 quick.update(0.05f);
-            checkColor(quick.getColor(0, AppearanceProp::Fill), IM_COL32(0x2E, 0x33, 0x3C, 255),
+            checkColor(quick.getColor(0, AppearanceProp::Fill),
+                getTheme().color("color.surface.raised"),
                 "开了又马上关：停在初值，不会继续跑到状态目标");
             check(!quick.isAnimating(), "撤销后不该还有补间在跑");
         }
@@ -187,8 +203,8 @@ int main()
         instance.setState("focused", false);
         instance.update(0.3f);
         checkColor(instance.getColor(0, AppearanceProp::Fill), idleFill, "取消聚焦后底色回到初值");
-        checkColor(instance.getColor(1, AppearanceProp::TextColor), IM_COL32(0xEB, 0xEE, 0xF2, 255),
-            "文字色回到初值");
+        checkColor(instance.getColor(1, AppearanceProp::TextColor),
+            getTheme().color("color.text.primary"), "文字色回到初值");
     }
 
     std::printf("\n== 7. 换肤：复制 default 改名改 JSON ==\n");
@@ -210,9 +226,9 @@ int main()
             "皮肤覆盖的 key 用皮肤值");
         checkFloat(getTheme().number("metric.radius.md"), 2.0f, "皮肤覆盖的数值生效");
         // 皮肤没写的 key 回退 default
-        checkColor(getTheme().color("color.text.primary"), IM_COL32(0xEB, 0xEE, 0xF2, 255),
+        checkColor(getTheme().color("color.text.primary"), IM_COL32(0xFF, 0xFF, 0xFF, 255),
             "皮肤没写的颜色回退 default");
-        checkFloat(getTheme().number("metric.font.size.md"), 15.0f, "皮肤没写的数值回退 default");
+        checkFloat(getTheme().number("metric.font.size.md"), 18.0f, "皮肤没写的数值回退 default");
 
         // 外观缓存必须跟着换（否则控件还在用旧外观）
         std::shared_ptr<const Appearance> skinned = getWidgetAppearance("button");
@@ -237,7 +253,7 @@ int main()
         const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
             "slider", "tab_cell", "dialog", "dialog_backdrop",
             "dropdown", "dropdown_item", "header.popup",
-            "text_field", "edit_text_dialog" };
+            "text_field", "edit_text_dialog", "hint_item", "hints_bar" };
 
         for (const char* themeName : { "default", "ocean" })
         {

@@ -158,6 +158,18 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ---
 
+## 交互手感与默认主题对齐 borealis
+
+- [x] 按键重复改成 borealis 的节奏（首次立刻响应，250ms 后每 100ms 一次），
+      键盘/手柄/多平台统一；**修掉"两个键共用一个边沿状态"导致按住时按帧率触发**
+- [x] 默认主题改成 borealis 暗色 / Switch 风格（色值取 `core/theme.cpp`，
+      尺寸取 `core/style.cpp`），控件外观也按 borealis 的语义接上新键
+      （按钮高亮字色、滑块三段、遮罩、页头色条、侧栏选中色条）
+- [x] 图标字体 `resources/font/switch_icons.ttf` + `getControllerButtonIcon()`
+      （码位同 borealis）+ 文字层字体钩子 `AppearanceView::getLayerFont()`
+- [x] 提示栏 `widgets/hints_bar.*`（AppletFrame 底栏），撤掉旧的顶部覆盖层
+- [x] demo 重构：AppletFrame（页头 + 提示栏）+ 左侧栏导航 + 右侧子页面
+
 ## 主题与外观系统（数据驱动换肤）
 
 需求：`resources/theme/default/` 分类存 JSON，default 为默认主题，复制改名改 JSON 即换肤；

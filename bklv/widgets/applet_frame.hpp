@@ -20,6 +20,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
+#include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/header.hpp"
 
 namespace bklv
@@ -55,7 +56,11 @@ class AppletFrame : public Box
     void setOnDismiss(std::function<void()> handler) { this->onDismiss = std::move(handler); }
 
     Header* getHeader() const { return this->header; }
+    HintsBar* getHintsBar() const { return this->hintsBar; }
+
+    // 想要"上边线 + 一行文字"的底栏时用它（提示栏与文字底栏二选一，默认提示栏）
     BottomBar* getFooter() const { return this->footer; }
+    void setUseTextFooter(bool value);
     Box* getContentBox() const { return this->contentBox; }
 
     void update() override;
@@ -67,7 +72,9 @@ class AppletFrame : public Box
     void refreshFooter();
 
     Header* header       = nullptr;
+    HintsBar* hintsBar   = nullptr;
     BottomBar* footer    = nullptr;
+    bool useTextFooter   = false;
     Box* contentBox      = nullptr;
     View* contentView    = nullptr;
     std::vector<View*> contentStack;

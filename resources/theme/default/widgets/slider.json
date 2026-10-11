@@ -3,7 +3,7 @@
     {
       "op": "rect",
       "id": "track",
-      "fill": "@theme/color.surface.sunken",
+      "fill": "@theme/color.slider.lineEmpty",
       "radius": 3,
       "height": 6,
       "valign": "center"
@@ -11,7 +11,7 @@
     {
       "op": "rect",
       "id": "fill",
-      "fill": "@theme/color.accent.base",
+      "fill": "@theme/color.slider.lineFilled",
       "radius": 3,
       "height": 6,
       "valign": "center"
@@ -19,10 +19,12 @@
     {
       "op": "rect",
       "id": "knob",
-      "fill": "@theme/color.text.primary",
-      "radius": 8,
-      "width": 16,
-      "height": 16,
+      "fill": "@theme/color.slider.pointer",
+      "stroke": "@theme/color.slider.pointerBorder",
+      "strokeWidth": 2,
+      "radius": 10,
+      "width": 20,
+      "height": 20,
       "valign": "center"
     },
     {
@@ -32,15 +34,14 @@
   ],
   "states": {
     "focused": {
-      "fill.fill": {
-        "to": "@theme/color.accent.pressed",
-        "duration": 120,
-        "easing": "quadraticOut"
-      },
       "knob.fill": {
         "to": "@theme/color.accent.base",
         "duration": 120,
         "easing": "quadraticOut"
+      },
+      "knob.stroke": {
+        "to": "@theme/color.text.primary",
+        "duration": 120
       }
     },
     "disabled": {

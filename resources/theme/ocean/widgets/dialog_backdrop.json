@@ -3,15 +3,13 @@
     {
       "op": "rect",
       "id": "dim",
-      "fill": "#00000000",
-      "width": 0,
-      "height": 0
+      "fill": "#00000000"
     }
   ],
   "states": {
     "open": {
       "dim.fill": {
-        "to": "#00000099",
+        "to": "@theme/color.backdrop.fill",
         "duration": 160,
         "easing": "quadraticOut"
       }
@@ -19,8 +17,7 @@
     "closed": {
       "dim.fill": {
         "to": "#00000000",
-        "duration": 140,
-        "easing": "quadraticOut"
+        "duration": 140
       }
     }
   }

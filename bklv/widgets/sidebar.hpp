@@ -32,6 +32,7 @@ class Sidebar : public Box
     size_t getItemCount() const { return this->cells.size(); }
 
     void setItemTitle(size_t index, const std::string& title);
+    std::string getItemTitle(size_t index) const;
     // 侧栏自己的标题
     void setTitle(const std::string& value);
     const std::string& getTitle() const { return this->title; }

@@ -1,4 +1,5 @@
 {
+  "$comment": "尺寸对齐 borealis 的 style.cpp（header/applet_frame/sidebar/button 那几组）。",
   "spacing": {
     "xs": 4,
     "sm": 8,
@@ -7,19 +8,19 @@
     "xl": 24
   },
   "radius": {
-    "sm": 6,
-    "md": 8,
-    "lg": 10,
+    "sm": 4,
+    "md": 5,
+    "lg": 8,
     "round": 999
   },
   "font": {
     "size": {
-      "sm": 12,
-      "md": 15,
-      "lg": 18,
-      "title": 22
+      "sm": 15,
+      "md": 18,
+      "lg": 22,
+      "title": 28
     },
-    "lineHeight": 1.5
+    "lineHeight": 1.4
   },
   "border": {
     "thickness": 2
@@ -30,29 +31,38 @@
     "slow": 260
   },
   "control": {
-    "height": 40,
+    "height": 48,
     "minWidth": 120,
-    "paddingX": 16
+    "paddingX": 25
   },
   "header": {
-    "height": 52
+    "height": 64
   },
   "bottomBar": {
-    "height": 36
+    "height": 60
+  },
+  "appletFrame": {
+    "headerHeight": 88,
+    "footerHeight": 73,
+    "paddingSides": 30
+  },
+  "sidebar": {
+    "width": 260,
+    "itemHeight": 70
+  },
+  "tabCell": {
+    "height": 40
   },
   "slider": {
     "height": 32
-  },
-  "tabCell": {
-    "height": 34
   },
   "dialog": {
     "width": 520,
     "height": 220
   },
   "dropdown": {
-    "height": 44,
-    "itemHeight": 38
+    "height": 48,
+    "itemHeight": 40
   },
   "textField": {
     "height": 48

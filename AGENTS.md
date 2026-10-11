@@ -264,6 +264,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
+- **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
+  按住则等 `repeatDelay`（默认 250ms）后每 `repeatInterval`（默认 100ms）一次，
+  和 borealis 的 `BUTTOM_REPEAT_TRIGGER` / `BUTTON_REPEAT_DELAY` 一致。
+  时间来自 `getFrameDeltaSeconds()` 累加，键盘/手柄/各平台共用一套，不用平台 API；
+  A/B 也走同一套（borealis 的 A/B 会重复）。
+  **一个物理键一个重复状态**：以前两个键（方向键 + WASD）共用一个"边沿状态"，
+  互相把对方清掉 → 按住方向键每帧都判成"刚按下"，导航飙到帧率。
+- **提示栏用控件而不是覆盖层**（`widgets/hints_bar.*`）：AppletFrame 的底栏就是它，
+  条目按当前焦点的动作重建（签名没变就不重建，避免每帧重排）。
+  图标是**图标字体的私有区字形**（码位同 borealis 的 `Hint::getKeyIcon`）：
+  Switch 靠系统字体 `NintendoExt` 回退，桌面随包带 `resources/font/switch_icons.ttf`。
+  文字层要用哪个字体由 `AppearanceView::getLayerFont()` 决定——
+  图标层必须返回 `getIconFont()`，用正文字体会量错尺寸并画成方块。
+- **底栏/页头 `setShrink(0)`**：内容区要的比剩下的多时，该被压缩的是内容区（它会滚动），
+  不是底栏（压了连图标都放不下，踩过：22px 被压成 14px）。
 - **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。
   容器级的动作必须能在焦点位于其子节点时生效，否则形同虚设：
   `AppletFrame` 的 "B 返回上一层"、`Dialog` 的 "B 关闭" 都靠这条
@@ -294,7 +309,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
                     / slider / tab_frame / sidebar / dialog / dropdown / applet_frame
-                    / edit_text_dialog
+                    / edit_text_dialog / hints_bar
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

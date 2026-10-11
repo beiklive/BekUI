@@ -54,6 +54,9 @@ class AppearanceView : public Box
     virtual std::string getLayerText(const std::string& source);
     // layer.source 的取值（图片）。默认无效引用。
     virtual TextureRef getLayerImage(const std::string& source);
+    // 这一层用哪个字体。默认正文字体；图标层要返回 getIconFont()
+    // （私有区字形不在正文字体里，用错字体会量出错误的尺寸、画出方块）。
+    virtual ImFont* getLayerFont(const AppearanceLayer& layer);
     // custom 层：交给子类画（矩形范围已按 inset/offset 算好）。
     virtual void drawCustomLayer(ImDrawList*, const AppearanceLayer&, float, float, float, float,
         const AppearanceInstance&)

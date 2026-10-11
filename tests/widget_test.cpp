@@ -195,7 +195,7 @@ int main()
             const AppearanceLayer& subtitle = appearance.getLayers()[2];
             const AppearanceLayer& line     = appearance.getLayers()[3];
 
-            checkFloat(accent.width, 4.0f, "色条用显式 width=4");
+            checkFloat(accent.width, 5.0f, "色条用显式 width=5（brls/header/rectangle_width）");
             check(accent.op == AppearanceLayer::Op::Rect, "色条是 rect 层");
 
             checkEqual(title.source, "title", "标题层的数据源是 title");

@@ -3,8 +3,9 @@
 // 底栏：上边线 + 一行文字（对应 borealis 的 views/bottom_bar）。
 // 结构在 `widgets/bottom_bar.json` 里；C++ 只负责文字内容。
 //
-// 和 bklv 已有的 Hints（画在画面最上层、由 App::drawHints 下发）不同：
-// 这是一个普通视图，参与布局，可以放在页面里的任意位置。
+// 和 `widgets/hints_bar`（提示栏，显示 [按键图标] 说明）的区别：
+// 这个只显示一行纯文字，想改文案就 setText()。AppletFrame 默认用提示栏做底栏，
+// 需要文字底栏时用 `AppletFrame::setUseTextFooter(true)`。
 
 #include <string>
 

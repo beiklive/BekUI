@@ -1,0 +1,28 @@
+{
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "source": "icon",
+      "color": "@theme/color.text.primary",
+      "fontSize": 22,
+      "align": "left",
+      "valign": "center"
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "source": "label",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.sm",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}
