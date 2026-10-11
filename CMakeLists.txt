@@ -78,8 +78,14 @@ else()
     set(BKLV_HOST "linux")
 endif()
 
-# 输出目录：GL 走 dist/，Vulkan 走 dist/vk/。
-if(BKLV_GRAPHICS STREQUAL "vk")
+# 输出目录：GL 走 dist/，Vulkan 走 dist/vk/，空后端走 dist/null/。
+#
+# 空后端必须单独一个目录：它的 BKLV_GRAPHICS 也是 gl，若和 GL 共用 dist/，
+# 两者会互相覆盖同一个文件名，而 CMake 认为各自的目标都是最新的、不会重新链接——
+# 于是"先编空后端再编 GL"会得到一个空的 dist/imgui_main，且毫无提示。
+if(BKLV_NULL_BACKEND)
+    set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/null")
+elseif(BKLV_GRAPHICS STREQUAL "vk")
     set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/vk")
 elseif(BKLV_GRAPHICS STREQUAL "gl")
     set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist")
@@ -174,6 +180,14 @@ target_compile_options(bklv_opts INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-DGL_SILENCE_DEPRECATION>
 )
 
+# C++17 必须在这里声明，不能只写在各可执行目标上。
+# bklv_core / bklv_app / imgui_impl 是 OBJECT 库，不受可执行目标的
+# target_compile_features 影响；不声明的话它们用编译器默认标准——
+# Apple clang 21 的默认是 C++14（__cplusplus = 201402L），
+# std::clamp 这类 C++17 的东西会直接编不过。
+# yogacore 另外要求 cxx_std_20，CMake 取较高者，不冲突。
+target_compile_features(bklv_opts INTERFACE cxx_std_17)
+
 # ImGui 的 OpenGL3 后端由 src/bklv/backends/imgui_impl_opengl3_wrapper.cpp 提供，
 # 它自己先包含项目里的 GL 头，再包含 ImGui 的实现文件，这里只告诉 ImGui 别用它自带的 loader。
 target_compile_definitions(bklv_opts INTERFACE IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
@@ -181,7 +195,28 @@ target_compile_definitions(bklv_opts INTERFACE IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 # macOS 用系统 ImageIO 解码图片；其余平台用 stb_image（随仓库，无外部依赖）。
 if(NOT BKLV_HOST STREQUAL "macos")
     target_compile_definitions(bklv_opts INTERFACE BKLV_USE_STB_IMAGE)
+else()
+    # ImageIO / CoreGraphics 是 macOS 的系统框架，必须显式链接：
+    # 不链的话 image_decoder.cpp 里的 CGImageSource* 会以 undefined symbol 形式
+    # 在链接期才暴露（编译期完全正常）。SDL3 的 target 只带它自己需要的框架。
+    target_link_libraries(bklv_opts INTERFACE
+        "-framework ImageIO"
+        "-framework CoreGraphics"
+        "-framework CoreFoundation"
+        "-framework CoreMedia"
+        "-framework CoreVideo"
+    )
 endif()
+
+# OpenGL 库：两种后端都要链。
+# macOS 是 OpenGL.framework，Linux 是 libGL（FindOpenGL 还会带上 GLX 的依赖）。
+#
+# 为什么 vk 构建也要：demo_01~05 是直接用 ImGui + GL 的学习示例（不经过 bklv 的
+# RenderBackend），demo_common.h 里就有 glClear 这类调用；ImGui 的 OpenGL3 后端
+# （imgui_impl_opengl3_wrapper.cpp）也在 IMGUI_SOURCES 里，不区分后端。
+# 不链的话 vk 构建会以一堆 _glXxx undefined symbol 失败。
+find_package(OpenGL REQUIRED)
+target_link_libraries(bklv_opts INTERFACE OpenGL::GL)
 
 # 图形后端选择（编译期）。
 if(BKLV_NULL_BACKEND)
@@ -208,6 +243,13 @@ if(BKLV_GRAPHICS STREQUAL "vk")
     # ImGui 的 Vulkan 后端把 shader 内嵌在源码里，不需要 glslc，
     # 而 MSYS2 的 vulkan-headers/loader 包里也没有它。
     find_package(Vulkan REQUIRED)
+
+    # 必须挂在 bklv_opts 上，不能只链在可执行目标上：
+    # vulkan_backend.cpp / imgui_impl_vulkan.cpp 是在 bklv_core、imgui_impl 这两个
+    # OBJECT 库里编译的，可执行目标的链接依赖影响不到它们的 include 路径，
+    # 结果就是 GL 构建好好的、vk 构建报 'vulkan/vulkan.h' file not found。
+    # 挂在这里顺带把 loader 也带给各可执行目标，不需要再单独链一次。
+    target_link_libraries(bklv_opts INTERFACE Vulkan::Vulkan)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -342,21 +384,17 @@ foreach(entry IN LISTS BKLV_TARGET_LIST)
 
     add_executable(${target_name} "${CMAKE_SOURCE_DIR}/${target_src}")
 
+    # 不再单独列 SDL3::SDL3-static：imgui_impl 与 bklv_core 都 PUBLIC 链接了它，
+    # 这里再写一次会让链接器报 "ignoring duplicate libraries"（项目要求零警告）。
     target_link_libraries(${target_name} PRIVATE
         bklv_opts
         imgui_impl
         bklv_core
         yogacore
-        SDL3::SDL3-static
     )
 
     if(target_kind STREQUAL "app")
         target_link_libraries(${target_name} PRIVATE bklv_app)
-    endif()
-
-    if(BKLV_GRAPHICS STREQUAL "vk")
-        # vulkan_backend.cpp 会调 vkCreateInstance 等，必须链 loader。
-        target_link_libraries(${target_name} PRIVATE Vulkan::Vulkan)
     endif()
 
     # demo_04_yoga 直接用 Yoga 的 C++20 头文件，其余保持 C++17。

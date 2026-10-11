@@ -73,7 +73,7 @@ cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk   # 产物�
 还有两个可选开关：
 
 ```bash
-# 空后端：开窗但不绘制，用于没有图形环境时自检
+# 空后端：开窗但不绘制，用于没有图形环境时自检（产物在 dist/null/）
 cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
 
 # 只编主程序，跳过 7 个 demo（CMake 有增量编译，改一个文件本来就只重编一两个目标，

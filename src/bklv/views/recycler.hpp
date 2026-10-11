@@ -57,7 +57,12 @@ class RecyclerDataSource
     // 可选：返回这一行的固定高度；返回 <= 0 表示用全局 itemHeight。
     virtual float getItemHeight(size_t) { return 0.0f; }
 
-    static inline const std::string DEFAULT_CELL_ID = "default";
+    // 复用标识的默认值。必须是 constexpr const char*，不能写成
+    // `static inline const std::string`：std::string 需要动态初始化，
+    // 而 inline const 的存储会被编译器放进只读段（__TEXT,__const），
+    // 全局初始化器一写就 SIGBUS（-O3 下必现，现象是 main 之前就崩）。
+    // const char* 没有动态初始化，隐式转成 std::string 供调用方使用。
+    static constexpr const char* DEFAULT_CELL_ID = "default";
 };
 
 class RecyclerFrame : public ScrollingFrame

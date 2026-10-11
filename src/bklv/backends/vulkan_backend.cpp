@@ -1,6 +1,7 @@
-#include "bklv/backends/vulkan_backend.hpp"
-
+// include 必须放在守卫内：GL 构建里这个头（以及 vulkan.h）不该被拉进来。
 #if !defined(BKLV_SWITCH) && defined(BKLV_VULKAN)
+
+#include "bklv/backends/vulkan_backend.hpp"
 
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>

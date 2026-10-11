@@ -51,7 +51,12 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 |---|---|---|
 | GL | `dist/` | `dist/*.exe` |
 | Vulkan | `dist/vk/` | `dist/vk/*.exe` |
+| 空后端 | `dist/null/` | `dist/null/*.exe` |
 | Switch | `dist/switch/` | — |
+
+空后端必须单独一个目录：它的 `BKLV_GRAPHICS` 也是 `gl`，早先和 GL 共用 `dist/`
+会互相覆盖同名文件，而 CMake 认为各自目标都是最新的、不会重新链接，
+于是得到一个"空的 GL 版 imgui_main"且毫无提示。
 
 因为分目录，可执行文件名不带后缀（Windows 上带 `.exe`）。
 

@@ -20,6 +20,18 @@
 
 #include <OpenGL/gl3.h>
 
+namespace bklv
+{
+
+// 原型平台不需要运行时加载，保留同名函数让调用点保持平台无关。
+// （opengl_backend.cpp 无条件调用它，三个分支都必须提供。）
+inline bool loadGLFunctions()
+{
+    return true;
+}
+
+} // namespace bklv
+
 #elif defined(_WIN32)
 
 // imgl3w 是第三方生成代码，在 -Wextra 下会报 cast-function-type

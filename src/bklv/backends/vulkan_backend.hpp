@@ -17,7 +17,9 @@
 #include "bklv/core/graphics.hpp"
 
 // 桌面 Vulkan 后端（依赖 SDL3）。Switch 用 gles3_backend。
-#if !defined(BKLV_SWITCH)
+// 必须同时判断 BKLV_VULKAN：GL 构建下这台机器可能根本没装 Vulkan 头，
+// 而 CMake 只在 vk 构建里把 Vulkan 的 include 目录加进来。
+#if !defined(BKLV_SWITCH) && defined(BKLV_VULKAN)
 
 #include <SDL3/SDL.h>
 #include <vulkan/vulkan.h>
@@ -127,4 +129,4 @@ class VulkanBackend : public RenderBackend
 
 } // namespace bklv
 
-#endif // !BKLV_SWITCH
+#endif // !BKLV_SWITCH && BKLV_VULKAN
