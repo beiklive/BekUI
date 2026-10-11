@@ -1,0 +1,27 @@
+# 文档索引
+
+速查与说明文档。项目介绍、如何拉取编译、如何用到自己的项目里，见根目录的
+[`README.md`](../README.md)。
+
+## 速查
+
+| 文档 | 内容 |
+|---|---|
+| [`bklv-api.md`](bklv-api.md) | bklv 移植层速查：文件职责表、Box 布局调用、交互与内容控件、imgui.ini 开关、日志约定、已知的坑、分层约定 |
+
+## 怎么做
+
+| 文档 | 内容 |
+|---|---|
+| [`../notes/adding-render-backend.md`](../notes/adding-render-backend.md) | 加一个渲染后端的完整步骤，以及两个后端都踩过的坑 |
+| [`../AGENTS.md`](../AGENTS.md) | 开发约定：双后端要求、构建入口、平台与 Vulkan 的注意事项、代码规范 |
+
+## 移植评估笔记
+
+这几份是动手前的调研记录，保留作为决策依据，不代表当前实现状态：
+
+| 文档 | 内容 |
+|---|---|
+| [`../notes/wiliwili-yoga-architecture.md`](../notes/wiliwili-yoga-architecture.md) | wiliwili 里 borealis + Yoga 的架构分析 |
+| [`../notes/borealis-to-imgui-port-assessment.md`](../notes/borealis-to-imgui-port-assessment.md) | 从 borealis 移植到 ImGui 的可行性评估 |
+| [`../notes/borealis-port-priorities.md`](../notes/borealis-port-priorities.md) | 移植的优先级与取舍 |

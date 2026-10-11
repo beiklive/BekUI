@@ -168,9 +168,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 ```
 src/bklv/core       接口层：view / box / app / platform / graphics / input / ...
 src/bklv/views      控件：label / image / scrolling_frame / recycler / ...
-src/bklv/backends   图形 API 实现：opengl / gles3 / null / imgui 后端
+src/bklv/backends   图形 API 实现：opengl / vulkan / gles3 / null / imgui 后端
 src/bklv/platforms  平台实现：sdl3 / switch
 demo/               示例
-scripts/            构建脚本
-notes/              设计笔记与评估
+scripts/            构建脚本（只剩 Switch 的）
+docs/               速查文档：bklv 文件职责、API 用法、已知的坑
+notes/              设计笔记与移植评估
 ```
+
+README 只讲项目介绍、拉取编译、怎么用到别的项目里；**代码层面的说明（文件职责表、
+API 速查、踩坑记录）写在 `docs/`**，别往 README 里堆。
