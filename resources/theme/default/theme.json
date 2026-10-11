@@ -6,6 +6,8 @@
   "widgets": [
     "widgets/rectangle.json",
     "widgets/button.json",
-    "widgets/button.ghost.json"
+    "widgets/button.ghost.json",
+    "widgets/header.json",
+    "widgets/bottom_bar.json"
   ]
 }

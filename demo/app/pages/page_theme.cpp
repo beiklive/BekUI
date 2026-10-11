@@ -6,7 +6,9 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/header.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
 using namespace bklv;
@@ -56,7 +58,12 @@ Box* buildThemePage()
     page->setWidthPercentage(100.0f);
     page->setHeight(AUTO);
 
-    page->addView(makeTitle(getStr("tab/theme")));
+    // 页头：色条 + 标题 + 副标题 + 下边线，结构全在 widgets/header.json 里
+    Header* header = new Header();
+    header->setTitle(getStr("tab/theme"));
+    header->setSubtitle(getTheme().getName());
+    page->addView(header);
+
     page->addView(makeHint(getStr("theme/hint")));
 
     // ---- 1. 换肤 ----
@@ -73,9 +80,12 @@ Box* buildThemePage()
     for (const std::string& name : getTheme().getAvailableThemes())
     {
         Button* button = new Button(name);
-        button->setOnClick([current, name] {
+        button->setOnClick([current, header, name] {
             if (g_app != nullptr && g_app->setTheme(name))
+            {
                 current->setText(getStr("theme/current", getTheme().getName()));
+                header->setSubtitle(getTheme().getName());
+            }
         });
         row->addView(button);
     }
@@ -126,6 +136,13 @@ Box* buildThemePage()
     }
     statePanel->addView(stateRow);
     page->addView(statePanel);
+
+    // ---- 4. 底栏：上边线 + 一行提示（结构同样来自 JSON）----
+    BottomBar* bottom = new BottomBar();
+    bottom->showHintsFromFocus();
+    if (bottom->getText().empty()) // 还没有焦点时没有提示，用静态文案兜底
+        bottom->setText(getStr("theme/bottom_hint"));
+    page->addView(bottom);
 
     return page;
 }

@@ -284,6 +284,8 @@ set(BKLV_CORE_SOURCES
     widgets/appearance_view.cpp
     widgets/rectangle.cpp
     widgets/button.cpp
+    widgets/header.cpp
+    widgets/bottom_bar.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

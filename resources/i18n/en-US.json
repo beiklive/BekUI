@@ -44,6 +44,7 @@
     "button_disabled": "Disabled",
     "states_title": "State animation",
     "states_desc": "Move focus with left/right, watch the color tween; press A to see the press feedback.",
-    "focus_sample": "Button {}"
+    "focus_sample": "Button {}",
+    "bottom_hint": "The bottom bar is appearance-driven too: top line + one line of text, structure in widgets/bottom_bar.json"
   }
 }

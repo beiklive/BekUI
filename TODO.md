@@ -171,7 +171,30 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] `bklv/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
 - [x] 第二套皮肤 `ocean`（复制 default 改出来的）用于验证换肤
 - [x] 测试：`tests/theme_test.cpp`（44）+ `tests/widget_test.cpp`（24）
-- [ ] 其余控件移植（见下）
+- [x] `Header` / `BottomBar`（多文字层 + 显式宽高的装饰件）
+- [x] 外观层支持显式 `width`/`height` + `align`/`valign`（色条、下边线这类装饰件要用）
+
+### 控件移植清单（对照 borealis 的 20 个）
+
+| borealis | bklv | 状态 |
+|---|---|---|
+| label / image | `views/` | 已有（语义绘制 + 跟随主题） |
+| scrolling_frame / h_scrolling_frame | `views/` | 已有 |
+| recycler | `views/recycler` | 已有 |
+| progress_spinner | `views/progress_spinner` | 已有 |
+| hint | `views/hints` | 已有（等价） |
+| debug_layer | `views/debug_window` | 已有（等价，用 ImGui 窗口） |
+| rectangle | `widgets/rectangle` | 新增（外观驱动，零绘制代码） |
+| button | `widgets/button` | 新增（外观驱动 + ghost 变体） |
+| header | `widgets/header` | 新增 |
+| bottom_bar | `widgets/bottom_bar` | 新增 |
+| tab_frame | `widgets/` | **待做**（需要一个页面栈） |
+| sidebar | `widgets/` | **待做** |
+| slider | `widgets/` | **待做**（需要拖拽手势） |
+| applet_frame | `widgets/` | **待做**（Switch 宿主窗口；桌面空实现） |
+| dialog | `widgets/` | **待做**：先补弹层 + 焦点栈 |
+| dropdown | `widgets/` | **待做**：先补弹层 + 焦点栈 |
+| edit_text_dialog | `widgets/` | **待做**：先补 IME |
 
 ## JSON 视图系统（移植 borealis 的 XML 视图）
 

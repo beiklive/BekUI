@@ -44,6 +44,7 @@
     "button_disabled": "禁用按钮",
     "states_title": "状态动效",
     "states_desc": "方向键左右移动焦点，观察颜色补间；按回车看按下反馈。",
-    "focus_sample": "按钮 {}"
+    "focus_sample": "按钮 {}",
+    "bottom_hint": "底栏也是外观驱动的：上边线 + 一行文字，结构在 widgets/bottom_bar.json"
   }
 }

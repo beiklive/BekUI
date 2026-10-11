@@ -90,6 +90,10 @@ struct AppearanceLayer
     float fontSize    = 0.0f;
     float inset[4]    = { 0.0f, 0.0f, 0.0f, 0.0f }; // top / right / bottom / left
     float offset[2]   = { 0.0f, 0.0f };
+    // 显式宽高（0 表示用 inset 收缩后的整个范围）。
+    // 装饰件要用：色条（width 4）、下边线（height 1）。给定后按 align/valign 摆放。
+    float width       = 0.0f;
+    float height      = 0.0f;
     std::string align     = "left";
     std::string valign    = "center";
     std::string scaling   = "fit";

@@ -367,6 +367,8 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             { "radius", &layer.radius },
             { "opacity", &layer.opacity },
             { "fontSize", &layer.fontSize },
+            { "width", &layer.width },
+            { "height", &layer.height },
         };
         for (const NumberField& field : numberFields)
         {

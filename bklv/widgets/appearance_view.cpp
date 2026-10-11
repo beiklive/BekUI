@@ -99,10 +99,53 @@ TextureRef AppearanceView::getLayerImage(const std::string&)
 void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, float width,
     float height, float out[4]) const
 {
-    const float left   = x + layer.inset[3] + layer.offset[0];
-    const float top    = y + layer.inset[0] + layer.offset[1];
-    const float right  = x + width - layer.inset[1] + layer.offset[0];
-    const float bottom = y + height - layer.inset[2] + layer.offset[1];
+    float left   = x + layer.inset[3] + layer.offset[0];
+    float top    = y + layer.inset[0] + layer.offset[1];
+    float right  = x + width - layer.inset[1] + layer.offset[0];
+    float bottom = y + height - layer.inset[2] + layer.offset[1];
+
+    if (right < left)
+        right = left;
+    if (bottom < top)
+        bottom = top;
+
+    // 显式宽高：改尺寸后按 align/valign 在原来的范围里摆放。
+    // 装饰件靠这个表达：色条 width=4、下边线 height=1 + valign=bottom。
+    if (layer.width > 0.0f)
+    {
+        if (layer.align == "center")
+        {
+            const float center = (left + right) * 0.5f;
+            left               = center - layer.width * 0.5f;
+            right              = left + layer.width;
+        }
+        else if (layer.align == "right")
+        {
+            left = right - layer.width;
+        }
+        else
+        {
+            right = left + layer.width;
+        }
+    }
+
+    if (layer.height > 0.0f)
+    {
+        if (layer.valign == "center")
+        {
+            const float middle = (top + bottom) * 0.5f;
+            top                = middle - layer.height * 0.5f;
+            bottom             = top + layer.height;
+        }
+        else if (layer.valign == "bottom")
+        {
+            top = bottom - layer.height;
+        }
+        else
+        {
+            bottom = top + layer.height;
+        }
+    }
 
     out[0] = left;
     out[1] = top;

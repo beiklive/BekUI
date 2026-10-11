@@ -15,7 +15,9 @@
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/header.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
 using namespace bklv;
@@ -171,6 +173,43 @@ int main()
         checkFloat(follows.getFontSize(), getTheme().number("metric.font.size.md", 0.0f),
             "换主题后跟随的值跟着变");
         setTheme("default");
+    }
+
+    std::printf("\n== 5. Header / BottomBar（多文字层 + 显式宽高的装饰件）==\n");
+    {
+        Header header;
+        header.setTitle("标题");
+        header.setSubtitle("副标题");
+        checkEqual(header.getTitle(), "标题", "标题进了控件");
+
+        const Appearance& appearance = header.getActiveAppearance();
+        check(appearance.getLayers().size() == 4, "Header 四层：色条 / 标题 / 副标题 / 下边线");
+        if (appearance.getLayers().size() == 4)
+        {
+            const AppearanceLayer& accent   = appearance.getLayers()[0];
+            const AppearanceLayer& title    = appearance.getLayers()[1];
+            const AppearanceLayer& subtitle = appearance.getLayers()[2];
+            const AppearanceLayer& line     = appearance.getLayers()[3];
+
+            checkFloat(accent.width, 4.0f, "色条用显式 width=4");
+            check(accent.op == AppearanceLayer::Op::Rect, "色条是 rect 层");
+
+            checkEqual(title.source, "title", "标题层的数据源是 title");
+            checkEqual(subtitle.source, "subtitle", "副标题层的数据源是 subtitle");
+            checkEqual(subtitle.align, "right", "副标题右对齐");
+
+            checkFloat(line.height, 1.0f, "下边线用显式 height=1");
+            checkEqual(line.valign, "bottom", "下边线贴底");
+        }
+
+        BottomBar bar("A 确定    B 返回");
+        check(bar.getActiveAppearance().getLayers().size() == 2, "BottomBar 两层：上边线 + 文字");
+        if (bar.getActiveAppearance().getLayers().size() == 2)
+        {
+            checkEqual(bar.getActiveAppearance().getLayers()[0].valign, "top", "上边线贴上");
+            checkEqual(bar.getActiveAppearance().getLayers()[1].source, "text", "文字层数据源是 text");
+        }
+        checkEqual(bar.getText(), "A 确定    B 返回", "底栏文字");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

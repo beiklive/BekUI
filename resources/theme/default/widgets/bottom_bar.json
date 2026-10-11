@@ -1,0 +1,26 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "line",
+      "fill": "@theme/color/border.subtle",
+      "height": 1,
+      "valign": "top"
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "source": "text",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric/font.size.sm",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        4
+      ]
+    }
+  ]
+}

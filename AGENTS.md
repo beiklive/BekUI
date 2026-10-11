@@ -228,6 +228,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      绘制只读当前值。换肤靠 `App::setTheme()` → 重新取外观 + `applyThemeRecursive()` + 重排。
   ④ **主题只覆盖未被显式设置过的值**：调过 `setFontSize/setTextColor` 的控件，
      换肤不再动它；要跟随主题就 `setXxxExplicit(false)`。
+  ⑤ **装饰件用显式 `width`/`height`**：层默认铺满"控件范围按 inset 收缩后"的区域，
+     给了 `width`（如色条 4）或 `height`（如下边线 1）就按 `align`/`valign` 摆放。
   缺项回退链：当前主题 → default → 控件空外观（警告，不崩）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
@@ -256,7 +258,8 @@ cmake --build build/gl -j 8
 ```
 bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
   core/             接口层：view / box / app / platform / graphics / input / ...
-  views/            控件：label / image / scrolling_frame / recycler / ...
+  views/            语义控件：label / image / scrolling_frame / recycler / ...
+  widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

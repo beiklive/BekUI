@@ -33,5 +33,11 @@
     "height": 40,
     "minWidth": 120,
     "paddingX": 16
+  },
+  "header": {
+    "height": 52
+  },
+  "bottomBar": {
+    "height": 36
   }
 }
