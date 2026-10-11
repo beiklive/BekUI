@@ -181,6 +181,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   约定：**库公开 API 不向外抛异常**，失败用返回值 + 日志；内部可用 try/catch，
   但跨越「创建视图树」这类中途可能失败的操作必须 RAII（用 `std::unique_ptr<View>` 持有，
   交给父节点后再 release），否则抛出时会泄漏半棵树。
+- **文案（i18n）**：资源 `resources/i18n/<locale>.json`，key 用 `/` 分层，取值走
+  `bklv::getStr("a/b")`（带 `{}` 占位符则 `getStr("a/b", 12)`）。
+  三条约定：① 文案在控件构造时解析成字符串，**切语言不会自动重译已有视图**；
+  ② 语言名经 `canonicalLocale()` 归一（桌面 `zh-CN` 与 Switch `zh-Hans` 都归到 `zh-Hans`），
+  资源名只用规范名；③ **不要扫目录**列语言文件——romfs 上的目录迭代真机未验证，
+  要拆文件就在主文件里用 `"$files"` 清单显式列出。
+  装载点是 `App::App()`（早于视图树构建），探测语言不依赖 `Platform` 实例。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
@@ -188,6 +195,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
   `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
+
+## 测试
+
+无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：
+
+```bash
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=ON
+cmake --build build/gl -j 8
+./dist/i18n_test          # 或 cd build/gl && ctest
+```
+
+产物与 demo 同目录（`dist/`）——资源路径按可执行文件目录解析（见
+`bklv/core/resource.hpp`），测试要能读到 `resources/`。
+加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集。
 
 ## 目录
 

@@ -1,6 +1,7 @@
 #include "app/page_host.hpp"
 
 #include "app/page_helpers.hpp"
+#include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
 
 using namespace bklv;
@@ -101,12 +102,12 @@ PageHost::PageHost()
     this->root->addView(this->tabBar);
 
     // ---- 页面 ----
-    this->addPage("控件", buildWidgetsPage(), false);
-    this->addPage("文本", buildTextPage(), false);
-    this->addPage("布局", buildLayoutPage(), false);
+    this->addPage(bklv::getStr("tab/widgets"), buildWidgetsPage(), false);
+    this->addPage(bklv::getStr("tab/text"), buildTextPage(), false);
+    this->addPage(bklv::getStr("tab/layout"), buildLayoutPage(), false);
 
     ListPage listPage = buildListPage();
-    this->addPage("列表", listPage.view, listPage.selfScrolling);
+    this->addPage(bklv::getStr("tab/list"), listPage.view, listPage.selfScrolling);
     this->mainList = listPage.list;
 
     BKLV_LOG_INFO("界面已就绪：%d 个页面", static_cast<int>(this->pages.size()));

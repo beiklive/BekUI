@@ -189,6 +189,39 @@ if(NOT BKLV_TARGETS STREQUAL "" AND BKLV_MATCHED EQUAL 0)
 endif()
 
 # ---------------------------------------------------------------------------
+# 无窗口测试（tests/）
+# ---------------------------------------------------------------------------
+#
+# 只断言数据层面的行为（装载、查找、回退、格式化、缓存、JSON 解析错误），
+# 不开窗口：失败时定位成本低得多。图形相关仍靠 demo 手测。
+#
+# 产物与 demo 同目录（dist/），因为资源路径是按可执行文件目录解析的
+# （见 bklv/core/resource.hpp），测试要能读到 resources/。
+option(BKLV_BUILD_TESTS "编译 tests/ 下的无窗口测试" OFF)
+
+if(BKLV_BUILD_TESTS)
+    file(GLOB BKLV_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/*_test.cpp")
+
+    foreach(test_src ${BKLV_TEST_SOURCES})
+        get_filename_component(test_name "${test_src}" NAME_WE)
+
+        add_executable(${test_name} "${test_src}")
+        target_link_libraries(${test_name} PRIVATE bklv::bklv)
+        set_target_properties(${test_name} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
+            RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"
+            RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BKLV_OUT_DIR}"
+        )
+
+        # ctest 里跑；也能直接执行 dist/<name>
+        add_test(NAME ${test_name} COMMAND ${test_name})
+        list(APPEND BKLV_TEST_NAMES ${test_name})
+    endforeach()
+
+    enable_testing()
+endif()
+
+# ---------------------------------------------------------------------------
 # 状态输出
 # ---------------------------------------------------------------------------
 
@@ -198,3 +231,6 @@ message(STATUS "bklv 仓库")
 message(STATUS "  平台     : ${BKLV_HOST}")
 message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
 message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAMES}")
+if(BKLV_BUILD_TESTS)
+    message(STATUS "  测试     : ${BKLV_TEST_NAMES}")
+endif()

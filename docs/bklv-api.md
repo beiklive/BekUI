@@ -23,6 +23,8 @@
 | `platforms/sdl3_platform.*` | macOS/Linux/Windows 的 SDL3 平台实现 |
 | `platforms/switch_platform.*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言） |
 | `core/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
+| `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
+| `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
 | `backends/opengl_backend.*` | 桌面 OpenGL 后端 |
 | `backends/vulkan_backend.*` | Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传） |
@@ -102,6 +104,36 @@ image->setImageFromFile("resources/testcard.png");
 键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回。
 鼠标点击默认**只聚焦不执行**动作；想点一下就执行，在控件构造函数里设
 `onPointerAction = true`（按钮、tab 都这么做）。列表项保持默认，避免误触发。
+
+## 文案（i18n）
+
+资源放 `resources/i18n/<locale>.json`，key 用 `/` 分层：
+
+```json
+{ "demo": { "welcome": "欢迎使用 bklv", "list_count": "共 {} 项" } }
+```
+
+```cpp
+bklv::getStr("demo/welcome");              // "欢迎使用 bklv"
+bklv::getStr("demo/list_count", 12);       // "共 12 项"（{} 按顺序替换）
+bklv::getStr("demo/nope");                 // 未命中返回 key 本身
+bklv::setLocale("en-US");                  // 运行中切换
+bklv::getLocale();                         // 规范化后的当前语言
+```
+
+三条要记住的：
+
+1. **文案在控件构造时就解析成字符串**，改语言不会自动重译已有视图——
+   要重新 `setText()` 或重建视图树（`demo/app/pages/page_text.cpp` 里有一个
+   「切换语言」按钮演示了显式重译）。
+2. **语言名是规范化的**（`zh-Hans` / `zh-Hant` / `en-US` / `ja-JP` / `ko-KR`）。
+   桌面 SDL 给的是 `zh-CN`、Switch 给的是 `zh-Hans`，都经 `canonicalLocale()` 归一，
+   所以资源文件只需要一套命名。
+3. **不依赖目录枚举**：按名字读 `<locale>.json`；要拆文件就在主文件里写
+   `"$files": ["hints.json"]` 清单（romfs 上的目录迭代真机未验证，所以不扫描目录）。
+
+`initI18n()` 在 `App` 构造时调用，早于视图树构建；也可以在测试里单独调
+`setLocale()`，默认语言表是懒加载的。
 
 ## 不生成 imgui.ini
 

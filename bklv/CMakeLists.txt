@@ -261,6 +261,7 @@ set(BKLV_CORE_SOURCES
     core/graphics.cpp
     core/image_decoder.cpp
     core/resource.cpp
+    core/i18n.cpp
     core/platform.cpp
     core/gamepad.cpp
     core/view.cpp

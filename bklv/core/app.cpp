@@ -1,6 +1,7 @@
 #include "bklv/core/app.hpp"
 
 #include "bklv/core/resource.hpp"
+#include "bklv/core/i18n.hpp"
 
 #include <cstdlib>
 #include <memory>
@@ -64,6 +65,8 @@ App::App()
     // 这样后面任何一步失败（甚至崩溃）都能留下线索。
     enablePlatformLog();
     initResources();
+    // 文案要在视图树之前就绪：demo 是在 App::run() 之前把树建好的。
+    initI18n();
     BKLV_LOG_INFO("bklv 启动");
 }
 

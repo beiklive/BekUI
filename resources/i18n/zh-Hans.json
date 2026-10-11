@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "bklv 能力总览"
+  },
+  "tab": {
+    "widgets": "控件",
+    "text": "文本",
+    "layout": "布局",
+    "list": "列表"
+  },
+  "demo": {
+    "welcome": "欢迎使用 bklv",
+    "desc": "布局用 Yoga，绘制用 ImGui 的 ImDrawList；控件层不接触任何图形 API。",
+    "lang_button": "切换语言",
+    "lang_current": "当前语言：{}",
+    "list_count": "共 {} 项"
+  },
+  "hints": {
+    "ok": "确定",
+    "back": "返回",
+    "scroll": "滚动"
+  }
+}

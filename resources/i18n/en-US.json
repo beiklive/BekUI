@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "bklv capability overview"
+  },
+  "tab": {
+    "widgets": "Widgets",
+    "text": "Text",
+    "layout": "Layout",
+    "list": "List"
+  },
+  "demo": {
+    "welcome": "Welcome to bklv",
+    "desc": "Layout by Yoga, drawing by ImGui's ImDrawList; the view layer never touches a graphics API.",
+    "lang_button": "Switch language",
+    "lang_current": "Language: {}",
+    "list_count": "{} items"
+  },
+  "hints": {
+    "ok": "OK",
+    "back": "Back",
+    "scroll": "Scroll"
+  }
+}

@@ -19,6 +19,7 @@
 //   右上角「显示日志」   开关 ImGui 日志窗口（可拖动、可缩放、可筛选级别）
 
 #include "app/page_host.hpp"
+#include "bklv/core/i18n.hpp"
 #include "bklv/core/app.hpp"
 
 int main(int argc, char** argv)
@@ -39,5 +40,5 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
-    return app.run("bklv 能力总览", 1280, 800);
+    return app.run(bklv::getStr("app/title"), 1280, 800);
 }
