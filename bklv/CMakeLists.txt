@@ -265,6 +265,7 @@ set(BKLV_CORE_SOURCES
     core/attributes.cpp
     core/json_view.cpp
     core/theme_data.cpp
+    core/ime.cpp
     core/appearance.cpp
     core/platform.cpp
     core/gamepad.cpp
@@ -292,6 +293,7 @@ set(BKLV_CORE_SOURCES
     widgets/dialog.cpp
     widgets/dropdown.cpp
     widgets/applet_frame.cpp
+    widgets/edit_text_dialog.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

@@ -1,0 +1,54 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color/surface.sunken",
+      "stroke": "@theme/color/border.default",
+      "strokeWidth": 1,
+      "radius": "@theme/metric/radius.md"
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "source": "text",
+      "color": "@theme/color/text.primary",
+      "fontSize": "@theme/metric/font.size.md",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        12
+      ]
+    },
+    {
+      "op": "text",
+      "id": "counter",
+      "source": "counter",
+      "color": "@theme/color/text.dim",
+      "fontSize": "@theme/metric/font.size.sm",
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        12,
+        0,
+        0
+      ]
+    },
+    {
+      "op": "custom",
+      "id": "caret",
+      "fill": "@theme/color/accent.base",
+      "fontSize": "@theme/metric/font.size.md",
+      "inset": [
+        10,
+        0,
+        10,
+        12
+      ]
+    }
+  ]
+}

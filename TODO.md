@@ -184,6 +184,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] `Dropdown`（触发器 + 弹层列表；选完/点外面自动关）
 - [x] `AppletFrame`（宿主框架：页头 + 内容栈 + 底栏；页头 Regular/Popup 走 variant）
 - [x] **动作沿父链冒泡**（`View::triggerAction`）：容器级 B 动作在焦点位于子节点时才真的生效
+- [x] **IME**（`core/ime.*`：接口 + 平台注入）+ Switch 的 swkbd 实现 + 桌面内联键盘输入
+- [x] `EditTextDialog`（文本模型 + 输入框外观 + 光标闪烁）
+- [x] **控件移植清单全部完成**（对照 borealis 20 个控件）
 - [x] 主题引用容错：`@theme/color/a.b` 自动按点分解析并警告（不存在的 key 仍硬失败）
 
 ### 控件移植清单（对照 borealis 的 20 个）
@@ -206,7 +209,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | applet_frame | `widgets/applet_frame` | 新增（页头 + 内容栈 + 底栏，B 逐层返回） |
 | dialog | `widgets/dialog` | 新增（含弹层 + 焦点栈：模态输入、焦点保存/恢复） |
 | dropdown | `widgets/dropdown` | 新增（触发器 + 弹层列表，锚在触发器下方） |
-| edit_text_dialog | `widgets/` | **待做**：先补 IME |
+| edit_text_dialog | `widgets/edit_text_dialog` | 新增（TextEditModel + 桌面内联输入 / Switch swkbd） |
 
 ## JSON 视图系统（移植 borealis 的 XML 视图）
 

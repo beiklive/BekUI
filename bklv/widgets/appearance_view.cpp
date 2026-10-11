@@ -20,6 +20,10 @@ AppearanceView::AppearanceView(std::string appearanceName, bool focusable)
 {
     // 默认不装测量函数：装了之后 Yoga 不许这个节点再有子节点。
     // 需要"按内容定尺寸"的叶子控件（Button / TabCell / Header …）自己调 enableContentMeasurement()。
+
+    // 构造时就套用主题：不然直接用 AppearanceView 的地方会拿到空外观
+    // （遮罩/面板一笔都画不出来，排查起来很费时间——踩过）。
+    this->applyTheme();
 }
 
 void AppearanceView::enableContentMeasurement()

@@ -96,6 +96,7 @@ BKLV_SOURCES+=(
     "${BKLV_DIR}/backends/gles3_backend.cpp"
     "${BKLV_DIR}/backends/imgui_impl_libnx.cpp"
     "${BKLV_DIR}/platforms/switch_platform.cpp"
+    "${BKLV_DIR}/platforms/switch_ime.cpp"
     "${BKLV_DIR}/platforms/switch_gamepad.cpp"
 )
 

@@ -22,7 +22,8 @@
   "hints": {
     "ok": "OK",
     "back": "Back",
-    "scroll": "Scroll"
+    "scroll": "Scroll",
+    "cancel": "Cancel"
   },
   "json": {
     "hint": "This page comes from resources/views/*.json: attribute tables are per-class static, values accept native types and \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" prefixes. List items are the same idea, with values supplied by a binder.",
@@ -61,7 +62,14 @@
     "option_1": "Low",
     "option_2": "Medium",
     "option_3": "High",
-    "option_4": "Ultra"
+    "option_4": "Ultra",
+    "input_title": "Text input",
+    "input_desc": "Desktop uses inline typing (characters / backspace / arrows / Enter to accept / Esc to cancel); Switch pops the system keyboard (swkbd). Editing is a standalone text model, so CJK is deleted by character.",
+    "open_input": "Type something",
+    "input_echo": "Result: {}",
+    "input_empty": "(nothing yet)",
+    "input_dialog_title": "Enter a name",
+    "input_hint": "Type here..."
   },
   "nav": {
     "hint": "TabFrame and Sidebar are library-level widgets: tab cells, selected state and panel colors are all described by theme JSON. Switching tabs detaches the old page instead of destroying it.",
@@ -90,5 +98,8 @@
     "toggle_header": "Switch to Popup header",
     "header_popup": "Switch to Regular header",
     "header_regular": "Switch to Popup header"
+  },
+  "widgets": {
+    "cancel": "Cancel"
   }
 }

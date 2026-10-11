@@ -15,6 +15,8 @@
     "widgets/dialog.json",
     "widgets/dropdown.json",
     "widgets/dropdown_item.json",
-    "widgets/header.popup.json"
+    "widgets/header.popup.json",
+    "widgets/text_field.json",
+    "widgets/edit_text_dialog.json"
   ]
 }

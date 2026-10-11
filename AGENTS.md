@@ -237,6 +237,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ⑤ **装饰件用显式 `width`/`height`**：层默认铺满"控件范围按 inset 收缩后"的区域，
      给了 `width`（如色条 4）或 `height`（如下边线 1）就按 `align`/`valign` 摆放。
   缺项回退链：当前主题 → default → 控件空外观（警告，不崩）。
+- **文本输入（IME）**（`core/ime.*` + `widgets/edit_text_dialog.*`）：
+  平台决定走哪条路——`ImeManager::open()` 返回 true 表示平台接管
+  （Switch 用 libnx 的 `swkbd` 弹系统软键盘，同步阻塞，主循环会停住），
+  返回 false 表示没人接手，控件自己读键盘（桌面：ImGui 字符队列 + Backspace/Del/方向键/回车/Esc）。
+  **编辑逻辑放在 `TextEditModel`（纯数据、不碰 ImGui）**，所以能无窗口测；
+  光标按**字符**走（中文/emoji 不会被切坏），闪烁在绘制期按时间算、不进模型。
+- **裸 `AppearanceView` 也会在构造时 `applyTheme()`**：不这么做的话，
+  直接 `new AppearanceView("xxx")` 的地方会拿到空外观，一笔都画不出来
+  （EditTextDialog 的遮罩/面板踩过：结构对、颜色对，就是什么都不显示）。
 - **弹层与模态输入**（`core/input.cpp` 的模态栈 + `core/app.cpp` 的 `pushOverlay`）：
   `App::pushOverlay(view)` 把弹层挂到根视图最上层并切模态；`popOverlay` 摘下并恢复焦点。
   三条：
@@ -285,6 +294,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
                     / slider / tab_frame / sidebar / dialog / dropdown / applet_frame
+                    / edit_text_dialog
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

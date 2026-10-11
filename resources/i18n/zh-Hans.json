@@ -22,7 +22,8 @@
   "hints": {
     "ok": "确定",
     "back": "返回",
-    "scroll": "滚动"
+    "scroll": "滚动",
+    "cancel": "取消"
   },
   "json": {
     "hint": "这一页的界面来自 resources/views/*.json：属性表按类静态注册，值支持原生类型与 \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" 前缀。列表项模板同理，只是把取值交给绑定回调。",
@@ -61,7 +62,14 @@
     "option_1": "低",
     "option_2": "中",
     "option_3": "高",
-    "option_4": "极高"
+    "option_4": "极高",
+    "input_title": "文本输入",
+    "input_desc": "桌面用内联键盘输入（字符 / 退格 / 方向键 / 回车确认 / Esc 取消），Switch 走系统软键盘（swkbd）。编辑逻辑是独立的文本模型，中文按字符删改。",
+    "open_input": "输入文字",
+    "input_echo": "输入结果：{}",
+    "input_empty": "（还没输入）",
+    "input_dialog_title": "输入一个名字",
+    "input_hint": "在这里输入…"
   },
   "nav": {
     "hint": "TabFrame 与 Sidebar 都是库级控件：tab 格子、选中态、面板底色都由主题 JSON 描述。切页时旧页面只脱离不销毁，状态会保留。",
@@ -90,5 +98,8 @@
     "toggle_header": "换成 Popup 页头",
     "header_popup": "换成 Regular 页头",
     "header_regular": "换成 Popup 页头"
+  },
+  "widgets": {
+    "cancel": "取消"
   }
 }

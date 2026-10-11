@@ -236,7 +236,8 @@ int main()
         // 选中态整块变成洋红，就是这个错误。
         const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
             "slider", "tab_cell", "dialog", "dialog_backdrop",
-            "dropdown", "dropdown_item", "header.popup" };
+            "dropdown", "dropdown_item", "header.popup",
+            "text_field", "edit_text_dialog" };
 
         for (const char* themeName : { "default", "ocean" })
         {

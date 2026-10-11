@@ -53,5 +53,11 @@
   "dropdown": {
     "height": 44,
     "itemHeight": 38
+  },
+  "textField": {
+    "height": 48
+  },
+  "editTextDialog": {
+    "width": 560
   }
 }
