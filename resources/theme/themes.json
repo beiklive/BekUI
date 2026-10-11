@@ -1,0 +1,7 @@
+{
+  "default": "default",
+  "available": [
+    "default"
+  ],
+  "$comment": "换肤：复制 default 改名，改 JSON，再把名字加进 available"
+}

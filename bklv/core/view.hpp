@@ -238,6 +238,16 @@ class View
     virtual std::string getClassString() const;
     std::string describe() const;
 
+    // ---- 主题（见 core/appearance.hpp）----
+
+    // 换肤时被调用：把主题值取到成员里（之后 draw 只读成员，不查主题）。
+    // 默认空实现；控件重写。只应该覆盖**未被显式设置过**的值——
+    // 用户代码 setFontSize(18) 之后，换肤不该把它冲掉。
+    virtual void applyTheme() { }
+
+    // 递归套用（含子节点）。App::setTheme 会调。
+    void applyThemeRecursive();
+
     // ---- JSON 视图描述用的属性系统（见 core/attributes.hpp）----
 
     // 该类的属性表。子类重写成返回自己的静态表；基类返回空表。

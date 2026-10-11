@@ -264,6 +264,8 @@ set(BKLV_CORE_SOURCES
     core/i18n.cpp
     core/attributes.cpp
     core/json_view.cpp
+    core/theme_data.cpp
+    core/appearance.cpp
     core/platform.cpp
     core/gamepad.cpp
     core/view.cpp

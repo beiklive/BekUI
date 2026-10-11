@@ -921,6 +921,15 @@ const AttributeTable& commonAttributes()
 
 } // namespace
 
+void View::applyThemeRecursive()
+{
+    this->applyTheme();
+
+    if (Box* box = this->asBox())
+        for (View* child : box->getChildren())
+            child->applyThemeRecursive();
+}
+
 const AttributeTable& View::attributes() const
 {
     static const AttributeTable empty = {};

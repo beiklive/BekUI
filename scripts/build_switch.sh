@@ -71,6 +71,7 @@ INCLUDES=(-I"${ROOT_DIR}"
     -I"${THIRD_DIR}/imgui"
     -I"${THIRD_DIR}/yoga"
     -I"${THIRD_DIR}/stb"
+    -I"${THIRD_DIR}/tweeny/include"
     -I"${THIRD_DIR}/json/single_include"
     -I"${PORTLIBS}/include"
     -I"${LIBNX}/include")

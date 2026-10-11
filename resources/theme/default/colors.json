@@ -1,0 +1,33 @@
+{
+  "surface": {
+    "page": "#1a1c21",
+    "card": "#262a32",
+    "raised": "#2e333c",
+    "sunken": "#21242a"
+  },
+  "text": {
+    "primary": "#ebeef2",
+    "dim": "#96a0af",
+    "disabled": "#828994",
+    "onAccent": "#ffffff"
+  },
+  "accent": {
+    "base": "#5aaaf5",
+    "pressed": "#4a90e2"
+  },
+  "state": {
+    "focus": "#30568c",
+    "disabled": "#4a4f58",
+    "danger": "#e66a6a"
+  },
+  "border": {
+    "default": "#5a626e",
+    "subtle": "#464c56"
+  },
+  "card": {
+    "blue": "#396091",
+    "green": "#467d64",
+    "orange": "#915e43",
+    "purple": "#695496"
+  }
+}

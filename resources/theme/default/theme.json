@@ -1,0 +1,10 @@
+{
+  "name": "default",
+  "version": 1,
+  "colorScheme": "dark",
+  "$comment": "widgets 是显式清单：romfs 上不能列目录，加新控件外观时要在这里登记",
+  "widgets": [
+    "widgets/rectangle.json",
+    "widgets/button.json"
+  ]
+}
