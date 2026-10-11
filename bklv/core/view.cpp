@@ -684,18 +684,41 @@ void View::unregisterAction(ActionIdentifier identifier)
 
 bool View::triggerAction(ControllerButton button, bool pointer)
 {
-    for (const InputAction& action : this->actions)
+    // 指针：只认命中视图自己的动作。hitTest 只会返回可聚焦视图，
+    // 所以不需要冒泡（点按钮的文字区域时命中的也是按钮本身）。
+    if (pointer)
     {
-        if (action.button != button || !action.listener)
-            continue;
+        for (const InputAction& action : this->actions)
+        {
+            if (action.button != button || !action.listener)
+                continue;
 
-        // 鼠标点击默认只"选中"，不执行动作 —— 否则点一下列表项就会误触发。
-        // 控件想支持点一下就执行，把 onPointerAction 覆写成 true 即可。
-        if (pointer && !this->onPointerAction)
-            return false;
+            // 鼠标点击默认只"选中"，不执行动作 —— 否则点一下列表项就会误触发。
+            // 控件想支持点一下就执行，把 onPointerAction 覆写成 true 即可。
+            if (!this->onPointerAction)
+                return false;
 
-        action.listener(this);
-        return true;
+            action.listener(this);
+            return true;
+        }
+        return false;
+    }
+
+    // 手柄/键盘：自己没注册就**沿父链往上找**。
+    // 容器级的动作必须能在焦点位于其子节点时生效（borealis 也是这么做的）：
+    //   · AppletFrame 的 "B 返回上一层"
+    //   · Dialog 的 "B 关闭"
+    // 不冒泡的话，焦点在内容里的按钮上时按 B 完全没反应。
+    for (View* owner = this; owner != nullptr; owner = owner->getParent())
+    {
+        for (const InputAction& action : owner->actions)
+        {
+            if (action.button != button || !action.listener)
+                continue;
+
+            action.listener(owner);
+            return true;
+        }
     }
     return false;
 }

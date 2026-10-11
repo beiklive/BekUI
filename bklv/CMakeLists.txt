@@ -291,6 +291,7 @@ set(BKLV_CORE_SOURCES
     widgets/sidebar.cpp
     widgets/dialog.cpp
     widgets/dropdown.cpp
+    widgets/applet_frame.cpp
     platforms/sdl3_platform.cpp
     platforms/sdl3_gamepad.cpp
     backends/gl_loader.cpp

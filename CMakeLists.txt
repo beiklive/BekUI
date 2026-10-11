@@ -112,6 +112,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_json.cpp
     app/pages/page_theme.cpp
     app/pages/page_nav.cpp
+    app/pages/page_applet.cpp
 )
 
 set(BKLV_APP_ABS "")

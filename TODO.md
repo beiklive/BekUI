@@ -182,6 +182,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       模态内命中与导航限制、焦点保存/恢复、App 销毁时清态
 - [x] `Dialog`（遮罩 + 面板 + 按钮行，开关走外观状态动效）
 - [x] `Dropdown`（触发器 + 弹层列表；选完/点外面自动关）
+- [x] `AppletFrame`（宿主框架：页头 + 内容栈 + 底栏；页头 Regular/Popup 走 variant）
+- [x] **动作沿父链冒泡**（`View::triggerAction`）：容器级 B 动作在焦点位于子节点时才真的生效
 - [x] 主题引用容错：`@theme/color/a.b` 自动按点分解析并警告（不存在的 key 仍硬失败）
 
 ### 控件移植清单（对照 borealis 的 20 个）
@@ -201,7 +203,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | tab_frame | `widgets/tab_frame` | 新增（tab 栏 + 内容区，切页只脱离不销毁） |
 | sidebar | `widgets/sidebar` | 新增（条目复用 tab_cell 外观） |
 | slider | `widgets/slider` | 新增（外观分段 track/fill/knob，进度几何留 C++） |
-| applet_frame | `widgets/` | **待做**（Switch 宿主窗口；桌面空实现） |
+| applet_frame | `widgets/applet_frame` | 新增（页头 + 内容栈 + 底栏，B 逐层返回） |
 | dialog | `widgets/dialog` | 新增（含弹层 + 焦点栈：模态输入、焦点保存/恢复） |
 | dropdown | `widgets/dropdown` | 新增（触发器 + 弹层列表，锚在触发器下方） |
 | edit_text_dialog | `widgets/` | **待做**：先补 IME |

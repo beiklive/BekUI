@@ -1,0 +1,41 @@
+{
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.raised",
+      "radius": 0
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.lg",
+      "align": "center",
+      "valign": "center"
+    },
+    {
+      "op": "text",
+      "id": "subtitle",
+      "source": "subtitle",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.sm",
+      "align": "center",
+      "valign": "bottom",
+      "inset": [
+        0,
+        0,
+        6,
+        0
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "line",
+      "fill": "@theme/color.border.subtle",
+      "height": 1,
+      "valign": "bottom"
+    }
+  ]
+}

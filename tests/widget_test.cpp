@@ -20,6 +20,7 @@
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"
+#include "bklv/widgets/applet_frame.hpp"
 #include "bklv/widgets/tab_frame.hpp"
 #include "bklv/widgets/rectangle.hpp"
 
@@ -284,6 +285,74 @@ int main()
 
         sidebar.clearItems();
         check(sidebar.getItemCount() == 0, "清空条目");
+    }
+
+    std::printf("\n== 9. AppletFrame：内容栈（下钻 / 返回）==\n");
+    {
+        Box* root = new Box(Axis::COLUMN);
+        Box* pageA = new Box(Axis::COLUMN);
+        Button* pageAButton = new Button("第一层里的按钮");
+        pageA->addView(pageAButton);
+        AppletFrame* frame = new AppletFrame(pageA);
+        root->addView(frame);
+
+        check(frame->getContentStackSize() == 1, "初始只有一层内容");
+        check(frame->getContentView() == pageA, "当前内容是第一层");
+        check(frame->getContentBox()->getChildrenCount() == 1, "内容区只挂当前内容");
+
+        // 下钻
+        View* pageB = new Box(Axis::COLUMN);
+        frame->pushContentView(pageB);
+        check(frame->getContentStackSize() == 2, "下钻后两层");
+        check(frame->getContentView() == pageB, "当前内容是第二层");
+        check(frame->getContentBox()->getChildrenCount() == 1, "内容区仍然只挂一层");
+
+        View* pageC = new Box(Axis::COLUMN);
+        frame->pushContentView(pageC);
+        check(frame->getContentStackSize() == 3, "再下钻三层");
+
+        // 逐层返回，返回的是**同一个对象**（说明只脱离不销毁）
+        bool called = false;
+        frame->popContentView([&called] { called = true; });
+        check(called, "popContentView 调了回调");
+        check(frame->getContentView() == pageB, "退回到第二层");
+        frame->popContentView();
+        check(frame->getContentView() == pageA, "退回第一层");
+        check(frame->getContentStackSize() == 1, "只剩一层");
+
+        // 最外层再返回：交给 onDismiss
+        bool dismissed = false;
+        frame->setOnDismiss([&dismissed] { dismissed = true; });
+        frame->triggerAction(ControllerButton::B, false);
+        check(dismissed, "最外层按 B 交给 onDismiss");
+
+        // 焦点在内容里的按钮上时按 B：动作要沿父链冒泡到框架（borealis 也是这么做的）
+        Box* deep = new Box(Axis::COLUMN);
+        Button* innerButton = new Button("内容里的按钮");
+        deep->addView(innerButton);
+        frame->pushContentView(deep);
+        check(frame->getContentStackSize() == 2, "又下钻一层，准备测冒泡");
+
+        dismissed = false;
+        innerButton->triggerAction(ControllerButton::B, false);
+        check(!dismissed, "栈深 >1 时 B 是返回上一层，不触发 onDismiss");
+        check(frame->getContentStackSize() == 1, "B 冒泡到框架并弹掉了一层");
+        check(frame->getContentView() == pageA, "回到第一层内容");
+
+        // 这时 innerButton 已经随 deep 一起脱离了树，得用当前内容里的按钮
+        pageAButton->triggerAction(ControllerButton::B, false);
+        check(dismissed, "只剩一层时按 B 才交给 onDismiss");
+
+        // 页头样式切换 = 换一份外观文件
+        Header* header = frame->getHeader();
+        checkEqual(header->getActiveAppearance().getLayers()[1].align, "left", "常规页头标题左对齐");
+        frame->setHeaderStyle(AppletHeaderStyle::Popup);
+        checkEqual(header->getActiveAppearance().getLayers().size() == 4
+                ? header->getActiveAppearance().getLayers()[1].align : std::string("?"),
+            "center", "Popup 页头标题居中（换了外观文件）");
+
+        root->removeView(frame, true);
+        delete root;
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

@@ -13,6 +13,7 @@
     "widgets/dialog_backdrop.json",
     "widgets/dialog.json",
     "widgets/dropdown.json",
-    "widgets/dropdown_item.json"
+    "widgets/dropdown_item.json",
+    "widgets/header.popup.json"
   ]
 }

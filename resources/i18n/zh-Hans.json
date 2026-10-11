@@ -9,7 +9,8 @@
     "list": "列表",
     "json": "JSON",
     "theme": "主题",
-    "nav": "导航"
+    "nav": "导航",
+    "applet": "框架"
   },
   "demo": {
     "welcome": "欢迎使用 bklv",
@@ -77,5 +78,17 @@
     "item_1": "第一个条目",
     "item_2": "第二个条目",
     "item_3": "第三个条目"
+  },
+  "applet": {
+    "hint": "AppletFrame 是宿主框架：页头 + 内容栈 + 底栏。点「下钻一层」进子页，按回车/B 逐层返回；内容只脱离不销毁，返回时状态还在。页头样式切换走的是另一份外观文件（variant）。",
+    "title": "设置",
+    "subtitle": "AppletFrame 演示",
+    "level": "第 {} 层",
+    "level_hint": "当前是第 {} 层内容。底栏会显示当前焦点的动作提示。",
+    "push": "下钻一层",
+    "pop": "返回上一层",
+    "toggle_header": "换成 Popup 页头",
+    "header_popup": "换成 Regular 页头",
+    "header_regular": "换成 Popup 页头"
   }
 }

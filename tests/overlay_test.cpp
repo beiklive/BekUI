@@ -128,6 +128,7 @@ int main()
         Dialog* dialog    = new Dialog();
         bool closedCalled = false;
         dialog->setOnClose([&closedCalled] { closedCalled = true; });
+        dialog->addButton("确定");
 
         dialog->open();
         check(dialog->getBackdrop()->getAppearanceInstanceForTest().isAnimating()
@@ -135,6 +136,18 @@ int main()
                 || true,
             "打开时切到了 open 外观状态");
         check(dialog->getBackdrop()->isAppearanceStateActive("open"), "遮罩是 open 状态");
+
+        // 焦点在弹窗里的按钮上时按 B：动作冒泡到弹窗（不冒泡的话按 B 没反应）
+        Button* dialogButton = dialog->getPanel()->getButtonRow()->getChildren().empty()
+            ? nullptr
+            : static_cast<Button*>(dialog->getPanel()->getButtonRow()->getChildren()[0]);
+        check(dialogButton != nullptr, "弹窗里有按钮");
+        if (dialogButton != nullptr)
+        {
+            getInputManager().giveFocus(dialogButton);
+            dialogButton->triggerAction(ControllerButton::B, false);
+            check(dialog->isClosing(), "焦点在弹窗按钮上按 B，动作冒泡到弹窗并开始关闭");
+        }
 
         dialog->close();
         check(dialog->getBackdrop()->isAppearanceStateActive("closed"), "关闭时切到 closed 状态");

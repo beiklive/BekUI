@@ -255,6 +255,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
+- **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。
+  容器级的动作必须能在焦点位于其子节点时生效，否则形同虚设：
+  `AppletFrame` 的 "B 返回上一层"、`Dialog` 的 "B 关闭" 都靠这条
+  （不冒泡时焦点在内容里的按钮上按 B 完全没反应）。
+  指针不冒泡是因为 `hitTest` 只返回可聚焦视图，命中的本来就是控件本身。
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
   `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
 
@@ -279,7 +284,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   core/             接口层：view / box / app / platform / graphics / input / ...
   views/            语义控件：label / image / scrolling_frame / recycler / ...
   widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
-                    / slider / tab_frame / sidebar / dialog / dropdown
+                    / slider / tab_frame / sidebar / dialog / dropdown / applet_frame
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb
