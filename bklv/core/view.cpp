@@ -503,42 +503,49 @@ void View::refreshFontDependentLayout()
 {
     // 默认字体是在 App::run() 里加载的，而视图树通常在 RunDemo 的参数里就已经建好。
     // 第一次构建时文本会测出 0 宽并被 Yoga 缓存，字体就位后必须整体重算一次。
-    if (this->fontGeneration == getFontGeneration())
-        return;
-
-    this->fontGeneration = getFontGeneration();
-    this->markMeasureDirty();
-
-    if (this->hasParent() && !this->detached)
-        this->parent->refreshFontDependentLayout();
-    else
+    //
+    // 注意这里是**向下递归**：只把根节点标脏是不够的 —— Yoga 会复用子节点缓存的
+    // 测量结果，Label 不重新测量的话文字宽度就永远是旧值。以前这个函数只向上冒泡，
+    // 调在根上等于只标了根自己（根通常没有测量函数，于是什么都没做）；
+    // 只是因为"字体就绪早于首次布局"才没暴露出来。
+    if (this->fontGeneration != getFontGeneration())
     {
-        YGNodeCalculateLayout(this->ygNode, YGUndefined, YGUndefined, YGDirectionLTR);
-        this->notifyLayout();
+        this->fontGeneration = getFontGeneration();
+        this->markMeasureDirty();
     }
+
+    if (Box* box = this->asBox())
+        for (View* child : box->getChildren())
+            child->refreshFontDependentLayout();
+
+    // 整棵树标完脏，交给 App::frame 统一重算一次。
+    //
+    // 不在这里直接算：这个函数只从 App::frame 调用，紧接着就是布局块，
+    // 直接算等于一帧算两次。也**不要**用 YGUndefined 硬算 —— 那样百分比宽高
+    // 会全部失去参照，整棵树塌成内容尺寸（这里踩过一次）。
+    App::requestLayout();
 }
 
 void View::invalidate()
 {
     this->markMeasureDirty();
 
-    // 冒泡到根节点，由根节点做一次全树重算。
+    // 冒泡到根，由根标记"需要重新布局"，真正的那一次由 App::frame 统一做。
+    //
+    // 为什么不在这里立刻算：回收列表一帧里会新建/回收十几个 cell，每个都
+    // addView -> invalidate()，立刻算的话一帧要全树重算十几次（实测 JSON 页
+    // 10 次/帧）。改成标记后一帧只算一次。
+    //
+    // borealis 是在这里直接算的；bklv 延迟一帧，代价是"本帧内改的内容下一帧生效"，
+    // 收益是回收列表的布局开销降一个数量级。回收器不受影响：cell 的位置是用
+    // translation 摆的（见 RecyclerFrame::layoutCell），不依赖本帧的 Yoga 结果。
     if (this->hasParent() && !this->detached)
     {
         this->parent->invalidate();
         return;
     }
 
-    // 根节点：用最近一次布局的画布尺寸重算。
-    // 不要传 YGUndefined —— 那样百分比宽高会全部失去参照，
-    // 整棵树会塌成"内容尺寸"（这里踩过一次：在 update 里新建 cell 触发的重排把根压成了 1196x182）。
-    // 还没有过任何布局时先跳过，第一帧 App::frame 会算。
-    if (App::hasLayoutSize())
-    {
-        YGNodeCalculateLayout(this->ygNode, App::getLayoutWidth(), App::getLayoutHeight(), YGDirectionLTR);
-        // 布局更新后通知整棵子树，等价于 borealis 订阅的 Yoga NodeLayout 事件。
-        this->notifyLayout();
-    }
+    App::requestLayout();
 }
 
 YGSize View::measure(float width, YGMeasureMode widthMode, float height, YGMeasureMode heightMode)

@@ -59,6 +59,39 @@ void App::setRootView(View* view)
 // 帧
 // ---------------------------------------------------------------------------
 
+namespace
+{
+
+// 需要重新布局的标志。首帧为 true：还没算过任何一次布局。
+bool g_layoutDirty = true;
+
+// 累计布局次数。用来验证"静态页面不再每帧白算一次布局"。
+unsigned int g_layoutCount = 0;
+
+// 排查漏置脏用的逃生开关：置上就退回"每帧无条件全树重算"的老行为。
+bool forceRelayout()
+{
+    static const bool enabled = std::getenv("BKLV_FORCE_RELAYOUT") != nullptr;
+    return enabled;
+}
+
+} // namespace
+
+void App::requestLayout()
+{
+    g_layoutDirty = true;
+}
+
+void App::noteLayoutPerformed()
+{
+    g_layoutCount++;
+}
+
+unsigned int App::getLayoutCount()
+{
+    return g_layoutCount;
+}
+
 App::App()
 {
     // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
@@ -94,10 +127,31 @@ void App::frame()
             this->root->refreshFontDependentLayout();
         }
 
-        // 1. 布局：每帧按当前画布尺寸算一次（比 borealis 保守，但保证不会漏算）。
+        // 1. 布局：**只在需要时算**。
+        //
+        //    以前是每帧无条件全树重算（保守但白烧）：静态页面每秒白算 60 次 Yoga。
+        //    触发条件只有三个：
+        //      - 画布尺寸变了（resize 这类外部原因不经过 invalidate）
+        //      - requestLayout() / 首帧
+        //      - 视图自己改了：那些 setter 内部会 invalidate()，冒泡到根**立即**重算
+        //        （所以不在这里排队，也就不会重复算）
         App::lastLayoutWidth  = width;
         App::lastLayoutHeight = height;
-        YGNodeCalculateLayout(this->root->getYGNode(), width, height, YGDirectionLTR);
+
+        const bool canvasChanged = (this->lastCanvasWidth != width || this->lastCanvasHeight != height);
+        if (forceRelayout() || g_layoutDirty || canvasChanged)
+        {
+            g_layoutDirty         = false;
+            this->lastCanvasWidth = width;
+            this->lastCanvasHeight = height;
+
+            YGNodeCalculateLayout(this->root->getYGNode(), width, height, YGDirectionLTR);
+            App::noteLayoutPerformed();
+            // 布局变化要通知子树（滚动条夹取、tab 栏反推内容宽等都挂在这里）
+            this->root->notifyLayout();
+        }
+
+
 
         // 2. 动画与视图逐帧逻辑（滚动等）。
         Ticking::updateTickings();

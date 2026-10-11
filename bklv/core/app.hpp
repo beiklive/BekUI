@@ -61,6 +61,18 @@ class App
     static float getLayoutHeight() { return lastLayoutHeight; }
     static bool hasLayoutSize() { return lastLayoutWidth > 0.0f && lastLayoutHeight > 0.0f; }
 
+    // 请求下一次 frame 重新布局。
+    //
+    // 什么时候需要手动调：改的是"布局之外但影响布局的全局状态"，比如运行时切主题
+    // 改了 Style 数值。改视图自己的属性不用调——那些 setter 内部已经 invalidate()
+    // 了，会冒泡到根立刻重算一次。
+    static void requestLayout();
+
+    // 每次真正执行 YGNodeCalculateLayout 后由内部调用。用来验证"静态页面不再每帧
+    // 白算一次布局"（见 tests 与 DebugWindow 的统计）。
+    static void noteLayoutPerformed();
+    static unsigned int getLayoutCount();
+
     // 是否允许 ImGui 自动读写 imgui.ini（保存窗口位置/尺寸/列宽等）。
     // bklv 的绘制全部走 viewport 绘制列表，不依赖 ImGui 窗口布局，所以默认关闭，
     // 避免在运行目录里生成 imgui.ini。需要时再打开，或用 BKLV_USE_INI=1 环境变量。
@@ -80,6 +92,9 @@ class App
 
     // 上一次布局所用的字体版本号；字体加载完成的那一帧会触发一次全树重算。
     unsigned int lastFontGeneration = 0;
+    // 上一帧的画布尺寸：变了就必须重算（窗口 resize / 分辨率变化不经过 invalidate）
+    float lastCanvasWidth  = 0.0f;
+    float lastCanvasHeight = 0.0f;
 
     static float lastLayoutWidth;
     static float lastLayoutHeight;

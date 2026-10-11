@@ -1,5 +1,7 @@
 #include "bklv/views/debug_window.hpp"
 
+#include "bklv/core/app.hpp"
+
 #include <cstdio>
 #include <vector>
 
@@ -132,7 +134,9 @@ void DebugWindow::draw()
             focusName = focus->getId() + " " + focusName;
     }
 
-    ImGui::Text("fps %.0f   后端 %s   纹理 %d", ImGui::GetIO().Framerate, getGraphicsBackendName(),
+    // 布局次数是累计值：静态页面不再每帧重算，所以这个数静止时应该停住不长。
+    ImGui::Text("fps %.0f   布局 %u   后端 %s   纹理 %d", ImGui::GetIO().Framerate, App::getLayoutCount(),
+        getGraphicsBackendName(),
         getLiveTextureCount());
     ImGui::Text("指针 %.0f,%.0f   焦点 %s", pointer.x, pointer.y, focusName.c_str());
 

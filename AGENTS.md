@@ -201,6 +201,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **单行 Label 的截断判断留了 0.5px 容差**（`views/label.cpp`）：文本宽度由测量函数算、
   可用宽度由 Yoga 算，父容器又常把子节点定成"恰好等于文字宽度"，不留容差时一点浮点误差
   就会把够短的文字截成一个省略号（tab 标题踩过：中文全变 `…`，ASCII 反而正常）。
+- **布局是延迟的，一帧最多算一次**（`core/view.cpp` 的 `invalidate()` + `core/app.cpp`）：
+  `invalidate()` 只冒泡到根标记"要重算"，真正那一次由 `App::frame` 做。三个触发条件：
+  画布尺寸变了 / 首帧 / 有人 invalidate 过。
+  这样静态页面每秒 0 次布局（以前 60 次），回收列表 1 次/帧（以前十几个 cell
+  各触发一次 = 10 次/帧）。
+  几条相关约定：
+  ① 视图自己的 setter 已经 invalidate 了，不用手动管；改的是"影响布局的全局状态"
+     （比如运行时换 Style 数值）才需要 `App::requestLayout()`。
+  ② **不要在同一帧里"改完立刻读布局尺寸"**——延迟一帧生效。回收器不受影响，
+     因为 cell 的位置是用 `setTranslation` 摆的（见 `RecyclerFrame::layoutCell`），
+     不依赖本帧的 Yoga 结果。
+  ③ 漏置脏会让界面不刷新。排查用 `BKLV_FORCE_RELAYOUT=1` 退回"每帧全量重算"，
+     现象消失就说明有地方改了布局状态却没 invalidate。
+  ④ `App::getLayoutCount()` 是累计布局次数，调试窗口的状态行里能看到：
+     界面静止时这个数应该停住。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。

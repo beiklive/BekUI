@@ -195,6 +195,30 @@ list->registerCell(bklv::RecyclerDataSource::DEFAULT_CELL_ID, [tmpl] {
 
 `bind` 的默认目标属性：`Label` → `text`，`Image` → `src`；其他类型要显式写 `bindTo`。
 
+## 布局与失效
+
+布局是**延迟**的：`View::invalidate()` 冒泡到根只是标记"要重算"，真正的一次
+`YGNodeCalculateLayout` 发生在 `App::frame` 里，一帧最多一次。
+
+| 触发条件 | 谁来触发 |
+|---|---|
+| 视图改了（setText / setWidth / addView / …） | 各 setter 内部 `invalidate()` |
+| 画布尺寸变了 | `App::frame` 自己比较上一帧尺寸 |
+| 首帧 | `App::frame` 初始化时就是脏的 |
+| 影响布局的全局状态变了（如切换 Style） | 你自己调 `App::requestLayout()` |
+
+```cpp
+bklv::App::requestLayout();        // 请求下一帧重算
+bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行里也有）
+```
+
+**不要在改了布局相关属性之后、同一帧内立刻读 `getWidth()/getHeight()`** ——
+新值要下一帧才生效。回收器不受这条影响：cell 的位置是用 `setTranslation` 摆的，
+与 Yoga 无关。
+
+界面不刷新时先怀疑"漏置脏"：用 `BKLV_FORCE_RELAYOUT=1` 跑一次，退回每帧全量重算，
+现象消失就说明有地方改了布局状态却没 `invalidate()`（或该用 `requestLayout()`）。
+
 ## 不生成 imgui.ini
 
 bklv 的绘制全部落在 viewport 的绘制列表上，不依赖 ImGui 窗口的位置和尺寸，
