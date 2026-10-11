@@ -105,7 +105,6 @@ BKLV_SOURCES=(
     "${ROOT_DIR}/src/bklv/views/recycler.cpp"
     "${ROOT_DIR}/src/bklv/views/image.cpp"
     "${ROOT_DIR}/src/bklv/views/progress_spinner.cpp"
-    "${ROOT_DIR}/src/bklv/backends/null_backend.cpp"
     "${ROOT_DIR}/src/bklv/backends/gles3_backend.cpp"
     "${ROOT_DIR}/src/bklv/backends/imgui_impl_libnx.cpp"
     "${ROOT_DIR}/src/bklv/platforms/switch_platform.cpp"

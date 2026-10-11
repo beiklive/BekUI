@@ -23,7 +23,6 @@ int main(int argc, char** argv)
     app.setRootView(buildScene());
 
     // 图形后端是编译期确定的，没有运行时开关。
-    // 自检构建（不绘制）用：./build.sh 里加 -DBKLV_NULL_BACKEND
     (void)argc;
     (void)argv;
 

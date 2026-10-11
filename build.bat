@@ -11,8 +11,7 @@ REM
 REM  Usage:
 REM    build.bat                    GL backend       -> dist\*.exe
 REM    build.bat --vk               Vulkan backend   -> dist\vk\*.exe
-REM    build.bat --null             null backend     -> dist\*.exe
-REM    build.bat --gl --only=main   only build imgui_main, skip the demos
+REM    build.bat --gl --only=demo   only build the main program, skip demo_01~07
 REM    build.bat --gui              no console window (you lose BKLV_LOG_*)
 REM    build.bat --sdl-force        force a full reconfigure of SDL3
 REM
@@ -44,7 +43,6 @@ if /I "%ARG%"=="--vk"       ( set "GRAPHICS=vk" & shift & goto parse )
 if /I "%ARG%"=="--vulkan"   ( set "GRAPHICS=vk" & shift & goto parse )
 if /I "%ARG%"=="--gl"       ( set "GRAPHICS=gl" & shift & goto parse )
 if /I "%ARG%"=="--opengl"   ( set "GRAPHICS=gl" & shift & goto parse )
-if /I "%ARG%"=="--null"     ( set "GRAPHICS=null" & shift & goto parse )
 if /I "%ARG%"=="--gui"      ( set "GUI=1" & shift & goto parse )
 if /I "%ARG%"=="--sdl-force" ( set "SDL_FORCE=1" & shift & goto parse )
 
@@ -153,7 +151,6 @@ REM  and each can be rebuilt incrementally.
 REM ---------------------------------------------------------------------------
 if /I "%GRAPHICS%"=="vk"   set "BUILD_DIR=build\vk"
 if /I "%GRAPHICS%"=="gl"   set "BUILD_DIR=build\gl"
-if /I "%GRAPHICS%"=="null" set "BUILD_DIR=build\null"
 
 if "%SDL_FORCE%"=="1" (
     echo [INFO] removing %BUILD_DIR% for a full reconfigure
@@ -166,11 +163,7 @@ REM ---------------------------------------------------------------------------
 set "CMAKE_ARGS=-S . -B %BUILD_DIR% -G Ninja -DCMAKE_MAKE_PROGRAM=%NINJAEXE%"
 set "CMAKE_ARGS=%CMAKE_ARGS% -DCMAKE_C_COMPILER=%TOOLCHAIN%\bin\gcc.exe"
 set "CMAKE_ARGS=%CMAKE_ARGS% -DCMAKE_CXX_COMPILER=%GXX%"
-if /I "%GRAPHICS%"=="null" (
-    set "CMAKE_ARGS=%CMAKE_ARGS% -DBKLV_NULL_BACKEND=ON"
-) else (
-    set "CMAKE_ARGS=%CMAKE_ARGS% -DBKLV_GRAPHICS=%GRAPHICS%"
-)
+set "CMAKE_ARGS=%CMAKE_ARGS% -DBKLV_GRAPHICS=%GRAPHICS%"
 set "CMAKE_ARGS=%CMAKE_ARGS% %BUILD_ARGS%"
 
 echo [INFO] MSYS2   : %MSYS_ROOT%

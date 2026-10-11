@@ -61,7 +61,7 @@ class PlatformSDL3 : public Platform
     bool isApplicationMode() override { return true; }
 
   private:
-    // 创建图形后端。编译期决定：默认 OpenGL；加 -DBKLV_NULL_BACKEND 时空后端自检。
+    // 创建图形后端。编译期决定：默认 OpenGL，-DBKLV_VULKAN 时 Vulkan。
     void createBackend();
 
     SDL_Window* window  = nullptr;

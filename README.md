@@ -7,7 +7,7 @@
 - **视图即布局节点**：一个 `View` 持有一个 `YGNode`，尺寸与位置全部由 Yoga 递归算出，
   不需要手写坐标；绘制由 `View::draw()` 递归完成。
 - **上层不认图形 API**：控件只接触 `ImDrawList` 和 `ImTextureID`，
-  换后端（OpenGL / Vulkan / GLES3 / 空后端）不用改一行业务代码。
+  换后端（OpenGL / Vulkan / OpenGL ES 3）不用改一行业务代码。
 - **桌面三平台 + Switch**：macOS / Linux / Windows 走 SDL3，
   Switch 走 libnx + EGL/OpenGL ES 3（SDL3 上游没有 Switch 后端）。
 - **手柄与键鼠同一套焦点系统**：方向键导航、动作注册、底部按键提示，Switch 与桌面行为一致。
@@ -24,14 +24,14 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 |---|---|
 | `core/` | `View` / `Box`（Flexbox 与节点管理）/ `Style`·`Theme` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / `Logger` |
 | `views/` | `Label`（换行·省略号·对齐）、`Image`、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`、`DebugWindow` |
-| `backends/` | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、空后端、Windows 的 GL 运行时加载 |
+| `backends/` | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
 | `platforms/` | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现 |
 
 ### demo
 
 | 程序 | 内容 | 说明 |
 |---|---|---|
-| `imgui_main` | 按 Tab 展示库的能力：控件 / 文本 / 布局 / 列表 | **推荐先看这个**，右上角「显示日志」可开日志窗口 |
+| `demo` | 按 Tab 展示库的能力：控件 / 文本 / 布局 / 列表 | **推荐先看这个**，右上角「显示日志」可开日志窗口 |
 | `demo_06_bklv_layout` | 用 bklv 搭一个完整布局 | 库的最小用法示例 |
 | `demo_07_bklv_showcase` | 虚拟列表 + 滚动 + 图片 + 焦点导航 | RecyclerFrame 的实战 |
 | `demo_01` ~ `demo_05` | ImGui 控件、布局、自定义绘制、Yoga、Tweeny | **纯学习示例**，不依赖 bklv，走 `demo_common.h` 那条路 |
@@ -46,7 +46,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 |---|---|---|---|
 | macOS | SDL3（`platforms/sdl3_platform.*`） | ImageIO（系统） | 已跑通 |
 | Linux | 同上 | stb_image | 已在 Ubuntu 24.04 容器验证构建 |
-| Windows | 同上（MSYS2 / MinGW-w64） | stb_image | 已构建并跑通（GL / Vulkan / 空后端都验证过） |
+| Windows | 同上（MSYS2 / MinGW-w64） | stb_image | 已构建并跑通（GL 与 Vulkan） |
 | Nintendo Switch | libnx + EGL/GLES3（`platforms/switch_platform.*`） | stb_image | 编译产出 .nro 通过；画面待真机确认 |
 | Android / iOS | 待定（SDL3 支持，需各自工程骨架） | stb_image | 未开始 |
 
@@ -83,23 +83,20 @@ cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk   # 产物�
 还有两个可选开关：
 
 ```bash
-# 空后端：开窗但不绘制，用于没有图形环境时自检（产物在 dist/null/）
-cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
-
-# 只编主程序，跳过 7 个 demo（CMake 有增量编译，改一个文件本来就只重编一两个目标，
-# 这个开关主要是首次配置时省时间）
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=main && cmake --build build/gl
+# 只编主程序 demo，跳过 demo_01~07（CMake 有增量编译，改一个文件本来就只重编一两个目标，
+# 这个开关主要是首次配置时省时间）。名字要写全，可以逗号分隔多个
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=demo && cmake --build build/gl
 ```
 
 ### 运行
 
 ```bash
-./dist/imgui_main                 # 能力总览，推荐先跑这个
+./dist/demo                       # 能力总览，推荐先跑这个
 ./dist/demo_07_bklv_showcase      # 虚拟列表 / 滚动 / 图片
 ./dist/demo_06_bklv_layout        # 最小布局示例
 ```
 
-`imgui_main` 右上角有「显示日志」按钮，点开是 ImGui 日志窗口（可拖动、可缩放、
+`demo` 右上角有「显示日志」按钮，点开是 ImGui 日志窗口（可拖动、可缩放、
 按级别过滤）。没有快捷键开关。
 
 `resources/testcard.png` 是相对**工作目录**读的，所以请在项目根目录下运行。
@@ -133,15 +130,14 @@ pacman -S mingw-w64-x86_64-vulkan-headers mingw-w64-x86_64-vulkan-loader
 ```bat
 build.bat                 :: GL，产物 dist\*.exe
 build.bat --vk            :: Vulkan，产物 dist\vk\*.exe
-build.bat --null          :: 空后端，开窗但不绘制
 build.bat --only=main     :: 只编主程序，跳过 7 个 demo
 build.bat --gl --gui      :: 不弹控制台窗口（默认保留控制台，方便看日志）
 build.bat --sdl-force     :: 删掉构建目录重新配置
 ```
 
 ```bat
+dist\demo.exe
 dist\demo_07_bklv_showcase.exe
-dist\imgui_main.exe
 ```
 
 几点 Windows 专属的注意：
@@ -224,7 +220,7 @@ src/bklv/views/*            Image / Label / ScrollingFrame / RecyclerFrame
 src/bklv/core/graphics.hpp  RenderBackend 接口 + 纹理管理
 src/bklv/core/platform.hpp  Platform 接口（窗口 / 事件循环 / 系统能力）
         ↓
-src/bklv/backends/*         OpenGLBackend / VulkanBackend / GLES3Backend / NullBackend
+src/bklv/backends/*         OpenGLBackend / VulkanBackend / GLES3Backend
 src/bklv/platforms/*        PlatformSDL3 / PlatformSwitch
 ```
 

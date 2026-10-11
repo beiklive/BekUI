@@ -20,11 +20,8 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 # Vulkan
 cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
 
-# 只编主程序，跳过 7 个 demo
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=main && cmake --build build/gl
-
-# 空后端（开窗但不绘制，无图形环境自检用）
-cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
+# 只编主程序 demo，跳过 demo_01~07（BKLV_TARGETS 按完整名字匹配，可逗号分隔多个）
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=demo && cmake --build build/gl
 ```
 
 Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参数：
@@ -32,8 +29,7 @@ Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参�
 ```bat
 build.bat                       :: GL
 build.bat --vk                  :: Vulkan
-build.bat --null                :: 空后端
-build.bat --only=main           :: 只编主程序
+build.bat --only=demo           :: 只编主程序
 build.bat --gl --gui            :: 不弹控制台（会看不到 BKLV_LOG_*）
 build.bat --sdl-force           :: 删掉构建目录重新配置
 ```
@@ -51,12 +47,7 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 |---|---|---|
 | GL | `dist/` | `dist/*.exe` |
 | Vulkan | `dist/vk/` | `dist/vk/*.exe` |
-| 空后端 | `dist/null/` | `dist/null/*.exe` |
 | Switch | `dist/switch/` | — |
-
-空后端必须单独一个目录：它的 `BKLV_GRAPHICS` 也是 `gl`，早先和 GL 共用 `dist/`
-会互相覆盖同名文件，而 CMake 认为各自目标都是最新的、不会重新链接，
-于是得到一个"空的 GL 版 imgui_main"且毫无提示。
 
 因为分目录，可执行文件名不带后缀（Windows 上带 `.exe`）。
 
@@ -173,7 +164,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 ```
 src/bklv/core       接口层：view / box / app / platform / graphics / input / ...
 src/bklv/views      控件：label / image / scrolling_frame / recycler / ...
-src/bklv/backends   图形 API 实现：opengl / vulkan / gles3 / null / imgui 后端
+src/bklv/backends   图形 API 实现：opengl / vulkan / gles3 / imgui 后端
 src/bklv/platforms  平台实现：sdl3 / switch
 demo/               示例
 scripts/            构建脚本（只剩 Switch 的）

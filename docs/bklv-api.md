@@ -26,7 +26,6 @@
 | `backends/vulkan_backend.*` | Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传） |
 | `backends/gles3_backend.*` | Switch 的 EGL + OpenGL ES 3 后端 |
 | `backends/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
-| `backends/null_backend.*` | 空后端：开窗不渲染，用于无图形环境自检 |
 | `backends/gl_loader.hpp/.cpp` | 跨平台 GL 入口：macOS framework / Linux libGL 直接用原型，Windows 用运行时加载（复用 ImGui 自带的 imgl3w，不引入 glad/gl3w） |
 | `backends/gles3_loader.hpp` | Switch 的 GLES3 头 |
 | `core/image_decoder.hpp/.cpp` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |
@@ -150,7 +149,7 @@ src/bklv/views/*            Image / Label / ScrollingFrame / RecyclerFrame
 src/bklv/core/graphics.hpp  RenderBackend 接口 + 纹理管理
 src/bklv/core/platform.hpp  Platform 接口（窗口 / 事件循环 / 系统能力）
         ↓
-src/bklv/backends/*         OpenGLBackend（桌面）/ GLES3Backend（Switch）/ NullBackend
+src/bklv/backends/*         OpenGLBackend / VulkanBackend（桌面）/ GLES3Backend（Switch）
 src/bklv/platforms/*        PlatformSDL3（桌面）/ PlatformSwitch（libnx）
 ```
 

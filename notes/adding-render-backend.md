@@ -5,7 +5,7 @@
 ```
 src/bklv/views/*        Image / Label / ScrollingFrame ...   ← 只认 ImDrawList 和 ImTextureID
 src/bklv/core/graphics  RenderBackend 接口 + 纹理管理        ← 唯一的分界点
-src/bklv/backends/*     OpenGLBackend / GLES3Backend / NullBackend  ← 图形 API 代码全在这里
+src/bklv/backends/*     OpenGLBackend / VulkanBackend / GLES3Backend  ← 图形 API 代码全在这里
 src/bklv/platforms/*    PlatformSDL3 / PlatformSwitch        ← 窗口 + 事件循环 + 创建后端
 src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰图形 API
 ```
@@ -63,9 +63,7 @@ src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰�
 ```cpp
 void PlatformSDL3::createBackend()
 {
-#if defined(BKLV_NULL_BACKEND)
-    this->graphicsBackend = std::make_unique<NullBackend>();
-#elif defined(BKLV_VULKAN)
+#if defined(BKLV_VULKAN)
     this->graphicsBackend = std::make_unique<VulkanBackend>();
 #else
     this->graphicsBackend = std::make_unique<OpenGLBackend>();
@@ -102,9 +100,8 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
   的 `ImTextureData`，创建/更新对应图形资源，然后
   `texture->SetStatus(ImTextureStatus_OK)`。
 
-`ImGui_ImplVulkan_*` 自己会处理这些，所以用官方后端时这步基本白送；
-`NullBackend` 是个最小示例（见 `src/bklv/backends/null_backend.cpp`），
-它不做任何创建，但会把请求全部置为 OK，避免 ImGui 断言。
+`ImGui_ImplVulkan_*` 与 `ImGui_ImplOpenGL3_*` 自己会处理这些，用官方后端时这步基本白送；
+自己写后端才需要接。
 
 ---
 
@@ -116,13 +113,14 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
 # 1. 上层不许出现图形 API 调用（应该没有输出）
 grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" src/bklv/views src/bklv/core/view.cpp src/bklv/core/box.cpp src/bklv/core/input.cpp
 
-# 2. 空后端自检：窗口能开、布局/焦点/滚动/回收都照常跑，只是不输出画面
-cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
+# 2. 两个后端都跑一遍同一个 demo：换后端能跑起来，才说明没有漏抽象
+./dist/demo_06_bklv_layout
+./dist/vk/demo_06_bklv_layout
 ```
 
 Vulkan 后端已经写完，所以 `-DBKLV_VULKAN` 不再是"配置错了就会编译失败"的哨兵：
 后端选择写错、或者新后端少接一段 ImGui 调用，都要跑到运行时才暴露。
-现在的哨兵是两个——空后端自检（布局层不依赖图形 API），
+现在的哨兵是
 以及 Vulkan 的校验层（`BKLV_VULKAN_VALIDATION=1`，见 README）。
 
 ---

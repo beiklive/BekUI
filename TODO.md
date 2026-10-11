@@ -16,7 +16,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | 是什么 | 跨平台 C++17 界面库：Yoga 算 Flexbox 布局，ImGui 的 `ImDrawList` 负责绘制 |
 | 目标形态 | 可被外部项目 `add_subdirectory` / `find_package` 引入的库，本仓库同时提供 demo |
 | 平台 | macOS / Linux / Windows（SDL3）、Nintendo Switch（libnx + EGL/GLES3） |
-| 图形后端 | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、空后端；编译期选择 |
+| 图形后端 | OpenGL 3.2 Core、Vulkan、OpenGL ES 3；编译期选择 |
 | 不做 | XML 布局与绑定、音频、视频、PS4/PSV |
 
 ---
@@ -165,7 +165,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       现在没有测试，验证全靠手动跑 demo。优先给纯逻辑的部分加：
       `RecyclerFrame` 的可见区间与回收、`Label` 的断行、焦点导航的几何打分、
       `ScrollingFrame` 的偏移与惯性。
-      *验收*：`ctest` 能跑，且这些用例能在无图形环境下执行（用空后端）。
+      *验收*：`ctest` 能跑；纯逻辑用例不依赖图形 API 与 ImGui 上下文，
+      因此不需要窗口就能执行（`RecyclerFrame` / `Label` / 焦点导航都不碰绘制）。
 - [ ] **Android**
       SDL3 支持 Android，需要工程骨架（Gradle + `SDLActivity`）与
       `PlatformAndroid`。Vulkan 在 Android 上是主力后端。
@@ -194,7 +195,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | 7 | 无测试、无 CI | 回归靠人跑 demo；本会话里三个 bug 都是靠临时写的无窗口测试才定位到的 | 见 P3；把这次写的那些 headless 验证脚本整理成 `tests/` |
 | 8 | `src/app` 是 demo 代码却在 `src/` 下 | 使用者容易误以为它是库的一部分 | P0 第 1 条 |
 | 9 | `demo_01` ~ `demo_05` 与 bklv 无关 | 它们是纯 ImGui / Yoga / Tweeny 的学习示例，走的是 `demo_common.h` 那条路 | 库化后移到 `demo/learn/` 并在 README 里标明定位 |
-| 10 | 多后端产物目录靠不同 build 目录区分 | 早先空后端与 GL 共用 `dist/` 会互相覆盖，而 CMake 认为目标最新不会重链，得到「空的 GL 版程序」且无提示 | 已改为 `dist/`、`dist/vk/`、`dist/null/`、`dist/switch/`；改构建时留意别再合并 |
+| 10 | 多后端产物目录靠不同构建目录区分 | 两个构建目录若指向同一输出目录，会互相覆盖同名文件，而 CMake 认为目标最新不会重链，得到「另一个后端编出来的程序」且无提示 | 现在是 `dist/`、`dist/vk/`、`dist/switch/` 三份；加新构建配置时注意别和已有的合并 |
 
 ---
 

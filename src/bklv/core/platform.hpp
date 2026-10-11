@@ -136,7 +136,7 @@ const char* getPlatformName(PlatformType type);
 // 创建平台。返回 nullptr 表示当前构建不含该平台。
 // 平台与图形后端都是编译期确定的：
 //   平台      —— 桌面构建编 sdl3_platform，Switch 构建编 switch_platform
-//   图形后端  —— 由平台自己在 createBackend 里选（OpenGL / OpenGL ES 3 / 空后端自检）
+//   图形后端  —— 由平台自己在 createBackend 里选（OpenGL / Vulkan / OpenGL ES 3）
 // 所以这里没有"运行时挑一个可用后端"的逻辑。
 Platform* createPlatform(PlatformType type);
 

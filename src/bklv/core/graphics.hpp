@@ -16,8 +16,7 @@
 // 选择方式：
 //   macOS / Linux / Windows —— 编入 backends/opengl_backend（OpenGL 3.2 Core）
 //   Switch                  —— 编入 backends/gles3_backend（EGL + OpenGL ES 3）
-//   自检                    —— 加 -DBKLV_NULL_BACKEND，编入不绘制的空后端
-// 要加 Vulkan，就是新写一个 RenderBackend 子类并在对应平台的 createBackend 里换掉，
+// 要加后端，就是新写一个 RenderBackend 子类并在对应平台的 createBackend 里换掉，
 // 链接库与 shader 版本随之改变，属于构建层面的选择。
 
 #include <cstddef>

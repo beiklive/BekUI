@@ -54,14 +54,17 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "构建类型" FORCE)
 endif()
 
-option(BKLV_NULL_BACKEND "编入不绘制的空后端（无图形环境自检用）" OFF)
 option(BKLV_WINDOWS_GUI "Windows 上不弹控制台窗口（会看不到 BKLV_LOG_* 输出）" OFF)
 set(BKLV_GRAPHICS "gl" CACHE STRING "图形后端：gl 或 vk")
 set_property(CACHE BKLV_GRAPHICS PROPERTY STRINGS gl vk)
 
-# 只编匹配到的目标（相当于原来 build.sh 的 --only=<子串>）。
-# 例：cmake -S . -B build/gl -DBKLV_TARGETS=main
-set(BKLV_TARGETS "" CACHE STRING "只构建名字里含该子串的目标（留空=全部）")
+# 只编指定的目标，留空=全部。按**完整名字**匹配，可以逗号分隔多个。
+#
+# 用精确匹配而不是子串匹配：主程序叫 demo，而 demo_01_widgets…demo_07_bklv_showcase
+# 都以 demo 开头，子串匹配会让 -DBKLV_TARGETS=demo 把 8 个目标全选上。
+# 例：cmake -S . -B build/gl -DBKLV_TARGETS=demo
+#     cmake -S . -B build/gl -DBKLV_TARGETS=demo_06_bklv_layout,demo_07_bklv_showcase
+set(BKLV_TARGETS "" CACHE STRING "只构建列出的目标（完整名字，逗号分隔；留空=全部）")
 
 # ---------------------------------------------------------------------------
 # 平台判定
@@ -78,14 +81,8 @@ else()
     set(BKLV_HOST "linux")
 endif()
 
-# 输出目录：GL 走 dist/，Vulkan 走 dist/vk/，空后端走 dist/null/。
-#
-# 空后端必须单独一个目录：它的 BKLV_GRAPHICS 也是 gl，若和 GL 共用 dist/，
-# 两者会互相覆盖同一个文件名，而 CMake 认为各自的目标都是最新的、不会重新链接——
-# 于是"先编空后端再编 GL"会得到一个空的 dist/imgui_main，且毫无提示。
-if(BKLV_NULL_BACKEND)
-    set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/null")
-elseif(BKLV_GRAPHICS STREQUAL "vk")
+# 输出目录：GL 走 dist/，Vulkan 走 dist/vk/。
+if(BKLV_GRAPHICS STREQUAL "vk")
     set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/vk")
 elseif(BKLV_GRAPHICS STREQUAL "gl")
     set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist")
@@ -219,9 +216,7 @@ find_package(OpenGL REQUIRED)
 target_link_libraries(bklv_opts INTERFACE OpenGL::GL)
 
 # 图形后端选择（编译期）。
-if(BKLV_NULL_BACKEND)
-    target_compile_definitions(bklv_opts INTERFACE BKLV_NULL_BACKEND)
-elseif(BKLV_GRAPHICS STREQUAL "vk")
+if(BKLV_GRAPHICS STREQUAL "vk")
     target_compile_definitions(bklv_opts INTERFACE BKLV_VULKAN)
 else()
     target_compile_definitions(bklv_opts INTERFACE BKLV_OPENGL)
@@ -325,7 +320,6 @@ set(BKLV_CORE_SOURCES
     src/bklv/backends/gl_loader.cpp
     src/bklv/backends/opengl_backend.cpp
     src/bklv/backends/vulkan_backend.cpp
-    src/bklv/backends/null_backend.cpp
 )
 
 add_library(bklv_core OBJECT ${BKLV_CORE_SOURCES})
@@ -365,7 +359,7 @@ set(BKLV_TARGET_LIST
     "demo_05_tweeny|demo/demo_05_tweeny.cpp|core"
     "demo_06_bklv_layout|demo/demo_06_bklv_layout.cpp|core"
     "demo_07_bklv_showcase|demo/demo_07_bklv_showcase.cpp|core"
-    "imgui_main|src/main.cpp|app"
+    "demo|src/main.cpp|app"
 )
 
 set(BKLV_TARGET_NAMES "")
@@ -377,8 +371,11 @@ foreach(entry IN LISTS BKLV_TARGET_LIST)
     list(GET parts 1 target_src)
     list(GET parts 2 target_kind)
 
-    if(NOT BKLV_TARGETS STREQUAL "" AND NOT target_name MATCHES "${BKLV_TARGETS}")
-        continue()
+    if(NOT BKLV_TARGETS STREQUAL "")
+        string(REPLACE "," ";" BKLV_TARGETS_LIST "${BKLV_TARGETS}")
+        if(NOT target_name IN_LIST BKLV_TARGETS_LIST)
+            continue()
+        endif()
     endif()
     math(EXPR BKLV_MATCHED "${BKLV_MATCHED} + 1")
 
@@ -425,7 +422,7 @@ if(NOT BKLV_TARGETS STREQUAL "" AND BKLV_MATCHED EQUAL 0)
         "BKLV_TARGETS=${BKLV_TARGETS} 没有匹配到任何目标。可用目标：\n"
         "  demo_01_widgets\n  demo_02_layout\n  demo_03_custom_widget\n"
         "  demo_04_yoga\n  demo_05_tweeny\n  demo_06_bklv_layout\n"
-        "  demo_07_bklv_showcase\n  imgui_main")
+        "  demo_07_bklv_showcase\n  demo")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -437,11 +434,7 @@ list(LENGTH BKLV_TARGET_NAMES BKLV_TARGET_COUNT)
 
 message(STATUS "bklv 配置")
 message(STATUS "  平台     : ${BKLV_HOST}")
-if(BKLV_NULL_BACKEND)
-    message(STATUS "  后端     : 空后端（BKLV_NULL_BACKEND=1，开窗但不绘制）")
-else()
-    message(STATUS "  后端     : ${BKLV_GRAPHICS_UPPER}")
-endif()
+message(STATUS "  后端     : ${BKLV_GRAPHICS_UPPER}")
 message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
 message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAMES}")
 if(BKLV_GRAPHICS STREQUAL "vk")
