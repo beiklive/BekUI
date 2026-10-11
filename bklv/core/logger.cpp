@@ -16,6 +16,7 @@ std::deque<LogEntry> g_entries;
 size_t g_maxEntries  = 1000;
 LogLevel g_level     = LogLevel::INFO;
 bool g_consoleOutput = true;
+std::FILE* g_file    = nullptr;
 uint64_t g_version   = 0;
 
 const char* levelName(LogLevel level)
@@ -89,6 +90,24 @@ void Logger::setConsoleOutput(bool enabled)
     g_consoleOutput = enabled;
 }
 
+bool Logger::setFileOutput(const std::string& path)
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+
+    if (g_file != nullptr)
+    {
+        std::fclose(g_file);
+        g_file = nullptr;
+    }
+
+    if (path.empty())
+        return true;
+
+    // "w"：每次启动重开，文件里就是本次运行的完整日志。
+    g_file = std::fopen(path.c_str(), "w");
+    return g_file != nullptr;
+}
+
 void Logger::log(LogLevel level, const std::string& location, const std::string& message)
 {
     write(level, location, message);
@@ -101,6 +120,12 @@ void Logger::write(LogLevel level, const std::string& location, const std::strin
     if (level < g_level)
         return;
 
+    LogEntry entry;
+    entry.time     = makeTimestamp();
+    entry.level    = level;
+    entry.location = location;
+    entry.message  = message;
+
     if (g_consoleOutput)
     {
         std::FILE* out = level == LogLevel::ERROR ? stderr : stdout;
@@ -109,11 +134,15 @@ void Logger::write(LogLevel level, const std::string& location, const std::strin
         std::fflush(out);
     }
 
-    LogEntry entry;
-    entry.time     = makeTimestamp();
-    entry.level    = level;
-    entry.location = location;
-    entry.message  = message;
+    if (g_file != nullptr)
+    {
+        // 带时间戳与位置，和界面上的日志窗口格式一致。
+        std::fprintf(g_file, "%s [%s] %s%s%s\n", entry.time.c_str(), levelName(level),
+            entry.location.empty() ? "" : entry.location.c_str(),
+            entry.location.empty() ? "" : " ", entry.message.c_str());
+        // 同上：崩溃时最后一行必须已经在盘上。
+        std::fflush(g_file);
+    }
 
     g_entries.push_back(std::move(entry));
     while (g_entries.size() > g_maxEntries)

@@ -50,6 +50,11 @@ class Logger
     // 控制台输出开关，默认开。
     static void setConsoleOutput(bool enabled);
 
+    // 追加写入日志文件。Switch 上没有终端、nxlink 又依赖电脑侧连接，
+    // 用它把日志落到 sdmc:/bklv.log，初始化失败或崩溃后拔卡也能看到。
+    // path 传空字符串表示关闭。返回是否成功打开。
+    static bool setFileOutput(const std::string& path);
+
     static void log(LogLevel level, const std::string& location, const std::string& message);
 
     // 便捷接口（无 文件:行号）
