@@ -10,31 +10,73 @@
 
 ### 构建
 
+构建入口只有一个：根目录的 `CMakeLists.txt`。后端是编译期决定的，所以
+「每个 demo 都能编 GL 和 Vulkan 两版」靠**两个构建目录**实现：
+
 ```bash
-./build.sh                      # 默认 GL
-./build.sh --vk                 # Vulkan
-BKLV_GRAPHICS=vk ./build.sh     # 等价写法
+# GL
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
+
+# Vulkan
+cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
+
+# 只编主程序，跳过 7 个 demo
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=main && cmake --build build/gl
+
+# 空后端（开窗但不绘制，无图形环境自检用）
+cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
 ```
+
+Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参数：
+　　
+```bat
+build.bat                       :: GL
+build.bat --vk                  :: Vulkan
+build.bat --null                :: 空后端
+build.bat --only=main           :: 只编主程序
+build.bat --gl --gui            :: 不弹控制台（会看不到 BKLV_LOG_*）
+build.bat --sdl-force           :: 删掉构建目录重新配置
+```
+
+`build.bat` 只负责找 MSYS2 和 MinGW 工具链、把工具链放进 `PATH`，真正的构建逻辑
+仍然只有 `CMakeLists.txt` 一份。
+
+**Windows 上要用「MSYS2 MINGW64」终端。** 在默认的 MSYS 终端里 `MINGW_PREFIX`
+是空的，CMake 找不到编译器；`CMakeLists.txt` 会用 `MINGW_PREFIX` 兜底，找不到时
+只打印一句提示，不会去猜别的路径。
 
 产物分目录，互不覆盖：
 
-| 构建 | 输出目录 |
-|---|---|
-| GL | `dist/` |
-| Vulkan | `dist/vk/` |
-| Switch | `dist/switch/` |
+| 构建 | 输出目录 | Windows |
+|---|---|---|
+| GL | `dist/` | `dist/*.exe` |
+| Vulkan | `dist/vk/` | `dist/vk/*.exe` |
+| Switch | `dist/switch/` | — |
 
-因为分目录，可执行文件名不带后缀。
+因为分目录，可执行文件名不带后缀（Windows 上带 `.exe`）。
 
 ### 加新 demo 时
 
-`build.sh` 的 `TARGETS` 里加一行即可，两个后端会自动各编一份；
+在 `CMakeLists.txt` 的 `BKLV_TARGET_LIST` 里加一行，两个后端会自动各编一份；
 不要写任何依赖具体图形 API 的代码。需要图形 API 能力时，走 `RenderBackend` 接口。
 
-```bash
-"demo_08_xxx:${ROOT_DIR}/demo/demo_08_xxx.cpp:1"
-#                                             ↑ 末位 1 表示需要链接 bklv
+```cmake
+"demo_08_xxx|demo/demo_08_xxx.cpp|core"
+#                                ↑ core = 只依赖 bklv 核心；app = 还要 src/app 那层
 ```
+
+### 改构建时注意
+
+- 加了新的 `.cpp` 必须同时加进对应的源文件列表（`BKLV_CORE_SOURCES` /
+  `BKLV_APP_SOURCES` / `IMGUI_SOURCES`）。**别手抄**——`build.sh` 已经删掉了，
+  但如果从历史提交里对照，记得用 diff 复核一遍，漏一个文件会以
+  `undefined reference` 的形式在链接期才暴露。
+- `3rd/yoga/yoga` **不要** `add_subdirectory`：它自己的 `cmake/project-defaults.cmake`
+  会 `add_compile_options(-Wall -Werror -fno-rtti)` 并设 `CMAKE_CXX_STANDARD 20`，
+  作用域是目录级，会污染整个工程（`-Werror` 直接破坏零警告约定）。
+  项目里是把它编成自己的 `yogacore` 目标、用 C++20 编译。
+- ImGui 编成 OBJECT 库而不是 STATIC 库：原来是内联进每个目标的，改成静态库后
+  链接器可能丢掉没人引用的成员，连带丢掉 ImGui 的静态初始化注册。
 
 ### 后端选择是编译期的事
 
@@ -47,13 +89,48 @@ BKLV_GRAPHICS=vk ./build.sh     # 等价写法
 
 | 平台 | 构建 | 状态 |
 |---|---|---|
-| macOS | `./build.sh` | 已完成 |
-| Linux | `./build.sh`（自动识别，用 g++ + pkg-config） | 已完成 |
+| macOS | `cmake -S . -B build/gl` | 已完成 |
+| Linux | `cmake -S . -B build/gl`（g++ + pkg-config） | 已完成 |
+| Windows | `build.bat`（找 MSYS2/MinGW，再驱动 CMake） | 已完成 |
 | Switch | `./scripts/build_switch.sh` | 编译通过，画面待真机验证 |
-| Windows | 未做 | 待办 |
 | Android / iOS | 未做 | 待办 |
 
-`Switch` 走独立脚本：工具链（devkitA64）与编译参数和桌面完全不同，且不能链接 SDL3。
+`Switch` 走独立脚本：工具链（devkitA64）与编译参数和桌面完全不同，且不能链接 SDL3，
+CMake 覆盖不了，所以 `scripts/build_switch.sh` 是唯一保留的构建脚本。
+
+桌面（macOS / Linux / Windows）上不再有 shell 构建脚本，`build.sh` 与
+`scripts/build_sdl3.sh` 已删除；SDL3 作为 `add_subdirectory` 的子项目随 CMake 一起编。
+
+Windows 上有几条平台约定，改相关代码时要留意：
+
+- **在 MSYS2 里要用「MINGW64」终端**：默认的 MSYS 终端 `MINGW_PREFIX` 为空，
+  CMake 找不到编译器。`build.bat` 会自己把工具链放进 `PATH`，不受此影响。
+- CMake 里的平台判定不能只看 `WIN32`：在 MSYS 终端里 `CMAKE_SYSTEM_NAME` 是 `MSYS`
+  而 `WIN32` 为空。需要跨平台分支时用 `WIN32`，需要区分 MSYS 用 `CMAKE_SYSTEM_NAME`。
+- `opengl32.dll` 只导出 GL 1.1，GL 3.2 Core 的函数必须在 `loadGLFunctions()`
+  里运行时取地址（`backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
+  **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
+- 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
+- 需要中文的字体路径要分平台（`core/font.cpp`、`demo/demo_common.h`），
+  别只写 macOS 的系统字体路径。
+
+Vulkan 后端（`backends/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
+
+- `appInfo.apiVersion` 与 `ImGui_ImplVulkan_InitInfo::ApiVersion` **不要写
+  `VK_API_VERSION_1_0`**：实例请求的版本决定 loader 能返回哪些 core 函数名，
+  1.0 时它只给 `vkCmdBeginRenderingKHR` 这类后缀名，ImGui 探 core 名探不到会直接断言。
+- 动态渲染按 API 版本二选一启用：>= 1.3 走 core
+  （`VkPhysicalDeviceVulkan13Features::dynamicRendering`），1.1/1.2 走扩展
+  （把 `VK_KHR_dynamic_rendering` 加进设备扩展列表）。
+- 同步信号量按"谁保证它能被复用"分组：等待图像可用的按 frame-in-flight，
+  交给 present 的那个必须按**交换链图像**（帧栅栏证明不了呈现引擎已释放它）。
+- 调试用 `BKLV_VULKAN_VALIDATION=1`；MSYS2 的校验层装在 `mingw64\bin`，
+  不在 `share/vulkan/explicit_layer.d`，所以要同时设 `VK_LAYER_PATH`。
+- 交换链像素格式必须选 **UNORM**，不能选 `_SRGB`。ImGui 给出的颜色分量就是
+  最终要显示的 8 位值（相当于已做过 sRGB 编码），目标若是 `_SRGB` 格式硬件会再
+  编码一次：64 -> 137、128 -> 188，深色背景 `(26,28,33)` 被抬到 `(89,92,100)`，
+  整个界面发灰。OpenGL 后端的默认帧缓冲是 UNORM 且没开 `GL_FRAMEBUFFER_SRGB`，
+  选 UNORM 才和它一致。改完可以用纯色块（`IM_COL32(64,64,64,255)` 等）实测比对。
 
 ## 依赖
 
@@ -61,14 +138,16 @@ BKLV_GRAPHICS=vk ./build.sh     # 等价写法
 
 | 子模块 | 用途 |
 |---|---|
-| `3rd/imgui` | GUI 与绘制 |
+| `3rd/imgui` | GUI 与绘制（Windows 的 GL 运行时加载也复用它自带的 imgl3w） |
 | `3rd/yoga` | Flexbox 布局 |
 | `3rd/tweeny` | 补间动画（仅老 demo 直接用） |
 | `3rd/SDL` | 桌面的窗口/输入/GL 上下文（源码编译成静态库） |
-| `3rd/stb` | Linux/Switch 的图片解码 |
+| `3rd/stb` | Linux/Windows/Switch 的图片解码 |
 
 系统只要求：`cmake`（编 SDL3）、以及平台本身的工具链。
 **不要引入需要手动安装的开发库**，除非在 README 里写清楚安装命令。
+Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-headers` /
+`-vulkan-loader`），已在 README 写明命令。
 
 ## 代码
 

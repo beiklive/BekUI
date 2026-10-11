@@ -109,10 +109,14 @@ const char* getTextureBackendName()
 
 const char* getGraphicsBackendName()
 {
+    // 必须和 platforms/*.cpp 的 createBackend() 保持同样的分支，
+    // 否则日志里报的后端名会和真正跑的那个对不上。
 #if defined(BKLV_NULL_BACKEND)
     return "none";
 #elif defined(BKLV_SWITCH)
     return "OpenGL ES 3";
+#elif defined(BKLV_VULKAN)
+    return "Vulkan";
 #else
     return "OpenGL 3.2 Core";
 #endif

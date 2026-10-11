@@ -8,6 +8,35 @@
 
 namespace learn_imgui { // 将学习代码放进独立命名空间，避免名称冲突。
 
+// 各平台常见的中文字体，按优先级尝试；一个都打不开就退回 ImGui 内置字体。
+// 内置字体不含中文字形，中文会显示成方块，所以能找到系统字体就尽量用。
+inline void LoadChineseFont() { // 为示例界面加载一个能显示中文的字体。
+    ImGuiIO& io = ImGui::GetIO(); // 取得 ImGui 输入输出配置。
+#if defined(_WIN32)
+    const char* candidates[] = { // Windows 自带的中文字体。
+        "C:/Windows/Fonts/msyh.ttc", // 微软雅黑，Vista 起的默认中文 UI 字体。
+        "C:/Windows/Fonts/simhei.ttf", // 黑体，更老的系统上也有。
+        "C:/Windows/Fonts/simsun.ttc", // 宋体，最后的兜底。
+    };
+#elif defined(__APPLE__)
+    const char* candidates[] = { // macOS 自带的中文字体。
+        "/System/Library/Fonts/Hiragino Sans GB.ttc", // 冬青黑体。
+        "/System/Library/Fonts/PingFang.ttc", // 苹方。
+    };
+#else
+    const char* candidates[] = { // Linux 常见的中文字体包路径。
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    };
+#endif
+    for (const char* path : candidates) { // 逐个尝试候选字体。
+        if (io.Fonts->AddFontFromFileTTF(path, 18.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull()) != nullptr) { // 加载成功就用它。
+            return; // 已经拿到可用字体，不必继续尝试。
+        } // 结束加载成功判断。
+    } // 结束候选字体遍历。
+    io.Fonts->AddFontDefault(); // 全都没成功时退回内置字体，保证界面还能显示。
+} // 结束中文字体加载函数。
+
 template <typename DrawFunction> // 允许调用方传入任意可调用对象绘制每一帧。
 int RunDemo(const char* window_title, DrawFunction draw_function) { // 创建窗口并持续运行 ImGui 帧循环。
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) { // 初始化 SDL 视频和手柄子系统。
@@ -34,6 +63,9 @@ int RunDemo(const char* window_title, DrawFunction draw_function) { // 创建窗
     } // 结束 OpenGL 上下文检查。
     SDL_GL_MakeCurrent(window, gl_context); // 将窗口的 OpenGL 上下文设为当前上下文。
     SDL_GL_SetSwapInterval(1); // 开启垂直同步，避免无上限地渲染。
+    // Windows 上 opengl32.dll 只导出 GL 1.1，3.2 Core 的函数要在这里取地址；
+    // 其余平台这是空实现。必须在 ImGui_ImplOpenGL3_Init 之前完成。
+    bklv::loadGLFunctions();
     IMGUI_CHECKVERSION(); // 检查 ImGui 头文件和库的版本及数据结构布局。
     ImGui::CreateContext(); // 创建 ImGui 上下文。
     ImGuiIO& io = ImGui::GetIO(); // 取得 ImGui 输入输出配置。
@@ -41,7 +73,7 @@ int RunDemo(const char* window_title, DrawFunction draw_function) { // 创建窗
     // 关闭 ImGui 的 ini 自动读写，避免在运行目录生成 imgui.ini。
     // 必须在第一次 NewFrame 之前设置：ImGui 只在 io.IniFilename 非空时才读写。
     io.IniFilename = nullptr;
-    io.Fonts->AddFontFromFileTTF("/System/Library/Fonts/Hiragino Sans GB.ttc", 18.0f, nullptr, io.Fonts->GetGlyphRangesChineseFull()); // 加载 macOS 冬青黑体以显示中文。
+    LoadChineseFont(); // 加载当前平台的中文字体，保证中文不是方块。
     ImGui::StyleColorsDark(); // 使用内置深色主题。
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context); // 初始化 SDL3 输入与窗口事件后端。
     ImGui_ImplOpenGL3_Init("#version 150"); // 初始化 OpenGL3 绘制后端。

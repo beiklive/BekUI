@@ -57,6 +57,16 @@ bool OpenGLBackend::initContext(void* nativeWindow)
     // 开垂直同步，避免无上限渲染把 GPU 跑满。
     SDL_GL_SetSwapInterval(1);
 
+    // Windows 上 opengl32.dll 只导出 GL 1.1，3.2 Core 的函数要在这里取地址。
+    // 其余平台是空实现，调用点不必分平台。
+    if (!loadGLFunctions())
+    {
+        Logger::error(std::string("OpenGL 函数加载失败：") + SDL_GetError());
+        SDL_GL_DestroyContext(this->glContext);
+        this->glContext = nullptr;
+        return false;
+    }
+
     this->ready = true;
     return true;
 }

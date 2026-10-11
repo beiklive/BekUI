@@ -37,6 +37,24 @@ src/bklv/core/app.cpp   ImGui 上下文 + 帧调度                 ← 不碰�
 
 构造函数里把 `this->ready = true` 放在设备建好之后——**`ready` 是 "能不能创建纹理" 的闸门**。
 
+`src/bklv/backends/vulkan_backend.cpp` 是这份清单的完整实现，写新后端时可以直接照着看。
+实现时踩到、但清单里不容易一眼看出的几点：
+
+- **`appInfo.apiVersion` / `ImGui_ImplVulkan_InitInfo::ApiVersion` 别写 `VK_API_VERSION_1_0`。**
+  实例请求的版本决定了 loader 能通过 `vkGetInstanceProcAddr` / `vkGetDeviceProcAddr`
+  返回哪些 core 函数名。请求 1.0 时 loader 只给 `vkCmdBeginRenderingKHR` 这种后缀名，
+  而 ImGui 会先探 core 名 `vkCmdBeginRendering`，探不到直接断言。
+- **动态渲染有两条启用路径，要按 API 版本选一条。**
+  API >= 1.3 走 core（`VkPhysicalDeviceVulkan13Features::dynamicRendering`），
+  1.1/1.2 走扩展（把 `VK_KHR_dynamic_rendering` 加进设备扩展列表 +
+  `VkPhysicalDeviceDynamicRenderingFeatures`）。只挂 pNext、不加扩展名，在某些设备上
+  会"设备创建成功但一用就挂"。
+- **同步信号量按"谁保护它"来分组。** 等待图像可用的信号量按 frame-in-flight 分组
+  （由帧栅栏保护），而 submit 完成、交给 present 的那个信号量必须**按交换链图像**
+  分组——帧栅栏只能证明 submit 完成，证明不了呈现引擎已经释放它；只有重新 acquire
+  到同一张图像才能证明。否则校验层会报
+  `VUID-vkQueueSubmit-pSignalSemaphores-00067`。
+
 ## 第 2 步：在平台里换上它
 
 图形后端由平台在 `createBackend()` 里创建，编译期决定。例如
@@ -55,14 +73,20 @@ void PlatformSDL3::createBackend()
 }
 ```
 
-再把 `.cpp` 加进 `build.sh` 的 `BKLV_SOURCES`：
+再把它的 ImGui 后端一并编进去。Vulkan 的 `imgui_impl_vulkan.cpp` **不在**默认的
+`IMGUI_SOURCES` 里，漏了会在链接期报一串 `undefined reference to
+'ImGui_ImplVulkan_Init/NewFrame/RenderDrawData/Shutdown'`。`CMakeLists.txt` 现在的接法是：
 
-```bash
-    "${ROOT_DIR}/src/bklv/backends/vulkan_backend.cpp"
+```cmake
+if(BKLV_GRAPHICS STREQUAL "vk")
+    list(APPEND IMGUI_SOURCES "${CMAKE_SOURCE_DIR}/3rd/imgui/backends/imgui_impl_vulkan.cpp")
+endif()
 ```
 
 链接 Vulkan 库（macOS 上是 MoltenVK）：在 `LINK_FLAGS` 里加 `-lvulkan` 或对应的
 framework，并保证 `vulkan.framework`/`libvulkan.dylib` 在运行时可被找到。
+Windows 上要注意 MinGW 用的是 `libvulkan-1.dll.a`，LunarG SDK 自带的
+`vulkan-1.lib` 是 MSVC 格式，MinGW 链接不了。
 
 ## 第 3 步：处理 ImGui 的字体纹理
 
@@ -93,20 +117,30 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
 grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" src/bklv/views src/bklv/core/view.cpp src/bklv/core/box.cpp src/bklv/core/input.cpp
 
 # 2. 空后端自检：窗口能开、布局/焦点/滚动/回收都照常跑，只是不输出画面
-BKLV_NULL_BACKEND=1 ./build.sh
+cmake -S . -B build/null -DBKLV_NULL_BACKEND=ON && cmake --build build/null
 ```
 
-Vulkan 后端在写出来之前，`-DBKLV_VULKAN` 会编译失败——这正是编译期选择的好处：
-配置错了当场暴露，而不是运行时某条日志。
+Vulkan 后端已经写完，所以 `-DBKLV_VULKAN` 不再是"配置错了就会编译失败"的哨兵：
+后端选择写错、或者新后端少接一段 ImGui 调用，都要跑到运行时才暴露。
+现在的哨兵是两个——空后端自检（布局层不依赖图形 API），
+以及 Vulkan 的校验层（`BKLV_VULKAN_VALIDATION=1`，见 README）。
 
 ---
 
-## 两个已知的坑
+## 三个已知的坑
 
-1. **相对路径的图片加载要 `realpath`。**
-   `CFURLCreateWithFileSystemPath` 不解析相对路径，传 `resources/x.png` 会得到一个
-   打不开的 URL。`graphics.cpp` 里已经处理。
+1. **图片是相对进程工作目录加载的，失败还会被缓存。**
+   macOS 走 ImageIO，`loadTexture` 里对相对路径做过处理；Windows / Linux 走
+   `stbi_load`，它按**进程当前工作目录**解析路径。所以可执行文件必须从仓库根目录
+   启动（`dist/demo_07_bklv_showcase`、`dist/vk/demo_07_bklv_showcase` 都一样），
+   否则图片全变成占位色块，而且**只打一条** `图片加载失败：<path>` 日志就再无声息
+   （见下一条）。调试时先确认工作目录，不要一上来就怀疑渲染后端。
 
-2. **`initTextureStore` 换后端时要清缓存。**
+2. **`loadTexture` 失败会写进路径缓存，不再重试。**
+   `graphics.cpp` 的 `g_pathCache` 把失败记为 `TEXTURE_CACHE_FAILED`（`-2`），
+   之后同一个路径直接返回无效引用，连日志都不打。这是为了不给每个列表项刷屏，
+   但代价是"第一次为什么失败"这个信息只出现一次，日志被刷掉就找不回来了。
+
+3. **`initTextureStore` 换后端时要清缓存。**
    旧句柄属于上一个后端不能再使用；而且之前的"加载失败"标记会把新后端挡住
    （开发时踩过：先无后端加载失败一次，之后接了 OpenGL 后端仍然一直失败）。
