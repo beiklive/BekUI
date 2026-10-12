@@ -109,12 +109,13 @@
     "batteryLowThreshold": 0.2
   },
   "cell": {
-    "height": 56,
+    "height": 70,
     "paddingX": 16,
-    "paddingY": 8,
+    "paddingY": 12.5,
     "gap": 12,
-    "titleFontSize": 18,
-    "detailFontSize": 16,
+    "titleFontSize": 22,
+    "detailFontSize": 22,
+    "detailWidth": 50,
     "sliderWidth": 240
   },
   "switch": {
@@ -164,5 +165,8 @@
     "detailAvatarSize": 120,
     "statBarHeight": 10,
     "statRowGap": 6
+  },
+  "checkbox": {
+    "radius": 15
   }
 }

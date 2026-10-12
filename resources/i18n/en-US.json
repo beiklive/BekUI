@@ -210,7 +210,10 @@
     "audition": "Audition",
     "audition_hint": "Tap to cycle (synthesized, no assets)",
     "account_name": "beiklive",
-    "account_sub": "bklv demo account (pluggable source)"
+    "account_sub": "bklv demo account (pluggable source)",
+    "switch_style_title": "Graphical switch (our extra style)",
+    "switch_style_cell": "Drawn track + knob",
+    "switch_style_hint": "borealis renders switches as an on/off label with a font bounce (above); this is our extra style via setStyle(BooleanCellStyle::SWITCH)."
   },
   "transform": {
     "hint": "The box below never triggers a relayout - transforms only affect drawing.",

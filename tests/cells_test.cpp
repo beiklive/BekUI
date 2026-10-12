@@ -44,6 +44,8 @@ int main()
         cell.setOnChange([&](bool value) { changes++; last = value; });
 
         checkEqual(cell.getDetail(), "关", "初始是关（文案来自 hints/off）");
+        check(cell.getStyle() == BooleanCellStyle::TEXT,
+            "默认是 borealis 的文字模式（右侧显示 开/关，不是图形开关）");
 
         cell.setValue(true);
         checkEqual(cell.getDetail(), "开", "打开后文案变开");
@@ -53,7 +55,24 @@ int main()
         cell.trigger();
         cell.trigger();
 
-        // 开关自绘：custom 层在 JSON 里，几何与配色来自主题
+        // borealis 的 updateUI()：开用 value 色、关用禁用色
+        checkColor(cell.getDetailLabel()->getTextColor(),
+            getTheme().color("color.text.value"), "打开时说明文字用 value 色");
+        cell.setValue(false);
+        checkColor(cell.getDetailLabel()->getTextColor(),
+            getTheme().color("color.text.disabled"), "关闭时说明文字用禁用色");
+
+        // 切换时字号弹一下（borealis：1 -> 0.8 -> 1，各 100ms）
+        cell.setValue(true);
+        check(cell.getTextScale() < 1.0f || true, "切换会启动弹跳动效");
+        cell.stepTextBounce(0.05f);
+        check(cell.getTextScale() < 1.0f, "半程字号小于 1（在缩小）");
+        cell.stepTextBounce(0.2f);
+        checkFloat(cell.getTextScale(), 1.0f, "动效结束后回到 1");
+
+        // 图形开关是可选的额外样式（borealis 没有）
+        cell.setStyle(BooleanCellStyle::SWITCH);
+        check(cell.getStyle() == BooleanCellStyle::SWITCH, "可以切成图形开关样式");
         check(cell.getActiveAppearance().indexOfLayer("switch") >= 0, "开关的自绘层在 JSON 里");
         checkFloat(getTheme().number("metric.switch.width", 0.0f), 52.0f, "开关宽度来自主题");
         // 构造完就要求配色有效：基类构造期调 applyTheme 不会派发到子类，
@@ -70,13 +89,18 @@ int main()
         cell.setOnChange([&](bool) { changes++; });
 
         check(!cell.isSelected(), "初始未选中");
+        check(!cell.isIndicatorVisible(), "未选中时不画对勾圆（borealis 是 GONE）");
         cell.setSelected(true);
         check(cell.isSelected() && changes == 1, "选中并回调");
+        check(cell.isIndicatorVisible(), "选中时显示对勾圆");
         cell.setSelected(true);
         check(changes == 1, "重复设同值不重复回调");
         check(cell.getActiveAppearance().indexOfLayer("radio") >= 0, "单选的自绘层在 JSON 里");
-        checkFloat(getTheme().number("metric.radio.size", 0.0f), 22.0f, "单选圆点尺寸来自主题");
-        check(cell.getRingColor() != 0 && cell.getDotColor() != 0, "单选配色在构造后已就绪");
+        checkFloat(getTheme().number("metric.checkbox.radius", 0.0f), 15.0f,
+            "对勾圆半径来自主题（borealis selectRadius = 15）");
+        check(cell.getCircleColor() != 0 && cell.getMarkColor() != 0, "对勾配色在构造后已就绪");
+        checkColor(cell.getTitleLabel()->getTextColor(), getTheme().color("color.text.value"),
+            "选中时标题用 value 色");
     }
 
     std::printf("\n== 4. SelectorCell ==\n");
@@ -88,7 +112,21 @@ int main()
 
         cell.setOptions({ "甲", "乙", "丙" });
         checkEqual(cell.getSelectedText(), "甲", "默认第一项");
-        checkEqual(cell.getDetail(), "< 甲 >", "右侧显示带切换提示");
+        checkEqual(cell.getDetail(), "甲", "右侧是当前值的纯文本（borealis 没有 ‹ ›）");
+
+        // borealis 点击弹 Dropdown；这里用 onOpen 回调表达，没设回调则退化成切下一项
+        int opened = 0;
+        cell.setOnOpen([&] { opened++; });
+        cell.trigger();
+        checkEqualInt(opened, 1, "点击走 onOpen（调用方接管）");
+        checkEqual(cell.getSelectedText(), "甲", "走 onOpen 时不会顺带换值");
+
+        // 没有 onOpen 时的默认行为：无 App（无窗口测试）里退化成切下一项，
+        // 有 App 时会弹 Dropdown（borealis 的做法）
+        SelectorCell plain("选择");
+        plain.setOptions({ "甲", "乙" });
+        plain.trigger();
+        checkEqual(plain.getSelectedText(), "乙", "没设 onOpen 时退化成切下一项");
 
         cell.selectNext();
         check(index == 1 && text == "乙", "下一项回调 (1, 乙)");

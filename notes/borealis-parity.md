@@ -197,6 +197,25 @@ scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_componen
 | 按钮 5 种 style | borealis 有 `BUTTONSTYLE_PRIMARY/HIGHLIGHT/DEFAULT/BORDERED/BORDERLESS`（theme.cpp 里有全套配色）。我们原来只有 primary 一种 + 自造的 ghost，bordered 还做错了（有底）。现在 5 种齐全（+ ghost），并且复刻了 `hideHighlightBackground` 语义 |
 | 层序 bug | 7 个 Cell 外观（× 2 套主题 = 14 份）把 `hlBg` 排在了内容层之后 → 聚焦时不透明高亮底盖住开关/单选图形（"聚焦后开关消失"）。修正后 `theme_test` 会遍历两套主题的全部外观断言层序，防回归 |
 
+### Cell 家族按 borealis 的实际行为重做（本轮）
+
+之前几个 Cell 是我按自己的想法画的，**和 borealis 不一样**。逐个核对了
+`library/lib/views/cells/*.cpp` 与 `library/lib/core/{theme,style}.cpp` 之后改成：
+
+| Cell | borealis 实际行为 | 之前我做的（错） | 现在 |
+|---|---|---|---|
+| BooleanCell | 右侧**文字 开/关**（开 = `listItem_value_color`、关 = `text_disabled`），切换时**字号弹一下**（1→0.8→1，各 100ms）。**没有图形开关** | 绿轨白钮的图形开关 | 默认文字 开/关 + 弹跳；图形开关保留为 `BooleanCellStyle::SWITCH`（我们的额外样式） |
+| RadioCell | 右侧 `<CheckBox>`：**填充圆 + 对勾**（圆 = value 色、勾 = 背景色），**只有选中时才显示**，选中时标题变 value 色 | 圆点（radio dot） | 照 borealis 画圆 + 对勾，未选中不画 |
+| SelectorCell | detail 是**当前值的纯文本**（`updateUI` 只 setText），点击**弹 Dropdown** | `‹ 值 ›` + 左右键 | 纯文本 + 点击弹 Dropdown（无 App 时退化为切下一项）；左右键/LB/RB 作为额外便利保留 |
+| DetailCell | 只有标题 + 右侧 detail Label，**没有箭头** | 多了一个 `>` 箭头 | 去掉箭头 |
+| SliderCell | 不可聚焦、标题 grow=0、detail 宽 50、slider grow=1 marginRight 16 | 基本一致 | 对齐数值 |
+
+几何/字号也按 borealis 的 `style.cpp` 对齐：行高 **70**、标题字号 **22**、
+左右内缩 **16**、上下 **12.5**、对勾圆半径 **15**。
+
+顺带修掉 `Animatable::update(dt)`：原来**一帧只推进一步、不结转剩余时间**，
+一帧跨两步时多段动画的总时长会被拉长；现在按 tweeny 的做法结转剩余时间。
+
 ## 七点五、实现过程中顺带修掉的真 bug
 
 | 现象 | 根因 | 修法 |

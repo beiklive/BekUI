@@ -41,15 +41,6 @@
       "valign": "center"
     },
     {
-      "op": "text",
-      "id": "chevron",
-      "source": "chevron",
-      "color": "@theme/color.text.dim",
-      "fontSize": "@theme/metric.cell.detailFontSize",
-      "valign": "center",
-      "align": "right"
-    },
-    {
       "op": "rect",
       "id": "hlGlow",
       "stroke": "#00000000",

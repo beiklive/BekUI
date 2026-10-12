@@ -334,19 +334,28 @@ void Animatable::update()
 
 void Animatable::update(float deltaTime)
 {
-    if (this->currentStep >= this->steps.size())
+    // 一帧里可能跨过多个步骤（掉帧、或者调用方一次喂一大段 dt）：
+    // 结转剩余时间，否则多段动画的总时长会被拉长。
+    float remaining = deltaTime;
+
+    while (this->currentStep < this->steps.size())
     {
-        this->stop();
-        return;
-    }
+        const Step& step = this->steps[this->currentStep];
 
-    const Step& step = this->steps[this->currentStep];
+        this->stepElapsed += remaining;
 
-    this->stepElapsed += deltaTime;
+        // 这一步还没走完：按缓动插值，收工
+        if (step.duration > 0.0f && this->stepElapsed < step.duration)
+        {
+            const float t = this->stepElapsed / step.duration;
+            this->value   = this->stepStartValue
+                + (step.target - this->stepStartValue) * applyEasing(step.easing, t);
+            return;
+        }
 
-    if (step.duration <= 0.0f || this->stepElapsed >= step.duration)
-    {
-        this->value          = step.target;
+        // 这一步走完了：把超出的时间留给下一步
+        remaining       = step.duration > 0.0f ? (this->stepElapsed - step.duration) : 0.0f;
+        this->value     = step.target;
         this->stepElapsed    = 0.0f;
         this->stepStartValue = this->value;
         this->currentStep++;
@@ -358,11 +367,10 @@ void Animatable::update(float deltaTime)
                 this->endCallback(true);
             return;
         }
-        return;
-    }
 
-    const float t = this->stepElapsed / step.duration;
-    this->value   = this->stepStartValue + (step.target - this->stepStartValue) * applyEasing(step.easing, t);
+        if (remaining <= 0.0f)
+            return; // 正好停在两步之间
+    }
 }
 
 } // namespace bklv

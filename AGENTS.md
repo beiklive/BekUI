@@ -244,6 +244,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   另有我们自己的 `button.ghost`（更淡的一种）。
   注意 borealis 的 `hideHighlightBackground`：**primary/highlight/default 聚焦时不出高亮底**，
   只有 bordered/borderless 出 —— 在 JSON 里就是 focused 状态要不要写 `hlBg.fill`。
+- **Cell 家族要照 borealis 的实际行为**（`library/lib/views/cells/*.cpp`），别凭感觉画：
+  BooleanCell 是**文字 开/关** + 切换时字号弹一下（1→0.8→1，各 100ms；开用
+  `color.text.value`、关用 `color.text.disabled`），**没有图形开关**——想要的图形开关是我们
+  额外的 `BooleanCellStyle::SWITCH`；RadioCell 是**填充圆 + 对勾、只选中时显示**、选中时标题用
+  value 色；SelectorCell 右侧是**当前值的纯文本**、点击**弹 Dropdown**（无 App 退化成切下一项）；
+  DetailCell 只有两个 Label、**没有箭头**。几何按 `style.cpp`：行高 70、字号 22、
+  左右内缩 16、上下 12.5、对勾半径 15。
 - **控件外观要还原 borealis 的焦点高亮**：每个可聚焦控件的外观里有三层高亮
   （`hlBg` / `hlGlow` / `hlBorder`），focus 态把它们补到
   `color.highlight.background`、`color.highlight.glow`、`color.highlight.border`，

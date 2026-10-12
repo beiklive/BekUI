@@ -10,7 +10,8 @@
     "primary": "#e3ecf7",
     "dim": "#8fa3bd",
     "disabled": "#54637a",
-    "onAccent": "#0d1420"
+    "onAccent": "#0d1420",
+    "value": "#5ad0ff"
   },
   "accent": {
     "base": "#4fd1c5",
@@ -87,5 +88,9 @@
     "typeFire": "#ff7043",
     "typeWater": "#4aa3ff",
     "statTrack": "#2a2d34"
+  },
+  "checkbox": {
+    "fill": "#5ad0ff",
+    "mark": "#1a1c21"
   }
 }

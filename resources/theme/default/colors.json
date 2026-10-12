@@ -11,7 +11,8 @@
     "primary": "#ffffff",
     "dim": "#a3a3a3",
     "disabled": "#505050",
-    "onAccent": "#342937"
+    "onAccent": "#342937",
+    "value": "#58c3a9"
   },
   "accent": {
     "base": "#00ffcc",
@@ -105,5 +106,9 @@
     "typeFire": "#ff7043",
     "typeWater": "#4aa3ff",
     "statTrack": "#2a2d34"
+  },
+  "checkbox": {
+    "fill": "#58c3a9",
+    "mark": "#1a1c21"
   }
 }

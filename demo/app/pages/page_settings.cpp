@@ -92,6 +92,17 @@ Box* buildSettingsPage()
     switches->addView(wireCell);
     page->addView(switches);
 
+    // 额外样式：图形开关（borealis 没有，我们多给一种；默认仍是它那套文字开/关）
+    Rectangle* switchStyleCard = makeCard();
+    switchStyleCard->addView(makeText(getStr("settings/switch_style_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+    BooleanCell* graphical = new BooleanCell(getStr("settings/switch_style_cell"), true);
+    graphical->setStyle(BooleanCellStyle::SWITCH);
+    graphical->setOnChange([](bool) {});
+    switchStyleCard->addView(graphical);
+    switchStyleCard->addView(makeHint(getStr("settings/switch_style_hint")));
+    page->addView(switchStyleCard);
+
     // ---- 音效（代码合成，桌面/ Switch 都有反馈；不依赖素材）----
     Rectangle* soundCard = makeCard();
     soundCard->addView(makeText(getStr("settings/sound_title"),

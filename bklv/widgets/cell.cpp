@@ -1,4 +1,6 @@
+#include "bklv/core/app.hpp"
 #include "bklv/widgets/cell.hpp"
+#include "bklv/widgets/dropdown.hpp"
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/audio.hpp"
@@ -128,11 +130,66 @@ BooleanCell::BooleanCell(const std::string& title, bool value)
 
 void BooleanCell::setValue(bool value)
 {
-    this->value = value;
-    this->setDetail(getStr(value ? "hints/on" : "hints/off"));
+    const bool changed = (this->value != value);
+    this->value        = value;
+
+    // borealis：切换时字号弹一下（1 -> 0.8 -> 1，各 100ms）
+    if (changed && this->style == BooleanCellStyle::TEXT)
+    {
+        this->bounce.stop();
+        this->bounce.reset(1.0f);
+        this->bounce.addStep(0.8f, 0.1f, EasingFunction::QUADRATIC_OUT);
+        this->bounce.addStep(1.0f, 0.1f, EasingFunction::QUADRATIC_IN);
+        this->bounce.start();
+        this->bouncing = true;
+    }
+
+    this->refreshTextMode();
 
     if (this->onChange)
         this->onChange(value);
+}
+
+void BooleanCell::refreshTextMode()
+{
+    if (this->style != BooleanCellStyle::TEXT)
+        return;
+
+    // borealis 的 updateUI()：文字在"开/关"之间切，颜色也跟着切
+    this->setDetail(getStr(this->value ? "hints/on" : "hints/off"));
+
+    if (this->detailLabel != nullptr)
+    {
+        this->detailLabel->setTextColorExplicit(true);
+        this->detailLabel->setTextColor(
+            this->value ? this->valueColor : this->disabledColor);
+    }
+}
+
+void BooleanCell::stepTextBounce(float deltaSeconds)
+{
+    if (!this->bouncing)
+        return;
+
+    this->bounce.update(deltaSeconds);
+    this->textScale = (float)this->bounce;
+
+    if (this->detailLabel != nullptr)
+        this->detailLabel->setFontSize(this->baseDetailFontSize * this->textScale);
+
+    if (this->bounce.isStopped())
+    {
+        this->bouncing   = false;
+        this->textScale  = 1.0f;
+        if (this->detailLabel != nullptr)
+            this->detailLabel->setFontSize(this->baseDetailFontSize);
+    }
+}
+
+void BooleanCell::update()
+{
+    Cell::update();
+    this->stepTextBounce(getFrameDeltaSeconds());
 }
 
 void BooleanCell::applyTheme()
@@ -146,11 +203,21 @@ void BooleanCell::applyTheme()
     this->trackOn      = theme.color("color.switch.trackOn", IM_COL32(0, 255, 204, 255));
     this->trackOff     = theme.color("color.switch.trackOff", IM_COL32(74, 78, 85, 255));
     this->knobColor    = theme.color("color.switch.knob", IM_COL32_WHITE);
+    // 文字模式：开 = value 色，关 = 禁用色（和 borealis 的 updateUI 一致）
+    this->valueColor    = theme.color("color.text.value", IM_COL32(88, 195, 169, 255));
+    this->disabledColor = theme.color("color.text.disabled", IM_COL32(80, 80, 80, 255));
+    this->baseDetailFontSize = theme.number("metric.cell.detailFontSize", 16.0f);
+
+    this->refreshTextMode();
 }
 
 void BooleanCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, float x, float y,
     float width, float height, const AppearanceInstance&)
 {
+    // 默认（borealis）是文字开/关，没有图形开关
+    if (this->style != BooleanCellStyle::SWITCH)
+        return;
+
     if (width <= 0.0f || height <= 0.0f)
         return;
 
@@ -190,8 +257,22 @@ void RadioCell::setSelected(bool selected)
         return;
 
     this->selected = selected;
+    this->refreshTitleColor();
+
     if (this->onChange)
         this->onChange(selected);
+}
+
+void RadioCell::refreshTitleColor()
+{
+    // borealis：选中时标题用 value 色，未选中用正文色
+    if (this->titleLabel == nullptr)
+        return;
+
+    this->titleLabel->setTextColorExplicit(true);
+    this->titleLabel->setTextColor(this->selected
+            ? getTheme().color("color.text.value", IM_COL32(88, 195, 169, 255))
+            : getTheme().color("color.text.primary", IM_COL32(255, 255, 255, 255)));
 }
 
 void RadioCell::applyTheme()
@@ -199,28 +280,35 @@ void RadioCell::applyTheme()
     Cell::applyTheme();
 
     const ThemeData& theme = getTheme();
-    this->radioSize  = theme.number("metric.radio.size", 22.0f);
-    this->ringStroke = theme.number("metric.radio.stroke", 2.0f);
-    this->ringColor  = theme.color("color.radio.border", IM_COL32(139, 146, 155, 255));
-    this->dotColor   = theme.color("color.radio.dot", IM_COL32(0, 255, 204, 255));
+    this->circleRadius = theme.number("metric.checkbox.radius", 15.0f);
+    this->circleColor  = theme.color("color.checkbox.fill", IM_COL32(88, 195, 169, 255));
+    this->markColor    = theme.color("color.checkbox.mark", IM_COL32(26, 28, 33, 255));
+
+    this->refreshTitleColor();
 }
 
 void RadioCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, float x, float y,
     float width, float height, const AppearanceInstance&)
 {
-    if (width <= 0.0f || height <= 0.0f)
+    // borealis 的 CheckBox：未选中时整块 GONE（什么都不画），选中才画"填充圆 + 对勾"
+    if (!this->selected || width <= 0.0f || height <= 0.0f)
         return;
 
-    const float size   = std::min(std::min(this->radioSize, width), height);
-    const float left   = x + width - size;             // 右对齐
-    const float top    = y + (height - size) * 0.5f;
-    const ImVec2 center(left + size * 0.5f, top + size * 0.5f);
-    const float radius = size * 0.5f - this->ringStroke * 0.5f;
+    const float radius = std::min(this->circleRadius,
+        std::min(width, height) * 0.5f);
+    const float cx     = x + width * 0.5f;
+    const float cy     = y + height * 0.5f;
 
-    drawList->AddCircle(center, radius, this->ringColor, 32, this->ringStroke);
+    drawList->AddCircleFilled(ImVec2(cx, cy), radius, this->circleColor, 32);
 
-    if (this->selected)
-        drawList->AddCircleFilled(center, radius - this->ringStroke, this->dotColor, 32);
+    // 对勾：两笔（长笔画 -45°，短笔画 +45°），线宽是半径的 10%（同 borealis）
+    const float thickness = std::max(1.0f, radius * 0.10f * 2.0f);
+    const ImVec2 longFrom(cx - radius * 0.50f, cy + radius * 0.05f);
+    const ImVec2 corner(cx - radius * 0.10f, cy + radius * 0.45f);
+    const ImVec2 shortTo(cx + radius * 0.55f, cy - radius * 0.45f);
+
+    drawList->AddLine(longFrom, corner, this->markColor, thickness);
+    drawList->AddLine(corner, shortTo, this->markColor, thickness);
 }
 
 // ---------------------------------------------------------------- SelectorCell
@@ -237,6 +325,14 @@ SelectorCell::SelectorCell(const std::string& title)
     this->registerAction(ControllerButton::LB, getStr("hints/previous"), prev);
     this->registerAction(ControllerButton::RIGHT, getStr("hints/next"), next);
     this->registerAction(ControllerButton::LEFT, getStr("hints/previous"), prev);
+
+    // borealis 的 SelectorCell 点击就是弹一个 Dropdown；设了 onOpen 就交给调用方
+    this->setOnClick([this] {
+        if (this->onOpen)
+            this->onOpen();
+        else
+            this->openDropdown();
+    });
 }
 
 void SelectorCell::setOptions(const std::vector<std::string>& value)
@@ -285,10 +381,34 @@ void SelectorCell::selectPrevious()
     this->setSelectedIndex(this->selectedIndex - 1);
 }
 
+void SelectorCell::openDropdown()
+{
+    if (this->options.empty())
+        return;
+
+    // 无窗口（测试）里没有 App / 模态栈，退化成切到下一项
+    App* app = App::getCurrent();
+    if (app == nullptr)
+    {
+        this->selectNext();
+        return;
+    }
+
+    if (this->dropdown == nullptr)
+    {
+        this->dropdown = new Dropdown();
+        this->dropdown->setOnChange([this](size_t index) { this->setSelectedIndex((int)index); });
+    }
+
+    this->dropdown->setTitle(this->title);
+    this->dropdown->setOptions(this->options, (size_t)this->selectedIndex);
+    this->dropdown->open();
+}
+
 void SelectorCell::refreshDetail()
 {
-    // 两边加箭头，视觉上说明"左右可换"（borealis 是把箭头画在 cell 的 XML 里）
-    this->setDetail("< " + this->getSelectedText() + " >");
+    // borealis 的 updateUI() 就是 detail->setText(data[selection])：**纯文本，没有 ‹ ›**
+    this->setDetail(this->getSelectedText());
 }
 
 // ---------------------------------------------------------------- SliderCell

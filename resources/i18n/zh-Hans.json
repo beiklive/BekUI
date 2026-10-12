@@ -210,7 +210,10 @@
     "audition": "试听音效",
     "audition_hint": "点一次换一个（合成音，不含素材）",
     "account_name": "beiklive",
-    "account_sub": "bklv 演示账号（数据源可插拔）"
+    "account_sub": "bklv 演示账号（数据源可插拔）",
+    "switch_style_title": "图形开关（我们的额外样式）",
+    "switch_style_cell": "自绘轨道 + 圆点",
+    "switch_style_hint": "borealis 的开关是上面的\"文字 开/关 + 字号弹一下\"；这个是 setStyle(BooleanCellStyle::SWITCH) 的额外样式，两者样式都在 JSON/主题里。"
   },
   "transform": {
     "hint": "下面这个方块不参与布局重排——变换只改绘制。Play 会跑四段不同缓动的补间。",
