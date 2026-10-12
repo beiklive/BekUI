@@ -434,6 +434,10 @@ bool DesignerWindow::openTableFile(const std::string& fileName)
     this->dirty            = false;
     this->selection        = Selection{};
     this->selection.kind   = SelKind::TABLE;
+    // 和切外观/切页面一样要清：留着上一份的绑定指针在重建后就悬垂了
+    this->pageBindings.clear();
+    this->viewMap.clear();
+    this->focusOrder.clear();
     this->previewDirty     = true;
     this->lastFrameText    = text;
 
@@ -1188,22 +1192,16 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
                 ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "（嵌套太深，不再展开）");
             else
             {
-                std::string includedText;
-                std::string readError;
-                if (!readTextFile(resourcePath(includePath), includedText, readError))
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", readError.c_str());
+                const AppearanceDoc::Json* included
+                    = this->includeCache.get(resourcePath(includePath));
+                if (included == nullptr)
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f),
+                        "被包含的文件读不到或不是合法 JSON：%s", includePath.c_str());
                 else
                 {
-                    const AppearanceDoc::Json included
-                        = AppearanceDoc::Json::parse(includedText, nullptr, false);
-                    if (included.is_discarded())
-                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "被包含的文件不是合法 JSON");
-                    else
-                    {
-                        this->includeDepthGuard++;
-                        this->drawViewTree(included, path + "#include");
-                        this->includeDepthGuard--;
-                    }
+                    this->includeDepthGuard++;
+                    this->drawViewTree(*included, path + "#include");
+                    this->includeDepthGuard--;
                 }
             }
             ImGui::TreePop();
@@ -3146,11 +3144,8 @@ void DesignerWindow::markEdited()
 
 void DesignerWindow::saveAllDirty()
 {
-    if (this->readOnly)
-    {
-        this->errorMessage = "只读主题，不能写盘";
-        return;
-    }
+    // 只读保护的是**主题文件**；页面视图在 resources/views/ 下，照常可存
+    /* 逐份判断，见循环里的 kind 分支 */
 
     // 当前页面视图里"改了没点应用"的文本也要先应用，否则全部保存会把它漏掉
     {
@@ -3208,6 +3203,12 @@ void DesignerWindow::saveAllDirty()
         else if (kind == FileKind::UNKNOWN)
         {
             this->warnings.push_back(path + "：认不出是什么文件，跳过");
+            continue;
+        }
+
+        if (this->readOnly && kind != FileKind::VIEW)
+        {
+            this->warnings.push_back(path + "：基准主题只读，跳过（页面视图不受限）");
             continue;
         }
 
@@ -3433,6 +3434,7 @@ void DesignerWindow::doSave()
     for (const std::string& warning : this->doc.layerOrderWarnings())
         this->warnings.push_back("层序：" + warning);
 
+    this->includeCache.clear(); // 被包含的文件也可能刚被改过
     this->refreshThemeUsage(); // 刚写完，引用关系可能变了
 
     // 主题表改动的影响清单：这次动到的 key 影响了哪些控件

@@ -17,6 +17,7 @@
 #include "bklv/bklv.hpp"
 #include "bklv/views/debug_window.hpp"
 #include "designer/core/appearance_doc.hpp"
+#include "designer/core/json_cache.hpp"
 #include "designer/core/undo_stack.hpp"
 #include "designer/core/project.hpp"
 
@@ -259,6 +260,7 @@ class DesignerWindow
     std::map<std::string, std::string> bindingSamplesByFile; // 按文件各自保存
     bool applySamplesPending = false;        // 按钮只置这个：真套用在"建完预览之后"
     std::string pendingTheme;                // 切主题时的未保存拦截
+    JsonCache includeCache;                  // include 展开用（否则每帧读盘解析）
     int includeDepthGuard = 0;             // include 展开的递归保护
     char tableFilter[64] = "";
     char newAppearanceName[64] = "";

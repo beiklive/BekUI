@@ -21,6 +21,7 @@
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
 #include "designer/core/file_kind.hpp"
+#include "designer/core/json_cache.hpp"
 #include "designer/core/theme_key.hpp"
 #include "designer/core/ui_state.hpp"
 #include "designer/core/undo_stack.hpp"
@@ -657,6 +658,34 @@ int main()
         check(designer::classifyThemeFile(themeDir + "/widgets/x.json", themeDir + "/", resDir + "/")
                 == designer::FileKind::APPEARANCE,
             "目录结尾带斜杠也认");
+    }
+
+    // ---------------------------------------------------------------- JSON 文件缓存
+    {
+        const std::string path = work + "/cache_probe.json";
+        std::string writeError;
+        designer::writeTextFileAtomic(path, R"({"a": 1})", false, writeError);
+
+        designer::JsonCache cache;
+        const auto* first = cache.get(path);
+        check(first != nullptr, "首次读到了");
+        checkEqualInt((*first)["a"].get<int>(), 1, "内容对");
+
+        // 改盘上的内容：缓存没清之前必须还是老的值（说明真的没重复读盘）
+        designer::writeTextFileAtomic(path, R"({"a": 2})", false, writeError);
+        const auto* cached = cache.get(path);
+        check(cached == first, "第二次返回同一个对象（没重复读盘解析）");
+        checkEqualInt((*cached)["a"].get<int>(), 1, "缓存里还是老值");
+        checkEqualSize(cache.size(), 1, "只缓存了一条");
+
+        cache.clear();
+        const auto* reloaded = cache.get(path);
+        checkEqualInt((*reloaded)["a"].get<int>(), 2, "清缓存后读到新值");
+
+        // 读不到的文件返回 nullptr，而且不会每次都去读盘
+        designer::JsonCache missing;
+        check(missing.get(work + "/不存在的文件.json") == nullptr, "读不到返回 nullptr");
+        checkEqualSize(missing.size(), 1, "失败也缓存（避免每帧重试）");
     }
 
     fs::remove_all(work, code);

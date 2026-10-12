@@ -194,6 +194,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/theme_key.cpp
     core/undo_stack.cpp
     core/file_kind.cpp
+    core/json_cache.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")
