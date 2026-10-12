@@ -282,6 +282,7 @@ set(BKLV_CORE_SOURCES
     views/debug_window.cpp
     # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
     widgets/appearance_view.cpp
+    widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp
     widgets/header.cpp

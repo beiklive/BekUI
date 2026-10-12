@@ -129,5 +129,16 @@
   "radio": {
     "size": 22,
     "stroke": 2
+  },
+  "notification": {
+    "width": 360,
+    "paddingX": 20,
+    "paddingY": 14,
+    "radius": 8,
+    "fontSize": 18,
+    "gap": 8,
+    "duration": 3.0,
+    "marginTop": 16,
+    "marginRight": 16
   }
 }

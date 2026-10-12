@@ -82,6 +82,9 @@ class AppearanceView : public Box
     }
     const AppearanceInstance& getAppearanceInstanceForTest() const { return this->appearance; }
 
+    // 外观还在补间中？（想等动效播完再摘掉/切换的地方用这个）
+    bool isAppearanceAnimating() const { return this->appearance.isAnimating(); }
+
   protected:
 
   private:

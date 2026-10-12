@@ -1,4 +1,6 @@
 #include "bklv/core/app.hpp"
+#include "bklv/core/theme_data.hpp"
+#include "bklv/widgets/notification.hpp"
 
 #include "bklv/core/resource.hpp"
 #include "bklv/core/appearance.hpp"
@@ -54,6 +56,9 @@ App::~App()
 
 void App::setRootView(View* view)
 {
+    // 通知层挂在旧根上，换根后指针失效（和模态栈一样必须清掉）
+    this->notifications = nullptr;
+
     if (this->root == view)
         return;
 
@@ -73,7 +78,17 @@ void App::setRootView(View* view)
     getInputManager().setRoot(this->root);
     if (this->root != nullptr)
         getInputManager().giveFocus(this->root->getDefaultFocus());
+
+    // 补发排队中的通知（在此之前 App::notify 只能先记下来）
+    if (!this->pendingNotifications.empty())
+    {
+        std::vector<std::pair<std::string, float>> queued;
+        queued.swap(this->pendingNotifications);
+        for (const auto& item : queued)
+            this->notify(item.first, item.second);
+    }
 }
+
 
 // ---------------------------------------------------------------------------
 // 帧
@@ -130,6 +145,47 @@ unsigned int App::getLayoutCount()
 App* App::getCurrent()
 {
     return g_currentApp;
+}
+
+NotificationManager* App::getNotifications()
+{
+    if (this->root == nullptr)
+        return nullptr;
+
+    if (this->notifications == nullptr)
+    {
+        this->notifications = new NotificationManager();
+        // 右上角浮层：绝对定位，不参与根视图的 flex 排布
+        this->notifications->setPositionType(PositionType::ABSOLUTE);
+        this->notifications->setPositionTop(getTheme().number("metric.notification.marginTop", 16.0f));
+        this->notifications->setPositionRight(
+            getTheme().number("metric.notification.marginRight", 16.0f));
+
+        if (Box* rootBox = this->root->asBox())
+            rootBox->addView(this->notifications);
+        else
+        {
+            BKLV_LOG_WARNING("App::notify 失败：根视图不是容器");
+            this->notifications = nullptr;
+            return nullptr;
+        }
+    }
+
+    return this->notifications;
+}
+
+void App::notify(const std::string& text, float duration)
+{
+    NotificationManager* manager = this->getNotifications();
+    if (manager == nullptr)
+    {
+        // 根视图还没设好（窗口创建前 notify）：先排队，setRootView 之后补发
+        this->pendingNotifications.emplace_back(text, duration);
+        return;
+    }
+
+    manager->notify(text, duration);
+    this->requestLayout();
 }
 
 bool App::pushOverlay(View* overlay, bool closeOnBack)

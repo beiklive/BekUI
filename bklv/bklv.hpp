@@ -54,6 +54,7 @@
 #include "bklv/widgets/edit_text_dialog.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/hints_bar.hpp"
+#include "bklv/widgets/notification.hpp"
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"

@@ -139,6 +139,22 @@ Box* buildSettingsPage()
     inputs->addView(number);
     page->addView(inputs);
 
+    // ---- 通知（对标 borealis Settings 页里的 "Post a notification"）----
+    Rectangle* toast = makeCard();
+    toast->addView(makeText(getStr("settings/notify_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    DetailCell* post = new DetailCell(getStr("settings/notify_cell"));
+    static int count = 0;
+    post->setOnClick([post] {
+        count++;
+        post->setDetail(std::to_string(count));
+        if (App* app = App::getCurrent())
+            app->notify(getStr("settings/notify_text") + " #" + std::to_string(count));
+    });
+    toast->addView(post);
+    page->addView(toast);
+
     return page;
 }
 

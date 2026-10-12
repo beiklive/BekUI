@@ -34,6 +34,7 @@
     "widgets/cell_slider.json",
     "widgets/cell_input.json",
     "widgets/status_battery.json",
-    "widgets/status_wireless.json"
+    "widgets/status_wireless.json",
+    "widgets/notification.json"
   ]
 }

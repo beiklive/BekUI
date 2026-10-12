@@ -63,5 +63,9 @@
     "batteryCharging": "#00ffcc",
     "wirelessOn": "#ffffff",
     "wirelessOff": "#ffffff3c"
+  },
+  "notification": {
+    "background": "#1f2227f0",
+    "text": "#ffffff"
   }
 }

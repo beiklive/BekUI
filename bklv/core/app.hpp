@@ -24,6 +24,8 @@
 namespace bklv
 {
 
+class NotificationManager;
+
 class App
 {
   public:
@@ -76,6 +78,13 @@ class App
     //
     // 挂到根视图最上层（绝对定位铺满画布），并把输入层切到模态：
     // 指针只命中弹层内部，方向导航不会跑出弹层，关闭后焦点自动回到打开前的视图。
+    // 弹一条通知（右上角浮层，不吃焦点）。没有通知层就懒创建一个。
+    // 对应 borealis 的 NotificationManager::notify，但这里是实例而不是全局单例。
+    void notify(const std::string& text, float duration = 3.0f);
+
+    // 通知层（想改位置/上限/样式就自己拿它调）
+    NotificationManager* getNotifications();
+
     bool pushOverlay(View* overlay, bool closeOnBack = true);
     void popOverlay(View* overlay, bool free = false);
 
@@ -98,6 +107,9 @@ class App
     void frame();
 
     View* root = nullptr;
+    NotificationManager* notifications = nullptr;
+    // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
+    std::vector<std::pair<std::string, float>> pendingNotifications;
 
 #if defined(BKLV_SWITCH)
     PlatformType platformType = PlatformType::SWITCH;
