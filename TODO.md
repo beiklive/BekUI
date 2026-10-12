@@ -175,9 +175,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       quadratic/cubic/quartic/quintic/sine/circular/exponential/elastic/back/bounce 的 In/Out/InOut
 - [x] 手势（`core/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
       + demo 变换页支持拖动方块、轻触复位
-- [ ] **P0 控件补齐**（剩余）：
-      Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
-      View 变换（scale/rotate/skew/fontScale）
+- [x] **P0 控件补齐**：6 个 Cell、Battery/Wireless 图标化、Notification、手势、
+      View 变换（scale/rotate/skew/fontScale）+ 对应 demo 页面
 - [ ] **P1 核心能力**：task/thread + 异步图片加载、audio（SDL3 + Switch）、
       debug_layer（wireframe）、event 补齐
 - [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
