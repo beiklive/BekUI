@@ -235,6 +235,7 @@ StatusArea::StatusArea()
 {
     this->setHeight(AUTO);
     this->setAlignItems(AlignItems::CENTER);
+    this->setJustifyContent(JustifyContent::CENTER);
     this->provider = [] { return queryPlatformStatus(); };
 
     // 分组：电量图标 + 百分比挨在一起，再是网络图标与时钟
@@ -244,12 +245,14 @@ StatusArea::StatusArea()
 
     this->batteryLabel = new Label();
     this->batteryLabel->setSingleLine(true);
+    this->batteryLabel->setMarginTop(8.f);
     this->addView(this->batteryLabel);
 
     this->wireless = new WirelessIcon();
     this->addView(this->wireless);
 
     this->clockLabel = new Label();
+    this->clockLabel->setMarginTop(8.f);
     this->clockLabel->setSingleLine(true);
     this->addView(this->clockLabel);
 
