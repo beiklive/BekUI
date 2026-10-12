@@ -1564,9 +1564,14 @@ void DesignerWindow::drawTree()
                                           || this->selection.kind == SelKind::LAYER_FIELD)
                     && this->selection.index == i;
                 char label[128];
-                std::snprintf(label, sizeof(label), "%s#%d  %s  %s",
-                    this->isLayerChanged(i) ? "• " : "", i + 1,
-                    this->doc.layerOp(i).c_str(), this->doc.layerId(i).c_str());
+                // 评审意见：树里"节点名 + field 属性 + 按钮 + 缩进"挤成一团，
+                // 资源名和节点名样式也差不多。改成：**只显示名称**，
+                // 绘制类型用一个语法色的徽标标出来，字段留给右侧检查器（要在这里看就展开箭头）
+                const std::string layerName = this->doc.layerId(i).empty()
+                    ? ("层 " + std::to_string(i + 1))
+                    : this->doc.layerId(i);
+                std::snprintf(label, sizeof(label), "%s%s",
+                    this->isLayerChanged(i) ? "• " : "", layerName.c_str());
                 const std::string id = "##layer" + std::to_string(i);
                 // "只看层"时把它画成叶子：点一下选中层、不再展开一堆字段
                 const ImGuiTreeNodeFlags layerFlags = this->onlyLayers
@@ -1577,6 +1582,53 @@ void DesignerWindow::drawTree()
                 const bool open = ImGui::TreeNodeEx(id.c_str(), layerFlags
                         | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap
                         | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label);
+                // 绘制类型徽标（rect/text/image/shadow/custom 各一色，取 VS Code 语法色）
+                {
+                    const std::string op = this->doc.layerOp(i);
+                    unsigned int rgb     = 0x4EC9B0; // 默认：青（type）
+                    if (op == "text")
+                        rgb = 0xCE9178; // 字符串橙
+                    else if (op == "image")
+                        rgb = 0x569CD6; // 关键字蓝
+                    else if (op == "shadow")
+                        rgb = 0x6A9955; // 注释绿
+                    else if (op == "custom")
+                        rgb = 0xC586C0; // 控制流紫
+                    const ImVec4 badgeColor((float)((rgb >> 16) & 0xFF) / 255.0f,
+                        (float)((rgb >> 8) & 0xFF) / 255.0f, (float)(rgb & 0xFF) / 255.0f, 1.0f);
+
+                    // 文字起点要把"箭头 + 缩进"算进去：直接用 ItemRectMin 当起点的话，
+                    // 徽标会盖在层名上（第一次就是这样）
+                    const float textStart = ImGui::GetItemRectMin().x
+                        + ImGui::GetTreeNodeToLabelSpacing();
+                    const ImVec2 textEnd(textStart + ImGui::CalcTextSize(label).x + 10.0f,
+                        ImGui::GetItemRectMin().y + 3.0f);
+                    const ImVec2 badgeSize(ImGui::CalcTextSize(op.c_str()).x + 8.0f,
+                        ImGui::GetTextLineHeight() - 2.0f);
+                    ImDrawList* list = ImGui::GetWindowDrawList();
+                    list->AddRectFilled(textEnd,
+                        ImVec2(textEnd.x + badgeSize.x, textEnd.y + badgeSize.y),
+                        ImGui::ColorConvertFloat4ToU32(ImVec4(badgeColor.x, badgeColor.y,
+                            badgeColor.z, 0.22f)),
+                        2.0f);
+                    list->AddText(ImVec2(textEnd.x + 4.0f, textEnd.y),
+                        ImGui::ColorConvertFloat4ToU32(badgeColor), op.c_str());
+
+                    const int fieldCount = this->doc.layer(i) != nullptr
+                        ? (int)this->doc.layer(i)->size()
+                        : 0;
+                    // 字段数放在徽标右边，但**要让开右侧那排按钮**：名字长的时候
+                    // 硬画上去会和 ↑↓✕ 叠在一起（窄栏里必然发生）
+                    const float hintX     = textEnd.x + badgeSize.x + 8.0f;
+                    const float buttonX   = ImGui::GetWindowWidth() - 104.0f;
+                    if (buttonX - hintX > 56.0f)
+                    {
+                        const std::string hint = std::to_string(fieldCount) + " 字段";
+                        list->AddText(ImVec2(hintX, textEnd.y),
+                            ImGui::ColorConvertFloat4ToU32(mutedColor()), hint.c_str());
+                    }
+                }
+
                 // 每层一行直接给操作按钮：不用"先选中、再去属性表点"
                 {
                     ImGui::SameLine(ImGui::GetWindowWidth() - 96.0f);
