@@ -932,8 +932,14 @@ void DesignerWindow::drawTopBar()
         ImGui::TextColored(kMuted, "还没有打开项目");
 
     // 第二行：动作
-    if (ImGui::Button("新建项目"))
-        this->showNewProject = true;
+    if (ImGui::Button("打开项目"))
+    {
+        this->showOpenProject = true;
+        // 起点：当前项目的主题根（没有就用 home）
+        this->openBrowseAt(this->hasProject ? this->project.themeRoot : homeDirectory());
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("用文件浏览器选一个 theme.json：可以直接编辑它，也可以拿它当模板建新主题");
     ImGui::SameLine();
     ImGui::SetNextItemWidth(180);
     if (ImGui::BeginCombo("##theme", this->project.name.c_str()))
@@ -3493,67 +3499,147 @@ void DesignerWindow::revert()
 
 // ---------------------------------------------------------------- 弹层与主循环
 
-void DesignerWindow::drawModals()
+void DesignerWindow::openBrowseAt(const std::string& path)
 {
-    if (this->showNewProject)
+    this->browsePath = path.empty() ? homeDirectory() : path;
+    std::snprintf(this->browsePathInput, sizeof(this->browsePathInput), "%s",
+        this->browsePath.c_str());
+    this->browseSelection.clear();
+    this->openProjectError.clear();
+    this->refreshBrowse();
+}
+
+void DesignerWindow::refreshBrowse()
+{
+    std::string error;
+    if (!listDirectory(this->browsePath, this->browseEntries, error))
     {
-        ImGui::OpenPopup("新建项目");
-        this->showNewProject = false;
+        this->browseEntries.clear();
+        this->openProjectError = error;
+    }
+}
+
+void DesignerWindow::drawOpenProjectModal()
+{
+    if (this->showOpenProject)
+    {
+        ImGui::OpenPopup("打开项目");
+        this->showOpenProject = false;
     }
 
-    if (ImGui::BeginPopupModal("新建项目", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::RadioButton("用模板新建主题（原主题不动）", &this->newProjectMode, 0);
-        ImGui::RadioButton("直接编辑现有主题", &this->newProjectMode, 1);
-        ImGui::Separator();
+    ImGui::SetNextWindowSize(ImVec2(760, 540), ImGuiCond_Appearing);
+    if (!ImGui::BeginPopupModal("打开项目", nullptr, ImGuiWindowFlags_NoSavedSettings))
+        return;
 
-        if (this->newProjectMode == 0)
+    // ---- 模式 ----
+    ImGui::TextColored(kAccent, "要做什么");
+    ImGui::RadioButton("用模板新建一个主题（原主题不动）", &this->newProjectMode, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("直接编辑选中的主题", &this->newProjectMode, 1);
+    ImGui::Separator();
+
+    // ---- 路径栏 ----
+    if (ImGui::Button("上一级"))
+        this->openBrowseAt(parentDirectory(this->browsePath));
+    ImGui::SameLine();
+    if (ImGui::Button("主目录"))
+        this->openBrowseAt(homeDirectory());
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(-160.0f);
+    if (ImGui::InputText("##path", this->browsePathInput, sizeof(this->browsePathInput),
+            ImGuiInputTextFlags_EnterReturnsTrue))
+        this->openBrowseAt(this->browsePathInput);
+    ImGui::SameLine();
+    if (ImGui::Button("前往", ImVec2(70, 0)))
+        this->openBrowseAt(this->browsePathInput);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("也可以直接把路径粘进来回车");
+
+    // ---- 列表 ----
+    ImGui::BeginChild("##browse", ImVec2(0, 300), true);
+    for (const DirEntry& entry : this->browseEntries)
+    {
+        if (!entry.isDirectory)
+            continue; // 这里只关心主题目录；文件不在这里选
+
+        const bool selected = (entry.path == this->browseSelection);
+        std::string label = "[目录] " + entry.name;
+        if (entry.hasThemeManifest)
+            label += "   ← 主题（有 theme.json）";
+
+        if (ImGui::Selectable(label.c_str(), selected,
+                ImGuiSelectableFlags_AllowDoubleClick))
         {
-            ImGui::InputText("模板主题", this->newTemplate, sizeof(this->newTemplate));
-            ImGui::InputText("新主题名", this->newName, sizeof(this->newName));
+            this->browseSelection  = entry.path;
+            this->openProjectError.clear();
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                this->openBrowseAt(entry.path);
+        }
+        if (ImGui::IsItemHovered() && entry.hasThemeManifest)
+            ImGui::SetTooltip("双击进入；点「%s」直接用它",
+                this->newProjectMode == 0 ? "当模板新建" : "打开");
+    }
+    if (this->browseEntries.empty())
+        ImGui::TextColored(kMuted, "  （这个目录里没有子目录）");
+    ImGui::EndChild();
+
+    // ---- 选中信息 + 新主题名 ----
+    std::string themeRoot;
+    std::string themeName;
+    std::string infoError;
+    const bool selectionIsTheme
+        = !this->browseSelection.empty()
+        && themeInfoFromManifest(this->browseSelection, themeRoot, themeName, infoError);
+
+    if (this->browseSelection.empty())
+        ImGui::TextColored(kMuted, "选中一个标着「主题」的目录");
+    else if (!selectionIsTheme)
+        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s：%s", this->browseSelection.c_str(),
+            infoError.c_str());
+    else if (this->newProjectMode == 0)
+    {
+        ImGui::TextColored(kMuted, "模板：%s（在 %s 下）", themeName.c_str(), themeRoot.c_str());
+        ImGui::SetNextItemWidth(240);
+        ImGui::InputText("新主题名", this->newThemeName, sizeof(this->newThemeName));
+    }
+    else
+        ImGui::TextColored(kMuted, "将直接编辑：%s（%s）", themeName.c_str(),
+            this->browseSelection.c_str());
+
+    if (!this->openProjectError.empty())
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->openProjectError.c_str());
+
+    // ---- 确认 ----
+    const bool canConfirm = selectionIsTheme
+        && (this->newProjectMode == 1 || this->newThemeName[0] != 0);
+    ImGui::BeginDisabled(!canConfirm);
+    if (ImGui::Button(this->newProjectMode == 0 ? "当模板新建" : "打开并编辑", ImVec2(150, 0)))
+    {
+        Project created;
+        std::string error;
+        const bool ok = this->newProjectMode == 0
+            ? createProjectFromTemplate(themeRoot, themeName, this->newThemeName, created, error)
+            : openProjectInPlace(themeRoot, themeName, created, error);
+
+        if (ok && this->setProject(created, isBaseTheme(created.name), error))
+        {
+            this->statusMessage = "已打开项目 " + created.name;
+            ImGui::CloseCurrentPopup();
         }
         else
-        {
-            ImGui::InputText("主题名（default / ocean 不允许）", this->newName, sizeof(this->newName));
-        }
-        ImGui::InputText("主题根目录（.../resources/theme）", this->themeRoot,
-            sizeof(this->themeRoot));
-
-        ImGui::TextColored(kMuted, "新建 = 复制模板并在 themes.json 里登记；直接编辑只对自建主题开放");
-
-        if (ImGui::Button("创建", ImVec2(120, 0)))
-        {
-            std::string error;
-            Project created;
-            bool ok = false;
-            if (this->newProjectMode == 0)
-                ok = createProjectFromTemplate(this->themeRoot, this->newTemplate, this->newName,
-                    created, error);
-            else
-                ok = openProjectInPlace(this->themeRoot, this->newName, created, error);
-
-            if (ok)
-            {
-                if (this->setProject(created, false, error))
-                {
-                    this->statusMessage = "项目已创建：" + created.name;
-                    ImGui::CloseCurrentPopup();
-                }
-                else
-                    this->errorMessage = error;
-            }
-            else
-                this->errorMessage = error;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("取消", ImVec2(120, 0)))
-            ImGui::CloseCurrentPopup();
-
-        if (!this->errorMessage.empty())
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
-
-        ImGui::EndPopup();
+            this->openProjectError = error;
     }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("取消", ImVec2(100, 0)))
+        ImGui::CloseCurrentPopup();
+
+    ImGui::EndPopup();
+}
+
+void DesignerWindow::drawModals()
+{
+
 
     if (this->showFocusOrder)
     {
@@ -3639,6 +3725,8 @@ void DesignerWindow::drawModals()
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+
+    this->drawOpenProjectModal();
 
     if (this->showSaveAsVariant)
     {

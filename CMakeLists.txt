@@ -195,6 +195,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/undo_stack.cpp
     core/file_kind.cpp
     core/json_cache.cpp
+    core/file_browser.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")

@@ -20,6 +20,7 @@
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
+#include "designer/core/file_browser.hpp"
 #include "designer/core/file_kind.hpp"
 #include "designer/core/json_cache.hpp"
 #include "designer/core/theme_key.hpp"
@@ -686,6 +687,67 @@ int main()
         designer::JsonCache missing;
         check(missing.get(work + "/不存在的文件.json") == nullptr, "读不到返回 nullptr");
         checkEqualSize(missing.size(), 1, "失败也缓存（避免每帧重试）");
+    }
+
+    // ---------------------------------------------------------------- 打开项目用的文件浏览
+    {
+        const std::string browseRoot = work + "/browse";
+        fs::create_directories(browseRoot + "/theme/a-skin");
+        fs::create_directories(browseRoot + "/theme/b-skin");
+        fs::create_directories(browseRoot + "/not-a-theme");
+        fs::create_directories(browseRoot + "/.hidden");
+        std::string writeError;
+        designer::writeTextFileAtomic(browseRoot + "/theme/a-skin/theme.json",
+            R"({"name": "a-skin"})", false, writeError);
+        designer::writeTextFileAtomic(browseRoot + "/theme/b-skin/theme.json",
+            R"({"name": "b-skin"})", false, writeError);
+
+        std::vector<designer::DirEntry> entries;
+        std::string error;
+        check(designer::listDirectory(browseRoot, entries, error), "列目录成功");
+        checkEqualSize(entries.size(), 2, "跳过隐藏项，剩 2 个目录（theme / not-a-theme）");
+
+        // 目录在前、按名字排序
+        check(entries[0].isDirectory, "第一项是目录");
+        checkEqual(entries[0].name, "not-a-theme", "目录按名字排序的第一个");
+        check(!entries[0].hasThemeManifest, "not-a-theme 里没有 theme.json");
+        checkEqual(entries[1].name, "theme", "第二个目录");
+
+        // 主题目录能被认出来
+        std::vector<designer::DirEntry> themeEntries;
+        designer::listDirectory(browseRoot + "/theme", themeEntries, error);
+        checkEqualSize(themeEntries.size(), 2, "theme/ 下两个主题目录");
+        check(themeEntries[0].hasThemeManifest, "a-skin 有 theme.json（浏览器里要标出来）");
+        check(themeEntries[1].hasThemeManifest, "b-skin 也有");
+        checkEqual(designer::findThemeManifest(browseRoot + "/theme/a-skin"),
+            browseRoot + "/theme/a-skin/theme.json", "找到 theme.json");
+        check(designer::findThemeManifest(browseRoot + "/not-a-theme").empty(),
+            "没有 theme.json 时返回空");
+
+        // 从 theme.json（或主题目录）反推主题根与主题名
+        std::string themeRoot;
+        std::string themeName;
+        check(designer::themeInfoFromManifest(browseRoot + "/theme/a-skin/theme.json", themeRoot,
+                  themeName, error),
+            "从 theme.json 推出信息");
+        checkEqual(themeRoot, browseRoot + "/theme", "主题根 = theme.json 的父目录的父目录");
+        checkEqual(themeName, "a-skin", "主题名 = theme.json 的父目录名");
+
+        check(designer::themeInfoFromManifest(browseRoot + "/theme/b-skin", themeRoot, themeName,
+                  error),
+            "直接给主题目录也认");
+        checkEqual(themeName, "b-skin", "主题名对");
+        check(!designer::themeInfoFromManifest(browseRoot + "/not-a-theme", themeRoot, themeName,
+                  error),
+            "没有 theme.json 的目录要拒绝");
+        check(error.find("没有 theme.json") != std::string::npos, "拒绝时给得出原因");
+
+        // 路径工具
+        checkEqual(designer::joinPath("/a", "b"), "/a/b", "拼路径");
+        checkEqual(designer::joinPath("/a/", "b"), "/a/b", "结尾有斜杠也不重复");
+        checkEqual(designer::parentDirectory("/a/b/c"), "/a/b", "父目录");
+        checkEqual(designer::parentDirectory("/a/"), "/", "根目录的父目录还是自己");
+        check(!designer::homeDirectory().empty(), "能拿到 home（浏览器的起点）");
     }
 
     fs::remove_all(work, code);

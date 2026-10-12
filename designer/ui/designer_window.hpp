@@ -17,6 +17,7 @@
 #include "bklv/bklv.hpp"
 #include "bklv/views/debug_window.hpp"
 #include "designer/core/appearance_doc.hpp"
+#include "designer/core/file_browser.hpp"
 #include "designer/core/json_cache.hpp"
 #include "designer/core/undo_stack.hpp"
 #include "designer/core/project.hpp"
@@ -94,6 +95,11 @@ class DesignerWindow
     }
 
     void saveAllForTest() { this->saveAllDirty(); }
+    void openProjectDialogForTest(const std::string& startPath)
+    {
+        this->showOpenProject = true;
+        this->openBrowseAt(startPath);
+    }
 
     void undoForTest() { this->undo(); }
     void redoForTest() { this->redo(); }
@@ -183,6 +189,9 @@ class DesignerWindow
         const std::function<void(const std::string&)>& onPick);
     bool colorPickerPopup(const char* id, std::string& value); // 取色器（写回字面量）
     void drawModals();
+    void refreshBrowse();                    // 重新列当前浏览目录
+    void openBrowseAt(const std::string& path);
+    void drawOpenProjectModal();
 
     // ---- 数据 ----
     void refreshFileList();
@@ -356,11 +365,15 @@ class DesignerWindow
     char viewText[16384] = "";
     std::string viewTextApplied;
 
-    // 新建项目表单
-    int newProjectMode = 0; // 0 = 模板新建，1 = 直接编辑
-    char newTemplate[64] = "default";
-    char newName[64]     = "my-skin";
-    char themeRoot[512]  = "";
+    // 打开项目：文件浏览器（不再手输路径）
+    bool showOpenProject   = false;
+    int newProjectMode     = 0; // 0 = 模板新建，1 = 直接编辑
+    std::string browsePath;     // 当前浏览目录
+    std::string browseSelection;// 选中的目录
+    std::vector<DirEntry> browseEntries;
+    char browsePathInput[512] = "";
+    char newThemeName[64]     = "my-skin";
+    std::string openProjectError;
 };
 
 } // namespace designer

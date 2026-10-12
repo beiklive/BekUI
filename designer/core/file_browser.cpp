@@ -1,0 +1,137 @@
+#include "designer/core/file_browser.hpp"
+
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+namespace designer
+{
+
+std::string joinPath(const std::string& directory, const std::string& name)
+{
+    if (directory.empty())
+        return name;
+    if (directory.back() == '/' || directory.back() == '\\')
+        return directory + name;
+    return directory + "/" + name;
+}
+
+std::string parentDirectory(const std::string& path)
+{
+    std::string trimmed = path;
+    while (trimmed.size() > 1 && (trimmed.back() == '/' || trimmed.back() == '\\'))
+        trimmed.pop_back();
+
+    const size_t slash = trimmed.find_last_of("/\\");
+    if (slash == std::string::npos)
+        return trimmed;
+    if (slash == 0)
+        return trimmed.substr(0, 1); // 根目录
+    return trimmed.substr(0, slash);
+}
+
+std::string homeDirectory()
+{
+    if (const char* home = std::getenv("HOME"))
+        return home;
+    if (const char* profile = std::getenv("USERPROFILE"))
+        return profile;
+    return "/";
+}
+
+std::string findThemeManifest(const std::string& directory)
+{
+    const std::string candidate = joinPath(directory, "theme.json");
+    std::error_code code;
+    if (fs::is_regular_file(candidate, code))
+        return candidate;
+    return std::string();
+}
+
+bool listDirectory(const std::string& path, std::vector<DirEntry>& out, std::string& error)
+{
+    out.clear();
+
+    std::error_code code;
+    if (!fs::is_directory(path, code))
+    {
+        error = "不是一个目录：" + path;
+        return false;
+    }
+
+    for (const auto& entry : fs::directory_iterator(path, code))
+    {
+        const std::string name = entry.path().filename().string();
+        if (!name.empty() && name[0] == '.')
+            continue; // 隐藏项不展示（.git / .DS_Store 之类）
+
+        DirEntry item;
+        item.name        = name;
+        item.path        = entry.path().string();
+        item.isDirectory = entry.is_directory(code);
+        if (item.isDirectory)
+            item.hasThemeManifest = !findThemeManifest(item.path).empty();
+        out.push_back(item);
+    }
+
+    // 目录在前，各自按名字排序（不区分大小写）
+    std::sort(out.begin(), out.end(), [](const DirEntry& a, const DirEntry& b) {
+        if (a.isDirectory != b.isDirectory)
+            return a.isDirectory;
+        std::string left = a.name, right = b.name;
+        std::transform(left.begin(), left.end(), left.begin(), ::tolower);
+        std::transform(right.begin(), right.end(), right.begin(), ::tolower);
+        return left < right;
+    });
+    return true;
+}
+
+bool themeInfoFromManifest(const std::string& manifestPath, std::string& themeRoot,
+    std::string& themeName, std::string& error)
+{
+    themeRoot.clear();
+    themeName.clear();
+
+    std::string directory = manifestPath;
+    // 允许直接传主题目录：用 fs::path 取文件名判断，别手算长度
+    // （手算时把 "theme.json" 的 10 个字符写成了 11，结果永远不匹配 —— 测试抓到的）
+    if (fs::path(directory).filename() == "theme.json")
+    {
+        const size_t slash = directory.find_last_of("/\\");
+        if (slash == std::string::npos)
+        {
+            error = "路径里没有目录分隔符：" + manifestPath;
+            return false;
+        }
+        directory = directory.substr(0, slash);
+    }
+
+    // 必须真的有 theme.json
+    const std::string manifest = joinPath(directory, "theme.json");
+    std::error_code code;
+    if (!fs::is_regular_file(manifest, code))
+    {
+        error = "这里没有 theme.json：" + manifest;
+        return false;
+    }
+
+    const size_t slash = directory.find_last_of("/\\");
+    if (slash == std::string::npos)
+    {
+        error = "取不出主题名：" + directory;
+        return false;
+    }
+
+    themeName = directory.substr(slash + 1);
+    themeRoot = slash == 0 ? directory.substr(0, 1) : directory.substr(0, slash);
+    if (themeName.empty() || themeRoot.empty())
+    {
+        error = "主题名或主题根为空：" + directory;
+        return false;
+    }
+    return true;
+}
+
+} // namespace designer

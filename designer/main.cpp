@@ -149,6 +149,10 @@ int main(int argc, char** argv)
             window.applyTestDocEdit(spec.substr(0, equals), spec.substr(equals + 1));
     }
 
+    // 自查：BKLV_DESIGNER_OPEN_DIALOG=<目录> 直接打开"打开项目"浏览器
+    if (const char* browse = std::getenv("BKLV_DESIGNER_OPEN_DIALOG"))
+        window.openProjectDialogForTest(browse);
+
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
     if (std::getenv("BKLV_DESIGNER_SAVE_ALL") != nullptr)
         window.saveAllForTest();
