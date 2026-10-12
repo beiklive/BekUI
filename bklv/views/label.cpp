@@ -424,6 +424,8 @@ void Label::draw(ImDrawList* drawList, float x, float y, float width, float heig
             textX = x + width - textWidth;
 
         const float textY = y + (height - linePixelHeight) * 0.5f;
+
+        // 记下文字顶点段的起点：setFontScale 只缩放这一段（不能碰别的控件画的顶点）
         const int textVtxStart = drawList->VtxBuffer.Size;
         drawList->AddText(font, this->fontSize, ImVec2(textX, textY), color, this->truncated.c_str());
         this->scaleTextVertices(drawList, textVtxStart, textX, textY);
@@ -460,7 +462,6 @@ void Label::draw(ImDrawList* drawList, float x, float y, float width, float heig
         else if (this->horizontalAlign == HorizontalAlign::RIGHT)
             lineX = x + width - lineWidth;
 
-        const int textVtxStart = drawList->VtxBuffer.Size;
         drawList->AddText(font, this->fontSize, ImVec2(lineX, lineTop + linePixelHeight * static_cast<float>(i)),
             color, this->text.c_str() + line.begin, this->text.c_str() + line.end);
     }

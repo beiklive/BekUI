@@ -20,7 +20,8 @@
     "overlay": "弹层",
     "settings": "设置",
     "transform": "变换",
-    "scroll": "滚动"
+    "scroll": "滚动",
+    "pokedex": "图鉴"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -131,7 +132,8 @@
     "overlay_sub": "弹窗与文本输入",
     "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入",
     "transform_sub": "绘制期缩放 / 旋转 / 斜切 / 位移 + 多段缓动补间",
-    "scroll_sub": "独立滚动容器 + 焦点跟随滚动"
+    "scroll_sub": "独立滚动容器 + 焦点跟随滚动",
+    "pokedex_sub": "分段回收列表 + 详情页导航"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -223,5 +225,15 @@
     "row": "第 {} 行",
     "status_none": "还没点过",
     "status": "上次点击：第 {} 行"
+  },
+  "pokedex": {
+    "hint": "两段列表（初始伙伴 / 野生）。段头是注册的 section_header，条目按段用不同 cell 类型；按 A 进入详情，B 返回。精灵图是任天堂 IP，这里用类型色圆 + 名称首字自绘占位。",
+    "section_starters": "初始伙伴",
+    "section_wild": "野生",
+    "detail_hint": "按 B 返回列表",
+    "stat_hp": "体力",
+    "stat_atk": "攻击",
+    "stat_def": "防御",
+    "open": "打开"
   }
 }

@@ -29,18 +29,57 @@ class RecyclerCell : public Box
     // 子类如果拿它当普通流式控件用（而不是放进 RecyclerFrame），传 false。
     explicit RecyclerCell(bool absolutePosition = true);
 
-    // 这个 cell 当前承载的数据下标。
+    // 这个 cell 当前承载的数据：段号 + 段内下标。
+    // 单段列表里段号恒为 0，getIndex() 就是行号（老用法不变）。
     size_t getIndex() const { return this->index; }
+    size_t getSection() const { return this->section; }
 
     // 复用时由 RecyclerFrame 调用。
     virtual void prepareForReuse() { }
-    virtual void setIndex(size_t value) { this->index = value; }
+    virtual void setIndex(size_t value)
+    {
+        this->index   = value;
+        this->section = 0;
+    }
+    virtual void setSectionIndex(size_t sectionValue, size_t indexValue)
+    {
+        this->section = sectionValue;
+        this->index   = indexValue;
+    }
+
+    // 段头行绑定数据时会调它（默认什么都不做）。
+    // 用它而不是 dynamic_cast：Switch 构建带 -fno-rtti，项目里禁止 RTTI。
+    virtual void onSectionTitle(size_t section, const std::string& title)
+    {
+        (void)section;
+        (void)title;
+    }
 
     // 用户在子类里设置，用于区分不同类型的 cell。
     std::string reuseIdentifier;
 
   private:
-    size_t index = 0;
+    size_t index   = 0;
+    size_t section = 0;
+};
+
+// 分段表头。默认什么都不画，子类按需要塞内容（一般放一个 Label）。
+class RecyclerSectionHeader : public RecyclerCell
+{
+  public:
+    RecyclerSectionHeader();
+
+    size_t getSection() const { return this->headerSection; }
+
+    // 子类重写它来显示标题（基类只存下来）
+    void onSectionTitle(size_t section, const std::string& title) override;
+
+  protected:
+    std::string getSectionTitle() const { return this->headerTitle; }
+
+  private:
+    size_t headerSection = 0;
+    std::string headerTitle;
 };
 
 // 数据源：列表需要知道"有多少条"以及"第 i 条用哪种 cell"。
@@ -49,13 +88,42 @@ class RecyclerDataSource
   public:
     virtual ~RecyclerDataSource() { }
 
-    virtual size_t getItemCount() = 0;
+    // ---- 单段用法（老写法，段数默认是 1）----
+    virtual size_t getItemCount() { return 0; }
 
     // 返回第 index 条的复用标识；默认全部用 DEFAULT_CELL_ID。
     virtual std::string getItemIdentifier(size_t) { return DEFAULT_CELL_ID; }
 
     // 可选：返回这一行的固定高度；返回 <= 0 表示用全局 itemHeight。
     virtual float getItemHeight(size_t) { return 0.0f; }
+
+    // ---- 分段用法（对标 borealis 的 numberOfSections / getItemCount(section)）----
+    //
+    // 命名说明：borealis 用的是重载 `getItemCount()` / `getItemCount(section)`，
+    // 派生类只重写其中一个会把另一个**名字隐藏**掉（C++ 的名字隐藏规则），
+    // 属于典型的坑。这里改成 `*InSection` 后缀：不会隐藏，单段代码也一行不用改。
+    virtual size_t getSectionCount() { return 1; }
+
+    // 第 section 段有多少条。默认落到单段实现。
+    virtual size_t getItemCountInSection(size_t) { return this->getItemCount(); }
+
+    // 段标题。**返回空串表示这一段没有表头行**（不是画一个空表头）。
+    virtual std::string getSectionTitle(size_t) { return std::string(); }
+
+    // 第 section 段第 index 条的复用标识；默认落到单段实现。
+    virtual std::string getItemIdentifierInSection(size_t, size_t index)
+    {
+        return this->getItemIdentifier(index);
+    }
+
+    // 第 section 段第 index 条的高度；<= 0 表示用全局 itemHeight。
+    virtual float getItemHeightInSection(size_t, size_t index)
+    {
+        return this->getItemHeight(index);
+    }
+
+    // 段头高度；<= 0 表示用主题里的 metric.list.sectionHeaderHeight。
+    virtual float getSectionHeaderHeight(size_t) { return 0.0f; }
 
     // 复用标识的默认值。必须是 constexpr const char*，不能写成
     // `static inline const std::string`：std::string 需要动态初始化，
@@ -87,12 +155,39 @@ class RecyclerFrame : public ScrollingFrame
     // 视口上下各多预取几行。
     void setPreFetchLine(size_t lines) { this->preFetchLine = lines; }
 
+    // 段头用哪种 cell（不注册就不画段头）
+    void setSectionHeaderIdentifier(const std::string& identifier)
+    {
+        this->sectionHeaderIdentifier = identifier;
+    }
+
+    // ---- 行模型（表头行 + 条目行展开成一张平表，测试与调试用）----
+    enum class RowKind
+    {
+        HEADER,
+        ITEM,
+    };
+
+    size_t getRowCount() const { return this->rows.size(); }
+    RowKind getRowKind(size_t row) const;
+    size_t getRowSection(size_t row) const;
+    size_t getRowItemIndex(size_t row) const; // 段内下标
+    float getRowTop(size_t row) const;
+    float getRowHeight(size_t row) const;
+    float getTotalHeight() const { return this->totalHeight; }
+
     // 数据变了：重建内容尺寸并重新取数。
     void reloadData();
     void notifyDataChanged();
 
     // 当前正在显示的 cell 数量（调试用）。
     size_t getVisibleCellCount() const { return this->activeCells.size(); }
+
+    // 行号 -> 当前显示的 cell（调试与测试用；正常业务代码用不到）
+    const std::map<size_t, RecyclerCell*>& getActiveCellsForTest() const
+    {
+        return this->activeCells;
+    }
 
     size_t getReusableCellCount() const;
 
@@ -109,14 +204,29 @@ class RecyclerFrame : public ScrollingFrame
     void onContentSizeChanged() override { }
 
   private:
-    // 计算某一行的顶部位置（累计前面的行高）。
-    float getRowTop(size_t index) const;
+    // 展开后的行（表头行或条目行）
+    struct Row
+    {
+        RowKind kind = RowKind::ITEM;
+        size_t section = 0;
+        size_t itemIndex = 0; // 段内下标（表头行不用）
+        float top = 0.0f;
+        float height = 0.0f;
+    };
 
     // 二分找第一个 top 大于等于 y 的行号。
     size_t findRowAtOffset(float y) const;
 
-    // 把 cell 摆到第 index 行的位置。
-    void layoutCell(RecyclerCell* cell, size_t index);
+    // 把 cell 摆到第 row 行的位置。
+    void layoutCell(RecyclerCell* cell, size_t row);
+
+    // 取第 row 行该用哪种 cell
+    std::string rowIdentifier(size_t row) const;
+
+    // 绑定数据（表头/条目走不同接口）
+    void bindCell(RecyclerCell* cell, size_t row) const;
+
+    float getSectionHeaderHeight(size_t section) const;
 
     // 取出 / 放回对象池。
     void recycleCell(size_t index);
@@ -128,8 +238,9 @@ class RecyclerFrame : public ScrollingFrame
 
     float itemHeight = 60.0f;
     size_t preFetchLine = 1;
+    std::string sectionHeaderIdentifier = "section_header";
 
-    // index -> cell（当前显示的）
+    // row -> cell（当前显示的，行号是展开后的平表下标）
     std::map<size_t, RecyclerCell*> activeCells;
 
     // reuseIdentifier -> 空闲 cell
@@ -138,8 +249,8 @@ class RecyclerFrame : public ScrollingFrame
     // 注册的构造函数
     std::map<std::string, std::function<RecyclerCell*()>> cellAllocations;
 
-    // 每行的顶部偏移与总高度（行高不固定时用）
-    std::vector<float> rowOffsets;
+    // 展开后的行（表头 + 条目），行高不固定时靠它算偏移
+    std::vector<Row> rows;
     float totalHeight = 0.0f;
 
     size_t createdCellCount = 0;

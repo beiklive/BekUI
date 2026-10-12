@@ -46,6 +46,15 @@ bklv::Box* buildNavPage();
 // 8. 弹层与输入：Dialog / EditTextDialog
 bklv::Box* buildOverlayPage();
 
+// 12. 图鉴：分段回收列表 + 详情页导航（对标 borealis 的 Pokedex / RecyclingListTab）
+bklv::Box* buildPokedexPage();
+// 详情页（段号 + 段内下标）；填到内容栈的上一层
+bklv::View* buildPokedexDetail(size_t section, size_t index);
+
+// 详情页目标外壳：图鉴把详情推到它的内容栈上（B 返回）
+void setDetailShell(bklv::AppletFrame* shell);
+bklv::AppletFrame* getDetailShell();
+
 // 11. 滚动：独立滚动容器 + 焦点跟随滚动（对标 borealis 的 Scroll test）
 bklv::Box* buildScrollPage();
 

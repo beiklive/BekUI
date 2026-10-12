@@ -256,7 +256,12 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         const ImU32 stroke      = this->appearance.getColor(index, AppearanceProp::STROKE);
         const ImU32 textColor   = this->appearance.getColor(index, AppearanceProp::TEXT_COLOR);
         const float strokeWidth = this->appearance.getNumber(index, AppearanceProp::STROKE_WIDTH);
-        const float radius      = this->appearance.getNumber(index, AppearanceProp::RADIUS);
+        // 圆角优先级：**代码显式设的 > 外观里的 > 控件自己的（0 时才用）
+        // 以前只读外观，代码里的 setCornerRadius(60) 完全不生效
+        // （想画圆形头像，画出来是圆角方块 —— 实测踩过）。
+        float radius = this->appearance.getNumber(index, AppearanceProp::RADIUS);
+        if (this->isCornerRadiusExplicit() || radius <= 0.0f)
+            radius = this->getCornerRadius();
         const float opacity     = this->appearance.getNumber(index, AppearanceProp::OPACITY);
         const float fontSize    = this->appearance.getNumber(index, AppearanceProp::FONT_SIZE);
 

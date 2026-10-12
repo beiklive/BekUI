@@ -1,4 +1,5 @@
 #include "bklv/views/progress_spinner.hpp"
+#include "bklv/core/time.hpp"
 
 #include <cmath>
 
@@ -15,7 +16,8 @@ ProgressSpinner::ProgressSpinner()
 
 void ProgressSpinner::update()
 {
-    const float deltaTime = ImGui::GetIO().DeltaTime;
+    // 同上：无头安全的时间源
+    const float deltaTime = getFrameDeltaSeconds();
     if (this->duration <= 0.0f)
         return;
 

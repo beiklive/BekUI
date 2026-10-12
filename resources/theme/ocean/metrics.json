@@ -92,7 +92,8 @@
     "padding": 16
   },
   "list": {
-    "itemHeight": 64
+    "itemHeight": 64,
+    "sectionHeaderHeight": 36
   },
   "hintsBar": {
     "paddingX": 25
@@ -157,5 +158,11 @@
   },
   "scroll": {
     "demoHeight": 220
+  },
+  "pokedex": {
+    "cellHeight": 72,
+    "detailAvatarSize": 120,
+    "statBarHeight": 10,
+    "statRowGap": 6
   }
 }

@@ -241,6 +241,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   圆角 `metric.highlight.radius`（6），并且**向外扩 2.5px**（inset 负数）。
   顺序是：自己的底 → hlBg → 内容 → hlGlow → hlBorder（和 borealis 的
   "高亮底画在内容之前、描边画在内容之后"一致）。
+- **显式设置优先于主题/外观**（`setCornerRadius(r, explicit=true)`）：
+  代码里显式设过的值，外观 JSON 不能覆盖它；外观套用一律走 `explicit=false`。
+  Label 的 `setFontSizeExplicit` / `setTextColorExplicit` 是同一套约定的老成员。
+  踩过的坑：外观 JSON 里写了 `radius`，代码里 `setCornerRadius(60)` 就完全不起作用
+  （想画圆形头像，画出来是圆角方块）。
+- **`update()` 路径不许读 `ImGui::GetIO()`**：无窗口（测试）时没有 ImGui 上下文会直接空指针。
+  时间统一用 `core/time.hpp` 的 `getFrameDeltaSeconds()`；确实需要鼠标状态的地方
+  用 `ImGui::GetCurrentContext() != nullptr` 判一下再取（`ScrollingFrame`/`HScrollingFrame` 就是这么做的）。
+  这个坑在 `Animatable`、`ScrollingFrame`、`ProgressSpinner` 上先后踩过三次。
+- **回收列表可以分段**（`views/recycler.*`）：单段只重写 `getItemCount()`；
+  分段重写 `getSectionCount()` + `getItemCountInSection()` / `getSectionTitle()` /
+  `getItemIdentifierInSection()`。**段标题返回空串表示这一段不占表头行**。
+  接口刻意不叫 `getItemCount(section)`（borealis 的重载写法）——派生类只重写一个
+  会把另一个名字隐藏掉，属于典型 C++ 坑。段头 cell 继承 `RecyclerSectionHeader`，
+  标题通过虚函数 `onSectionTitle` 下发（Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
 - **控件的样式全在 JSON 里**（`resources/theme/<主题>/widgets/<控件>.json`）：
   一份外观由三段组成——
   ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/

@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "bklv/core/logger.hpp"
+#include "bklv/core/theme_data.hpp"
 
 namespace bklv
 {
@@ -24,6 +25,20 @@ RecyclerCell::RecyclerCell(bool absolutePosition)
     // 那种情况要传 false，否则所有格子会叠在原点（这个坑实测踩过）。
     if (absolutePosition)
         this->setPositionType(PositionType::ABSOLUTE);
+}
+
+RecyclerSectionHeader::RecyclerSectionHeader()
+    : RecyclerCell(false)
+{
+    // 段头是普通流式控件（由 RecyclerFrame 用 translation 摆位置），
+    // 里面自己放内容；基类只管把标题存下来。
+    this->setPositionType(PositionType::RELATIVE);
+}
+
+void RecyclerSectionHeader::onSectionTitle(size_t section, const std::string& title)
+{
+    this->headerSection = section;
+    this->headerTitle   = title;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,67 +151,146 @@ void RecyclerFrame::notifyDataChanged()
 
 void RecyclerFrame::buildRowOffsets()
 {
-    this->rowOffsets.clear();
+    this->rows.clear();
     this->totalHeight = 0.0f;
 
     if (this->dataSource == nullptr || this->contentBox == nullptr)
         return;
 
-    const size_t count = this->dataSource->getItemCount();
-    this->rowOffsets.reserve(count + 1);
+    const size_t sections = std::max<size_t>(1, this->dataSource->getSectionCount());
 
-    for (size_t i = 0; i < count; ++i)
+    for (size_t section = 0; section < sections; ++section)
     {
-        this->rowOffsets.push_back(this->totalHeight);
+        // 段头：标题为空就不占行（不是画一个空表头）
+        const std::string title = this->dataSource->getSectionTitle(section);
+        if (!title.empty())
+        {
+            Row header;
+            header.kind    = RowKind::HEADER;
+            header.section = section;
+            header.top     = this->totalHeight;
+            header.height  = this->getSectionHeaderHeight(section);
+            this->totalHeight += header.height;
+            this->rows.push_back(header);
+        }
 
-        float height = this->dataSource->getItemHeight(i);
-        if (height <= 0.0f)
-            height = this->itemHeight;
+        const size_t count = sections > 1 ? this->dataSource->getItemCountInSection(section)
+                                          : this->dataSource->getItemCount();
 
-        this->totalHeight += height;
+        for (size_t i = 0; i < count; ++i)
+        {
+            Row row;
+            row.kind      = RowKind::ITEM;
+            row.section   = section;
+            row.itemIndex = i;
+            row.top       = this->totalHeight;
+
+            float height = this->dataSource->getItemHeightInSection(section, i);
+            if (height <= 0.0f)
+                height = this->itemHeight;
+
+            row.height = height;
+            this->totalHeight += height;
+            this->rows.push_back(row);
+        }
     }
-
-    // 末尾补一个哨兵，方便二分与"最后一行底部"计算
-    this->rowOffsets.push_back(this->totalHeight);
 }
 
-float RecyclerFrame::getRowTop(size_t index) const
+float RecyclerFrame::getSectionHeaderHeight(size_t section) const
 {
-    if (index >= this->rowOffsets.size() - 1)
+    const float fromSource = this->dataSource->getSectionHeaderHeight(section);
+    if (fromSource > 0.0f)
+        return fromSource;
+
+    return getTheme().number("metric.list.sectionHeaderHeight", 36.0f);
+}
+
+RecyclerFrame::RowKind RecyclerFrame::getRowKind(size_t row) const
+{
+    return row < this->rows.size() ? this->rows[row].kind : RowKind::ITEM;
+}
+
+size_t RecyclerFrame::getRowSection(size_t row) const
+{
+    return row < this->rows.size() ? this->rows[row].section : 0;
+}
+
+size_t RecyclerFrame::getRowItemIndex(size_t row) const
+{
+    return row < this->rows.size() ? this->rows[row].itemIndex : 0;
+}
+
+float RecyclerFrame::getRowHeight(size_t row) const
+{
+    return row < this->rows.size() ? this->rows[row].height : 0.0f;
+}
+
+std::string RecyclerFrame::rowIdentifier(size_t row) const
+{
+    if (row >= this->rows.size())
+        return RecyclerDataSource::DEFAULT_CELL_ID;
+
+    const Row& entry = this->rows[row];
+    if (entry.kind == RowKind::HEADER)
+        return this->sectionHeaderIdentifier;
+
+    return this->dataSource->getItemIdentifierInSection(entry.section, entry.itemIndex);
+}
+
+void RecyclerFrame::bindCell(RecyclerCell* cell, size_t row) const
+{
+    if (cell == nullptr || row >= this->rows.size())
+        return;
+
+    const Row& entry = this->rows[row];
+
+    if (entry.kind == RowKind::HEADER)
+    {
+        cell->setIndex(entry.section);
+        // 虚函数钩子：段头 cell 自己决定怎么显示（无 RTTI）
+        cell->onSectionTitle(entry.section, this->dataSource->getSectionTitle(entry.section));
+        return;
+    }
+
+    cell->setSectionIndex(entry.section, entry.itemIndex);
+}
+
+float RecyclerFrame::getRowTop(size_t row) const
+{
+    if (row >= this->rows.size())
         return this->totalHeight;
-    return this->rowOffsets[index];
+
+    return this->rows[row].top;
 }
 
 size_t RecyclerFrame::findRowAtOffset(float y) const
 {
-    if (this->rowOffsets.size() < 2)
+    if (this->rows.empty())
         return 0;
 
-    // rowOffsets 单调递增，直接二分。
-    auto it = std::upper_bound(this->rowOffsets.begin(), this->rowOffsets.end(), y);
-    if (it == this->rowOffsets.begin())
+    // rows 按 top 单调递增，直接二分。
+    auto it = std::upper_bound(this->rows.begin(), this->rows.end(), y,
+        [](float value, const Row& row) { return value < row.top; });
+    if (it == this->rows.begin())
         return 0;
 
-    return static_cast<size_t>(std::distance(this->rowOffsets.begin(), it) - 1);
+    return static_cast<size_t>(std::distance(this->rows.begin(), it) - 1);
 }
 
 // ---------------------------------------------------------------------------
 // cell 摆放与回收
 // ---------------------------------------------------------------------------
 
-void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t index)
+void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t row)
 {
-    if (cell == nullptr)
+    if (cell == nullptr || row >= this->rows.size())
         return;
 
     // 宽度跟随可视宽度，纵向位置用 translation 直接摆（绝对定位已跳过 Yoga 布局）。
     cell->setWidth(this->getWidth());
 
-    const float top    = this->getRowTop(index);
-    const float height = this->getRowTop(index + 1) - top;
-
-    cell->setHeight(height);
-    cell->setTranslation(0.0f, top);
+    cell->setHeight(this->rows[row].height);
+    cell->setTranslation(0.0f, this->rows[row].top);
 }
 
 void RecyclerFrame::recycleCell(size_t index)
@@ -238,7 +332,7 @@ void RecyclerFrame::update()
     if (this->dataSource == nullptr || this->contentBox == nullptr)
         return;
 
-    const size_t count = this->dataSource->getItemCount();
+    const size_t count = this->rows.size();
     if (count == 0)
     {
         std::vector<size_t> all;
@@ -252,7 +346,11 @@ void RecyclerFrame::update()
 
     const float offset   = this->getContentOffsetY();
     const float viewport = this->getHeight();
-    const float preFetch = this->itemHeight * static_cast<float>(this->preFetchLine);
+    // 预取量按行高估（固定行高时和以前一样；不定行高时是个保守估计）
+    float averageHeight = this->itemHeight;
+    if (count > 0)
+        averageHeight = this->totalHeight / static_cast<float>(count);
+    const float preFetch = averageHeight * static_cast<float>(this->preFetchLine);
 
     const size_t first = this->findRowAtOffset(std::max(0.0f, offset - preFetch));
     const size_t lastRow = this->findRowAtOffset(offset + viewport + preFetch);
@@ -293,7 +391,7 @@ void RecyclerFrame::update()
             continue;
         }
 
-        const std::string identifier = this->dataSource->getItemIdentifier(index);
+        const std::string identifier = this->rowIdentifier(index);
 
         // 池子里有就直接复用；没有则受"单帧新建上限"限制，剩下的下一帧补。
         const bool reusable = this->getReusableCellCount() > 0;
@@ -307,7 +405,7 @@ void RecyclerFrame::update()
         if (!reusable)
             created++;
 
-        cell->setIndex(index);
+        this->bindCell(cell, index);
         this->layoutCell(cell, index);
         this->contentBox->addView(cell, this->contentBox->getChildrenCount());
         this->activeCells[index] = cell;

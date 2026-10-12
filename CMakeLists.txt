@@ -154,6 +154,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_theme.cpp
     app/pages/page_nav.cpp
     app/pages/page_overlay.cpp
+    app/pages/page_pokedex.cpp
     app/pages/page_scroll.cpp
     app/pages/page_settings.cpp
     app/pages/page_transform.cpp

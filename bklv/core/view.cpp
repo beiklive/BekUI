@@ -438,9 +438,10 @@ void View::setBorderThickness(float thickness)
     this->borderThickness = thickness;
 }
 
-void View::setCornerRadius(float radius)
+void View::setCornerRadius(float radius, bool explicitValue)
 {
-    this->cornerRadius = radius;
+    this->cornerRadius         = radius;
+    this->cornerRadiusExplicit = explicitValue;
 }
 
 void View::setAlpha(float alpha)

@@ -48,7 +48,6 @@ class Notification : public AppearanceView
     float duration = 3.0f;
     float remaining = 0.0f;
     bool dismissed = false;
-    bool hidden    = false;
 };
 
 class NotificationManager : public Box

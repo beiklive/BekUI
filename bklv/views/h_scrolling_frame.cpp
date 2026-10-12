@@ -1,4 +1,5 @@
 #include "bklv/views/h_scrolling_frame.hpp"
+#include "bklv/core/time.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -77,8 +78,9 @@ void HScrollingFrame::update()
     if (this->contentView == nullptr)
         return;
 
-    const ImGuiIO& io     = ImGui::GetIO();
-    const float deltaTime = std::clamp(io.DeltaTime, 0.0001f, 0.1f);
+    // 同上：时间用框架的（无窗口也安全），鼠标输入没有上下文就跳过
+    const float deltaTime = std::clamp(getFrameDeltaSeconds(), 0.0001f, 0.1f);
+    const ImGuiIO* io = ImGui::GetCurrentContext() != nullptr ? &ImGui::GetIO() : nullptr;
     const float range     = this->getScrollRange();
 
     if (this->animating)
@@ -97,13 +99,13 @@ void HScrollingFrame::update()
     }
 
     // 横向用 shift + 滚轮，避免和纵向滚动抢输入。
-    if (this->scrollingEnabled && std::fabs(io.MouseWheel) > 0.0f && io.KeyShift)
+    if (io != nullptr && this->scrollingEnabled && std::fabs(io->MouseWheel) > 0.0f && io->KeyShift)
     {
         const Rect frame = this->getFrame();
-        if (io.MousePos.x >= frame.x && io.MousePos.x <= frame.getMaxX() && io.MousePos.y >= frame.y
-            && io.MousePos.y <= frame.getMaxY())
+        if (io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX() && io->MousePos.y >= frame.y
+            && io->MousePos.y <= frame.getMaxY())
         {
-            this->contentOffsetX -= io.MouseWheel * 60.0f;
+            this->contentOffsetX -= io->MouseWheel * 60.0f;
             this->animating = false;
             this->velocity  = 0.0f;
         }
@@ -111,18 +113,18 @@ void HScrollingFrame::update()
 
     if (this->scrollingEnabled)
     {
-        const bool mouseDown = io.MouseDown[0];
+        const bool mouseDown = io->MouseDown[0];
 
         if (mouseDown && !this->dragging)
         {
             const Rect frame = this->getFrame();
-            const bool inside = io.MousePos.x >= frame.x && io.MousePos.x <= frame.getMaxX()
-                && io.MousePos.y >= frame.y && io.MousePos.y <= frame.getMaxY();
+            const bool inside = io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX()
+                && io->MousePos.y >= frame.y && io->MousePos.y <= frame.getMaxY();
 
             if (inside && range > 0.0f)
             {
                 this->dragging        = true;
-                this->dragStartX      = io.MousePos.x;
+                this->dragStartX      = io->MousePos.x;
                 this->dragStartOffset = this->contentOffsetX;
                 this->animating       = false;
                 this->velocity        = 0.0f;
@@ -130,9 +132,9 @@ void HScrollingFrame::update()
         }
         else if (mouseDown && this->dragging)
         {
-            this->contentOffsetX = this->dragStartOffset - (io.MousePos.x - this->dragStartX);
+            this->contentOffsetX = this->dragStartOffset - (io->MousePos.x - this->dragStartX);
 
-            const float instantaneous = -io.MouseDelta.x / deltaTime;
+            const float instantaneous = -io->MouseDelta.x / deltaTime;
             this->velocity            = this->velocity * 0.7f + instantaneous * 0.3f;
         }
         else if (!mouseDown && this->dragging)

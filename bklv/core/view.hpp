@@ -191,7 +191,11 @@ class View
     void setBorderThickness(float thickness);
     float getBorderThickness() const { return this->borderThickness; }
 
-    void setCornerRadius(float radius);
+    // explicit = true 表示这是调用方明确要的值，主题/外观不再覆盖它
+    // （和 Label 的 setFontSizeExplicit 同一套约定）。
+    // 外观 JSON 套用时会用 explicit=false，所以"主题先来、代码后改"总是代码赢。
+    void setCornerRadius(float radius, bool explicitValue = true);
+    bool isCornerRadiusExplicit() const { return this->cornerRadiusExplicit; }
     float getCornerRadius() const { return this->cornerRadius; }
 
     void setAlpha(float alpha);
@@ -391,6 +395,7 @@ class View
     ImU32 borderColor     = 0;
     float borderThickness = 0.0f;
     float cornerRadius    = 0.0f;
+    bool cornerRadiusExplicit = false;
     float alpha           = 1.0f;
     bool detached         = false;
     unsigned int fontGeneration = 0; // 上一次布局所用的字体版本

@@ -1,4 +1,5 @@
 #include "bklv/views/scrolling_frame.hpp"
+#include "bklv/core/time.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -176,8 +177,11 @@ void ScrollingFrame::update()
     // 先更新子节点（它们可能自己也有动画）。
     Box::update();
 
-    const ImGuiIO& io = ImGui::GetIO();
-    const float deltaTime = std::clamp(io.DeltaTime, 0.0001f, 0.1f);
+    // 用框架自己的每帧时间，不要读 ImGui::GetIO()：无窗口（测试）时没有上下文会崩
+    const float deltaTime = std::clamp(getFrameDeltaSeconds(), 0.0001f, 0.1f);
+
+    // 鼠标/触控板输入要 ImGui 上下文；无窗口时（测试）跳过这一段，只做缓动与回收
+    const ImGuiIO* io = ImGui::GetCurrentContext() != nullptr ? &ImGui::GetIO() : nullptr;
 
     const float range = this->getScrollRange();
 
@@ -198,33 +202,33 @@ void ScrollingFrame::update()
     }
 
     // ---- 2. 鼠标滚轮 ----
-    if (this->scrollingEnabled && std::fabs(io.MouseWheel) > 0.0f)
+    if (io != nullptr && this->scrollingEnabled && std::fabs(io->MouseWheel) > 0.0f)
     {
         const Rect frame = this->getFrame();
-        if (io.MousePos.x >= frame.x && io.MousePos.x <= frame.getMaxX() && io.MousePos.y >= frame.y
-            && io.MousePos.y <= frame.getMaxY())
+        if (io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX() && io->MousePos.y >= frame.y
+            && io->MousePos.y <= frame.getMaxY())
         {
-            this->contentOffsetY -= io.MouseWheel * 60.0f;
+            this->contentOffsetY -= io->MouseWheel * 60.0f;
             this->animating = false;
             this->velocity  = 0.0f;
         }
     }
 
     // ---- 3. 拖拽 ----
-    if (this->scrollingEnabled)
+    if (io != nullptr && this->scrollingEnabled)
     {
-        const bool mouseDown = io.MouseDown[0];
+        const bool mouseDown = io->MouseDown[0];
 
         if (mouseDown && !this->dragging)
         {
             const Rect frame = this->getFrame();
-            const bool inside = io.MousePos.x >= frame.x && io.MousePos.x <= frame.getMaxX()
-                && io.MousePos.y >= frame.y && io.MousePos.y <= frame.getMaxY();
+            const bool inside = io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX()
+                && io->MousePos.y >= frame.y && io->MousePos.y <= frame.getMaxY();
 
             if (inside && range > 0.0f)
             {
                 this->dragging        = true;
-                this->dragStartY      = io.MousePos.y;
+                this->dragStartY      = io->MousePos.y;
                 this->dragStartOffset = this->contentOffsetY;
                 this->animating       = false;
                 this->velocity        = 0.0f;
@@ -233,10 +237,10 @@ void ScrollingFrame::update()
         else if (mouseDown && this->dragging)
         {
             // 只认纵向拖动，鼠标左右移动不算滚动。
-            this->contentOffsetY = this->dragStartOffset - (io.MousePos.y - this->dragStartY);
+            this->contentOffsetY = this->dragStartOffset - (io->MousePos.y - this->dragStartY);
 
             // 用帧间位移估算松手速度，供惯性使用。
-            const float instantaneous = -io.MouseDelta.y / deltaTime;
+            const float instantaneous = -io->MouseDelta.y / deltaTime;
             this->velocity = this->velocity * 0.7f + instantaneous * 0.3f;
         }
         else if (!mouseDown && this->dragging)

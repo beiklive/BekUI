@@ -20,7 +20,8 @@
     "overlay": "Overlays",
     "settings": "Settings",
     "transform": "Transform",
-    "scroll": "Scroll"
+    "scroll": "Scroll",
+    "pokedex": "Pokédex"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -131,7 +132,8 @@
     "overlay_sub": "Dialogs and text input",
     "settings_sub": "List cells: detail / bool / radio / selector / slider / input",
     "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens",
-    "scroll_sub": "Nested scroller + scroll-to-focus"
+    "scroll_sub": "Nested scroller + scroll-to-focus",
+    "pokedex_sub": "Sectioned recycler + detail navigation"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -223,5 +225,15 @@
     "row": "Row {}",
     "status_none": "nothing clicked yet",
     "status": "last click: row {}"
+  },
+  "pokedex": {
+    "hint": "Two sections. Headers use a registered section_header cell; each section has its own cell type. Press A for detail, B to go back. Sprites are Nintendo IP, so we self-draw a type-colored placeholder.",
+    "section_starters": "Starters",
+    "section_wild": "Wild",
+    "detail_hint": "Press B to go back",
+    "stat_hp": "HP",
+    "stat_atk": "ATK",
+    "stat_def": "DEF",
+    "open": "Open"
   }
 }

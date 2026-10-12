@@ -777,7 +777,7 @@ void applyAppearanceBox(Box* view, const AppearanceBox& box)
     if (box.hasBackground)
         view->setBackgroundColor(box.background);
     if (box.hasCornerRadius)
-        view->setCornerRadius(box.cornerRadius);
+        view->setCornerRadius(box.cornerRadius, false); // 主题值，不算"显式"，代码可以覆盖
     if (box.hasBorderThickness)
         view->setBorderThickness(box.borderThickness);
     if (box.hasBorderColor)

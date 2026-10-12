@@ -76,5 +76,11 @@
   "account": {
     "avatar": "#198ac6",
     "initial": "#ffffff"
+  },
+  "pokedex": {
+    "typeGrass": "#3ec46d",
+    "typeFire": "#ff7043",
+    "typeWater": "#4aa3ff",
+    "statTrack": "#2a2d34"
   }
 }

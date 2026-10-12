@@ -180,7 +180,10 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [ ] 小遗留：account 头像圆心里"昵称首字"的视觉位置还要调（功能与测试都已通过）
 - [x] demo 页面覆盖：控件页补齐 borealis components tab（HScroll / 5 种按钮 / 滑块实时百分比 /
       标签对齐 / 图片 5 种缩放）、文本页补交互式 Text test、新增滚动页（Scroll test）
-- [ ] demo 页面覆盖（剩余）：Pokedex 页（两段 RecyclerFrame + 详情页导航）
+- [x] 回收器分段（`getSectionCount` / `*InSection` / 段头行；老的单段写法完全兼容）
+- [x] Pokedex 页（两段 + 段头 + 每段不同 cell + 详情页入内容栈）→ **borealis demo 的 7 个 tab 全部覆盖**
+- [ ] demo 页面覆盖（剩余）：borealis 里被注释掉的 hos_layout / misc_layouts / misc_components
+      （可选；popups 一类已由「弹层」页覆盖）
 - [x] debug_layer（`views/debug_layer.*` + `App::setDebugLayerEnabled`；收集边界是纯函数；
       设置页有 wireframe 开关）
 - [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +

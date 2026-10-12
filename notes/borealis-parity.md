@@ -92,7 +92,7 @@
 | Transform test（translate/scale/skew/rotate/fontScale + 多段缓动） | demo「变换」页 | ✅ |
 | Text test（宽高/对齐/singleLine 实时调） | demo「文本」页 | ✅ | 用 SliderCell/SelectorCell/BooleanCell 实时改宽高、水平/垂直对齐、单行截断（对标 borealis 的 TextTestTab） |
 | Scroll test | demo「滚动」页 | ✅ | 独立 ScrollingFrame + 20 行按钮验证"焦点走到哪外层滚到哪" |
-| Pokedex（RecyclerFrame 两段 + 详情页） | 列表页（单段 Recycler） | ❌ 待补：**borealis 的 RecyclerDataSource 有 `numberOfSections` / 分段表头 / 每段自己的 cell 类型**，我们的回收器是扁平的 → 这是控件层缺口，补完再拼 Pokedex 页 |
+| Pokedex（RecyclerFrame 两段 + 详情页） | demo「图鉴」页 | ✅ 改良 | 回收器补上分段：`getSectionCount` / `getItemCountInSection` / `getSectionTitle` / `getItemIdentifierInSection` / 表头行。**接口用 `*InSection` 后缀**——borealis 是重载 `getItemCount()`/`getItemCount(section)`，派生类只重写一个会把另一个名字隐藏掉（C++ 名字隐藏），我们避开这个坑。精灵图是任天堂 IP，用类型色圆 + 名称首字自绘占位，数据自造 |
 | Settings（6 种 Cell 全家桶 + 运行时开关） | demo「设置」页 | ✅ |
 | About | — | ❌ 待补 |
 | （被注释的）Popups / notifications / dialogs | 弹层页（部分） | ⚠️ 待补 Notification |
@@ -134,6 +134,8 @@
 | 开关类图标在某些外观下不可见 | 自绘层没给尺寸时几何会用到整块矩形 | 几何取主题 metric + 右对齐（同 Cell 的开关） |
 | 变换里的 NaN 会让控件**静默消失** | demo 在布局算完前用 `getWidth()` 换算位移，NaN 传进了变换，整段顶点变 NaN | 库侧：`View::frame` 检测到 NaN/Inf 就报警并跳过变换（宁可"没生效"，也不要看不见）；应用侧：换算前对尺寸做 isfinite 兜底 |
 | **关窗口时崩溃（SIGSEGV）** | 音频设备归 SDL 管，但 `App::~App` 的 `audio::shutdown()` 跑在 `PlatformSDL3` 析构（内部 `SDL_Quit()`）**之后**，`SDL_DestroyAudioStream` 拿到已拆的 SDL | 平台析构里在 `SDL_Quit()` **之前**调 `audio::shutdown()`（App 里那次成空操作）；实测退出码 0 |
+| **代码里 `setCornerRadius()` 不生效** | 绘制只读外观层的 `radius`，外观 JSON 写了 `radius: metric.radius.md` 就把代码值压住 → 想画圆形头像画成圆角方块 | 按项目既有约定"显式设置优先于主题"：`setCornerRadius(r, explicit=true)`，外观套用走 `explicit=false`；显式值优先于外观层半径 |
+| **`ScrollingFrame::update()` 无头必崩** | 直接读 `ImGui::GetIO().DeltaTime`，无窗口（测试）时没有上下文 → 空指针 | 时间改用框架的 `getFrameDeltaSeconds()`（与 `Animatable`/`KeyRepeater` 同一份时间源）；鼠标输入在无上下文时整体跳过。顺带让回收器的回收行为可以被测试覆盖 |
 | 主题缺键静默画成品红 | `ThemeData::color()/number()` 缺键只记 **DEBUG** 日志，默认看不见 | 改成 **WARNING 且同 key 只报一次**（外观 JSON 的引用仍然是编译失败）；加上后立刻抓出本轮 3 个缺键（`color.surface.hover` 等） |
 | 改完代码好像没生效 | 21 个目标各挂一条 POST_BUILD `copy_directory` 往同一个 `dist/resources` 写，`-j` 并行时互相踩 → 间歇性 `Error 2`，失败后二进制还是旧的 | 改成**按输出目录只复制一次**（独立目标 + 各目标依赖它）；实测连续 3 次 `-j 8` 无失败 |
 | 通知浮层看不见 | 构造时把 `hidden` 与 `shown` 两个外观状态**同时**激活，`hidden` 的透明度 0 把 `shown` 盖掉 | 状态要互斥地切：先撤旧的再开新的（和 Dialog 的 open/closed 一个套路） |
@@ -169,6 +171,15 @@
 scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_components 在 borealis
 里是注释掉的）。已覆盖：控件(=components)、布局、变换、文本(=text)、滚动(=scroll)、
 设置(=settings)，另外多了主题/JSON/导航/弹层四个页面（弹层即 borealis 注释掉的 popups 一类）。
+
+### 回收器分段（本轮）
+
+| 项 | 说明 |
+|---|---|
+| 行模型 | 表头行 + 条目行展开成一张平表（`Row{kind, section, itemIndex, top, height}`），可视区取数、回收、定位全部按行号走 |
+| 段头 | `getSectionTitle(section)` **返回空串 = 不占表头行**；段头 cell 用 `RecyclerSectionHeader`，标题经**虚函数** `onSectionTitle` 下发（不用 RTTI，Switch 构建带 `-fno-rtti`） |
+| 兼容 | 单段老写法（只重写 `getItemCount()`）一行都不用改 |
+| 单元 | `RecyclerCell::setSectionIndex(section, index)`，`getSection()/getIndex()`；`getIndex()` 在单段时仍是行号 |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

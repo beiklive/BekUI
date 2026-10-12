@@ -111,11 +111,13 @@ DemoApp::DemoApp()
     this->addPage(getStr("tab/list"), getStr("page/list_sub"), listPage.view, true);
     this->mainList = listPage.list;
 
+    this->addPage(getStr("tab/pokedex"), getStr("page/pokedex_sub"), buildPokedexPage(), true);
     this->addPage(getStr("tab/json"), getStr("page/json_sub"), buildJsonPage(), false);
     this->addPage(getStr("tab/nav"), getStr("page/nav_sub"), buildNavPage(), false);
     this->addPage(getStr("tab/overlay"), getStr("page/overlay_sub"), buildOverlayPage(), false);
     this->addPage(getStr("tab/scroll"), getStr("page/scroll_sub"), buildScrollPage(), false);
     this->addPage(getStr("tab/transform"), getStr("page/transform_sub"), buildTransformPage(), false);
+    setDetailShell(this->root);
     setSettingsShell(this->root);
     this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);
 
