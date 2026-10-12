@@ -36,6 +36,11 @@ std::string parentDirectory(const std::string& path);
 // 用户的 home 目录（浏览器的起点）
 std::string homeDirectory();
 
+// 按修改时间从新到旧列出目录里的文件（只挑 .json），最多 count 个。
+// 用来做"最近修改"快捷入口：改样式时反复打开的那几个文件不必每次翻列表。
+bool listFilesByMtime(const std::string& directory, size_t count,
+    std::vector<DirEntry>& out, std::string& error);
+
 // 把路径拼成 `a/b`（去掉多余的斜杠）
 std::string joinPath(const std::string& directory, const std::string& name);
 

@@ -88,6 +88,47 @@ bool listDirectory(const std::string& path, std::vector<DirEntry>& out, std::str
     return true;
 }
 
+bool listFilesByMtime(const std::string& directory, size_t count,
+    std::vector<DirEntry>& out, std::string& error)
+{
+    out.clear();
+
+    std::error_code code;
+    if (!fs::is_directory(directory, code))
+    {
+        error = "不是一个目录：" + directory;
+        return false;
+    }
+
+    std::vector<std::pair<fs::file_time_type, DirEntry>> found;
+    for (const auto& entry : fs::directory_iterator(directory, code))
+    {
+        if (!entry.is_regular_file(code))
+            continue;
+        if (entry.path().extension() != ".json")
+            continue;
+
+        DirEntry item;
+        item.name        = entry.path().filename().string();
+        item.path        = entry.path().string();
+        item.isDirectory = false;
+        found.emplace_back(fs::last_write_time(entry.path(), code), item);
+    }
+
+    // 新的在前；时间相同按名字排，保证结果稳定（测试要用）
+    std::sort(found.begin(), found.end(),
+        [](const std::pair<fs::file_time_type, DirEntry>& a,
+            const std::pair<fs::file_time_type, DirEntry>& b) {
+            if (a.first != b.first)
+                return a.first > b.first;
+            return a.second.name < b.second.name;
+        });
+
+    for (size_t i = 0; i < found.size() && i < count; i++)
+        out.push_back(found[i].second);
+    return true;
+}
+
 bool themeInfoFromManifest(const std::string& manifestPath, std::string& themeRoot,
     std::string& themeName, std::string& error)
 {

@@ -7,6 +7,7 @@
 // dist/designer_test_work/ 下，不落到仓库树里。
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 
@@ -659,6 +660,34 @@ int main()
         check(designer::classifyThemeFile(themeDir + "/widgets/x.json", themeDir + "/", resDir + "/")
                 == designer::FileKind::APPEARANCE,
             "目录结尾带斜杠也认");
+    }
+
+    // ---------------------------------------------------------------- 最近修改的文件
+    {
+        const std::string dir = work + "/recent";
+        fs::create_directories(dir);
+        std::string writeError;
+        designer::writeTextFileAtomic(dir + "/old.json", "{}", false, writeError);
+        // 让 old.json 明显更早（有的文件系统时间精度只有秒）
+        fs::last_write_time(dir + "/old.json",
+            fs::last_write_time(dir + "/old.json") - std::chrono::seconds(3600));
+        designer::writeTextFileAtomic(dir + "/new.json", "{}", false, writeError);
+        designer::writeTextFileAtomic(dir + "/notes.txt", "不是 json", false, writeError);
+
+        std::vector<designer::DirEntry> recent;
+        std::string error;
+        check(designer::listFilesByMtime(dir, 5, recent, error), "列最近修改成功");
+        checkEqualSize(recent.size(), 2, "只列 .json（txt 不算）");
+        checkEqual(recent[0].name, "new.json", "最新的排最前");
+        checkEqual(recent[1].name, "old.json", "旧的排后面");
+
+        std::vector<designer::DirEntry> limited;
+        check(designer::listFilesByMtime(dir, 1, limited, error), "限制条数也能跑");
+        checkEqualSize(limited.size(), 1, "只取 1 个");
+        checkEqual(limited[0].name, "new.json", "取到的还是最新的");
+
+        check(!designer::listFilesByMtime(work + "/不存在的目录", 5, recent, error),
+            "目录不存在时返回 false");
     }
 
     // ---------------------------------------------------------------- JSON 文件缓存

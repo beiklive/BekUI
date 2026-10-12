@@ -240,6 +240,18 @@ void DesignerWindow::refreshFileList()
     std::string error;
     readWidgetFileList(this->project.themeDir(), this->widgetFiles, error);
 
+    // 最近修改：外观 + 页面视图各取前几个（文件列表顶部的快捷入口）
+    this->recentFiles.clear();
+    {
+        std::vector<DirEntry> recent;
+        std::string error;
+        if (listFilesByMtime(this->project.themeDir() + "/widgets", 4, recent, error))
+            this->recentFiles.insert(this->recentFiles.end(), recent.begin(), recent.end());
+        recent.clear();
+        if (listFilesByMtime(this->project.resourcesDir() + "/views", 2, recent, error))
+            this->recentFiles.insert(this->recentFiles.end(), recent.begin(), recent.end());
+    }
+
     // 页面视图：扫 resources/views（桌面工具，这里扫目录没问题）
     const std::string viewsDir = this->project.resourcesDir() + "/views";
     std::error_code code;
@@ -707,6 +719,7 @@ void DesignerWindow::loadUiState()
     this->canvasChecker    = state.canvasChecker;
     this->canvasZoom       = state.canvasZoom;
     this->showGrid         = state.showGrid;
+    this->onlyLayers       = state.onlyLayers;
     this->previewContext   = state.previewContext;
     this->previewCompare   = state.previewCompare;
     this->previewMaximized = state.previewMaximized;
@@ -727,6 +740,7 @@ void DesignerWindow::saveUiState()
     state.canvasChecker    = this->canvasChecker;
     state.canvasZoom       = this->canvasZoom;
     state.showGrid         = this->showGrid;
+    state.onlyLayers       = this->onlyLayers;
     state.previewContext   = this->previewContext;
     state.previewCompare   = this->previewCompare;
     state.previewMaximized = this->previewMaximized;
@@ -1093,11 +1107,21 @@ void DesignerWindow::drawTopBar()
 
 void DesignerWindow::drawFileList()
 {
+    static int rowIndex = 0;
     auto fileRow = [](const std::string& label, bool selected, bool isDirty, const char* tag) {
         const ImVec2 start = ImGui::GetCursorScreenPos();
         std::string text   = std::string(isDirty ? "● " : "  ") + label;
         if (tag != nullptr)
             text += std::string("   [") + tag + "]";
+
+        // 斑马纹：隔行一层极淡的底，长列表更容易跟行
+        if (rowIndex++ % 2 == 1 && !selected)
+        {
+            const float width = ImGui::GetContentRegionAvail().x;
+            ImGui::GetWindowDrawList()->AddRectFilled(start,
+                ImVec2(start.x + width, start.y + ImGui::GetTextLineHeight() + 2.0f),
+                IM_COL32(255, 255, 255, 8), 4.0f);
+        }
 
         const bool clicked = ImGui::Selectable(text.c_str(), selected);
         if (selected)
@@ -1113,6 +1137,27 @@ void DesignerWindow::drawFileList()
 
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "过滤外观名…", this->fileFilter, sizeof(this->fileFilter));
+
+    // 最近修改：改样式时反复打开的就那几个，放最上面省得每次翻列表
+    if (!this->recentFiles.empty() && this->fileFilter[0] == 0)
+    {
+        ImGui::TextColored(accentColor(), "最近修改");
+        for (const DirEntry& entry : this->recentFiles)
+        {
+            const std::string name = entry.name.size() > 5
+                ? entry.name.substr(0, entry.name.size() - 5)
+                : entry.name; // 去掉 .json
+            const bool isCurrent = (name == this->currentWidget);
+            if (fileRow(name, isCurrent, isCurrent && this->dirty, "最近"))
+            {
+                std::string error;
+                if (!this->openAppearance(name, error))
+                    this->errorMessage = error;
+            }
+        }
+        ImGui::Spacing();
+    }
+
     ImGui::TextColored(mutedColor(), "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
         this->project.name.c_str());
     for (const std::string& relative : this->widgetFiles)
@@ -1369,7 +1414,11 @@ void DesignerWindow::drawTree()
                 std::snprintf(label, sizeof(label), "#%d  %s  %s", i + 1,
                     this->doc.layerOp(i).c_str(), this->doc.layerId(i).c_str());
                 const std::string id = "##layer" + std::to_string(i);
-                const bool open = ImGui::TreeNodeEx(id.c_str(), ImGuiTreeNodeFlags_DefaultOpen
+                // "只看层"时把它画成叶子：点一下选中层、不再展开一堆字段
+                const ImGuiTreeNodeFlags layerFlags = this->onlyLayers
+                    ? (ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen)
+                    : ImGuiTreeNodeFlags_DefaultOpen;
+                const bool open = ImGui::TreeNodeEx(id.c_str(), layerFlags
                         | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap
                         | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label);
                 // 每层一行直接给操作按钮：不用"先选中、再去属性表点"
@@ -2471,8 +2520,23 @@ void DesignerWindow::drawPreview()
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("滚轮缩放、中键（或按住空格）拖动平移");
 
-    const float zoom = this->canvasZoom == 0 ? 0.5f : this->canvasZoom == 1 ? 0.75f
+    float zoom = this->canvasZoom == 0 ? 0.5f : this->canvasZoom == 1 ? 0.75f
         : this->canvasZoom == 2 ? 1.0f : 1.5f;
+
+    // 自适应模式下让画布尽量铺满预览区（挑一个放得下的最大档），
+    // 省得中间一大片空白、看着像没画完
+    if (this->canvasPreset == 0)
+    {
+        const ImVec2 stage = ImGui::GetContentRegionAvail();
+        const float needW  = (float)this->canvasWidth;
+        const float needH  = (float)this->canvasHeight - 96.0f; // 上面的控制行
+        const float fit    = std::min(stage.x / std::max(1.0f, needW),
+                          stage.y / std::max(1.0f, needH));
+        const float choices[] = { 0.5f, 0.75f, 1.0f, 1.5f };
+        for (const float choice : choices)
+            if (choice <= fit + 0.001f)
+                zoom = choice;
+    }
 
     // ---- 控制行 2：状态工具栏 + 上下文/子树/对比 ----
     ImGui::TextColored(mutedColor(), "状态");
@@ -2746,6 +2810,9 @@ void DesignerWindow::drawProps()
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("复制当前选中节点那一段的 JSON（选中层 → 该层；选中 box → box；否则整份）");
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##propFilter", "过滤字段（比如 fill / radius）…",
+        this->propFilter, sizeof(this->propFilter));
     ImGui::Separator();
 
     auto edited = [this] {
@@ -2763,6 +2830,9 @@ void DesignerWindow::drawProps()
                 "paddingSides", "gap" };
             for (const char* key : numberKeys)
             {
+                if (this->propFilter[0] != 0 && std::string(key).find(this->propFilter)
+                        == std::string::npos)
+                    continue;
                 double value = 0.0;
                 const bool has = this->doc.getBoxNumber(key, value);
                 const std::string label = key; // 未设置的状态用暗色点标出来，不挤标签
@@ -2891,6 +2961,13 @@ void DesignerWindow::drawProps()
             {
                 const std::string key = it.key();
                 ImGui::PushID(key.c_str());
+                if (this->propFilter[0] != 0
+                    && key.find(this->propFilter) == std::string::npos)
+                {
+                    ImGui::PopID();
+                    continue; // 过滤词不匹配的字段不画
+                }
+
                 const std::string kind = valueKind(it.value());
                 bool changed = false;
 
@@ -4272,6 +4349,11 @@ void DesignerWindow::draw()
         ImGui::EndChild();
         ImGui::Separator();
         panelHeader("节点树", "点哪层渲染哪层");
+        ImGui::Checkbox("只看层", &this->onlyLayers);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("把每层下面的字段行收起来，只留层本身 —— 找控件、调顺序时更快");
+        ImGui::SameLine();
+        ImGui::TextColored(mutedColor(), "共 %d 层", this->doc.layerCount());
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
             sizeof(this->treeFilter));

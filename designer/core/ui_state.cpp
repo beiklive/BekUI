@@ -27,6 +27,7 @@ bool loadUiState(const std::string& path, UiState& out)
     out.canvasChecker    = doc.value("canvasChecker", out.canvasChecker);
     out.canvasZoom       = doc.value("canvasZoom", out.canvasZoom);
     out.showGrid         = doc.value("showGrid", out.showGrid);
+    out.onlyLayers       = doc.value("onlyLayers", out.onlyLayers);
     out.previewContext   = doc.value("previewContext", out.previewContext);
     out.previewCompare   = doc.value("previewCompare", out.previewCompare);
     out.previewMaximized = doc.value("previewMaximized", out.previewMaximized);
@@ -46,6 +47,7 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     doc["canvasChecker"]    = state.canvasChecker;
     doc["canvasZoom"]       = state.canvasZoom;
     doc["showGrid"]         = state.showGrid;
+    doc["onlyLayers"]       = state.onlyLayers;
     doc["previewContext"]   = state.previewContext;
     doc["previewCompare"]   = state.previewCompare;
     doc["previewMaximized"] = state.previewMaximized;

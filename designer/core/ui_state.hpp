@@ -19,6 +19,7 @@ struct UiState
     bool canvasChecker = true;
     int canvasZoom     = 2;  // 0=50% 1=75% 2=100% 3=150%
     bool showGrid      = false; // 对齐网格 + 中线
+    bool onlyLayers    = false; // 节点树只看层（把字段行收起来，找控件更快）
 
     bool previewContext   = false;
     bool previewCompare   = false;

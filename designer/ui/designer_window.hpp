@@ -210,6 +210,9 @@ class DesignerWindow
     std::string startupAppearance;
     std::string startupViewFile;
     bool showGrid = false;            // 预览画布的对齐网格 + 中线
+    bool onlyLayers = false;          // 树里只看层
+    char propFilter[64] = "";         // 属性表字段过滤
+    std::vector<DirEntry> recentFiles;// 最近修改（文件列表顶部的快捷入口）
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
