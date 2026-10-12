@@ -87,6 +87,36 @@ Box* buildSettingsPage()
     switches->addView(wireCell);
     page->addView(switches);
 
+    // ---- 音效（代码合成，桌面/ Switch 都有反馈；不依赖素材）----
+    Rectangle* soundCard = makeCard();
+    soundCard->addView(makeText(getStr("settings/sound_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    BooleanCell* soundOn = new BooleanCell(getStr("settings/sound_on"), audio::isEnabled());
+    soundOn->setOnChange([](bool value) { audio::setEnabled(value); });
+    soundCard->addView(soundOn);
+
+    SliderCell* volume = new SliderCell(getStr("settings/volume"));
+    volume->setRange(0.0f, 1.0f);
+    volume->setValue(audio::getVolume());
+    volume->setOnChange([](float value) {
+        audio::setVolume(value);
+        audio::play(Sound::FocusChange); // 边调边听
+    });
+    soundCard->addView(volume);
+
+    DetailCell* audition = new DetailCell(getStr("settings/audition"), getStr("settings/audition_hint"));
+    static int soundIndex = 0;
+    audition->setOnClick([audition] {
+        const Sound sounds[] = { Sound::Click, Sound::FocusChange, Sound::Back, Sound::Honk };
+        const int count      = (int)(sizeof(sounds) / sizeof(Sound));
+        audio::play(sounds[soundIndex % count]);
+        audition->setDetail(std::to_string(soundIndex % count));
+        soundIndex++;
+    });
+    soundCard->addView(audition);
+    page->addView(soundCard);
+
     // ---- 选择器（SelectorCell）----
     Rectangle* selectors = makeCard();
     selectors->addView(makeText(getStr("settings/selectors_title"),

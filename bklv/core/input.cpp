@@ -1,3 +1,4 @@
+#include "bklv/core/audio.hpp"
 #include "bklv/core/input.hpp"
 
 #include "bklv/core/time.hpp"
@@ -257,6 +258,13 @@ void InputManager::giveFocus(View* view)
     if (view != nullptr && !view->isFocusable() && view->getDefaultFocus() == nullptr)
         return;
 
+    // 焦点反馈音：侧栏条目单独一种（和 borealis 的 SOUND_FOCUS_SIDEBAR 一致）
+    if (view != nullptr)
+    {
+        const bool sidebar = view->getClassString() == "bklv::TabCell";
+        audio::play(sidebar ? Sound::FocusSidebar : Sound::FocusChange);
+    }
+
     // 换焦点：先通知旧的焦点路径，再通知新的。
     if (this->currentFocus != nullptr)
     {
@@ -408,6 +416,7 @@ void InputManager::handlePointer()
     // 而"是否响应指针"由 View::onPointerAction 决定，
     // "重复点击是否安全"由各控件自己的动作逻辑决定（比如 tab 同页切换会直接返回）。
     this->focusFromPointer(hit);
+    audio::play(Sound::Click);
     hit->triggerAction(ControllerButton::A, true);
 }
 
@@ -431,9 +440,15 @@ void InputManager::handleActions()
         return;
 
     if (confirm)
+    {
+        audio::play(Sound::Click);
         this->currentFocus->triggerAction(ControllerButton::A);
+    }
     if (back)
+    {
+        audio::play(Sound::Back);
         this->currentFocus->triggerAction(ControllerButton::B);
+    }
 }
 
 std::vector<HintItem> InputManager::getHints() const

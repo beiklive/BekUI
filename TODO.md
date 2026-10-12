@@ -181,7 +181,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       设置页有 wireframe 开关）
 - [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +
       `Image::setImageFromFileAsync` + `loadTextureFromPixels`）
-- [ ] **P1 核心能力**（剩余）：audio（SDL3 + Switch）、event 补齐
+- [x] audio（`core/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
+      Switch 的 audren 输出未接 —— 需要真机，已在文档写明）
+- [ ] **P1 核心能力**（剩余）：event 补齐
 - [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
       video（需要决定是否引解码依赖）
 - [ ] **P3 demo 对标**：把 borealis demo 的 7 个启用页 + 3 个注释页全部做出来

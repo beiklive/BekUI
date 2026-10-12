@@ -269,6 +269,7 @@ set(BKLV_CORE_SOURCES
     core/ime.cpp
     core/ui_scale.cpp
     core/appearance.cpp
+    core/audio.cpp
     core/platform.cpp
     core/gamepad.cpp
     core/view.cpp

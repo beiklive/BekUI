@@ -1,6 +1,7 @@
 #include "bklv/widgets/cell.hpp"
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/audio.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -57,7 +58,10 @@ void Cell::setDetail(const std::string& value)
 void Cell::trigger()
 {
     if (!this->enabled)
+    {
+        audio::play(Sound::ClickError);
         return;
+    }
 
     if (this->onClick)
         this->onClick();

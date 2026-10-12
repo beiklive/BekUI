@@ -169,7 +169,12 @@
     "notify_title": "通知",
     "notify_cell": "弹一条通知",
     "notify_text": "这是一条通知",
-    "wireframe": "显示视图边界（wireframe）"
+    "wireframe": "显示视图边界（wireframe）",
+    "sound_title": "音效",
+    "sound_on": "启用音效",
+    "volume": "音量",
+    "audition": "试听音效",
+    "audition_hint": "点一次换一个（合成音，不含素材）"
   },
   "transform": {
     "hint": "下面这个方块不参与布局重排——变换只改绘制。Play 会跑四段不同缓动的补间。",

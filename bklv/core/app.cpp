@@ -1,4 +1,5 @@
 #include "bklv/core/app.hpp"
+#include "bklv/core/audio.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/debug_layer.hpp"
@@ -47,6 +48,7 @@ App::~App()
 {
     // 先停后台线程，别让 worker 在 App 析构后再回调
     task::shutdown();
+    audio::shutdown();
 
     if (g_currentApp == this)
         g_currentApp = nullptr;
@@ -270,12 +272,15 @@ App::App()
     initResources();
     // 文案要在视图树之前就绪：demo 是在 App::run() 之前把树建好的。
     initI18n();
+    // 音效设备（失败不阻塞：没声音也要能用）
+    audio::init();
     BKLV_LOG_INFO("bklv 启动");
 }
 
 void App::frame()
 {
     // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
+
     task::pumpMainThread();
 
     ImGui::NewFrame();

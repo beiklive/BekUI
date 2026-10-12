@@ -5,6 +5,7 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/audio.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/time.hpp"
 

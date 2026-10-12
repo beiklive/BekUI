@@ -62,7 +62,7 @@
 | platform / assets | `core/platform.hpp` / `core/resource.hpp` | ✅ |
 | view / box / frame_context | `core/view.hpp` / `core/box.hpp` | ✅ |
 | activity（Activity 栈 + 转场动画） | `AppletFrame` 的内容栈 | ⚠️ 无独立 Activity 与转场动画（待补） |
-| audio（8 种系统音效） | — | ❌ 待补（SDL3 audio + Switch audren） |
+| audio（8 种系统音效） | `core/audio.hpp`（8 种音效，**代码合成**） | ✅ 改良 | borealis **只有 Switch 出声**（用 Nintendo 内置音效）、桌面什么都不做；我们代码合成，桌面 + Switch 同一套，且不随包带任何音频素材。Switch 的 audren 输出还没接（需要真机） |
 | **video** | — | ❌ 见"无法实现"一节 |
 | notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
 | task / thread（异步任务、线程池） | `core/task.hpp`（固定 2 worker + 主线程回调） | ✅ 改良 | borealis 用 `brls::async` + `ASYNC_RETAIN` 宏；这里是普通线程池，回调**保证在主线程**跑（由 `App::frame` 每帧 pump），没有宏 |
