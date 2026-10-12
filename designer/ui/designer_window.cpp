@@ -10,6 +10,7 @@
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
 #include "designer/core/theme_edit.hpp"
+#include "designer/core/theme_usage.hpp"
 #include "designer/core/theme_files.hpp"
 
 namespace fs = std::filesystem;
@@ -170,11 +171,18 @@ bool DesignerWindow::setProject(const Project& value, bool isReadOnly, std::stri
 
     this->refreshFileList();
     this->refreshThemes();
+    this->refreshThemeUsage();
 
     // 默认打开第一个外观文件，界面一进来就有的看
     if (!this->widgetFiles.empty())
         this->openAppearance(widgetNameFromPath(this->widgetFiles.front()), error);
     return true;
+}
+
+void DesignerWindow::refreshThemeUsage()
+{
+    std::string error;
+    this->themeUsage = collectThemeKeyUsage(this->project.themeDir(), error);
 }
 
 void DesignerWindow::refreshThemes()
@@ -284,6 +292,10 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
     this->currentFilePath  = path;
     this->savedText        = text;
     this->dirty            = false;
+    // 换文件必须清：面板里的绑定/映射指向的是上一次建出来的视图（重建后就悬垂了）
+    this->pageBindings.clear();
+    this->viewMap.clear();
+    this->focusOrder.clear();
     this->selection        = Selection{};
     this->previewDirty     = true;
     this->errorMessage.clear();
@@ -344,6 +356,16 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     this->doc.root() = parsed.is_discarded() ? AppearanceDoc::Json::object() : parsed;
     std::snprintf(this->viewText, sizeof(this->viewText), "%s", text.c_str());
     this->viewTextApplied = text;
+
+    // 换页面：绑定/映射先清空，示例数据按文件各自恢复（不串页）
+    this->pageBindings.clear();
+    this->viewMap.clear();
+    this->focusOrder.clear();
+    this->bindingSamples[0] = 0;
+    const auto savedSamples  = this->bindingSamplesByFile.find(path);
+    if (savedSamples != this->bindingSamplesByFile.end())
+        std::snprintf(this->bindingSamples, sizeof(this->bindingSamples), "%s",
+            savedSamples->second.c_str());
     Draft& draft    = this->drafts[this->currentFilePath];
     draft.doc       = this->doc;
     draft.savedText = text;
@@ -422,6 +444,7 @@ bool DesignerWindow::openTableFile(const std::string& fileName)
     draft.undo.clear();
     draft.redo.clear();
     draft.undo.push_back(text);
+    this->refreshThemeUsage();
     this->statusMessage = "打开主题表 " + fileName;
     return true;
 }
@@ -1694,6 +1717,12 @@ bool DesignerWindow::applyViewText(std::string& error)
 
 void DesignerWindow::drawTableProps()
 {
+    // 文件里的键是 `common.red` / `radius.md`（没有 color./metric. 外层），
+    // 而外观里的引用是 `@theme/color.common.red` / `@theme/metric.radius.md`。
+    // 查反向引用表时要补上前缀，否则一律显示"没被引用"（这个 bug 是截图抓到的）。
+    const std::string keyPrefix
+        = this->currentTable.rfind("metrics", 0) == 0 ? "metric." : "color.";
+
     ImGui::TextColored(kAccent, "主题表 %s", this->currentTable.c_str());
     ImGui::TextColored(kMuted, "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
     ImGui::SetNextItemWidth(-1);
@@ -1760,6 +1789,29 @@ void DesignerWindow::drawTableProps()
                       }
                       ImGui::SameLine();
                       ImGui::Text("%s", key.c_str());
+                      ImGui::SameLine();
+                      {
+                          const auto found = this->themeUsage.find(keyPrefix + key);
+                          const int users  = found == this->themeUsage.end()
+                              ? 0
+                              : (int)found->second.size();
+                          if (users == 0)
+                          {
+                              ImGui::TextColored(kMuted, "· 没被引用");
+                              if (ImGui::IsItemHovered())
+                                  ImGui::SetTooltip("没有任何外观引用这个 key（改它不会有变化）");
+                          }
+                          else
+                          {
+                              ImGui::TextColored(kMuted, "· %d 处引用", users);
+                              ImGui::SameLine();
+                              if (ImGui::SmallButton("谁在用"))
+                              {
+                                  this->usagePopupKey = key;
+                                  ImGui::OpenPopup("引用者");
+                              }
+                          }
+                      }
                   }
                   else if (it.value().is_number())
                   {
@@ -1772,8 +1824,30 @@ void DesignerWindow::drawTableProps()
                           edited     = true;
                       }
                       ImGui::PopItemWidth();
+                      ImGui::TextColored(kMuted, "      %s", key.c_str());
                       ImGui::SameLine();
-                      ImGui::Text("%s", key.c_str());
+                      {
+                          const auto found = this->themeUsage.find(keyPrefix + key);
+                          const int users  = found == this->themeUsage.end()
+                              ? 0
+                              : (int)found->second.size();
+                          if (users == 0)
+                          {
+                              ImGui::TextColored(kMuted, "· 没被引用");
+                              if (ImGui::IsItemHovered())
+                                  ImGui::SetTooltip("没有任何外观引用这个 key（改它不会有变化）");
+                          }
+                          else
+                          {
+                              ImGui::TextColored(kMuted, "· %d 处引用", users);
+                              ImGui::SameLine();
+                              if (ImGui::SmallButton("谁在用"))
+                              {
+                                  this->usagePopupKey = key;
+                                  ImGui::OpenPopup("引用者");
+                              }
+                          }
+                      }
                   }
                   else
                       ImGui::TextColored(kMuted, "%s = %s", key.c_str(),
@@ -1788,6 +1862,26 @@ void DesignerWindow::drawTableProps()
     {
         this->markEdited();
         this->previewDirty = true;
+    }
+
+    // "谁在用"弹层：列出引用这个 key 的外观，点一下就切过去（改配色时最有用）
+    if (ImGui::BeginPopup("引用者"))
+    {
+        ImGui::TextColored(kMuted, "引用 %s 的外观（点一下切过去）", this->usagePopupKey.c_str());
+        ImGui::Separator();
+        const auto found = this->themeUsage.find(this->usagePopupKey);
+        if (found == this->themeUsage.end() || found->second.empty())
+            ImGui::TextColored(kMuted, "没有引用者");
+        else
+            for (const std::string& widget : found->second)
+                if (ImGui::Selectable(widget.c_str()))
+                {
+                    std::string error;
+                    if (!this->openAppearance(widget, error))
+                        this->errorMessage = error;
+                    ImGui::CloseCurrentPopup();
+                }
+        ImGui::EndPopup();
     }
 }
 
@@ -1865,6 +1959,8 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
                 samples.dump(2).c_str());
         }
         this->applyBindingSamples();
+        this->bindingSamplesByFile[this->currentFilePath] = this->bindingSamples;
+        this->applySamplesPending = false;
         return created;
     }
 
@@ -1922,6 +2018,15 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
 
 void DesignerWindow::ensurePreviewBuilt()
 {
+    // 只改了示例数据：不重建（重建会把新套的值冲掉），直接在当前视图上再套一遍
+    if (!this->previewDirty && this->applySamplesPending)
+    {
+        const int applied = this->applyBindingSamples();
+        this->applySamplesPending = false;
+        this->statusMessage = "已套用 " + std::to_string(applied) + " 条示例数据";
+        return;
+    }
+
     if (!this->previewDirty)
         return;
 
@@ -3111,6 +3216,8 @@ void DesignerWindow::doSave()
     for (const std::string& warning : this->doc.layerOrderWarnings())
         this->warnings.push_back("层序：" + warning);
 
+    this->refreshThemeUsage(); // 刚写完，引用关系可能变了
+
     // 热重载：重新读盘 + 清外观缓存，然后把预览重建
     std::string reloadError;
     this->applyThemeFromProject(reloadError);
@@ -3236,8 +3343,12 @@ void DesignerWindow::drawModals()
                 sizeof(this->bindingSamples), ImVec2(-1, 86.0f));
             if (ImGui::Button("套用示例数据", ImVec2(140, 0)))
             {
-                const int applied = this->applyBindingSamples();
-                this->statusMessage = "已套用 " + std::to_string(applied) + " 条示例数据";
+                // 不在这里直接套：页面里的绑定指针可能已经因为重建而失效。
+                // 置个标记，让下一帧"建完预览之后"再套（那条路径上的指针一定是新的）。
+                this->bindingSamplesByFile[this->currentFilePath] = this->bindingSamples;
+                this->applySamplesPending = true;
+                this->previewDirty        = true;
+                this->statusMessage       = "示例数据已更新，正在重新套用";
             }
             ImGui::SameLine();
             ImGui::TextColored(kMuted, "（改了字段名要重新打开页面）");

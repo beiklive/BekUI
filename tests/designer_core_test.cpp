@@ -19,6 +19,7 @@
 #include "designer/core/json_patch.hpp"
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
+#include "designer/core/theme_usage.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
 
@@ -53,8 +54,9 @@ std::string makeTheme(const std::string& root, const std::string& name)
         R"({"name": ")" + name + R"(", "widgets": ["widgets/rectangle.json", "widgets/button.json"]})");
     writeFile(dir + "/colors.json", R"({"color": {"accent": {"base": "#00ffcc"}, "text": {"primary": "#ffffff"}}})");
     writeFile(dir + "/metrics.json", R"({"metric": {"font": {"size": {"md": 18}}}})");
+    // 故意用 @theme 引用（反向引用那节测试要用；也顺便是真实用法）
     writeFile(dir + "/widgets/rectangle.json",
-        R"({"box": {"height": "auto"}, "layers": [{"op": "rect", "id": "bg", "fill": "#00ffcc", "radius": 8}], "states": {}})");
+        R"({"box": {"height": "auto"}, "layers": [{"op": "rect", "id": "bg", "fill": "@theme/color.accent.base", "radius": "@theme/metric.radius.md"}], "states": {}})");
     writeFile(dir + "/widgets/button.json",
         R"({"box": {"height": 48}, "layers": [{"op": "text", "id": "title", "color": "#ffffff"}], "states": {"focused": {"title.color": {"to": "#00ffcc", "duration": 120, "easing": "linear"}}}})");
     return dir;
@@ -475,6 +477,38 @@ int main()
         // 完全一样时输出等于原文
         check(designer::patchTopLevel(original, original, patched, error) && patched == original,
             "没有改动时逐字节相同");
+    }
+
+    // ---------------------------------------------------------------- 主题 key 的反向引用
+    {
+        const std::string themeDir = themeRoot + "/default";
+        std::string error;
+
+        const std::vector<std::string> keys = designer::collectThemeKeysInText(
+            R"({"a": "@theme/color.accent.base", "b": "@theme/accent.base", "c": ["@theme/metric.radius.md", "@theme/color.accent.base"]})");
+        checkEqualSize(keys.size(), 2, "同一段的重复引用去重（两种写法归一到同一个 key）");
+        check(std::find(keys.begin(), keys.end(), "color.accent.base") != keys.end(),
+            "省掉 color. 的写法也能归一");
+        check(std::find(keys.begin(), keys.end(), "metric.radius.md") != keys.end(),
+            "metric 引用也在");
+
+        const auto usage = designer::collectThemeKeyUsage(themeDir, error);
+        check(!usage.empty(), "扫出引用关系");
+
+        // 造的 fixture 里 rectangle.json 用 accent.base + radius.md，button.json 只用 text.primary
+        const auto rectangleUses = usage.find("color.accent.base");
+        check(rectangleUses != usage.end(), "accent.base 有引用者");
+        if (rectangleUses != usage.end())
+        {
+            check(rectangleUses->second.size() >= 1, "至少一个外观用它");
+            check(std::find(rectangleUses->second.begin(), rectangleUses->second.end(), "rectangle")
+                    != rectangleUses->second.end(),
+                "rectangle 在里面");
+        }
+
+        std::string unusedText = R"({"x": "@theme/color.nobody.uses.this"})";
+        const std::vector<std::string> unusedKeys = designer::collectThemeKeysInText(unusedText);
+        checkEqualSize(unusedKeys.size(), 1, "没被引用的 key 也能被抽出来");
     }
 
     fs::remove_all(work, code);

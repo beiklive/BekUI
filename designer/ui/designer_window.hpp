@@ -190,8 +190,13 @@ class DesignerWindow
     std::string currentTable;     // colors.json / metrics.json
     std::vector<std::string> themeNames;   // themes.json 的 available
     std::string defaultThemeName;          // themes.json 的 default
+    std::map<std::string, std::vector<std::string>> themeUsage; // key → 哪些外观在用它
+    void refreshThemeUsage();
+    std::string usagePopupKey;             // "谁在用"弹层里要展示的那个 key
     std::vector<bklv::Binding> pageBindings; // 页面里绑了数据的字段
-    char bindingSamples[2048] = "";          // 绑定示例数据（JSON 对象：字段 → 值）
+    char bindingSamples[2048] = "";          // 绑定示例数据编辑缓冲（JSON：字段 → 值）
+    std::map<std::string, std::string> bindingSamplesByFile; // 按文件各自保存
+    bool applySamplesPending = false;        // 按钮只置这个：真套用在"建完预览之后"
     std::string pendingTheme;                // 切主题时的未保存拦截
     int includeDepthGuard = 0;             // include 展开的递归保护
     char tableFilter[64] = "";
