@@ -229,6 +229,23 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   **上一个控件的右边缘**（`GetItemRectMax()`）来判断要不要换行；
   换行点在**整组之前**，否则会把一组按钮拆到两行（撤销/重做被切掉就是这原因）
 
+## 构建产物与自查开关
+
+```bash
+# 平时只要这两个：build/gl（构建缓存）+ dist（demo + designer + resources）
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=OFF && cmake --build build/gl -j 8
+./dist/designer
+```
+
+- `./scripts/check.sh` 会另外建 `build/vk` 并把测试二进制放 `dist/`（那批产物可随时删）
+- 自查 / 调试开关（环境变量）：
+  `BKLV_DESIGNER_WINDOW=宽x高`（窗口尺寸，默认 1280×820）·
+  `BKLV_DESIGNER_FILE` / `_VIEW` / `_TABLE`（直接打开某个文件）·
+  `_PROJECT` / `_FORK`（项目）· `_SELECT` · `_EDIT` / `_EDIT_DOC` / `_EDIT_TEXT` ·
+  `_UNDO` / `_REDO` / `_SAVE_ALL` / `_FORCE_SAVE` / `_SHOW_DIFF` / `_NEXT_CHANGE` ·
+  `_SYNC_FIELD` / `_COPY_LAYER` / `_PASTE_LAYER` / `_VARIANT` / `_NEW_APPEARANCE` ·
+  `_SHOT`（截图）/ `_BASELINE`（基线对比）/ `_LOG` / `_FOCUS` / `_OPEN_DIALOG`
+
 ## 视觉规范（改界面时照这个来）
 
 - **配色跟着主题走**：`designer/ui/designer_style.*` 读当前主题的语义色
