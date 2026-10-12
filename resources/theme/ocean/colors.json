@@ -1,4 +1,14 @@
 {
+  "common": {
+    "transparent": "#00000000",
+    "white": "#ffffff",
+    "black": "#000000",
+    "overlay": "#00000080",
+    "divider": "#ffffff1f",
+    "shadow": "#00000080",
+    "focusRing": "#5ad0ff",
+    "textMuted": "#8b929b"
+  },
   "surface": {
     "page": "#0d1420",
     "card": "#152030",
@@ -100,9 +110,5 @@
   },
   "tabCell": {
     "accent": "#5ad0ff"
-  },
-  "shadow": {
-    "base": "#00000080",
-    "strong": "#00000080"
   }
 }

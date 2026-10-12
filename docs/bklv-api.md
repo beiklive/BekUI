@@ -257,6 +257,19 @@ bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button
 app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
 ```
 
+### 常用色（`color.common.*`）
+
+每套主题的 `colors.json` 第一组是**原始调色板**，语义组（`surface` / `text` / `button` …）跟在后面：
+
+```json
+"common": { "transparent": "#00000000", "white": "#ffffff", "black": "#000000",
+            "overlay": "#00000080", "divider": "#ffffff1f",
+            "shadow": "#00000073", "focusRing": "#00ffcc", "textMuted": "#8b929b" }
+```
+
+外观里引它：`"fill": "@theme/color.common.transparent"`（60 处重复的透明字面量已统一成这个）。
+`colors.json` 内部**不支持互相引用** —— 语义键还是字面量，换配色时一起改。
+
 ### 阴影（`"op": "shadow"`）
 
 阴影是**一种层**，写在自己的底色之前就先画阴影（`theme_test` 会断言这个顺序）：

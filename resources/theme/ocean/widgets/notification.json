@@ -14,7 +14,7 @@
     {
       "op": "shadow",
       "id": "shadow",
-      "fill": "@theme/color.shadow.base",
+      "fill": "@theme/color.common.shadow",
       "feather": "@theme/metric.shadow.feather",
       "radius": "@theme/metric.shadow.radius",
       "offset": [

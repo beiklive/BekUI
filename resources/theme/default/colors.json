@@ -1,4 +1,14 @@
 {
+  "common": {
+    "transparent": "#00000000",
+    "white": "#ffffff",
+    "black": "#000000",
+    "overlay": "#00000080",
+    "divider": "#ffffff1f",
+    "shadow": "#00000073",
+    "focusRing": "#00ffcc",
+    "textMuted": "#8b929b"
+  },
   "$comment": "默认主题：对齐 borealis 的暗色主题（Switch 风格）。色值见 borealis core/theme.cpp 的 darkThemeValues。",
   "surface": {
     "page": "#2d2d2d",
@@ -118,9 +128,5 @@
   },
   "tabCell": {
     "accent": "#00ffcc"
-  },
-  "shadow": {
-    "base": "#00000073",
-    "strong": "#00000073"
   }
 }

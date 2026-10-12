@@ -330,6 +330,27 @@ int main()
         setTheme("default");
     }
 
+    std::printf("\n== 常用色调色板（color.common.*）==\n");
+    {
+        // widget JSON 里的原始色值统一放 common 组，最典型的是透明
+        // （以前 "#00000000" 在 60 处重复）。缺 key 会编译失败，但这里直接断言，
+        // 让人一眼看到"调色板是有人用的"。
+        checkColor(getTheme().color("color.common.transparent", IM_COL32(1, 2, 3, 4)), 0,
+            "common.transparent 是全透明");
+        checkColor(getTheme().color("color.common.white", 0), IM_COL32(255, 255, 255, 255),
+            "common.white");
+        checkColor(getTheme().color("color.common.black", 0), IM_COL32(0, 0, 0, 255),
+            "common.black");
+        check(getTheme().color("color.common.overlay", 0) != 0, "common.overlay 有值（遮罩色）");
+        check(getTheme().color("color.common.divider", 0) != 0, "common.divider 有值（分割线）");
+
+        // 换到 ocean 也必须有（调色板每套主题各一份）
+        setTheme("ocean");
+        checkColor(getTheme().color("color.common.transparent", IM_COL32(1, 2, 3, 4)), 0,
+            "ocean 主题也有 common.transparent");
+        setTheme("default");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

@@ -7,7 +7,7 @@
     {
       "op": "rect",
       "id": "dim",
-      "fill": "#00000000"
+      "fill": "@theme/color.common.transparent"
     }
   ],
   "states": {
@@ -20,7 +20,7 @@
     },
     "closed": {
       "dim.fill": {
-        "to": "#00000000",
+        "to": "@theme/color.common.transparent",
         "duration": 140
       }
     }

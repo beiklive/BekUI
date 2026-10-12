@@ -7,7 +7,7 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "#00000000",
+      "fill": "@theme/color.common.transparent",
       "stroke": "@theme/color.button.defaultBorder",
       "strokeWidth": 2,
       "radius": "@theme/metric.radius.md"
@@ -15,7 +15,7 @@
     {
       "op": "rect",
       "id": "hlBg",
-      "fill": "#00000000",
+      "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -2.5,
@@ -42,7 +42,7 @@
     {
       "op": "rect",
       "id": "hlGlow",
-      "stroke": "#00000000",
+      "stroke": "@theme/color.common.transparent",
       "strokeWidth": 0,
       "radius": "@theme/metric.highlight.radius",
       "inset": [
@@ -55,7 +55,7 @@
     {
       "op": "rect",
       "id": "hlBorder",
-      "stroke": "#00000000",
+      "stroke": "@theme/color.common.transparent",
       "strokeWidth": 0,
       "radius": "@theme/metric.highlight.radius",
       "inset": [

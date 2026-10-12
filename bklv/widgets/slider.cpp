@@ -99,7 +99,7 @@ void Slider::applyTheme()
     AppearanceView::applyTheme();
 
     const ThemeData& theme = getTheme();
-    this->knobShadowColor   = theme.color("color.shadow.base", IM_COL32(0, 0, 0, 115));
+    this->knobShadowColor   = theme.color("color.common.shadow", IM_COL32(0, 0, 0, 115));
     this->knobShadowFeather = theme.number("metric.shadow.feather", 12.0f) * 0.5f;
     this->knobShadowOffsetY = theme.number("metric.shadow.offsetY", 4.0f) * 0.5f;
 }

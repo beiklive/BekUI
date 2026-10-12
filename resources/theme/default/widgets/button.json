@@ -13,7 +13,7 @@
     {
       "op": "rect",
       "id": "hlBg",
-      "fill": "#00000000",
+      "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -2.5,
@@ -40,7 +40,7 @@
     {
       "op": "rect",
       "id": "hlGlow",
-      "fill": "#00000000",
+      "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -6.5,
@@ -52,7 +52,7 @@
     {
       "op": "rect",
       "id": "hlBorder",
-      "fill": "#00000000",
+      "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -2.5,
