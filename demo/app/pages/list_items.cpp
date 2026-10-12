@@ -15,7 +15,11 @@ ListCell::ListCell()
 {
     this->setHeight(64.0f);
     this->setAlignItems(AlignItems::CENTER);
-    this->setPadding(10.0f);
+    // 左右内缩按 borealis 的 listitem/indent(40) 与 descriptionIndent(16)
+    this->setPaddingTop(10.0f);
+    this->setPaddingBottom(10.0f);
+    this->setPaddingLeft(40.0f);
+    this->setPaddingRight(16.0f);
     this->setGap(12.0f);
     this->setCornerRadius(8.0f);
     this->setBackgroundColor(rgb(38, 42, 50));

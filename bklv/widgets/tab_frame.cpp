@@ -86,7 +86,13 @@ void TabFrame::addTab(const std::string& title, View* content)
 
     TabCell* cell = new TabCell();
     cell->setTitle(title);
+
+    // borealis 的 TabFrame::addTab 里写得很明确：
+    // "Only trigger when the sidebar item gains focus" —— 聚焦到哪个 tab 就切到哪一页。
+    // （我们的改进：内容不销毁，切回来状态还在；borealis 会把旧 tab 删掉重建。）
+    cell->setOnFocus([this, index] { this->setSelectedIndex(index); });
     cell->setOnSelect([this, index] { this->setSelectedIndex(index); });
+
     this->tabBar->addView(cell);
     this->cells.push_back(cell);
 
