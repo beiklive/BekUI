@@ -4,6 +4,8 @@
 // 刻意做成无窗口可测的一层（见 tests/designer_core_test.cpp）：
 // 主题登记、外观清单、原子的写盘 + 备份、JSON 语法校验都在这里。
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 #include <vector>
 
@@ -42,5 +44,12 @@ bool directoryExists(const std::string& path);
 
 // JSON 语法校验（保序解析，不改变键序）
 bool validateJsonText(const std::string& text, std::string& error);
+
+// 文件原来的缩进风格：写回去时沿用它，免得整份文件被重排（写盘=整文件重写，
+// 至少要保住缩进习惯；键序由保序 JSON 保住）
+char detectIndentChar(const std::string& text);   // 空格 或 制表符
+int detectIndentWidth(const std::string& text);   // 1..8，认不出来给 2
+
+std::string serializeJson(const nlohmann::ordered_json& doc, char indentChar, int indentWidth);
 
 } // namespace designer

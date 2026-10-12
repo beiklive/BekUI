@@ -284,6 +284,23 @@ int main()
         check(designer::writeFileChecked(path, "deadbeefdeadbeef", text, true, true, error), "force 可以覆盖");
     }
 
+    // ---------------------------------------------------------------- 缩进沿用
+    {
+        check(designer::detectIndentChar("{\n  \"a\": 1\n}") == ' ', "认出空格缩进");
+        check(designer::detectIndentChar("{\n\t\"a\": 1\n}") == '\t', "认出制表符缩进");
+        checkEqualInt(designer::detectIndentWidth("{\n    \"a\": 1\n}"), 4, "认出 4 空格");
+        checkEqualInt(designer::detectIndentWidth("{\n  \"a\": 1\n}"), 2, "认出 2 空格");
+        checkEqualInt(designer::detectIndentWidth("{\"a\":1}"), 2, "单行 JSON 用默认 2");
+
+        Json doc              = Json::parse(R"({"box": {"height": 48}})");
+        const std::string four = designer::serializeJson(doc, ' ', 4);
+        check(four.find("\n    \"box\"") != std::string::npos, "按 4 空格输出");
+        const std::string tabbed = designer::serializeJson(doc, '\t', 1);
+        check(tabbed.find("\n\t\"box\"") != std::string::npos, "按制表符输出");
+        check(!tabbed.empty() && tabbed.back() == '\n', "输出带尾部换行");
+    }
+
+    fs::remove_all(work, code);
     fs::remove_all(work, code);
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

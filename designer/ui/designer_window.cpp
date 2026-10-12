@@ -128,6 +128,7 @@ std::string valueKind(const AppearanceDoc::Json& value)
 void DesignerWindow::attach(App* application)
 {
     this->app = application;
+    this->loadUiState();
 
     // 设计器是鼠标工具：关掉 ImGui 自己的键盘/手柄导航。
     // 不关的话方向键会被 ImGui 拿去移动它内部的"焦点"，树会被滚到不知哪里去（踩过）。
@@ -551,6 +552,15 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
         this->previewDirty = true;
         return true;
     }
+    if (spec.rfind("view:", 0) == 0)
+    {
+        this->selection = Selection{};
+        this->selection.kind = SelKind::VIEW;
+        this->selection.key  = spec.substr(5);
+        this->pendingExpandPath = this->selection.key;
+        this->previewDirty = true;
+        return true;
+    }
     if (spec.rfind("state:", 0) == 0)
     {
         const std::string state = spec.substr(6);
@@ -567,6 +577,49 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
         return false;
     }
     return false;
+}
+
+// ---------------------------------------------------------------- 界面状态持久化
+
+void DesignerWindow::loadUiState()
+{
+    std::string text;
+    std::string error;
+    if (!readTextFile(resourcePath("designer_state.json"), text, error))
+        return;
+
+    const AppearanceDoc::Json doc = AppearanceDoc::Json::parse(text, nullptr, false);
+    if (doc.is_discarded() || !doc.is_object())
+        return;
+
+    this->leftWidthUi      = doc.value("leftWidth", this->leftWidthUi);
+    this->rightWidthUi     = doc.value("rightWidth", this->rightWidthUi);
+    this->leftCollapsed    = doc.value("leftCollapsed", this->leftCollapsed);
+    this->canvasPreset     = doc.value("canvasPreset", this->canvasPreset);
+    this->canvasChecker    = doc.value("canvasChecker", this->canvasChecker);
+    this->canvasZoom       = doc.value("canvasZoom", this->canvasZoom);
+    this->previewContext   = doc.value("previewContext", this->previewContext);
+    this->previewCompare   = doc.value("previewCompare", this->previewCompare);
+    this->previewMaximized = doc.value("previewMaximized", this->previewMaximized);
+    this->previewSubtree   = doc.value("previewSubtree", this->previewSubtree);
+}
+
+void DesignerWindow::saveUiState()
+{
+    AppearanceDoc::Json doc = AppearanceDoc::Json::object();
+    doc["leftWidth"]        = this->leftWidthUi;
+    doc["rightWidth"]       = this->rightWidthUi;
+    doc["leftCollapsed"]    = this->leftCollapsed;
+    doc["canvasPreset"]     = this->canvasPreset;
+    doc["canvasChecker"]    = this->canvasChecker;
+    doc["canvasZoom"]       = this->canvasZoom;
+    doc["previewContext"]   = this->previewContext;
+    doc["previewCompare"]   = this->previewCompare;
+    doc["previewMaximized"] = this->previewMaximized;
+    doc["previewSubtree"]   = this->previewSubtree;
+
+    std::string error;
+    writeTextFileAtomic(resourcePath("designer_state.json"), doc.dump(2) + "\n", false, error);
 }
 
 // ---------------------------------------------------------------- 草稿与撤销
@@ -816,6 +869,14 @@ void DesignerWindow::drawTopBar()
     if (ImGui::Button("校验面板"))
         this->showWarnings = true;
     ImGui::SameLine();
+    if (ImGui::Button("日志"))
+        this->debugWindow.toggle();
+    ImGui::SameLine();
+    if (ImGui::Button("焦点顺序"))
+        this->showFocusOrder = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("按视图树顺序列出可聚焦控件（整页预览时有效），并可在预览里标号");
+    ImGui::SameLine();
     if (ImGui::Button("快捷键/约定"))
         this->showHelp = true;
     if (ImGui::IsItemHovered())
@@ -924,6 +985,10 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
     this->viewNodeCount++;
 
     const bool selected = this->selection.kind == SelKind::VIEW && this->selection.key == path;
+    // 反选过来时强制展开到那个节点（用户手动折叠过也照样展开一次）
+    if (!this->pendingExpandPath.empty()
+        && this->pendingExpandPath.rfind(path, 0) == 0)
+        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
     const bool open     = ImGui::TreeNodeEx("##node", ImGuiTreeNodeFlags_DefaultOpen
             | ImGuiTreeNodeFlags_SpanAvailWidth
             | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label.c_str());
@@ -953,7 +1018,7 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
             int index = 0;
             for (const AppearanceDoc::Json& child : node["children"])
             {
-                this->drawViewTree(child, path + "/" + std::to_string(index));
+                this->drawViewTree(child, path + "/children/" + std::to_string(index));
                 index++;
             }
         }
@@ -969,7 +1034,8 @@ void DesignerWindow::drawTree()
     {
         this->viewNodeCount  = 0;
         this->viewFieldCount = 0;
-        this->drawViewTree(this->doc.root(), "$");
+        this->drawViewTree(this->doc.root(), "");
+        this->pendingExpandPath.clear();
         if (this->viewNodeCount <= 0)
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "这个 JSON 里没有可展开的视图节点");
         return;
@@ -1549,40 +1615,33 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
         if (this->previewSubtree && this->selection.kind == SelKind::VIEW
             && !this->selection.key.empty())
         {
-            // 按树的路径取出那一棵子树（$.$/1/0 这种），单独实例化
-            std::string nodeText;
+            // 按 JSON Pointer（/children/N）取出那一棵子树，单独实例化
             const AppearanceDoc::Json* node = &this->doc.root();
-            std::string path                = this->selection.key;
-            size_t start                    = 0;
-            while (start < path.size() && node != nullptr)
+            const std::string& path         = this->selection.key;
+            size_t pos                      = 0;
+            while (pos < path.size() && node != nullptr)
             {
-                const size_t next = path.find('/', start + 1);
-                const std::string step = path.substr(start + 1, next - start - 1);
-                if (step == "$")
+                if (path.compare(pos, 10, "/children/") == 0)
                 {
-                    node = &this->doc.root();
-                }
-                else if (node->contains("children") && (*node)["children"].is_array())
-                {
-                    const int index = std::atoi(step.c_str());
-                    if (index < 0 || index >= (int)(*node)["children"].size())
-                        node = nullptr;
-                    else
+                    const int index = std::atoi(path.c_str() + pos + 10);
+                    if (node->contains("children") && (*node)["children"].is_array()
+                        && index >= 0 && index < (int)(*node)["children"].size())
                         node = &(*node)["children"][(size_t)index];
+                    else
+                        node = nullptr;
+                    pos += 10;
+                    while (pos < path.size() && path[pos] != '/')
+                        pos++;
                 }
                 else
-                    node = nullptr;
-
-                if (next == std::string::npos)
                     break;
-                start = next;
             }
             if (node != nullptr && node->is_object())
-                nodeText = node->dump();
-            text = nodeText.empty() ? text : nodeText;
+                text = node->dump();
         }
 
-        View* created = createFromJSONString(text);
+        this->viewMap.clear();
+        View* created = createFromJSONString(text, &this->viewMap);
         if (created == nullptr)
             this->previewError = "视图 JSON 实例化失败（未知 type / children 结构 / include 路径）";
         return created;
@@ -1656,6 +1715,67 @@ void DesignerWindow::ensurePreviewBuilt()
 
     this->previewView = this->buildPreviewView(std::string());
 
+    // 对比度检查：文字层的颜色 vs 控件底色（< 4.5 提示，WCAG AA 的正文门槛）
+    this->contrastWarnings.clear();
+    if (!this->currentWidget.empty())
+    {
+        std::string background;
+        this->doc.getBoxString("backgroundColor", background);
+        ImU32 backgroundU32 = 0;
+        if (background.rfind("@theme/", 0) == 0)
+        {
+            std::string key = background.substr(7);
+            if (key.rfind("color.", 0) == 0)
+                key = key.substr(6);
+            backgroundU32 = getTheme().color(key, 0);
+        }
+        else
+            backgroundU32 = parseHexColor(background);
+
+        for (const AppearanceDoc::Json& layer : this->doc.root().value("layers", AppearanceDoc::Json::array()))
+        {
+            if (!layer.is_object() || layer.value("op", std::string()) != "text")
+                continue;
+            const std::string color = layer.value("color", std::string());
+            ImU32 textU32           = 0;
+            if (color.rfind("@theme/", 0) == 0)
+            {
+                std::string key = color.substr(7);
+                if (key.rfind("color.", 0) == 0)
+                    key = key.substr(6);
+                textU32 = getTheme().color(key, 0);
+            }
+            else
+                textU32 = parseHexColor(color);
+
+            auto channel = [](ImU32 c, int shift) { return (float)((c >> shift) & 0xFF) / 255.0f; };
+            auto luminance = [&](ImU32 c) {
+                auto lin = [](float v) { return v <= 0.03928f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f); };
+                return 0.2126f * lin(channel(c, IM_COL32_R_SHIFT))
+                    + 0.7152f * lin(channel(c, IM_COL32_G_SHIFT))
+                    + 0.0722f * lin(channel(c, IM_COL32_B_SHIFT));
+            };
+            const float l1 = luminance(textU32);
+            const float l2 = luminance(backgroundU32);
+            const float ratio = (std::max(l1, l2) + 0.05f) / (std::min(l1, l2) + 0.05f);
+            if (ratio < 4.5f)
+            {
+                char buffer[160];
+                std::snprintf(buffer, sizeof(buffer),
+                    "文字层 %s 与底色的对比度只有 %.1f:1（正文建议 ≥ 4.5:1）",
+                    layer.value("id", std::string("?")).c_str(), ratio);
+                this->contrastWarnings.push_back(buffer);
+            }
+        }
+    }
+
+    // 焦点顺序：整页预览时按视图树顺序列出可聚焦控件
+    this->focusOrder.clear();
+    if (!this->currentViewFile.empty())
+        for (const bklv::InstantiatedView& entry : this->viewMap)
+            if (entry.view != nullptr && entry.view->isFocusable())
+                this->focusOrder.push_back(entry.pointer);
+
     if (this->compareView != nullptr)
     {
         delete this->compareView;
@@ -1699,6 +1819,75 @@ void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, b
 
     drawList->AddRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
         IM_COL32(90, 95, 103, 255));
+}
+
+void DesignerWindow::drawViewHighlight(ImVec2 origin, float zoom)
+{
+    if (this->selection.kind != SelKind::VIEW || this->selection.key.empty())
+        return;
+
+    for (const bklv::InstantiatedView& entry : this->viewMap)
+    {
+        if (entry.pointer != this->selection.key || entry.view == nullptr)
+            continue;
+
+        const Rect frame = entry.view->getFrame();
+        const ImVec2 topLeft(origin.x + frame.x * zoom, origin.y + frame.y * zoom);
+        const ImVec2 bottomRight(
+            topLeft.x + frame.width * zoom, topLeft.y + frame.height * zoom);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        drawList->AddRect(topLeft, bottomRight, IM_COL32(0, 255, 204, 255), 2.0f, 0, 2.0f);
+        // 角标：让"框住的是哪一个"一眼看清
+        const char* label = entry.pointer.c_str();
+        const ImVec2 textSize = ImGui::CalcTextSize(label);
+        drawList->AddRectFilled(ImVec2(topLeft.x, topLeft.y - textSize.y - 4.0f),
+            ImVec2(topLeft.x + textSize.x + 8.0f, topLeft.y), IM_COL32(0, 255, 204, 220));
+        drawList->AddText(ImVec2(topLeft.x + 4.0f, topLeft.y - textSize.y - 3.0f),
+            IM_COL32(8, 32, 28, 255), label);
+        return;
+    }
+}
+
+void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
+{
+    if (this->currentViewFile.empty() || this->viewMap.empty())
+        return;
+    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        return;
+
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    const float localX = (mouse.x - origin.x) / zoom;
+    const float localY = (mouse.y - origin.y) / zoom;
+
+    // 命中最深的那个节点（后出现的通常是子节点，取面积最小的最稳）
+    const bklv::InstantiatedView* hit = nullptr;
+    float bestArea                    = 0.0f;
+    for (const bklv::InstantiatedView& entry : this->viewMap)
+    {
+        if (entry.view == nullptr || entry.pointer.empty())
+            continue;
+        const Rect frame = entry.view->getFrame();
+        if (localX < frame.x || localY < frame.y || localX > frame.x + frame.width
+            || localY > frame.y + frame.height)
+            continue;
+
+        const float area = frame.width * frame.height;
+        if (hit == nullptr || area < bestArea)
+        {
+            hit      = &entry;
+            bestArea = area;
+        }
+    }
+
+    if (hit == nullptr)
+        return;
+
+    this->selection      = Selection{};
+    this->selection.kind = SelKind::VIEW;
+    this->selection.key  = hit->pointer;
+    this->pendingExpandPath = hit->pointer; // 让左树展开到它
+    this->statusMessage  = "反选到 " + hit->pointer;
 }
 
 void DesignerWindow::drawPreview()
@@ -1889,6 +2078,37 @@ void DesignerWindow::drawPreview()
     else
     {
         this->drawPreviewCanvas(stagePos, size, this->previewView, this->canvasChecker);
+        if (!this->currentViewFile.empty() && !this->previewSubtree)
+        {
+            this->drawViewHighlight(stagePos, zoom);
+            this->handlePreviewClick(stagePos, zoom);
+
+            // 焦点顺序标号（在预览里按顺序打 1 2 3…）
+            if (this->highlightFocusOrder)
+            {
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                int order            = 0;
+                for (const std::string& pointer : this->focusOrder)
+                {
+                    order++;
+                    for (const bklv::InstantiatedView& entry : this->viewMap)
+                    {
+                        if (entry.pointer != pointer || entry.view == nullptr)
+                            continue;
+                        const Rect frame = entry.view->getFrame();
+                        const ImVec2 at(stagePos.x + frame.x * zoom + 2.0f,
+                            stagePos.y + frame.y * zoom + 2.0f);
+                        drawList->AddCircleFilled(ImVec2(at.x + 9.0f, at.y + 9.0f), 10.0f,
+                            IM_COL32(255, 183, 77, 235));
+                        char number[8];
+                        std::snprintf(number, sizeof(number), "%d", order);
+                        drawList->AddText(ImVec2(at.x + (order < 10 ? 5.0f : 2.0f), at.y + 2.0f),
+                            IM_COL32(30, 20, 0, 255), number);
+                        break;
+                    }
+                }
+            }
+        }
         ImGui::Dummy(ImVec2(size.x + 8.0f, size.y + 8.0f));
     }
 
@@ -2504,9 +2724,20 @@ void DesignerWindow::doSave()
         return;
     }
 
-    const std::string text = this->doc.serialize();
+    // 沿用原文件的缩进风格；内容与磁盘一致就不写（省一次无意义的整文件重写 + .bak 轮换）
+    const char indentChar  = detectIndentChar(this->savedText);
+    const int indentWidth  = detectIndentWidth(this->savedText);
+    const std::string text = serializeJson(this->doc.root(), indentChar, indentWidth);
 
     std::string error;
+    if (text == this->savedText)
+    {
+        this->dirty = false;
+        if (!this->currentFilePath.empty())
+            this->currentDraft().dirty = false;
+        this->statusMessage = "内容没变，跳过写盘";
+        return;
+    }
     if (!validateJsonText(text, error))
     {
         this->errorMessage = error;
@@ -2656,6 +2887,31 @@ void DesignerWindow::drawModals()
         if (!this->errorMessage.empty())
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
 
+        ImGui::EndPopup();
+    }
+
+    if (this->showFocusOrder)
+    {
+        ImGui::OpenPopup("焦点顺序");
+        this->showFocusOrder = false;
+    }
+    if (ImGui::BeginPopupModal("焦点顺序", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        if (this->currentViewFile.empty())
+            ImGui::TextColored(kMuted, "打开一个页面视图（views/*.json）才有焦点顺序");
+        else if (this->focusOrder.empty())
+            ImGui::TextColored(kMuted, "这棵视图树里没有可聚焦控件");
+        else
+        {
+            ImGui::TextColored(kMuted, "按视图树顺序（方向键导航大致就是这个顺序）");
+            for (size_t i = 0; i < this->focusOrder.size(); i++)
+                ImGui::BulletText("%d. %s", (int)i + 1, this->focusOrder[i].c_str());
+        }
+        ImGui::Separator();
+        ImGui::Checkbox("在预览里标号", &this->highlightFocusOrder);
+        ImGui::SameLine();
+        if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 
@@ -2908,6 +3164,8 @@ void DesignerWindow::drawModals()
             ImGui::TextWrapped("%s", warning.c_str());
         for (const std::string& warning : this->doc.layerOrderWarnings())
             ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "层序：%s", warning.c_str());
+        for (const std::string& warning : this->contrastWarnings)
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "对比度：%s", warning.c_str());
         if (this->warnings.empty() && this->doc.layerOrderWarnings().empty())
             ImGui::TextColored(kMuted, "没有警告");
         if (!this->errorMessage.empty())
@@ -3088,6 +3346,10 @@ void DesignerWindow::draw()
 
     this->drawModals();
     ImGui::End();
+
+    // 日志窗口（复用库里的调试窗口，读的是日志环形缓冲）
+    if (this->debugWindow.isEnabled())
+        this->debugWindow.draw();
 
     // 帧级自动入栈：这一帧结束时发现文档和上一帧不同，就把上一帧的状态压进撤销栈。
     // 输入框是"改完才返回 true"，所以只能在帧边界比较，粒度 = 一次改动。

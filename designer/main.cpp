@@ -97,6 +97,10 @@ int main(int argc, char** argv)
         window.selectBySpec(wantedSelect);
 
     // 自查：BKLV_DESIGNER_FORCE_SAVE=1 直接触发一次保存（用来验证只读保护真的拦得住）
+    if (std::getenv("BKLV_DESIGNER_LOG") != nullptr || std::getenv("BKLV_DESIGNER_FOCUS") != nullptr)
+        window.setDebugPanelsForTest(std::getenv("BKLV_DESIGNER_LOG") != nullptr,
+            std::getenv("BKLV_DESIGNER_FOCUS") != nullptr);
+
     if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
         window.forceSaveForTest();
 

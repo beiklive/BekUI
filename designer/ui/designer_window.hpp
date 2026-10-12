@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "bklv/bklv.hpp"
+#include "bklv/views/debug_window.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/project.hpp"
 
@@ -58,8 +59,15 @@ class DesignerWindow
     bool selectBySpec(const std::string& spec);
 
     void draw();
+    ~DesignerWindow() { this->saveUiState(); }
     // 自查用：直接走一遍保存（验证只读拦截 / 冲突检测）
     void forceSaveForTest() { this->requestSave(); }
+    void setDebugPanelsForTest(bool log, bool focusOrder)
+    {
+        if (log)
+            this->debugWindow.toggle();
+        this->highlightFocusOrder = focusOrder;
+    }
     bool hasUnsavedChanges() const { return this->dirty; }
 
   private:
@@ -89,6 +97,9 @@ class DesignerWindow
     void drawTree();
     // 页面视图的节点树（type + id + 属性 + children 逐层展开）
     void drawViewTree(const AppearanceDoc::Json& node, const std::string& path);
+    // 选中节点在预览里框出来 / 点预览反选节点
+    void drawViewHighlight(ImVec2 origin, float zoom);
+    void handlePreviewClick(ImVec2 origin, float zoom);
     void drawStatus();
     void drawPreview();
     void drawPreviewCanvas(ImVec2 origin, ImVec2 size, bklv::View* view, bool checker);
@@ -180,6 +191,21 @@ class DesignerWindow
     std::string pendingWidget;
     std::string pendingViewFile;
 
+    // 焦点顺序（整页预览时列出可聚焦视图的先后）
+    std::vector<std::string> focusOrder;
+    bool showFocusOrder = false;
+    bool highlightFocusOrder = false;
+
+    // 设计器自己的界面状态（栏宽 / 画布 / 开关），跨次运行记住
+    void loadUiState();
+    void saveUiState();
+
+    // 对比度检查：文字层颜色 vs 它下面的底色
+    std::vector<std::string> contrastWarnings;
+
+    // 日志面板（复用库里的调试窗口，它读日志环形缓冲）
+    bklv::DebugWindow debugWindow;
+
     // 面板开关
     bool showHelp      = false;
     bool showOverview  = false;
@@ -212,6 +238,8 @@ class DesignerWindow
     // 预览
     bklv::View* previewView = nullptr;
     bklv::View* compareView = nullptr;   // 并排对比：磁盘上那份
+    std::vector<bklv::InstantiatedView> viewMap; // JSON Pointer ↔ 预览视图（高亮/反选用）
+    std::string pendingExpandPath;                // 反选后要展开到的树路径
     std::string previewError;
     int canvasPreset   = 0; // 0=自适应 1=1280x720 2=720x480 3=640x360 4=自定义
     bool canvasChecker = true;

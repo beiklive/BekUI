@@ -176,6 +176,42 @@ bool directoryExists(const std::string& path)
     return fs::is_directory(path, code);
 }
 
+char detectIndentChar(const std::string& text)
+{
+    const size_t newline = text.find('\n');
+    if (newline == std::string::npos)
+        return ' ';
+    // 看第二行开头是空格还是制表符
+    if (newline + 1 < text.size() && text[newline + 1] == '\t')
+        return '\t';
+    return ' ';
+}
+
+int detectIndentWidth(const std::string& text)
+{
+    const size_t newline = text.find('\n');
+    if (newline == std::string::npos)
+        return 2; // 单行 JSON：缩进宽度没有意义，给默认值
+    if (detectIndentChar(text) == '\t')
+        return 1;
+
+    int spaces = 0;
+    for (size_t i = newline + 1; i < text.size() && text[i] == ' '; i++)
+        spaces++;
+    if (spaces <= 0)
+        return 2;
+    return spaces > 8 ? 8 : spaces;
+}
+
+std::string serializeJson(const nlohmann::ordered_json& doc, char indentChar, int indentWidth)
+{
+    // 注意：dump('\t') 会走 int 重载（把制表符当成 9 个空格的缩进宽度），
+    // 要用 (indent, indentChar) 这个重载才是每层一个制表符。测试抓到的。
+    if (indentChar == '\t')
+        return doc.dump(1, '\t') + "\n";
+    return doc.dump(indentWidth <= 0 ? 2 : indentWidth) + "\n";
+}
+
 bool validateJsonText(const std::string& text, std::string& error)
 {
     const Json doc = Json::parse(text, nullptr, false);

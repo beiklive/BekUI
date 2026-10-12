@@ -28,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <vector>
 
 namespace bklv
 {
@@ -86,6 +87,18 @@ class ViewTemplate
 // 便捷入口：装载 + 实例化。只用一次时用这两个就够了。
 View* createFromJSONFile(const std::string& path);
 View* createFromJSONString(const std::string& json);
+
+// 实例化时"哪个视图是 JSON 里的哪个节点"。
+// pointer 是 JSON Pointer（"" = 根，"/children/0" = 第一个子节点）。
+// 编辑器要靠它做"选中节点 → 在预览里框出来"和"点在预览上 → 反选节点"。
+struct InstantiatedView
+{
+    std::string pointer;
+    View* view = nullptr;
+};
+
+// 同 createFromJSONString，但额外导出映射（按创建顺序，含 include 进来的子树）
+View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map);
 
 // ---- 测试与诊断 ----
 

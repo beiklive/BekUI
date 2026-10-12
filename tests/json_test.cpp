@@ -454,6 +454,39 @@ int main()
         check(bad == nullptr, "引用不存在的主题颜色会整块建不出来（报错而不是洋红）");
     }
 
+    // ---- 实例化映射：编辑器靠它把"选中的 JSON 节点"和"预览里的视图"对上 ----
+    {
+        std::vector<bklv::InstantiatedView> map;
+        const char* json = R"({
+            "type": "Box",
+            "axis": "column",
+            "children": [
+                { "type": "Label", "text": "标题" },
+                { "type": "Box", "children": [ { "type": "Label", "text": "里面" } ] }
+            ]
+        })";
+
+        bklv::View* root = bklv::createFromJSONString(json, &map);
+        check(root != nullptr, "带映射的实例化成功");
+        checkEqualSize(map.size(), 4, "映射里 4 个节点（根 + 2 子 + 1 孙）");
+        check(map[0].pointer.empty(), "根节点的 pointer 是空串");
+        checkEqual(map[1].pointer, "/children/0", "第一个子节点的 pointer");
+        checkEqual(map[3].pointer, "/children/1/children/0", "孙节点的 pointer");
+        check(map[0].view == root, "映射第一项就是根视图");
+        // 布局之后能通过映射读到该节点的真实框（编辑器就靠这个画高亮框）
+        YGNodeCalculateLayout(root->getYGNode(), 400.0f, 200.0f, YGDirectionLTR);
+        checkFloat(root->getFrame().width, 400.0f, "根节点布局宽度");
+        check(map[1].view != nullptr && map[3].view != nullptr, "映射里的视图指针都非空");
+        check(map[1].view != root, "子节点不是根视图");
+
+        // 不带映射的调用不能受影响
+        std::vector<bklv::InstantiatedView> untouched;
+        bklv::createFromJSONString(json);
+        check(untouched.empty(), "不传映射时什么都不记");
+
+        delete root;
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

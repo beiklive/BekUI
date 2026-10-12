@@ -128,6 +128,7 @@ struct InstantiateContext
     std::vector<Binding> bindings;
     int nodeCount = 0;
     std::vector<std::string> errors;
+    std::vector<InstantiatedView>* map = nullptr; // 非空时记录 pointer → View*
 };
 
 // 正在进行的实例化。**必须整棵树共享**：include 会调回 ViewTemplate::instantiate()，
@@ -281,6 +282,10 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         addError(ctx, pointer, "类型 \"" + type + "\" 的构造函数返回了空指针");
         return nullptr;
     }
+
+    // 记下"这个视图是 JSON 里的哪个节点"（编辑器做选中/高亮用）
+    if (ctx.map != nullptr)
+        ctx.map->push_back({ pointer, view.get() });
 
     // ---- 数据绑定 ----
     if (node.contains("bind"))
@@ -548,9 +553,39 @@ View* createFromJSONFile(const std::string& path)
 
 View* createFromJSONString(const std::string& json)
 {
+    return createFromJSONString(json, nullptr);
+}
+
+View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map)
+{
     const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::fromString(json, "<string>");
     if (tmpl == nullptr)
         return nullptr;
+
+    // 映射挂在现场上，include 进来的子树也会被记（它们走的是同一个 ctx）
+    if (map != nullptr)
+    {
+        map->clear();
+        InstantiateContext ctx;
+        ctx.map = map;
+        if (g_activeContext != nullptr)
+            return tmpl->instantiate();
+        g_activeContext = &ctx;
+        View* view      = tmpl->instantiate();
+        g_activeContext = nullptr;
+
+        // pointer 里带着模板来源前缀（字符串模板是 "<string>"，文件是路径）。
+        // 导出给编辑器之前把它剥掉，变成"相对这份文档"的 JSON Pointer。
+        const std::string prefix = "<string>";
+        for (InstantiatedView& entry : *map)
+        {
+            if (entry.pointer == prefix)
+                entry.pointer.clear();
+            else if (entry.pointer.rfind(prefix + "/", 0) == 0)
+                entry.pointer.erase(0, prefix.size());
+        }
+        return view;
+    }
     return tmpl->instantiate();
 }
 
