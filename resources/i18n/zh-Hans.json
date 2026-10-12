@@ -18,7 +18,8 @@
     "theme": "主题",
     "nav": "导航",
     "overlay": "弹层",
-    "settings": "设置"
+    "settings": "设置",
+    "transform": "变换"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -113,7 +114,8 @@
     "json_sub": "整块界面来自 JSON 描述",
     "nav_sub": "TabFrame 与 Sidebar",
     "overlay_sub": "弹窗与文本输入",
-    "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入"
+    "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入",
+    "transform_sub": "绘制期缩放 / 旋转 / 斜切 / 位移 + 多段缓动补间"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -166,5 +168,20 @@
     "notify_title": "通知",
     "notify_cell": "弹一条通知",
     "notify_text": "这是一条通知"
+  },
+  "transform": {
+    "hint": "下面这个方块不参与布局重排——变换只改绘制。Play 会跑四段不同缓动的补间。",
+    "play": "播放",
+    "reset": "复位",
+    "sliders_title": "手动调",
+    "trans_x": "位移 X",
+    "trans_y": "位移 Y",
+    "scale_x": "缩放 X",
+    "scale_y": "缩放 Y",
+    "skew_x": "斜切 X",
+    "skew_y": "斜切 Y",
+    "rotate": "旋转",
+    "font_x": "文字缩放 X",
+    "font_y": "文字缩放 Y"
   }
 }

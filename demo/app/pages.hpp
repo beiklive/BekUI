@@ -46,6 +46,9 @@ bklv::Box* buildNavPage();
 // 8. 弹层与输入：Dialog / EditTextDialog
 bklv::Box* buildOverlayPage();
 
+// 10. 变换：绘制期缩放/旋转/斜切/位移 + 多段缓动补间（对标 borealis 的 Transform test）
+bklv::Box* buildTransformPage();
+
 // 9. 设置：列表型 Cell 全家桶（detail / bool / radio / selector / slider / input）
 //    页里的开关要能操作外壳的页头/底栏，所以把外壳传进来
 void setSettingsShell(bklv::AppletFrame* shell);

@@ -18,7 +18,8 @@
     "theme": "Theme",
     "nav": "Nav",
     "overlay": "Overlays",
-    "settings": "Settings"
+    "settings": "Settings",
+    "transform": "Transform"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -113,7 +114,8 @@
     "json_sub": "A whole screen described in JSON",
     "nav_sub": "TabFrame and Sidebar",
     "overlay_sub": "Dialogs and text input",
-    "settings_sub": "List cells: detail / bool / radio / selector / slider / input"
+    "settings_sub": "List cells: detail / bool / radio / selector / slider / input",
+    "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -166,5 +168,20 @@
     "notify_title": "Notification",
     "notify_cell": "Post a notification",
     "notify_text": "This is a notification"
+  },
+  "transform": {
+    "hint": "The box below never triggers a relayout - transforms only affect drawing.",
+    "play": "Play",
+    "reset": "Reset",
+    "sliders_title": "Manual",
+    "trans_x": "Translate X",
+    "trans_y": "Translate Y",
+    "scale_x": "Scale X",
+    "scale_y": "Scale Y",
+    "skew_x": "Skew X",
+    "skew_y": "Skew Y",
+    "rotate": "Rotate",
+    "font_x": "Font scale X",
+    "font_y": "Font scale Y"
   }
 }

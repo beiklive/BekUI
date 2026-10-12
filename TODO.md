@@ -169,6 +169,10 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       桌面注入演示数据）+ demo 底栏可见
 - [x] Notification / Toast（`widgets/notification.*` + `App::notify`；外观状态驱动出现/消失，
       没有根视图时先排队）+ demo 设置页有"弹一条通知"入口
+- [x] View 绘制期变换（`core/transform.hpp` + `View::setScaleX/Y`、`setSkewX/Y`、`setRotate`、
+      `setTranslateX/Y`、`Label::setFontScaleX/Y`）+ demo 变换页（对标 borealis Transform test）
+- [x] 缓动曲线补齐到 tweeny 那一套（borealis 的 `EasingFunction` 就是 tweeny 枚举）：
+      quadratic/cubic/quartic/quintic/sine/circular/exponential/elastic/back/bounce 的 In/Out/InOut
 - [ ] **P0 控件补齐**：
       Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
       View 变换（scale/rotate/skew/fontScale）

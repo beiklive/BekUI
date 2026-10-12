@@ -140,5 +140,9 @@
     "duration": 3.0,
     "marginTop": 16,
     "marginRight": 16
+  },
+  "transform": {
+    "stageHeight": 300,
+    "captionSize": 20
   }
 }

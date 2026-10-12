@@ -57,6 +57,14 @@ class Label : public View
 
     // 单行模式：不换行，超宽时截断并加省略号。
     void setSingleLine(bool singleLine);
+
+    // 文字自身的缩放（borealis demo 的 TransformBox 里那个 fontScale）：
+    // 只缩放**字形顶点**，不影响控件的布局与其它绘制。
+    // 放在 Label 而不是 View 上，是因为在 frame() 那一层没法区分"文字顶点"和"图形顶点"。
+    void setFontScaleX(float value) { this->fontScaleX = value; }
+    void setFontScaleY(float value) { this->fontScaleY = value; }
+    float getFontScaleX() const { return this->fontScaleX; }
+    float getFontScaleY() const { return this->fontScaleY; }
     bool isSingleLine() const { return this->singleLine; }
 
     void setHorizontalAlign(HorizontalAlign align);
@@ -84,6 +92,8 @@ class Label : public View
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
   private:
+    void scaleTextVertices(ImDrawList* drawList, int start, float anchorX, float anchorY);
+
     struct Line
     {
         size_t begin = 0;
@@ -116,6 +126,8 @@ class Label : public View
     // applyTheme() 只覆盖**没被显式设置过**的值：
     // 用户代码 setFontSize(18) 之后，换肤不该把它冲掉。
     float fontSize        = 20.0f;
+    float fontScaleX      = 1.0f;
+    float fontScaleY      = 1.0f;
     ImU32 textColor       = IM_COL32(235, 238, 242, 255);
     bool fontSizeExplicit = false;
     bool textColorExplicit = false;

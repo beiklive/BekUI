@@ -1,5 +1,6 @@
 #include "bklv/core/view.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -601,6 +602,27 @@ void View::frame(FrameContext* ctx)
     const float width  = this->getWidth();
     const float height = this->getHeight();
 
+    // 记录本视图（含子树）会往绘制列表里追加的顶点起点：
+    // 画完之后整段按自己的变换矩阵走一遍。子节点先按自己的矩阵变过，
+    // 父节点再整体变 → 等价于 M_parent * M_child，顺序天然正确。
+    bool transformed   = !this->transform.isIdentity();
+    const int vtxStart = transformed ? ctx->drawList->VtxBuffer.Size : 0;
+
+    // 变换里混进 NaN/Inf 会让整段顶点变成 NaN，控件就此消失（极难查）。
+    // 这里直接拦下来：报一次警告并退化成不做变换——宁可看着"没生效"，也不要看不见。
+    if (transformed && !this->transform.isFinite())
+    {
+        static bool warned = false;
+        if (!warned)
+        {
+            warned = true;
+            BKLV_LOG_WARNING("绘制变换里有 NaN/Inf（%s），本次忽略；"
+                             "检查 setTranslate/setScale/setSkew/setRotate 的输入",
+                this->getClassString().c_str());
+        }
+        transformed = false;
+    }
+
 
     this->drawBackground(ctx->drawList, x, y, width, height);
 
@@ -610,13 +632,54 @@ void View::frame(FrameContext* ctx)
     // 裁剪：只有显式设置 clipsToBounds 的节点才限制子节点绘制范围。
     const bool clipped = this->clipsToBounds && width > 0.0f && height > 0.0f;
     if (clipped)
-        ctx->drawList->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
+    {
+        if (!transformed)
+        {
+            ctx->drawList->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
+        }
+        else
+        {
+            // 变换后的裁剪框只能是轴对齐包围盒（ImGui 的裁剪框不能旋转），
+            // 按四个角变换后取 min/max 近似
+            const Point center(x + width * 0.5f, y + height * 0.5f);
+            const Point corners[4] = {
+                this->transform.apply(x, y, center),
+                this->transform.apply(x + width, y, center),
+                this->transform.apply(x + width, y + height, center),
+                this->transform.apply(x, y + height, center),
+            };
+
+            float minX = corners[0].x, maxX = corners[0].x;
+            float minY = corners[0].y, maxY = corners[0].y;
+            for (int i = 1; i < 4; i++)
+            {
+                minX = std::min(minX, corners[i].x);
+                maxX = std::max(maxX, corners[i].x);
+                minY = std::min(minY, corners[i].y);
+                maxY = std::max(maxY, corners[i].y);
+            }
+
+            ctx->drawList->PushClipRect(ImVec2(minX, minY), ImVec2(maxX, maxY), true);
+        }
+    }
 
     this->draw(ctx->drawList, x, y, width, height, ctx);
     this->drawChildren(ctx->drawList, x, y, width, height, ctx);
 
     if (clipped)
         ctx->drawList->PopClipRect();
+
+    if (transformed)
+    {
+        const Point center(x + width * 0.5f, y + height * 0.5f);
+        ImDrawList* drawList = ctx->drawList;
+        for (int i = vtxStart; i < drawList->VtxBuffer.Size; i++)
+        {
+            const ImVec2& pos = drawList->VtxBuffer[i].pos;
+            const Point moved = this->transform.apply(pos.x, pos.y, center);
+            drawList->VtxBuffer[i].pos = ImVec2(moved.x, moved.y);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

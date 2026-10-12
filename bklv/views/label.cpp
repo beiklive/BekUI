@@ -388,6 +388,20 @@ void Label::onLayout()
     this->rewrap(width);
 }
 
+// 把一段文字顶点按 fontScale 以锚点为中心缩放（只动字形，不动控件）
+void Label::scaleTextVertices(ImDrawList* drawList, int start, float anchorX, float anchorY)
+{
+    if (this->fontScaleX == 1.0f && this->fontScaleY == 1.0f)
+        return;
+
+    for (int i = start; i < drawList->VtxBuffer.Size; i++)
+    {
+        ImVec2& pos = drawList->VtxBuffer[i].pos;
+        pos.x       = anchorX + (pos.x - anchorX) * this->fontScaleX;
+        pos.y       = anchorY + (pos.y - anchorY) * this->fontScaleY;
+    }
+}
+
 void Label::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     ImFont* font = this->resolveFont();
@@ -410,7 +424,9 @@ void Label::draw(ImDrawList* drawList, float x, float y, float width, float heig
             textX = x + width - textWidth;
 
         const float textY = y + (height - linePixelHeight) * 0.5f;
+        const int textVtxStart = drawList->VtxBuffer.Size;
         drawList->AddText(font, this->fontSize, ImVec2(textX, textY), color, this->truncated.c_str());
+        this->scaleTextVertices(drawList, textVtxStart, textX, textY);
         return;
     }
 
@@ -444,6 +460,7 @@ void Label::draw(ImDrawList* drawList, float x, float y, float width, float heig
         else if (this->horizontalAlign == HorizontalAlign::RIGHT)
             lineX = x + width - lineWidth;
 
+        const int textVtxStart = drawList->VtxBuffer.Size;
         drawList->AddText(font, this->fontSize, ImVec2(lineX, lineTop + linePixelHeight * static_cast<float>(i)),
             color, this->text.c_str() + line.begin, this->text.c_str() + line.end);
     }

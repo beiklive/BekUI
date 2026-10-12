@@ -20,17 +20,51 @@ float getFrameDeltaSeconds();
 // 返回自进程启动以来的微秒数，对应 borealis 的 getCPUTimeUsec()。
 uint64_t getCPUTimeUsec();
 
+// 缓动曲线。对齐 borealis 用的 tweeny::easing::enumerated（他们的 EasingFunction
+// 就是那个枚举），所以 In/Out/InOut 三挡在 9 种曲线上都齐。
 enum class EasingFunction
 {
     linear,
+
     quadraticIn,
     quadraticOut,
     quadraticInOut,
+
     cubicIn,
     cubicOut,
     cubicInOut,
-    bounceOut,
+
+    quarticIn,
+    quarticOut,
+    quarticInOut,
+
+    quinticIn,
+    quinticOut,
+    quinticInOut,
+
+    sineIn,
+    sineOut,
     sineInOut,
+
+    circularIn,
+    circularOut,
+    circularInOut,
+
+    exponentialIn,
+    exponentialOut,
+    exponentialInOut,
+
+    elasticIn,
+    elasticOut,
+    elasticInOut,
+
+    backIn,
+    backOut,
+    backInOut,
+
+    bounceIn,
+    bounceOut,
+    bounceInOut,
 };
 
 // 按缓动函数把 t（0~1）映射到输出值。

@@ -46,18 +46,69 @@ uint64_t getCPUTimeUsec()
 float applyEasing(EasingFunction easing, float t)
 {
     t = std::clamp(t, 0.0f, 1.0f);
+
+    constexpr float PI = 3.14159265358979323846f;
+
+    // 复用：In 型曲线做 Out 就是镜像（1 - f(1-t)），Out 做 InOut 就是两半拼接。
+    // 这样每种曲线只写一个公式，其余两挡自动得到，也不容易写错。
+    auto makeOut = [&](float (*in)(float), float x) { return 1.0f - in(1.0f - x); };
+    auto makeInOut = [&](float (*in)(float), float (*out)(float), float x) {
+        return x < 0.5f ? in(x * 2.0f) * 0.5f : out(x * 2.0f - 1.0f) * 0.5f + 0.5f;
+    };
+
+    auto quadIn = [](float x) { return x * x; };
+    auto cubicIn = [](float x) { return x * x * x; };
+    auto quartIn = [](float x) { return x * x * x * x; };
+    auto quintIn = [](float x) { return x * x * x * x * x; };
+    auto sineIn = [&](float x) { return 1.0f - std::cos(x * PI * 0.5f); };
+    auto circIn = [](float x) { return 1.0f - std::sqrt(std::max(0.0f, 1.0f - x * x)); };
+    auto expoIn = [](float x) { return x <= 0.0f ? 0.0f : std::pow(2.0f, 10.0f * x - 10.0f); };
+    auto backIn = [](float x) {
+        constexpr float c1 = 1.70158f;
+        return (c1 + 1.0f) * x * x * x - c1 * x * x;
+    };
+    auto bounceOutFn = [](float x) {
+        constexpr float n1 = 7.5625f;
+        constexpr float d1 = 2.75f;
+        if (x < 1.0f / d1)
+            return n1 * x * x;
+        if (x < 2.0f / d1)
+        {
+            x -= 1.5f / d1;
+            return n1 * x * x + 0.75f;
+        }
+        if (x < 2.5f / d1)
+        {
+            x -= 2.25f / d1;
+            return n1 * x * x + 0.9375f;
+        }
+        x -= 2.625f / d1;
+        return n1 * x * x + 0.984375f;
+    };
+    auto bounceInFn = [&](float x) { return 1.0f - bounceOutFn(1.0f - x); };
+    auto elasticInFn = [&](float x) {
+        if (x <= 0.0f)
+            return 0.0f;
+        if (x >= 1.0f)
+            return 1.0f;
+        constexpr float c4 = (2.0f * PI) / 3.0f;
+        return -std::pow(2.0f, 10.0f * x - 10.0f) * std::sin((x * 10.0f - 10.75f) * c4);
+    };
+
     switch (easing)
     {
         case EasingFunction::linear:
             return t;
+
         case EasingFunction::quadraticIn:
-            return t * t;
+            return quadIn(t);
         case EasingFunction::quadraticOut:
-            return t * (2.0f - t);
+            return makeOut(+[](float x) { return x * x; }, t);
         case EasingFunction::quadraticInOut:
             return t < 0.5f ? 2.0f * t * t : -1.0f + (4.0f - 2.0f * t) * t;
+
         case EasingFunction::cubicIn:
-            return t * t * t;
+            return cubicIn(t);
         case EasingFunction::cubicOut:
         {
             const float inv = t - 1.0f;
@@ -70,28 +121,127 @@ float applyEasing(EasingFunction easing, float t)
             const float inv = 2.0f * t - 2.0f;
             return 0.5f * inv * inv * inv + 1.0f;
         }
-        case EasingFunction::bounceOut:
+
+        case EasingFunction::quarticIn:
+            return quartIn(t);
+        case EasingFunction::quarticOut:
+            return makeOut(+[](float x) { return x * x * x * x; }, t);
+        case EasingFunction::quarticInOut:
         {
-            constexpr float n1 = 7.5625f;
-            constexpr float d1 = 2.75f;
-            if (t < 1.0f / d1)
-                return n1 * t * t;
-            if (t < 2.0f / d1)
-            {
-                t -= 1.5f / d1;
-                return n1 * t * t + 0.75f;
-            }
-            if (t < 2.5f / d1)
-            {
-                t -= 2.25f / d1;
-                return n1 * t * t + 0.9375f;
-            }
-            t -= 2.625f / d1;
-            return n1 * t * t + 0.984375f;
+            if (t < 0.5f)
+                return 8.0f * quartIn(t);
+            const float inv = 1.0f - (2.0f * t - 1.0f);
+            return 1.0f - 8.0f * quartIn(inv);
         }
+
+        case EasingFunction::quinticIn:
+            return quintIn(t);
+        case EasingFunction::quinticOut:
+            return makeOut(+[](float x) { return x * x * x * x * x; }, t);
+        case EasingFunction::quinticInOut:
+        {
+            if (t < 0.5f)
+                return 16.0f * quintIn(t);
+            const float inv = 1.0f - (2.0f * t - 1.0f);
+            return 1.0f - 16.0f * quintIn(inv);
+        }
+
+        case EasingFunction::sineIn:
+            return sineIn(t);
+        case EasingFunction::sineOut:
+            return std::sin(t * PI * 0.5f);
         case EasingFunction::sineInOut:
-            return -(std::cos(3.14159265f * t) - 1.0f) * 0.5f;
+            return -(std::cos(PI * t) - 1.0f) * 0.5f;
+
+        case EasingFunction::circularIn:
+            return circIn(t);
+        case EasingFunction::circularOut:
+            return makeOut(+[](float x) {
+                return 1.0f - std::sqrt(std::max(0.0f, 1.0f - x * x));
+            }, t);
+        case EasingFunction::circularInOut:
+        {
+            if (t < 0.5f)
+                return (1.0f - std::sqrt(std::max(0.0f, 1.0f - 4.0f * t * t))) * 0.5f;
+            const float x = 2.0f * t - 2.0f;
+            return (std::sqrt(std::max(0.0f, 1.0f - x * x)) + 1.0f) * 0.5f;
+        }
+
+        case EasingFunction::exponentialIn:
+            return expoIn(t);
+        case EasingFunction::exponentialOut:
+            return t >= 1.0f ? 1.0f : 1.0f - std::pow(2.0f, -10.0f * t);
+        case EasingFunction::exponentialInOut:
+        {
+            if (t <= 0.0f)
+                return 0.0f;
+            if (t >= 1.0f)
+                return 1.0f;
+            return t < 0.5f ? std::pow(2.0f, 20.0f * t - 10.0f) * 0.5f
+                            : (2.0f - std::pow(2.0f, -20.0f * t + 10.0f)) * 0.5f;
+        }
+
+        case EasingFunction::elasticIn:
+            return elasticInFn(t);
+        case EasingFunction::elasticOut:
+            return makeOut(+[](float x) {
+                if (x <= 0.0f)
+                    return 0.0f;
+                if (x >= 1.0f)
+                    return 1.0f;
+                constexpr float c4 = (2.0f * 3.14159265358979323846f) / 3.0f;
+                return std::pow(2.0f, -10.0f * x) * std::sin((x * 10.0f - 0.75f) * c4) + 1.0f;
+            }, t);
+        case EasingFunction::elasticInOut:
+        {
+            if (t <= 0.0f)
+                return 0.0f;
+            if (t >= 1.0f)
+                return 1.0f;
+            constexpr float c5 = (2.0f * 3.14159265358979323846f) / 4.5f;
+            return t < 0.5f
+                ? -(std::pow(2.0f, 20.0f * t - 10.0f) * std::sin((20.0f * t - 11.125f) * c5)) * 0.5f
+                : (std::pow(2.0f, -20.0f * t + 10.0f) * std::sin((20.0f * t - 11.125f) * c5)) * 0.5f
+                    + 1.0f;
+        }
+
+        case EasingFunction::backIn:
+            return backIn(t);
+        case EasingFunction::backOut:
+            return makeOut(+[](float x) {
+                constexpr float c1 = 1.70158f;
+                const float inv    = x - 1.0f;
+                return 1.0f + (c1 + 1.0f) * inv * inv * inv + c1 * inv * inv;
+            }, t);
+        case EasingFunction::backInOut:
+        {
+            constexpr float c2 = 1.70158f * 1.525f;
+            if (t < 0.5f)
+            {
+                const float x = 2.0f * t;
+                return (x * x * ((c2 + 1.0f) * x - c2)) * 0.5f;
+            }
+            const float x = 2.0f * t - 2.0f;
+            return (x * x * ((c2 + 1.0f) * x + c2) + 2.0f) * 0.5f;
+        }
+
+        case EasingFunction::bounceIn:
+            return bounceInFn(t);
+        case EasingFunction::bounceOut:
+            return bounceOutFn(t);
+        case EasingFunction::bounceInOut:
+        {
+            if (t < 0.5f)
+                return (1.0f - bounceOutFn(1.0f - 2.0f * t)) * 0.5f;
+            return (1.0f + bounceOutFn(2.0f * t - 1.0f)) * 0.5f;
+        }
     }
+
+    (void)makeInOut;
+    (void)backIn;
+    (void)circIn;
+    (void)elasticInFn;
+    (void)sineIn;
     return t;
 }
 

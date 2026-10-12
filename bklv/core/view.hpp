@@ -20,6 +20,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/geometry.hpp"
+#include "bklv/core/transform.hpp"
 #include "bklv/core/input.hpp"
 
 namespace bklv
@@ -206,6 +207,32 @@ class View
     void setTranslationY(float y) { this->setTranslation(this->translation.x, y); }
     Point getTranslation() const { return this->translation; }
 
+    // ---- 绘制期变换（缩放 / 旋转 / 斜切 / 位移，字形也一起变）----
+    //
+    // 和上面的 setTranslation 不同：setTranslation 参与布局（回收器就用它摆 cell），
+    // 这里的变换**只管画**，布局与命中测试仍按原矩形（和 borealis 一致）。
+    void setTranslateX(float x) { this->transform.translateX = x; }
+    void setTranslateY(float y) { this->transform.translateY = y; }
+    void setScaleX(float value) { this->transform.scaleX = value; }
+    void setScaleY(float value) { this->transform.scaleY = value; }
+    void setSkewX(float radians) { this->transform.skewX = radians; }
+    void setSkewY(float radians) { this->transform.skewY = radians; }
+    void setRotate(float radians) { this->transform.rotation = radians; }
+    // 变换中心（不设则用控件中心）
+    void setTransformOrigin(float x, float y)
+    {
+        this->transform.origin    = Point(x, y);
+        this->transform.hasOrigin = true;
+    }
+
+    float getScaleX() const { return this->transform.scaleX; }
+    float getScaleY() const { return this->transform.scaleY; }
+    float getSkewX() const { return this->transform.skewX; }
+    float getSkewY() const { return this->transform.skewY; }
+    float getRotate() const { return this->transform.rotation; }
+    const Transform2D& getTransform() const { return this->transform; }
+    void resetTransform() { this->transform.reset(); }
+
     // ---- 焦点 ----
 
     // 这个 View 能否成为焦点（可点、可操作）。
@@ -351,7 +378,8 @@ class View
     float alpha           = 1.0f;
     bool detached         = false;
     unsigned int fontGeneration = 0; // 上一次布局所用的字体版本
-    Point translation;               // 滚动/拖拽偏移
+    Point translation;               // 滚动/拖拽偏移（参与布局）
+    Transform2D transform;           // 绘制期变换（不影响布局）
     bool focused = false;
     std::vector<InputAction> actions;
     ActionIdentifier nextActionIdentifier = 1;

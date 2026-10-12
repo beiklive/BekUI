@@ -33,11 +33,16 @@
 
 | 能力 | borealis | bklv | 状态 |
 |---|---|---|---|
-| translate | `setTranslationX/Y` | 同名 | ✅ |
-| **scale** | `setScaleX/Y` | — | ❌ 待补 |
-| **rotate** | `setRotate` | — | ❌ 待补 |
-| **skew** | `setSkewX/Y` | — | ❌ 待补 |
-| **fontScale** | `setFontScaleX/Y` | — | ❌ 待补 |
+| translate | `setTranslationX/Y`（参与布局） | 同名 + `setTranslateX/Y`（绘制期） | ✅ |
+| scale | 无（demo 在自定义视图里手写） | `setScaleX/Y` | ✅ 比 borealis 更进一步 |
+| rotate | 无（同上） | `setRotate`（弧度，绕控件中心） | ✅ |
+| skew | 无（同上） | `setSkewX/Y`（弧度） | ✅ |
+| fontScale | 无（同上） | `Label::setFontScaleX/Y` | ✅ 只缩放字形 |
+| 变换中心 | nvgTranslate/Scale 自己算 | `setTransformOrigin`，缺省控件中心 | ✅ |
+
+> 说明：`setScaleX` 这些在 borealis 里**不是 View 的 API**，而是它 demo 的 `TransformBox`
+> 自定义视图里手写的 NanoVG 变换。ImDrawList 没有变换栈，我们在 `View::frame` 一层按
+> 顶点段实现，所以**任何控件**都能用（这是升级点）。实现细节与踩坑见下。
 | 可见性 VISIBLE/INVISIBLE/GONE | 同名 | 同名 | ✅ |
 | 动作系统 registerAction / 冒泡 | ✅ | ✅（沿父链冒泡） | ✅ |
 | 手势（tap / pan / scroll） | `GestureRecognizer` + 3 个实现 | — | ❌ 待补 |
@@ -127,6 +132,7 @@
 |---|---|---|
 | 桌面上"无数据"时无线图标不隐藏 | `setSnapshot` 在"值没变"时提前 return，跳过了显隐更新 | 显隐先定，再看值有没有变 |
 | 开关类图标在某些外观下不可见 | 自绘层没给尺寸时几何会用到整块矩形 | 几何取主题 metric + 右对齐（同 Cell 的开关） |
+| 变换里的 NaN 会让控件**静默消失** | demo 在布局算完前用 `getWidth()` 换算位移，NaN 传进了变换，整段顶点变 NaN | 库侧：`View::frame` 检测到 NaN/Inf 就报警并跳过变换（宁可"没生效"，也不要看不见）；应用侧：换算前对尺寸做 isfinite 兜底 |
 | 通知浮层看不见 | 构造时把 `hidden` 与 `shown` 两个外观状态**同时**激活，`hidden` 的透明度 0 把 `shown` 盖掉 | 状态要互斥地切：先撤旧的再开新的（和 Dialog 的 open/closed 一个套路） |
 | 窗口建好前 `App::notify` 的通知丢了 | 那时还没有根视图，只能警告丢弃 | 排进 `pendingNotifications`，`setRootView` 之后补发 |
 
