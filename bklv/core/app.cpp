@@ -203,18 +203,24 @@ void App::notify(const std::string& text, float duration)
 
 void App::saveScreenshot(RenderBackend* backend, float width, float height)
 {
+    // 读的是**像素**，不是逻辑尺寸：Retina 这类 2x 屏上帧缓冲是逻辑尺寸的两倍，
+    // 按逻辑尺寸读只会拿到左下角那一块（截出来的图像是被放大了 4 倍）。踩过。
+    const ImVec2 scale = ImGui::GetIO().DisplayFramebufferScale;
+    const int pixelWidth  = (int)(width * (scale.x > 0.0f ? scale.x : 1.0f));
+    const int pixelHeight = (int)(height * (scale.y > 0.0f ? scale.y : 1.0f));
+
     std::vector<unsigned char> pixels;
-    if (!backend->readPixels(0, 0, (int)width, (int)height, pixels))
+    if (!backend->readPixels(0, 0, pixelWidth, pixelHeight, pixels))
     {
         BKLV_LOG_ERROR("后端不支持帧读回，截图失败：%s", this->screenshotPath.c_str());
         return;
     }
 
-    if (!writePngFile(this->screenshotPath, pixels.data(), (int)width, (int)height, 4))
+    if (!writePngFile(this->screenshotPath, pixels.data(), pixelWidth, pixelHeight, 4))
         BKLV_LOG_ERROR("截图写文件失败：%s", this->screenshotPath.c_str());
     else
-        BKLV_LOG_INFO("截图已保存：%s（%dx%d）", this->screenshotPath.c_str(), (int)width,
-            (int)height);
+        BKLV_LOG_INFO("截图已保存：%s（%dx%d 像素）", this->screenshotPath.c_str(), pixelWidth,
+            pixelHeight);
 }
 
 bool App::requestScreenshot(const std::string& path, int delayFrames)
@@ -470,7 +476,12 @@ int App::run(const std::string& title, int width, int height)
                 }
                 else
                 {
-                    this->saveScreenshot(backend, width, height);
+                    // 实际可绘制区域可能比请求的小（窗口被屏幕限制、或窗口被用户拖小）：
+                    // 按 ImGui 的 DisplaySize 读，否则会读到缓冲区外、图错位（踩过）
+                    const ImVec2 display = ImGui::GetIO().DisplaySize;
+                    const float shotWidth  = display.x > 0.0f ? display.x : width;
+                    const float shotHeight = display.y > 0.0f ? display.y : height;
+                    this->saveScreenshot(backend, shotWidth, shotHeight);
                     this->screenshotPath.clear();
                     this->quitRequested = true;
                 }

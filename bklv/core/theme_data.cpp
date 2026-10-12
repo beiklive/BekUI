@@ -1,4 +1,7 @@
+#include "bklv/core/appearance.hpp"
 #include "bklv/core/theme_data.hpp"
+
+#include <algorithm>
 
 #include "bklv/core/ui_scale.hpp"
 
@@ -141,7 +144,21 @@ void flatten(const Json& node, const std::string& prefix, std::unordered_map<std
 
 bool ThemeData::loadInto(const std::string& themeName, bool isDefault)
 {
-    const std::string dir = std::string(THEME_DIR) + themeName + "/";
+    return this->loadIntoDirectory(std::string(THEME_DIR) + themeName + "/", themeName, isDefault);
+}
+
+bool ThemeData::loadFromDirectory(const std::string& themeDir, const std::string& themeName)
+{
+    // default 主题永远来自程序自己的 resources（缺项回退用它），本体按传入目录装
+    if (themeName != "default")
+        this->loadInto("default", true);
+
+    return this->loadIntoDirectory(themeDir.empty() ? std::string() : themeDir + "/", themeName, false);
+}
+
+bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& themeName,
+    bool isDefault)
+{
 
     Json meta;
     if (!parseFile(dir + "theme.json", meta))
@@ -324,6 +341,36 @@ float ThemeData::number(const std::string& key, float fallback) const
     return fallback;
 }
 
+std::vector<std::string> ThemeData::getColorKeys() const
+{
+    std::vector<std::string> keys;
+    keys.reserve(this->colors.size());
+    for (const auto& entry : this->colors)
+        keys.push_back(entry.first);
+    std::sort(keys.begin(), keys.end());
+    return keys;
+}
+
+std::vector<std::string> ThemeData::getNumberKeys() const
+{
+    std::vector<std::string> keys;
+    keys.reserve(this->numbers.size());
+    for (const auto& entry : this->numbers)
+        keys.push_back(entry.first);
+    std::sort(keys.begin(), keys.end());
+    return keys;
+}
+
+std::vector<std::string> ThemeData::getWidgetNames() const
+{
+    std::vector<std::string> names;
+    names.reserve(this->widgetJson.size());
+    for (const auto& entry : this->widgetJson)
+        names.push_back(entry.first);
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
 const std::string* ThemeData::widgetAppearanceJson(const std::string& widget) const
 {
     const auto it = this->widgetJson.find(widget);
@@ -371,6 +418,19 @@ bool loadThemeIntoGlobal(const std::string& name)
     const bool ok = candidate.load(name);
     if (!ok && candidate.getName() != name)
         return false; // 目录都没有，保持原主题
+
+    mutableTheme() = candidate;
+    themeLoaded()  = true;
+    clearAppearanceCache();
+    return true;
+}
+
+bool loadThemeIntoGlobalFromDirectory(const std::string& themeDir, const std::string& themeName)
+{
+    ThemeData candidate;
+    const bool ok = candidate.loadFromDirectory(themeDir, themeName);
+    if (!ok && candidate.getName() != themeName)
+        return false;
 
     mutableTheme() = candidate;
     themeLoaded()  = true;

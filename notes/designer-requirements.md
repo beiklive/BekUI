@@ -1,6 +1,19 @@
 # 外观设计器（Designer）需求梳理
 
-状态：**需求确认中**（P1 + P2 已定，实现未开始）
+状态：**P1 + P2a 已实现**（见 `docs/designer.md`）
+
+与本文档的差异（实现时按用户后来的样板房要求走）：
+
+- 预览是**核心**不是兜底：界面本体用 ImGui 控件，预览用 bklv 真实视图渲染
+  （整个控件外观 / box 盒模型 / 单层 / 状态 / **整页视图**）
+- 布局照样板房：左上文件列表 / 左节点树 / 中预览区 / 右属性表 / 左下节点数
+- 主题可以是别的仓库里的（`loadThemeIntoGlobalFromDirectory` 按绝对目录装载）
+- 库侧新增：`ThemeData::getColorKeys/getNumberKeys/getWidgetNames`、
+  `validateThemeAppearances()`、`AppearanceView::applyAppearanceJson()`
+- 顺带修的库 bug：ImGui 默认字体没设（图标字体当默认 → `ImGui::Text` 全画不出来）、
+  截图没乘帧缓冲缩放（Retina 上只截到左下角）
+- 待办：P2b（层的拖拽排序与更完整表单）、P2c（页面视图属性表单可编辑）、
+  主题色/数值表的可视化编辑（P4）、属性表的"表单 + 原始 JSON"双视图
 
 ## 1. 目标
 

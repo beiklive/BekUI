@@ -46,6 +46,11 @@ class AppearanceView : public Box
     void update() override;
     void applyTheme() override;
 
+    // 直接套一份**外部的**外观 JSON（用当前主题解析）。
+    // 设计器靠它做"改了但还没保存也能看到效果"：编译 → 换成这一份 → 重排。
+    // 失败返回 false + error（原外观不变），成功时也会套用其中的 box 段。
+    bool applyAppearanceJson(const std::string& json, std::string& error);
+
   protected:
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 

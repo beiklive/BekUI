@@ -28,6 +28,9 @@ class ThemeData
     // 无论 name 是什么，都会先把 default 装载成回退表。
     bool load(const std::string& name);
 
+    // 按**绝对目录**装载（设计器要编辑别的仓库里的主题，不能只认 resources/theme/<name>）
+    bool loadFromDirectory(const std::string& themeDir, const std::string& themeName);
+
     const std::string& getName() const { return this->name; }
 
     // 取颜色 / 数值。找不到时先查 default 主题，再返回兜底值（并记一次 debug 日志）。
@@ -49,11 +52,20 @@ class ThemeData
 
     // 已装载的 key 数量（测试与诊断）。
     int getColorCount() const { return (int)this->colors.size(); }
+
+    // 键列表（排序后），给编辑器做下拉/只读表格用
+    std::vector<std::string> getColorKeys() const;
+    std::vector<std::string> getNumberKeys() const;
+
+    // 该主题登记的外观名（短名，如 "button.primary"），顺序与 theme.json 的 widgets[] 一致
+    std::vector<std::string> getWidgetNames() const;
     int getNumberCount() const { return (int)this->numbers.size(); }
 
   private:
     // 装载一个主题目录到给定的表里；isDefault 决定失败时是否记录警告。
     bool loadInto(const std::string& name, bool isDefault);
+    // dir 以 / 结尾；default 那一份也用它（缺项回退）
+    bool loadIntoDirectory(const std::string& dir, const std::string& themeName, bool isDefault);
 
     std::string name = "default";
     std::unordered_map<std::string, ImU32> colors;
@@ -75,6 +87,9 @@ const ThemeData& getTheme();
 // 一般不用直接调这个——换肤还要清外观缓存并让视图树重新套用外观，
 // 那是 appearance.hpp 的 setTheme()。
 bool loadThemeIntoGlobal(const std::string& name);
+
+// 同上，但主题目录是绝对路径
+bool loadThemeIntoGlobalFromDirectory(const std::string& themeDir, const std::string& themeName);
 
 // 主题资源根目录（相对资源目录）。
 constexpr const char* THEME_DIR = "resources/theme/";

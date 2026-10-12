@@ -488,6 +488,28 @@ BKLV_DEMO_PAGE=5 BKLV_SCREENSHOT=/tmp/dex.png ./dist/demo   # 直接开第 6 页
 （stb_image_write，第三方头文件的警告在这一个编译单元里局部压掉）。
 `BKLV_DEMO_PAGE` / `BKLV_SCREENSHOT` 是 demo 的调试开关，给自己看效果或做 CI 基线都方便。
 
+## 设计器（designer/）
+
+第二个程序（`dist/designer`），**界面本体用 ImGui 控件、预览用 bklv 的真实视图**渲染，
+和 demo 互不依赖。逻辑层 `designer/core` 不含界面代码，能无窗口测
+（`tests/designer_core_test.cpp`）。详细用法见 `docs/designer.md`。
+
+- 构建：`BKLV_TARGET_LIST` 里一行（`"designer|designer/main.cpp|designer"`）+ 根
+  `CMakeLists.txt` 的 `BKLV_DESIGNER_CORE_SOURCES` / `BKLV_DESIGNER_UI_SOURCES`；
+  漏项检查覆盖 `demo/*.cpp` 与 `designer/*.cpp`。
+- 主题可以是**别的仓库**里的：装载走 `loadThemeIntoGlobalFromDirectory`（按绝对目录），
+  不是只认 `resources/theme/<name>`。
+- 预览是"手动驱动一棵不在 App 视图树里的视图"：`YGNodeCalculateLayout` → `notifyLayout`
+  → `update` → `setTranslation(画布原点)` → `frame(ctx)`；`View::draw` 是 protected，
+  别想直接调它。
+- `readOnly` 的基准主题（default / ocean）只能浏览，编辑请走"模板新建"。
+- **ImGui 的默认字体必须显式设**（`setDefaultFont` 里设 `io.FontDefault`）：不设就用
+  字体表第 0 个，而那可能是先加载的图标字体（只有私用区字形）→ `ImGui::Text` 全画不出来。
+- **截图按帧缓冲读**（`App::saveScreenshot` 乘 `io.DisplayFramebufferScale`）：Retina 上
+  帧缓冲是逻辑尺寸的 2 倍，按逻辑尺寸读只拿到左下角一块。
+- 设计器里要关掉 ImGui 自己的键盘/手柄导航（`io.ConfigFlags &= ~NavEnableKeyboard`），
+  否则方向键会被 ImGui 拿去移动它的内部焦点、把面板滚到不知哪里去。
+
 ## 测试
 
 无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：

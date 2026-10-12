@@ -875,6 +875,25 @@ void clearAppearanceCache()
     appearanceCache().clear();
 }
 
+bool validateThemeAppearances(std::string& error)
+{
+    const ThemeData& theme = getTheme();
+    for (const std::string& widget : theme.getWidgetNames())
+    {
+        const std::string* text = theme.widgetAppearanceJson(widget);
+        if (text == nullptr)
+            continue;
+
+        std::string localError;
+        if (Appearance::compile(*text, theme, localError) == nullptr)
+        {
+            error = widget + "：" + localError;
+            return false;
+        }
+    }
+    return true;
+}
+
 bool setTheme(const std::string& name)
 {
     if (!loadThemeIntoGlobal(name))

@@ -1,0 +1,242 @@
+// 设计器逻辑层（designer/core/*）的无窗口测试。
+//
+// 这一层刻意不含任何界面代码，所以能直接测：主题登记、外观文档的"读→改→写"往返、
+// 层的增删排序、diff、模板新建/直接编辑、原子写盘与 .bak、写盘前的编译校验拦截。
+//
+// 资源按可执行文件目录解析，所以开头必须 initResources()；测试产物写进
+// dist/designer_test_work/ 下，不落到仓库树里。
+
+#include <filesystem>
+#include <fstream>
+
+#include "bklv/bklv.hpp"
+#include "designer/core/appearance_doc.hpp"
+#include "designer/core/diff.hpp"
+#include "designer/core/project.hpp"
+#include "designer/core/theme_files.hpp"
+#include "test_util.hpp"
+
+namespace fs = std::filesystem;
+using designer::AppearanceDoc;
+using designer::Project;
+using designer::ProjectMode;
+using Json = nlohmann::ordered_json;
+
+namespace
+{
+
+std::string workRoot()
+{
+    return bklv::resourcePath("designer_test_work");
+}
+
+void writeFile(const std::string& path, const std::string& text)
+{
+    fs::create_directories(fs::path(path).parent_path());
+    std::ofstream file(path, std::ios::binary | std::ios::trunc);
+    file << text;
+}
+
+// 造一份最小的主题目录：theme.json / colors.json / metrics.json / 两个外观
+std::string makeTheme(const std::string& root, const std::string& name)
+{
+    const std::string dir = root + "/" + name;
+    fs::create_directories(dir + "/widgets");
+
+    writeFile(dir + "/theme.json",
+        R"({"name": ")" + name + R"(", "widgets": ["widgets/rectangle.json", "widgets/button.json"]})");
+    writeFile(dir + "/colors.json", R"({"color": {"accent": {"base": "#00ffcc"}, "text": {"primary": "#ffffff"}}})");
+    writeFile(dir + "/metrics.json", R"({"metric": {"font": {"size": {"md": 18}}}})");
+    writeFile(dir + "/widgets/rectangle.json",
+        R"({"box": {"height": "auto"}, "layers": [{"op": "rect", "id": "bg", "fill": "#00ffcc", "radius": 8}], "states": {}})");
+    writeFile(dir + "/widgets/button.json",
+        R"({"box": {"height": 48}, "layers": [{"op": "text", "id": "title", "color": "#ffffff"}], "states": {"focused": {"title.color": {"to": "#00ffcc", "duration": 120, "easing": "linear"}}}})");
+    return dir;
+}
+
+} // namespace
+
+int main()
+{
+    bklv::initResources();
+
+    const std::string work = workRoot();
+    std::error_code code;
+    fs::remove_all(work, code);
+    fs::create_directories(work + "/resources/theme");
+
+    const std::string themeRoot = work + "/resources/theme";
+    writeFile(themeRoot + "/themes.json", R"({"default": "default", "available": ["default"]})");
+    makeTheme(themeRoot, "default");
+
+    // ---------------------------------------------------------------- 外观文档往返
+    {
+        AppearanceDoc doc;
+        std::string error;
+        const std::string text
+            = R"({"box": {"height": 48, "minWidth": 160}, "layers": [{"op": "rect", "id": "bg", "fill": "#111111"}, {"op": "text", "id": "title", "color": "#ffffff"}], "states": {"focused": {"bg.fill": {"to": "#222222", "duration": 100, "easing": "linear"}}}, "extra": {"keep": "me"}})";
+        check(doc.parse(text, error), "解析外观成功");
+
+        // 没碰过的键必须原样写回去（未知键 extra 也要留着）
+        check(Json::parse(doc.serialize()) == Json::parse(text), "往返不改内容");
+
+        double height = 0.0;
+        check(doc.getBoxNumber("height", height) && height == 48.0, "读到 box.height");
+        doc.setBoxNumber("height", 56.0);
+        check(Json::parse(doc.serialize())["box"]["height"] == 56, "改 box.height");
+
+        checkEqualInt(doc.layerCount(), 2, "层数");
+        checkEqual(doc.layerId(0), "bg", "第 1 层 id");
+        checkEqual(doc.layerOp(1), "text", "第 2 层 op");
+
+        const int added = doc.addLayer("shadow");
+        checkEqualInt(doc.layerCount(), 3, "新增一层");
+        checkEqual(doc.layerOp(added), "shadow", "新层 op");
+        check(doc.layer(added)->contains("cutout"), "新层默认带 cutout 字段");
+
+        // shadow 必须能移到 rect 之前（层序约定）
+        check(doc.moveLayer(2, -1), "上移成功");
+        checkEqual(doc.layerOp(1), "shadow", "移动后第 2 层是 shadow");
+        check(!doc.moveLayer(0, -1), "越界上移被拒绝");
+
+        const int copy = doc.duplicateLayer(0);
+        checkEqualInt(copy, 1, "复制层插在下一格");
+        checkEqual(doc.layerId(1), "bgCopy", "复制层 id 带后缀");
+
+        doc.removeLayer(1);
+        checkEqualInt(doc.layerCount(), 3, "删层");
+
+        // 状态与通道
+        checkEqualInt((int)doc.stateNames().size(), 1, "状态数");
+        checkEqualInt(doc.channelCount("focused"), 1, "通道数");
+        doc.addChannel("focused", "title.color");
+        checkEqualInt(doc.channelCount("focused"), 2, "加通道");
+        doc.removeChannel("focused", 0);
+        checkEqualInt(doc.channelCount("focused"), 1, "删通道");
+
+        doc.addState("selected");
+        doc.addChannel("selected", "bg.fill");
+        checkEqualInt((int)doc.stateNames().size(), 2, "加状态");
+        doc.removeState("selected");
+        checkEqualInt((int)doc.stateNames().size(), 1, "删状态");
+    }
+
+    // ---------------------------------------------------------------- 层序提醒
+    {
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse(
+            R"({"layers": [{"op": "text", "id": "title"}, {"op": "rect", "id": "hlBg"}, {"op": "shadow", "id": "s"}]})",
+            error);
+        const std::vector<std::string> warnings = doc.layerOrderWarnings();
+        checkEqualInt((int)warnings.size(), 2, "层序提醒 2 条");
+    }
+
+    // ---------------------------------------------------------------- diff
+    {
+        const Json before = Json::parse(
+            R"({"box": {"height": 48, "gap": 8}, "layers": [{"op": "rect", "fill": "#111111"}]})");
+        const Json after = Json::parse(
+            R"({"box": {"height": 56, "gap": 8}, "layers": [{"op": "rect", "fill": "#222222"}]})");
+        const std::vector<designer::JsonChange> changes = designer::diffJson(before, after);
+        checkEqualInt((int)changes.size(), 2, "差异条数");
+        checkEqual(changes[0].path, "box.height", "差异路径");
+        checkEqual(changes[0].before, "48", "差异旧值");
+        checkEqual(changes[0].after, "56", "差异新值");
+        checkEqual(changes[1].path, "layers[0].fill", "层内路径带下标");
+        check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
+    }
+
+    // ---------------------------------------------------------------- 主题文件读写
+    {
+        std::vector<std::string> available;
+        std::string defaultName;
+        std::string error;
+        check(designer::readThemesFile(themeRoot, available, defaultName, error), "读 themes.json");
+        checkEqual(defaultName, "default", "默认主题");
+        checkEqualInt((int)available.size(), 1, "可用主题数");
+
+        std::vector<std::string> widgets;
+        check(designer::readWidgetFileList(themeRoot + "/default", widgets, error), "读 theme.json 的 widgets");
+        checkEqualInt((int)widgets.size(), 2, "外观文件数");
+        checkEqual(designer::widgetNameFromPath(widgets[1]), "button", "外观短名");
+        checkEqual(designer::widgetPathFromName("button"), "widgets/button.json", "短名转路径");
+    }
+
+    // ---------------------------------------------------------------- 模板新建 / 直接编辑
+    {
+        std::string error;
+        Project project;
+        check(designer::createProjectFromTemplate(themeRoot, "default", "my-skin", project, error), "模板新建");
+        checkEqual(project.mode == ProjectMode::FORK ? "fork" : "?", "fork", "模式是 fork");
+        check(designer::directoryExists(themeRoot + "/my-skin"), "新主题目录存在");
+        check(designer::directoryExists(themeRoot + "/default"), "原主题还在");
+
+        // 目标仓库的 themes.json 要登记新主题
+        std::vector<std::string> available;
+        std::string defaultName;
+        designer::readThemesFile(themeRoot, available, defaultName, error);
+        checkEqualInt((int)available.size(), 2, "登记后数量");
+        check(available[1] == "my-skin", "登记了新名");
+
+        // theme.json 里的 name 要跟着改
+        std::string themeText;
+        designer::readTextFile(themeRoot + "/my-skin/theme.json", themeText, error);
+        checkEqual(Json::parse(themeText)["name"].get<std::string>(), "my-skin", "主题名已改");
+
+        check(!designer::createProjectFromTemplate(themeRoot, "default", "my-skin", project, error), "重名会被拒绝");
+        check(!designer::createProjectFromTemplate(themeRoot, "default", "ocean", project, error), "不能占用基准名");
+        check(!designer::openProjectInPlace(themeRoot, "default", project, error), "基准主题不许就地编辑");
+        check(designer::openProjectInPlace(themeRoot, "my-skin", project, error), "自建主题可以就地编辑");
+
+        // 项目记录往返
+        const std::string projectFile = work + "/project.json";
+        check(designer::saveProjectFile(project, projectFile, error), "存项目记录");
+        Project loaded;
+        check(designer::loadProjectFile(projectFile, loaded, error), "读项目记录");
+        checkEqual(loaded.name, project.name, "项目名一致");
+        checkEqual(loaded.themeDir(), project.themeDir(), "主题目录一致");
+    }
+
+    // ---------------------------------------------------------------- 原子写盘 + .bak + 校验拦截
+    {
+        const std::string file = themeRoot + "/my-skin/widgets/rectangle.json";
+        std::string error;
+
+        std::string before;
+        check(designer::readTextFile(file, before, error), "读原文件");
+
+        check(designer::writeTextFileAtomic(file, std::string("{\"box\": {}, \"layers\": []}\n"), true,
+                error), "写盘成功");
+        check(fs::exists(file + ".bak"), "留了 .bak");
+        check(!fs::exists(file + ".tmp"), "临时文件不残留");
+
+        std::string backup;
+        designer::readTextFile(file + ".bak", backup, error);
+        check(backup == before, "备份是改动前的内容");
+
+        std::string after;
+        designer::readTextFile(file, after, error);
+        check(after.find("\"layers\": []") != std::string::npos, "内容已替换");
+
+        // 语法校验：坏 JSON 必须被拦下
+        check(!designer::validateJsonText("{ \"a\": }", error), "坏 JSON 被拦");
+        check(designer::validateJsonText("{\"a\": 1}", error), "好 JSON 通过");
+
+        // 编译校验：引用不存在的主题 key 要失败（写盘前的那道闸）
+        std::string compileError;
+        check(bklv::Appearance::compile(R"({"layers": [{"op": "rect", "fill": "@theme/color.nope"}]})",
+                bklv::getTheme(), compileError) == nullptr, "不存在的 @theme key 编译失败");
+        check(!compileError.empty(), "错误信息带得出原因");
+
+        // 整主题校验：把上面那份写坏的外观也算进去（改回来后再校验通过）
+        designer::writeTextFileAtomic(file, before, false, error);
+        std::string themeError;
+        check(bklv::validateThemeAppearances(themeError), "整主题校验通过");
+    }
+
+    fs::remove_all(work, code);
+
+    std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
+    return g_failed > 0 ? 1 : 0;
+}

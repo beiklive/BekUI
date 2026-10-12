@@ -141,6 +141,13 @@ bool hasIconFont()
 
 void setDefaultFont(ImFont* font)
 {
+    // 同时告诉 ImGui：**ImGui 自己的界面文字**（调试窗口 / 日志窗口 / 设计器）
+    // 要用哪一个字体。不设的话 ImGui 用 iofonts 里的第 0 个 —— 而那可能是
+    // 先加载的**图标字体**（只有私用区几个字形），于是 ImGui::Text 什么都画不出来
+    // （bklv 的文本没事，因为它自己传字体）。踩过。
+    if (ImGui::GetCurrentContext() != nullptr)
+        ImGui::GetIO().FontDefault = font;
+
     if (g_defaultFont == font)
         return;
 

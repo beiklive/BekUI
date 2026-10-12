@@ -102,6 +102,24 @@ void AppearanceView::setAppearanceVariant(const std::string& value)
     this->applyTheme();
 }
 
+bool AppearanceView::applyAppearanceJson(const std::string& json, std::string& error)
+{
+    std::shared_ptr<const Appearance> compiled = Appearance::compile(json, getTheme(), error);
+    if (compiled == nullptr)
+        return false;
+
+    this->appearance.setAppearance(compiled);
+    applyAppearanceBox(this, compiled->getBox());
+
+    // 状态按当前活跃情况重新补一遍（和换肤同一条路径）
+    if (this->isAppearanceStateActive("focused"))
+        this->appearance.setState("focused", true);
+
+    this->markMeasureDirty();
+    this->invalidate();
+    return true;
+}
+
 void AppearanceView::applyTheme()
 {
     // 换肤时重新取外观。AppearanceInstance 会抄新初值并清掉正在跑的补间，

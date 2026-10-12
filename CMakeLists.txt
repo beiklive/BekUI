@@ -174,23 +174,61 @@ target_link_libraries(demo_app PUBLIC bklv::bklv)
 target_include_directories(demo_app PUBLIC "${CMAKE_SOURCE_DIR}/demo")
 
 # ---------------------------------------------------------------------------
+# 设计器（独立程序，与 demo 互不依赖）
+#
+#   逻辑层 designer_core：主题文件读写 / 外观文档模型 / diff / 项目模型。
+#     刻意不含任何界面代码 —— 无窗口就能测（tests/designer_core_test.cpp 链接它）。
+#   UI 层 designer_ui：ImGui 面板 + bklv 预览渲染；入口 designer/main.cpp。
+# ---------------------------------------------------------------------------
+
+set(BKLV_DESIGNER_CORE_SOURCES
+    core/theme_files.cpp
+    core/appearance_doc.cpp
+    core/diff.cpp
+    core/project.cpp
+)
+
+set(BKLV_DESIGNER_CORE_ABS "")
+foreach(src IN LISTS BKLV_DESIGNER_CORE_SOURCES)
+    list(APPEND BKLV_DESIGNER_CORE_ABS "${CMAKE_SOURCE_DIR}/designer/${src}")
+endforeach()
+
+add_library(designer_core STATIC ${BKLV_DESIGNER_CORE_ABS})
+target_link_libraries(designer_core PUBLIC bklv::bklv)
+target_include_directories(designer_core PUBLIC "${CMAKE_SOURCE_DIR}/designer")
+
+set(BKLV_DESIGNER_UI_SOURCES
+    ui/designer_window.cpp
+)
+
+set(BKLV_DESIGNER_UI_ABS "")
+foreach(src IN LISTS BKLV_DESIGNER_UI_SOURCES)
+    list(APPEND BKLV_DESIGNER_UI_ABS "${CMAKE_SOURCE_DIR}/designer/${src}")
+endforeach()
+
+add_library(designer_ui OBJECT ${BKLV_DESIGNER_UI_ABS})
+target_link_libraries(designer_ui PUBLIC designer_core)
+
+# ---------------------------------------------------------------------------
 # 目标程序
 # ---------------------------------------------------------------------------
 
 set(BKLV_TARGET_LIST
     "demo|demo/main.cpp|app"
+    "designer|designer/main.cpp|designer"
 )
 
 # 清单漏项检查（同 bklv/CMakeLists.txt）：demo 下的 .cpp 必须都出现在
 # BKLV_APP_SOURCES（应用代码）或 BKLV_TARGET_LIST（各目标的入口 main.cpp）里
-set(BKLV_APP_ALLOWED ${BKLV_APP_ABS})
+set(BKLV_APP_ALLOWED ${BKLV_APP_ABS} ${BKLV_DESIGNER_CORE_ABS} ${BKLV_DESIGNER_UI_ABS})
 foreach(entry IN LISTS BKLV_TARGET_LIST)
     string(REPLACE "|" ";" parts "${entry}")
     list(GET parts 1 target_src)
     list(APPEND BKLV_APP_ALLOWED "${CMAKE_SOURCE_DIR}/${target_src}")
 endforeach()
 
-file(GLOB_RECURSE _bklv_demo_found CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/demo/*.cpp")
+file(GLOB_RECURSE _bklv_demo_found CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/demo/*.cpp" "${CMAKE_SOURCE_DIR}/designer/*.cpp")
 foreach(_file ${_bklv_demo_found})
     if(NOT _file IN_LIST BKLV_APP_ALLOWED)
         file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}" "${_file}")
@@ -223,6 +261,8 @@ foreach(entry IN LISTS BKLV_TARGET_LIST)
 
     if(target_kind STREQUAL "app")
         target_link_libraries(${target_name} PRIVATE demo_app)
+    elseif(target_kind STREQUAL "designer")
+        target_link_libraries(${target_name} PRIVATE designer_ui)
     endif()
 
     # Windows 默认保留控制台，BKLV_LOG_* 才看得见（与 macOS / Linux 行为一致）。
@@ -267,6 +307,9 @@ if(BKLV_BUILD_TESTS)
 
         add_executable(${test_name} "${test_src}")
         target_link_libraries(${test_name} PRIVATE bklv::bklv)
+        if(TARGET designer_core)
+            target_link_libraries(${test_name} PRIVATE designer_core)
+        endif()
         bklv_copy_resources(${test_name})
         set_target_properties(${test_name} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
