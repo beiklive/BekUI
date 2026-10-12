@@ -144,5 +144,16 @@
   "transform": {
     "stageHeight": 300,
     "captionSize": 20
+  },
+  "account": {
+    "height": 44,
+    "gap": 10,
+    "avatarSize": 32,
+    "avatarRadius": 16,
+    "initialFontSize": 16,
+    "nameFontSize": 17,
+    "subtitleFontSize": 14,
+    "width": 200,
+    "shrink": 0
   }
 }

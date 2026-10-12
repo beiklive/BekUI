@@ -176,7 +176,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] 手势（`core/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
       + demo 变换页支持拖动方块、轻触复位
 - [x] **P0 控件补齐**：6 个 Cell、Battery/Wireless 图标化、Notification、手势、
-      View 变换（scale/rotate/skew/fontScale）+ 对应 demo 页面
+      View 变换（scale/rotate/skew/fontScale）、account + 对应 demo 页面
+- [ ] 小遗留：account 头像圆心里"昵称首字"的视觉位置还要调（功能与测试都已通过）
 - [x] debug_layer（`views/debug_layer.*` + `App::setDebugLayerEnabled`；收集边界是纯函数；
       设置页有 wireframe 开关）
 - [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +

@@ -174,7 +174,9 @@
     "sound_on": "Enable sound",
     "volume": "Volume",
     "audition": "Audition",
-    "audition_hint": "Tap to cycle (synthesized, no assets)"
+    "audition_hint": "Tap to cycle (synthesized, no assets)",
+    "account_name": "beiklive",
+    "account_sub": "bklv demo account (pluggable source)"
   },
   "transform": {
     "hint": "The box below never triggers a relayout - transforms only affect drawing.",

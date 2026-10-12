@@ -71,5 +71,9 @@
   "debug": {
     "bounds": "#00ffcc8c",
     "text": "#ffffffe6"
+  },
+  "account": {
+    "avatar": "#198ac6",
+    "initial": "#ffffff"
   }
 }

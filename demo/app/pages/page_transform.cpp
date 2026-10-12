@@ -273,7 +273,7 @@ Box* buildTransformPage()
             },
             nullptr }));
 
-    stage->getSubject()->addGesture(std::make_unique<TapGestureRecognizer>([stage, values, apply,
+    stage->getSubject()->addGesture(std::make_unique<TapGestureRecognizer>([values, apply,
                                                                                cellTransX, cellTransY] {
         values->transX = 0.0f;
         values->transY = 0.0f;

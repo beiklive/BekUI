@@ -24,7 +24,7 @@
 | `views/cells/cell_slider` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | SliderCell：列表项里的滑块 |
 | `views/widgets/battery` | `widgets/status_area.*` 的 `BatteryIcon` | ✅ 改良 | 矢量自绘（外壳 + 电量条 + 充电闪电），不用 `img/sys/*` 那套疑似系统图形；数据源可插拔（`setProvider`） |
 | `views/widgets/wireless` | `widgets/status_area.*` 的 `WirelessIcon` | ✅ 改良 | 矢量自绘（三段弧按等级点亮 / 以太网方块）；Switch 走 `nifm` 的类型+强度，桌面可注入 |
-| **`views/widgets/account`** | — | ❌ 待补 | 头像 + 昵称；数据源要可插拔（Switch 用 account 服务，桌面无） |
+| `views/widgets/account` | `widgets/account.*` | ✅ 改良 | borealis 是 **Switch 专用**（直接调 account 服务取头像图、没有文字、桌面是空控件）；我们做成可插拔数据源 + **无图也能看**（圆形色块 + 昵称首字）+ 昵称/副标题 |
 | `views/debug_layer`（画视图边界/wireframe） | `views/debug_layer.*` + `App::setDebugLayerEnabled` | ✅ 改良 | 收集边界是**纯函数**（能无窗口测）；颜色在主题里；根视图就绪前的请求会排队补上 |
 | — | `views/json_cell` | ➕ 多出 | JSON 模板驱动的列表项 |
 | — | `widgets/appearance_view` / `status_area` / `hints_bar` | ➕ 多出 | 外观驱动基类与底栏两块内容 |

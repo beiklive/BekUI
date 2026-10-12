@@ -48,6 +48,7 @@
 #include "bklv/views/scrolling_frame.hpp"
 
 // ---- widgets：外观驱动的控件 ----
+#include "bklv/widgets/account.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 #include "bklv/widgets/applet_frame.hpp"
 #include "bklv/widgets/bottom_bar.hpp"

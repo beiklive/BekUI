@@ -35,6 +35,7 @@
     "widgets/cell_input.json",
     "widgets/status_battery.json",
     "widgets/status_wireless.json",
-    "widgets/notification.json"
+    "widgets/notification.json",
+    "widgets/account.json"
   ]
 }

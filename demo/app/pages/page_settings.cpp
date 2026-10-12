@@ -39,6 +39,11 @@ Box* buildSettingsPage()
     about->addView(makeText(getStr("settings/about_title"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
+    // 账号控件：无头像图时用"圆形色块 + 昵称首字"（桌面也能看），数据源可插拔
+    AccountWidget* account = new AccountWidget();
+    account->setAccount({ getStr("settings/account_name"), getStr("settings/account_sub"), "" });
+    about->addView(account);
+
     DetailCell* backend = new DetailCell(getStr("settings/backend"), backendName());
     about->addView(backend);
 
