@@ -17,6 +17,7 @@
 #include "bklv/bklv.hpp"
 #include "bklv/views/debug_window.hpp"
 #include "designer/core/appearance_doc.hpp"
+#include "designer/core/undo_stack.hpp"
 #include "designer/core/project.hpp"
 
 namespace designer
@@ -30,8 +31,7 @@ struct Draft
     std::string savedText;              // 上次保存/打开时的原文（diff 与"还原"用）
     std::string openHash;               // 打开时的文件指纹（检测被外部改动）
     std::string viewText;               // 页面视图的文本编辑缓冲
-    std::vector<std::string> undo;      // 撤销栈（整份 JSON 快照）
-    std::vector<std::string> redo;
+    UndoStack history;                  // 撤销栈（整份 JSON 快照，core 里可测）
     bool dirty = false;
 };
 
@@ -64,6 +64,8 @@ class DesignerWindow
     ~DesignerWindow() { this->saveUiState(); }
     // 自查用：直接走一遍保存（验证只读拦截 / 冲突检测）
     // 跳过 diff 弹层直接写（自查用；readOnly / 冲突 / 编译校验 / 增量写盘都照走）
+    void undoForTest() { this->undo(); }
+    void redoForTest() { this->redo(); }
     void forceSaveForTest()
     {
         this->doSave();
@@ -86,6 +88,9 @@ class DesignerWindow
         if (this->currentFilePath.empty())
             return false;
         this->doc.setBoxNumber(key, value);
+        // 钩子在**任何一帧之前**跑，帧级快照还没产生 —— 自己补一步（顺序跟帧边界一致：
+        // 先改、再把改后的状态压栈；压改前会被去重逻辑跳过，撤销就没东西可撤）
+        this->pushUndoSnapshot();
         this->markEdited();
         this->previewDirty = true;
         return true;

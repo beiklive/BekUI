@@ -132,6 +132,14 @@ int main(int argc, char** argv)
     if (const char* editText = std::getenv("BKLV_DESIGNER_EDIT_TEXT"))
         window.applyTestTextEdit(editText);
 
+    // 自查：BKLV_DESIGNER_UNDO=1 撤销一步
+    if (std::getenv("BKLV_DESIGNER_UNDO") != nullptr)
+        window.undoForTest();
+
+    // 自查：BKLV_DESIGNER_REDO=1 重做一步（放在 UNDO 之后验证重做链没被清掉）
+    if (std::getenv("BKLV_DESIGNER_REDO") != nullptr)
+        window.redoForTest();
+
     if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
         window.forceSaveForTest();
 

@@ -192,6 +192,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/theme_usage.cpp
     core/ui_state.cpp
     core/theme_key.cpp
+    core/undo_stack.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")

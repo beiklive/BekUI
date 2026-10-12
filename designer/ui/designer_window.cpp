@@ -311,9 +311,7 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
-    draft.undo.clear();
-    draft.redo.clear();
-    draft.undo.push_back(text);
+    draft.history.reset(text);
     this->lastFrameText = text;
     return true;
 }
@@ -375,9 +373,7 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
-    draft.undo.clear();
-    draft.redo.clear();
-    draft.undo.push_back(text);
+    draft.history.reset(text);
     draft.viewText = text;
     this->lastFrameText = text;
     this->selection    = Selection{};
@@ -445,9 +441,7 @@ bool DesignerWindow::openTableFile(const std::string& fileName)
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
-    draft.undo.clear();
-    draft.redo.clear();
-    draft.undo.push_back(text);
+    draft.history.reset(text);
     this->refreshThemeUsage();
     this->statusMessage = "打开主题表 " + fileName;
     return true;
@@ -856,35 +850,28 @@ void DesignerWindow::pushUndoSnapshot()
     if (this->currentFilePath.empty())
         return;
 
-    Draft& draft    = this->currentDraft();
-    const std::string now = this->doc.serialize();
-    if (draft.undo.empty() || draft.undo.back() != now)
-    {
-        draft.undo.push_back(now);
-        if (draft.undo.size() > 64)
-            draft.undo.erase(draft.undo.begin()); // 只留最近 64 步
-        draft.redo.clear();
-    }
+    this->currentDraft().history.push(this->doc.serialize());
 }
 
 void DesignerWindow::undo()
 {
     if (this->currentFilePath.empty())
         return;
-    Draft& draft = this->currentDraft();
-    if (draft.undo.size() < 2)
+
+    std::string restored;
+    if (!this->currentDraft().history.undo(restored))
     {
         this->statusMessage = "没有可撤销的步骤";
         return;
     }
 
-    draft.redo.push_back(draft.undo.back());
-    draft.undo.pop_back();
-
     std::string error;
-    this->doc.parse(draft.undo.back(), error);
+    this->doc.parse(restored, error);
     this->viewTextApplied = this->doc.serialize();
     std::snprintf(this->viewText, sizeof(this->viewText), "%s", this->viewTextApplied.c_str());
+    // 必须同步"上一帧内容"：不同步的话下一帧边界会把它当成"又改了一次"再压一步，
+    // 而 push() 会清空重做链 —— 结果就是**重做永远用不了**（自审抓到的）
+    this->lastFrameText = this->doc.serialize();
     this->dirty        = true;
     this->previewDirty = true;
     this->statusMessage = "已撤销";
@@ -894,21 +881,19 @@ void DesignerWindow::redo()
 {
     if (this->currentFilePath.empty())
         return;
-    Draft& draft = this->currentDraft();
-    if (draft.redo.empty())
+
+    std::string restored;
+    if (!this->currentDraft().history.redo(restored))
     {
         this->statusMessage = "没有可重做的步骤";
         return;
     }
 
-    const std::string text = draft.redo.back();
-    draft.redo.pop_back();
-    draft.undo.push_back(text);
-
     std::string error;
-    this->doc.parse(text, error);
+    this->doc.parse(restored, error);
     this->viewTextApplied = this->doc.serialize();
     std::snprintf(this->viewText, sizeof(this->viewText), "%s", this->viewTextApplied.c_str());
+    this->lastFrameText = this->doc.serialize(); // 同上：否则下一帧又会压一步
     this->dirty        = true;
     this->previewDirty = true;
     this->statusMessage = "已重做";
@@ -2700,6 +2685,23 @@ void DesignerWindow::drawProps()
 
     ImGui::TextColored(kAccent, "外观 %s", this->currentWidget.c_str());
     ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("复制 JSON"))
+    {
+        // 复制"当前选中的那一段"：层 / box / 整个外观 —— 贴进代码或 issue 里都方便
+        std::string text;
+        if (this->selection.kind == SelKind::LAYER && this->doc.layer(this->selection.index))
+            text = this->doc.layer(this->selection.index)->dump(2);
+        else if (this->selection.kind == SelKind::BOX)
+            text = this->doc.root().value("box", AppearanceDoc::Json::object()).dump(2);
+        else
+            text = this->doc.root().dump(2);
+
+        ImGui::SetClipboardText(text.c_str());
+        this->statusMessage = "已复制 " + std::to_string(text.size()) + " 字节 JSON 到剪贴板";
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("复制当前选中节点那一段的 JSON（选中层 → 该层；选中 box → box；否则整份）");
     ImGui::Separator();
 
     auto edited = [this] {

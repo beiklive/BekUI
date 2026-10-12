@@ -22,6 +22,7 @@
 #include "designer/core/theme_usage.hpp"
 #include "designer/core/theme_key.hpp"
 #include "designer/core/ui_state.hpp"
+#include "designer/core/undo_stack.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
 
@@ -591,6 +592,43 @@ int main()
             "color.button.primaryText", "写成斜杠也认");
         checkEqual(designer::themeKeyFromReference("#00ffcc"), "", "字面量颜色不算主题引用");
         checkEqual(designer::themeKeyFromReference("@theme/"), "", "空引用返回空串");
+    }
+
+    // ---------------------------------------------------------------- 撤销栈
+    {
+        designer::UndoStack history;
+        history.reset("A");
+        check(!history.canUndo(), "刚 reset 时没有可撤销的");
+
+        history.push("A");
+        checkEqualSize(history.size(), 1, "连续相同的内容不重复入栈");
+
+        history.push("B");
+        history.push("C");
+        check(history.canUndo(), "有可撤销的");
+
+        std::string out;
+        check(history.undo(out), "撤销成功");
+        checkEqual(out, "B", "撤销回到上一步");
+        check(history.canRedo(), "有可重做的");
+        check(history.undo(out) && out == "A", "再撤销回到开头");
+        check(!history.canUndo(), "到头了不能继续撤销");
+
+        check(history.redo(out) && out == "B", "重做回到 B");
+        check(history.redo(out) && out == "C", "重做回到 C");
+        check(!history.canRedo(), "重做到头");
+
+        // 撤销之后再做新改动：重做链要断
+        history.undo(out);
+        history.push("D");
+        check(!history.canRedo(), "新改动之后不能再重做旧分支");
+
+        // 超过上限丢最老的
+        designer::UndoStack capped;
+        capped.reset("0");
+        for (int i = 1; i <= 80; i++)
+            capped.push(std::to_string(i));
+        checkEqualSize(capped.size(), designer::UndoStack::MAX_STEPS, "步数被上限截住");
     }
 
     fs::remove_all(work, code);
