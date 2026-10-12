@@ -1140,7 +1140,8 @@ void DesignerWindow::drawTopBar()
     if (ImGui::Button("快捷键/约定"))
         this->showHelp = true;
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ctrl+S 保存 · Ctrl+Z/Y 撤销重做 · Ctrl+D 复制层 · Alt+↑↓ 移层 · F1 校验 · F2 预览最大化");
+        ImGui::SetTooltip("Ctrl+S 保存 · Ctrl+Z/Y 撤销重做 · Ctrl+D 复制层 · Alt+↑↓ 移层\n"
+                          "F1 校验 · F2 预览最大化 · F3 跳到下一处改动");
 
     ImGui::SameLine();
     if (this->dirty)
@@ -3219,6 +3220,16 @@ void DesignerWindow::drawProps()
                     edited();
 
                 // 删字段（id / op 不给删：层没有它们就没法引用）
+                if (key != "id" && key != "op" && this->doc.layerCount() > 1)
+                {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("套到其它层"))
+                        this->openFieldSync(key);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("把这一层的 %s 套到别的层（多个层要设同一套参数时省事）",
+                            key.c_str());
+                }
+
                 if (key != "id" && key != "op")
                 {
                     ImGui::SameLine();
@@ -3886,6 +3897,11 @@ void DesignerWindow::selectByChangePath(const std::string& path)
     this->statusMessage = "已定位到 " + path;
 }
 
+int DesignerWindow::selectionIndexForTest() const
+{
+    return this->selection.index;
+}
+
 void DesignerWindow::drawSelectionBreadcrumb()
 {
     // 一眼看清"我现在改的是哪个文件的哪一层哪个字段"，而且能点着往回退
@@ -4226,7 +4242,9 @@ void DesignerWindow::drawModals()
         ImGui::TextColored(accentColor(), "快捷键");
         ImGui::BulletText("Ctrl+S 保存（先看 diff）· Ctrl+Z / Ctrl+Y 撤销 · 重做");
         ImGui::BulletText("Ctrl+D 复制当前层 · Alt+↑ / Alt+↓ 上移 / 下移当前层");
-        ImGui::BulletText("F1 校验面板 · F2 预览最大化 · 滚轮缩放画布 · 中键/Shift+左键 平移");
+        ImGui::BulletText("F1 校验面板 · F2 预览最大化 · F3 跳到下一处改动（Shift+F3 往回）");
+        ImGui::BulletText("滚轮缩放画布 · 中键/Shift+左键 平移 · 方向键在数值框里 ±1（Ctrl 十步）");
+        ImGui::BulletText("层操作：复制层 / 粘贴层（可跨外观）· 改过的层与字段前面会带 • 点");
         ImGui::Separator();
         ImGui::TextColored(accentColor(), "约定（改样式前值得知道）");
         ImGui::BulletText("尺寸/字号按 720p 写，运行时按窗口宽等比缩放；opacity/duration 不缩放");
@@ -4236,6 +4254,62 @@ void DesignerWindow::drawModals()
         ImGui::BulletText("写盘 = 临时文件 + rename 原子替换，并留一份 .bak");
         ImGui::Separator();
         if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    if (this->showFieldSync)
+    {
+        ImGui::OpenPopup("把字段套到其它层");
+        this->showFieldSync = false;
+    }
+    ImGui::SetNextWindowSize(ImVec2(520.0f, 380.0f), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("把字段套到其它层", nullptr, ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::TextColored(mutedColor(), "字段：%s（源 = 第 %d 层）", this->syncField.c_str(),
+            this->selection.index + 1);
+        ImGui::TextColored(mutedColor(), "勾上要一起改的层；没有这个字段的层会被新加上");
+        ImGui::Separator();
+
+        ImGui::BeginChild("##syncList", ImVec2(0.0f, 220.0f), true);
+        for (int i = 0; i < this->doc.layerCount(); i++)
+        {
+            if (i == this->selection.index)
+                continue;
+            const AppearanceDoc::Json* layer = this->doc.layer(i);
+            const bool hasField = layer != nullptr && layer->contains(this->syncField);
+            bool checked        = i < (int)this->syncTargets.size() && this->syncTargets[i] != 0;
+            const std::string label = "第 " + std::to_string(i + 1) + " 层  "
+                + this->doc.layerOp(i) + " " + this->doc.layerId(i)
+                + (hasField ? "" : "   （没有这个字段，会新加）");
+            if (ImGui::Checkbox((label + "##sync" + std::to_string(i)).c_str(), &checked)
+                && i < (int)this->syncTargets.size())
+                this->syncTargets[i] = checked ? 1 : 0;
+        }
+        ImGui::EndChild();
+
+        if (ImGui::Button("应用", ImVec2(120, 0)))
+        {
+            std::vector<int> targets;
+            for (int i = 0; i < (int)this->syncTargets.size(); i++)
+                if (this->syncTargets[i] != 0)
+                    targets.push_back(i);
+
+            const int changed
+                = this->doc.applyFieldToLayers(this->selection.index, this->syncField, targets);
+            if (changed > 0)
+            {
+                this->pushUndoSnapshot();
+                this->markEdited();
+                this->previewDirty = true;
+            }
+            this->statusMessage = changed > 0
+                ? ("已把 " + this->syncField + " 套到 " + std::to_string(changed) + " 个层")
+                : "这些层的值本来就一样，没有改动";
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }

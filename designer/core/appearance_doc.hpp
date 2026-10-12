@@ -68,6 +68,11 @@ class AppearanceDoc
     // 返回新层的下标；传进来的不是对象则返回 -1。
     int appendLayer(const nlohmann::ordered_json& layer);
 
+    // 把某一层的某个字段的值套到其它层（多个层要设同一套参数时用）。
+    // 目标层没有这个字段就新加；返回真正改动的层数。源层自己会被跳过。
+    int applyFieldToLayers(int sourceIndex, const std::string& field,
+        const std::vector<int>& targets);
+
     // ---- states ----
     std::vector<std::string> stateNames() const;
     int channelCount(const std::string& state) const;

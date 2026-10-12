@@ -163,6 +163,30 @@ int main()
         check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
     }
 
+    // ---------------------------------------------------------------- 把一个字段套到其它层
+    {
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse(R"({"layers": [
+            {"op": "rect", "id": "a", "radius": 8},
+            {"op": "rect", "id": "b", "radius": 2},
+            {"op": "rect", "id": "c"}
+        ]})", error);
+
+        // a 的 radius 套到 b 和 c
+        checkEqualInt(doc.applyFieldToLayers(0, "radius", { 0, 1, 2 }), 2,
+            "两层的值变了（源层自己跳过）");
+        checkEqualInt((*doc.layer(1))["radius"].get<int>(), 8, "b 拿到 8");
+        checkEqualInt((*doc.layer(2))["radius"].get<int>(), 8, "c 本来没有，被加上");
+
+        // 再来一次：值已经一样，不该再算改动
+        checkEqualInt(doc.applyFieldToLayers(0, "radius", { 1, 2 }), 0, "已经一致时返回 0");
+
+        checkEqualInt(doc.applyFieldToLayers(0, "不存在的字段", { 1 }), 0, "源层没这个字段");
+        checkEqualInt(doc.applyFieldToLayers(99, "radius", { 1 }), 0, "源层下标越界");
+        checkEqualInt(doc.applyFieldToLayers(0, "radius", { 99 }), 0, "目标越界不崩");
+    }
+
     // ---------------------------------------------------------------- 跨外观粘贴层
     {
         AppearanceDoc doc;

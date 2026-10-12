@@ -129,6 +129,19 @@ class DesignerWindow
             this->hasLayerClipboard = true;
         }
     }
+    int syncFieldForTest(const std::string& field, int sourceIndex)
+    {
+        std::vector<int> targets;
+        for (int i = 0; i < this->doc.layerCount(); i++)
+            targets.push_back(i);
+        const int changed = this->doc.applyFieldToLayers(sourceIndex, field, targets);
+        if (changed > 0)
+        {
+            this->pushUndoSnapshot();
+            this->markEdited();
+        }
+        return changed;
+    }
     int pasteLayerForTest()
     {
         const int index = this->doc.appendLayer(this->layerClipboard);
@@ -147,6 +160,9 @@ class DesignerWindow
 
     void undoForTest() { this->undo(); }
     const std::string& statusForTest() const { return this->statusMessage; }
+    // 注意：Selection 是类里**稍后**才声明的嵌套类型，成员函数声明里用不了它
+    // （C++ 的类内名字查找要求先声明）—— 所以这里只暴露 int 层面的访问器
+    int selectionIndexForTest() const;
     void redoForTest() { this->redo(); }
     void forceSaveForTest()
     {
@@ -274,6 +290,13 @@ class DesignerWindow
     void selectNextChange(int step);
     // 状态栏里的"选中路径"面包屑（可点，点了回到上一层）
     void drawSelectionBreadcrumb();
+    // 打开"把该字段套到其它层"的弹层（默认勾上所有"有或没有这个字段"的层）
+    void openFieldSync(const std::string& field)
+    {
+        this->syncField = field;
+        this->syncTargets.assign((size_t)this->doc.layerCount(), 1);
+        this->showFieldSync = true;
+    }
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
@@ -429,6 +452,10 @@ class DesignerWindow
     std::string changeCursorPath;         // "跳到下一处改动"走到哪儿了
     AppearanceDoc::Json layerClipboard;   // 层剪贴板（可跨外观用）
     bool hasLayerClipboard = false;
+    // "把该字段套到其它层"的小弹层：字段名 + 各目标层的勾选
+    bool showFieldSync    = false;
+    std::string syncField;
+    std::vector<char> syncTargets;
     char saveAsPath[512] = "";
 
     // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）

@@ -246,6 +246,30 @@ bool AppearanceDoc::moveLayer(int index, int delta)
     return true;
 }
 
+int AppearanceDoc::applyFieldToLayers(int sourceIndex, const std::string& field,
+    const std::vector<int>& targets)
+{
+    const nlohmann::ordered_json* source = this->layer(sourceIndex);
+    if (source == nullptr || !source->contains(field))
+        return 0;
+
+    const nlohmann::ordered_json value = (*source)[field];
+    int changed                        = 0;
+    for (const int index : targets)
+    {
+        if (index == sourceIndex)
+            continue;
+        nlohmann::ordered_json* target = this->layer(index);
+        if (target == nullptr)
+            continue;
+        if (target->contains(field) && (*target)[field] == value)
+            continue; // 本来就是这个值，不算改动
+        (*target)[field] = value;
+        changed++;
+    }
+    return changed;
+}
+
 int AppearanceDoc::appendLayer(const nlohmann::ordered_json& layer)
 {
     if (!layer.is_object())

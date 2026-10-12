@@ -171,6 +171,11 @@ int main(int argc, char** argv)
     }
 
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
+    // 自查：BKLV_DESIGNER_SYNC_FIELD=<字段名>（把选中层的该字段套到所有层）
+    if (const char* field = std::getenv("BKLV_DESIGNER_SYNC_FIELD"))
+        BKLV_LOG_INFO("[自查] 套字段 %s -> 改了 %d 个层", field,
+            window.syncFieldForTest(field, window.selectionIndexForTest()));
+
     // 自查：BKLV_DESIGNER_COPY_LAYER=<下标> + BKLV_DESIGNER_PASTE_LAYER=1（跨外观粘层）
     if (const char* copyIndex = std::getenv("BKLV_DESIGNER_COPY_LAYER"))
         window.copyLayerForTest(std::atoi(copyIndex));
