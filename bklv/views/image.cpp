@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include "bklv/core/image_decoder.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/core/task.hpp"
 
 namespace bklv
 {
@@ -16,6 +18,47 @@ Image::Image()
 }
 
 Image::~Image() = default;
+
+void Image::setImageFromFileAsync(const std::string& path)
+{
+    // 记下路径：纹理仓库没就绪时 update() 还会走同步重试那条路
+    this->pendingPath = path;
+    this->asyncPending = true;
+
+    const uint64_t generation = ++this->loadGeneration;
+    const std::string resolved = resourcePath(path);
+
+    // 后台：读文件 + 解码（纯 CPU/IO，不碰 GL/ImGui）
+    task::runResult(
+        [resolved] { return decodeImageFile(resolved.c_str()); },
+        [this, generation](DecodedImage image) {
+            if (generation != this->loadGeneration)
+                return; // 已经发起了更新的加载，这个结果丢掉
+
+            this->asyncPending = false;
+
+            if (!image.isValid() || !isTextureStoreReady())
+            {
+                // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
+                return;
+            }
+
+            const TextureRef loaded =
+                loadTextureFromPixels(image.pixels.data(), image.width, image.height);
+            if (!loaded.isValid())
+                return;
+
+            this->texture = loaded;
+            this->pendingPath.clear();
+
+            if (this->getWidth() <= 0.0f)
+                this->setWidth(static_cast<float>(loaded.width));
+            if (this->getHeight() <= 0.0f)
+                this->setHeight(static_cast<float>(loaded.height));
+
+            this->invalidate();
+        });
+}
 
 bool Image::setImageFromFile(const std::string& path)
 {

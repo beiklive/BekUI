@@ -103,7 +103,8 @@
     "download": "Download {}%",
     "cache": "Cache {}%",
     "usage": "Usage {}%",
-    "image": "Image"
+    "image": "Image",
+    "image_reload": "Reload async"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",

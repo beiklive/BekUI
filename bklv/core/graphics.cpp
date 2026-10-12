@@ -196,6 +196,25 @@ TextureRef loadTextureFromMemory(const void* data, size_t size)
     return makeRef(registerTexture(handle));
 }
 
+TextureRef loadTextureFromPixels(const unsigned char* pixels, int width, int height)
+{
+    if (pixels == nullptr || width <= 0 || height <= 0)
+        return TextureRef();
+
+    if (g_backend == nullptr || !isTextureStoreReady())
+    {
+        BKLV_LOG_WARNING("纹理仓库还没就绪，无法上传纹理（%dx%d）", width, height);
+        return TextureRef();
+    }
+
+    const TextureHandle handle = g_backend->createTexture(pixels, width, height);
+    if (!handle.isValid())
+        return TextureRef();
+
+    // 不做路径缓存（像素是调用方给的），但仍登记句柄，保证能被正确释放
+    return makeRef(registerTexture(handle));
+}
+
 void releaseTexture(TextureRef& ref)
 {
     if (ref.index < 0 || ref.index >= static_cast<int>(g_textures.size()))

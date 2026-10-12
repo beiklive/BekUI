@@ -103,7 +103,8 @@
     "download": "下载 {}%",
     "cache": "缓存 {}%",
     "usage": "占用 {}%",
-    "image": "图片"
+    "image": "图片",
+    "image_reload": "重新异步加载"
   },
   "page": {
     "theme_sub": "换肤与外观驱动的控件",

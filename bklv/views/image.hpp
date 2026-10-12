@@ -32,6 +32,12 @@ class Image : public View
     // 内部会按平台解析成 romfs:/... 或 <可执行文件目录>/...
     // 见 core/resource.hpp；绝对路径原样使用。
     bool setImageFromFile(const std::string& path);
+
+    // 异步加载：文件 IO 与解码在后台线程，纹理上传回到主线程。
+    // 大图/网络路径用它就不会卡帧；期间保留旧纹理（不闪），
+    // 重复调用以最后一次为准（旧结果按代数丢弃）。
+    void setImageFromFileAsync(const std::string& path);
+    bool isLoading() const { return !this->pendingPath.empty() || this->asyncPending; }
     // 直接用一个外部纹理（比如自己上传的）。
     void setImage(const TextureRef& ref);
 
@@ -60,6 +66,8 @@ class Image : public View
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     TextureRef texture;
+    bool asyncPending = false;   // 正在后台解码
+    uint64_t loadGeneration = 0; // 代数：只接受最新一次的异步结果
     std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
     ImageScalingType scalingType = ImageScalingType::FIT;
     float imageCornerRadius      = 0.0f;

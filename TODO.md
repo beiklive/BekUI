@@ -179,7 +179,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       View 变换（scale/rotate/skew/fontScale）+ 对应 demo 页面
 - [x] debug_layer（`views/debug_layer.*` + `App::setDebugLayerEnabled`；收集边界是纯函数；
       设置页有 wireframe 开关）
-- [ ] **P1 核心能力**（剩余）：task/thread + 异步图片加载、audio（SDL3 + Switch）、event 补齐
+- [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +
+      `Image::setImageFromFileAsync` + `loadTextureFromPixels`）
+- [ ] **P1 核心能力**（剩余）：audio（SDL3 + Switch）、event 补齐
 - [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
       video（需要决定是否引解码依赖）
 - [ ] **P3 demo 对标**：把 borealis demo 的 7 个启用页 + 3 个注释页全部做出来

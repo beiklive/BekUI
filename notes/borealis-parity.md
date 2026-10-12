@@ -46,7 +46,7 @@
 | 可见性 VISIBLE/INVISIBLE/GONE | 同名 | 同名 | ✅ |
 | 动作系统 registerAction / 冒泡 | ✅ | ✅（沿父链冒泡） | ✅ |
 | 手势（tap / pan / scroll） | `core/gesture.hpp` + Tap/Pan/Scroll 识别器 | ✅ 改良 | 状态机简化成 START/STAY/END/CANCEL/SCROLL + "吃掉与否"；**识别器生命周期归 View**（`unique_ptr`，borealis 存裸指针）；纯逻辑可无窗口测 |
-| 数据绑定 / cache_helper | `bind` / `cache_helper` | `json_cell` 的绑定回调 | ⚠️ 部分 |
+| 数据绑定 / cache_helper | `bind` / `cache_helper` | `json_cell` 绑定回调 + 纹理路径缓存；`Image::setImageFromFileAsync` 异步加载 | ⚠️ 部分 |
 
 ## 三、core 层
 
@@ -65,7 +65,7 @@
 | audio（8 种系统音效） | — | ❌ 待补（SDL3 audio + Switch audren） |
 | **video** | — | ❌ 见"无法实现"一节 |
 | notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
-| task / thread（异步任务、线程池） | — | ❌ 待补（异步加载图片是真需求，本轮做） |
+| task / thread（异步任务、线程池） | `core/task.hpp`（固定 2 worker + 主线程回调） | ✅ 改良 | borealis 用 `brls::async` + `ASYNC_RETAIN` 宏；这里是普通线程池，回调**保证在主线程**跑（由 `App::frame` 每帧 pump），没有宏 |
 | **event**（事件总线） | 动作系统 | ⚠️ 部分 |
 | gesture / touch/ | `core/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
 | singleton / util / main | — | ➖ 工具类，不逐个对等 |
@@ -150,6 +150,15 @@
 | 现象 | 根因 | 修法 |
 |---|---|---|
 | 开了调试层却什么都看不到 | `App::setDebugLayerEnabled` 在根视图就绪前被静默忽略（窗口创建前调用） | 记下 `debugLayerRequested`，`setRootView` 之后补开（和通知排队同一套做法） |
+
+### task / 异步图片（本轮）
+
+| 项 | 说明 |
+|---|---|
+| 线程池 | 默认 2 worker，`std::function` 任务；`shutdown()` 显式关停，`App::~App` 里调用，worker 持有共享状态，join 后才退出 |
+| 主线程回调 | `postToMain` + `App::frame` 每帧 `pumpMainThread()`；回调里可以安全碰视图/纹理/ImGui |
+| 异步图片 | 后台 `decodeImageFile`（文件 IO + 解码），主线程 `loadTextureFromPixels` 上传；**按代数丢弃过期请求**；纹理仓库没就绪时保留 `pendingPath` 交给 `update()` 重试 |
+| 新增公开 API | `loadTextureFromPixels(rgba, w, h)`（只上传不解码） |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

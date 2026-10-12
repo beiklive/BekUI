@@ -135,6 +135,9 @@ const char* getGraphicsBackendName();
 TextureRef loadTexture(const std::string& path);
 // 从内存里的 PNG/JPEG 数据加载（不入缓存）。
 TextureRef loadTextureFromMemory(const void* data, size_t size);
+// 从**已经解码好的 RGBA8 像素**上传（不入缓存）。
+// 异步加载用这个：解码在后台线程做，这里只负责上传，必须在主线程调。
+TextureRef loadTextureFromPixels(const unsigned char* pixels, int width, int height);
 // 释放一张纹理。
 void releaseTexture(TextureRef& ref);
 // 兼容旧写法：释放句柄形态的纹理。

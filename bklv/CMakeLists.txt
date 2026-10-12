@@ -255,6 +255,7 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 set(BKLV_CORE_SOURCES
     core/logger.cpp
     core/input.cpp
+    core/task.cpp
     core/time.cpp
     core/font.cpp
     core/gesture.cpp
@@ -341,7 +342,8 @@ foreach(src IN LISTS BKLV_CORE_SOURCES)
 endforeach()
 
 add_library(bklv_core OBJECT ${BKLV_CORE_ABS})
-target_link_libraries(bklv_core PUBLIC bklv_opts SDL3::SDL3-static)
+find_package(Threads REQUIRED)
+target_link_libraries(bklv_core PUBLIC bklv_opts SDL3::SDL3-static Threads::Threads)
 
 add_library(bklv INTERFACE)
 add_library(bklv::bklv ALIAS bklv)

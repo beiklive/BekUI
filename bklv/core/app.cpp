@@ -1,4 +1,5 @@
 #include "bklv/core/app.hpp"
+#include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/debug_layer.hpp"
 #include "bklv/widgets/notification.hpp"
@@ -44,6 +45,9 @@ const char* App::getGraphicsBackendName()
 
 App::~App()
 {
+    // 先停后台线程，别让 worker 在 App 析构后再回调
+    task::shutdown();
+
     if (g_currentApp == this)
         g_currentApp = nullptr;
 
@@ -271,6 +275,9 @@ App::App()
 
 void App::frame()
 {
+    // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
+    task::pumpMainThread();
+
     ImGui::NewFrame();
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();

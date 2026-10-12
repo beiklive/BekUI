@@ -113,10 +113,15 @@ Box* buildWidgetsPage()
     Rectangle* imageCard = makeCard();
     imageCard->addView(makeText(getStr("widgets/image"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+    // 异步加载：文件 IO + 解码在后台线程，纹理上传回主线程（大图不会卡帧）
     Image* image = new Image();
     image->setDimensions(160.0f, 90.0f);
-    image->setImageFromFile("resources/testcard.png");
+    image->setImageFromFileAsync("resources/testcard.png");
     imageCard->addView(image);
+
+    Button* reload = new Button(getStr("widgets/image_reload"));
+    reload->setOnClick([image] { image->setImageFromFileAsync("resources/testcard.png"); });
+    imageCard->addView(reload);
     page->addView(imageCard);
 
     return page;
