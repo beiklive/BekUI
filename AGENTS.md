@@ -374,6 +374,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   padding 里），否则隐藏后会留下空隙。
   `setBarsAnimated(true)`（默认）时用 `core/time.hpp` 的 `Animatable` 补间折叠：
   动画期间两栏保持 VISIBLE 并逐帧改高度 + `App::requestLayout()`，补间结束才真正 GONE。
+- **占位挤压用 `Padding`**（`views/padding.*`，对标 borealis 的 `brls:Padding`）：
+  空视图、auto 尺寸、`grow=1`，把后面的兄弟挤到另一端；页头就是
+  `[图标][标题][Padding][右侧区]`。JSON 里写 `{ "type": "Padding" }` 也能用。
+  比"给某一侧加 grow + justifyContent"更直白，也不吃焦点。
+- **底栏顺序：提示在左、状态在右**（borealis 的 `bottomBarXML` 是 `Hints` 在前，
+  外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
   内容的右上按钮被推出边界，都踩过）。要"填满父容器再留边距"就用 **auto 宽 + margin**，
   父容器负责 stretch（`AppletFrame` 的内容区已经 `alignItems: stretch`）。

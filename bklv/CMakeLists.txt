@@ -284,6 +284,7 @@ set(BKLV_CORE_SOURCES
     views/recycler.cpp
     views/debug_layer.cpp
     views/image.cpp
+    views/padding.cpp
     views/progress_spinner.cpp
     views/debug_window.cpp
     # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）

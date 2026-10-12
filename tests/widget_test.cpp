@@ -527,6 +527,23 @@ int main()
         delete root;
     }
 
+    std::printf("\n== 底栏：提示在左、状态在右 ==\n");
+    {
+        // borealis 的 bottomBarXML：Box(justifyContent=spaceBetween) 里 Hints 在前、状态区在后。
+        // 顺序反了界面就变成"电量在左、提示在右"（工作区里被误改过一次，加测试盯住）。
+        BottomBar* bar = new BottomBar();
+        checkEqualSize(bar->getChildrenCount(), 2, "底栏两个子节点");
+        if (bar->getChildrenCount() == 2)
+        {
+            checkEqual(bar->getChildren()[0]->getClassString(), "bklv::HintsBar",
+                "第 0 个是提示栏（左）");
+            checkEqual(bar->getChildren()[1]->getClassString(), "bklv::StatusArea",
+                "第 1 个是状态区（右）");
+        }
+        check(bar->getHints() != nullptr && bar->getStatus() != nullptr, "两个都能取到");
+        delete bar;
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

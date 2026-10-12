@@ -138,6 +138,7 @@
 | **`ScrollingFrame::update()` 无头必崩** | 直接读 `ImGui::GetIO().DeltaTime`，无窗口（测试）时没有上下文 → 空指针 | 时间改用框架的 `getFrameDeltaSeconds()`（与 `Animatable`/`KeyRepeater` 同一份时间源）；鼠标输入在无上下文时整体跳过。顺带让回收器的回收行为可以被测试覆盖 |
 | 主题缺键静默画成品红 | `ThemeData::color()/number()` 缺键只记 **DEBUG** 日志，默认看不见 | 改成 **WARNING 且同 key 只报一次**（外观 JSON 的引用仍然是编译失败）；加上后立刻抓出本轮 3 个缺键（`color.surface.hover` 等） |
 | 改完代码好像没生效 | 21 个目标各挂一条 POST_BUILD `copy_directory` 往同一个 `dist/resources` 写，`-j` 并行时互相踩 → 间歇性 `Error 2`，失败后二进制还是旧的 | 改成**按输出目录只复制一次**（独立目标 + 各目标依赖它）；实测连续 3 次 `-j 8` 无失败 |
+| **底栏顺序被改反**（电量在左、提示在右） | 工作区里 `bottom_bar.cpp` 被换成了旧版本（status 在前、且没有 grow/FLEX_END）。borealis 的 `bottomBarXML` 是 `Hints` 在前 + `justifyContent=spaceBetween` | 回退到正确版本，并在 widget_test 里加断言盯住子节点顺序 |
 | 通知浮层看不见 | 构造时把 `hidden` 与 `shown` 两个外观状态**同时**激活，`hidden` 的透明度 0 把 `shown` 盖掉 | 状态要互斥地切：先撤旧的再开新的（和 Dialog 的 open/closed 一个套路） |
 | 窗口建好前 `App::notify` 的通知丢了 | 那时还没有根视图，只能警告丢弃 | 排进 `pendingNotifications`，`setRootView` 之后补发 |
 
@@ -215,6 +216,19 @@ scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_componen
 
 顺带修掉 `Animatable::update(dt)`：原来**一帧只推进一步、不结转剩余时间**，
 一帧跨两步时多段动画的总时长会被拉长；现在按 tweeny 的做法结转剩余时间。
+
+### Padding 占位视图（本轮）
+
+borealis 有 `brls:Padding`（`core/box.hpp`）："An empty view that has auto x auto and grow=1.0
+to push all the next views in its box to the right (or to the bottom)"，它的 header XML 就是
+`[矩形][标题][Padding][副标题]`。**我们之前没做**（页头是用"给右侧区加 grow"绕过去的）。
+
+现在补上 `bklv/views/padding.*`：
+- `Padding`：auto 尺寸 + `grow=1`，不画、不聚焦、不参与命中
+- 注册进 JSON 视图 DSL：`{ "type": "Padding" }` 可用（横向挤压 / 纵向顶到底都行）
+- 页头改成 borealis 那种写法：`[图标][标题][Padding][右侧区]`
+- 测试 `padding_test`（12 项）：本体语义、横向把兄弟顶到另一端、纵向顶到底、
+  JSON DSL 里可用
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

@@ -237,15 +237,17 @@ StatusArea::StatusArea()
     this->setAlignItems(AlignItems::CENTER);
     this->provider = [] { return queryPlatformStatus(); };
 
+    // 分组：电量图标 + 百分比挨在一起，再是网络图标与时钟
+    // （对标 borealis 的 brls/hints 里 icon+label 成对的排法）
     this->battery = new BatteryIcon();
     this->addView(this->battery);
-
-    this->wireless = new WirelessIcon();
-    this->addView(this->wireless);
 
     this->batteryLabel = new Label();
     this->batteryLabel->setSingleLine(true);
     this->addView(this->batteryLabel);
+
+    this->wireless = new WirelessIcon();
+    this->addView(this->wireless);
 
     this->clockLabel = new Label();
     this->clockLabel->setSingleLine(true);

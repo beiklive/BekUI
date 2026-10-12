@@ -46,6 +46,7 @@
 #include "bklv/views/image.hpp"
 #include "bklv/views/json_cell.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/views/padding.hpp"
 #include "bklv/views/progress_spinner.hpp"
 #include "bklv/views/recycler.hpp"
 #include "bklv/views/scrolling_frame.hpp"

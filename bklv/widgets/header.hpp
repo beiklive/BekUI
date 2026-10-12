@@ -7,7 +7,8 @@
 //   Header（装饰层在 widgets/header.json：下边线 + 可选底色）
 //     ├─ icon        图标（AppearanceView("header_icon")，image 层；默认隐藏）
 //     ├─ titleLabel  标题（Label）
-//     └─ hintBox     右侧区（Box，grow 1、右对齐；外部可以往里塞自己的东西）
+//     ├─ padding     顶开标题与右侧区（Padding，grow 1）
+//     └─ hintBox     右侧区（Box，右对齐；外部可以往里塞自己的东西）
 //          └─ subtitleLabel  右侧文字（setSubtitle 用，可为空）
 //
 // 尺寸/留白/防线全在主题里：header 的 box（高 88、左右 margin=appletFrame.paddingSides、
@@ -19,6 +20,7 @@
 
 #include "bklv/core/graphics.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/views/padding.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
 namespace bklv
@@ -70,6 +72,7 @@ class Header : public AppearanceView
 
     HeaderIcon* icon       = nullptr;
     Label* titleLabel      = nullptr;
+    Padding* padding       = nullptr; // 顶开标题与右侧区
     Box* hintBox           = nullptr;
     Label* subtitleLabel   = nullptr;
 

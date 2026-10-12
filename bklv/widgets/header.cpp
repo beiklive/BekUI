@@ -1,5 +1,7 @@
 #include "bklv/widgets/header.hpp"
 
+#include "bklv/views/padding.hpp"
+
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -54,9 +56,13 @@ Header::Header(const std::string& variant)
     this->titleLabel = new Label();
     this->addView(this->titleLabel);
 
+    // 标题与右侧区之间用一个 Padding 顶开（borealis 的 header XML 就是
+    // [矩形][标题][Padding][副标题]），比"给右侧区加 grow"更直白
+    this->padding = new Padding();
+    this->addView(this->padding);
+
     this->hintBox = new Box(Axis::ROW);
     this->hintBox->setHeight(AUTO);
-    this->hintBox->setGrow(1.0f);
     this->hintBox->setAlignItems(AlignItems::CENTER);
     this->hintBox->setJustifyContent(JustifyContent::FLEX_END);
     this->addView(this->hintBox);

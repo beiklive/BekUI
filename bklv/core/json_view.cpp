@@ -17,6 +17,7 @@
 #include "bklv/views/h_scrolling_frame.hpp"
 #include "bklv/views/image.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/views/padding.hpp"
 #include "bklv/views/progress_spinner.hpp"
 #include "bklv/views/scrolling_frame.hpp"
 
@@ -55,6 +56,8 @@ void registerBuiltinViewTypes()
     registerViewType("ScrollingFrame", [] { return (View*)new ScrollingFrame(); });
     registerViewType("HScrollingFrame", [] { return (View*)new HScrollingFrame(); });
     registerViewType("ProgressSpinner", [] { return (View*)new ProgressSpinner(); });
+    // 占位挤压（对标 borealis 的 brls:Padding）：[左][Padding][右] 把右边顶到另一头
+    registerViewType("Padding", [] { return (View*)new Padding(); });
     // RecyclerFrame 不注册：它必须先有数据源才能用，光有类型没有意义（做法见 P3 的 cell）。
 }
 

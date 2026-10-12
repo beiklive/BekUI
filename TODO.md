@@ -191,6 +191,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] audio（`core/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
       Switch 的 audren 输出未接 —— 需要真机，已在文档写明）
 - [ ] **P1 核心能力**（剩余）：event 补齐
+- [x] Padding 占位视图（对标 borealis 的 `brls:Padding`；页头已改用它）
 - [x] 数据绑定/缓存：`bind` 不需要（代码建树直接持指针，JSON 树用 `getView(id)`）；
       `cache_helper` 补成 `core/cache.hpp` 的 `LruCache`
 - [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
