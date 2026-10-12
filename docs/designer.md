@@ -47,6 +47,18 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## "一眼知道改了什么"
+
+- `designer/core/diff.*` 新增 `changedPaths(before, after)`：返回**变化的叶子路径集合**
+  （`box.height` / `layers[0].fill` …），4 项测试
+- 属性表里**改过的字段前面点一个强调色圆点**（和"磁盘上那份"比，`savedText` 就是磁盘态）
+- 树里**改过的层**那一行同样带点
+- 预览面板标题变成 `未保存 · 改动 N 处`
+- 每帧只在文档真的变了时重算（用 `viewTextApplied` 当缓存键）
+
+自查钩子 `BKLV_DESIGNER_EDIT_DOC` 现在支持 `layers[0].fill=#FF8800` 这种带下标的路径
+（之前只认对象键）；带 `[` 但格式不对会当场拒绝，不会把文件写坏。
+
 ## 层序条（预览左侧）
 
 按绘制顺序列出各层，每行一个色块：

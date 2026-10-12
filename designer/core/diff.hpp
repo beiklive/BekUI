@@ -3,6 +3,7 @@
 // JSON 差异：保存前给用户看"哪个键从什么变成什么"。
 // 逐叶子比较（数组按下标），所以 layers[2].fill 这种路径能直接指到属性表的哪一行。
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -27,5 +28,10 @@ std::string changeSummary(const JsonChange& change);
 
 // 值的紧凑写法（字符串不加引号，方便看），给摘要与属性表用
 std::string compactValue(const nlohmann::ordered_json& value);
+
+// 只关心"哪些叶子变了"：返回路径集合（box.height / layers[0].fill …）。
+// 属性表用它给改过的字段打标记 —— 一堆字段里一眼看出刚动了哪几个。
+std::set<std::string> changedPaths(const nlohmann::ordered_json& before,
+    const nlohmann::ordered_json& after);
 
 } // namespace designer

@@ -77,6 +77,15 @@ std::vector<JsonChange> diffJson(const nlohmann::ordered_json& before,
     return changes;
 }
 
+std::set<std::string> changedPaths(const nlohmann::ordered_json& before,
+    const nlohmann::ordered_json& after)
+{
+    std::set<std::string> paths;
+    for (const JsonChange& change : diffJson(before, after))
+        paths.insert(change.path);
+    return paths;
+}
+
 std::string changeSummary(const JsonChange& change)
 {
     if (change.before.empty())

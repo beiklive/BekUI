@@ -163,6 +163,22 @@ int main()
         check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
     }
 
+    // ---------------------------------------------------------------- 变化路径集合
+    {
+        const Json before = Json::parse(
+            R"({"box": {"height": 48, "gap": 8}, "layers": [{"op": "rect", "fill": "#111111"}]})");
+        const Json after = Json::parse(
+            R"({"box": {"height": 56, "gap": 8}, "layers": [{"op": "rect", "fill": "#222222"}]})");
+
+        const std::set<std::string> paths = designer::changedPaths(before, after);
+        checkEqualSize(paths.size(), 2, "两处变化");
+        check(paths.count("box.height") == 1, "认得出 box.height 变了");
+        check(paths.count("layers[0].fill") == 1, "认得出层里的字段变了");
+        check(paths.count("box.gap") == 0, "没变的字段不在集合里");
+
+        check(designer::changedPaths(before, before).empty(), "一模一样时集合为空");
+    }
+
     // ---------------------------------------------------------------- 主题文件读写
     {
         std::vector<std::string> available;

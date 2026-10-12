@@ -11,6 +11,7 @@
 
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -73,23 +74,46 @@ class DesignerWindow
         size_t pos                = 0;
         while (pos < dottedPath.size())
         {
-            const size_t dot       = dottedPath.find('.', pos);
-            const std::string key  = dottedPath.substr(pos,
+            const size_t dot      = dottedPath.find('.', pos);
+            std::string key       = dottedPath.substr(pos,
                 dot == std::string::npos ? std::string::npos : dot - pos);
+            // 支持 `layers[0]` 这种带下标的段（写成 `[` 就当场拒绝，别把文件写坏）
+            int index = -1;
+            if (const size_t bracket = key.find('['); bracket != std::string::npos)
+            {
+                if (key.back() != ']')
+                    return false;
+                index = std::atoi(key.substr(bracket + 1, key.size() - bracket - 2).c_str());
+                key   = key.substr(0, bracket);
+            }
+            if (key.empty())
+                return false;
+
             if (dot == std::string::npos)
             {
                 AppearanceDoc::Json parsed
                     = AppearanceDoc::Json::parse(jsonValue, nullptr, false);
-                (*node)[key] = parsed.is_discarded() ? AppearanceDoc::Json(jsonValue) : parsed;
+                AppearanceDoc::Json& target = index < 0 ? (*node)[key] : (*node)[key][index];
+                target = parsed.is_discarded() ? AppearanceDoc::Json(jsonValue) : parsed;
                 this->pushUndoSnapshot();
                 this->markEdited();
                 this->previewDirty = true;
                 return true;
             }
-            if (!node->contains(key) || !(*node)[key].is_object())
-                (*node)[key] = AppearanceDoc::Json::object();
-            node = &(*node)[key];
-            pos  = dot + 1;
+            AppearanceDoc::Json& next = (*node)[key];
+            if (index < 0)
+            {
+                if (!next.is_object())
+                    next = AppearanceDoc::Json::object();
+                node = &next;
+            }
+            else
+            {
+                if (!next.is_array() || index >= (int)next.size())
+                    return false;
+                node = &next[index];
+            }
+            pos = dot + 1;
         }
         return false;
     }
@@ -213,6 +237,15 @@ class DesignerWindow
     bool onlyLayers = false;          // 树里只看层
     char propFilter[64] = "";         // 属性表字段过滤
     std::vector<DirEntry> recentFiles;// 最近修改（文件列表顶部的快捷入口）
+    // 相对"磁盘上那份"变了哪些字段（box.height / layers[0].fill …）
+    std::set<std::string> changedFieldPaths;
+    std::string changedPathsSource;  // 上次算的时候文档长什么样（省得每帧重算）
+    void refreshChangedPaths();
+    bool isFieldChanged(const std::string& path) const
+    {
+        return this->changedFieldPaths.count(path) == 1;
+    }
+    bool isLayerChanged(int index) const;
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过

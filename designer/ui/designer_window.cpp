@@ -1411,7 +1411,8 @@ void DesignerWindow::drawTree()
                                           || this->selection.kind == SelKind::LAYER_FIELD)
                     && this->selection.index == i;
                 char label[128];
-                std::snprintf(label, sizeof(label), "#%d  %s  %s", i + 1,
+                std::snprintf(label, sizeof(label), "%s#%d  %s  %s",
+                    this->isLayerChanged(i) ? "• " : "", i + 1,
                     this->doc.layerOp(i).c_str(), this->doc.layerId(i).c_str());
                 const std::string id = "##layer" + std::to_string(i);
                 // "只看层"时把它画成叶子：点一下选中层、不再展开一堆字段
@@ -2450,7 +2451,9 @@ void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
 void DesignerWindow::drawPreview()
 {
     // ---- 控制行 1：画布 ----
-    panelHeader("预览", "选中什么渲染什么");
+    panelHeader("预览", this->dirty
+            ? ("未保存 · 改动 " + std::to_string(this->changedFieldPaths.size()) + " 处").c_str()
+            : "选中什么渲染什么");
     ImGui::SetNextItemWidth(120);
     ImGui::Combo("##size", &this->canvasPreset,
         "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
@@ -2902,8 +2905,14 @@ void DesignerWindow::drawProps()
                     continue;
                 double value = 0.0;
                 const bool has = this->doc.getBoxNumber(key, value);
-                const std::string label = key; // 未设置的状态用暗色点标出来，不挤标签
-                propLabel(label.c_str());
+                const std::string label = this->isFieldChanged(std::string("box.") + key)
+                    ? std::string("• ") + key // 改过的字段前面点一个强调色圆点
+                    : key;                    // 未设置的状态用暗色点标出来，不挤标签
+                if (label[0] == '\xe2' || label.rfind("• ", 0) == 0)
+                    ImGui::TextColored(accentColor(), "•");
+                if (label.rfind("• ", 0) == 0)
+                    ImGui::SameLine();
+                propLabel(label.rfind("• ", 0) == 0 ? label.c_str() + 2 : label.c_str());
                 if (!has)
                 {
                     ImGui::SameLine(kLabelWidth - 12.0f);
@@ -3033,6 +3042,17 @@ void DesignerWindow::drawProps()
                 {
                     ImGui::PopID();
                     continue; // 过滤词不匹配的字段不画
+                }
+
+                const bool fieldChanged
+                    = this->isFieldChanged("layers[" + std::to_string(this->selection.index)
+                        + "]." + key);
+                if (fieldChanged)
+                {
+                    ImGui::TextColored(accentColor(), "•");
+                    ImGui::SameLine();
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("这个字段相对磁盘上的版本改过");
                 }
 
                 const std::string kind = valueKind(it.value());
@@ -3709,6 +3729,35 @@ void DesignerWindow::openBrowseAt(const std::string& path)
     this->refreshBrowse();
 }
 
+bool DesignerWindow::isLayerChanged(int index) const
+{
+    const std::string prefix = "layers[" + std::to_string(index) + "].";
+    for (const std::string& path : this->changedFieldPaths)
+        if (path.rfind(prefix, 0) == 0)
+            return true;
+    return false;
+}
+
+void DesignerWindow::refreshChangedPaths()
+{
+    const std::string now = this->dirty ? this->viewTextApplied : std::string();
+    if (now == this->changedPathsSource)
+        return; // 文档没变，不用重算
+
+    this->changedPathsSource = now;
+    this->changedFieldPaths.clear();
+    if (!this->dirty || this->currentFilePath.empty())
+        return;
+
+    // 和"磁盘上那份"比：给属性表和树里的字段打标记，一眼看出刚改了什么
+    // savedText 就是"磁盘上那份"（打开/保存时同步过）
+    const AppearanceDoc::Json before
+        = AppearanceDoc::Json::parse(this->currentDraft().savedText, nullptr, false);
+    if (before.is_discarded())
+        return;
+    this->changedFieldPaths = changedPaths(before, this->doc.root());
+}
+
 void DesignerWindow::refreshBrowse()
 {
     std::string error;
@@ -4381,6 +4430,8 @@ void DesignerWindow::draw()
         applyDesignerStyle();
         styleApplied = true;
     }
+
+    this->refreshChangedPaths();
 
     this->drawTopBar();
 
