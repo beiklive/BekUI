@@ -44,6 +44,9 @@ Box* buildSettingsPage()
 
     DetailCell* theme = new DetailCell(getStr("settings/theme"), getTheme().getName());
     about->addView(theme);
+
+    DetailCell* status = new DetailCell(getStr("settings/status"), getStr("settings/status_note"));
+    about->addView(status);
     page->addView(about);
 
     // ---- 开关（BooleanCell）----

@@ -104,7 +104,8 @@
   },
   "status": {
     "fontSize": 21.5,
-    "itemSpacing": 21
+    "itemSpacing": 21,
+    "batteryLowThreshold": 0.2
   },
   "cell": {
     "height": 56,

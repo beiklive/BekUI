@@ -165,6 +165,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 - [x] 6 个列表 Cell（`widgets/cell.*`：detail / bool / radio / selector / slider / input）
       + demo 设置页（对标 borealis Settings tab）
+- [x] Battery / Wireless 图标化（矢量自绘 + 数据源可插拔；Switch 走 psm/nifm，
+      桌面注入演示数据）+ demo 底栏可见
 - [ ] **P0 控件补齐**：
       Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
       View 变换（scale/rotate/skew/fontScale）

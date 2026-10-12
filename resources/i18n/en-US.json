@@ -160,6 +160,8 @@
     "inputs_title": "Inputs",
     "input_text": "URL",
     "input_text_default": "https://github.com",
-    "input_number": "Number (digits only)"
+    "input_number": "Number (digits only)",
+    "status_note": "Bottom right: battery, network and clock. On desktop there is no hardware, so demo data is injected; Switch reads psm/nifm.",
+    "status": "Bottom bar status"
   }
 }

@@ -160,6 +160,8 @@
     "inputs_title": "输入",
     "input_text": "网址",
     "input_text_default": "https://github.com",
-    "input_number": "数字（只收数字）"
+    "input_number": "数字（只收数字）",
+    "status_note": "底栏右侧：电量图标 + 网络图标 + 时钟。桌面没有对应硬件，这里注入的是演示数据；Switch 上用 psm/nifm 取真数据。",
+    "status": "底栏状态区"
   }
 }

@@ -22,8 +22,8 @@
 | `views/cells/cell_radio` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | RadioCell：单选圆点 |
 | `views/cells/cell_selector` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | SelectorCell：左右切换的选项 |
 | `views/cells/cell_slider` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | SliderCell：列表项里的滑块 |
-| **`views/widgets/battery`** | `widgets/status_area`（只有文字电量） | ⚠️ 改造 | 目标：图标 + 电量条（他们用 `img/sys/battery_*` 的图，我们要自绘/自备图） |
-| **`views/widgets/wireless`** | — | ❌ 待补 | 网络图标 + 信号等级（wifi 0~3 / 以太网） |
+| `views/widgets/battery` | `widgets/status_area.*` 的 `BatteryIcon` | ✅ 改良 | 矢量自绘（外壳 + 电量条 + 充电闪电），不用 `img/sys/*` 那套疑似系统图形；数据源可插拔（`setProvider`） |
+| `views/widgets/wireless` | `widgets/status_area.*` 的 `WirelessIcon` | ✅ 改良 | 矢量自绘（三段弧按等级点亮 / 以太网方块）；Switch 走 `nifm` 的类型+强度，桌面可注入 |
 | **`views/widgets/account`** | — | ❌ 待补 | 头像 + 昵称；数据源要可插拔（Switch 用 account 服务，桌面无） |
 | `views/debug_layer`（画视图边界/wireframe） | `views/debug_window`（日志窗口） | ⚠️ 部分 | 日志有了，缺"框出每个 View + 显示尺寸"的调试层 |
 | — | `views/json_cell` | ➕ 多出 | JSON 模板驱动的列表项 |
@@ -120,6 +120,13 @@
 | 手势用 `new TapGestureRecognizer` 手动挂 | 容易漏 delete | 识别器归 `View` 拥有（`addGesture` 接管生命周期） |
 | Battery / Wireless 直接读平台 | 桌面没法显示、无法测试 | 数据源接口 + 默认实现（Switch 真数据、桌面可注入），控件本身可无窗口测试 |
 | Yoga 默认 `flexShrink: 0` 未处理 | 内容变高会挤压同列兄弟（我们踩过：按钮行 48 → 28） | `ScrollingFrame` 用 `flex-basis: 0` + `shrink: 1`；并写进 AGENTS 约定 |
+
+### status_area 的两次踩坑（已修，测试覆盖）
+
+| 现象 | 根因 | 修法 |
+|---|---|---|
+| 桌面上"无数据"时无线图标不隐藏 | `setSnapshot` 在"值没变"时提前 return，跳过了显隐更新 | 显隐先定，再看值有没有变 |
+| 开关类图标在某些外观下不可见 | 自绘层没给尺寸时几何会用到整块矩形 | 几何取主题 metric + 右对齐（同 Cell 的开关） |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

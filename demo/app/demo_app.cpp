@@ -88,6 +88,18 @@ DemoApp::DemoApp()
 
     this->root->pushContentView(body);
 
+    // 桌面没有电池/无线硬件，状态区默认只显示时钟。这里注入一份"演示数据"，
+    // 让底栏右侧的电量/网络图标在桌面上也看得见（Switch 上取的是 psm/nifm 真数据）。
+    if (this->root->getFooter() != nullptr)
+    {
+        this->root->getFooter()->getStatus()->setProvider([] {
+            StatusSnapshot snapshot;
+            snapshot.batteryPercent = 78;
+            snapshot.wifiLevel      = 3;
+            return snapshot;
+        });
+    }
+
     // ---- 页面（顺序就是侧栏顺序）----
     this->addPage(getStr("tab/theme"), getStr("page/theme_sub"), buildThemePage(), false);
     this->addPage(getStr("tab/widgets"), getStr("page/widgets_sub"), buildWidgetsPage(), false);

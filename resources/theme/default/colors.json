@@ -73,5 +73,13 @@
   "radio": {
     "border": "#8b929b",
     "dot": "#00ffcc"
+  },
+  "status": {
+    "batteryBody": "#c8cdd4",
+    "batteryFill": "#ffffff",
+    "batteryLow": "#ff5c5c",
+    "batteryCharging": "#00ffcc",
+    "wirelessOn": "#ffffff",
+    "wirelessOff": "#ffffff3c"
   }
 }
