@@ -132,24 +132,18 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
             continue;
         }
 
-        // 挖空内圈：拆成上下左右四条带子来画（ImGui 的填充不支持带洞的路径）。
-        // 外圈圆角保留在四条带的外侧，视觉上仍是一圈柔和阴影。
-        const ImDrawFlags roundTop     = ImDrawFlags_RoundCornersTop;
-        const ImDrawFlags roundBottom  = ImDrawFlags_RoundCornersBottom;
-        const ImDrawFlags roundLeft    = ImDrawFlags_RoundCornersLeft;
-        const ImDrawFlags roundRight   = ImDrawFlags_RoundCornersRight;
-        const float outerRadius        = radius + expand;
-
-        // 上、下两带：整宽
-        drawList->AddRectFilled(ImVec2(outerMinX, outerMinY), ImVec2(outerMaxX, minY), col,
-            outerRadius, roundTop);
-        drawList->AddRectFilled(ImVec2(outerMinX, maxY), ImVec2(outerMaxX, outerMaxY), col,
-            outerRadius, roundBottom);
-        // 左、右两带：只占中间高度（避开已经画过的角）
-        drawList->AddRectFilled(ImVec2(outerMinX, minY), ImVec2(minX, maxY), col, outerRadius,
-            roundLeft);
-        drawList->AddRectFilled(ImVec2(maxX, minY), ImVec2(outerMaxX, maxY), col, outerRadius,
-            roundRight);
+        // 挖空内圈：沿控件圆角矩形的**中线**描一圈，厚度就是外扩量。
+        // 不能用"四条矩形带子"：ImGui 的 AddRectFilled 会把圆角钳到边长的一半，
+        // 而四条带子又矮又窄，圆角直接被钳没了、看着是直角（用户报的 bug）。
+        // 描边法没有这个钳制，而且内缘正好贴合控件的圆角形状，阴影更准。
+        const float half      = expand * 0.5f;
+        const float midRadius = radius + half;
+        drawList->PathRect(ImVec2(minX - half, minY - half), ImVec2(maxX + half, maxY + half),
+            midRadius);
+        // 注意参数顺序是 (col, thickness, flags)：这个 ImGui 版本的 PathStroke
+        // 不是 (col, flags, thickness)。写成后者编译器不报错（都能隐式转换），
+        // 但 thickness 变成 1、flags 变成垃圾 → 什么都画不出来（踩过）。
+        drawList->PathStroke(col, expand, ImDrawFlags_Closed);
     }
 }
 

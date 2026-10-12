@@ -1,11 +1,15 @@
 // 无窗口测试：阴影层与模糊档位开关。
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
+#include <tuple>
 #include <utility>
 #include <cstdlib>
 #include <string>
 
 #include "bklv/3rd/imgui/imgui.h"
+#include "bklv/3rd/imgui/imgui_internal.h"
 
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
@@ -121,62 +125,119 @@ int main()
 
     std::printf("\n== 5. cutout：挖空内圈（顶点级验证）==\n");
     {
-        // 建一个真正的 ImGui 上下文，就能拿到合法的 ImDrawList 并检查顶点
-        // （手搓 ImDrawListSharedData 会空指针段错误，见 AGENTS 的踩坑记录）
+        // 建一个真正的 ImGui 上下文，就能拿到合法的 ImDrawList 并检查顶点。
+        // 两个坑：① 自建列表必须先 _ResetForNewFrame()，否则 PrimReserve 越界；
+        // ② 没有帧时 _FringeScale 是 0，_AddPolyline 会把粗描边算成 0 直接丢掉。
         ImGui::CreateContext();
         {
-            const ImU32 color = IM_COL32(0, 0, 0, 200);
-            const float minX = 0.0f, minY = 0.0f, maxX = 100.0f, maxY = 100.0f;
+            auto makeList = [] {
+                ImDrawList* list = new ImDrawList(ImGui::GetDrawListSharedData());
+                list->_ResetForNewFrame();
+                list->_FringeScale    = 1.0f;
+                list->_InvFringeScale = 1.0f;
+                return list;
+            };
 
-            auto insideCount = [&](bool cutout) {
-                ImDrawList list(ImGui::GetDrawListSharedData());
-                list._ResetForNewFrame(); // 没有这一下 PrimReserve 会越界（CmdBuffer 里还没有 cmd）
-                shadow::drawSoft(&list, minX, minY, maxX, maxY, 8.0f, color, 1.0f, 10.0f, 0.0f,
+            const ImU32 color  = IM_COL32(0, 0, 0, 200);
+            const float minX = 0.0f, minY = 0.0f, maxX = 100.0f, maxY = 100.0f;
+            const float radius = 12.0f, feather = 10.0f;
+
+            // "在控件里面"要按**圆角形状**算：阴影的内缘是贴合控件圆角的，
+            // 方形包围盒的四个角本来就不该算在里面（那部分是父层的背景）
+            auto insideRoundedShape = [&](const ImVec2& p) {
+                const float r  = radius;
+                const float cx = std::min(std::max(p.x, minX + r), maxX - r);
+                const float cy = std::min(std::max(p.y, minY + r), maxY - r);
+                const float dx = p.x - cx;
+                const float dy = p.y - cy;
+                const float edge = r - 0.5f;
+                return (dx * dx + dy * dy) < edge * edge;
+            };
+
+            // 覆盖测试：ImGui 的凸填充只产生边界顶点，"有没有阴影"要看三角形盖没盖住采样点
+            auto covered = [](ImDrawList* list, const ImVec2& p) {
+                auto sign = [](const ImVec2& a, const ImVec2& b, const ImVec2& c) {
+                    return (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
+                };
+                for (int i = 0; i + 2 < list->IdxBuffer.Size; i += 3)
+                {
+                    const ImVec2 a = list->VtxBuffer[list->IdxBuffer[i]].pos;
+                    const ImVec2 b = list->VtxBuffer[list->IdxBuffer[i + 1]].pos;
+                    const ImVec2 c = list->VtxBuffer[list->IdxBuffer[i + 2]].pos;
+                    const float d1 = sign(p, a, b);
+                    const float d2 = sign(p, b, c);
+                    const float d3 = sign(p, c, a);
+                    const bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                    const bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+                    if (!(hasNeg && hasPos))
+                        return true;
+                }
+                return false;
+            };
+
+            auto countInside = [&](bool cutout) {
+                ImDrawList* list = makeList();
+                shadow::drawSoft(list, minX, minY, maxX, maxY, radius, color, 1.0f, feather, 0.0f,
                     cutout);
 
                 int inside = 0;
-                for (int i = 0; i < list.VtxBuffer.Size; i++)
+                float loX = 1e9f, loY = 1e9f, hiX = -1e9f, hiY = -1e9f;
+                float maxCornerDist = 0.0f;
+                const ImVec2 center(minX + radius, minY + radius);
+                for (int i = 0; i < list->VtxBuffer.Size; i++)
                 {
-                    const ImVec2 p = list.VtxBuffer[i].pos;
-                    // 严格落在控件矩形内部（留 0.5px 容差给浮点）
-                    if (p.x > minX + 0.5f && p.x < maxX - 0.5f && p.y > minY + 0.5f
-                        && p.y < maxY - 0.5f)
+                    const ImVec2 p = list->VtxBuffer[i].pos;
+                    if (insideRoundedShape(p))
                         inside++;
+                    loX = std::min(loX, p.x); hiX = std::max(hiX, p.x);
+                    loY = std::min(loY, p.y); hiY = std::max(hiY, p.y);
+                    if (p.x <= center.x && p.y <= center.y)
+                    {
+                        const float dx = p.x - center.x, dy = p.y - center.y;
+                        maxCornerDist = std::max(maxCornerDist, std::sqrt(dx * dx + dy * dy));
+                    }
                 }
-                const int verts = list.VtxBuffer.Size;
-                list._ResetForNewFrame();
-                return std::pair<int, int>(inside, verts);
+                const int verts = list->VtxBuffer.Size;
+                const bool centerCovered = covered(list, ImVec2((minX + maxX) * 0.5f,
+                    (minY + maxY) * 0.5f));
+                const bool cornerCovered = covered(list, ImVec2(minX + 3.0f, minY + 3.0f));
+                delete list;
+                return std::make_tuple(inside, verts, loX, hiX, loY, hiY, maxCornerDist,
+                    centerCovered, cornerCovered);
             };
 
-            const auto plain  = insideCount(false);
-            const auto cutout = insideCount(true);
+            const auto plain  = countInside(false);
+            const auto cutout = countInside(true);
 
-            // 不开挖空：一整块填充，内圈有大量顶点
-            check(plain.first > 0, "不开 cutout 时阴影铺满（内圈有顶点，会透出半透明底色）");
-            // 开挖空：四条带子，内圈一个顶点都没有
-            checkEqualInt(cutout.first, 0, "cutout 时内圈里没有任何顶点");
-            // 四条带都要在（圆角矩形是扇形展开，顶点数不固定，按包围范围断言更实在）
-            {
-                ImDrawList list(ImGui::GetDrawListSharedData());
-                list._ResetForNewFrame();
-                shadow::drawSoft(&list, minX, minY, maxX, maxY, 8.0f, color, 1.0f, 10.0f, 0.0f,
-                    true);
+            // 不开挖空：阴影是一整块，控件中心被阴影三角形盖住 → 半透明底色就会透出来
+            check(std::get<7>(plain), "不开 cutout 时控件中心被阴影盖住（半透明底会透出来）");
+            // 开挖空：中心不被覆盖（透明底色也看不到阴影）
+            check(!std::get<7>(cutout), "cutout 时控件中心没有被阴影覆盖");
+            // 圆角处（方形包围盒的角、控件的圆角外面）仍然有阴影
+            check(std::get<8>(cutout), "cutout 时圆角外的角落仍有阴影（外圈完整）");
+            check(std::get<0>(plain) >= 0, "两种模式的顶点都检查过");
+            // 开挖空：控件圆角形状内部一个顶点都没有 → 透明底色也看不到阴影
+            checkEqualInt(std::get<0>(cutout), 0, "cutout 时控件形状内部没有任何顶点");
+            check(std::get<1>(cutout) > 0, "cutout 画出了东西（不是空实现）");
 
-                bool top = false, bottom = false, left = false, right = false;
-                for (int i = 0; i < list.VtxBuffer.Size; i++)
-                {
-                    const ImVec2 p = list.VtxBuffer[i].pos;
-                    if (p.y < minY) top = true;
-                    if (p.y > maxY) bottom = true;
-                    if (p.x < minX) left = true;
-                    if (p.x > maxX) right = true;
-                }
-                check(top && bottom && left && right,
-                    "上/下/左/右四条带都画到了（外圈完整，不是只挖了中间）");
-                check(cutout.second > plain.second, "挖空后顶点更多（四带 vs 一整块）");
-            }
+            // 外圈够到最外边界（四条边都在）
+            check(std::fabs(std::get<2>(cutout) - (minX - feather)) <= 1.5f, "左边界到最外");
+            check(std::fabs(std::get<3>(cutout) - (maxX + feather)) <= 1.5f, "右边界到最外");
+            check(std::fabs(std::get<4>(cutout) - (minY - feather)) <= 1.5f, "上边界到最外");
+            check(std::fabs(std::get<5>(cutout) - (maxY + feather)) <= 1.5f, "下边界到最外");
+
+            // 圆角必须**真圆**：左上角最远顶点到圆角圆心的距离 ≈ 半径。
+            // 直角的话那个角点在半径的 1.414 倍处 —— 用户报的"圆角变直角"就是这个。
+            const float outerR = radius + feather;
+            const float maxDist = std::get<6>(cutout);
+            check(maxDist > 0.0f, "左上角有顶点");
+            check(maxDist <= outerR + 1.5f, "左上角是圆角（直角会是半径的 1.414 倍）");
+            check(maxDist >= outerR - 2.5f, "圆角够到外边界（没被钳小）");
         }
-        ImGui::DestroyContext();
+        // 故意不 DestroyContext：没有平台/渲染后端的上下文在 Shutdown 里会踩空
+        // （"Forgot to shutdown Platform backend?" 那条路径）。进程马上就退出了。
+        // 故意不 DestroyContext：没有平台/渲染后端的上下文在 Shutdown 里会踩空
+        // （"Forgot to shutdown Platform backend?" 那条路径）。进程马上就退出了。
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

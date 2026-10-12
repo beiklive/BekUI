@@ -397,13 +397,23 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   五处要同步，`static_assert` 与顺序自检会兜住。
 - **`shadow` 的 `cutout`**：打开后只画外圈（把控件自身矩形挖掉，borealis 用 `NVG_HOLE`
   做同一件事），内圈一个顶点都不落 → 后面加的层即使是**半透明底色也不会透出阴影**。
-  实现是四条带子（ImGui 的填充不支持带洞路径），`shadow::drawSoft(..., cutout)`。
+  实现是沿中线描一圈（`PathRect` + `PathStroke`），`shadow::drawSoft(..., cutout)`。
   默认关，按需在 shadow 层写 `"cutout": true`。
-- **测试里要画东西就用真 ImGui 上下文**：`ImGui::CreateContext()` 之后
-  `ImDrawList list(ImGui::GetDrawListSharedData())` 是合法的，但**必须紧跟
-  `list._ResetForNewFrame()`** —— 否则内部还没有 draw cmd，`PrimReserve` 会越界崩溃
-  （shadow_test 先后踩过这两种崩法）。拿不到上下文时（或不想建）就只断言
-  "会画几层"这类可数事实（`shadow::layerCount()`）。
+- **测试里要画东西就用真 ImGui 上下文**，三件事缺一不可（shadow_test 三个坑都踩过）：
+  ① `ImGui::CreateContext()` 要有；
+  ② 自建列表必须紧跟 `list._ResetForNewFrame()`，否则内部没有 draw cmd，
+     `PrimReserve` 越界崩溃；
+  ③ `list._FringeScale = list._InvFringeScale = 1.0f` —— 没有帧时它们是 0，
+     `_AddPolyline` 会把 `screen_thickness` 算成 0 然后**静默 return**（粗描边什么都画不出来）。
+  另外收尾**别调 `ImGui::DestroyContext()`**：没接平台后端的上下文在 `Shutdown()` 里会踩空。
+  拿不到上下文时（或不想建）就只断言"会画几层"这类可数事实（`shadow::layerCount()`）。
+- **ImGui 1.92.8 起 `PathStroke` 的参数顺序是 `(col, thickness, flags)`**，不是
+  `(col, flags, thickness)`。写反了编译器不报错（两者都能隐式转换），但 thickness 变成 1、
+  flags 变成垃圾 → **什么都画不出来**，只能靠看图或顶点数发现（`_AddPolyline` 里那段
+  注释就是提醒这个改动的）。
+- **圆角不要靠"四条带子"拼**：`AddRectFilled` 会把圆角**钳到边长的一半**，带子又矮又窄时
+  圆角直接被钳成直角（用户报过"cutout 之后圆角变直角"）。要圆角就沿中线描一圈
+  （`PathRect` + `PathStroke`），描边没有这个钳制，而且内缘正好贴合控件的圆角形状。
 - **底栏顺序：提示在左、状态在右**（borealis 的 `bottomBarXML` 是 `Hints` 在前，
   外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
