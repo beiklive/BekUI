@@ -7,6 +7,7 @@
 // 用法：dist/designer 启动后先用仓库自带的 default 主题浏览（只读），
 // 要动手改就点「新建项目」：模板新建一份自己的主题，或直接编辑已有自建主题。
 
+#include <algorithm>
 #include <cstdlib>
 #include <string>
 
@@ -213,7 +214,22 @@ int main(int argc, char** argv)
 
     (void)argc;
     (void)argv;
-    const int exitCode = app.run("bklv 设计器", 1280, 820);
+    // 窗口尺寸：默认 1280×820；BKLV_DESIGNER_WINDOW=宽x高 可以指定
+    // （小屏 / 分屏下需要，也是自查"不同窗口尺寸下布局是否还成立"的手段）
+    int windowWidth  = 1280;
+    int windowHeight = 820;
+    if (const char* size = std::getenv("BKLV_DESIGNER_WINDOW"))
+    {
+        const std::string spec(size);
+        const size_t cross = spec.find('x');
+        if (cross != std::string::npos)
+        {
+            windowWidth  = std::max(720, std::atoi(spec.substr(0, cross).c_str()));
+            windowHeight = std::max(480, std::atoi(spec.substr(cross + 1).c_str()));
+        }
+    }
+
+    const int exitCode = app.run("bklv 设计器", windowWidth, windowHeight);
 
     // 截图基线对比：BKLV_DESIGNER_BASELINE=<png> 时把刚截的图和基线比一比，
     // 差异大了就返回非 0（可以当界面回归用）。差异图写在 <shot>.diff.png。

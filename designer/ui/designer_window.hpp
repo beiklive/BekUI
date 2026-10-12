@@ -254,6 +254,7 @@ class DesignerWindow
         const std::function<void(const std::string&)>& onPick);
     bool colorPickerPopup(const char* id, std::string& value); // 取色器（写回字面量）
     void drawModals();
+    void drawMenuBar();   // 全局菜单：文件 / 编辑 / 视图 / 工具 / 帮助
     void refreshBrowse();                    // 重新列当前浏览目录
     void openBrowseAt(const std::string& path);
     void drawOpenProjectModal();

@@ -2,9 +2,13 @@
 
 // 设计器的配色与 ImGui 样式。
 //
-// 配色**跟着主题走**：读当前主题的语义色（surface.* / text.* / border.* / accent.*），
-// 所以换主题时设计器自己也跟着换色 —— 对一个"调主题的工具"来说这是最自然的行为。
-// 取不到就退回一套内置的深色默认值（第一次跑、主题还没装载时用）。
+// 配色用 **VS Code Dark+ 的语义体系**（固定，不跟随被编辑的主题）：
+// 工具本身的界面必须是稳定的参照物 —— 如果设计器跟着主题变色，
+// 调主题时"看到的界面"和"被调的界面"就混在一起了。
+//
+// 三层底色：编辑器 #1E1E1E / 侧栏 #252526 / 面板与标题 #333333；
+// 交互蓝 #0E639C（悬停 #1177BB）、焦点框 #007FD4、选中背景 #094771；
+// 语义色：错误 #F14C4C / 警告 #CCA700 / 通过 #89D185 / 未保存 #E2C08D。
 
 #include "bklv/3rd/imgui/imgui.h"
 
@@ -13,19 +17,25 @@ namespace designer
 
 struct DesignerPalette
 {
-    ImVec4 page;         // 窗口底
-    ImVec4 card;         // 面板底
-    ImVec4 raised;       // 悬浮/按钮
-    ImVec4 sunken;       // 输入框底
-    ImVec4 hover;        // 悬停
-    ImVec4 textPrimary;
-    ImVec4 textDim;
-    ImVec4 textDisabled;
-    ImVec4 onAccent;     // 强调色上的文字
-    ImVec4 border;
-    ImVec4 borderSubtle;
-    ImVec4 accent;
-    ImVec4 accentPressed;
+    ImVec4 page;         // 编辑器底 #1E1E1E
+    ImVec4 card;         // 侧栏/面板底 #252526
+    ImVec4 raised;       // 面板抬头、按钮底 #333333
+    ImVec4 sunken;       // 输入框底 #3C3C3C
+    ImVec4 hover;        // 悬停底 #2A2D2E
+    ImVec4 textPrimary;  // #CCCCCC
+    ImVec4 textDim;      // #9D9D9D
+    ImVec4 textDisabled; // #6A6A6A
+    ImVec4 onAccent;
+    ImVec4 border;       // #3C3C3C
+    ImVec4 borderSubtle; // #2B2B2B
+    ImVec4 accent;       // 交互蓝 #0E639C
+    ImVec4 accentPressed;// #1177BB
+    ImVec4 selection;    // 选中背景 #094771
+    ImVec4 focusBorder;  // #007FD4
+    ImVec4 error;        // #F14C4C
+    ImVec4 warning;      // #CCA700
+    ImVec4 success;      // #89D185
+    ImVec4 unsaved;      // #E2C08D（VS Code 的 git modified 色）
 };
 
 DesignerPalette currentDesignerPalette();
@@ -34,11 +44,16 @@ DesignerPalette currentDesignerPalette();
 // uiScale 会同时作用到尺寸与字体（屏大或 Retina 下默认尺寸显得过大）。
 void applyDesignerStyle(float uiScale = 1.0f);
 
-// 常用快捷取色（跟着主题走）
+// 常用快捷取色
 ImVec4 accentColor();
 ImVec4 mutedColor();
 ImVec4 cardColor();
 ImVec4 borderColor();
+ImVec4 selectionColor();  // 选中背景
+ImVec4 errorColor();
+ImVec4 warningColor();
+ImVec4 successColor();
+ImVec4 unsavedColor();    // "改过 / 未保存"专用的琥珀色
 
 // 面板小标题：一条带强调色标题的东西（统一各面板的头部观感）
 void panelHeader(const char* title, const char* hint = nullptr);

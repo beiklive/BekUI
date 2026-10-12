@@ -970,69 +970,223 @@ void DesignerWindow::redo()
 
 // ---------------------------------------------------------------- 顶栏
 
+void DesignerWindow::drawMenuBar()
+{
+    // 评审意见：原来所有功能挤在同一条横向工具栏里，全局操作和辅助工具分不清主次。
+    // 现在按"菜单栏（全局、低频）+ 常用操作栏（保存/撤销/重做，高频）"分层。
+    const bool hasFile = !this->currentFilePath.empty();
+
+    if (!ImGui::BeginMenuBar())
+        return;
+
+    if (ImGui::BeginMenu("文件"))
+    {
+        if (ImGui::MenuItem("打开项目…"))
+        {
+            this->showOpenProject = true;
+            this->openBrowseAt(this->hasProject ? this->project.themeRoot : homeDirectory());
+        }
+        ImGui::Separator();
+        ImGui::BeginDisabled(!hasFile);
+        if (ImGui::MenuItem("保存", "Ctrl+S"))
+            this->requestSave();
+        if (ImGui::MenuItem("全部保存"))
+            this->saveAllDirty();
+        if (ImGui::MenuItem("另存为…"))
+        {
+            std::snprintf(this->saveAsPath, sizeof(this->saveAsPath), "%s",
+                this->currentFilePath.c_str());
+            this->showSaveAs = true;
+        }
+        ImGui::EndDisabled();
+        ImGui::Separator();
+        if (ImGui::MenuItem("还原到文件内容"))
+            this->revert();
+        if (ImGui::MenuItem("重新载入（丢弃草稿）"))
+        {
+            std::string error;
+            this->discardCurrentDraft();
+            if (!this->currentWidget.empty())
+                this->openAppearance(this->currentWidget, error);
+            else if (!this->currentTable.empty())
+                this->openTableFile(this->currentTable);
+            else if (!this->currentViewFile.empty())
+                this->openViewFile(this->currentViewFile);
+        }
+        if (ImGui::MenuItem("重载主题"))
+        {
+            std::string error;
+            this->applyThemeFromProject(error);
+            if (!this->currentWidget.empty())
+                this->openAppearance(this->currentWidget, error);
+        }
+        ImGui::Separator();
+        ImGui::BeginDisabled(this->currentWidget.empty() || this->readOnly);
+        if (ImGui::MenuItem("新建外观…"))
+            this->showNewAppearance = true;
+        if (ImGui::MenuItem("另存为变体…"))
+        {
+            std::snprintf(this->variantName, sizeof(this->variantName), "%s_v2",
+                this->currentWidget.c_str());
+            this->showSaveAsVariant = true;
+        }
+        ImGui::EndDisabled();
+        if (ImGui::MenuItem("新建页面视图…"))
+            this->showNewView = true;
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("编辑"))
+    {
+        ImGui::BeginDisabled(!hasFile);
+        if (ImGui::MenuItem("撤销", "Ctrl+Z"))
+            this->undo();
+        if (ImGui::MenuItem("重做", "Ctrl+Y"))
+            this->redo();
+        ImGui::EndDisabled();
+        ImGui::Separator();
+        ImGui::BeginDisabled(this->selection.kind != SelKind::LAYER);
+        if (ImGui::MenuItem("复制当前层", "Ctrl+D"))
+        {
+            if (const AppearanceDoc::Json* layer = this->doc.layer(this->selection.index))
+            {
+                this->layerClipboard    = *layer;
+                this->hasLayerClipboard = true;
+                this->statusMessage     = "已复制第 "
+                    + std::to_string(this->selection.index + 1) + " 层";
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(!this->hasLayerClipboard);
+        if (ImGui::MenuItem("粘贴层到末尾"))
+        {
+            const int index = this->doc.appendLayer(this->layerClipboard);
+            if (index >= 0)
+            {
+                this->pushUndoSnapshot();
+                this->markEdited();
+                this->previewDirty    = true;
+                this->selection       = Selection{};
+                this->selection.kind  = SelKind::LAYER;
+                this->selection.index = index;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::Separator();
+        if (ImGui::MenuItem("跳到下一处改动", "F3"))
+            this->selectNextChange(1);
+        if (ImGui::MenuItem("跳到上一处改动", "Shift+F3"))
+            this->selectNextChange(-1);
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("视图"))
+    {
+        bool maximized = this->previewMaximized;
+        if (ImGui::MenuItem("预览最大化", "F2", &maximized))
+            this->previewMaximized = maximized;
+        ImGui::MenuItem("并排对比（编辑中 / 磁盘上）", nullptr, &this->previewCompare);
+        ImGui::MenuItem("在上下文里预览", nullptr, &this->previewContext);
+        ImGui::MenuItem("只渲染选中子树", nullptr, &this->previewSubtree);
+        ImGui::Separator();
+        ImGui::MenuItem("节点树只看层", nullptr, &this->onlyLayers);
+        ImGui::MenuItem("预览对齐网格", nullptr, &this->showGrid);
+        ImGui::MenuItem("画布网格底", nullptr, &this->canvasChecker);
+        ImGui::Separator();
+        if (ImGui::MenuItem("折叠左栏", nullptr, &this->leftCollapsed))
+            this->previewDirty = true;
+        ImGui::Separator();
+        if (ImGui::BeginMenu("界面缩放"))
+        {
+            const float values[] = { 0.75f, 0.85f, 1.0f, 1.15f, 1.3f };
+            const char* labels[] = { "75%", "85%", "100%", "115%", "130%" };
+            for (int i = 0; i < 5; i++)
+            {
+                const bool selected = std::fabs(this->uiScale - values[i]) < 0.01f;
+                if (ImGui::MenuItem(labels[i], nullptr, selected))
+                {
+                    this->uiScale = values[i];
+                    applyDesignerStyle(this->uiScale);
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("工具"))
+    {
+        ImGui::MenuItem("校验面板", "F1", &this->showWarnings);
+        if (ImGui::MenuItem("日志"))
+            this->debugWindow.toggle();
+        ImGui::MenuItem("焦点顺序", nullptr, &this->showFocusOrder);
+        ImGui::MenuItem("改动总览", nullptr, &this->showOverview);
+        ImGui::Separator();
+        if (ImGui::MenuItem("快捷键与约定"))
+            this->showHelp = true;
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("帮助"))
+    {
+        ImGui::MenuItem("bklv 设计器", nullptr, false, false);
+        ImGui::TextColored(mutedColor(), "  JSON 主题 + 真实控件预览");
+        ImGui::Separator();
+        if (ImGui::MenuItem("快捷键与约定"))
+            this->showHelp = true;
+        ImGui::EndMenu();
+    }
+
+    // 右侧：当前文件（路径只给悬停，不占视线）
+    const std::string shortName = !this->currentWidget.empty()
+        ? this->currentWidget
+        : (!this->currentTable.empty() ? this->currentTable : this->currentViewFile);
+    if (!shortName.empty())
+    {
+        const float textWidth = ImGui::CalcTextSize(shortName.c_str()).x;
+        ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
+        ImGui::TextColored(this->dirty ? unsavedColor() : mutedColor(), "%s%s", shortName.c_str(),
+            this->dirty ? "  ●" : "");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s%s", this->currentFilePath.c_str(),
+                this->dirty ? "\n（有未保存改动）" : "");
+    }
+
+    ImGui::EndMenuBar();
+}
+
 void DesignerWindow::drawTopBar()
 {
-    // 第一行：标题 + 项目信息（长路径中间省略，别把按钮挤歪）
-    ImGui::PushStyleColor(ImGuiCol_Text, accentColor());
-    ImGui::TextUnformatted("bklv 设计器");
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-
-    if (this->hasProject)
-    {
-        std::string root = this->project.themeRoot;
-        if (root.size() > 46)
-            root = "…" + root.substr(root.size() - 45);
-        ImGui::TextColored(mutedColor(), "%s（%s%s）· %s", this->project.name.c_str(),
-            this->project.mode == ProjectMode::FORK ? "模板新建，来自 " : "直接编辑",
-            this->project.templateName.c_str(), root.c_str());
-        if (this->readOnly)
-        {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "· 基准主题只读，改样式请「新建项目」");
-        }
-    }
-    else
-        ImGui::TextColored(mutedColor(), "还没有打开项目");
-
-    // 第二行：动作
-    // 组间分隔：多给一点间距 + 一条细竖线。**不能用 Dummy**——Dummy 会让光标换行，
-    // 顶栏会被拆成好几行（试过一次，白白吃掉面板高度）
-    auto groupBreak = [] {
-        ImGui::SameLine(0.0f, 16.0f);
-        const ImVec2 pos   = ImGui::GetCursorScreenPos();
-        const float height = ImGui::GetFrameHeight();
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(pos.x - 9.0f, pos.y + 2.0f),
-            ImVec2(pos.x - 9.0f, pos.y + height - 2.0f),
-            ImGui::ColorConvertFloat4ToU32(borderColor()));
-    };
-
+    // 常用操作栏：**只放高频动作**（打开项目 / 主题 / 保存 / 撤销 / 重做）。
+    // 其余（重载、还原、另存、校验、日志、焦点顺序…）都收进上面那排菜单 ——
+    // 评审意见：它们和"保存"原本是同一个视觉权重，主次分不出来。
     if (ImGui::Button("打开项目"))
     {
         this->showOpenProject = true;
-        // 起点：当前项目的主题根（没有就用 home）
         this->openBrowseAt(this->hasProject ? this->project.themeRoot : homeDirectory());
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("用文件浏览器选一个 theme.json：可以直接编辑它，也可以拿它当模板建新主题");
+
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(180);
+    ImGui::SetNextItemWidth(160.0f * this->uiScale);
     if (ImGui::BeginCombo("##theme", this->project.name.c_str()))
     {
         for (const std::string& name : this->themeNames)
         {
-            std::string label = name;
-            if (name == this->defaultThemeName)
-                label += "   （默认）";
-            if (ImGui::Selectable(label.c_str(), name == this->project.name))
+            const bool selected = (name == this->project.name);
+            if (ImGui::Selectable(name.c_str(), selected))
                 this->switchTheme(name);
+            if (selected)
+                ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("切换正在编辑的主题（default / ocean 是只读的基准主题）");
+        ImGui::SetTooltip("切换要编辑 / 预览的主题");
+
     ImGui::SameLine();
-    ImGui::BeginDisabled(this->readOnly || this->project.name == this->defaultThemeName);
+    ImGui::BeginDisabled(this->readOnly);
     if (ImGui::Button("设为默认"))
     {
         std::string error;
@@ -1049,73 +1203,27 @@ void DesignerWindow::drawTopBar()
     }
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("写进 themes.json 的 default：以后启动就用它（只读主题不给改）");
-    ImGui::SameLine();
-    if (ImGui::Button("重载"))
-    {
-        std::string error;
-        this->applyThemeFromProject(error);
-        if (!error.empty())
-            this->errorMessage = error;
-        if (!this->currentWidget.empty())
-            this->openAppearance(this->currentWidget, error);
-        this->previewDirty  = true;
-        this->statusMessage = "已重新装载主题";
-    }
-    groupBreak();
-    ImGui::BeginDisabled(this->currentFilePath.empty());
-    if (ImGui::Button("还原"))
-        this->revert();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(this->currentFilePath.empty() || this->dirty);
-    if (ImGui::Button("重新载入"))
-    {
-        // 把磁盘上的内容读回来（有未保存改动时按钮是灰的，避免盖掉自己的东西）
-        this->discardCurrentDraft();
-        std::string error;
-        if (this->currentViewFile.empty() && this->currentTable.empty())
-            this->openAppearance(this->currentWidget, error);
-        else if (!this->currentTable.empty())
-            this->openTableFile(this->currentTable);
-        else
-            this->openViewFile(this->currentViewFile);
-        this->statusMessage = "已从磁盘重新载入";
-    }
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("丢掉内存里的内容、按磁盘上的文件重新读一遍（有未保存改动时会灰掉）");
-    ImGui::SameLine();
-    if (ImGui::Button("另存…"))
-    {
-        std::snprintf(this->saveAsPath, sizeof(this->saveAsPath), "%s",
-            this->currentFilePath.c_str());
-        this->showSaveAs = true;
-    }
-    ImGui::EndDisabled();
-    groupBreak();
+        ImGui::SetTooltip("把当前主题写进 themes.json 的默认项%s",
+            this->readOnly ? "（基准主题只读，先新建主题）" : "");
+
+    // 主操作：保存（用 VS Code 的 button.background，一眼能看出是主要动作）
+    ImGui::SameLine(0.0f, 24.0f * this->uiScale);
     ImGui::BeginDisabled((this->readOnly && this->currentViewFile.empty())
         || this->currentFilePath.empty());
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.8f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.03f, 0.13f, 0.11f, 1.0f));
-    const bool savePressed = ImGui::Button("保存（先看 diff）");
-    ImGui::PopStyleColor(2);
-    ImGui::EndDisabled();
-    if (savePressed)
+    if (ImGui::Button("保存", ImVec2(88.0f * this->uiScale, 0.0f)))
         this->requestSave();
-
-    // 右半截（历史 / 校验 / 日志 / 面板 / 快捷键 / 界面缩放）在窄窗口或大缩放下会超出屏幕，
-    // 那些按钮就点不到了。这里量一下剩余宽度：不够就换行，够就留在同一行。
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Ctrl+S：先看 diff，再编译校验，通过才写盘（留一份 .bak）");
+    if (this->dirty)
     {
-        const float needed = 620.0f * this->uiScale;
-        // 用"上一个控件的右边缘"来量剩余宽度：GetCursorPosX() 在这个位置返回的是
-        // 行首（刚换过行），量出来的剩余宽度永远是满宽，判断会失效（踩过）
-        const float rightEdge = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
-        const float remain    = ImGui::GetContentRegionMax().x - rightEdge;
-        if (remain < needed)
-            ImGui::NewLine();
+        ImGui::SameLine(0.0f, 6.0f);
+        ImGui::TextColored(unsavedColor(), "● 未保存");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("有未保存改动：Ctrl+S 保存，Ctrl+Z 撤销");
     }
 
-    groupBreak();
+    ImGui::SameLine(0.0f, 24.0f * this->uiScale);
     ImGui::BeginDisabled(this->currentFilePath.empty());
     if (ImGui::Button("撤销"))
         this->undo();
@@ -1130,69 +1238,19 @@ void DesignerWindow::drawTopBar()
         ImGui::SetTooltip("Ctrl+Y");
     ImGui::EndDisabled();
 
-    groupBreak();
-    {
-        int dirtyCount = 0;
-        for (const auto& entry : this->drafts)
-            if (entry.second.dirty)
-                dirtyCount++;
-        if (ImGui::Button("改动总览"))
-            this->showOverview = true;
-        ImGui::SameLine();
-        ImGui::TextColored(dirtyCount > 0 ? ImVec4(1.0f, 0.72f, 0.3f, 1.0f) : mutedColor(),
-            dirtyCount > 0 ? "%d 个文件有未保存改动" : "都已同步", dirtyCount);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("校验面板"))
-        this->showWarnings = true;
-    ImGui::SameLine();
-    if (ImGui::Button("日志"))
-        this->debugWindow.toggle();
-    ImGui::SameLine();
-    if (ImGui::Button("焦点顺序"))
-        this->showFocusOrder = true;
+    // 右侧：项目与模式（只读提醒用警告色，不再和按钮抢注意力）
+    const char* mode = this->project.mode == ProjectMode::FORK ? "模板新建" : "直接编辑";
+    const std::string right = this->hasProject
+        ? (this->project.name + " · " + mode + (this->readOnly ? " · 只读" : ""))
+        : std::string("未打开项目");
+    const float rightWidth = ImGui::CalcTextSize(right.c_str()).x;
+    ImGui::SameLine(ImGui::GetWindowWidth() - rightWidth - 18.0f * this->uiScale);
+    ImGui::TextColored(this->readOnly ? warningColor() : mutedColor(), "%s", right.c_str());
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("按视图树顺序列出可聚焦控件（整页预览时有效），并可在预览里标号");
-    ImGui::SameLine();
-    if (ImGui::Button("快捷键/约定"))
-        this->showHelp = true;
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ctrl+S 保存 · Ctrl+Z/Y 撤销重做 · Ctrl+D 复制层 · Alt+↑↓ 移层\n"
-                          "F1 校验 · F2 预览最大化 · F3 跳到下一处改动");
-
-    ImGui::SameLine();
-    ImGui::TextColored(mutedColor(), "界面");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(76);
-    static const char* kScaleItems = "75%\0 85%\0 100%\0 115%\0 130%\0";
-    const int scaleIndex = this->uiScale <= 0.79f ? 0
-        : this->uiScale <= 0.92f ? 1
-        : this->uiScale <= 1.07f ? 2
-        : this->uiScale <= 1.22f ? 3
-                                 : 4;
-    const int beforeScale = scaleIndex;
-    int chosen            = scaleIndex;
-    if (ImGui::Combo("##uiscale", &chosen, kScaleItems))
-    {
-        const float values[] = { 0.75f, 0.85f, 1.0f, 1.15f, 1.3f };
-        this->uiScale        = clampUiScale(values[chosen]);
-        applyDesignerStyle(this->uiScale); // 字体 + 间距一起换
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("设计器界面整体缩放（快捷键/约定面板里的字也一起变）；\n"
-                          "屏幕大或 Retina 下觉得界面偏大就调小");
-    (void)beforeScale;
-
-    ImGui::SameLine();
-    if (this->dirty)
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "● 当前文件未保存");
-    else if (this->readOnly)
-        ImGui::TextColored(mutedColor(), "（只读浏览）");
-    else
-        ImGui::TextColored(mutedColor(), "已同步");
-
-    ImGui::Separator();
+        ImGui::SetTooltip("主题根目录：%s%s", this->project.themeRoot.c_str(),
+            this->readOnly ? "\n（基准主题只读：改样式请用「文件 → 打开项目」新建一个主题）" : "");
 }
+
 
 // ---------------------------------------------------------------- 文件列表
 
@@ -4865,7 +4923,8 @@ void DesignerWindow::draw()
     ImGui::Begin("bklv 设计器", nullptr,
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings
             | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar
-            | ImGuiWindowFlags_NoScrollWithMouse);
+            | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
+    this->drawMenuBar();
 
     // 快捷键（ImGui 的键盘输入在 SDL3 后端默认开着，直接用 io.KeysDown 的封装）
     if (ImGui::GetCurrentContext() != nullptr && !ImGui::GetIO().WantTextInput)
