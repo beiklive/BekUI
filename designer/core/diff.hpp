@@ -34,4 +34,25 @@ std::string compactValue(const nlohmann::ordered_json& value);
 std::set<std::string> changedPaths(const nlohmann::ordered_json& before,
     const nlohmann::ordered_json& after);
 
+// 把变化路径解成"该选中哪里"，供 diff 列表点击定位用。
+// 认这三种：box.height / layers[2] / layers[2].fill，其余归 OTHER。
+struct PathTarget
+{
+    enum class Kind
+    {
+        NONE,       // 空路径
+        BOX,        // box 段（选中整个 box）
+        BOX_FIELD,  // box.height
+        LAYER,      // layers[2]
+        LAYER_FIELD,// layers[2].fill
+        OTHER,      // states / 顶层其它键
+    };
+
+    Kind kind     = Kind::NONE;
+    int layerIndex = -1;
+    std::string key;
+};
+
+PathTarget parseChangePath(const std::string& path);
+
 } // namespace designer

@@ -137,26 +137,38 @@ int main(int argc, char** argv)
     if (const char* editText = std::getenv("BKLV_DESIGNER_EDIT_TEXT"))
         window.applyTestTextEdit(editText);
 
-    // 自查：BKLV_DESIGNER_UNDO=1 撤销一步
-    if (std::getenv("BKLV_DESIGNER_UNDO") != nullptr)
-        window.undoForTest();
+    // 自查：BKLV_DESIGNER_OPEN_DIALOG=<目录> 直接打开"打开项目"浏览器
+    if (const char* browse = std::getenv("BKLV_DESIGNER_OPEN_DIALOG"))
+        window.openProjectDialogForTest(browse);
 
-    // 自查：BKLV_DESIGNER_REDO=1 重做一步（放在 UNDO 之后验证重做链没被清掉）
-    if (std::getenv("BKLV_DESIGNER_REDO") != nullptr)
-        window.redoForTest();
-
+    // 钩子的顺序是有讲究的（踩过）：先把编辑做完，再撤销/重做，最后才存盘/截图。
+    // 之前 EDIT_DOC 排在 UNDO 后面，结果"撤销"时那次编辑还没发生，
+    // 验证出来的撤销说明少了一条 —— 日志顺序一眼能看出来。
     // 自查：BKLV_DESIGNER_EDIT_DOC=a.b.c=<JSON 值>
     if (const char* docEdit = std::getenv("BKLV_DESIGNER_EDIT_DOC"))
     {
         const std::string spec(docEdit);
         const size_t equals = spec.find('=');
         if (equals != std::string::npos)
-            window.applyTestDocEdit(spec.substr(0, equals), spec.substr(equals + 1));
+        {
+            const bool ok = window.applyTestDocEdit(spec.substr(0, equals), spec.substr(equals + 1));
+            BKLV_LOG_INFO("[自查] EDIT_DOC %s -> %s", docEdit, ok ? "成功" : "失败");
+        }
     }
 
-    // 自查：BKLV_DESIGNER_OPEN_DIALOG=<目录> 直接打开"打开项目"浏览器
-    if (const char* browse = std::getenv("BKLV_DESIGNER_OPEN_DIALOG"))
-        window.openProjectDialogForTest(browse);
+    // 自查：BKLV_DESIGNER_UNDO=1 撤销一步
+    if (std::getenv("BKLV_DESIGNER_UNDO") != nullptr)
+    {
+        window.undoForTest();
+        BKLV_LOG_INFO("[自查] 撤销后状态：%s", window.statusForTest().c_str());
+    }
+
+    // 自查：BKLV_DESIGNER_REDO=1 重做一步（放在 UNDO 之后验证重做链没被清掉）
+    if (std::getenv("BKLV_DESIGNER_REDO") != nullptr)
+    {
+        window.redoForTest();
+        BKLV_LOG_INFO("[自查] 重做后状态：%s", window.statusForTest().c_str());
+    }
 
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
     if (std::getenv("BKLV_DESIGNER_SAVE_ALL") != nullptr)

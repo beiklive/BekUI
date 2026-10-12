@@ -1,5 +1,7 @@
 #include "designer/core/diff.hpp"
 
+#include <cstdlib>
+
 #include <map>
 
 namespace designer
@@ -84,6 +86,51 @@ std::set<std::string> changedPaths(const nlohmann::ordered_json& before,
     for (const JsonChange& change : diffJson(before, after))
         paths.insert(change.path);
     return paths;
+}
+
+PathTarget parseChangePath(const std::string& path)
+{
+    PathTarget target;
+    if (path.empty())
+        return target;
+
+    if (path.rfind("box.", 0) == 0)
+    {
+        target.kind = PathTarget::Kind::BOX_FIELD;
+        target.key  = path.substr(4);
+        return target;
+    }
+    if (path == "box")
+    {
+        target.kind = PathTarget::Kind::BOX;
+        return target;
+    }
+
+    if (path.rfind("layers[", 0) == 0)
+    {
+        const size_t close = path.find(']');
+        if (close == std::string::npos)
+        {
+            target.kind = PathTarget::Kind::OTHER;
+            return target;
+        }
+
+        target.layerIndex = std::atoi(path.substr(7, close - 7).c_str());
+        if (close + 1 == path.size())
+        {
+            target.kind = PathTarget::Kind::LAYER;
+            return target;
+        }
+        if (path[close + 1] == '.' && close + 2 < path.size())
+        {
+            target.kind = PathTarget::Kind::LAYER_FIELD;
+            target.key  = path.substr(close + 2);
+            return target;
+        }
+    }
+
+    target.kind = PathTarget::Kind::OTHER;
+    return target;
 }
 
 std::string changeSummary(const JsonChange& change)

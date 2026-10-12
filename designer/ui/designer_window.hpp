@@ -126,6 +126,7 @@ class DesignerWindow
     }
 
     void undoForTest() { this->undo(); }
+    const std::string& statusForTest() const { return this->statusMessage; }
     void redoForTest() { this->redo(); }
     void forceSaveForTest()
     {
@@ -240,12 +241,15 @@ class DesignerWindow
     // 相对"磁盘上那份"变了哪些字段（box.height / layers[0].fill …）
     std::set<std::string> changedFieldPaths;
     std::string changedPathsSource;  // 上次算的时候文档长什么样（省得每帧重算）
+    std::string historySummary;      // 最近一次撤销/重做动了哪些字段
     void refreshChangedPaths();
     bool isFieldChanged(const std::string& path) const
     {
         return this->changedFieldPaths.count(path) == 1;
     }
     bool isLayerChanged(int index) const;
+    // diff 列表点一下 → 选中对应的地方（层 / 层字段 / box）
+    void selectByChangePath(const std::string& path);
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
@@ -395,6 +399,7 @@ class DesignerWindow
     bool showDiff       = false;
     bool showSaveAs     = false;
     std::vector<std::string> diffLines;
+    std::vector<std::string> diffPaths;   // 与 diffLines 一一对应，点条目用它定位
     char saveAsPath[512] = "";
 
     // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）

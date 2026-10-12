@@ -885,6 +885,24 @@ void DesignerWindow::undo()
         return;
     }
 
+    // 这一步撤掉了什么：拿撤销前后两份文档比一下，列前几条
+    {
+        const AppearanceDoc::Json before
+            = AppearanceDoc::Json::parse(restored, nullptr, false);
+        std::string summary;
+        int shown = 0;
+        for (const std::string& path : changedPaths(before, this->doc.root()))
+        {
+            if (shown++ >= 3)
+            {
+                summary += " 等";
+                break;
+            }
+            summary += (summary.empty() ? "" : "、") + path;
+        }
+        this->historySummary = summary;
+    }
+
     std::string error;
     this->doc.parse(restored, error);
     this->viewTextApplied = this->doc.serialize();
@@ -894,7 +912,9 @@ void DesignerWindow::undo()
     this->lastFrameText = this->doc.serialize();
     this->dirty        = true;
     this->previewDirty = true;
-    this->statusMessage = "已撤销";
+    this->statusMessage = this->historySummary.empty()
+        ? "已撤销"
+        : "已撤销：" + this->historySummary;
 }
 
 void DesignerWindow::redo()
@@ -909,6 +929,22 @@ void DesignerWindow::redo()
         return;
     }
 
+    {
+        const AppearanceDoc::Json after = AppearanceDoc::Json::parse(restored, nullptr, false);
+        std::string summary;
+        int shown = 0;
+        for (const std::string& path : changedPaths(this->doc.root(), after))
+        {
+            if (shown++ >= 3)
+            {
+                summary += " 等";
+                break;
+            }
+            summary += (summary.empty() ? "" : "、") + path;
+        }
+        this->historySummary = summary;
+    }
+
     std::string error;
     this->doc.parse(restored, error);
     this->viewTextApplied = this->doc.serialize();
@@ -916,7 +952,9 @@ void DesignerWindow::redo()
     this->lastFrameText = this->doc.serialize(); // 同上：否则下一帧又会压一步
     this->dirty        = true;
     this->previewDirty = true;
-    this->statusMessage = "已重做";
+    this->statusMessage = this->historySummary.empty()
+        ? "已重做"
+        : "已重做：" + this->historySummary;
 }
 
 // ---------------------------------------------------------------- 顶栏
@@ -1058,9 +1096,15 @@ void DesignerWindow::drawTopBar()
     ImGui::BeginDisabled(this->currentFilePath.empty());
     if (ImGui::Button("撤销"))
         this->undo();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Ctrl+Z%s", this->historySummary.empty()
+                ? ""
+                : ("\n上一步动过：" + this->historySummary).c_str());
     ImGui::SameLine();
     if (ImGui::Button("重做"))
         this->redo();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Ctrl+Y");
     ImGui::EndDisabled();
 
     groupBreak();
@@ -3526,8 +3570,12 @@ void DesignerWindow::requestSave()
 
     const std::vector<JsonChange> changes = diffJson(before, after);
     this->diffLines.clear();
+    this->diffPaths.clear();
     for (const JsonChange& change : changes)
+    {
         this->diffLines.push_back(changeSummary(change));
+        this->diffPaths.push_back(change.path);
+    }
 
     if (this->diffLines.empty())
     {
@@ -3727,6 +3775,38 @@ void DesignerWindow::openBrowseAt(const std::string& path)
     this->browseSelection.clear();
     this->openProjectError.clear();
     this->refreshBrowse();
+}
+
+void DesignerWindow::selectByChangePath(const std::string& path)
+{
+    const PathTarget target = parseChangePath(path);
+    this->selection         = Selection{};
+    switch (target.kind)
+    {
+        case PathTarget::Kind::BOX:
+            this->selection.kind = SelKind::BOX;
+            break;
+        case PathTarget::Kind::BOX_FIELD:
+            this->selection.kind = SelKind::BOX;
+            this->selection.key  = target.key;
+            break;
+        case PathTarget::Kind::LAYER:
+            this->selection.kind  = SelKind::LAYER;
+            this->selection.index = target.layerIndex;
+            break;
+        case PathTarget::Kind::LAYER_FIELD:
+            this->selection.kind  = SelKind::LAYER_FIELD;
+            this->selection.index = target.layerIndex;
+            this->selection.key   = target.key;
+            break;
+        default:
+            this->selection.kind = SelKind::FILE;
+            this->statusMessage  = "这一处改动在面板上定位不到（" + path + "）";
+            this->previewDirty   = true;
+            return;
+    }
+    this->previewDirty  = true;
+    this->statusMessage = "已定位到 " + path;
 }
 
 bool DesignerWindow::isLayerChanged(int index) const
@@ -4362,8 +4442,17 @@ void DesignerWindow::drawModals()
     {
         ImGui::TextColored(mutedColor(), "写入前会先编译校验；不通过就不写盘。会留一份 .bak。");
         ImGui::Separator();
-        for (const std::string& line : this->diffLines)
-            ImGui::TextUnformatted(line.c_str());
+        // 每条改动都能点：点了就把树/属性表定位到那一处（"这条改的是哪儿"不用自己找）
+        for (size_t i = 0; i < this->diffLines.size(); i++)
+        {
+            const std::string& line = this->diffLines[i];
+            const std::string& path = i < this->diffPaths.size() ? this->diffPaths[i] : line;
+            if (ImGui::Selectable((line + "##diff" + std::to_string(i)).c_str(),
+                    false, ImGuiSelectableFlags_AllowDoubleClick))
+                this->selectByChangePath(path);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s\n点一下：定位到这一处", path.c_str());
+        }
         ImGui::Separator();
         if (ImGui::Button("写入", ImVec2(120, 0)))
             this->doSave();

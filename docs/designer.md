@@ -47,6 +47,18 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## 改动的定位与"这一步改了什么"
+
+- `parseChangePath()`（core，11 项测试）：把变化路径解成"该选中哪里" ——
+  `box.height` → box 字段、`layers[2]` → 整层、`layers[2].fill` → 层字段，其余归 OTHER
+- **保存前的 diff 列表每条都能点**：点一下就把树/属性表定位到那一处
+- **撤销 / 重做的状态行会说明这一步动了什么**：拿撤销前后两份文档比，
+  列前 3 条路径（如 `已撤销：layers[0].fill`），撤销按钮的悬停提示也带上
+
+自查钩子的**顺序有讲究**（踩过）：先把编辑做完（`EDIT` / `EDIT_DOC`），再 `UNDO` / `REDO`，
+最后才 `FORCE_SAVE` / `SHOT`。之前 `EDIT_DOC` 排在 `UNDO` 后面，验证出来的撤销说明
+少了一条 —— 从日志顺序一眼能看出来。钩子里也补了 `EDIT_DOC` 成功/失败的日志。
+
 ## "一眼知道改了什么"
 
 - `designer/core/diff.*` 新增 `changedPaths(before, after)`：返回**变化的叶子路径集合**

@@ -163,6 +163,33 @@ int main()
         check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
     }
 
+    // ---------------------------------------------------------------- 变化路径 → 该选中哪里
+    {
+        using Kind = designer::PathTarget::Kind;
+
+        const designer::PathTarget boxField = designer::parseChangePath("box.height");
+        check(boxField.kind == Kind::BOX_FIELD, "box.height 是 box 字段");
+        checkEqual(boxField.key, "height", "字段名取出来了");
+
+        const designer::PathTarget box = designer::parseChangePath("box");
+        check(box.kind == Kind::BOX, "box 本身");
+
+        const designer::PathTarget layer = designer::parseChangePath("layers[2]");
+        check(layer.kind == Kind::LAYER, "整层");
+        checkEqualInt(layer.layerIndex, 2, "层号");
+
+        const designer::PathTarget layerField = designer::parseChangePath("layers[10].fill");
+        check(layerField.kind == Kind::LAYER_FIELD, "层里的字段");
+        checkEqualInt(layerField.layerIndex, 10, "两位数层号也要对");
+        checkEqual(layerField.key, "fill", "层字段名");
+
+        check(designer::parseChangePath("states.focused.bg.fill").kind == Kind::OTHER,
+            "states 归 OTHER");
+        check(designer::parseChangePath("").kind == Kind::NONE, "空路径");
+        check(designer::parseChangePath("layers[bad").kind == Kind::OTHER,
+            "括起来的层号写坏了也不崩");
+    }
+
     // ---------------------------------------------------------------- 变化路径集合
     {
         const Json before = Json::parse(
