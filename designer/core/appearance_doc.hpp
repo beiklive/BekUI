@@ -44,6 +44,10 @@ class AppearanceDoc
     // ---- box ----
     bool getBoxNumber(const std::string& key, double& out) const;
     void setBoxNumber(const std::string& key, double value);
+
+    // 改 box 里数组字段的某一项（padding / margin 的四值写法）。
+    // 不是数组、或下标越界就什么也不做。
+    void setBoxArrayElement(const std::string& key, size_t index, double value);
     bool getBoxString(const std::string& key, std::string& out) const;
     void setBoxString(const std::string& key, const std::string& value);
     void removeBoxKey(const std::string& key);

@@ -80,6 +80,16 @@ bool AppearanceDoc::getBoxNumber(const std::string& key, double& out) const
     return false;
 }
 
+void AppearanceDoc::setBoxArrayElement(const std::string& key, size_t index, double value)
+{
+    if (!this->doc.contains("box"))
+        return;
+    auto& box = this->doc["box"];
+    if (!box.contains(key) || !box[key].is_array() || index >= box[key].size())
+        return;
+    box[key][index] = value;
+}
+
 void AppearanceDoc::setBoxNumber(const std::string& key, double value)
 {
     if (!this->doc.contains("box") || !this->doc["box"].is_object())

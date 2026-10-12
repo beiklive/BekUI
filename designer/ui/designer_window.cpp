@@ -3100,61 +3100,194 @@ void DesignerWindow::drawProps()
         case SelKind::BOX:
         case SelKind::FILE:
         {
-            ImGui::TextColored(mutedColor(), "盒模型");
-            const char* numberKeys[] = { "height", "minWidth", "radius", "paddingTop",
-                "paddingSides", "gap" };
-            for (const char* key : numberKeys)
-            {
-                if (this->propFilter[0] != 0 && std::string(key).find(this->propFilter)
-                        == std::string::npos)
-                    continue;
-                double value = 0.0;
-                const bool has = this->doc.getBoxNumber(key, value);
-                const std::string label = this->isFieldChanged(std::string("box.") + key)
-                    ? std::string("• ") + key // 改过的字段前面点一个强调色圆点
-                    : key;                    // 未设置的状态用暗色点标出来，不挤标签
-                if (label[0] == '\xe2' || label.rfind("• ", 0) == 0)
-                    ImGui::TextColored(accentColor(), "•");
-                if (label.rfind("• ", 0) == 0)
-                    ImGui::SameLine();
-                propLabel(label.rfind("• ", 0) == 0 ? label.c_str() + 2 : label.c_str());
-                if (!has)
-                {
-                    ImGui::SameLine(kLabelWidth - 12.0f);
-                    ImGui::TextColored(mutedColor(), "·");
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("这个字段当前没写（改了才会写进来）");
-                    ImGui::SameLine();
-                }
-                ImGui::PushID(key);
-                double dragged = value;
-                const bool changedNumber = ImGui::DragScalar("##v", ImGuiDataType_Double,
-                    &dragged, 0.5, nullptr, nullptr, "%.1f");
-                ImGui::SameLine();
-                if (ImGui::SmallButton("✕") && has)
-                {
-                    this->doc.removeBoxKey(key);
-                    edited();
-                }
-                ImGui::PopID();
-                if (changedNumber && has)
-                {
-                    this->doc.setBoxNumber(key, dragged);
-                    edited();
-                }
-            }
-
-            // box 允许加任何已知字段（以前只能改文件里已经写了的键）
+            // 评审意见：盒模型原来是一列同款"标签 + 数值框"，要靠逐行读文字才能理解
+            // 参数之间的关系；默认值 0.0 也占了不少视觉面积。
+            // 现在：**按语义分组、相关的值成对并排**，字段的移除收进右键菜单
+            // （省掉原来每行都有的 ✕，横向空间立刻够用）。
             static const std::vector<std::string> boxCandidates = { "width", "height", "minWidth",
                 "minHeight", "maxWidth", "radius", "paddingTop", "paddingSides", "paddingBottom",
                 "gap", "grow", "shrink", "borderThickness", "opacity", "marginTop", "marginSides" };
+            const float cellLabel = 62.0f;
+
+            // 长度字段有四种写法：数字（按 720p 缩放）、"auto"、"50%"、@theme/metric.*，
+            // padding/margin 还能写成数组 [上,右,下,左]。所以不能只给数字框 ——
+            // 以前字符串值会显示成"未设置"，等于**看不到也改不了**（rectangle 的 height 就是 "auto"）
+            const AppearanceDoc::Json& boxNode
+                = this->doc.root().value("box", AppearanceDoc::Json::object());
+
+            auto boxValueText = [&boxNode](const char* key) -> std::string {
+                if (!boxNode.contains(key))
+                    return std::string();
+                const AppearanceDoc::Json& v = boxNode[key];
+                if (v.is_string())
+                    return v.get<std::string>();
+                if (v.is_array())
+                    return compactValue(v);
+                if (v.is_number())
+                    return std::to_string((int)v.get<double>());
+                return compactValue(v);
+            };
+
+            auto numberCell = [&](const char* key, float width) {
+                double value   = 0.0;
+                const bool has = this->doc.getBoxNumber(key, value);
+                const bool isString = boxNode.contains(key) && boxNode[key].is_string();
+                const bool isArray  = boxNode.contains(key) && boxNode[key].is_array();
+                const bool changed = this->isFieldChanged(std::string("box.") + key);
+
+                ImGui::PushID(key);
+                if (changed)
+                {
+                    ImGui::TextColored(unsavedColor(), "•");
+                    ImGui::SameLine(0.0f, 3.0f);
+                }
+                const bool present = has || isString || isArray;
+                ImGui::TextColored(
+                    present ? mutedColor() : ImGui::GetStyle().Colors[ImGuiCol_TextDisabled],
+                    "%s", key);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s%s", key,
+                        present ? "" : "（当前没写，改了才写进来）");
+                ImGui::SameLine(cellLabel);
+                ImGui::SetNextItemWidth(width - cellLabel - 4.0f);
+                if (isString)
+                {
+                    // "auto" / "50%" / "@theme/metric.x"：当文本编辑
+                    static char buffer[96];
+                    std::snprintf(buffer, sizeof(buffer), "%s", boxValueText(key).c_str());
+                    if (ImGui::InputText("##s", buffer, sizeof(buffer),
+                            ImGuiInputTextFlags_EnterReturnsTrue))
+                    {
+                        this->doc.setBoxString(key, buffer);
+                        edited();
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("可以写：auto / 50%% / @theme/metric.a.b（回车确认）");
+                }
+                else if (isArray)
+                {
+                    // padding / margin 的四值写法：**按元素编辑**（以前只能看，改不了）
+                    const AppearanceDoc::Json& array = boxNode[key];
+                    const float elementWidth         = (width - cellLabel - 4.0f)
+                        / (float)std::max<size_t>(1, array.size()) - 4.0f;
+                    for (size_t e = 0; e < array.size(); e++)
+                    {
+                        ImGui::PushID((int)e);
+                        ImGui::SetNextItemWidth(elementWidth);
+                        double element = array[e].is_number() ? array[e].get<double>() : 0.0;
+                        if (ImGui::DragScalar("##e", ImGuiDataType_Double, &element, 0.5,
+                                nullptr, nullptr, "%.0f"))
+                        {
+                            this->doc.setBoxArrayElement(key, e, element);
+                            edited();
+                        }
+                        ImGui::PopID();
+                        if (e + 1 < array.size())
+                            ImGui::SameLine(0.0f, 4.0f);
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("数组写法：上/右/下/左 四个值，可以直接改");
+                }
+                else
+                {
+                    double edited_value   = value;
+                    const bool changedNum = ImGui::DragScalar("##v", ImGuiDataType_Double,
+                        &edited_value, has ? 0.5 : 0.0, nullptr, nullptr, has ? "%.1f" : "未设置");
+                    if (changedNum)
+                    {
+                        this->doc.setBoxNumber(key, edited_value);
+                        edited();
+                    }
+                }
+                // 右键移除（原来是每行一个 ✕）
+                if (ImGui::BeginPopupContextItem("##ctx"))
+                {
+                    if (ImGui::MenuItem("移除这个字段", nullptr, false, has))
+                    {
+                        this->doc.removeBoxKey(key);
+                        edited();
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::PopID();
+            };
+
+            auto pairRow = [&](const std::vector<const char*>& keys) {
+                const float pairWidth = (ImGui::GetContentRegionAvail().x - 8.0f) * 0.5f;
+                int column            = 0;
+                for (const char* key : keys)
+                {
+                    if (this->propFilter[0] != 0
+                        && std::string(key).find(this->propFilter) == std::string::npos)
+                        continue;
+                    if (column == 1)
+                        ImGui::SameLine(0.0f, 8.0f);
+                    numberCell(key, pairWidth);
+                    column = (column + 1) % 2;
+                }
+                if (column == 1)
+                    ImGui::NewLine();
+            };
+
+            // 只画"这份 JSON 里真的写了"的字段；没写的可以下面「添加字段」加
+            std::vector<std::string> present;
+            for (const std::string& key : this->doc.boxKeys())
+                present.push_back(key);
+            auto has = [&present](const char* key) {
+                return std::find(present.begin(), present.end(), key) != present.end();
+            };
+            auto section = [&](const char* title, std::initializer_list<const char*> keys,
+                               bool open) {
+                std::vector<const char*> shown;
+                for (const char* key : keys)
+                    if (has(key))
+                        shown.push_back(key);
+                if (shown.empty())
+                    return;
+                if (ImGui::CollapsingHeader(title, open ? ImGuiTreeNodeFlags_DefaultOpen : 0))
+                {
+                    ImGui::Indent(2.0f);
+                    pairRow(shown);
+                    ImGui::Unindent(2.0f);
+                }
+            };
+
+            section("尺寸", { "width", "height", "minWidth", "minHeight", "maxWidth", "maxHeight" },
+                true);
+            section("内边距 / 外边距",
+                { "padding", "paddingTop", "paddingSides", "paddingBottom", "margin", "marginTop",
+                    "marginSides", "marginBottom" },
+                true);
+            section("圆角与描边", { "radius", "cornerRadius", "borderThickness" }, true);
+            section("间距与伸缩", { "gap", "grow", "shrink", "opacity" }, true);
+
+            // 上面没覆盖到的字段（手写进 JSON 的）也要能改，别静默藏起来
+            {
+                static const std::set<std::string> known = { "width", "height", "minWidth",
+                    "minHeight", "maxWidth", "maxHeight", "padding", "paddingTop", "paddingSides",
+                    "paddingBottom", "margin", "marginTop", "marginSides", "marginBottom", "radius",
+                    "cornerRadius", "borderThickness", "gap", "grow", "shrink", "opacity" };
+                std::vector<const char*> others;
+                for (const std::string& key : present)
+                    if (known.count(key) == 0)
+                        others.push_back(key.c_str());
+
+                if (!others.empty() && ImGui::CollapsingHeader("其它（JSON 里手写的）"))
+                {
+                    ImGui::Indent(2.0f);
+                    pairRow(others);
+                    ImGui::Unindent(2.0f);
+                }
+            }
+
             this->drawAddFieldCombo("##addBoxField", boxCandidates, [this, &edited](const std::string& key) {
                 this->doc.setBoxNumber(key, 0.0);
                 edited();
             });
 
-            ImGui::Spacing();
-            ImGui::TextColored(accentColor(), "布局");
+            if (ImGui::CollapsingHeader("布局", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Indent(2.0f);
             std::string axis = "column";
             this->doc.getBoxString("axis", axis);
             int axisIndex = (axis == "row") ? 1 : 0;
@@ -3195,9 +3328,12 @@ void DesignerWindow::drawProps()
                 this->doc.setBoxString("alignItems", alignItems[alignIndex]);
                 edited();
             }
+                ImGui::Unindent(2.0f);
+            }
 
-            ImGui::Spacing();
-            ImGui::TextColored(accentColor(), "颜色");
+            if (ImGui::CollapsingHeader("颜色", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Indent(2.0f);
             const char* colorKeys[] = { "backgroundColor", "borderColor" };
             for (const char* key : colorKeys)
             {
@@ -3209,6 +3345,8 @@ void DesignerWindow::drawProps()
                     this->doc.setBoxString(key, value);
                     edited();
                 }
+            }
+                ImGui::Unindent(2.0f);
             }
             break;
         }
@@ -3586,8 +3724,9 @@ void DesignerWindow::drawProps()
     }
 
     ImGui::Separator();
-    ImGui::Spacing();
-    ImGui::TextColored(mutedColor(), "layers（顺序 = 绘制顺序）");
+    if (ImGui::CollapsingHeader("layers（顺序 = 绘制顺序）", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::Indent(2.0f);
     const char* ops[] = { "rect", "text", "image", "shadow", "custom" };
     for (int i = 0; i < 5; i++)
     {
@@ -3601,6 +3740,8 @@ void DesignerWindow::drawProps()
             this->selection.index = created;
             edited();
         }
+    }
+        ImGui::Unindent(2.0f);
     }
 }
 

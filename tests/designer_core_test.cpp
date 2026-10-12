@@ -240,6 +240,26 @@ int main()
         checkEqual(designer::groupKeyOf("box.height"), "box", "box 字段");
     }
 
+    // ---------------------------------------------------------------- box 数组字段按元素改
+    {
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse(R"({"box": {"padding": [4, 8, 4, 8], "height": "auto"}})", error);
+
+        doc.setBoxArrayElement("padding", 1, 12);
+        const auto& padding = doc.root()["box"]["padding"];
+        checkEqualInt(padding[0].get<int>(), 4, "第 0 项没被动");
+        checkEqualInt(padding[1].get<int>(), 12, "第 1 项改到了");
+        checkEqualInt(padding[2].get<int>(), 4, "第 2 项没被动");
+        checkEqualInt(padding[3].get<int>(), 8, "第 3 项没被动");
+
+        doc.setBoxArrayElement("padding", 9, 1); // 越界：不该崩也不该改
+        doc.setBoxArrayElement("height", 0, 1);  // 不是数组
+        doc.setBoxArrayElement("不存在", 0, 1);
+        checkEqualSize(doc.root()["box"]["padding"].size(), 4, "乱七八糟的调用之后数组还是 4 项");
+        checkEqual(doc.root()["box"]["height"].get<std::string>(), "auto", "字符串字段不受影响");
+    }
+
     // ---------------------------------------------------------------- 变化路径 → 该选中哪里
     {
         using Kind = designer::PathTarget::Kind;
