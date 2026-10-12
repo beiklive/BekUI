@@ -19,6 +19,7 @@ void setThemeSwitchApp(bklv::App* app);
 
 // 1. 主题与外观：换肤 + 外观驱动的控件 + 状态动效
 bklv::Box* buildThemePage();
+bklv::Box* buildShadowPage();
 
 // 2. 基础控件：Button / Slider / Dropdown / ProgressSpinner / Image
 bklv::Box* buildWidgetsPage();

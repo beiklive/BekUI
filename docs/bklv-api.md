@@ -237,7 +237,6 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 // box 段管盒模型（尺寸/内边距/圆角/底色…），layers 管绘制结构，states 管状态动效
 { "box": { "height": "@theme/metric.control.height", "padding": [15, 25, 15, 25] },
   "layers": [
-{ "layers": [
     { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
       "radius": "@theme/metric/radius.md" },
     { "op": "text", "id": "title", "source": "text", "color": "@theme/color.text.primary",
@@ -257,6 +256,35 @@ bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button
 
 app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
 ```
+
+### 阴影（`"op": "shadow"`）
+
+阴影是**一种层**，写在自己的底色之前就先画阴影（`theme_test` 会断言这个顺序）：
+
+```json
+"layers": [
+  { "op": "shadow", "id": "shadow", "fill": "@theme/color.shadow.base",
+    "feather": "@theme/metric.shadow.feather",   // 羽化半径
+    "radius": "@theme/metric.shadow.radius",     // 圆角（会跟着外扩一起长）
+    "offset": [0, "@theme/metric.shadow.offsetY"], // 位移：正 y = 往下方投影
+    "spread": 0 },                               // 额外外扩（负数可收紧）
+  { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 12 }
+]
+```
+
+- `fill` 的 alpha 就是阴影浓度；`opacity`、`feather`、`spread`、`offsetX/offsetY` 都能进
+  `states` 做动效（例如聚焦时 `"shadow.opacity": { "to": 0.7 }`）
+- 绘制档位是**全局开关**，两种都是多层近似：`fast`（8 层，默认）/ `smooth`（24 层高斯权重）
+  ```cpp
+  bklv::shadow::setQuality(bklv::ShadowQuality::SMOOTH);   // 或 setQualityByName("smooth")
+  ```
+  ```bash
+  BKLV_SHADOW_QUALITY=smooth ./dist/demo    # 启动前用环境变量指定
+  ```
+- 控件自己在 `custom` 层画的东西（滑块把手）不走外观层，直接调
+  `bklv::shadow::drawSoft(...)`
+- 真离屏高斯模糊没做：那要给三个后端各加一套离屏渲染 + 模糊 shader，
+  而 UI 阴影的羽化只有 10px 上下。档位开关留在这里，以后换实现不影响 JSON 与调用方
 
 要记住的四条：
 

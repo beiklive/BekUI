@@ -311,6 +311,19 @@ int main()
                     check(hlBgIndex < 0 || contentIndex < 0 || hlBgIndex < contentIndex,
                         std::string("  ") + themeName + " / " + widget
                             + "：hlBg 在内容层之前（否则聚焦会把内容盖住）");
+
+                    // 阴影同理：必须画在自己的底色**之前**，画在后面会被不透明的底盖掉
+                    int shadowIndex = -1, bgFillIndex = -1;
+                    for (size_t i = 0; i < layers.size(); i++)
+                    {
+                        if (layers[i].op == AppearanceLayer::Op::SHADOW && shadowIndex < 0)
+                            shadowIndex = (int)i;
+                        else if (bgFillIndex < 0 && layers[i].op == AppearanceLayer::Op::RECT)
+                            bgFillIndex = (int)i;
+                    }
+                    check(shadowIndex < 0 || bgFillIndex < 0 || shadowIndex < bgFillIndex,
+                        std::string("  ") + themeName + " / " + widget
+                            + "：shadow 层在底色之前（否则会被底盖住）");
                 }
             }
         }

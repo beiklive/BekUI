@@ -52,13 +52,6 @@ std::string normalizeThemeKey(const std::string& key, const std::string& where)
 
 using Json = nlohmann::json;
 
-constexpr int PROP_COUNT = 13;
-
-int propIndex(AppearanceProp prop)
-{
-    return (int)prop;
-}
-
 // 属性名 -> 枚举。JSON 里用小驼峰，和 View 的属性表命名保持一致。
 struct PropName
 {
@@ -76,12 +69,37 @@ const AppearanceProp ALL_PROPS[] = {
     AppearanceProp::OPACITY,
     AppearanceProp::OFFSET_X,
     AppearanceProp::OFFSET_Y,
+    AppearanceProp::FEATHER,
+    AppearanceProp::SPREAD,
     AppearanceProp::INSET_TOP,
     AppearanceProp::INSET_RIGHT,
     AppearanceProp::INSET_BOTTOM,
     AppearanceProp::INSET_LEFT,
     AppearanceProp::FONT_SIZE,
 };
+
+// 属性总数**从表长推导**，不要写死：以前写死 13，加了两个属性后
+// perLayer(PROP_COUNT) 就比枚举少两格，越界写把堆写坏了（SIGTRAP 在 malloc 里）。
+constexpr int PROP_COUNT = (int)(sizeof(ALL_PROPS) / sizeof(ALL_PROPS[0]));
+static_assert(PROP_COUNT == (int)AppearanceProp::FONT_SIZE + 1,
+    "加了 AppearanceProp 就要往 ALL_PROPS 里补一条");
+
+int propIndex(AppearanceProp prop)
+{
+    // 一次性的顺序自检：ALL_PROPS 的顺序必须与枚举一致（两边都要同步加）
+    static const bool ordered = [] {
+        for (int i = 0; i < PROP_COUNT; i++)
+            if ((int)ALL_PROPS[i] != i)
+            {
+                BKLV_LOG_ERROR("外观属性表顺序与 AppearanceProp 枚举不一致（第 %d 条）", i);
+                return false;
+            }
+        return true;
+    }();
+    (void)ordered;
+    return (int)prop;
+}
+
 
 const PropName PROP_NAMES[] = {
     { "fill", AppearanceProp::FILL },
@@ -93,6 +111,8 @@ const PropName PROP_NAMES[] = {
     { "opacity", AppearanceProp::OPACITY },
     { "offsetX", AppearanceProp::OFFSET_X },
     { "offsetY", AppearanceProp::OFFSET_Y },
+    { "feather", AppearanceProp::FEATHER },
+    { "spread", AppearanceProp::SPREAD },
     { "insetTop", AppearanceProp::INSET_TOP },
     { "insetRight", AppearanceProp::INSET_RIGHT },
     { "insetBottom", AppearanceProp::INSET_BOTTOM },
@@ -211,6 +231,8 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
         return AppearanceLayer::Op::TEXT;
     if (text == "image")
         return AppearanceLayer::Op::IMAGE;
+    if (text == "shadow")
+        return AppearanceLayer::Op::SHADOW;
     if (text == "custom")
         return AppearanceLayer::Op::CUSTOM;
     ok = false;
@@ -367,7 +389,7 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         layer.op                = parseOp(opName, opOk);
         if (!opOk)
         {
-            error = where + ".op 不认识：" + opName + "（可用 rect / text / image / custom）";
+            error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";
             return nullptr;
         }
 
@@ -414,6 +436,8 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             { "fontSize", &layer.fontSize, true },
             { "width", &layer.width, true },
             { "height", &layer.height, true },
+            { "feather", &layer.feather, true },
+            { "spread", &layer.spread, true },
         };
         for (const NumberField& field : numberFields)
         {
@@ -875,6 +899,8 @@ void AppearanceInstance::setAppearance(std::shared_ptr<const Appearance> appeara
         perLayer[propIndex(AppearanceProp::OPACITY)].channel[0]     = layer.opacity;
         perLayer[propIndex(AppearanceProp::OFFSET_X)].channel[0]     = layer.offset[0];
         perLayer[propIndex(AppearanceProp::OFFSET_Y)].channel[0]     = layer.offset[1];
+        perLayer[propIndex(AppearanceProp::FEATHER)].channel[0]      = layer.feather;
+        perLayer[propIndex(AppearanceProp::SPREAD)].channel[0]       = layer.spread;
         perLayer[propIndex(AppearanceProp::INSET_TOP)].channel[0]    = layer.inset[0];
         perLayer[propIndex(AppearanceProp::INSET_RIGHT)].channel[0]  = layer.inset[1];
         perLayer[propIndex(AppearanceProp::INSET_BOTTOM)].channel[0] = layer.inset[2];
@@ -940,6 +966,8 @@ void AppearanceInstance::setState(const std::string& state, bool active)
             case AppearanceProp::OPACITY: out[0] = layer.opacity; break;
             case AppearanceProp::OFFSET_X: out[0] = layer.offset[0]; break;
             case AppearanceProp::OFFSET_Y: out[0] = layer.offset[1]; break;
+            case AppearanceProp::FEATHER: out[0] = layer.feather; break;
+            case AppearanceProp::SPREAD: out[0] = layer.spread; break;
             case AppearanceProp::INSET_TOP: out[0] = layer.inset[0]; break;
             case AppearanceProp::INSET_RIGHT: out[0] = layer.inset[1]; break;
             case AppearanceProp::INSET_BOTTOM: out[0] = layer.inset[2]; break;

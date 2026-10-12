@@ -1,0 +1,23 @@
+{
+  "box": {
+    "height": "auto",
+    "axis": "row",
+    "alignItems": "center",
+    "justifyContent": "center"
+  },
+  "layers": [
+    {
+      "op" : "rect",
+      "id" : "border",
+      "strokeWidth" : 2,
+      "stroke" : "@theme/color.border.default",
+      "radius": 40,
+      "inset" :
+      [
+        3,-15,3,-15
+      ],
+      "align" : "center",
+      "valign" : "center"
+    }
+  ]
+}

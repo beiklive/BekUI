@@ -56,6 +56,8 @@ enum class AppearanceProp
     OPACITY,
     OFFSET_X,
     OFFSET_Y,
+    FEATHER,
+    SPREAD,
     INSET_TOP,
     INSET_RIGHT,
     INSET_BOTTOM,
@@ -75,6 +77,7 @@ struct AppearanceLayer
         RECT,   // fill / stroke / strokeWidth / radius
         TEXT,   // source(数据名) / color / fontSize / align / valign / inset
         IMAGE,  // source(数据名) / scaling / radius / inset
+        SHADOW, // 阴影：fill(色) / feather(羽化) / spread(外扩) / radius / offset(x,y)
         CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
     };
 
@@ -92,6 +95,9 @@ struct AppearanceLayer
     float fontSize    = 0.0f;
     float inset[4]    = { 0.0f, 0.0f, 0.0f, 0.0f }; // top / right / bottom / left
     float offset[2]   = { 0.0f, 0.0f };
+    // SHADOW 层：羽化半径与外扩量（都按 720p 缩放）
+    float feather     = 0.0f;
+    float spread      = 0.0f;
     // 显式宽高（0 表示用 inset 收缩后的整个范围）。
     // 装饰件要用：色条（width 4）、下边线（height 1）。给定后按 align/valign 摆放。
     float width       = 0.0f;

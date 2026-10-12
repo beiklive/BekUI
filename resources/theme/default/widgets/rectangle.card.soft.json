@@ -1,0 +1,30 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.card.padding",
+    "gap": "@theme/metric.spacing.sm"
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.shadow.base",
+      "feather": 26,
+      "radius": "@theme/metric.shadow.radius",
+      "offset": [
+        0,
+        6
+      ],
+      "spread": 2
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1,
+      "radius": "@theme/metric.radius.lg"
+    }
+  ]
+}

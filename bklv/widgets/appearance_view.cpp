@@ -1,12 +1,13 @@
 #include "bklv/widgets/appearance_view.hpp"
 
 #include <algorithm>
-#include <utility>
 #include <cmath>
+#include <utility>
 
 #include "bklv/core/font.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/shadow.hpp"
 #include "bklv/core/time.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -107,9 +108,13 @@ void AppearanceView::applyTheme()
     // 然后按当前活跃状态重新补——所以换肤过程中按钮不会卡在中间色。
     const std::string name = this->variant.empty() ? this->appearanceName
                                                    : this->appearanceName + "." + this->variant;
-    this->appearance.setAppearance(getWidgetAppearance(name));
+    std::shared_ptr<const Appearance> loaded = getWidgetAppearance(name);
+    this->appearance.setAppearance(loaded);
 
-    if (this->appearance.getAppearance().getLayers().empty())
+    // "缺失"看的是有没有装载到外观，**不是"层数为 0"**：
+    // 纯 box 的外观（如 status_area：只要布局不要装饰）层数本来就是 0，
+    // 用层数判断会把它误报成"主题里没有这个外观"。
+    if (loaded == nullptr)
         BKLV_LOG_WARNING("主题里没有控件外观 \"%s\"（%s/widgets/%s.json）", name.c_str(),
             getTheme().getName().c_str(), name.c_str());
 
@@ -288,6 +293,24 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 if (strokeWidth > 0.0f && (stroke >> 24) != 0)
                     drawList->AddRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
                         scaleAlpha(stroke), radius, 0, strokeWidth);
+                break;
+            }
+
+            case AppearanceLayer::Op::SHADOW:
+            {
+                if (alphaScale <= 0.001f || (fill >> 24) == 0)
+                    break;
+
+                // 阴影形状 = 层矩形（inset/width/height/align 都按层语法来），再按 offset 平移；
+                // 这几个值都从 AppearanceInstance 取，所以状态动效（offsetY / feather / spread）算数
+                const float feather = this->appearance.getNumber(index, AppearanceProp::FEATHER);
+                const float spread  = this->appearance.getNumber(index, AppearanceProp::SPREAD);
+                const float offsetX = this->appearance.getNumber(index, AppearanceProp::OFFSET_X);
+                const float offsetY = this->appearance.getNumber(index, AppearanceProp::OFFSET_Y);
+
+                shadow::drawSoft(drawList, rect[0] + offsetX, rect[1] + offsetY,
+                    rect[2] + offsetX, rect[3] + offsetY, radius, fill, alphaScale, feather,
+                    spread);
                 break;
             }
 

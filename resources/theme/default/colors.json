@@ -118,5 +118,9 @@
   },
   "tabCell": {
     "accent": "#00ffcc"
+  },
+  "shadow": {
+    "base": "#00000073",
+    "strong": "#00000073"
   }
 }

@@ -230,6 +230,26 @@ to push all the next views in its box to the right (or to the bottom)"，它的 
 - 测试 `padding_test`（12 项）：本体语义、横向把兄弟顶到另一端、纵向顶到底、
   JSON DSL 里可用
 
+### 阴影（本轮）
+
+borealis 的阴影是 `View::setShadowType(NONE/GENERIC/CUSTOM)` + `nvgBoxGradient`
+（黑色渐变羽化，`brls/shadow/{width 2, feather 10, opacity 63.75, offset 10}`，
+库内只有滑块把手用了 GENERIC）。
+
+我们把它做成**外观 JSON 里的一种层**（比 borealis 的"给整个 View 挂一种类型"更细：
+可多个、可排序、可单独动效）：
+
+| 能力 | borealis | 我们 |
+|---|---|---|
+| 定义位置 | C++ 调 `setShadowType` | JSON 的 `"op": "shadow"`（`fill/feather/radius/offset/spread`） |
+| 是否可多个 | 一个 View 一种 | 一个控件可有任意多个阴影层 |
+| 状态动效 | 无（只能靠主题换） | `shadow.opacity` / `feather` / `offsetY` 都能插值 |
+| 绘制 | NanoVG `nvgBoxGradient` | ImDrawList 多层圆角矩形（`fast` 8 层 / `smooth` 24 层高斯权重） |
+| 真模糊 | 无（也是近似） | 没做离屏高斯（要三后端各加离屏渲染）；档位开关留好了 |
+
+已应用：卡片、弹窗、下拉弹出、通知、编辑输入弹窗（JSON 层），滑块把手（custom 层里调
+`shadow::drawSoft`）。demo 新增"阴影"页（参数对比 + 档位开关）。
+
 ## 七点五、实现过程中顺带修掉的真 bug
 
 | 现象 | 根因 | 修法 |

@@ -33,6 +33,7 @@
 #include "bklv/core/logger.hpp"
 #include "bklv/core/platform.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/core/shadow.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/time.hpp"

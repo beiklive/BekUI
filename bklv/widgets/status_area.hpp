@@ -89,7 +89,7 @@ class WirelessIcon : public AppearanceView
     ImU32 offColor   = 0;
 };
 
-class StatusArea : public Box
+class StatusArea : public AppearanceView
 {
   public:
     StatusArea();

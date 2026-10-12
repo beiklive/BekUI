@@ -126,6 +126,7 @@ DemoApp::DemoApp()
     setDetailShell(this->root);
     setSettingsShell(this->root);
     this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);
+    this->addPage(getStr("tab/shadow"), getStr("page/shadow_sub"), buildShadowPage(), false);
 
     // 起始页：默认第一页；截图/调试时用 BKLV_DEMO_PAGE=<下标> 直接开某一页
     size_t startPage = 0;

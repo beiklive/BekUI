@@ -21,7 +21,8 @@
     "settings": "Settings",
     "transform": "Transform",
     "scroll": "Scroll",
-    "pokedex": "Pokédex"
+    "pokedex": "Pokédex",
+    "shadow": "Shadow"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -143,7 +144,8 @@
     "settings_sub": "List cells: detail / bool / radio / selector / slider / input",
     "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens",
     "scroll_sub": "Nested scroller + scroll-to-focus",
-    "pokedex_sub": "Sectioned recycler + detail navigation"
+    "pokedex_sub": "Sectioned recycler + detail navigation",
+    "shadow_sub": "shadow layers and blur quality"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -248,5 +250,18 @@
     "stat_atk": "ATK",
     "stat_def": "DEF",
     "open": "Open"
+  },
+  "shadow": {
+    "hint": "A shadow is a layer: {\"op\": \"shadow\", \"fill\": color, \"feather\": blur, \"offset\": [x,y], \"radius\": corner, \"spread\": expansion}. Put it before your background layer to draw it first.",
+    "quality_title": "Blur quality (global switch)",
+    "quality_cell": "High quality blur (smooth)",
+    "quality_state": "Current: {}",
+    "quality_hint": "fast = 8 layers (default, cheap); smooth = 24 gaussian-weighted layers. Or set BKLV_SHADOW_QUALITY=smooth before launch.",
+    "params_title": "Parameter comparison (JSON only)",
+    "variant_hint": "Same appearance, different variant file — no code change.",
+    "card_default": "Default shadow",
+    "card_soft": "Large feather + spread",
+    "card_lifted": "Large offset (floating)",
+    "params_hint": "Feather/offset/radius/color all live in the widget JSON; shadows also support state animations (e.g. deeper shadow.opacity on focus)."
   }
 }

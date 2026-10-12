@@ -231,11 +231,8 @@ void WirelessIcon::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&,
 // ---------------------------------------------------------------- 状态区
 
 StatusArea::StatusArea()
-    : Box(Axis::ROW)
+    : AppearanceView("status_area", false)
 {
-    this->setHeight(AUTO);
-    this->setAlignItems(AlignItems::CENTER);
-    this->setJustifyContent(JustifyContent::CENTER);
     this->provider = [] { return queryPlatformStatus(); };
 
     // 分组：电量图标 + 百分比挨在一起，再是网络图标与时钟

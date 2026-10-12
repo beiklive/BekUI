@@ -6,6 +6,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/shadow.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
@@ -93,6 +94,16 @@ void Slider::applyPointer()
         this->onChange(this->progress);
 }
 
+void Slider::applyTheme()
+{
+    AppearanceView::applyTheme();
+
+    const ThemeData& theme = getTheme();
+    this->knobShadowColor   = theme.color("color.shadow.base", IM_COL32(0, 0, 0, 115));
+    this->knobShadowFeather = theme.number("metric.shadow.feather", 12.0f) * 0.5f;
+    this->knobShadowOffsetY = theme.number("metric.shadow.offsetY", 4.0f) * 0.5f;
+}
+
 void Slider::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, float x, float y,
     float width, float height, const AppearanceInstance& appearance)
 {
@@ -134,9 +145,18 @@ void Slider::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, float
             appearance.getColor(fillIndex, AppearanceProp::FILL), trackRadius);
 
     if (knob != nullptr && knobIndex >= 0)
+    {
+        // 把手阴影：滑块自己画的图形不进外观层（层矩形不会跟着值走），
+        // 所以在这里直接调阴影画笔
+        if ((this->knobShadowColor >> 24) != 0 && this->knobShadowFeather > 0.0f)
+            shadow::drawSoft(drawList, knobCenter - knobSize * 0.5f, knobY + this->knobShadowOffsetY,
+                knobCenter + knobSize * 0.5f, knobY + knobSize + this->knobShadowOffsetY,
+                knobRadius, this->knobShadowColor, 1.0f, this->knobShadowFeather, -knobSize * 0.15f);
+
         drawList->AddRectFilled(ImVec2(knobCenter - knobSize * 0.5f, knobY),
             ImVec2(knobCenter + knobSize * 0.5f, knobY + knobSize),
             appearance.getColor(knobIndex, AppearanceProp::FILL), knobRadius);
+    }
 }
 
 const AttributeTable& Slider::attributes() const

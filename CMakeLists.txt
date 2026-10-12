@@ -157,6 +157,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_pokedex.cpp
     app/pages/page_scroll.cpp
     app/pages/page_settings.cpp
+    app/pages/page_shadow.cpp
     app/pages/page_transform.cpp
 )
 

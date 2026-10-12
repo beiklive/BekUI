@@ -2,5 +2,18 @@
   "box": {
     "width": "@theme/metric.dropdown.popupWidth"
   },
-  "layers": []
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.shadow.base",
+      "feather": "@theme/metric.shadow.feather",
+      "radius": "@theme/metric.shadow.radius",
+      "offset": [
+        "@theme/metric.shadow.offsetX",
+        "@theme/metric.shadow.offsetY"
+      ],
+      "spread": "@theme/metric.shadow.spread"
+    }
+  ]
 }

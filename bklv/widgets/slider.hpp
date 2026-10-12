@@ -34,10 +34,17 @@ class Slider : public AppearanceView
     const AttributeTable& attributes() const override;
 
   protected:
+    // 阴影配色/羽化在换肤时重新取（draw 里不查主题）
+    void applyTheme() override;
+
     void drawCustomLayer(ImDrawList* drawList, const AppearanceLayer& layer, float x, float y,
         float width, float height, const AppearanceInstance& appearance) override;
 
   private:
+    // 把手的阴影（applyTheme 时取，draw 里只读；custom 层画的东西不走外观层）
+    ImU32 knobShadowColor = 0;
+    float knobShadowFeather = 0.0f;
+    float knobShadowOffsetY = 0.0f;
     void applyPointer();
 
     float progress = 0.0f;

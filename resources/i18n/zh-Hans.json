@@ -21,7 +21,8 @@
     "settings": "设置",
     "transform": "变换",
     "scroll": "滚动",
-    "pokedex": "图鉴"
+    "pokedex": "图鉴",
+    "shadow": "阴影"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -143,7 +144,8 @@
     "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入",
     "transform_sub": "绘制期缩放 / 旋转 / 斜切 / 位移 + 多段缓动补间",
     "scroll_sub": "独立滚动容器 + 焦点跟随滚动",
-    "pokedex_sub": "分段回收列表 + 详情页导航"
+    "pokedex_sub": "分段回收列表 + 详情页导航",
+    "shadow_sub": "外观 JSON 的 shadow 层与模糊档位"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -248,5 +250,18 @@
     "stat_atk": "攻击",
     "stat_def": "防御",
     "open": "打开"
+  },
+  "shadow": {
+    "hint": "阴影是外观 JSON 里的一种层：{\"op\": \"shadow\", \"fill\": 颜色, \"feather\": 羽化, \"offset\": [x,y], \"radius\": 圆角, \"spread\": 外扩}。写在自己的底色之前就先画阴影。",
+    "quality_title": "模糊档位（全局开关）",
+    "quality_cell": "高质量模糊（smooth）",
+    "quality_state": "当前档位：{}",
+    "quality_hint": "fast = 8 层近似（默认，便宜）；smooth = 24 层高斯权重，肉眼即模糊。也可以在启动前设 BKLV_SHADOW_QUALITY=smooth。",
+    "params_title": "参数对比（都只改 JSON）",
+    "variant_hint": "同一份外观换变体文件即可，代码零改动。",
+    "card_default": "默认阴影",
+    "card_soft": "大羽化 + 外扩",
+    "card_lifted": "大偏移（浮起来）",
+    "params_hint": "羽化/偏移/圆角/颜色全在 widget 的 JSON 里；阴影也支持状态动效（如聚焦时 shadow.opacity 加深）。"
   }
 }

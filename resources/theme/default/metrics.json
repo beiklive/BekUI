@@ -189,5 +189,12 @@
   },
   "checkbox": {
     "radius": 15
+  },
+  "shadow": {
+    "feather": 12,
+    "radius": 12,
+    "offsetX": 0,
+    "offsetY": 4,
+    "spread": 0
   }
 }

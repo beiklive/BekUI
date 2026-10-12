@@ -188,5 +188,12 @@
     "accentMarginY": 9,
     "accentMarginX": 8,
     "separatorHeight": 30
+  },
+  "shadow": {
+    "feather": 12,
+    "radius": 12,
+    "offsetX": 0,
+    "offsetY": 4,
+    "spread": 0
   }
 }
