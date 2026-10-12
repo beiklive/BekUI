@@ -16,6 +16,14 @@ std::string Project::resourcesDir() const
     return this->themeRoot.substr(0, slash);
 }
 
+bool Project::hasResourcesOutside(const std::string& ownResourcesDir) const
+{
+    std::string mine = ownResourcesDir;
+    while (!mine.empty() && (mine.back() == '/' || mine.back() == '\\'))
+        mine.pop_back();
+    return this->resourcesDir() != mine;
+}
+
 bool isBaseTheme(const std::string& themeName)
 {
     return themeName == "default" || themeName == "ocean";

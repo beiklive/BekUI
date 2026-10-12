@@ -827,6 +827,24 @@ void DesignerWindow::drawTopBar()
     if (ImGui::Button("还原"))
         this->revert();
     ImGui::SameLine();
+    ImGui::BeginDisabled(this->currentFilePath.empty() || this->dirty);
+    if (ImGui::Button("重新载入"))
+    {
+        // 把磁盘上的内容读回来（有未保存改动时按钮是灰的，避免盖掉自己的东西）
+        this->discardCurrentDraft();
+        std::string error;
+        if (this->currentViewFile.empty() && this->currentTable.empty())
+            this->openAppearance(this->currentWidget, error);
+        else if (!this->currentTable.empty())
+            this->openTableFile(this->currentTable);
+        else
+            this->openViewFile(this->currentViewFile);
+        this->statusMessage = "已从磁盘重新载入";
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("丢掉内存里的内容、按磁盘上的文件重新读一遍（有未保存改动时会灰掉）");
+    ImGui::SameLine();
     if (ImGui::Button("另存…"))
     {
         std::snprintf(this->saveAsPath, sizeof(this->saveAsPath), "%s",
@@ -2006,6 +2024,19 @@ void DesignerWindow::drawPreview()
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("左边=正在编辑的，右边=磁盘上那份（改前改后一眼看出差别）");
 
+    // 外部仓库：预览里的 @res/ 仍按设计器自己的 resources 解析，得说明白
+    {
+        static bool warnedExternal = false;
+        const std::string ownResources = resourcePath("resources");
+        if (!warnedExternal && this->project.hasResourcesOutside(ownResources))
+        {
+            warnedExternal = true;
+            BKLV_LOG_WARNING("这个项目的 resources 不在设计器旁边（%s）：预览里图片的 @res/ 仍按"
+                             "设计器自己的 resources 解析，可能显示不出正确素材",
+                this->project.resourcesDir().c_str());
+        }
+    }
+
     // ---- 差异标注：设计器与真机可能不一样的地方，写在明面上 ----
     {
         const float uiScale = (float)this->canvasWidth / 1280.0f;
@@ -3121,7 +3152,11 @@ void DesignerWindow::drawModals()
             ImGui::SameLine();
             if (ImGui::SmallButton((std::string("切到##") + entry.first).c_str()))
             {
+                this->stashCurrent(); // 先把当前文件的改动存进草稿，切过去才不会丢
                 this->currentFilePath = entry.first;
+                this->currentWidget   = widgetNameFromPath(entry.first);
+                this->currentViewFile.clear();
+                this->currentTable.clear();
                 this->restoreDraftFor(entry.first);
                 this->currentWidget = widgetNameFromPath(entry.first);
                 ImGui::CloseCurrentPopup();

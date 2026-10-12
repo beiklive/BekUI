@@ -187,6 +187,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/diff.cpp
     core/project.cpp
     core/theme_edit.cpp
+    core/image_diff.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")

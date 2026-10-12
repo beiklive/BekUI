@@ -31,6 +31,9 @@ struct Project
     std::string themeDir() const { return this->themeRoot + "/" + this->name; }
     // 主题所在仓库的 resources 目录（相对路径解析要用）
     std::string resourcesDir() const;
+
+    // 这个项目的 resources 是不是不在设计器自己的目录旁边（编辑别的仓库时是）
+    bool hasResourcesOutside(const std::string& ownResourcesDir) const;
 };
 
 // 基准主题不允许就地改（改坏了所有控件陪葬）

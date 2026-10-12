@@ -12,7 +12,9 @@
 
 #include "bklv/bklv.hpp"
 #include "designer/core/appearance_doc.hpp"
+#include "bklv/core/image_writer.hpp"
 #include "designer/core/diff.hpp"
+#include "designer/core/image_diff.hpp"
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_files.hpp"
@@ -300,7 +302,55 @@ int main()
         check(!tabbed.empty() && tabbed.back() == '\n', "输出带尾部换行");
     }
 
-    fs::remove_all(work, code);
+    {
+        // 造两张小图：一张纯色、一张中心多一个方块
+        const int w = 16;
+        const int h = 16;
+        std::vector<unsigned char> first((size_t)w * h * 4, 0);
+        for (size_t i = 0; i < first.size(); i += 4)
+        {
+            first[i + 0] = 30;
+            first[i + 1] = 30;
+            first[i + 2] = 30;
+            first[i + 3] = 255;
+        }
+        std::vector<unsigned char> second = first;
+        for (int y = 4; y < 12; y++)
+            for (int x = 4; x < 12; x++)
+            {
+                const size_t index = ((size_t)y * w + x) * 4;
+                second[index + 0] = 255;
+            }
+
+        const std::string pathA = work + "/shot_a.png";
+        const std::string pathB = work + "/shot_b.png";
+        check(bklv::writePngFile(pathA, first.data(), w, h, 4), "写出基线图");
+        check(bklv::writePngFile(pathB, second.data(), w, h, 4), "写出当前图");
+
+        std::string error;
+        const designer::ImageDiff same = designer::compareImages(pathA, pathA, error);
+        check(same.sameSize, "同尺寸被认出");
+        checkFloat(same.meanDiff, 0.0f, "同一张图平均差 0");
+        checkFloat(same.changedRatio, 0.0f, "同一张图没有变化像素");
+
+        const designer::ImageDiff diff = designer::compareImages(pathA, pathB, error);
+        check(diff.sameSize, "两张图尺寸一致");
+        check(diff.maxDiff >= 200, "最大差能看出白色的块");
+        check(diff.changedRatio > 0.1f && diff.changedRatio < 0.3f, "变化像素占比在预期区间");
+
+        // 尺寸不同只报尺寸，不算差异
+        std::vector<unsigned char> small((size_t)8 * 8 * 4, 200);
+        const std::string pathSmall = work + "/shot_small.png";
+        bklv::writePngFile(pathSmall, small.data(), 8, 8, 4);
+        const designer::ImageDiff mismatched = designer::compareImages(pathA, pathSmall, error);
+        check(!mismatched.sameSize, "尺寸不同被认出来");
+
+        // 差异图能写出来
+        const std::string diffPath = work + "/shot_diff.png";
+        check(designer::writeDiffImage(diffPath, pathA, pathB, error), "差异图写出成功");
+        check(fs::exists(diffPath), "差异图文件存在");
+    }
+
     fs::remove_all(work, code);
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

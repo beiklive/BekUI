@@ -12,6 +12,7 @@
 
 #include "bklv/3rd/imgui/imgui.h"
 #include "bklv/bklv.hpp"
+#include "designer/core/image_diff.hpp"
 #include "designer/core/project.hpp"
 #include "designer/core/theme_files.hpp"
 #include "designer/ui/designer_window.hpp"
@@ -115,5 +116,35 @@ int main(int argc, char** argv)
 
     (void)argc;
     (void)argv;
-    return app.run("bklv 设计器", 1280, 820);
+    const int exitCode = app.run("bklv 设计器", 1280, 820);
+
+    // 截图基线对比：BKLV_DESIGNER_BASELINE=<png> 时把刚截的图和基线比一比，
+    // 差异大了就返回非 0（可以当界面回归用）。差异图写在 <shot>.diff.png。
+    if (const char* baseline = std::getenv("BKLV_DESIGNER_BASELINE"))
+    {
+        const char* shot = std::getenv("BKLV_DESIGNER_SHOT");
+        if (shot != nullptr)
+        {
+            std::string error;
+            const designer::ImageDiff diff
+                = designer::compareImages(baseline, shot, error);
+            if (!error.empty())
+                BKLV_LOG_ERROR("基线对比失败：%s", error.c_str());
+            else if (!diff.sameSize)
+            {
+                BKLV_LOG_ERROR("基线对比：尺寸不同（基线 %dx%d，当前 %dx%d）", diff.width,
+                    diff.height, diff.otherWidth, diff.otherHeight);
+                return 2;
+            }
+            else
+            {
+                std::string writeError;
+                designer::writeDiffImage(std::string(shot) + ".diff.png", baseline, shot, writeError);
+                BKLV_LOG_INFO("基线对比：平均差 %.2f/255，最大 %d，明显不同的像素 %.2f%%",
+                    diff.meanDiff, diff.maxDiff, diff.changedRatio * 100.0f);
+                return diff.changedRatio > 0.02f ? 1 : 0; // 超过 2% 像素算"界面变了"
+            }
+        }
+    }
+    return exitCode;
 }

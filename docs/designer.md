@@ -56,6 +56,20 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 - 两处没做到位的：整页预览里**覆盖高亮**选中节点（需要库导出 JSON↔视图节点映射）、
   保存仍是整文件重写（键序与 `$` 元信息保住，写前 diff + 冲突检测 + `.bak`）
 
+## 截图基线对比（界面回归）
+
+```bash
+# 1. 存一张基线
+BKLV_DESIGNER_VIEW=page_json.json BKLV_DESIGNER_SHOT=/tmp/base.png ./dist/designer
+
+# 2. 之后每次改动都跟基线比：差异 > 2% 像素就返回 1（差异图写到 <shot>.diff.png）
+BKLV_DESIGNER_VIEW=page_json.json BKLV_DESIGNER_SHOT=/tmp/now.png \
+  BKLV_DESIGNER_BASELINE=/tmp/base.png ./dist/designer
+```
+
+实测：同一页连拍两次平均差 0.00/255（渲染是确定性的）；换成别的文件是 19.45/255、
+38.96% 像素不同、退出码 1，差异图里"变亮标红、变暗标蓝"。
+
 ## 自查开关（脚本 / CI 用）
 
 ```bash
@@ -65,7 +79,11 @@ BKLV_DESIGNER_FILE=button.primary      # 打开某个外观
 BKLV_DESIGNER_VIEW=page_json.json      # 打开某个页面视图
 BKLV_DESIGNER_TABLE=colors.json        # 打开主题表
 BKLV_DESIGNER_NEW_APPEARANCE=my_widget # 新建一个外观文件（会登记进 theme.json）
-BKLV_DESIGNER_SELECT=layer0            # 选中节点：file|box|layer<N>|state:<名>
+BKLV_DESIGNER_SELECT=layer0            # 选中节点：file|box|layer<N>|state:<名>|view:/children/0
+BKLV_DESIGNER_FOCUS=1                  # 预览里给焦点顺序打号
+BKLV_DESIGNER_LOG=1                    # 开日志面板
+BKLV_DESIGNER_FORCE_SAVE=1             # 立刻触发一次保存（验证只读拦截）
+BKLV_DESIGNER_BASELINE=/tmp/base.png   # 与基线截图对比（界面回归）
 BKLV_DESIGNER_SHOT=/tmp/a.png          # 渲染若干帧后离屏截图并退出
 ```
 

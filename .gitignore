@@ -18,3 +18,9 @@ build/
 # ImGui 的 ini 已在代码里通过 io.IniFilename = nullptr 关闭，正常不会生成。
 # 这里仍保留忽略规则，兜住手动打开 ini 持久化时产生的文件。
 imgui.ini
+
+# 设计器运行时写在可执行文件目录的小记录
+dist/designer_project.json
+dist/designer_state.json
+dist/designer_test_work/
+dist/**/*.diff.png
