@@ -44,6 +44,10 @@ void TabCell::trigger()
 void TabCell::onFocusGained()
 {
     AppearanceView::onFocusGained();
+
+    // 侧栏靠它做聚焦即切换子页面（borealis 的 SidebarItem::onFocusGained）
+    if (this->onFocus)
+        this->onFocus();
 }
 
 void TabCell::onFocusLost()

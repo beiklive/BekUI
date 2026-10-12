@@ -32,6 +32,9 @@ class TabCell : public AppearanceView
 
     void setOnSelect(SelectHandler handler) { this->onSelect = std::move(handler); }
 
+    // 聚焦到本项时触发（侧栏靠它实现"焦点到哪个 tab 就切哪个子页面"）
+    void setOnFocus(std::function<void()> handler) { this->onFocus = std::move(handler); }
+
     void trigger();
 
     std::string getClassString() const override { return "bklv::TabCell"; }
@@ -43,6 +46,7 @@ class TabCell : public AppearanceView
   private:
     bool selected = false;
     SelectHandler onSelect;
+    std::function<void()> onFocus;
 };
 
 class TabFrame : public Box

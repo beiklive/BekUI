@@ -25,12 +25,20 @@ class Sidebar : public Box
     explicit Sidebar(const std::string& title = "");
 
     // 加一项；点击/回车时回调（index 从 0 起）
-    void addItem(const std::string& title, std::function<void()> onSelect);
+    // onActivate：**聚焦到这一项**时触发（borealis 的 SidebarItem::onFocusGained →
+    // group->setActive(this)，所以"焦点到哪个 tab 就切到哪个子页面"）；
+    // onConfirm：按 A / 点击确认时触发（再去把焦点交给子页面的默认控件）。
+    // 老写法只传一个回调时，它同时承担这两个时机。
+    void addItem(const std::string& title, std::function<void()> onActivate,
+        std::function<void()> onConfirm = nullptr);
     void clearItems();
 
     void setSelectedIndex(size_t index);
     size_t getSelectedIndex() const { return this->selected; }
     size_t getItemCount() const { return this->cells.size(); }
+
+    // 取第 index 个条目的视图（要给它焦点时用；越界返回 nullptr）
+    View* getItemView(size_t index) const;
 
     void setItemTitle(size_t index, const std::string& title);
     std::string getItemTitle(size_t index) const;

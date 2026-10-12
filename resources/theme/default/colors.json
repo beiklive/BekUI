@@ -110,5 +110,13 @@
   "checkbox": {
     "fill": "#58c3a9",
     "mark": "#1a1c21"
+  },
+  "sidebar": {
+    "background": "#323232",
+    "activeItem": "#00ffcc",
+    "separator": "#515151"
+  },
+  "tabCell": {
+    "accent": "#00ffcc"
   }
 }

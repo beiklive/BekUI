@@ -27,12 +27,12 @@
       "id": "accent",
       "fill": "#00000000",
       "radius": 2,
-      "width": 4,
+      "width": "@theme/metric.sidebar.accentWidth",
       "inset": [
-        10,
+        "@theme/metric.sidebar.accentMarginY",
         0,
-        10,
-        6
+        "@theme/metric.sidebar.accentMarginY",
+        "@theme/metric.sidebar.accentMarginX"
       ],
       "align": "left"
     },
@@ -41,7 +41,7 @@
       "id": "title",
       "source": "text",
       "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.lg",
+      "fontSize": "@theme/metric.sidebar.itemFontSize",
       "align": "left",
       "valign": "center",
       "inset": [
@@ -81,17 +81,12 @@
   "states": {
     "selected": {
       "accent.fill": {
-        "to": "@theme/color.accent.base",
-        "duration": 140,
-        "easing": "quadraticOut"
-      },
-      "bg.fill": {
-        "to": "@theme/color.state.focus",
+        "to": "@theme/color.sidebar.activeItem",
         "duration": 140,
         "easing": "quadraticOut"
       },
       "title.color": {
-        "to": "@theme/color.text.primary",
+        "to": "@theme/color.sidebar.activeItem",
         "duration": 140
       }
     },

@@ -35,12 +35,15 @@
   },
   "header": {
     "height": 55,
-    "titleFontSize": 28,
-    "paddingSides": 35,
-    "paddingTopBottom": 15,
+    "titleFontSize": 18,
+    "paddingSides": 0,
+    "paddingTopBottom": 11,
     "imageSpacing": 18,
     "titleTopOffset": 7,
-    "separatorThickness": 1
+    "separatorThickness": 1,
+    "rectangleWidth": 5,
+    "rectangleMargin": 10,
+    "fontSize": 18
   },
   "bottomBar": {
     "height": 73
@@ -49,7 +52,8 @@
     "height": 32
   },
   "tabCell": {
-    "height": 34
+    "height": 34,
+    "fontSize": 22
   },
   "dialog": {
     "width": 520,
@@ -82,11 +86,13 @@
     "paddingY": 4
   },
   "appletFrame": {
-    "headerHeight": 88,
+    "headerHeight": 55,
     "footerHeight": 73,
     "paddingSides": 30,
     "contentTop": 12,
-    "separatorThickness": 1
+    "separatorThickness": 1,
+    "contentPaddingSides": 60,
+    "contentPaddingTopBottom": 42
   },
   "card": {
     "padding": 16
@@ -168,5 +174,19 @@
   },
   "checkbox": {
     "radius": 15
+  },
+  "sidebar": {
+    "width": 410,
+    "itemHeight": 70,
+    "itemFontSize": 22,
+    "gap": 4,
+    "paddingTop": 32,
+    "paddingBottom": 47,
+    "paddingLeft": 80,
+    "paddingRight": 40,
+    "accentWidth": 4,
+    "accentMarginY": 9,
+    "accentMarginX": 8,
+    "separatorHeight": 30
   }
 }

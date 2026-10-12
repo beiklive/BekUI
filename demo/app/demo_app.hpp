@@ -51,7 +51,13 @@ class DemoApp
 
     void addPage(const std::string& name, const std::string& subtitle, bklv::Box* view,
         bool selfScrolling);
-    void selectPage(size_t index);
+    // focusContent：切页之后要不要把焦点交给子页面的默认控件。
+    // 侧栏聚焦过来时是 false（只切页），按 A 确认时是 true（borealis 的语义）
+    void selectPage(size_t index, bool focusContent = false);
+
+    // BKLV_DEMO_PAGE 指定的启动页，首帧再应用（App::setRootView 会把焦点给侧栏第 0 项，
+    // 而侧栏是"聚焦即切页"，构造期设的启动页会被它覆盖掉）
+    int pendingStartPage = -1;
     void sizeSlotToContent();
 
     bklv::AppletFrame* root   = nullptr;

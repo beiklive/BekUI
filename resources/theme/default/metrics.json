@@ -36,29 +36,45 @@
   },
   "header": {
     "height": 55,
-    "titleFontSize": 28,
-    "paddingSides": 35,
-    "paddingTopBottom": 15,
+    "titleFontSize": 18,
+    "paddingSides": 0,
+    "paddingTopBottom": 11,
     "imageSpacing": 18,
     "titleTopOffset": 7,
-    "separatorThickness": 1
+    "separatorThickness": 1,
+    "rectangleWidth": 5,
+    "rectangleMargin": 10,
+    "fontSize": 18
   },
   "bottomBar": {
     "height": 73
   },
   "appletFrame": {
-    "headerHeight": 88,
+    "headerHeight": 55,
     "footerHeight": 73,
     "paddingSides": 30,
     "contentTop": 12,
-    "separatorThickness": 1
+    "separatorThickness": 1,
+    "contentPaddingSides": 60,
+    "contentPaddingTopBottom": 42
   },
   "sidebar": {
-    "width": 260,
-    "itemHeight": 70
+    "width": 410,
+    "itemHeight": 70,
+    "itemFontSize": 22,
+    "gap": 4,
+    "paddingTop": 32,
+    "paddingBottom": 47,
+    "paddingLeft": 80,
+    "paddingRight": 40,
+    "accentWidth": 4,
+    "accentMarginY": 9,
+    "accentMarginX": 8,
+    "separatorHeight": 30
   },
   "tabCell": {
-    "height": 40
+    "height": 40,
+    "fontSize": 22
   },
   "slider": {
     "height": 32

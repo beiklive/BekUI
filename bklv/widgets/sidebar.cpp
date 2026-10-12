@@ -60,7 +60,8 @@ void Sidebar::setPanelWidth(float width)
     this->setWidth(width);
 }
 
-void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onSelect)
+void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onActivate,
+    std::function<void()> onConfirm)
 {
     const size_t index = this->cells.size();
 
@@ -68,10 +69,18 @@ void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onSele
     cell->setTitle(itemTitle);
     // 侧栏条目比 tab 格子高（borealis 是 70）：走 tab_cell 的 "sidebar" 变体
     cell->setAppearanceVariant("sidebar");
-    cell->setOnSelect([this, index, onSelect] {
+    // 聚焦 = 激活：直接切子页面（borealis 的语义）
+    cell->setOnFocus([this, index, onActivate] {
         this->setSelectedIndex(index);
-        if (onSelect)
-            onSelect();
+        if (onActivate)
+            onActivate();
+    });
+
+    // A / 点击 = 确认：把焦点交给子页面的默认控件
+    cell->setOnSelect([this, index, onConfirm] {
+        this->setSelectedIndex(index);
+        if (onConfirm)
+            onConfirm();
     });
 
     this->itemBox->addView(cell);
@@ -108,6 +117,13 @@ std::string Sidebar::getItemTitle(size_t index) const
     if (index >= this->cells.size())
         return {};
     return this->cells[index]->getText();
+}
+
+View* Sidebar::getItemView(size_t index) const
+{
+    if (index >= this->cells.size())
+        return nullptr;
+    return this->cells[index];
 }
 
 void Sidebar::setSelectedIndex(size_t index)

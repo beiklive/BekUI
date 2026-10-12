@@ -79,6 +79,10 @@ DemoApp::DemoApp()
     this->pageSlot = new Box(Axis::COLUMN);
     this->pageSlot->setWidthPercentage(100.0f);
     this->pageSlot->setGrow(1.0f);
+    // 内容内边距：borealis 的 tab_frame/content_padding_*（左右 60、上下 42）
+    this->pageSlot->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 42.0f));
+    this->pageSlot->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
+    this->pageSlot->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
 
     // 滚动器直接装"当前页"：它负责裁剪 + 滚动。
     // 页面比内容区高时会被裁掉而不是画到底栏上（以前 scroller 建了没挂进树，
@@ -135,6 +139,7 @@ DemoApp::DemoApp()
                 (int)this->pages.size());
     }
     this->selectPage(startPage);
+    this->pendingStartPage = startPage != 0 ? (int)startPage : -1;
 
     // 离屏截图（截图/CI 用）：BKLV_SCREENSHOT=<png 路径>，可选 BKLV_SCREENSHOT_FRAMES=<等几帧>
     if (const char* shotPath = std::getenv("BKLV_SCREENSHOT"))
@@ -166,7 +171,9 @@ void DemoApp::addPage(const std::string& name, const std::string& subtitle, Box*
     this->pages.push_back(page);
 
     // 捕获 this + index：DemoApp 活到程序结束，安全；捕获局部下标引用会悬空
-    this->sidebar->addItem(name, [this, index] { this->selectPage(index); });
+    // 聚焦 = 切页（不带内容焦点）；A = 切页并把焦点交给子页面的默认控件
+    this->sidebar->addItem(name, [this, index] { this->selectPage(index, false); },
+        [this, index] { this->selectPage(index, true); });
 }
 
 void DemoApp::sizeSlotToContent()
@@ -176,9 +183,12 @@ void DemoApp::sizeSlotToContent()
         this->pageSlot->setHeight(height);
 }
 
-void DemoApp::selectPage(size_t index)
+void DemoApp::selectPage(size_t index, bool focusContent)
 {
-    if (index >= this->pages.size() || index == this->currentPage)
+    if (index >= this->pages.size())
+        return;
+
+    if (index == this->currentPage && !focusContent)
         return;
 
     this->currentPage = index;
@@ -199,27 +209,45 @@ void DemoApp::selectPage(size_t index)
         if (page.view->getParent() == this->pageSlot)
             this->pageSlot->removeView(page.view, false);
 
+    // 所有页面都包一层槽：槽负责内容内边距（borealis 的 tab_frame/content_padding_*：
+    // 左右 60、上下 42）。以前不包槽的页面直接贴着滚动器边缘，看着像"内容跑到屏幕外"。
+    this->pageSlot->addView(target);
+
     if (this->pages[index].selfScrolling)
     {
-        // 页面自己滚动（内部有列表）：给它一个和内容区等高的槽，让列表在槽里滚
+        // 页面自己滚动（内部有列表）：槽要和内容区等高，列表才会在槽里滚
         this->sizeSlotToContent();
-        this->pageSlot->addView(target);
-        this->scroller->setContentView(this->pageSlot);
+        this->pageSlot->setHeight(this->scroller->getHeight());
     }
     else
     {
-        this->scroller->setContentView(target);
+        this->pageSlot->setHeight(AUTO);
     }
+
+    this->scroller->setContentView(this->pageSlot);
 
     this->scroller->setContentOffsetY(0.0f, false);
 
-    // 进子页面后把焦点交给页面里的第一个可聚焦控件（borealis 的 TabFrame 也是这样）
-    if (View* first = target->getDefaultFocus())
-        getInputManager().giveFocus(first);
+    // borealis 的语义：**聚焦到侧栏哪一项就切到哪个子页面**（上面已经切了），
+    // 只有按 A 确认时才去找子页面的默认控件并聚焦。
+    if (focusContent)
+        if (View* first = target->getDefaultFocus())
+            getInputManager().giveFocus(first);
 }
 
 void DemoApp::update()
 {
+    if (this->pendingStartPage >= 0)
+    {
+        const size_t page = (size_t)this->pendingStartPage;
+        this->pendingStartPage = -1;
+
+        // 焦点落到侧栏对应条目上：侧栏"聚焦即切页"，这一步就把页面切过去了
+        if (View* item = this->sidebar->getItemView(page))
+            getInputManager().giveFocus(item);
+        this->selectPage(page, false);
+    }
+
     if (this->currentPage < this->pages.size() && this->pages[this->currentPage].selfScrolling)
         this->sizeSlotToContent();
 }

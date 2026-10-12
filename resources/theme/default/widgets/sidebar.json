@@ -3,10 +3,14 @@
     "width": "@theme/metric.sidebar.width",
     "height": "auto",
     "shrink": 0,
-    "gap": "@theme/metric.spacing.xs",
-    "padding": "@theme/metric.spacing.sm",
-    "backgroundColor": "@theme/color.surface.card",
-    "cornerRadius": "@theme/metric.radius.lg"
+    "gap": "@theme/metric.sidebar.gap",
+    "padding": [
+      "@theme/metric.sidebar.paddingTop",
+      "@theme/metric.sidebar.paddingRight",
+      "@theme/metric.sidebar.paddingBottom",
+      "@theme/metric.sidebar.paddingLeft"
+    ],
+    "backgroundColor": "@theme/color.sidebar.background"
   },
   "layers": []
 }
