@@ -1410,13 +1410,13 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
         if (open)
         {
             if (this->includeDepthGuard >= 6)
-                ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "（嵌套太深，不再展开）");
+                ImGui::TextColored(warningColor(), "（嵌套太深，不再展开）");
             else
             {
                 const AppearanceDoc::Json* included
                     = this->includeCache.get(resourcePath(includePath));
                 if (included == nullptr)
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f),
+                    ImGui::TextColored(errorColor(),
                         "被包含的文件读不到或不是合法 JSON：%s", includePath.c_str());
                 else
                 {
@@ -1487,7 +1487,7 @@ void DesignerWindow::drawTree()
         this->drawViewTree(this->doc.root(), "");
         this->pendingExpandPath.clear();
         if (this->viewNodeCount <= 0)
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "这个 JSON 里没有可展开的视图节点");
+            ImGui::TextColored(errorColor(), "这个 JSON 里没有可展开的视图节点");
         return;
     }
 
@@ -1757,7 +1757,7 @@ void DesignerWindow::drawTree()
     this->treeOpenRequest = 0; // 只在点的那一帧生效，之后用户还能自己折起来
 
     for (const std::string& warning : orderWarnings)
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "⚠ %s", warning.c_str());
+        ImGui::TextColored(warningColor(), "⚠ %s", warning.c_str());
     if (!orderWarnings.empty() && !this->readOnly)
     {
         if (ImGui::SmallButton("按约定重排层序"))
@@ -1816,7 +1816,7 @@ void DesignerWindow::drawStatus()
     if (!this->statusMessage.empty())
         ImGui::TextColored(mutedColor(), "%s", this->statusMessage.c_str());
     if (!this->errorMessage.empty())
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
+        ImGui::TextColored(errorColor(), "%s", this->errorMessage.c_str());
 }
 
 // ---------------------------------------------------------------- 预览
@@ -2630,6 +2630,7 @@ void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
 void DesignerWindow::drawPreview()
 {
     // ---- 控制行 1：画布 ----
+    static bool showLayerStrip = true;
     panelHeader("预览", this->dirty
             ? ("未保存 · 改动 " + std::to_string(this->changedFieldPaths.size()) + " 处").c_str()
             : "选中什么渲染什么");
@@ -2691,6 +2692,10 @@ void DesignerWindow::drawPreview()
 
     ImGui::SameLine();
     ImGui::Checkbox("网格底", &this->canvasChecker);
+    ImGui::SameLine();
+    ImGui::Checkbox("层序条", &showLayerStrip);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("画布左边的绘制顺序条；关掉它可以把地方让给画布");
     ImGui::SameLine();
     ImGui::Checkbox("对齐网格", &this->showGrid);
     if (ImGui::IsItemHovered())
@@ -2793,18 +2798,25 @@ void DesignerWindow::drawPreview()
             if (prev != std::string::npos && prev + 1 < shortDir.size())
                 shortDir = "…" + shortDir.substr(prev);
         }
-        ImGui::TextColored(mutedColor(), "画布 %d×%d · UI 缩放 ≈ %.2f×（真机=窗口宽/1280）· %s",
-            this->canvasWidth, this->canvasHeight, uiScale, shortDir.c_str());
+        // 评审意见：画布上方信息行太多、和工具栏抢注意力。
+        // 现在合成**一行**：画布尺寸 + UI 缩放 + 主题目录（目录只给最后两段），
+        // 详细解释降级到悬停提示；"按真机 720p" 也变成这一行里的一个小按钮。
+        ImGui::TextColored(mutedColor(), "%d×%d · %.2f× · %s", this->canvasWidth,
+            this->canvasHeight, uiScale, shortDir.c_str());
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("画布 %d×%d，UI 缩放 ≈ %.2f×（真机 = 窗口宽 / 1280）\n主题目录：%s",
+                this->canvasWidth, this->canvasHeight, uiScale, this->project.themeDir().c_str());
         if (this->canvasWidth != 1280)
         {
-            if (ImGui::SmallButton("按真机 720p 画布"))
+            ImGui::SameLine();
+            if (ImGui::SmallButton("720p"))
             {
                 this->canvasPreset   = 1; // 1280×720
                 this->canvasChecker  = true;
                 this->previewDirty   = true;
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("主题里的尺寸都按 1280×720 写：量间距、看字号对齐时用这个画布最准");
+                ImGui::SetTooltip("切到 1280×720：主题尺寸都按它写，量间距、看对齐时最准");
         }
     }
 
@@ -2824,7 +2836,7 @@ void DesignerWindow::drawPreview()
                                         : "页面视图 → 真实实例化整页";
         // 页面里有绑定的话，预览拿不到数据（列表/卡片会是空的），得说明白
         if (this->doc.root().dump().find("\"bind\"") != std::string::npos)
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f),
+            ImGui::TextColored(warningColor(),
                 "⚠ 这个页面有数据绑定（bind）：预览里没有数据源，绑定出来的内容会是空的");
     }
     if (this->previewCompare)
@@ -2852,7 +2864,8 @@ void DesignerWindow::drawPreview()
 
     // 层序条：按绘制顺序列出各层（第一个画的在最上面），点一下就选中那一层。
     // 这是"我在改哪一层、它在绘制顺序里的位置"最省事的答案 —— 比在预览里猜哪块是哪层靠谱。
-    if (this->currentWidget.empty() == false && this->doc.layerCount() > 0
+    // 层序条占的是画布横向空间：评审建议改成可折叠，把地方还给画布
+    if (showLayerStrip && this->currentWidget.empty() == false && this->doc.layerCount() > 0
         && !this->previewCompare)
     {
         ImGui::BeginChild("##layerStrip", ImVec2(132.0f, 0.0f), true);
@@ -2987,7 +3000,7 @@ void DesignerWindow::drawPreview()
     ImGui::EndChild();
 
     if (!this->previewError.empty())
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "预览编译失败：%s",
+        ImGui::TextColored(errorColor(), "预览编译失败：%s",
             this->previewError.c_str());
 }
 
@@ -3036,7 +3049,7 @@ void DesignerWindow::drawProps()
         ImGui::TextColored(mutedColor(), "%s", this->dirty ? "● 有未保存改动" : "已同步");
 
         if (!this->errorMessage.empty())
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
+            ImGui::TextColored(errorColor(), "%s", this->errorMessage.c_str());
         return;
     }
 
@@ -4458,7 +4471,7 @@ void DesignerWindow::drawOpenProjectModal()
     if (this->browseSelection.empty())
         ImGui::TextColored(mutedColor(), "选中一个标着「主题」的目录");
     else if (!selectionIsTheme)
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s：%s", this->browseSelection.c_str(),
+        ImGui::TextColored(warningColor(), "%s：%s", this->browseSelection.c_str(),
             infoError.c_str());
     else if (this->newProjectMode == 0)
     {
@@ -4471,7 +4484,7 @@ void DesignerWindow::drawOpenProjectModal()
             this->browseSelection.c_str());
 
     if (!this->openProjectError.empty())
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->openProjectError.c_str());
+        ImGui::TextColored(errorColor(), "%s", this->openProjectError.c_str());
 
     // ---- 确认 ----
     const bool canConfirm = selectionIsTheme
@@ -4775,13 +4788,13 @@ void DesignerWindow::drawModals()
     {
         if (!this->pendingTheme.empty())
         {
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "要切到主题「%s」",
+            ImGui::TextColored(warningColor(), "要切到主题「%s」",
                 this->pendingTheme.c_str());
             ImGui::TextUnformatted("有未保存的改动，切主题会清掉草稿，怎么办？");
         }
         else
         {
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s",
+            ImGui::TextColored(warningColor(), "%s",
                 this->currentFilePath.c_str());
             ImGui::TextUnformatted("这个文件有未保存的改动，切走之前要怎么办？");
         }
@@ -4930,7 +4943,7 @@ void DesignerWindow::drawModals()
             if (!before.is_discarded())
                 changes = (int)diffJson(before, entry.second.doc.root()).size();
 
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "●");
+            ImGui::TextColored(warningColor(), "●");
             ImGui::SameLine();
             ImGui::Text("%s", entry.first.c_str());
             ImGui::SameLine();
@@ -4984,13 +4997,13 @@ void DesignerWindow::drawModals()
         for (const std::string& warning : this->warnings)
             ImGui::TextWrapped("%s", warning.c_str());
         for (const std::string& warning : this->doc.layerOrderWarnings())
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "层序：%s", warning.c_str());
+            ImGui::TextColored(warningColor(), "层序：%s", warning.c_str());
         for (const std::string& warning : this->contrastWarnings)
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "对比度：%s", warning.c_str());
+            ImGui::TextColored(warningColor(), "对比度：%s", warning.c_str());
         if (this->warnings.empty() && this->doc.layerOrderWarnings().empty())
             ImGui::TextColored(mutedColor(), "没有警告");
         if (!this->errorMessage.empty())
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
+            ImGui::TextColored(errorColor(), "%s", this->errorMessage.c_str());
         ImGui::Separator();
         if (ImGui::Button("关闭", ImVec2(100, 0)))
             ImGui::CloseCurrentPopup();
