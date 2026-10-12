@@ -1,6 +1,6 @@
 #include "app/ui.hpp"
 
-#include "bklv/core/theme_data.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 

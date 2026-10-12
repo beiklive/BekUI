@@ -67,6 +67,8 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 ### 改构建时注意
 
+- 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 查 core/views/widgets，
+  根 `CMakeLists.txt` 查 demo），不用等链接期。
 - 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
   （`BKLV_CORE_SOURCES` / `BKLV_IMGUI_SOURCES`），**demo** 的加根 `CMakeLists.txt`
   （`BKLV_APP_SOURCES`）。漏一个会以 `undefined reference` 的形式在链接期才暴露。
@@ -355,12 +357,19 @@ cmake --build build/gl -j 8
 
 产物与 demo 同目录（`dist/`）——资源路径按可执行文件目录解析（见
 `bklv/core/resource.hpp`），测试要能读到 `resources/`。
-加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集。
+加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集；
+断言脚手架在 `tests/test_util.hpp`（`check` / `checkEqual` / `checkFloat` /
+`checkColor` / `checkEqualInt` / `checkEqualSize` + `g_checks` / `g_failed`），
+不要在每个测试里再抄一份。
+**资源按可执行文件目录解析**：每个测试目标都和 demo 一样会把 `resources/` 复制到
+`dist/`，测试开头要调 `initResources()`——不调的话路径按工作目录解析，
+写出来的 fixture 会落进仓库树（还会被打进 romfs）。
 
 ## 目录
 
 ```
 bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
+  bklv.hpp          伞头文件：常用类型一次引入（demo 只用它）
   core/             接口层：view / box / app / platform / graphics / input / ...
   core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
   views/            语义控件：label / image / scrolling_frame / recycler / ...
@@ -371,7 +380,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
-demo/               展示程序：main.cpp + app/（页面 / tab / 列表项）
+demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
 scripts/            构建脚本（只剩 Switch 的）
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑

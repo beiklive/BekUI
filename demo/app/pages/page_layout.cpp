@@ -1,9 +1,7 @@
 #include "app/pages.hpp"
 
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/widgets/rectangle.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 

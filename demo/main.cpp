@@ -20,8 +20,7 @@
 
 #include "app/demo_app.hpp"
 #include "app/pages.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/app.hpp"
+#include "bklv/bklv.hpp"
 
 int main(int argc, char** argv)
 {

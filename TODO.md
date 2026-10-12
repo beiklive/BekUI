@@ -61,9 +61,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       但 `View::draw()` 的签名里有 `ImDrawList*`，自定义控件必须能拿到 imgui 头——
       所以需要一个「公开的 imgui 头子集」，或把 imgui 作为 PUBLIC 依赖并说明。
       *验收*：README 里写明规则，并有示例工程验证。
-- [ ] **umbrella 头**
-      `bklv/bklv.hpp` 一次引入常用类型，降低使用者的 include 负担。
-      *验收*：示例工程只 include 它就能写出一个界面。
+- [x] **umbrella 头**
+      `bklv/bklv.hpp` 一次引入常用类型（core / views / widgets，不含按平台选的
+      backends / platforms）。*验收*：demo 的全部 16 个源文件现在只 include 它一个。
 - [ ] **版本号与变更记录**
       `project(bklv VERSION ...)` + `CHANGELOG.md`，并让
       `bklv::getVersionString()` 可用。
@@ -185,8 +185,8 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 - [x] 按键重复改成 borealis 的节奏（首次立刻响应，250ms 后每 100ms 一次），
       键盘/手柄/多平台统一；**修掉"两个键共用一个边沿状态"导致按住时按帧率触发**
-- [x] 默认主题改成 borealis 暗色 / Switch 风格（色值取 `core/theme.cpp`，
-      尺寸取 `core/style.cpp`），控件外观也按 borealis 的语义接上新键
+- [x] 默认主题改成 borealis 暗色 / Switch 风格（色值与尺寸都在
+      `resources/theme/default/` 的 JSON 里），控件外观也按 borealis 的语义接上新键
       （按钮高亮字色、滑块三段、遮罩、页头色条、侧栏选中色条）
 - [x] 图标字体 `resources/font/switch_icons.ttf` + `getControllerButtonIcon()`
       （码位同 borealis）+ 文字层字体钩子 `AppearanceView::getLayerFont()`

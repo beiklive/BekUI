@@ -9,42 +9,18 @@
 #include <cstdio>
 #include <string>
 
+#include "bklv/core/resource.hpp"
 #include "bklv/core/i18n.hpp"
+#include "test_util.hpp"
 
-static int g_failed = 0;
-static int g_checks = 0;
 
-static void check(bool ok, const std::string& what)
-{
-    g_checks++;
-    if (!ok)
-    {
-        g_failed++;
-        std::printf("  [失败] %s\n", what.c_str());
-    }
-    else
-    {
-        std::printf("  [通过] %s\n", what.c_str());
-    }
-}
 
-static void checkEqual(const std::string& got, const std::string& want, const std::string& what)
-{
-    g_checks++;
-    if (got != want)
-    {
-        g_failed++;
-        std::printf("  [失败] %s\n         期望 \"%s\"\n         实际 \"%s\"\n", what.c_str(), want.c_str(),
-            got.c_str());
-    }
-    else
-    {
-        std::printf("  [通过] %s  =>  \"%s\"\n", what.c_str(), got.c_str());
-    }
-}
 
 int main()
 {
+    // 资源按可执行文件目录解析：从哪个目录跑都一致，fixture 也落在 dist/
+    bklv::initResources();
+
     using namespace bklv;
 
     std::printf("\n== 0. initI18n 可独立调用（不崩，装载到某种语言）==\n");

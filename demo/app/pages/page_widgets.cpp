@@ -3,13 +3,7 @@
 #include <vector>
 
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/views/image.hpp"
-#include "bklv/views/progress_spinner.hpp"
-#include "bklv/widgets/button.hpp"
-#include "bklv/widgets/dropdown.hpp"
-#include "bklv/widgets/slider.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 

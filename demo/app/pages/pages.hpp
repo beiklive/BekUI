@@ -3,9 +3,7 @@
 // 每个页面一个构建函数。页面只负责"把自己的内容搭出来"，
 // 怎么被放进内容区、什么时候显示由 page_host 决定。
 
-#include "bklv/core/box.hpp"
-#include "bklv/views/label.hpp"
-#include "bklv/views/recycler.hpp"
+#include "bklv/bklv.hpp"
 
 namespace bklv
 {

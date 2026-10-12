@@ -6,55 +6,25 @@
 #include <cstdio>
 #include <string>
 
+#include "bklv/core/resource.hpp"
 #include "bklv/core/app.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/ime.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/widgets/edit_text_dialog.hpp"
+#include "test_util.hpp"
 
 using namespace bklv;
 
-static int g_failed = 0;
-static int g_checks = 0;
 
-static void check(bool ok, const std::string& what)
-{
-    g_checks++;
-    if (ok)
-        std::printf("  [通过] %s\n", what.c_str());
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s\n", what.c_str());
-    }
-}
 
-static void checkEqual(const std::string& got, const std::string& want, const std::string& what)
-{
-    g_checks++;
-    if (got == want)
-        std::printf("  [通过] %s  =>  %s\n", what.c_str(), got.c_str());
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s  期望 %s 实际 %s\n", what.c_str(), want.c_str(), got.c_str());
-    }
-}
 
-static void checkEqualSize(size_t got, size_t want, const std::string& what)
-{
-    g_checks++;
-    if (got == want)
-        std::printf("  [通过] %s  =>  %zu\n", what.c_str(), got);
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s  期望 %zu 实际 %zu\n", what.c_str(), want, got);
-    }
-}
 
 int main()
 {
+    // 资源按可执行文件目录解析：从哪个目录跑都一致，fixture 也落在 dist/
+    bklv::initResources();
+
     std::printf("\n== 1. 文本模型：插入与光标 ==\n");
     {
         TextEditModel model;

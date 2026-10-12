@@ -1,11 +1,7 @@
 #include "app/pages.hpp"
 
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/widgets/button.hpp"
-#include "bklv/widgets/dialog.hpp"
-#include "bklv/widgets/edit_text_dialog.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 

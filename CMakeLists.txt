@@ -93,6 +93,25 @@ endif()
 add_subdirectory(bklv)
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# 资源复制
+# ---------------------------------------------------------------------------
+#
+# 资源按"可执行文件目录"解析（见 bklv/core/resource.hpp），所以每个可执行文件旁边
+# 都要有一份 resources/：从哪个目录启动都能找到；测试写出来的 fixture 也落在
+# dist/ 里，不会污染仓库（以前只有 demo 复制资源，测试就退化成按工作目录解析，
+# 把 fixture 写进了仓库树，还会被打进 romfs）。
+function(bklv_copy_resources target_name)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/resources")
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_SOURCE_DIR}/resources"
+                "$<TARGET_FILE_DIR:${target_name}>/resources"
+            COMMENT "复制 resources/ 到输出目录"
+        )
+    endif()
+endfunction()
+
 # demo：页面 / tab / 列表项这一层应用代码 + 主程序
 # ---------------------------------------------------------------------------
 #
@@ -118,6 +137,7 @@ foreach(src IN LISTS BKLV_APP_SOURCES)
     list(APPEND BKLV_APP_ABS "${CMAKE_SOURCE_DIR}/demo/${src}")
 endforeach()
 
+
 add_library(demo_app OBJECT ${BKLV_APP_ABS})
 target_link_libraries(demo_app PUBLIC bklv::bklv)
 
@@ -131,6 +151,24 @@ target_include_directories(demo_app PUBLIC "${CMAKE_SOURCE_DIR}/demo")
 set(BKLV_TARGET_LIST
     "demo|demo/main.cpp|app"
 )
+
+# 清单漏项检查（同 bklv/CMakeLists.txt）：demo 下的 .cpp 必须都出现在
+# BKLV_APP_SOURCES（应用代码）或 BKLV_TARGET_LIST（各目标的入口 main.cpp）里
+set(BKLV_APP_ALLOWED ${BKLV_APP_ABS})
+foreach(entry IN LISTS BKLV_TARGET_LIST)
+    string(REPLACE "|" ";" parts "${entry}")
+    list(GET parts 1 target_src)
+    list(APPEND BKLV_APP_ALLOWED "${CMAKE_SOURCE_DIR}/${target_src}")
+endforeach()
+
+file(GLOB_RECURSE _bklv_demo_found CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/demo/*.cpp")
+foreach(_file ${_bklv_demo_found})
+    if(NOT _file IN_LIST BKLV_APP_ALLOWED)
+        file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}" "${_file}")
+        message(FATAL_ERROR
+            "CMakeLists.txt 既没把 ${_rel} 放进 BKLV_APP_SOURCES，也没放进 BKLV_TARGET_LIST")
+    endif()
+endforeach()
 
 set(BKLV_TARGET_NAMES "")
 set(BKLV_MATCHED 0)
@@ -163,16 +201,7 @@ foreach(entry IN LISTS BKLV_TARGET_LIST)
         target_link_options(${target_name} PRIVATE -mwindows)
     endif()
 
-    # 把 resources/ 复制到可执行文件旁边：资源按"可执行文件目录"解析
-    # （见 bklv/core/resource.hpp），这样从哪个目录启动都能找到。
-    if(EXISTS "${CMAKE_SOURCE_DIR}/resources")
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_SOURCE_DIR}/resources"
-                "$<TARGET_FILE_DIR:${target_name}>/resources"
-            COMMENT "复制 resources/ 到输出目录"
-        )
-    endif()
+    bklv_copy_resources(${target_name})
 
     set_target_properties(${target_name} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
@@ -209,6 +238,7 @@ if(BKLV_BUILD_TESTS)
 
         add_executable(${test_name} "${test_src}")
         target_link_libraries(${test_name} PRIVATE bklv::bklv)
+        bklv_copy_resources(${test_name})
         set_target_properties(${test_name} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
             RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"

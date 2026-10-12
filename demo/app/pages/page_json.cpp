@@ -3,11 +3,7 @@
 #include "app/pages.hpp"
 
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/json_view.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/views/json_cell.hpp"
-#include "bklv/views/recycler.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 

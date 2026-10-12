@@ -2,19 +2,12 @@
 
 #include "app/pages.hpp"
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/input.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/core/ui_scale.hpp"
-#include "bklv/widgets/button.hpp"
+#include "bklv/bklv.hpp"
 
 using namespace bklv;
 
 namespace
 {
-
-
-
 
 } // namespace
 
@@ -75,10 +68,6 @@ DemoApp::DemoApp()
     topRow->addView(logButton);
     right->addView(topRow);
 
-    this->contentHost = new Box(Axis::COLUMN);
-    this->contentHost->setWidthPercentage(100.0f);
-    this->contentHost->setGrow(1.0f);
-
     this->scroller = new ScrollingFrame();
     this->scroller->setWidthPercentage(100.0f);
     this->scroller->setGrow(1.0f);
@@ -88,9 +77,9 @@ DemoApp::DemoApp()
     this->pageSlot->setWidthPercentage(100.0f);
     this->pageSlot->setGrow(1.0f);
 
-    // 页面内容放进 ScrollingFrame：它会裁剪 + 滚动。
-    // 之前 scroller 建了却没挂进树，页面比内容区高时就画到底栏上（看着像底栏在闪）
-    this->scroller->setContentView(this->contentHost);
+    // 滚动器直接装"当前页"：它负责裁剪 + 滚动。
+    // 页面比内容区高时会被裁掉而不是画到底栏上（以前 scroller 建了没挂进树，
+    // 页面就直接画到栏上，看着像底栏在闪）。
     right->addView(this->scroller);
     body->addView(right);
     // 内容区左右留白：和页头/底栏的 margin 用同一个主题值，四边看起来才是一套
@@ -138,7 +127,7 @@ void DemoApp::addPage(const std::string& name, const std::string& subtitle, Box*
 
 void DemoApp::sizeSlotToContent()
 {
-    const float height = this->contentHost->getHeight();
+    const float height = this->scroller->getHeight();
     if (height > 0.0f)
         this->pageSlot->setHeight(height);
 }
@@ -155,17 +144,12 @@ void DemoApp::selectPage(size_t index)
     this->root->setTitle(this->pages[index].name);
     this->root->setSubtitle(this->pages[index].subtitle);
 
-    Box* holder  = this->contentHost;
     View* target = this->pages[index].view;
 
-    // 两个容器都先摘下来，并交出当前页面
-    // （ScrollingFrame 不拥有内容，直接 setContentView 覆盖会销毁旧页面）
-    if (this->scroller->getParent() == holder)
-        holder->removeView(this->scroller, false);
+    // 先把当前页从滚动器上摘下来（不销毁：页面归 this->pages 持有，切回来复用），
+    // 再把新页挂上去。setContentView 会自己接管挂载，别再手动 addView（会变成
+    // "该视图已有父节点"，并且留下一棵没挂在树上的孤儿）。
     this->scroller->evictContentView();
-
-    if (this->pageSlot->getParent() == holder)
-        holder->removeView(this->pageSlot, false);
 
     for (Page& page : this->pages)
         if (page.view->getParent() == this->pageSlot)
@@ -173,16 +157,17 @@ void DemoApp::selectPage(size_t index)
 
     if (this->pages[index].selfScrolling)
     {
+        // 页面自己滚动（内部有列表）：给它一个和内容区等高的槽，让列表在槽里滚
         this->sizeSlotToContent();
-        holder->addView(this->pageSlot);
         this->pageSlot->addView(target);
+        this->scroller->setContentView(this->pageSlot);
     }
     else
     {
-        holder->addView(this->scroller);
         this->scroller->setContentView(target);
-        this->scroller->setContentOffsetY(0.0f, false);
     }
+
+    this->scroller->setContentOffsetY(0.0f, false);
 
     // 进子页面后把焦点交给页面里的第一个可聚焦控件（borealis 的 TabFrame 也是这样）
     if (View* first = target->getDefaultFocus())

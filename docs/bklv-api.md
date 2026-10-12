@@ -26,8 +26,14 @@
 | `core/json_view.hpp/.cpp` | JSON 视图描述：类型注册、模板缓存、实例化、include、错误 |
 | `core/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/`（主题数值）`@theme/`（主题颜色）`@res/` 前缀 |
 | `views/json_cell.*` | JSON 模板驱动的列表项（数据绑定 + 焦点视觉） |
-| `widgets/appearance_view.*` | 外观驱动控件基类：解释 layers、状态动效、固有尺寸测量 |
+| `core/appearance.hpp/.cpp` | 外观编译与运行：`AppearanceBox`（盒模型段）、layers、状态动效、缓存 |
+| `core/ui_scale.hpp/.cpp` | UI 缩放：主题尺寸按 1280x720 写，运行时按画布宽等比放大 |
+| `core/ime.hpp/.cpp` | 文本输入：平台接管（Switch swkbd）或控件自己读键盘 |
+| `widgets/appearance_view.*` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量 |
 | `widgets/rectangle.*` `widgets/button.*` `widgets/header.*` `widgets/bottom_bar.*` `widgets/slider.*` `widgets/tab_frame.*` `widgets/sidebar.*` | 外观驱动的控件（绘制结构在主题 JSON 里） |
+| `widgets/applet_frame.*` | 应用外壳：全局页头 + 内容区（吃剩余高度）+ 底栏，显隐与补间折叠 |
+| `widgets/dialog.*` `widgets/dropdown.*` `widgets/edit_text_dialog.*` | 弹窗、下拉、文本输入弹窗 |
+| `widgets/hints_bar.*` `widgets/status_area.*` | 底栏的两块内容：左侧提示、右侧状态（时钟 / Switch 电量） |
 | `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
 | `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
@@ -50,7 +56,7 @@
 | `views/recycler.hpp/.cpp` | 虚拟列表：对象池、复用、视口预取与回收 |
 | `views/image.hpp/.cpp` | 图片：四种缩放模式、圆角 |
 | `views/progress_spinner.hpp/.cpp` | 加载转圈 |
-| `views/hints.hpp/.cpp` | 底部提示栏 |
+| `widgets/hints_bar.hpp/.cpp` | 提示栏（底栏左侧内容）：按当前焦点的动作生成条目 |
 | `views/debug_window.hpp/.cpp` | 调试窗口：ImGui 窗口显示日志流与运行状态 |
 
 ## 布局（Box）

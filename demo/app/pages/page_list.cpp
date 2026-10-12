@@ -1,9 +1,7 @@
 #include "app/pages.hpp"
 
 #include "app/ui.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/theme_data.hpp"
-#include "bklv/views/recycler.hpp"
+#include "bklv/bklv.hpp"
 
 // 复用 demo 自己的回收列表单元（RecyclerCell 是库的扩展点）
 #include "app/pages/list_items.hpp"

@@ -6,9 +6,7 @@
 
 #include <string>
 
-#include "bklv/views/image.hpp"
-#include "bklv/views/label.hpp"
-#include "bklv/views/recycler.hpp"
+#include "bklv/bklv.hpp"
 
 namespace demo
 {

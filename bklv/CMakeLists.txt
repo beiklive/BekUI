@@ -286,10 +286,10 @@ set(BKLV_CORE_SOURCES
     widgets/button.cpp
     widgets/header.cpp
     widgets/bottom_bar.cpp
-    widgets/status_area.cpp
     widgets/slider.cpp
     widgets/tab_frame.cpp
     widgets/sidebar.cpp
+    widgets/status_area.cpp
     widgets/dialog.cpp
     widgets/dropdown.cpp
     widgets/applet_frame.cpp
@@ -301,6 +301,34 @@ set(BKLV_CORE_SOURCES
     backends/opengl_backend.cpp
     backends/vulkan_backend.cpp
 )
+
+# ---------------------------------------------------------------------------
+# 源文件清单漏项检查
+# ---------------------------------------------------------------------------
+#
+# AGENTS.md 里写着"加了新 .cpp 要加进列表，漏一个会以 undefined reference 的形式在
+# 链接期才暴露"。这条在 configure 阶段就能查：core / views / widgets 是两个平台
+# 共用的，必须是列全的（backends / platforms 有平台分支，各脚本按需收集，不查）。
+set(_bklv_listed "")
+foreach(_src IN LISTS BKLV_CORE_SOURCES BKLV_IMGUI_SOURCES)
+    get_filename_component(_abs "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" ABSOLUTE)
+    list(APPEND _bklv_listed "${_abs}")
+endforeach()
+
+file(GLOB_RECURSE _bklv_found
+    "${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/views/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/*.cpp")
+
+foreach(_file ${_bklv_found})
+    if(NOT _file IN_LIST _bklv_listed)
+        file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}" "${_file}")
+        message(FATAL_ERROR
+            "bklv/CMakeLists.txt 的源文件清单里没有 ${_rel}；"
+            "加进 BKLV_CORE_SOURCES 或 BKLV_IMGUI_SOURCES（漏了只会在链接期报 undefined reference）")
+    endif()
+endforeach()
+
 
 # 源文件列表用相对路径写，这里补成绝对路径，方便核对。
 set(BKLV_CORE_ABS "")

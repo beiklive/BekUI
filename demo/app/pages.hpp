@@ -3,7 +3,7 @@
 // demo 的页面清单：每个页面一个构建函数，返回页面根视图。
 // 页面只负责"把自己的内容搭出来"，怎么显示、什么时候显示由 demo_app 决定。
 
-#include "bklv/core/box.hpp"
+#include "bklv/bklv.hpp"
 
 namespace bklv
 {

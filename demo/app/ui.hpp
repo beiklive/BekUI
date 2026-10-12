@@ -8,9 +8,7 @@
 
 #include <string>
 
-#include "bklv/core/box.hpp"
-#include "bklv/views/label.hpp"
-#include "bklv/widgets/rectangle.hpp"
+#include "bklv/bklv.hpp"
 
 namespace demo
 {

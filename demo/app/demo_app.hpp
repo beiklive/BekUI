@@ -15,11 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "bklv/core/box.hpp"
-#include "bklv/views/debug_window.hpp"
-#include "bklv/views/scrolling_frame.hpp"
-#include "bklv/widgets/applet_frame.hpp"
-#include "bklv/widgets/sidebar.hpp"
+#include "bklv/bklv.hpp"
 
 namespace demo
 {
@@ -63,7 +59,6 @@ class DemoApp
 
     // 内容区两个互斥容器：不自管滚动的页放 scroller，自管滚动的页直接放 pageSlot
     // （共用一个容器时，切页会让容器高度塌成上一页的高度）
-    bklv::Box* contentHost    = nullptr;
     bklv::ScrollingFrame* scroller = nullptr;
     bklv::Box* pageSlot       = nullptr;
 

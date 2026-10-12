@@ -14,59 +14,14 @@
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "test_util.hpp"
 
 using namespace bklv;
 
-static int g_failed = 0;
-static int g_checks = 0;
 
-static void check(bool ok, const std::string& what)
-{
-    g_checks++;
-    if (ok)
-        std::printf("  [通过] %s\n", what.c_str());
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s\n", what.c_str());
-    }
-}
 
-static void checkEqual(const std::string& got, const std::string& want, const std::string& what)
-{
-    g_checks++;
-    if (got == want)
-        std::printf("  [通过] %s  =>  %s\n", what.c_str(), got.c_str());
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s  期望 %s 实际 %s\n", what.c_str(), want.c_str(), got.c_str());
-    }
-}
 
-static void checkFloat(float got, float want, const std::string& what)
-{
-    g_checks++;
-    if (got > want - 0.01f && got < want + 0.01f)
-        std::printf("  [通过] %s  =>  %g\n", what.c_str(), got);
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s  期望 %g 实际 %g\n", what.c_str(), want, got);
-    }
-}
 
-static void checkColor(ImU32 got, ImU32 want, const std::string& what)
-{
-    g_checks++;
-    if (got == want)
-        std::printf("  [通过] %s\n", what.c_str());
-    else
-    {
-        g_failed++;
-        std::printf("  [失败] %s  期望 %08X 实际 %08X\n", what.c_str(), want, got);
-    }
-}
 
 static void writeFile(const std::string& relativePath, const std::string& content)
 {
@@ -80,6 +35,9 @@ static void writeFile(const std::string& relativePath, const std::string& conten
 
 int main()
 {
+    // 资源按可执行文件目录解析：从哪个目录跑都一致，fixture 也落在 dist/
+    bklv::initResources();
+
     std::printf("\n== 1. 默认主题装载 ==\n");
     {
         const ThemeData& theme = getTheme();

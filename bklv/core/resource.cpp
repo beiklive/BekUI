@@ -36,7 +36,8 @@ bool isAbsolute(const std::string& path)
 void initResources()
 {
 #if defined(BKLV_SWITCH)
-    // 资源是用 elf2nro --romfsdir 打进 nro 的，挂上才有 romfs:/ 这个设备。
+    // 资源由 build_romfs + elf2nro --romfs 打进 nro（不要用 --romfsdir，它会
+    // 被静默忽略），romfsInit 之后才有 romfs:/ 这个设备。
     const Result rc = romfsInit();
     if (R_SUCCEEDED(rc))
     {
