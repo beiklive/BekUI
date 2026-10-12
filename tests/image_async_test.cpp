@@ -110,6 +110,39 @@ int main()
         delete image;
     }
 
+    std::printf("\n== 5. 视图先销毁：回调必须放弃（生命周期护栏）==\n");
+    {
+        // 发起一次异步加载，然后在回调执行前把 Image 删掉。
+        // 没有护栏的话这里就是 use-after-free（borealis 用 ASYNC_RETAIN 那套宏防的就是它）
+        Image* doomed = new Image();
+        doomed->setImageFromFileAsync("resources/testcard.png");
+        check(doomed->isLoading(), "发起加载后是加载中");
+
+        delete doomed; // 回调还没跑就销毁
+
+        check(waitFor([&] { return task::pendingCount() == 0; }), "后台解码完成");
+        task::pumpMainThread(); // 回调这时才执行：必须安全返回
+        check(true, "视图已销毁时回调被放弃，没有踩野指针");
+    }
+
+    std::printf("\n== 6. 护栏本身的语义 ==\n");
+    {
+        AliveFlag flag;
+        auto guard = flag.handle();
+        check(!guard.expired() && guard.lock()->isAlive(), "存活时护栏有效");
+
+        flag.invalidate();
+        check(!guard.lock()->isAlive(), "invalidate 之后失效");
+
+        AliveFlag other;
+        auto otherGuard = other.handle();
+        {
+            AliveFlag moved = other;
+            check(!otherGuard.expired(), "拷贝共享同一个标记");
+        }
+        check(!otherGuard.expired(), "拷贝析构不影响原标记（标记不是拷贝构造出来的独立对象）");
+    }
+
     task::shutdown();
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

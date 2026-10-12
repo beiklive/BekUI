@@ -304,6 +304,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   两条语义要记住：① **pop 的回调等转场播完才执行**（和 Dialog"播完再摘"同一约定）；
   ② **push 的旧页留在栈里只脱离树，pop 掉的那页在转场结束时释放**（详情页就是这种临时页）。
   需要确定性步进（测试）用 `stepContentTransition(dt)`。
+- **异步回调要带生命周期护栏**（`core/alive.hpp`）：`task::run*` 的 `done` 在主线程执行，
+  但发起时捕获的 `this` 可能已经析构（换页、重建视图树、回收器释放）→ 裸捕获就是
+  use-after-free。做法是成员放一个 `AliveFlag`，回调捕获 `alive.handle()`（`weak_ptr`），
+  进来先 `if (guard.expired() || !guard.lock()->isAlive()) return;`
+  （borealis 用 `ASYNC_RETAIN`/`ASYNC_RELEASE`/`ASYNC_TOKEN` 三个宏手写引用计数做同一件事，
+  这里换成无宏的小对象）。`Image::setImageFromFileAsync` 已经这么做了，有测试覆盖
+  "视图先销毁、回调后到"。
 - **事件总线**（`core/event.hpp`）：`getEventBus().subscribe<事件类型>(...)` 返回 **RAII 句柄**，
   析构自动退订（换根/关页面时也可以 `clear()`）。框架自己发 `FocusChangedEvent` 与
   `ActionTriggeredEvent`。

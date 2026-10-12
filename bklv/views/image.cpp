@@ -29,9 +29,15 @@ void Image::setImageFromFileAsync(const std::string& path)
     const std::string resolved = resourcePath(path);
 
     // 后台：读文件 + 解码（纯 CPU/IO，不碰 GL/ImGui）
+    // 回调捕获的是 weak 护栏，不是裸 this：Image 先死了就直接放弃
+    std::weak_ptr<const AliveFlag::Flag> guard = this->alive.handle();
+
     task::runResult(
         [resolved] { return decodeImageFile(resolved.c_str()); },
-        [this, generation](DecodedImage image) {
+        [this, generation, guard](DecodedImage image) {
+            if (guard.expired() || !guard.lock()->isAlive())
+                return; // 视图已经销毁，别再碰它
+
             if (generation != this->loadGeneration)
                 return; // 已经发起了更新的加载，这个结果丢掉
 

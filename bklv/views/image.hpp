@@ -6,6 +6,7 @@
 // 纹理来自 core/graphics.hpp 的纹理管理，由当前 RenderBackend 负责真正上传。
 // 这里不出现任何图形 API 调用，所以换成 Vulkan/Metal 后端时本文件不用改。
 
+#include "bklv/core/alive.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/view.hpp"
 
@@ -68,6 +69,8 @@ class Image : public View
     TextureRef texture;
     bool asyncPending = false;   // 正在后台解码
     uint64_t loadGeneration = 0; // 代数：只接受最新一次的异步结果
+    // 异步解码回调的生命周期护栏：Image 先被销毁时回调直接放弃（否则是 use-after-free）
+    AliveFlag alive;
     std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
     ImageScalingType scalingType = ImageScalingType::FIT;
     float imageCornerRadius      = 0.0f;

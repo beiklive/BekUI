@@ -65,7 +65,7 @@
 | audio（8 种系统音效） | `core/audio.hpp`（8 种音效，**代码合成**） | ✅ 改良 | borealis **只有 Switch 出声**（用 Nintendo 内置音效）、桌面什么都不做；我们代码合成，桌面 + Switch 同一套，且不随包带任何音频素材。Switch 的 audren 输出还没接（需要真机） |
 | **video** | — | ❌ 见"无法实现"一节 |
 | notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
-| task / thread（异步任务、线程池） | `core/task.hpp`（固定 2 worker + 主线程回调） | ✅ 改良 | borealis 用 `brls::async` + `ASYNC_RETAIN` 宏；这里是普通线程池，回调**保证在主线程**跑（由 `App::frame` 每帧 pump），没有宏 |
+| task / thread（异步任务、线程池） | `core/task.hpp` + `core/alive.hpp` | ✅ 改良 | borealis 的 `sync`/`async` 是同一套的两个入口：`sync(f)` 把函数排到主线程（每帧 `performSyncTasks()` 取出，还兼 `delay(ms,f)`/`cancelDelay`），`async(f)` 丢给**一个**后台线程且循环里 `retro_sleep(500)`——任务最多等 500ms、彼此串行。我们用 `task::run/runResult`（2 worker + 条件变量唤醒，无轮询延迟），`done` 由 `App::frame` pump 到主线程，等于把他们的 async+sync 合成一个 API。他们为"回调时视图可能已析构"发明的 `ASYNC_RETAIN/ASYNC_RELEASE/ASYNC_TOKEN` 三个宏，我们换成 `core/alive.hpp` 的 `AliveFlag`（弱引用护栏，无宏、可测） |
 | event（事件总线） | `core/event.hpp` + 焦点/动作内置事件 | ✅ 改良 | 按事件类型订阅（`subscribe<FocusChangedEvent>`）；**不用 typeid**（Switch 带 `-fno-rtti`），改用静态 token 取地址当 key；订阅句柄是 **RAII** 的，析构自动退订；派发期间增删订阅安全（快照语义） |
 | gesture / touch/ | `core/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
 | singleton / util / main | — | ➖ 工具类，不逐个对等 |
