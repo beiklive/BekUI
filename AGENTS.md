@@ -311,6 +311,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （borealis 用 `ASYNC_RETAIN`/`ASYNC_RELEASE`/`ASYNC_TOKEN` 三个宏手写引用计数做同一件事，
   这里换成无宏的小对象）。`Image::setImageFromFileAsync` 已经这么做了，有测试覆盖
   "视图先销毁、回调后到"。
+- **延迟任务**（`core/task.hpp` 的 `task::delay(ms, cb)`）：cb 由 `pumpMainThread()`
+  （`App::frame` 每帧）在**主线程**执行，不占线程、不用额外定时器；`DelayHandle` 拿来
+  显式 `cancel()`（重复触发前先取消上一个，就是"重置计时器"的写法）。
+  **析构不取消**：`task::delay(1000, [] {...});` 这种 fire-and-forget 必须能生效
+  （当初做成"析构即取消"，临时句柄在语句结束就销毁 → 回调静默不触发，测试抓到的）。
+  回调里碰视图照样按上一条加 `AliveFlag` 护栏。
 - **事件总线**（`core/event.hpp`）：`getEventBus().subscribe<事件类型>(...)` 返回 **RAII 句柄**，
   析构自动退订（换根/关页面时也可以 `clear()`）。框架自己发 `FocusChangedEvent` 与
   `ActionTriggeredEvent`。

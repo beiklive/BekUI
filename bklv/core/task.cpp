@@ -1,6 +1,7 @@
 #include "bklv/core/task.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -31,6 +32,18 @@ struct Pool
 // 已完成的回调（主线程消费）
 std::mutex g_mainMutex;
 std::deque<std::function<void()>> g_mainQueue;
+
+// 延迟任务（主线程消费；到期时间按 steady_clock）
+struct Delay
+{
+    size_t id = 0;
+    std::chrono::steady_clock::time_point due;
+    std::function<void()> callback;
+};
+
+std::mutex g_delayMutex;
+std::vector<Delay> g_delays;
+size_t g_nextDelayId = 1;
 
 std::shared_ptr<Pool> g_pool;
 std::thread::id g_mainThread;
@@ -118,6 +131,9 @@ void shutdown()
 
     std::lock_guard<std::mutex> lock(g_mainMutex);
     g_mainQueue.clear();
+
+    std::lock_guard<std::mutex> delayLock(g_delayMutex);
+    g_delays.clear();
 }
 
 void run(std::function<void()> work, std::function<void()> done)
@@ -161,7 +177,48 @@ void postToMain(std::function<void()> callback)
 
 void pumpMainThread()
 {
-    // 一次把这批回调取出来执行（执行期间新投进来的留到下一帧）
+    // 1. 先跑到期的延迟任务（对标 borealis 在 performSyncTasks 里处理 delay：
+    //    但这里不复制整个队列、也不每帧回填，只把到期的摘出来）
+    {
+        const auto now = std::chrono::steady_clock::now();
+        std::vector<Delay> due;
+
+        {
+            std::lock_guard<std::mutex> lock(g_delayMutex);
+            for (auto it = g_delays.begin(); it != g_delays.end();)
+            {
+                if (it->due <= now)
+                {
+                    due.push_back(std::move(*it));
+                    it = g_delays.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+
+        for (Delay& item : due)
+        {
+            if (item.callback == nullptr)
+                continue;
+            try
+            {
+                item.callback();
+            }
+            catch (const std::exception& e)
+            {
+                BKLV_LOG_ERROR("延迟任务抛出异常：%s", e.what());
+            }
+            catch (...)
+            {
+                BKLV_LOG_ERROR("延迟任务抛出未知异常");
+            }
+        }
+    }
+
+    // 2. 再跑投递到主线程的回调（一次把这批取出来执行，执行期间新投进来的留到下一帧）
     std::deque<std::function<void()>> batch;
     {
         std::lock_guard<std::mutex> lock(g_mainMutex);
@@ -186,6 +243,61 @@ void pumpMainThread()
             BKLV_LOG_ERROR("主线程回调抛出未知异常");
         }
     }
+}
+
+DelayHandle delay(int delayMs, std::function<void()> callback)
+{
+    if (callback == nullptr)
+        return DelayHandle();
+
+    Delay item;
+    item.due      = std::chrono::steady_clock::now()
+        + std::chrono::milliseconds(delayMs < 0 ? 0 : delayMs);
+    item.callback = std::move(callback);
+
+    std::lock_guard<std::mutex> lock(g_delayMutex);
+    item.id = g_nextDelayId++;
+    const size_t id = item.id;
+    g_delays.push_back(std::move(item));
+    return DelayHandle(id);
+}
+
+void DelayHandle::cancel()
+{
+    if (this->id == 0)
+        return;
+
+    const size_t target = this->id;
+    this->id = 0;
+
+    std::lock_guard<std::mutex> lock(g_delayMutex);
+    for (auto it = g_delays.begin(); it != g_delays.end(); ++it)
+    {
+        if (it->id == target)
+        {
+            g_delays.erase(it);
+            break;
+        }
+    }
+}
+
+bool DelayHandle::isPending() const
+{
+    if (this->id == 0)
+        return false;
+
+    std::lock_guard<std::mutex> lock(g_delayMutex);
+    for (const Delay& item : g_delays)
+        if (item.id == this->id)
+            return true;
+
+    return false;
+}
+
+std::size_t pendingDelayCount()
+{
+    std::lock_guard<std::mutex> lock(g_delayMutex);
+    return g_delays.size();
 }
 
 std::size_t pendingCount()

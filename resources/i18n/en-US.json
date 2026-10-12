@@ -96,7 +96,7 @@
     "event_action": "action: {} ({})",
     "event_pointer": "pointer",
     "event_key": "key/pad",
-    "event_hint": "The framework publishes focus/action events on the bus; this line is updated by a subscriber. Handles are RAII and unsubscribe on destruction."
+    "event_hint": "The framework publishes focus/action events; this line updates live and resets after 3s (via task::delay, cancelling the previous timer)."
   },
   "widgets": {
     "cancel": "Cancel",

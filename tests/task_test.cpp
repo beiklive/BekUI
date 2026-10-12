@@ -102,12 +102,78 @@ int main()
         checkEqualInt(applied.load(), 1, "pump 后执行");
     }
 
-    std::printf("\n== 5. 关停安全 ==\n");
+    std::printf("\n== 5. 延迟任务（delay / cancel）==\n");
+    {
+        task::init(2);
+
+        // 没到点不执行
+        int fired = 0;
+        task::DelayHandle handle = task::delay(50, [&fired] { fired++; });
+        check(handle.isPending(), "刚创建时是挂起的");
+        checkEqualSize(task::pendingDelayCount(), 1, "有一个挂起延迟");
+
+        task::pumpMainThread();
+        checkEqualInt(fired, 0, "没到时间不执行");
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(70));
+        task::pumpMainThread();
+        checkEqualInt(fired, 1, "到时间后由 pump 执行");
+        check(!handle.isPending(), "执行完不再挂起");
+
+        // 0 毫秒：下一次 pump 就跑
+        int immediate = 0;
+        task::delay(0, [&immediate] { immediate++; });
+        task::pumpMainThread();
+        checkEqualInt(immediate, 1, "0ms 下一次 pump 执行");
+
+        // fire-and-forget：句柄是临时对象也必须照常执行（析构不取消）
+        int detached = 0;
+        task::delay(0, [&detached] { detached++; });
+        task::pumpMainThread();
+        checkEqualInt(detached, 1, "不留句柄也会执行（析构不取消）");
+
+        // 显式取消 + 移动语义
+        int explicitCancel = 0;
+        task::DelayHandle manual = task::delay(30, [&explicitCancel] { explicitCancel++; });
+        manual.cancel();
+        check(!manual.isPending(), "显式取消后不再挂起");
+        task::pumpMainThread();
+        checkEqualInt(explicitCancel, 0, "显式取消生效");
+
+        int moved = 0;
+        task::DelayHandle source = task::delay(30, [&moved] { moved++; });
+        task::DelayHandle target = std::move(source);
+        check(!source.isPending(), "被移动的句柄失效");
+        check(target.isPending(), "新句柄接管");
+        target.cancel();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        task::pumpMainThread();
+        checkEqualInt(moved, 0, "移动后取消仍然有效");
+
+        // 工作线程里发起延迟
+        int fromWorker = 0;
+        task::run([&fromWorker] { task::delay(0, [&fromWorker] { fromWorker++; }); }, nullptr);
+        check(waitFor([&] { return task::pendingCount() == 0; }), "工作线程跑完");
+        task::pumpMainThread();
+        checkEqualInt(fromWorker, 1, "工作线程里发起的延迟也能在主线程执行");
+
+        // 空回调不炸
+        task::DelayHandle none = task::delay(10, nullptr);
+        check(!none.isPending(), "空回调直接返回无效句柄");
+    }
+
+    std::printf("\n== 6. 关停安全 ==\n");
     {
         // 还有任务在排队时直接关停：不能崩，也不能再执行回调
         task::run([] { std::this_thread::sleep_for(std::chrono::milliseconds(20)); }, nullptr);
+        // 还有挂起的延迟时关停：必须一起清掉
+        int afterShutdown = 0;
+        task::delay(20, [&afterShutdown] { afterShutdown++; });
         task::shutdown();
+        std::this_thread::sleep_for(std::chrono::milliseconds(40));
         task::pumpMainThread();
+        checkEqualInt(afterShutdown, 0, "关停后挂起的延迟不会执行");
+        checkEqualSize(task::pendingDelayCount(), 0, "关停清空延迟队列");
         checkEqualSize(task::pendingCount(), 0, "关停后没有待执行任务");
         check(!task::isMainThread() == false, "主线程判定仍然可用");
     }

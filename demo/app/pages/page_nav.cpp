@@ -48,23 +48,36 @@ Box* buildNavPage()
     Label* lastEvent = makeHint(getStr("nav/event_none"));
     eventCard->addView(lastEvent);
 
+    // 事件行 3 秒后自动复位；每次来事件都取消上一个延迟再重排（delay + cancel 的真实用法）
+    static task::DelayHandle pendingReset;
+    auto scheduleReset = [lastEvent] {
+        pendingReset.cancel();
+        pendingReset = task::delay(3000, [lastEvent] {
+            if (lastEvent != nullptr)
+                lastEvent->setText(getStr("nav/event_none"));
+        });
+    };
+
     // static：订阅句柄要活过页面构建函数；进程结束自动退订
     static Subscription focusSub = getEventBus().subscribe<FocusChangedEvent>(
-        [lastEvent](const FocusChangedEvent& event) {
+        [lastEvent, scheduleReset](const FocusChangedEvent& event) {
             if (lastEvent == nullptr || event.current == nullptr)
                 return;
             lastEvent->setText(getStr("nav/event_focus", event.current->getClassString()));
+            scheduleReset();
         });
 
     static Subscription actionSub = getEventBus().subscribe<ActionTriggeredEvent>(
-        [lastEvent](const ActionTriggeredEvent& event) {
+        [lastEvent, scheduleReset](const ActionTriggeredEvent& event) {
             if (lastEvent == nullptr || event.view == nullptr)
                 return;
             lastEvent->setText(getStr("nav/event_action", event.view->getClassString(),
                 event.pointer ? getStr("nav/event_pointer") : getStr("nav/event_key")));
+            scheduleReset();
         });
 
     eventCard->addView(makeHint(getStr("nav/event_hint")));
+    // 提示里说明"3 秒后自动复位"，让 delay 的行为对使用者可见
     page->addView(eventCard);
 
     return page;

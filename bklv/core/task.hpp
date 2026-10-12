@@ -54,11 +54,63 @@ void runResult(Work work, Done done)
 // 把一段代码投回主线程（工作线程里调用也安全）
 void postToMain(std::function<void()> callback);
 
+// 延迟句柄：显式 cancel() 用（对标 borealis 的 cancelDelay(iter)）。移动语义，不可拷贝。
+//
+// **析构不取消**：`task::delay(1000, [] { ... });` 这种 fire-and-forget 写法要能生效——
+// 一开始做成"析构即取消"时，临时句柄在语句结束就被销毁，回调静默不触发（测试抓到的）。
+// 如果要"对象死了就别回调"，在回调里捕获 AliveFlag 的句柄（见 core/alive.hpp），
+// 和异步任务的回调用同一套护栏。
+class DelayHandle
+{
+  public:
+    DelayHandle() = default;
+    DelayHandle(size_t id)
+        : id(id)
+    {
+    }
+
+    DelayHandle(const DelayHandle&) = delete;
+    DelayHandle& operator=(const DelayHandle&) = delete;
+
+    DelayHandle(DelayHandle&& other) noexcept
+        : id(other.id)
+    {
+        other.id = 0;
+    }
+
+    DelayHandle& operator=(DelayHandle&& other) noexcept
+    {
+        if (this != &other)
+        {
+            this->id = other.id;
+            other.id = 0;
+        }
+        return *this;
+    }
+
+    // 取消这次延迟（已经执行过或已取消则是空操作）
+    void cancel();
+    bool isPending() const;
+
+  private:
+    size_t id = 0;
+};
+
+// 延迟 delayMs 毫秒后在**主线程**执行 callback（对标 borealis 的 brls::delay + cancelDelay）。
+//
+// 与 borealis 的差别：不占线程、也不用每帧复制整个队列——到期时间排在一个表里，
+// 由 pumpMainThread()（App::frame 每帧）检查一遍；取消用 RAII 句柄，不用记 iter 编号。
+// 时间基准是 steady_clock（真实毫秒），和补间用的帧时间不是一回事。
+DelayHandle delay(int delayMs, std::function<void()> callback);
+
 // 由 App::frame 每帧调用一次：执行已排到主线程的回调
 void pumpMainThread();
 
 // 还没跑完的任务数（排队 + 正在执行）
 std::size_t pendingCount();
+
+// 还没到期的延迟任务数
+std::size_t pendingDelayCount();
 
 // 当前线程是不是主线程（init 时记录）
 bool isMainThread();
