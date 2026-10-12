@@ -94,9 +94,9 @@
 | Scroll test | demo「滚动」页 | ✅ | 独立 ScrollingFrame + 20 行按钮验证"焦点走到哪外层滚到哪" |
 | Pokedex（RecyclerFrame 两段 + 详情页） | demo「图鉴」页 | ✅ 改良 | 回收器补上分段：`getSectionCount` / `getItemCountInSection` / `getSectionTitle` / `getItemIdentifierInSection` / 表头行。**接口用 `*InSection` 后缀**——borealis 是重载 `getItemCount()`/`getItemCount(section)`，派生类只重写一个会把另一个名字隐藏掉（C++ 名字隐藏），我们避开这个坑。精灵图是任天堂 IP，用类型色圆 + 名称首字自绘占位，数据自造 |
 | Settings（6 种 Cell 全家桶 + 运行时开关） | demo「设置」页 | ✅ |
-| About | — | ❌ 待补 |
-| （被注释的）Popups / notifications / dialogs | 弹层页（部分） | ⚠️ 待补 Notification |
-| （被注释的）Horizon / Misc layouts | — | ❌ 待补 |
+| About | 不适用 | ➖ | **borealis demo 没有 About tab**：`resources/xml/activity/main.xml` 的 tab 只有 components / layout / transform / text / scroll / pokedex / settings。之前把它列成待补是我记错了，这里更正 |
+| （被注释的）Popups / notifications / dialogs | demo「弹层」页 + 「设置」页的 Toast | ✅ | borealis 里这个 tab 是注释掉的（`<!-- <brls:Tab label="@i18n/demo/tabs/popups" /> -->`）；我们做了：Dialog、EditTextDialog（弹层页）与 Notification/Toast（设置页） |
+| （被注释的）Horizon / Misc layouts | 不适用 | ➖ | 同样是 borealis 里注释掉的空 tab（没有对应实现可对标）。要做得先定义"Horizon 布局"具体指什么，属于新增需求而不是补齐 |
 
 ## 六、无法实现 / 必须说明的
 
