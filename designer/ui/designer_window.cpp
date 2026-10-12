@@ -1461,7 +1461,10 @@ void DesignerWindow::drawTree()
                     }
                     ImGui::PopID();
                 }
-                if (open)
+                // "只看层"时**不能**进这个子块：Leaf|NoTreePushOnOpen 下 open 恒为 true，
+                // 子块会照跑并调 TreePop() —— 那相当于多调一次 PopID（ImGui 会报
+                // "Calling PopID() too many times!"，每层报一次）。而且字段也根本没被隐藏。
+                if (open && !this->onlyLayers)
                 {
                     if (ImGui::IsItemClicked())
                     {
@@ -2528,9 +2531,14 @@ void DesignerWindow::drawPreview()
     if (this->canvasPreset == 0)
     {
         const ImVec2 stage = ImGui::GetContentRegionAvail();
+        // 左边可能还有层序条（132 + 间距），算画布能不能放下时要扣掉，
+        // 否则自适应会挑一个大一档的缩放、画布右侧被裁（踩过）
+        const bool stripVisible = !this->currentWidget.empty() && this->doc.layerCount() > 0
+            && !this->previewCompare;
+        const float stageW = stage.x - (stripVisible ? 148.0f : 0.0f);
         const float needW  = (float)this->canvasWidth;
         const float needH  = (float)this->canvasHeight - 96.0f; // 上面的控制行
-        const float fit    = std::min(stage.x / std::max(1.0f, needW),
+        const float fit    = std::min(stageW / std::max(1.0f, needW),
                           stage.y / std::max(1.0f, needH));
         const float choices[] = { 0.5f, 0.75f, 1.0f, 1.5f };
         for (const float choice : choices)
@@ -2658,6 +2666,48 @@ void DesignerWindow::drawPreview()
             this->canvasPanX += delta.x;
             this->canvasPanY += delta.y;
         }
+    }
+
+    // 层序条：按绘制顺序列出各层（第一个画的在最上面），点一下就选中那一层。
+    // 这是"我在改哪一层、它在绘制顺序里的位置"最省事的答案 —— 比在预览里猜哪块是哪层靠谱。
+    if (this->currentWidget.empty() == false && this->doc.layerCount() > 0
+        && !this->previewCompare)
+    {
+        ImGui::BeginChild("##layerStrip", ImVec2(132.0f, 0.0f), true);
+        ImGui::TextColored(mutedColor(), "绘制顺序");
+        for (int i = 0; i < this->doc.layerCount(); i++)
+        {
+            const bool selected = this->selection.kind == SelKind::LAYER
+                && this->selection.index == i;
+            std::string label = "#" + std::to_string(i + 1) + " " + this->doc.layerOp(i);
+
+            // 用一个色块示意这层画出来的颜色（能解出色值就解，解不出用暗色）
+            AppearanceDoc::Json fillValue;
+            std::string fillText;
+            if (this->doc.getLayerValue(i, "fill", fillValue) && fillValue.is_string())
+                fillText = fillValue.get<std::string>();
+            ImU32 swatch = 0;
+            if (const std::string key = themeKeyFromReference(fillText); !key.empty())
+                swatch = getTheme().color(key, 0);
+            else
+                swatch = parseHexColor(fillText);
+            if ((swatch & IM_COL32_A_MASK) == 0)
+                swatch = IM_COL32(255, 255, 255, 28);
+
+            const ImVec2 rowStart = ImGui::GetCursorScreenPos();
+            if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), selected,
+                    ImGuiSelectableFlags_None, ImVec2(0, 20)))
+            {
+                this->selection = Selection{};
+                this->selection.kind  = SelKind::LAYER;
+                this->selection.index = i;
+                this->previewDirty    = true;
+            }
+            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(rowStart.x + 2.0f, rowStart.y + 4.0f),
+                ImVec2(rowStart.x + 14.0f, rowStart.y + 16.0f), swatch, 3.0f);
+        }
+        ImGui::EndChild();
+        ImGui::SameLine();
     }
 
     // 画布在预览区里居中（以前贴左上角，看着像没画完）

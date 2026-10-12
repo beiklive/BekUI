@@ -47,6 +47,18 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## 自查纪律（每轮都做）
+
+"上一轮的功能到底生效没有"要**当场验证**，不能只看代码写完就报完成。这轮就是这么抓到两个 bug 的：
+
+- **"只看层"没生效**：`TreeNodeFlags_Leaf | NoTreePushOnOpen` 下 `TreeNodeEx` 返回的 `open`
+  **恒为 true**，子块照跑 → 字段没被隐藏 ✗
+- **同一个根因还带出 ImGui 断言** `Calling PopID() too many times!`（每层报一次）：
+  子块里调的 `TreePop()` 在 `NoTreePushOnOpen` 模式下等于多调一次 `PopID`
+
+修法：`if (open && !this->onlyLayers)`。教训：用 `Leaf|NoTreePushOnOpen` 就必须
+**完全跳过**子块，不能只靠 `open` 判断。
+
 ## 视觉规范（改界面时照这个来）
 
 - **配色跟着主题走**：`designer/ui/designer_style.*` 读当前主题的语义色
@@ -82,7 +94,7 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 | 打开项目 | 文件浏览器（选 `theme.json`），不再手输路径 |
 | 找控件 | 文件列表带搜索 + **最近修改**快捷区 + 每个控件标 `●` 未保存；树里有**只看层**开关 |
 | 改属性 | 属性表按分组 + **字段过滤框**；标签左列对齐、未写字段用暗色 `·`；层操作就在层那一行 |
-| 看效果 | 画布居中、**自适应时挑一个铺满预览区的缩放**、网格/中线可切、模式说明不裁 |
+| 看效果 | 画布居中、**自适应时挑一个铺满预览区的缩放**、**画布左侧的层序条**（按绘制顺序列出各层、带色块、点一下就选中那层）、网格/中线可切 |
 | 存 | diff → 校验 → 增量写盘 + `.bak` → 热重载 |
 | 反悔 | Ctrl+Z / Ctrl+Y（撤销栈在 core，有测试） |
 
