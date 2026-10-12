@@ -2679,7 +2679,7 @@ void DesignerWindow::drawPreview()
         {
             const bool selected = this->selection.kind == SelKind::LAYER
                 && this->selection.index == i;
-            std::string label = "#" + std::to_string(i + 1) + " " + this->doc.layerOp(i);
+            std::string label = "    #" + std::to_string(i + 1) + " " + this->doc.layerOp(i);
 
             // 用一个色块示意这层画出来的颜色（能解出色值就解，解不出用暗色）
             AppearanceDoc::Json fillValue;
@@ -2691,8 +2691,7 @@ void DesignerWindow::drawPreview()
                 swatch = getTheme().color(key, 0);
             else
                 swatch = parseHexColor(fillText);
-            if ((swatch & IM_COL32_A_MASK) == 0)
-                swatch = IM_COL32(255, 255, 255, 28);
+            const bool translucent = (swatch & IM_COL32_A_MASK) < IM_COL32(255, 255, 255, 255);
 
             const ImVec2 rowStart = ImGui::GetCursorScreenPos();
             if (ImGui::Selectable((label + "##" + std::to_string(i)).c_str(), selected,
@@ -2703,8 +2702,26 @@ void DesignerWindow::drawPreview()
                 this->selection.index = i;
                 this->previewDirty    = true;
             }
-            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(rowStart.x + 2.0f, rowStart.y + 4.0f),
-                ImVec2(rowStart.x + 14.0f, rowStart.y + 16.0f), swatch, 3.0f);
+            // 透明/半透明用棋盘纹示意（和预览画布的"网格底"一个意思）：
+            // 直接画一块淡色的话，看不出"这层是透明的"
+            const ImVec2 chipMin(rowStart.x + 3.0f, rowStart.y + 3.0f);
+            const ImVec2 chipMax(rowStart.x + 17.0f, rowStart.y + 17.0f);
+            if (translucent)
+            {
+                ImGui::GetWindowDrawList()->AddRectFilled(chipMin, chipMax,
+                    IM_COL32(70, 70, 70, 255), 3.0f);
+                for (float x = chipMin.x; x < chipMax.x; x += 4.0f)
+                    for (float y = chipMin.y; y < chipMax.y; y += 4.0f)
+                        if (((int)((x - chipMin.x) / 4.0f) + (int)((y - chipMin.y) / 4.0f)) % 2 == 0)
+                            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x, y),
+                                ImVec2(std::min(x + 4.0f, chipMax.x), std::min(y + 4.0f, chipMax.y)),
+                                IM_COL32(110, 110, 110, 255));
+                // 再叠一层这层自己的颜色，能看出半透明的色偏
+                if ((swatch & IM_COL32_A_MASK) != 0)
+                    ImGui::GetWindowDrawList()->AddRectFilled(chipMin, chipMax, swatch, 3.0f);
+            }
+            else
+                ImGui::GetWindowDrawList()->AddRectFilled(chipMin, chipMax, swatch, 3.0f);
         }
         ImGui::EndChild();
         ImGui::SameLine();
@@ -3143,6 +3160,9 @@ void DesignerWindow::drawProps()
                         edited();
                     });
             }
+
+            if (this->propFilter[0] != 0 && layer->empty())
+                ImGui::TextColored(mutedColor(), "（没有匹配 \"%s\" 的字段）", this->propFilter);
 
             ImGui::Spacing();
             ImGui::TextColored(accentColor(), "层操作");
