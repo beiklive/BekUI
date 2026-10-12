@@ -85,5 +85,9 @@
   "notification": {
     "background": "#1f2227f0",
     "text": "#ffffff"
+  },
+  "debug": {
+    "bounds": "#00ffcc8c",
+    "text": "#ffffffe6"
   }
 }

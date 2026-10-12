@@ -167,7 +167,8 @@
     "status": "Bottom bar status",
     "notify_title": "Notification",
     "notify_cell": "Post a notification",
-    "notify_text": "This is a notification"
+    "notify_text": "This is a notification",
+    "wireframe": "View bounds (wireframe)"
   },
   "transform": {
     "hint": "The box below never triggers a relayout - transforms only affect drawing.",

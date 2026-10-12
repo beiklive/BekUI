@@ -35,6 +35,7 @@
 #include "bklv/core/view.hpp"
 
 // ---- views：语义控件 ----
+#include "bklv/views/debug_layer.hpp"
 #include "bklv/views/debug_window.hpp"
 #include "bklv/views/h_scrolling_frame.hpp"
 #include "bklv/views/image.hpp"

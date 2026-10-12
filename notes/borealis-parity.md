@@ -25,7 +25,7 @@
 | `views/widgets/battery` | `widgets/status_area.*` 的 `BatteryIcon` | ✅ 改良 | 矢量自绘（外壳 + 电量条 + 充电闪电），不用 `img/sys/*` 那套疑似系统图形；数据源可插拔（`setProvider`） |
 | `views/widgets/wireless` | `widgets/status_area.*` 的 `WirelessIcon` | ✅ 改良 | 矢量自绘（三段弧按等级点亮 / 以太网方块）；Switch 走 `nifm` 的类型+强度，桌面可注入 |
 | **`views/widgets/account`** | — | ❌ 待补 | 头像 + 昵称；数据源要可插拔（Switch 用 account 服务，桌面无） |
-| `views/debug_layer`（画视图边界/wireframe） | `views/debug_window`（日志窗口） | ⚠️ 部分 | 日志有了，缺"框出每个 View + 显示尺寸"的调试层 |
+| `views/debug_layer`（画视图边界/wireframe） | `views/debug_layer.*` + `App::setDebugLayerEnabled` | ✅ 改良 | 收集边界是**纯函数**（能无窗口测）；颜色在主题里；根视图就绪前的请求会排队补上 |
 | — | `views/json_cell` | ➕ 多出 | JSON 模板驱动的列表项 |
 | — | `widgets/appearance_view` / `status_area` / `hints_bar` | ➕ 多出 | 外观驱动基类与底栏两块内容 |
 
@@ -61,13 +61,13 @@
 | logger | `core/logger.hpp` + `views/debug_window` | ✅ |
 | platform / assets | `core/platform.hpp` / `core/resource.hpp` | ✅ |
 | view / box / frame_context | `core/view.hpp` / `core/box.hpp` | ✅ |
-| **activity**（Activity 栈 + 转场动画） | `AppletFrame` 的内容栈 | ⚠️ 无独立 Activity 与转场动画 |
-| **audio**（8 种系统音效） | — | ❌ 待补（SDL3 audio + Switch audren） |
+| activity（Activity 栈 + 转场动画） | `AppletFrame` 的内容栈 | ⚠️ 无独立 Activity 与转场动画（待补） |
+| audio（8 种系统音效） | — | ❌ 待补（SDL3 audio + Switch audren） |
 | **video** | — | ❌ 见"无法实现"一节 |
-| **notification_manager**（Toast） | — | ❌ 待补 |
-| **task / thread**（异步任务、线程池） | — | ❌ 待补（异步加载图片是真需求） |
+| notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
+| task / thread（异步任务、线程池） | — | ❌ 待补（异步加载图片是真需求，本轮做） |
 | **event**（事件总线） | 动作系统 | ⚠️ 部分 |
-| **gesture / touch/** | — | ❌ 待补 |
+| gesture / touch/ | `core/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
 | singleton / util / main | — | ➖ 工具类，不逐个对等 |
 
 ## 四、平台与渲染
@@ -88,12 +88,12 @@
 | borealis demo 页 | bklv demo | 状态 |
 |---|---|---|
 | Basic components（HScroll / 5 种按钮 / Slider / Label 对齐 / 图片 5 种缩放） | 控件页（部分） | ⚠️ 待补：图片缩放 5 例、按钮样式齐全 |
-| Layout and alignment（flex 四组 + grow + wireframe） | 布局页（部分） | ⚠️ 待补 wireframe（调试层） |
-| **Transform test**（translate/scale/skew/rotate/fontScale + 多段缓动） | — | ❌ 依赖 View 变换 |
+| Layout and alignment（flex 四组 + grow + wireframe） | 布局页 + 设置页的 wireframe 开关 | ✅ |
+| Transform test（translate/scale/skew/rotate/fontScale + 多段缓动） | demo「变换」页 | ✅ |
 | Text test（宽高/对齐/singleLine 实时调） | 文本页（部分） | ⚠️ 待补交互式调节 |
 | Scroll test | 列表/滚动页 | ⚠️ 待补独立页 |
 | Pokedex（RecyclerFrame 两段 + 详情页） | 列表页（Recycler） | ⚠️ 待补分段与详情页导航 |
-| Settings（6 种 Cell 全家桶 + 运行时开关） | 主题/控件页（部分） | ❌ 依赖 cells |
+| Settings（6 种 Cell 全家桶 + 运行时开关） | demo「设置」页 | ✅ |
 | About | — | ❌ 待补 |
 | （被注释的）Popups / notifications / dialogs | 弹层页（部分） | ⚠️ 待补 Notification |
 | （被注释的）Horizon / Misc layouts | — | ❌ 待补 |
@@ -144,6 +144,12 @@
 | 滚轮会误触发拖动/轻触 | 单独的 `SCROLL` 状态，只有滚动识别器响应 |
 | 换根/销毁后手势目标成野指针 | `resetFocusState()` 里一并清 `gestureTarget`（和模态栈同一个坑） |
 | demo 里滑块/手势的 lambda 捕获了构建函数的局部变量（悬空） | 值放到 `shared_ptr` 上，捕获共享指针 |
+
+### debug layer（本轮）
+
+| 现象 | 根因 | 修法 |
+|---|---|---|
+| 开了调试层却什么都看不到 | `App::setDebugLayerEnabled` 在根视图就绪前被静默忽略（窗口创建前调用） | 记下 `debugLayerRequested`，`setRootView` 之后补开（和通知排队同一套做法） |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

@@ -167,7 +167,8 @@
     "status": "底栏状态区",
     "notify_title": "通知",
     "notify_cell": "弹一条通知",
-    "notify_text": "这是一条通知"
+    "notify_text": "这是一条通知",
+    "wireframe": "显示视图边界（wireframe）"
   },
   "transform": {
     "hint": "下面这个方块不参与布局重排——变换只改绘制。Play 会跑四段不同缓动的补间。",

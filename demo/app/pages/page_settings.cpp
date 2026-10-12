@@ -77,6 +77,14 @@ Box* buildSettingsPage()
 
     BooleanCell* logCell = new BooleanCell(getStr("settings/show_log"), false);
     switches->addView(logCell);
+
+    // 调试层（对应 borealis Settings 页的 "Debug Layer" 与 XML 的 wireframe）
+    BooleanCell* wireCell = new BooleanCell(getStr("settings/wireframe"), false);
+    wireCell->setOnChange([](bool value) {
+        if (App* app = App::getCurrent())
+            app->setDebugLayerEnabled(value);
+    });
+    switches->addView(wireCell);
     page->addView(switches);
 
     // ---- 选择器（SelectorCell）----

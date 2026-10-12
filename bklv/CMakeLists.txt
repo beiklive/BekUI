@@ -278,6 +278,7 @@ set(BKLV_CORE_SOURCES
     views/h_scrolling_frame.cpp
     views/json_cell.cpp
     views/recycler.cpp
+    views/debug_layer.cpp
     views/image.cpp
     views/progress_spinner.cpp
     views/debug_window.cpp

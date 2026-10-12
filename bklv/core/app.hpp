@@ -25,6 +25,7 @@ namespace bklv
 {
 
 class NotificationManager;
+class DebugLayer;
 
 class App
 {
@@ -85,6 +86,11 @@ class App
     // 通知层（想改位置/上限/样式就自己拿它调）
     NotificationManager* getNotifications();
 
+    // 调试层：把所有视图的边界框出来（对标 borealis 的 debug view / wireframe）
+    void setDebugLayerEnabled(bool enabled);
+    bool isDebugLayerEnabled() const { return this->debugLayer != nullptr; }
+    DebugLayer* getDebugLayer() const { return this->debugLayer; }
+
     bool pushOverlay(View* overlay, bool closeOnBack = true);
     void popOverlay(View* overlay, bool free = false);
 
@@ -108,6 +114,8 @@ class App
 
     View* root = nullptr;
     NotificationManager* notifications = nullptr;
+    DebugLayer* debugLayer = nullptr;
+    bool debugLayerRequested = false; // 根视图还没就绪时先记下（setRootView 后再开）
     // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
     std::vector<std::pair<std::string, float>> pendingNotifications;
 

@@ -1,5 +1,6 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/views/debug_layer.hpp"
 #include "bklv/widgets/notification.hpp"
 
 #include "bklv/core/resource.hpp"
@@ -56,8 +57,9 @@ App::~App()
 
 void App::setRootView(View* view)
 {
-    // 通知层挂在旧根上，换根后指针失效（和模态栈一样必须清掉）
+    // 通知层/调试层挂在旧根上，换根后指针失效（和模态栈一样必须清掉）
     this->notifications = nullptr;
+    this->debugLayer    = nullptr;
 
     if (this->root == view)
         return;
@@ -78,6 +80,10 @@ void App::setRootView(View* view)
     getInputManager().setRoot(this->root);
     if (this->root != nullptr)
         getInputManager().giveFocus(this->root->getDefaultFocus());
+
+    // 窗口/根视图就绪前请求过调试层的话，现在补上
+    if (this->debugLayerRequested)
+        this->setDebugLayerEnabled(true);
 
     // 补发排队中的通知（在此之前 App::notify 只能先记下来）
     if (!this->pendingNotifications.empty())
@@ -186,6 +192,32 @@ void App::notify(const std::string& text, float duration)
 
     manager->notify(text, duration);
     this->requestLayout();
+}
+
+void App::setDebugLayerEnabled(bool enabled)
+{
+    // 根视图还没就绪（窗口创建前就调用）：先记下来，setRootView 之后再真正创建。
+    // 静默忽略过一次，结果"开了调试层却什么都看不到"（踩过）。
+    this->debugLayerRequested = enabled;
+
+    if (this->root == nullptr)
+        return;
+
+    Box* rootBox = this->root->asBox();
+    if (rootBox == nullptr)
+        return;
+
+    if (enabled && this->debugLayer == nullptr)
+    {
+        this->debugLayer = new DebugLayer();
+        this->debugLayer->setRoot(this->root);
+        rootBox->addView(this->debugLayer); // 最后一个子节点 → 画在最上层
+    }
+    else if (!enabled && this->debugLayer != nullptr)
+    {
+        rootBox->removeView(this->debugLayer, true);
+        this->debugLayer = nullptr;
+    }
 }
 
 bool App::pushOverlay(View* overlay, bool closeOnBack)
