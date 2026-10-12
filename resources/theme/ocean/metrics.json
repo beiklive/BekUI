@@ -31,8 +31,7 @@
   },
   "control": {
     "height": 44,
-    "minWidth": 132,
-    "paddingX": 20
+    "minWidth": 132
   },
   "header": {
     "height": 55
@@ -71,8 +70,7 @@
   },
   "hintItem": {
     "paddingX": 16,
-    "paddingY": 4,
-    "gap": 8
+    "paddingY": 4
   },
   "appletFrame": {
     "headerHeight": 88,

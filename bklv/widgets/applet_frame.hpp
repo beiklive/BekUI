@@ -65,6 +65,9 @@ class AppletFrame : public Box
 
     void update() override;
 
+    // 外壳铺页面底色（color.surface.page，对应 borealis 的 brls/background）
+    void applyTheme() override;
+
     std::string getClassString() const override { return "bklv::AppletFrame"; }
 
   private:

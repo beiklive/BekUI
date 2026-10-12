@@ -19,7 +19,14 @@ class ProgressSpinner : public View
     // 一圈需要多少秒。
     void setDuration(float seconds) { this->duration = seconds; }
     void setThickness(float thickness) { this->thickness = thickness; }
-    void setColor(ImU32 color) { this->spinnerColor = color; }
+    void setColor(ImU32 color)
+    {
+        this->spinnerColor   = color;
+        this->colorExplicit  = true;
+    }
+
+    // 跟随主题（color.spinner.bar，对应 brls/spinner/bar_color）；显式设过就不覆盖
+    void applyTheme() override;
 
     // 每帧推进旋转角度。
     void update() override;
@@ -34,7 +41,8 @@ class ProgressSpinner : public View
     float duration  = 1.2f;
     float thickness = 3.0f;
     int segments    = 12;
-    ImU32 spinnerColor = IM_COL32(120, 190, 255, 255);
+    ImU32 spinnerColor  = IM_COL32(120, 190, 255, 255);
+    bool colorExplicit  = false;
 };
 
 } // namespace bklv

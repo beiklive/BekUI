@@ -46,6 +46,8 @@ AppletFrame::AppletFrame(View* contentView)
             this->onDismiss();
     });
 
+    this->applyTheme();
+
     if (contentView != nullptr)
     {
         this->contentStack.push_back(contentView);
@@ -64,6 +66,11 @@ AppletFrame::~AppletFrame()
         if (view != nullptr && view != this->contentView && view->getParent() == nullptr)
             delete view;
     }
+}
+
+void AppletFrame::applyTheme()
+{
+    this->setBackgroundColor(getTheme().color("color.surface.page", IM_COL32(45, 45, 45, 255)));
 }
 
 void AppletFrame::setTitle(const std::string& title)

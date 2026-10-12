@@ -1,7 +1,6 @@
 {
   "app": {
     "title": "bklv 能力总览",
-    "subtitle": "左侧栏切换页面 · 上下移动焦点 · 回车触发",
     "pages": "页面",
     "show_log": "显示日志",
     "hide_log": "隐藏日志"
@@ -14,30 +13,19 @@
     "json": "JSON",
     "theme": "主题",
     "nav": "导航",
-    "applet": "框架",
     "overlay": "弹层"
   },
   "demo": {
+    "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
     "welcome": "欢迎使用 bklv",
-    "desc": "布局用 Yoga，绘制用 ImGui 的 ImDrawList；控件层不接触任何图形 API。",
-    "lang_button": "切换语言",
-    "lang_current": "当前语言：{}",
-    "list_count": "共 {} 项"
+    "list_count": "共 {} 项",
+    "lang_current": "当前语言：{}"
   },
   "hints": {
     "ok": "确定",
-    "back": "返回",
-    "scroll": "滚动",
     "cancel": "取消"
   },
   "json": {
-    "hint": "这一页的界面来自 resources/views/*.json：属性表按类静态注册，值支持原生类型与 \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" 前缀。列表项模板同理，只是把取值交给绑定回调。",
-    "file_section": "整块界面由 JSON 描述",
-    "list_section": "列表项模板由 JSON 描述 + 数据绑定",
-    "load_failed": "JSON 装载失败，详见日志窗口",
-    "card_title": "来自 JSON 的卡片",
-    "card_desc": "文字、间距、圆角、颜色都写在 JSON 里，改文案不用重新编译逻辑。",
-    "badge": "JSON 属性",
     "row_title": "第 {} 行（模板相同，数据不同）",
     "row_subtitle": "字段 title / subtitle / thumb 由 C++ 侧的 binder 提供"
   },
@@ -53,15 +41,12 @@
     "states_title": "状态动效",
     "states_desc": "方向键左右移动焦点，观察颜色补间；按回车看按下反馈。",
     "focus_sample": "按钮 {}",
-    "bottom_hint": "底栏也是外观驱动的：上边线 + 一行文字，结构在 widgets/bottom_bar.json",
     "dialog_title": "弹窗",
     "dialog_desc": "遮罩与面板都是外观驱动的：透明度与位移的补间写在 JSON 里。打开时输入切到模态——点外面、方向键都不会穿透到下面的界面，关闭后焦点自动回到原来那个按钮。",
     "open_dialog": "打开弹窗",
     "dialog_demo_title": "这是一个弹窗",
     "dialog_demo_text": "面板、标题、正文、按钮的位置与动效都来自主题 JSON。试试点遮罩外面：不会穿透。",
     "dialog_cancel": "取消",
-    "dropdown_title": "下拉选择",
-    "dropdown_desc": "点开是一个弹层：列表锚在触发器正下方，输入切模态，点外面或选完自动关。选项外观（选中/聚焦配色）也在 JSON 里。",
     "dropdown_label": "画质",
     "dropdown_picked": "当前选择：{}",
     "option_1": "低",
@@ -86,23 +71,7 @@
     "page_c": "第三页内容",
     "body_a": "切到别的 tab 再切回来，这一页不会被重建。",
     "body_b": "页面内容由使用方提供，TabFrame 只管切换与外观。",
-    "body_c": "tab 格子的外观来自主题里的 widgets/tab_cell.json。",
-    "sidebar_title": "导航",
-    "item_1": "第一个条目",
-    "item_2": "第二个条目",
-    "item_3": "第三个条目"
-  },
-  "applet": {
-    "hint": "AppletFrame 是宿主框架：页头 + 内容栈 + 底栏。点「下钻一层」进子页，按回车/B 逐层返回；内容只脱离不销毁，返回时状态还在。页头样式切换走的是另一份外观文件（variant）。",
-    "title": "设置",
-    "subtitle": "AppletFrame 演示",
-    "level": "第 {} 层",
-    "level_hint": "当前是第 {} 层内容。底栏会显示当前焦点的动作提示。",
-    "push": "下钻一层",
-    "pop": "返回上一层",
-    "toggle_header": "换成 Popup 页头",
-    "header_popup": "换成 Regular 页头",
-    "header_regular": "换成 Popup 页头"
+    "body_c": "tab 格子的外观来自主题里的 widgets/tab_cell.json。"
   },
   "widgets": {
     "cancel": "取消",
@@ -128,7 +97,6 @@
     "list_sub": "回收列表（单元格复用）",
     "json_sub": "整块界面来自 JSON 描述",
     "nav_sub": "TabFrame 与 Sidebar",
-    "applet_sub": "AppletFrame 的内容栈",
     "overlay_sub": "弹窗与文本输入"
   },
   "text": {

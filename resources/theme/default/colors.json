@@ -26,8 +26,6 @@
     "subtle": "#515151"
   },
   "highlight": {
-    "color1": "#198ac6",
-    "color2": "#89f1f2",
     "background": "#1f2227",
     "border": "#198ac6",
     "glow": "#89f1f233"
@@ -43,9 +41,6 @@
   },
   "spinner": {
     "bar": "#c0c0c050"
-  },
-  "list": {
-    "value": "#58c3a9"
   },
   "button": {
     "highlightText": "#07f7c6",

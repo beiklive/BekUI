@@ -1,7 +1,6 @@
 {
   "app": {
     "title": "bklv capability overview",
-    "subtitle": "Sidebar switches pages · arrows move focus · Enter activates",
     "pages": "Pages",
     "show_log": "Show log",
     "hide_log": "Hide log"
@@ -14,30 +13,19 @@
     "json": "JSON",
     "theme": "Theme",
     "nav": "Nav",
-    "applet": "Frame",
     "overlay": "Overlays"
   },
   "demo": {
+    "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
     "welcome": "Welcome to bklv",
-    "desc": "Layout by Yoga, drawing by ImGui's ImDrawList; the view layer never touches a graphics API.",
-    "lang_button": "Switch language",
-    "lang_current": "Language: {}",
-    "list_count": "{} items"
+    "list_count": "{} items",
+    "lang_current": "Locale: {}"
   },
   "hints": {
     "ok": "OK",
-    "back": "Back",
-    "scroll": "Scroll",
     "cancel": "Cancel"
   },
   "json": {
-    "hint": "This page comes from resources/views/*.json: attribute tables are per-class static, values accept native types and \"12px\" / \"50%\" / \"@i18n/\" / \"@style/\" / \"@theme/\" / \"@res/\" prefixes. List items are the same idea, with values supplied by a binder.",
-    "file_section": "Whole section described by JSON",
-    "list_section": "List item template from JSON + data binding",
-    "load_failed": "JSON failed to load, see the log window",
-    "card_title": "Card from JSON",
-    "card_desc": "Text, spacing, radius and colors all live in JSON; copy changes need no rebuild.",
-    "badge": "JSON attributes",
     "row_title": "Row {} (same template, different data)",
     "row_subtitle": "fields title / subtitle / thumb come from a C++ binder"
   },
@@ -53,15 +41,12 @@
     "states_title": "State animation",
     "states_desc": "Move focus with left/right, watch the color tween; press A to see the press feedback.",
     "focus_sample": "Button {}",
-    "bottom_hint": "The bottom bar is appearance-driven too: top line + one line of text, structure in widgets/bottom_bar.json",
     "dialog_title": "Dialog",
     "dialog_desc": "Backdrop and panel are appearance-driven: opacity and offset tweens live in JSON. While open, input is modal - clicks outside and arrow keys do not reach the page below, and focus returns to the button that opened it.",
     "open_dialog": "Open dialog",
     "dialog_demo_title": "This is a dialog",
     "dialog_demo_text": "Panel, title, body and button placement all come from theme JSON. Try clicking outside: it will not pass through.",
     "dialog_cancel": "Cancel",
-    "dropdown_title": "Dropdown",
-    "dropdown_desc": "Opens as an overlay: the list is anchored right below the trigger, input becomes modal, and it closes on outside click or selection. Option appearance (selected/focused colors) is in JSON too.",
     "dropdown_label": "Quality",
     "dropdown_picked": "Selected: {}",
     "option_1": "Low",
@@ -86,23 +71,7 @@
     "page_c": "Third page",
     "body_a": "Switch away and back - this page is not rebuilt.",
     "body_b": "Content is provided by the caller; TabFrame only handles switching and appearance.",
-    "body_c": "Tab cell appearance comes from widgets/tab_cell.json in the theme.",
-    "sidebar_title": "Nav",
-    "item_1": "Item one",
-    "item_2": "Item two",
-    "item_3": "Item three"
-  },
-  "applet": {
-    "hint": "AppletFrame is the app shell: header + content stack + bottom bar. Press 'push' to drill in, Enter/B to go back level by level; content is detached, not destroyed, so its state survives.",
-    "title": "Settings",
-    "subtitle": "AppletFrame demo",
-    "level": "Level {}",
-    "level_hint": "This is level {} content. The bottom bar shows the focused action's hints.",
-    "push": "Drill in",
-    "pop": "Go back",
-    "toggle_header": "Switch to Popup header",
-    "header_popup": "Switch to Regular header",
-    "header_regular": "Switch to Popup header"
+    "body_c": "Tab cell appearance comes from widgets/tab_cell.json in the theme."
   },
   "widgets": {
     "cancel": "Cancel",
@@ -128,7 +97,6 @@
     "list_sub": "Recycler list (cell reuse)",
     "json_sub": "A whole screen described in JSON",
     "nav_sub": "TabFrame and Sidebar",
-    "applet_sub": "AppletFrame content stack",
     "overlay_sub": "Dialogs and text input"
   },
   "text": {

@@ -5,7 +5,7 @@
       "id": "bg",
       "fill": "@theme/color.button.defaultBg",
       "stroke": "@theme/color.button.defaultBorder",
-      "strokeWidth": "@theme/metric/button.borderThickness",
+      "strokeWidth": "@theme/metric.button.borderThickness",
       "radius": "@theme/metric.radius.md"
     },
     {
@@ -75,7 +75,7 @@
     },
     "disabled": {
       "bg.fill": {
-        "to": "@theme/color/state.disabled",
+        "to": "@theme/color.state.disabled",
         "duration": 150
       },
       "title.color": {

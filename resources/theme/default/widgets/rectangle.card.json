@@ -4,7 +4,7 @@
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.surface.card",
-      "stroke": "@theme/color/border.subtle",
+      "stroke": "@theme/color.border.subtle",
       "strokeWidth": 1,
       "radius": "@theme/metric.radius.lg"
     }

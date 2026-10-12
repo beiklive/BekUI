@@ -34,11 +34,20 @@ Sidebar::Sidebar(const std::string& title)
     this->titleLabel->setTextColorExplicit(false);
     this->headerBox->addView(this->titleLabel);
 
+    // 条目放进可滚动容器：条目高度是 borealis 的 70，页数多了会超出可视区，
+    // 滚动条会跟着焦点走（ScrollingFrame 自带"焦点必须在可视区内"）
+    this->itemScroller = new ScrollingFrame();
+    this->itemScroller->setWidthPercentage(100.0f);
+    this->itemScroller->setGrow(1.0f);
+    this->itemScroller->setShowScrollingIndicator(true);
+    this->itemScroller->setScrollingBehavior(ScrollingBehavior::FOCUS);
+    this->addView(this->itemScroller);
+
     this->itemBox = new Box(Axis::COLUMN);
     this->itemBox->setWidthPercentage(100.0f);
-    this->itemBox->setGrow(1.0f);
+    this->itemBox->setHeight(AUTO);
     this->itemBox->setGap(getTheme().number("metric.spacing.xs", 4.0f));
-    this->addView(this->itemBox);
+    this->itemScroller->setContentView(this->itemBox);
 
     this->applyPanelLook();
 }
@@ -61,6 +70,8 @@ void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onSele
 
     TabCell* cell = new TabCell();
     cell->setTitle(itemTitle);
+    // 侧栏条目高度用 sidebar.itemHeight（borealis 是 70），不是 tab 格子那档
+    cell->setHeight(getTheme().number("metric.sidebar.itemHeight", 70.0f));
     cell->setOnSelect([this, index, onSelect] {
         this->setSelectedIndex(index);
         if (onSelect)

@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "bklv/core/theme_data.hpp"
+
 namespace bklv
 {
 
@@ -52,6 +54,14 @@ void ProgressSpinner::draw(ImDrawList* drawList, float x, float y, float width, 
 
         drawList->AddQuadFilled(p0, p1, p2, p3, color);
     }
+}
+
+void ProgressSpinner::applyTheme()
+{
+    if (this->colorExplicit)
+        return;
+
+    this->spinnerColor = getTheme().color("color.spinner.bar", this->spinnerColor);
 }
 
 } // namespace bklv

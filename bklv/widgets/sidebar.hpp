@@ -13,6 +13,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/tab_frame.hpp" // TabCell
 
 namespace bklv
@@ -40,7 +41,9 @@ class Sidebar : public Box
     // 面板宽度（默认取主题 metric.sidebar.width）
     void setPanelWidth(float width);
 
+    // 条目容器（可滚动，条目多了滚动条会跟随焦点）
     Box* getItemBox() const { return this->itemBox; }
+    bklv::ScrollingFrame* getItemScroller() const { return this->itemScroller; }
 
     std::string getClassString() const override { return "bklv::Sidebar"; }
 
@@ -56,6 +59,7 @@ class Sidebar : public Box
     std::string title;
     Label* titleLabel = nullptr;
     Box* headerBox = nullptr;
+    bklv::ScrollingFrame* itemScroller = nullptr;
     Box* itemBox   = nullptr;
     size_t selected = 0;
     std::vector<TabCell*> cells;

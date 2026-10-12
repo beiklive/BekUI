@@ -11,7 +11,7 @@
       "id": "label",
       "source": "text",
       "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric/dropdown.itemTextSize",
+      "fontSize": "@theme/metric.dropdown.itemTextSize",
       "align": "left",
       "valign": "center",
       "inset": [

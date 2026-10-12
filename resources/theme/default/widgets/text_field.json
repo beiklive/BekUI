@@ -54,7 +54,7 @@
       "op": "custom",
       "id": "caret",
       "fill": "@theme/color.accent.base",
-      "fontSize": "@theme/metric/font.size.md",
+      "fontSize": "@theme/metric.font.size.md",
       "inset": [
         10,
         0,
