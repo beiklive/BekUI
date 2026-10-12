@@ -16,6 +16,9 @@
 namespace designer
 {
 
+// 数值写成 JSON：整数就写整数（避免 64 → 64.0 的无意义改动）
+nlohmann::ordered_json numberValue(double value);
+
 class AppearanceDoc
 {
   public:

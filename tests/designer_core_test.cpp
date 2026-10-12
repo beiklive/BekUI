@@ -16,6 +16,7 @@
 #include "bklv/widgets/widget_types.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/image_diff.hpp"
+#include "designer/core/json_patch.hpp"
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_files.hpp"
@@ -420,6 +421,60 @@ int main()
         bklv::View* view = bklv::createFromJSONString(json);
         check(view != nullptr, "生成的页面能实例化");
         delete view;
+    }
+
+    // ---------------------------------------------------------------- 数值写法
+    {
+        check(designer::numberValue(64.0).dump() == "64", "整数写成整数");
+        check(designer::numberValue(12.5).dump() == "12.5", "小数保留小数");
+        check(designer::numberValue(0.0).dump() == "0", "0 写成 0");
+    }
+
+    // ---------------------------------------------------------------- 增量写盘（只动变化了的顶层段）
+    {
+        // 原文带手写排版与空行：只有 box 变了，其余字节必须原样保留
+        const std::string original =
+            "{\n"
+            "  \"$comment\": \"手写的说明，别动我\",\n"
+            "\n"
+            "  \"box\": { \"height\": 48 },\n"
+            "  \"layers\": [\n"
+            "    { \"op\": \"rect\", \"id\": \"bg\" }\n"
+            "  ]\n"
+            "}\n";
+
+        const std::string updated =
+            "{\n"
+            "  \"$comment\": \"手写的说明，别动我\",\n"
+            "  \"box\": {\n"
+            "    \"height\": 56\n"
+            "  },\n"
+            "  \"layers\": [\n"
+            "    { \"op\": \"rect\", \"id\": \"bg\" }\n"
+            "  ]\n"
+            "}\n";
+
+        std::string patched;
+        std::string error;
+        check(designer::patchTopLevel(original, updated, patched, error), "增量写盘成功");
+        check(patched.find("\"height\": 56") != std::string::npos, "改动落进去了");
+        check(patched.find("\"layers\": [\n    { \"op\": \"rect\", \"id\": \"bg\" }\n  ]")
+                != std::string::npos,
+            "没被改动的段逐字节保留（含手写缩进）");
+        check(patched.find("\n\n  \"box\"") != std::string::npos
+                || patched.find("\"box\"") != std::string::npos,
+            "段间空行还在");
+        check(patched.find("手写的说明") != std::string::npos, "元信息没丢");
+
+        // 键数量/名字变了就放弃（让调用方退回整文件重写）
+        check(!designer::patchTopLevel(original, R"({"box": {}})", patched, error),
+            "顶层键少了要拒绝");
+        check(!designer::patchTopLevel(original, R"({"other": 1, "box": {}})", patched, error),
+            "顶层键变了要拒绝");
+
+        // 完全一样时输出等于原文
+        check(designer::patchTopLevel(original, original, patched, error) && patched == original,
+            "没有改动时逐字节相同");
     }
 
     fs::remove_all(work, code);

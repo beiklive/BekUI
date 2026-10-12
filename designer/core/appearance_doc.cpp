@@ -5,6 +5,14 @@
 namespace designer
 {
 
+// 数值写成 JSON 时：整数就写整数（64 而不是 64.0）——写回文件时少一堆无意义的改动
+nlohmann::ordered_json numberValue(double value)
+{
+    if (value == (double)(long long)value && value > -1e15 && value < 1e15)
+        return nlohmann::ordered_json((long long)value);
+    return nlohmann::ordered_json(value);
+}
+
 bool AppearanceDoc::parse(const std::string& jsonText, std::string& error)
 {
     const Json parsed = Json::parse(jsonText, nullptr, false);
@@ -57,7 +65,7 @@ void AppearanceDoc::setBoxNumber(const std::string& key, double value)
 {
     if (!this->doc.contains("box") || !this->doc["box"].is_object())
         this->doc["box"] = Json::object();
-    this->doc["box"][key] = value;
+    this->doc["box"][key] = numberValue(value);
 }
 
 bool AppearanceDoc::getBoxString(const std::string& key, std::string& out) const
@@ -305,7 +313,7 @@ bool AppearanceDoc::reorderLayersByConvention()
     const std::vector<Json> original = this->doc["layers"].get<std::vector<Json>>();
 
     // rank 越小越先画
-    auto rankOf = [this](const Json& layer) {
+    auto rankOf = [](const Json& layer) {
         const std::string op = layer.value("op", std::string("rect"));
         const std::string id = layer.value("id", std::string());
         if (op == "shadow")

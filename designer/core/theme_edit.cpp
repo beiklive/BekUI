@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "bklv/core/json_view.hpp"
+#include "bklv/core/view.hpp"
 #include "designer/core/theme_files.hpp"
 
 namespace fs = std::filesystem;

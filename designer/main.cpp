@@ -102,6 +102,15 @@ int main(int argc, char** argv)
         window.setDebugPanelsForTest(std::getenv("BKLV_DESIGNER_LOG") != nullptr,
             std::getenv("BKLV_DESIGNER_FOCUS") != nullptr);
 
+    // 自查：BKLV_DESIGNER_EDIT="height=64" 先改一个 box 数值
+    if (const char* edit = std::getenv("BKLV_DESIGNER_EDIT"))
+    {
+        const std::string spec(edit);
+        const size_t equals = spec.find('=');
+        if (equals != std::string::npos)
+            window.applyTestEdit(spec.substr(0, equals), std::atof(spec.c_str() + equals + 1));
+    }
+
     if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
         window.forceSaveForTest();
 

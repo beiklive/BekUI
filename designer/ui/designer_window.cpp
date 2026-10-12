@@ -8,6 +8,7 @@
 
 #include "bklv/3rd/imgui/imgui.h"
 #include "designer/core/diff.hpp"
+#include "designer/core/json_patch.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_files.hpp"
 
@@ -245,7 +246,9 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
     this->statusMessage    = "打开 " + widgetName;
 
     // 这份文件的第一份草稿：记指纹 + 把当前内容压进撤销栈的第 0 步
-    Draft& draft = this->drafts[path];
+    // （doc 也必须存：切回同一文件走的是"恢复草稿"分支，不存就会拿到一份空文档）
+    Draft& draft    = this->drafts[path];
+    draft.doc       = this->doc;
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
@@ -297,7 +300,8 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     this->doc.root() = parsed.is_discarded() ? AppearanceDoc::Json::object() : parsed;
     std::snprintf(this->viewText, sizeof(this->viewText), "%s", text.c_str());
     this->viewTextApplied = text;
-    Draft& draft = this->drafts[this->currentFilePath];
+    Draft& draft    = this->drafts[this->currentFilePath];
+    draft.doc       = this->doc;
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
@@ -367,6 +371,7 @@ bool DesignerWindow::openTableFile(const std::string& fileName)
     this->lastFrameText    = text;
 
     Draft& draft    = this->drafts[path];
+    draft.doc       = this->doc;
     draft.savedText = text;
     draft.openHash  = this->hashText(text);
     draft.dirty     = false;
@@ -2448,7 +2453,7 @@ void DesignerWindow::drawProps()
                     double value = it.value().get<double>();
                     changed = inputNumberFloat(key.c_str(), value);
                     if (changed)
-                        it.value() = value;
+                        it.value() = numberValue(value);
                 }
                 else if (kind == "bool")
                 {
@@ -2901,23 +2906,35 @@ void DesignerWindow::doSave()
         this->dirty     = false;
     }
 
+    // 增量写盘：只把变化了的顶层段落到原文本上（手写排版/空行/段序都保住）。
+    // 做不到（增删了顶层键）就退回整文件重写，并把原因写进日志。
+    std::string writeText = text;
+    {
+        std::string patched;
+        std::string patchError;
+        if (patchTopLevel(this->savedText, text, patched, patchError))
+            writeText = patched;
+        else
+            BKLV_LOG_INFO("增量写盘不可用（%s）：退回整文件重写", patchError.c_str());
+    }
+
     // 带冲突检测的原子写（core 层，能无窗口测）：磁盘内容变了就拒绝（除非刚点过"覆盖写"）
     const auto draftForWrite = this->drafts.find(this->currentFilePath);
     const std::string expected
         = draftForWrite != this->drafts.end() ? draftForWrite->second.openHash : std::string();
-    if (!writeFileChecked(this->currentFilePath, expected, text, this->allowOverwrite, true, error))
+    if (!writeFileChecked(this->currentFilePath, expected, writeText, this->allowOverwrite, true, error))
     {
         this->errorMessage = error;
         this->showConflict = true; // 让用户选覆盖 / 重新载入
         return;
     }
 
-    this->savedText = text;
+    this->savedText = writeText;
     this->dirty     = false;
 
     // 草稿同步：脏标记清掉、指纹更新成刚写下去的内容
     Draft& draft   = this->currentDraft();
-    draft.savedText = text;
+    draft.savedText = writeText;
     draft.dirty     = false;
     draft.openHash  = this->hashText(text);
 
@@ -3396,13 +3413,6 @@ void DesignerWindow::draw()
             | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar
             | ImGuiWindowFlags_NoScrollWithMouse);
 
-    static int probeFrames = 0;
-    if (++probeFrames == 6)
-        BKLV_LOG_INFO("[探针] 主窗 pos=(%.0f,%.0f) size=%.0fx%.0f scrollY=%.1f avail=(%.0f,%.0f)",
-            ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowSize().x,
-            ImGui::GetWindowSize().y, ImGui::GetScrollY(), ImGui::GetContentRegionAvail().x,
-            ImGui::GetContentRegionAvail().y);
-
     // 快捷键（ImGui 的键盘输入在 SDL3 后端默认开着，直接用 io.KeysDown 的封装）
     if (ImGui::GetCurrentContext() != nullptr && !ImGui::GetIO().WantTextInput)
     {
@@ -3491,10 +3501,6 @@ void DesignerWindow::draw()
 
     ImGui::SameLine();
     ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0), true);
-    if (probeFrames == 6)
-        BKLV_LOG_INFO("[探针] 预览面板 pos=(%.0f,%.0f) size=%.0fx%.0f scroll=(%.1f,%.1f)",
-            ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowSize().x,
-            ImGui::GetWindowSize().y, ImGui::GetScrollX(), ImGui::GetScrollY());
     this->drawPreview();
     ImGui::EndChild();
 

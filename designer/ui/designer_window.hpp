@@ -61,7 +61,23 @@ class DesignerWindow
     void draw();
     ~DesignerWindow() { this->saveUiState(); }
     // 自查用：直接走一遍保存（验证只读拦截 / 冲突检测）
-    void forceSaveForTest() { this->requestSave(); }
+    // 跳过 diff 弹层直接写（自查用；readOnly / 冲突 / 编译校验 / 增量写盘都照走）
+    void forceSaveForTest()
+    {
+        this->doSave();
+        BKLV_LOG_INFO("[自查] 保存结果：%s%s", this->statusMessage.c_str(),
+            this->errorMessage.empty() ? "" : (" / " + this->errorMessage).c_str());
+    }
+    // 自查用：改一个 box 数值（验证增量写盘 / 撤销）
+    bool applyTestEdit(const std::string& key, double value)
+    {
+        if (this->currentFilePath.empty())
+            return false;
+        this->doc.setBoxNumber(key, value);
+        this->markEdited();
+        this->previewDirty = true;
+        return true;
+    }
     void setDebugPanelsForTest(bool log, bool focusOrder)
     {
         if (log)
