@@ -158,6 +158,20 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ---
 
+## 与 borealis 的功能对等（定位：bklv 是升级版）
+
+清单与原因见 [`notes/borealis-parity.md`](notes/borealis-parity.md)（对照方式：逐个头文件对读）。
+分批：
+
+- [ ] **P0 控件补齐**：6 个 Cell（bool/detail/input/radio/selector/slider）、
+      Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
+      View 变换（scale/rotate/skew/fontScale）
+- [ ] **P1 核心能力**：task/thread + 异步图片加载、audio（SDL3 + Switch）、
+      debug_layer（wireframe）、event 补齐
+- [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
+      video（需要决定是否引解码依赖）
+- [ ] **P3 demo 对标**：把 borealis demo 的 7 个启用页 + 3 个注释页全部做出来
+
 ## 页头与底部栏全局化（2025-10 需求确认后实施）
 
 - [x] 页头/底栏提到外壳级：`AppletFrame[Header / content(grow) / BottomBar]`，
