@@ -47,6 +47,21 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## 视觉规范（改界面时照这个来）
+
+- **配色跟着主题走**：`designer/ui/designer_style.*` 读当前主题的语义色
+  （`color.surface.*` / `color.text.*` / `color.border.*` / `color.accent.*`），
+  换主题 / 热重载后设计器自己也换色。取不到就用内置默认值兜底
+- **注意键要带 `color.` 前缀**（加载时就是这么展平的）；漏了会静默退化成 fallback
+- **`applyDesignerStyle()` 要先判 ImGui 上下文**：`attach()` 早于第一帧，
+  没上下文时 `GetStyle()` 直接踩空（崩过一次）
+- 统一：圆角 6px（子窗口 8px）、`ItemSpacing 8/6`、`WindowPadding 12`、
+  面板标题走 `panelHeader()`（抬起的标题条 + 左侧强调色竖条）
+- 顶栏按功能分组，组间用 `groupBreak()`：**里面不能用 `Dummy`** —— 那会让光标换行、
+  顶栏被拆成好几行（试过一次）
+- 属性表统一"标签左列（172px）+ 控件占右侧"；未写的字段用暗色 `·` 标出，
+  不要把"（未设置）"塞进标签里（会把标签撑爆、右边被裁）
+
 ## 从任务倒推：一次"改样式"要走几步
 
 设计界面之前先把用户的真实任务拆开（这是评审这套界面流程的依据）：

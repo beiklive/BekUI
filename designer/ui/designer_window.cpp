@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include "bklv/3rd/imgui/imgui.h"
+#include "designer/ui/designer_style.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
 #include "designer/core/file_kind.hpp"
@@ -25,8 +26,7 @@ namespace designer
 namespace
 {
 
-const ImVec4 kAccent(0.0f, 1.0f, 0.8f, 1.0f);
-const ImVec4 kMuted(0.55f, 0.57f, 0.61f, 1.0f);
+// 配色跟着主题走（见 designer_style.hpp）
 
 // ImGui 的 InputText 要 char 缓冲，这里包一层（长度上限保护）
 bool inputString(const char* label, std::string& value, size_t maxLength = 512)
@@ -71,11 +71,11 @@ const char* helpTextFor(const char* key)
 
 // 属性表统一排版：标签画在左列，控件占右边剩余宽度。
 // 直接把 label 交给 ImGui 画在控件右侧的话，控件一宽标签就被顶出面板（踩过）。
-constexpr float kLabelWidth = 148.0f;
+constexpr float kLabelWidth = 172.0f;
 
 void propLabel(const char* label)
 {
-    ImGui::TextColored(kMuted, "%s", label);
+    ImGui::TextColored(mutedColor(), "%s", label);
     if (const char* help = helpTextFor(label))
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", help);
@@ -134,6 +134,7 @@ void DesignerWindow::attach(App* application)
 {
     this->app = application;
     this->loadUiState();
+    applyDesignerStyle();
 
     // 设计器是鼠标工具：关掉 ImGui 自己的键盘/手柄导航。
     // 不关的话方向键会被 ImGui 拿去移动它内部的"焦点"，树会被滚到不知哪里去（踩过）。
@@ -632,7 +633,7 @@ bool DesignerWindow::colorPickerPopup(const char* id, std::string& value)
             value   = buffer;
             changed = true;
         }
-        ImGui::TextColored(kMuted, "取色会写成 #RRGGBBAA 字面量（不再跟主题走）");
+        ImGui::TextColored(mutedColor(), "取色会写成 #RRGGBBAA 字面量（不再跟主题走）");
         ImGui::EndPopup();
     }
     return changed;
@@ -909,7 +910,7 @@ void DesignerWindow::redo()
 void DesignerWindow::drawTopBar()
 {
     // 第一行：标题 + 项目信息（长路径中间省略，别把按钮挤歪）
-    ImGui::PushStyleColor(ImGuiCol_Text, kAccent);
+    ImGui::PushStyleColor(ImGuiCol_Text, accentColor());
     ImGui::TextUnformatted("bklv 设计器");
     ImGui::PopStyleColor();
     ImGui::SameLine();
@@ -919,7 +920,7 @@ void DesignerWindow::drawTopBar()
         std::string root = this->project.themeRoot;
         if (root.size() > 46)
             root = "…" + root.substr(root.size() - 45);
-        ImGui::TextColored(kMuted, "%s（%s%s）· %s", this->project.name.c_str(),
+        ImGui::TextColored(mutedColor(), "%s（%s%s）· %s", this->project.name.c_str(),
             this->project.mode == ProjectMode::FORK ? "模板新建，来自 " : "直接编辑",
             this->project.templateName.c_str(), root.c_str());
         if (this->readOnly)
@@ -929,9 +930,20 @@ void DesignerWindow::drawTopBar()
         }
     }
     else
-        ImGui::TextColored(kMuted, "还没有打开项目");
+        ImGui::TextColored(mutedColor(), "还没有打开项目");
 
     // 第二行：动作
+    // 组间分隔：多给一点间距 + 一条细竖线。**不能用 Dummy**——Dummy 会让光标换行，
+    // 顶栏会被拆成好几行（试过一次，白白吃掉面板高度）
+    auto groupBreak = [] {
+        ImGui::SameLine(0.0f, 16.0f);
+        const ImVec2 pos   = ImGui::GetCursorScreenPos();
+        const float height = ImGui::GetFrameHeight();
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(pos.x - 9.0f, pos.y + 2.0f),
+            ImVec2(pos.x - 9.0f, pos.y + height - 2.0f),
+            ImGui::ColorConvertFloat4ToU32(borderColor()));
+    };
+
     if (ImGui::Button("打开项目"))
     {
         this->showOpenProject = true;
@@ -987,7 +999,7 @@ void DesignerWindow::drawTopBar()
         this->previewDirty  = true;
         this->statusMessage = "已重新装载主题";
     }
-    ImGui::SameLine();
+    groupBreak();
     ImGui::BeginDisabled(this->currentFilePath.empty());
     if (ImGui::Button("还原"))
         this->revert();
@@ -1017,7 +1029,7 @@ void DesignerWindow::drawTopBar()
         this->showSaveAs = true;
     }
     ImGui::EndDisabled();
-    ImGui::SameLine();
+    groupBreak();
     ImGui::BeginDisabled((this->readOnly && this->currentViewFile.empty())
         || this->currentFilePath.empty());
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.8f, 1.0f));
@@ -1028,7 +1040,7 @@ void DesignerWindow::drawTopBar()
     if (savePressed)
         this->requestSave();
 
-    ImGui::SameLine();
+    groupBreak();
     ImGui::BeginDisabled(this->currentFilePath.empty());
     if (ImGui::Button("撤销"))
         this->undo();
@@ -1037,7 +1049,7 @@ void DesignerWindow::drawTopBar()
         this->redo();
     ImGui::EndDisabled();
 
-    ImGui::SameLine();
+    groupBreak();
     {
         int dirtyCount = 0;
         for (const auto& entry : this->drafts)
@@ -1046,7 +1058,7 @@ void DesignerWindow::drawTopBar()
         if (ImGui::Button("改动总览"))
             this->showOverview = true;
         ImGui::SameLine();
-        ImGui::TextColored(dirtyCount > 0 ? ImVec4(1.0f, 0.72f, 0.3f, 1.0f) : kMuted,
+        ImGui::TextColored(dirtyCount > 0 ? ImVec4(1.0f, 0.72f, 0.3f, 1.0f) : mutedColor(),
             dirtyCount > 0 ? "%d 个文件有未保存改动" : "都已同步", dirtyCount);
     }
     ImGui::SameLine();
@@ -1070,9 +1082,9 @@ void DesignerWindow::drawTopBar()
     if (this->dirty)
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "● 当前文件未保存");
     else if (this->readOnly)
-        ImGui::TextColored(kMuted, "（只读浏览）");
+        ImGui::TextColored(mutedColor(), "（只读浏览）");
     else
-        ImGui::TextColored(kMuted, "已同步");
+        ImGui::TextColored(mutedColor(), "已同步");
 
     ImGui::Separator();
 }
@@ -1081,18 +1093,27 @@ void DesignerWindow::drawTopBar()
 
 void DesignerWindow::drawFileList()
 {
-    auto fileRow = [this](const std::string& label, bool selected, bool isCurrent, const char* tag) {
-        std::string text = (isCurrent && this->dirty ? "● " : "  ") + label;
+    auto fileRow = [](const std::string& label, bool selected, bool isDirty, const char* tag) {
+        const ImVec2 start = ImGui::GetCursorScreenPos();
+        std::string text   = std::string(isDirty ? "● " : "  ") + label;
         if (tag != nullptr)
             text += std::string("   [") + tag + "]";
-        if (ImGui::Selectable(text.c_str(), selected))
-            return true;
-        return false;
+
+        const bool clicked = ImGui::Selectable(text.c_str(), selected);
+        if (selected)
+        {
+            // 选中项左侧一条强调色（样板房里就是这么标"当前在看哪个文件"的）
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                ImVec2(start.x - 4.0f, start.y + 1.0f),
+                ImVec2(start.x - 1.0f, start.y + ImGui::GetTextLineHeight()),
+                ImGui::ColorConvertFloat4ToU32(accentColor()), 2.0f);
+        }
+        return clicked;
     };
 
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "过滤外观名…", this->fileFilter, sizeof(this->fileFilter));
-    ImGui::TextColored(kMuted, "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
+    ImGui::TextColored(mutedColor(), "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
         this->project.name.c_str());
     for (const std::string& relative : this->widgetFiles)
     {
@@ -1109,14 +1130,14 @@ void DesignerWindow::drawFileList()
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "页面视图 · %d 个（views/）", (int)this->viewFiles.size());
+    ImGui::TextColored(mutedColor(), "页面视图 · %d 个（views/）", (int)this->viewFiles.size());
     if (!this->readOnly)
     {
         if (ImGui::SmallButton("新建页面…"))
             this->showNewView = true;
     }
     if (this->viewFiles.empty())
-        ImGui::TextColored(kMuted, "  （这个项目里没有）");
+        ImGui::TextColored(mutedColor(), "  （这个项目里没有）");
     for (const std::string& file : this->viewFiles)
     {
         const std::string path = this->project.resourcesDir() + "/views/" + file;
@@ -1155,7 +1176,7 @@ void DesignerWindow::drawFileList()
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "主题表（可编辑）");
+    ImGui::TextColored(mutedColor(), "主题表（可编辑）");
     for (const char* table : { "colors.json", "metrics.json" })
     {
         const std::string path = this->project.themeDir() + "/" + table;
@@ -1278,7 +1299,7 @@ void DesignerWindow::drawTree()
 
     if (this->currentWidget.empty())
     {
-        ImGui::TextColored(kMuted, "先从上面挑一个外观文件");
+        ImGui::TextColored(mutedColor(), "先从上面挑一个外观文件");
         return;
     }
 
@@ -1504,17 +1525,26 @@ void DesignerWindow::drawStatus()
     for (const std::string& state : this->doc.stateNames())
         nodes += 1 + this->doc.channelCount(state);
 
+    // 页脚：一条比面板略"低"的底色，和上面内容区分开
+    {
+        const ImVec2 pos = ImGui::GetCursorScreenPos();
+        const float width = ImGui::GetContentRegionAvail().x;
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x - 4.0f, pos.y),
+            ImVec2(pos.x + width + 4.0f, pos.y + 62.0f),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().sunken), 6.0f);
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
+    }
     if (!this->currentViewFile.empty())
     {
-        ImGui::TextColored(kAccent, "视图节点 %d", this->viewNodeCount);
+        ImGui::TextColored(accentColor(), "视图节点 %d", this->viewNodeCount);
         ImGui::SameLine();
-        ImGui::TextColored(kMuted, "· 字段 %d", this->viewFieldCount);
+        ImGui::TextColored(mutedColor(), "· 字段 %d", this->viewFieldCount);
     }
     else
     {
-        ImGui::TextColored(kAccent, "节点 %d", nodes);
+        ImGui::TextColored(accentColor(), "节点 %d", nodes);
         ImGui::SameLine();
-        ImGui::TextColored(kMuted, "· 层 %d · 状态 %d", this->doc.layerCount(),
+        ImGui::TextColored(mutedColor(), "· 层 %d · 状态 %d", this->doc.layerCount(),
             (int)this->doc.stateNames().size());
     }
 
@@ -1549,10 +1579,10 @@ void DesignerWindow::drawStatus()
             }
         }
     }
-    ImGui::TextColored(kMuted, "%s", path.c_str());
+    ImGui::TextColored(mutedColor(), "%s", path.c_str());
 
     if (!this->statusMessage.empty())
-        ImGui::TextColored(kMuted, "%s", this->statusMessage.c_str());
+        ImGui::TextColored(mutedColor(), "%s", this->statusMessage.c_str());
     if (!this->errorMessage.empty())
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
 }
@@ -1718,8 +1748,8 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
     }
     ImGui::SameLine();
 
-    // 文本占中间，右边留 92 给"主题 key"下拉
-    ImGui::SetNextItemWidth(-96.0f);
+    // 文本占中间；右边要给"取色"和"主题 key"两个控件留位置（以前留 96 不够，被裁）
+    ImGui::SetNextItemWidth(-152.0f);
     changed |= inputString((std::string("##") + label).c_str(), value);
 
     changed |= this->colorPickerPopup(label, value);
@@ -1796,11 +1826,11 @@ void DesignerWindow::drawTableProps()
     const std::string keyPrefix
         = this->currentTable.rfind("metrics", 0) == 0 ? "metric." : "color.";
 
-    ImGui::TextColored(kAccent, "主题表 %s", this->currentTable.c_str());
-    ImGui::TextColored(kMuted, "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
+    panelHeader("主题表", this->currentTable.c_str());
+    ImGui::TextColored(mutedColor(), "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##tableFilter", "过滤 key…", this->tableFilter, sizeof(this->tableFilter));
-    ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+    ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
     ImGui::Separator();
 
     bool edited = false;
@@ -1870,13 +1900,13 @@ void DesignerWindow::drawTableProps()
                               : (int)found->second.size();
                           if (users == 0)
                           {
-                              ImGui::TextColored(kMuted, "· 没被引用");
+                              ImGui::TextColored(mutedColor(), "· 没被引用");
                               if (ImGui::IsItemHovered())
                                   ImGui::SetTooltip("没有任何外观引用这个 key（改它不会有变化）");
                           }
                           else
                           {
-                              ImGui::TextColored(kMuted, "· %d 处引用", users);
+                              ImGui::TextColored(mutedColor(), "· %d 处引用", users);
                               ImGui::SameLine();
                               if (ImGui::SmallButton("谁在用"))
                               {
@@ -1897,7 +1927,7 @@ void DesignerWindow::drawTableProps()
                           edited     = true;
                       }
                       ImGui::PopItemWidth();
-                      ImGui::TextColored(kMuted, "      %s", key.c_str());
+                      ImGui::TextColored(mutedColor(), "      %s", key.c_str());
                       ImGui::SameLine();
                       {
                           const auto found = this->themeUsage.find(keyPrefix + key);
@@ -1906,13 +1936,13 @@ void DesignerWindow::drawTableProps()
                               : (int)found->second.size();
                           if (users == 0)
                           {
-                              ImGui::TextColored(kMuted, "· 没被引用");
+                              ImGui::TextColored(mutedColor(), "· 没被引用");
                               if (ImGui::IsItemHovered())
                                   ImGui::SetTooltip("没有任何外观引用这个 key（改它不会有变化）");
                           }
                           else
                           {
-                              ImGui::TextColored(kMuted, "· %d 处引用", users);
+                              ImGui::TextColored(mutedColor(), "· %d 处引用", users);
                               ImGui::SameLine();
                               if (ImGui::SmallButton("谁在用"))
                               {
@@ -1923,7 +1953,7 @@ void DesignerWindow::drawTableProps()
                       }
                   }
                   else
-                      ImGui::TextColored(kMuted, "%s = %s", key.c_str(),
+                      ImGui::TextColored(mutedColor(), "%s = %s", key.c_str(),
                           compactValue(it.value()).c_str());
                   ImGui::PopID();
               }
@@ -1940,11 +1970,11 @@ void DesignerWindow::drawTableProps()
     // "谁在用"弹层：列出引用这个 key 的外观，点一下就切过去（改配色时最有用）
     if (ImGui::BeginPopup("引用者"))
     {
-        ImGui::TextColored(kMuted, "引用 %s 的外观（点一下切过去）", this->usagePopupKey.c_str());
+        ImGui::TextColored(mutedColor(), "引用 %s 的外观（点一下切过去）", this->usagePopupKey.c_str());
         ImGui::Separator();
         const auto found = this->themeUsage.find(this->usagePopupKey);
         if (found == this->themeUsage.end() || found->second.empty())
-            ImGui::TextColored(kMuted, "没有引用者");
+            ImGui::TextColored(mutedColor(), "没有引用者");
         else
             for (const std::string& widget : found->second)
                 if (ImGui::Selectable(widget.c_str()))
@@ -2368,8 +2398,7 @@ void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
 void DesignerWindow::drawPreview()
 {
     // ---- 控制行 1：画布 ----
-    ImGui::TextColored(kAccent, "预览");
-    ImGui::SameLine();
+    panelHeader("预览", "选中什么渲染什么");
     ImGui::SetNextItemWidth(120);
     ImGui::Combo("##size", &this->canvasPreset,
         "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
@@ -2446,7 +2475,7 @@ void DesignerWindow::drawPreview()
         : this->canvasZoom == 2 ? 1.0f : 1.5f;
 
     // ---- 控制行 2：状态工具栏 + 上下文/子树/对比 ----
-    ImGui::TextColored(kMuted, "状态");
+    ImGui::TextColored(mutedColor(), "状态");
     ImGui::SameLine();
     static const char* stateLabels[] = { "默认", "focused", "pressed", "disabled", "selected" };
     for (int i = 0; i < 5; i++)
@@ -2501,11 +2530,17 @@ void DesignerWindow::drawPreview()
     // ---- 差异标注：设计器与真机可能不一样的地方，写在明面上 ----
     {
         const float uiScale = (float)this->canvasWidth / 1280.0f;
-        ImGui::TextColored(kMuted,
-            "画布 %d×%d · UI 缩放按画布宽算 ≈ %.2f×（真机 = 窗口宽/1280）· 主题目录 %s",
-            this->canvasWidth, this->canvasHeight, uiScale,
-            this->currentTable.empty() && this->project.themeRoot.empty() ? "-"
-                                                                         : this->project.themeDir().c_str());
+        std::string shortDir = this->project.themeDir();
+        {
+            // 只显示路径最后两段，标注一行放得下
+            const size_t last = shortDir.find_last_of('/');
+            const size_t prev = last == std::string::npos ? std::string::npos
+                                                          : shortDir.find_last_of('/', last - 1);
+            if (prev != std::string::npos && prev + 1 < shortDir.size())
+                shortDir = "…" + shortDir.substr(prev);
+        }
+        ImGui::TextColored(mutedColor(), "画布 %d×%d · UI 缩放 ≈ %.2f×（真机=窗口宽/1280）· %s",
+            this->canvasWidth, this->canvasHeight, uiScale, shortDir.c_str());
         if (this->canvasWidth != 1280)
         {
             if (ImGui::SmallButton("按真机 720p 画布"))
@@ -2540,7 +2575,7 @@ void DesignerWindow::drawPreview()
     }
     if (this->previewCompare)
         modeText = "并排对比：左=编辑中 / 右=磁盘上那份";
-    ImGui::TextColored(kMuted, "%s", modeText);
+    ImGui::TextColored(mutedColor(), "%s", modeText);
 
     ImGui::BeginChild("##stage", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
 
@@ -2561,9 +2596,13 @@ void DesignerWindow::drawPreview()
         }
     }
 
-    const ImVec2 stagePos(ImGui::GetCursorScreenPos().x + this->canvasPanX,
-        ImGui::GetCursorScreenPos().y + this->canvasPanY);
+    // 画布在预览区里居中（以前贴左上角，看着像没画完）
+    const ImVec2 stageAvail = ImGui::GetContentRegionAvail();
     const ImVec2 size((float)this->canvasWidth * zoom, (float)this->canvasHeight * zoom);
+    const float centeringX  = std::max(0.0f, (stageAvail.x - size.x) * 0.5f);
+    const float centeringY  = std::max(0.0f, (stageAvail.y - size.y) * 0.5f);
+    const ImVec2 stagePos(ImGui::GetCursorScreenPos().x + centeringX + this->canvasPanX,
+        ImGui::GetCursorScreenPos().y + centeringY + this->canvasPanY);
 
     this->ensurePreviewBuilt();
 
@@ -2645,7 +2684,7 @@ void DesignerWindow::drawProps()
 {
     if (this->currentWidget.empty() && this->currentViewFile.empty() && this->currentTable.empty())
     {
-        ImGui::TextColored(kMuted, "选一个文件");
+        ImGui::TextColored(mutedColor(), "选一个文件");
         return;
     }
 
@@ -2657,8 +2696,8 @@ void DesignerWindow::drawProps()
 
     if (!this->currentViewFile.empty())
     {
-        ImGui::TextColored(kAccent, "页面视图 %s", this->currentViewFile.c_str());
-        ImGui::TextColored(kMuted, "直接改下面的 JSON：点「应用」会先做语法校验 + 试实例化，"
+        panelHeader("页面视图", this->currentViewFile.c_str());
+        ImGui::TextColored(mutedColor(), "直接改下面的 JSON：点「应用」会先做语法校验 + 试实例化，"
                                    "通过才进预览；「保存」走同一条（diff → 校验 → 原子写 + .bak）。");
         ImGui::Separator();
 
@@ -2681,15 +2720,15 @@ void DesignerWindow::drawProps()
             this->statusMessage = "已还原文本";
         }
         ImGui::SameLine();
-        ImGui::TextColored(kMuted, "%s", this->dirty ? "● 有未保存改动" : "已同步");
+        ImGui::TextColored(mutedColor(), "%s", this->dirty ? "● 有未保存改动" : "已同步");
 
         if (!this->errorMessage.empty())
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
         return;
     }
 
-    ImGui::TextColored(kAccent, "外观 %s", this->currentWidget.c_str());
-    ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+    panelHeader("属性", this->currentWidget.c_str());
+    ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
     ImGui::SameLine();
     if (ImGui::SmallButton("复制 JSON"))
     {
@@ -2719,16 +2758,23 @@ void DesignerWindow::drawProps()
         case SelKind::BOX:
         case SelKind::FILE:
         {
-            ImGui::TextColored(kMuted, "盒模型");
+            ImGui::TextColored(mutedColor(), "盒模型");
             const char* numberKeys[] = { "height", "minWidth", "radius", "paddingTop",
                 "paddingSides", "gap" };
             for (const char* key : numberKeys)
             {
                 double value = 0.0;
                 const bool has = this->doc.getBoxNumber(key, value);
-                const std::string label
-                    = has ? std::string(key) : (std::string(key) + "（未设置）");
+                const std::string label = key; // 未设置的状态用暗色点标出来，不挤标签
                 propLabel(label.c_str());
+                if (!has)
+                {
+                    ImGui::SameLine(kLabelWidth - 12.0f);
+                    ImGui::TextColored(mutedColor(), "·");
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("这个字段当前没写（改了才会写进来）");
+                    ImGui::SameLine();
+                }
                 ImGui::PushID(key);
                 double dragged = value;
                 const bool changedNumber = ImGui::DragScalar("##v", ImGuiDataType_Double,
@@ -2756,8 +2802,8 @@ void DesignerWindow::drawProps()
                 edited();
             });
 
-            ImGui::Separator();
-            ImGui::TextColored(kMuted, "布局");
+            ImGui::Spacing();
+            ImGui::TextColored(accentColor(), "布局");
             std::string axis = "column";
             this->doc.getBoxString("axis", axis);
             int axisIndex = (axis == "row") ? 1 : 0;
@@ -2799,8 +2845,8 @@ void DesignerWindow::drawProps()
                 edited();
             }
 
-            ImGui::Separator();
-            ImGui::TextColored(kMuted, "颜色（可直接写 @theme/color.xxx）");
+            ImGui::Spacing();
+            ImGui::TextColored(accentColor(), "颜色");
             const char* colorKeys[] = { "backgroundColor", "borderColor" };
             for (const char* key : colorKeys)
             {
@@ -2823,7 +2869,7 @@ void DesignerWindow::drawProps()
             if (layer == nullptr)
                 break;
 
-            ImGui::TextColored(kMuted, "第 %d 层", this->selection.index + 1);
+            ImGui::TextColored(mutedColor(), "第 %d 层", this->selection.index + 1);
 
             // op 可切换（以前只能改 JSON 文本）
             {
@@ -2971,8 +3017,8 @@ void DesignerWindow::drawProps()
                     });
             }
 
-            ImGui::Separator();
-            ImGui::TextColored(kMuted, "层操作");
+            ImGui::Spacing();
+            ImGui::TextColored(accentColor(), "层操作");
             if (ImGui::Button("上移"))
             {
                 if (this->doc.moveLayer(this->selection.index, -1))
@@ -3009,7 +3055,7 @@ void DesignerWindow::drawProps()
         case SelKind::CHANNEL:
         {
             const std::string state = this->selection.state;
-            ImGui::TextColored(kMuted, "状态 %s", state.c_str());
+            ImGui::TextColored(mutedColor(), "状态 %s", state.c_str());
 
             // 加通道：下拉选层 id + 下拉选属性名（以前要手打 <层id>.<属性名>）
             {
@@ -3062,7 +3108,7 @@ void DesignerWindow::drawProps()
                 for (auto it = node.begin(); it != node.end(); ++it, ++index)
                 {
                     ImGui::PushID(index);
-                    ImGui::TextColored(kAccent, "%s", it.key().c_str());
+                    ImGui::TextColored(accentColor(), "%s", it.key().c_str());
                     if (it.value().is_object())
                     {
                         AppearanceDoc::Json& transition = it.value();
@@ -3116,12 +3162,13 @@ void DesignerWindow::drawProps()
         }
 
         default:
-            ImGui::TextColored(kMuted, "选中层 / box / 状态看属性");
+            ImGui::TextColored(mutedColor(), "选中层 / box / 状态看属性");
             break;
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "layers 增删（顺序就是绘制顺序：hlBg 在内容前，hlGlow 最后）");
+    ImGui::Spacing();
+    ImGui::TextColored(mutedColor(), "layers（顺序 = 绘制顺序）");
     const char* ops[] = { "rect", "text", "image", "shadow", "custom" };
     for (int i = 0; i < 5; i++)
     {
@@ -3252,7 +3299,13 @@ void DesignerWindow::saveAllDirty()
 void DesignerWindow::applyThemeFromProject(std::string& error)
 {
     if (!loadThemeIntoGlobalFromDirectory(this->project.themeDir(), this->project.name))
+    {
         error = "主题装载失败：" + this->project.themeDir();
+        return;
+    }
+
+    // 配色跟着主题走：换主题 / 热重载之后设计器自己也换色
+    applyDesignerStyle();
 }
 
 bool DesignerWindow::applyPendingViewText(std::string& error)
@@ -3532,7 +3585,7 @@ void DesignerWindow::drawOpenProjectModal()
         return;
 
     // ---- 模式 ----
-    ImGui::TextColored(kAccent, "要做什么");
+    ImGui::TextColored(accentColor(), "要做什么");
     ImGui::RadioButton("用模板新建一个主题（原主题不动）", &this->newProjectMode, 0);
     ImGui::SameLine();
     ImGui::RadioButton("直接编辑选中的主题", &this->newProjectMode, 1);
@@ -3580,7 +3633,7 @@ void DesignerWindow::drawOpenProjectModal()
                 this->newProjectMode == 0 ? "当模板新建" : "打开");
     }
     if (this->browseEntries.empty())
-        ImGui::TextColored(kMuted, "  （这个目录里没有子目录）");
+        ImGui::TextColored(mutedColor(), "  （这个目录里没有子目录）");
     ImGui::EndChild();
 
     // ---- 选中信息 + 新主题名 ----
@@ -3592,18 +3645,18 @@ void DesignerWindow::drawOpenProjectModal()
         && themeInfoFromManifest(this->browseSelection, themeRoot, themeName, infoError);
 
     if (this->browseSelection.empty())
-        ImGui::TextColored(kMuted, "选中一个标着「主题」的目录");
+        ImGui::TextColored(mutedColor(), "选中一个标着「主题」的目录");
     else if (!selectionIsTheme)
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s：%s", this->browseSelection.c_str(),
             infoError.c_str());
     else if (this->newProjectMode == 0)
     {
-        ImGui::TextColored(kMuted, "模板：%s（在 %s 下）", themeName.c_str(), themeRoot.c_str());
+        ImGui::TextColored(mutedColor(), "模板：%s（在 %s 下）", themeName.c_str(), themeRoot.c_str());
         ImGui::SetNextItemWidth(240);
         ImGui::InputText("新主题名", this->newThemeName, sizeof(this->newThemeName));
     }
     else
-        ImGui::TextColored(kMuted, "将直接编辑：%s（%s）", themeName.c_str(),
+        ImGui::TextColored(mutedColor(), "将直接编辑：%s（%s）", themeName.c_str(),
             this->browseSelection.c_str());
 
     if (!this->openProjectError.empty())
@@ -3649,21 +3702,21 @@ void DesignerWindow::drawModals()
     if (ImGui::BeginPopupModal("焦点顺序", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         if (this->currentViewFile.empty())
-            ImGui::TextColored(kMuted, "打开一个页面视图（views/*.json）才有焦点顺序");
+            ImGui::TextColored(mutedColor(), "打开一个页面视图（views/*.json）才有焦点顺序");
         else if (this->focusOrder.empty())
-            ImGui::TextColored(kMuted, "这棵视图树里没有可聚焦控件");
+            ImGui::TextColored(mutedColor(), "这棵视图树里没有可聚焦控件");
         else
         {
-            ImGui::TextColored(kMuted, "按视图树顺序（方向键导航大致就是这个顺序）");
+            ImGui::TextColored(mutedColor(), "按视图树顺序（方向键导航大致就是这个顺序）");
             for (size_t i = 0; i < this->focusOrder.size(); i++)
                 ImGui::BulletText("%d. %s", (int)i + 1, this->focusOrder[i].c_str());
         }
 
         // 数据绑定：哪个节点绑了哪个字段（预览里没有数据源，绑定出来的内容是空的）
         ImGui::Separator();
-        ImGui::TextColored(kAccent, "数据绑定");
+        ImGui::TextColored(accentColor(), "数据绑定");
         if (this->pageBindings.empty())
-            ImGui::TextColored(kMuted, "这个页面没有 bind");
+            ImGui::TextColored(mutedColor(), "这个页面没有 bind");
         else
             for (const bklv::Binding& binding : this->pageBindings)
             {
@@ -3678,7 +3731,7 @@ void DesignerWindow::drawModals()
             }
         if (!this->pageBindings.empty())
         {
-            ImGui::TextColored(kMuted, "示例数据（JSON：字段 → 值）：预览里用它填绑定");
+            ImGui::TextColored(mutedColor(), "示例数据（JSON：字段 → 值）：预览里用它填绑定");
             ImGui::SetNextItemWidth(-1);
             ImGui::InputTextMultiline("##samples", this->bindingSamples,
                 sizeof(this->bindingSamples), ImVec2(-1, 86.0f));
@@ -3692,7 +3745,7 @@ void DesignerWindow::drawModals()
                 this->statusMessage       = "示例数据已更新，正在重新套用";
             }
             ImGui::SameLine();
-            ImGui::TextColored(kMuted, "（改了字段名要重新打开页面）");
+            ImGui::TextColored(mutedColor(), "（改了字段名要重新打开页面）");
         }
         ImGui::Separator();
         ImGui::Checkbox("在预览里标号", &this->highlightFocusOrder);
@@ -3709,12 +3762,12 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("快捷键与约定", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kAccent, "快捷键");
+        ImGui::TextColored(accentColor(), "快捷键");
         ImGui::BulletText("Ctrl+S 保存（先看 diff）· Ctrl+Z / Ctrl+Y 撤销 · 重做");
         ImGui::BulletText("Ctrl+D 复制当前层 · Alt+↑ / Alt+↓ 上移 / 下移当前层");
         ImGui::BulletText("F1 校验面板 · F2 预览最大化 · 滚轮缩放画布 · 中键/Shift+左键 平移");
         ImGui::Separator();
-        ImGui::TextColored(kAccent, "约定（改样式前值得知道）");
+        ImGui::TextColored(accentColor(), "约定（改样式前值得知道）");
         ImGui::BulletText("尺寸/字号按 720p 写，运行时按窗口宽等比缩放；opacity/duration 不缩放");
         ImGui::BulletText("层序：shadow 在底色前；hlBg 在内容层前；hlGlow / hlBorder 最后");
         ImGui::BulletText("主题引用 @theme/color.a.b 或 @theme/metric.a.b，key 不存在会编译失败");
@@ -3735,7 +3788,7 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("另存为变体", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "从 %s 复制一份新外观（含未保存改动），并登记进 theme.json",
+        ImGui::TextColored(mutedColor(), "从 %s 复制一份新外观（含未保存改动），并登记进 theme.json",
             this->currentWidget.c_str());
         ImGui::SetNextItemWidth(320);
         ImGui::InputText("新外观名", this->variantName, sizeof(this->variantName));
@@ -3760,7 +3813,7 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("新建页面视图", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "会在 %s/views/ 下建文件（views 不扫目录，写出来就能用）",
+        ImGui::TextColored(mutedColor(), "会在 %s/views/ 下建文件（views 不扫目录，写出来就能用）",
             this->project.resourcesDir().c_str());
         ImGui::SetNextItemWidth(320);
         ImGui::InputText("页面名", this->newViewName, sizeof(this->newViewName));
@@ -3794,7 +3847,7 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("新建外观文件", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "会在 %s/widgets/ 下建文件，并登记进 theme.json", this->project.themeDir().c_str());
+        ImGui::TextColored(mutedColor(), "会在 %s/widgets/ 下建文件，并登记进 theme.json", this->project.themeDir().c_str());
         ImGui::SetNextItemWidth(320);
         ImGui::InputText("外观名", this->newAppearanceName, sizeof(this->newAppearanceName));
         ImGui::SetNextItemWidth(320);
@@ -3825,7 +3878,7 @@ void DesignerWindow::drawModals()
     {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f),
             "要删掉 %s 吗？会同时从 theme.json 摘掉这个登记。", this->currentWidget.c_str());
-        ImGui::TextColored(kMuted, "（文件本身删掉，.bak 也清掉；想反悔只能靠 git）");
+        ImGui::TextColored(mutedColor(), "（文件本身删掉，.bak 也清掉；想反悔只能靠 git）");
         if (ImGui::Button("删除", ImVec2(120, 0)))
         {
             std::string error;
@@ -3955,7 +4008,7 @@ void DesignerWindow::drawModals()
     if (ImGui::BeginPopupModal("文件被外部改动过", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::TextUnformatted("磁盘上的这个文件和我打开时不一样了（别的编辑器 / git checkout）。");
-        ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+        ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
         ImGui::Separator();
         if (ImGui::Button("覆盖写（保留我的）", ImVec2(180, 0)))
         {
@@ -4012,7 +4065,7 @@ void DesignerWindow::drawModals()
             ImGui::SameLine();
             ImGui::Text("%s", entry.first.c_str());
             ImGui::SameLine();
-            ImGui::TextColored(kMuted, "（%d 处改动）", changes);
+            ImGui::TextColored(mutedColor(), "（%d 处改动）", changes);
             ImGui::SameLine();
             if (ImGui::SmallButton((std::string("切到##") + entry.first).c_str()))
             {
@@ -4027,7 +4080,7 @@ void DesignerWindow::drawModals()
             }
         }
         if (dirtyCount == 0)
-            ImGui::TextColored(kMuted, "没有未保存的改动");
+            ImGui::TextColored(mutedColor(), "没有未保存的改动");
         ImGui::Separator();
         if (ImGui::Button("全部保存", ImVec2(120, 0)))
         {
@@ -4048,7 +4101,7 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("校验 / 警告", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "保存时会跑整主题校验；这里也能手动跑一次。");
+        ImGui::TextColored(mutedColor(), "保存时会跑整主题校验；这里也能手动跑一次。");
         if (ImGui::Button("现在校验整主题", ImVec2(160, 0)))
         {
             this->warnings.clear();
@@ -4066,7 +4119,7 @@ void DesignerWindow::drawModals()
         for (const std::string& warning : this->contrastWarnings)
             ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "对比度：%s", warning.c_str());
         if (this->warnings.empty() && this->doc.layerOrderWarnings().empty())
-            ImGui::TextColored(kMuted, "没有警告");
+            ImGui::TextColored(mutedColor(), "没有警告");
         if (!this->errorMessage.empty())
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
         ImGui::Separator();
@@ -4083,7 +4136,7 @@ void DesignerWindow::drawModals()
 
     if (ImGui::BeginPopupModal("另存为", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "导出一份 JSON 到指定路径（不影响当前文件）");
+        ImGui::TextColored(mutedColor(), "导出一份 JSON 到指定路径（不影响当前文件）");
         ImGui::SetNextItemWidth(560);
         ImGui::InputText("##saveas", this->saveAsPath, sizeof(this->saveAsPath));
         if (ImGui::Button("写入", ImVec2(120, 0)))
@@ -4111,7 +4164,7 @@ void DesignerWindow::drawModals()
 
     if (ImGui::BeginPopupModal("保存前确认改动", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(kMuted, "写入前会先编译校验；不通过就不写盘。会留一份 .bak。");
+        ImGui::TextColored(mutedColor(), "写入前会先编译校验；不通过就不写盘。会留一份 .bak。");
         ImGui::Separator();
         for (const std::string& line : this->diffLines)
             ImGui::TextUnformatted(line.c_str());
@@ -4174,6 +4227,14 @@ void DesignerWindow::draw()
             this->previewMaximized = !this->previewMaximized;
     }
 
+    // 第一帧再套一次：attach 时 ImGui 上下文可能还没建好（applyDesignerStyle 会自己判空）
+    static bool styleApplied = false;
+    if (!styleApplied)
+    {
+        applyDesignerStyle();
+        styleApplied = true;
+    }
+
     this->drawTopBar();
 
     const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
@@ -4205,12 +4266,12 @@ void DesignerWindow::draw()
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("折叠左栏（给预览让地方）");
         ImGui::SameLine();
-        ImGui::TextColored(kAccent, "文件");
+        panelHeader("文件", "● 未保存");
         ImGui::BeginChild("##files", ImVec2(0, 250), false);
         this->drawFileList();
         ImGui::EndChild();
         ImGui::Separator();
-        ImGui::TextColored(kAccent, "节点树");
+        panelHeader("节点树", "点哪层渲染哪层");
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
             sizeof(this->treeFilter));

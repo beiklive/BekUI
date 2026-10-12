@@ -208,6 +208,7 @@ target_link_libraries(designer_core PUBLIC bklv::bklv)
 target_include_directories(designer_core PUBLIC "${CMAKE_SOURCE_DIR}/designer")
 
 set(BKLV_DESIGNER_UI_SOURCES
+    ui/designer_style.cpp
     ui/designer_window.cpp
 )
 

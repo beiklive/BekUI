@@ -92,12 +92,17 @@ int main(int argc, char** argv)
         filePicked = true;
     }
     if (const char* wantedTable = std::getenv("BKLV_DESIGNER_TABLE"))
+    {
         window.openTableFile(wantedTable);
+        filePicked = true; // 否则后面的"恢复上次文件"会把它顶掉（截图时踩到）
+    }
     if (const char* newAppearance = std::getenv("BKLV_DESIGNER_NEW_APPEARANCE"))
     {
         std::string createError;
         if (!window.createAppearanceFile(newAppearance, "button", createError))
             BKLV_LOG_WARNING("新建外观失败：%s", createError.c_str());
+        else
+            filePicked = true;
     }
     if (const char* wantedSelect = std::getenv("BKLV_DESIGNER_SELECT"))
         window.selectBySpec(wantedSelect);
