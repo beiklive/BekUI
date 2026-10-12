@@ -254,6 +254,8 @@ class DesignerWindow
     void selectByChangePath(const std::string& path);
     // 在"改动过的字段"里往下/往上跳一处（step = +1 / -1）
     void selectNextChange(int step);
+    // 状态栏里的"选中路径"面包屑（可点，点了回到上一层）
+    void drawSelectionBreadcrumb();
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过

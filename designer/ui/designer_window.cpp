@@ -2934,6 +2934,21 @@ void DesignerWindow::drawProps()
         ImGui::SetTooltip("复制当前选中节点那一段的 JSON（选中层 → 该层；选中 box → box；否则整份）");
     if (!this->changedFieldPaths.empty())
     {
+        if (ImGui::CollapsingHeader(("改动 " + std::to_string(this->changedFieldPaths.size())
+                + " 处（点条目定位）###changedList").c_str()))
+        {
+            ImGui::Indent(10.0f);
+            for (const std::string& path : this->changedFieldPaths)
+            {
+                if (ImGui::Selectable((path + "##chg" + path).c_str(), false,
+                        ImGuiSelectableFlags_AllowDoubleClick))
+                    this->selectByChangePath(path);
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("点一下：跳到这一处");
+            }
+            ImGui::Unindent(10.0f);
+        }
+
         if (ImGui::SmallButton("下一处改动 (F3)"))
             this->selectNextChange(1);
         ImGui::SameLine();
@@ -3826,6 +3841,82 @@ void DesignerWindow::selectByChangePath(const std::string& path)
     }
     this->previewDirty  = true;
     this->statusMessage = "已定位到 " + path;
+}
+
+void DesignerWindow::drawSelectionBreadcrumb()
+{
+    // 一眼看清"我现在改的是哪个文件的哪一层哪个字段"，而且能点着往回退
+    auto crumb = [this](const char* text, SelKind kind, int index, const char* key,
+        bool last) {
+        const bool isCurrent = (this->selection.kind == kind)
+            && (kind == SelKind::FILE || this->selection.index == index)
+            && (key == nullptr || this->selection.key == key);
+        if (isCurrent)
+            ImGui::TextColored(accentColor(), "%s", text);
+        else
+            ImGui::TextColored(mutedColor(), "%s", text);
+
+        if (!last)
+        {
+            const bool hovered = ImGui::IsItemHovered();
+            if (hovered)
+            {
+                ImGui::SetTooltip("点一下回到这里");
+                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            }
+            if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                this->selection      = Selection{};
+                this->selection.kind = kind;
+                this->selection.index = index;
+                if (key != nullptr)
+                    this->selection.key = key;
+                this->previewDirty   = true;
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(mutedColor(), "/");
+            ImGui::SameLine();
+        }
+    };
+
+    ImGui::TextColored(mutedColor(), "选中");
+    ImGui::SameLine();
+
+    if (!this->currentWidget.empty())
+    {
+        crumb(this->currentWidget.c_str(), SelKind::FILE, -1, nullptr,
+            this->selection.kind == SelKind::FILE);
+    }
+    else if (!this->currentViewFile.empty())
+    {
+        crumb(this->currentViewFile.c_str(), SelKind::FILE, -1, nullptr,
+            this->selection.kind == SelKind::FILE);
+    }
+    else if (!this->currentTable.empty())
+    {
+        crumb(this->currentTable.c_str(), SelKind::TABLE, -1, nullptr,
+            this->selection.kind == SelKind::TABLE);
+    }
+
+    switch (this->selection.kind)
+    {
+        case SelKind::BOX:
+            crumb("盒模型", SelKind::BOX, -1, nullptr, true);
+            break;
+        case SelKind::LAYER:
+            crumb(("#" + std::to_string(this->selection.index + 1) + " 层").c_str(),
+                SelKind::LAYER, this->selection.index, nullptr, true);
+            break;
+        case SelKind::LAYER_FIELD:
+            crumb(("#" + std::to_string(this->selection.index + 1) + " 层").c_str(),
+                SelKind::LAYER, this->selection.index, nullptr, false);
+            crumb(this->selection.key.c_str(), SelKind::LAYER_FIELD, this->selection.index,
+                this->selection.key.c_str(), true);
+            break;
+        default:
+            break;
+    }
+    ImGui::NewLine();
 }
 
 void DesignerWindow::selectNextChange(int step)
