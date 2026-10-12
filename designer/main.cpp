@@ -111,6 +111,10 @@ int main(int argc, char** argv)
             window.applyTestEdit(spec.substr(0, equals), std::atof(spec.c_str() + equals + 1));
     }
 
+    // 自查：BKLV_DESIGNER_EDIT_TEXT=<JSON> 改页面视图的文本缓冲（不点「应用」）
+    if (const char* editText = std::getenv("BKLV_DESIGNER_EDIT_TEXT"))
+        window.applyTestTextEdit(editText);
+
     if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
         window.forceSaveForTest();
 

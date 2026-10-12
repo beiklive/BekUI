@@ -68,6 +68,16 @@ class DesignerWindow
         BKLV_LOG_INFO("[自查] 保存结果：%s%s", this->statusMessage.c_str(),
             this->errorMessage.empty() ? "" : (" / " + this->errorMessage).c_str());
     }
+    // 自查用：改页面视图的**文本缓冲**但不点「应用」（验证"保存时自动应用"）
+    bool applyTestTextEdit(const std::string& text)
+    {
+        if (this->currentFilePath.empty())
+            return false;
+        std::snprintf(this->viewText, sizeof(this->viewText), "%s", text.c_str());
+        this->markEdited();
+        return true;
+    }
+
     // 自查用：改一个 box 数值（验证增量写盘 / 撤销）
     bool applyTestEdit(const std::string& key, double value)
     {
@@ -140,6 +150,8 @@ class DesignerWindow
 
     // ---- 预览 ----
     bklv::AppearanceView* createPreviewControl() const; // 按外观名挑真实控件，兜底裸 AppearanceView
+    bklv::AppearanceView* createPreviewControlFor(const std::string& name) const;
+    std::string lastAppearanceName;   // 最近打开的外观（编辑主题表时拿它当预览对象）
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
@@ -149,6 +161,7 @@ class DesignerWindow
     void ensurePreviewBuilt();
 
     // ---- 保存 ----
+    bool applyPendingViewText(std::string& error); // 页面视图：文本没点「应用」就自动应用一次
     void requestSave();
     void doSave();
     void revert();

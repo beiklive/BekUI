@@ -287,6 +287,7 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
         return false;
 
     this->currentWidget    = widgetName;
+    this->lastAppearanceName = widgetName;
     this->currentViewFile.clear();
     this->currentTable.clear();
     this->currentFilePath  = path;
@@ -532,6 +533,7 @@ bool DesignerWindow::createAppearanceFile(const std::string& name, const std::st
         return false;
 
     this->refreshFileList();
+    this->refreshThemeUsage(); // 新建的外观可能带来新的引用
     std::string reloadError;
     this->applyThemeFromProject(reloadError);
     std::string openError;
@@ -562,6 +564,7 @@ bool DesignerWindow::deleteCurrentAppearance(std::string& error)
     this->dirty       = false;
     this->previewDirty = true;
     this->refreshFileList();
+    this->refreshThemeUsage(); // 删掉的外观带走的引用要跟着消失
     this->applyThemeFromProject(error);
     this->statusMessage = "已删除外观 " + relative + "（文件改名为 .deleted，登记已摘掉）";
     return true;
@@ -960,7 +963,8 @@ void DesignerWindow::drawTopBar()
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(this->readOnly || this->currentFilePath.empty());
+    ImGui::BeginDisabled((this->readOnly && this->currentViewFile.empty())
+        || this->currentFilePath.empty());
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.8f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.03f, 0.13f, 0.11f, 1.0f));
     const bool savePressed = ImGui::Button("保存（先看 diff）");
@@ -1497,9 +1501,8 @@ void DesignerWindow::drawStatus()
 
 // ---------------------------------------------------------------- 预览
 
-AppearanceView* DesignerWindow::createPreviewControl() const
+AppearanceView* DesignerWindow::createPreviewControlFor(const std::string& name) const
 {
-    const std::string& name = this->currentWidget;
 
     if (name.rfind("button", 0) == 0)
     {
@@ -1524,6 +1527,11 @@ AppearanceView* DesignerWindow::createPreviewControl() const
         return new DetailCell("页面标题", "右侧说明文字");
 
     return new AppearanceView(name.empty() ? "rectangle" : name, false);
+}
+
+AppearanceView* DesignerWindow::createPreviewControl() const
+{
+    return this->createPreviewControlFor(this->currentWidget);
 }
 
 std::string DesignerWindow::previewJson() const
@@ -1643,6 +1651,18 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
 
     ImGui::ColorButton((std::string("##sw") + label).c_str(), ImGui::ColorConvertU32ToFloat4(preview),
         ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(22, 18));
+    if (value.rfind("@theme/", 0) == 0)
+    {
+        std::string lookup = value.substr(7);
+        if (lookup.rfind("color.", 0) != 0 && lookup.rfind("metric.", 0) != 0)
+            lookup = "color." + lookup;
+        const auto found = this->themeUsage.find(lookup);
+        const int users  = found == this->themeUsage.end() ? 0 : (int)found->second.size();
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s\n%s", value.c_str(),
+                users == 0 ? "没有别的地方引用这个 key"
+                           : (std::to_string(users) + " 个外观引用它").c_str());
+    }
     ImGui::SameLine();
 
     // 文本占中间，右边留 92 给"主题 key"下拉
@@ -1962,6 +1982,31 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
         this->bindingSamplesByFile[this->currentFilePath] = this->bindingSamples;
         this->applySamplesPending = false;
         return created;
+    }
+
+    // 主题表没有自己的预览：拿最近打开的那个外观来当"改颜色的效果预览"
+    // （保存后主题会热重载，这里再建一次就能看到新颜色）
+    if (!this->currentTable.empty())
+    {
+        if (this->lastAppearanceName.empty())
+            return nullptr;
+
+        AppearanceView* control = this->createPreviewControlFor(this->lastAppearanceName);
+        std::string text;
+        std::string readError;
+        const std::string path
+            = this->project.themeDir() + "/" + widgetPathFromName(this->lastAppearanceName);
+        if (readTextFile(path, text, readError))
+        {
+            std::string applyError;
+            if (!control->applyAppearanceJson(text, applyError))
+            {
+                this->previewError = applyError;
+                delete control;
+                return nullptr;
+            }
+        }
+        return control;
     }
 
     if (this->currentWidget.empty())
@@ -3004,9 +3049,9 @@ void DesignerWindow::markEdited()
 
 void DesignerWindow::saveAllDirty()
 {
-    if (this->readOnly)
+    if (this->readOnly && this->currentViewFile.empty())
     {
-        this->errorMessage = "只读主题，不能写盘";
+        this->errorMessage = "只读主题，不能写盘（页面视图不受限）";
         return;
     }
 
@@ -3072,11 +3117,28 @@ void DesignerWindow::applyThemeFromProject(std::string& error)
         error = "主题装载失败：" + this->project.themeDir();
 }
 
+bool DesignerWindow::applyPendingViewText(std::string& error)
+{
+    // 页面视图：文本改过但没点「应用」时，先自动应用一次
+    // （不然 diff 和保存用的都是上一次应用过的内容，用户刚打的字静默丢掉）
+    if (this->currentViewFile.empty() || this->viewText == this->viewTextApplied)
+        return true;
+
+    if (!this->applyViewText(error))
+    {
+        error = "文本还没通过校验，先修好再保存：" + error;
+        return false;
+    }
+    this->statusMessage = "文本已自动应用（原来是改了没点「应用」）";
+    return true;
+}
+
 void DesignerWindow::requestSave()
 {
-    if (this->readOnly)
+    if (this->readOnly && this->currentViewFile.empty())
     {
-        // 按钮虽然是灰的，但 Ctrl+S / 冲突弹层会绕过它 —— 基准主题绝不能被写
+        // 按钮虽然是灰的，但 Ctrl+S / 冲突弹层会绕过它 —— 基准主题绝不能被写。
+        // 页面视图不属于主题（在 resources/views/ 下），只读时照样能改。
         this->errorMessage = "基准主题（default / ocean）只读：请先「新建项目」用模板建一份自己的主题";
         BKLV_LOG_WARNING("拒绝写盘：%s 是只读的基准主题", this->project.name.c_str());
         return;
@@ -3085,6 +3147,13 @@ void DesignerWindow::requestSave()
     if (this->fileChangedExternally() && !this->allowOverwrite)
     {
         this->showConflict = true;
+        return;
+    }
+
+    std::string applyError;
+    if (!this->applyPendingViewText(applyError))
+    {
+        this->errorMessage = applyError;
         return;
     }
 
@@ -3114,9 +3183,19 @@ void DesignerWindow::doSave()
 {
     this->showDiff = false;
 
-    if (this->readOnly)
+    // 自查钩子 / 拦截弹层都会直接走这里，所以这条也要自己兜住"改了没点应用"
     {
-        this->errorMessage = "只读主题，不能写盘";
+        std::string pendingError;
+        if (!this->applyPendingViewText(pendingError))
+        {
+            this->errorMessage = pendingError;
+            return;
+        }
+    }
+
+    if (this->readOnly && this->currentViewFile.empty())
+    {
+        this->errorMessage = "只读主题，不能写盘（页面视图不受限）";
         return;
     }
 
@@ -3174,6 +3253,13 @@ void DesignerWindow::doSave()
         }
         this->savedText = text;
         this->dirty     = false;
+        // 草稿的脏标记也要清：不清的话文件列表一直显示 ●（改动总览里也挂着）
+        const auto draftForView = this->drafts.find(this->currentFilePath);
+        if (draftForView != this->drafts.end())
+        {
+            draftForView->second.dirty     = false;
+            draftForView->second.savedText = text;
+        }
     }
 
     // 增量写盘：只把变化了的顶层段落到原文本上（手写排版/空行/段序都保住）。
@@ -3217,6 +3303,42 @@ void DesignerWindow::doSave()
         this->warnings.push_back("层序：" + warning);
 
     this->refreshThemeUsage(); // 刚写完，引用关系可能变了
+
+    // 主题表改动的影响清单：这次动到的 key 影响了哪些控件
+    if (!this->currentTable.empty())
+    {
+        const std::string keyPrefix
+            = this->currentTable.rfind("metrics", 0) == 0 ? "metric." : "color.";
+        AppearanceDoc::Json beforeTable
+            = AppearanceDoc::Json::parse(this->savedText, nullptr, false);
+
+        std::vector<std::string> affected;
+        if (!beforeTable.is_discarded())
+        {
+            for (const JsonChange& change : diffJson(beforeTable, this->doc.root()))
+            {
+                // 差异路径形如 common.red / radius.md：取前两段当 key
+                std::string key = change.path;
+                const size_t second = key.find('.', key.find('.') + 1);
+                if (second != std::string::npos)
+                    key = key.substr(0, second);
+                const auto found = this->themeUsage.find(keyPrefix + key);
+                if (found == this->themeUsage.end())
+                    continue;
+                for (const std::string& widget : found->second)
+                    if (std::find(affected.begin(), affected.end(), widget) == affected.end())
+                        affected.push_back(widget);
+            }
+        }
+        if (!affected.empty())
+        {
+            std::string list;
+            for (const std::string& widget : affected)
+                list += (list.empty() ? "" : "、") + widget;
+            BKLV_LOG_INFO("主题表改动影响 %d 个外观：%s", (int)affected.size(), list.c_str());
+            this->statusMessage += "；影响 " + std::to_string(affected.size()) + " 个外观";
+        }
+    }
 
     // 热重载：重新读盘 + 清外观缓存，然后把预览重建
     std::string reloadError;
