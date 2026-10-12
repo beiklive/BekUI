@@ -48,19 +48,19 @@ class ThemeData;
 // 可插值的属性。颜色占 4 个通道，标量占 1 个。
 enum class AppearanceProp
 {
-    Fill,
-    Stroke,
-    TextColor,
-    StrokeWidth,
-    Radius,
-    Opacity,
-    OffsetX,
-    OffsetY,
-    InsetTop,
-    InsetRight,
-    InsetBottom,
-    InsetLeft,
-    FontSize,
+    FILL,
+    STROKE,
+    TEXT_COLOR,
+    STROKE_WIDTH,
+    RADIUS,
+    OPACITY,
+    OFFSET_X,
+    OFFSET_Y,
+    INSET_TOP,
+    INSET_RIGHT,
+    INSET_BOTTOM,
+    INSET_LEFT,
+    FONT_SIZE,
 };
 
 // 属性名（JSON 里那种小驼峰）与枚举互转；名字不认识时返回 false。
@@ -72,13 +72,13 @@ struct AppearanceLayer
 {
     enum class Op
     {
-        Rect,   // fill / stroke / strokeWidth / radius
-        Text,   // source(数据名) / color / fontSize / align / valign / inset
-        Image,  // source(数据名) / scaling / radius / inset
-        Custom, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
+        RECT,   // fill / stroke / strokeWidth / radius
+        TEXT,   // source(数据名) / color / fontSize / align / valign / inset
+        IMAGE,  // source(数据名) / scaling / radius / inset
+        CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
     };
 
-    Op op = Op::Rect;
+    Op op = Op::RECT;
     std::string id;
     std::string source; // Text/Image/Custom 的数据来源名
 
@@ -105,7 +105,7 @@ struct AppearanceLayer
 struct AppearanceTransition
 {
     std::string layerId;
-    AppearanceProp prop      = AppearanceProp::Fill;
+    AppearanceProp prop      = AppearanceProp::FILL;
     float target[4]          = { 0.0f, 0.0f, 0.0f, 0.0f }; // 颜色用 4 个通道，标量用 [0]
     float durationMs         = 0.0f;
     std::string easing       = "linear";

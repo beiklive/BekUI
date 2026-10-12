@@ -87,9 +87,9 @@ void Button::update()
 const AttributeTable& Button::attributes() const
 {
     static const AttributeTable table = {
-        { "text", AttributeKind::Text, setButtonTextAttr, nullptr },
-        { "variant", AttributeKind::String, setButtonVariantAttr, nullptr },
-        { "enabled", AttributeKind::Bool, setButtonEnabledAttr, nullptr },
+        { "text", AttributeKind::TEXT, setButtonTextAttr, nullptr },
+        { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
+        { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
     };
     return table;
 }

@@ -127,26 +127,26 @@ void Slider::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, float
 
     if (track != nullptr && trackIndex >= 0)
         drawList->AddRectFilled(ImVec2(x, trackY), ImVec2(x + width, trackY + trackThickness),
-            appearance.getColor(trackIndex, AppearanceProp::Fill), trackRadius);
+            appearance.getColor(trackIndex, AppearanceProp::FILL), trackRadius);
 
     if (fill != nullptr && fillIndex >= 0)
         drawList->AddRectFilled(ImVec2(x, trackY), ImVec2(knobCenter, trackY + trackThickness),
-            appearance.getColor(fillIndex, AppearanceProp::Fill), trackRadius);
+            appearance.getColor(fillIndex, AppearanceProp::FILL), trackRadius);
 
     if (knob != nullptr && knobIndex >= 0)
         drawList->AddRectFilled(ImVec2(knobCenter - knobSize * 0.5f, knobY),
             ImVec2(knobCenter + knobSize * 0.5f, knobY + knobSize),
-            appearance.getColor(knobIndex, AppearanceProp::Fill), knobRadius);
+            appearance.getColor(knobIndex, AppearanceProp::FILL), knobRadius);
 }
 
 const AttributeTable& Slider::attributes() const
 {
     static const AttributeTable table = {
-        { "progress", AttributeKind::Number, setSliderProgressAttr, nullptr },
-        { "step", AttributeKind::Number, [](View* v, const ResolvedValue& r) {
+        { "progress", AttributeKind::NUMBER, setSliderProgressAttr, nullptr },
+        { "step", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<Slider*>(v)->setStep(r.number);
          }, nullptr },
-        { "variant", AttributeKind::String, setSliderVariantAttr, nullptr },
+        { "variant", AttributeKind::STRING, setSliderVariantAttr, nullptr },
     };
     return table;
 }

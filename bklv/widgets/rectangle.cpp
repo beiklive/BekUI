@@ -27,7 +27,7 @@ Rectangle::Rectangle(const std::string& variant)
 const AttributeTable& Rectangle::attributes() const
 {
     static const AttributeTable table = {
-        { "variant", AttributeKind::String, setVariantAttr, nullptr },
+        { "variant", AttributeKind::STRING, setVariantAttr, nullptr },
     };
     return table;
 }

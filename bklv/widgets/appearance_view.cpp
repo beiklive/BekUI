@@ -43,7 +43,7 @@ void AppearanceView::enableContentMeasurement()
             float layerHeight = layer.height;
 
             ImFont* font = this->getLayerFont(layer);
-            if (layer.op == AppearanceLayer::Op::Text && font != nullptr)
+            if (layer.op == AppearanceLayer::Op::TEXT && font != nullptr)
             {
                 const std::string content = this->getLayerText(layer.source);
                 if (!content.empty())
@@ -55,7 +55,7 @@ void AppearanceView::enableContentMeasurement()
                     layerHeight = measured.y;
                 }
             }
-            else if (layer.op == AppearanceLayer::Op::Image)
+            else if (layer.op == AppearanceLayer::Op::IMAGE)
             {
                 const TextureRef texture = this->getLayerImage(layer.source);
                 if (texture.isValid() && layerWidth <= 0.0f)
@@ -252,13 +252,13 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         const AppearanceLayer& layer = layers[i];
         const int index              = (int)i;
 
-        const ImU32 fill        = this->appearance.getColor(index, AppearanceProp::Fill);
-        const ImU32 stroke      = this->appearance.getColor(index, AppearanceProp::Stroke);
-        const ImU32 textColor   = this->appearance.getColor(index, AppearanceProp::TextColor);
-        const float strokeWidth = this->appearance.getNumber(index, AppearanceProp::StrokeWidth);
-        const float radius      = this->appearance.getNumber(index, AppearanceProp::Radius);
-        const float opacity     = this->appearance.getNumber(index, AppearanceProp::Opacity);
-        const float fontSize    = this->appearance.getNumber(index, AppearanceProp::FontSize);
+        const ImU32 fill        = this->appearance.getColor(index, AppearanceProp::FILL);
+        const ImU32 stroke      = this->appearance.getColor(index, AppearanceProp::STROKE);
+        const ImU32 textColor   = this->appearance.getColor(index, AppearanceProp::TEXT_COLOR);
+        const float strokeWidth = this->appearance.getNumber(index, AppearanceProp::STROKE_WIDTH);
+        const float radius      = this->appearance.getNumber(index, AppearanceProp::RADIUS);
+        const float opacity     = this->appearance.getNumber(index, AppearanceProp::OPACITY);
+        const float fontSize    = this->appearance.getNumber(index, AppearanceProp::FONT_SIZE);
 
         float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         this->layerRect(layer, x, y, width, height, rect);
@@ -273,7 +273,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
         switch (layer.op)
         {
-            case AppearanceLayer::Op::Rect:
+            case AppearanceLayer::Op::RECT:
             {
                 if (alphaScale <= 0.001f)
                     break;
@@ -286,7 +286,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 break;
             }
 
-            case AppearanceLayer::Op::Text:
+            case AppearanceLayer::Op::TEXT:
             {
                 ImFont* font = this->getLayerFont(layer);
                 const std::string content = this->getLayerText(layer.source);
@@ -312,7 +312,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 break;
             }
 
-            case AppearanceLayer::Op::Image:
+            case AppearanceLayer::Op::IMAGE:
             {
                 const TextureRef texture = this->getLayerImage(layer.source);
                 if (!texture.isValid() || alphaScale <= 0.001f)
@@ -330,7 +330,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 break;
             }
 
-            case AppearanceLayer::Op::Custom:
+            case AppearanceLayer::Op::CUSTOM:
                 this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
                     rect[3] - rect[1], this->appearance);
                 break;

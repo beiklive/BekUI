@@ -313,7 +313,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   其中 `Header = [图标][标题][右侧区]`（widgets/header*.json + header_icon.json），
   `BottomBar = [提示(左) | 状态区(右)]`（widgets/bottom_bar.json），
   Header 的左右外边距用 `appletFrame.paddingSides`、底栏用 `hints.footerMarginSides`。
-  显隐用**实例方法** `showHeader(bool)` / `showBottomBar(bool)`：隐藏时看 `GONE`（不占位），
+  显隐用**实例方法** `setHeaderVisible(bool)` / `setBottomBarVisible(bool)`：隐藏时看 `GONE`（不占位），
   所以内容区自动吃掉那部分高度；**栏里不能留固定外边距**（页头下边的留白写在页头自己的
   padding 里），否则隐藏后会留下空隙。
   `setBarsAnimated(true)`（默认）时用 `core/time.hpp` 的 `Animatable` 补间折叠：
@@ -344,6 +344,31 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   指针不冒泡是因为 `hitTest` 只返回可聚焦视图，命中的本来就是控件本身。
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
   `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
+
+
+## 接口命名与调用风格
+
+一套规则，新增 API 时照着写。可执行检查：`python3 scripts/check_naming.py`
+（枚举值风格、类型/文件名风格、动词式布尔开关、bool 查询命名，有违例时退出码 1）：
+
+| 类别 | 规则 | 例子 |
+|---|---|---|
+| 类型 | PascalCase，不用前缀 | `AppearanceView` / `ScrollingFrame` / `TextureRef` |
+| 方法 / 自由函数 | camelCase，动词开头 | `setEnabled` / `applyTheme` / `markMeasureDirty` / `resourcePath` |
+| 成员变量 | camelCase（私有，不加 `m_`/`_` 后缀） | `headerVisible` / `appearanceName` |
+| **枚举值** | **UPPER_SNAKE**（全库统一，含 `Op`/`Kind`/`Sound`/`EasingFunction`） | `Visibility::GONE` / `Sound::CLICK` / `EasingFunction::BOUNCE_OUT` |
+| 状态查询（返回 bool） | `is*` / `has*` / `can*` | `isFocusable` / `hasTexture` / `isAppearanceAnimating` |
+| 值访问器（返回数据） | `get*` | `getWidth` / `getStr` / `getBool`（数据取值，不是状态查询） |
+| **动作返回是否成功** | 保留动词式（不加 `is`） | `initContext` / `open` / `pushOverlay` / `step` / `recognize` |
+| 布尔开关 | `set<名词>Enabled` / `set<名词>Visible` / `set<名词>Animated` | `setBarsAnimated` / `setHeaderVisible` / `setBatteryVisible` |
+| 回调 | `setOnXxx` | `setOnClick` / `setOnChange` / `setOnSubmit` |
+| 容器操作 | `addView` / `removeView` / `pushContentView` / `popContentView` | 与容器语义一致 |
+| 子类扩展点 | `applyTheme` / `drawCustomLayer` / `getLayerText` / `getLayerImage` / `getDefaultFocus` | 外观与交互的固定钩子 |
+| 自由函数分组 | 同一主题的散函数放同名 `namespace` | `bklv::task::run` / `bklv::audio::play` |
+| 文件 | snake_case；一个控件一对 `.hpp/.cpp`（同族小类可合并，如 `cell.*`） | `scrolling_frame.*` / `cell.*` |
+
+例外只有两种，都写进注释：① STL 风格的 `std::string::empty()` 这类**标准库**成员照旧；
+② 数据取值用 `get*`（`getBool`），即使返回 bool 也不算状态查询。
 
 ## 测试
 

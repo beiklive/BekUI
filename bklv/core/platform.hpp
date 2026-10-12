@@ -103,7 +103,7 @@ class Platform
 
     // 息屏抑制（Switch 上很关键：玩的时候不能黑屏）
     virtual bool canDisableScreenDimming() { return false; }
-    virtual void disableScreenDimming(bool /*disable*/, const std::string& /*reason*/ = "") { }
+    virtual void setScreenDimmingDisabled(bool /*disable*/, const std::string& /*reason*/ = "") { }
     virtual bool isScreenDimmingDisabled() { return false; }
 
     // 背光亮度 0~1

@@ -97,24 +97,24 @@ float applyEasing(EasingFunction easing, float t)
 
     switch (easing)
     {
-        case EasingFunction::linear:
+        case EasingFunction::LINEAR:
             return t;
 
-        case EasingFunction::quadraticIn:
+        case EasingFunction::QUADRATIC_IN:
             return quadIn(t);
-        case EasingFunction::quadraticOut:
+        case EasingFunction::QUADRATIC_OUT:
             return makeOut(+[](float x) { return x * x; }, t);
-        case EasingFunction::quadraticInOut:
+        case EasingFunction::QUADRATIC_IN_OUT:
             return t < 0.5f ? 2.0f * t * t : -1.0f + (4.0f - 2.0f * t) * t;
 
-        case EasingFunction::cubicIn:
+        case EasingFunction::CUBIC_IN:
             return cubicIn(t);
-        case EasingFunction::cubicOut:
+        case EasingFunction::CUBIC_OUT:
         {
             const float inv = t - 1.0f;
             return inv * inv * inv + 1.0f;
         }
-        case EasingFunction::cubicInOut:
+        case EasingFunction::CUBIC_IN_OUT:
         {
             if (t < 0.5f)
                 return 4.0f * t * t * t;
@@ -122,11 +122,11 @@ float applyEasing(EasingFunction easing, float t)
             return 0.5f * inv * inv * inv + 1.0f;
         }
 
-        case EasingFunction::quarticIn:
+        case EasingFunction::QUARTIC_IN:
             return quartIn(t);
-        case EasingFunction::quarticOut:
+        case EasingFunction::QUARTIC_OUT:
             return makeOut(+[](float x) { return x * x * x * x; }, t);
-        case EasingFunction::quarticInOut:
+        case EasingFunction::QUARTIC_IN_OUT:
         {
             if (t < 0.5f)
                 return 8.0f * quartIn(t);
@@ -134,11 +134,11 @@ float applyEasing(EasingFunction easing, float t)
             return 1.0f - 8.0f * quartIn(inv);
         }
 
-        case EasingFunction::quinticIn:
+        case EasingFunction::QUINTIC_IN:
             return quintIn(t);
-        case EasingFunction::quinticOut:
+        case EasingFunction::QUINTIC_OUT:
             return makeOut(+[](float x) { return x * x * x * x * x; }, t);
-        case EasingFunction::quinticInOut:
+        case EasingFunction::QUINTIC_IN_OUT:
         {
             if (t < 0.5f)
                 return 16.0f * quintIn(t);
@@ -146,20 +146,20 @@ float applyEasing(EasingFunction easing, float t)
             return 1.0f - 16.0f * quintIn(inv);
         }
 
-        case EasingFunction::sineIn:
+        case EasingFunction::SINE_IN:
             return sineIn(t);
-        case EasingFunction::sineOut:
+        case EasingFunction::SINE_OUT:
             return std::sin(t * PI * 0.5f);
-        case EasingFunction::sineInOut:
+        case EasingFunction::SINE_IN_OUT:
             return -(std::cos(PI * t) - 1.0f) * 0.5f;
 
-        case EasingFunction::circularIn:
+        case EasingFunction::CIRCULAR_IN:
             return circIn(t);
-        case EasingFunction::circularOut:
+        case EasingFunction::CIRCULAR_OUT:
             return makeOut(+[](float x) {
                 return 1.0f - std::sqrt(std::max(0.0f, 1.0f - x * x));
             }, t);
-        case EasingFunction::circularInOut:
+        case EasingFunction::CIRCULAR_IN_OUT:
         {
             if (t < 0.5f)
                 return (1.0f - std::sqrt(std::max(0.0f, 1.0f - 4.0f * t * t))) * 0.5f;
@@ -167,11 +167,11 @@ float applyEasing(EasingFunction easing, float t)
             return (std::sqrt(std::max(0.0f, 1.0f - x * x)) + 1.0f) * 0.5f;
         }
 
-        case EasingFunction::exponentialIn:
+        case EasingFunction::EXPONENTIAL_IN:
             return expoIn(t);
-        case EasingFunction::exponentialOut:
+        case EasingFunction::EXPONENTIAL_OUT:
             return t >= 1.0f ? 1.0f : 1.0f - std::pow(2.0f, -10.0f * t);
-        case EasingFunction::exponentialInOut:
+        case EasingFunction::EXPONENTIAL_IN_OUT:
         {
             if (t <= 0.0f)
                 return 0.0f;
@@ -181,9 +181,9 @@ float applyEasing(EasingFunction easing, float t)
                             : (2.0f - std::pow(2.0f, -20.0f * t + 10.0f)) * 0.5f;
         }
 
-        case EasingFunction::elasticIn:
+        case EasingFunction::ELASTIC_IN:
             return elasticInFn(t);
-        case EasingFunction::elasticOut:
+        case EasingFunction::ELASTIC_OUT:
             return makeOut(+[](float x) {
                 if (x <= 0.0f)
                     return 0.0f;
@@ -192,7 +192,7 @@ float applyEasing(EasingFunction easing, float t)
                 constexpr float c4 = (2.0f * 3.14159265358979323846f) / 3.0f;
                 return std::pow(2.0f, -10.0f * x) * std::sin((x * 10.0f - 0.75f) * c4) + 1.0f;
             }, t);
-        case EasingFunction::elasticInOut:
+        case EasingFunction::ELASTIC_IN_OUT:
         {
             if (t <= 0.0f)
                 return 0.0f;
@@ -205,15 +205,15 @@ float applyEasing(EasingFunction easing, float t)
                     + 1.0f;
         }
 
-        case EasingFunction::backIn:
+        case EasingFunction::BACK_IN:
             return backIn(t);
-        case EasingFunction::backOut:
+        case EasingFunction::BACK_OUT:
             return makeOut(+[](float x) {
                 constexpr float c1 = 1.70158f;
                 const float inv    = x - 1.0f;
                 return 1.0f + (c1 + 1.0f) * inv * inv * inv + c1 * inv * inv;
             }, t);
-        case EasingFunction::backInOut:
+        case EasingFunction::BACK_IN_OUT:
         {
             constexpr float c2 = 1.70158f * 1.525f;
             if (t < 0.5f)
@@ -225,11 +225,11 @@ float applyEasing(EasingFunction easing, float t)
             return (x * x * ((c2 + 1.0f) * x + c2) + 2.0f) * 0.5f;
         }
 
-        case EasingFunction::bounceIn:
+        case EasingFunction::BOUNCE_IN:
             return bounceInFn(t);
-        case EasingFunction::bounceOut:
+        case EasingFunction::BOUNCE_OUT:
             return bounceOutFn(t);
-        case EasingFunction::bounceInOut:
+        case EasingFunction::BOUNCE_IN_OUT:
         {
             if (t < 0.5f)
                 return (1.0f - bounceOutFn(1.0f - 2.0f * t)) * 0.5f;

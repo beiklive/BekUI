@@ -39,7 +39,7 @@ const AttributeTable& Label::attributes() const
 {
     static const AttributeTable table = {
         { "text", AttributeKind::Text, setTextAttr, nullptr },
-        { "fontSize", AttributeKind::Number, setFontSizeAttr, nullptr },
+        { "fontSize", AttributeKind::NUMBER, setFontSizeAttr, nullptr },
         // ...
     };
     return table;

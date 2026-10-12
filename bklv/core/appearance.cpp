@@ -68,36 +68,36 @@ struct PropName
 
 // 全部可插值属性，每个枚举值一条（没有别名，遍历时不用去重）
 const AppearanceProp ALL_PROPS[] = {
-    AppearanceProp::Fill,
-    AppearanceProp::Stroke,
-    AppearanceProp::TextColor,
-    AppearanceProp::StrokeWidth,
-    AppearanceProp::Radius,
-    AppearanceProp::Opacity,
-    AppearanceProp::OffsetX,
-    AppearanceProp::OffsetY,
-    AppearanceProp::InsetTop,
-    AppearanceProp::InsetRight,
-    AppearanceProp::InsetBottom,
-    AppearanceProp::InsetLeft,
-    AppearanceProp::FontSize,
+    AppearanceProp::FILL,
+    AppearanceProp::STROKE,
+    AppearanceProp::TEXT_COLOR,
+    AppearanceProp::STROKE_WIDTH,
+    AppearanceProp::RADIUS,
+    AppearanceProp::OPACITY,
+    AppearanceProp::OFFSET_X,
+    AppearanceProp::OFFSET_Y,
+    AppearanceProp::INSET_TOP,
+    AppearanceProp::INSET_RIGHT,
+    AppearanceProp::INSET_BOTTOM,
+    AppearanceProp::INSET_LEFT,
+    AppearanceProp::FONT_SIZE,
 };
 
 const PropName PROP_NAMES[] = {
-    { "fill", AppearanceProp::Fill },
-    { "stroke", AppearanceProp::Stroke },
-    { "color", AppearanceProp::TextColor },
-    { "textColor", AppearanceProp::TextColor },
-    { "strokeWidth", AppearanceProp::StrokeWidth },
-    { "radius", AppearanceProp::Radius },
-    { "opacity", AppearanceProp::Opacity },
-    { "offsetX", AppearanceProp::OffsetX },
-    { "offsetY", AppearanceProp::OffsetY },
-    { "insetTop", AppearanceProp::InsetTop },
-    { "insetRight", AppearanceProp::InsetRight },
-    { "insetBottom", AppearanceProp::InsetBottom },
-    { "insetLeft", AppearanceProp::InsetLeft },
-    { "fontSize", AppearanceProp::FontSize },
+    { "fill", AppearanceProp::FILL },
+    { "stroke", AppearanceProp::STROKE },
+    { "color", AppearanceProp::TEXT_COLOR },
+    { "textColor", AppearanceProp::TEXT_COLOR },
+    { "strokeWidth", AppearanceProp::STROKE_WIDTH },
+    { "radius", AppearanceProp::RADIUS },
+    { "opacity", AppearanceProp::OPACITY },
+    { "offsetX", AppearanceProp::OFFSET_X },
+    { "offsetY", AppearanceProp::OFFSET_Y },
+    { "insetTop", AppearanceProp::INSET_TOP },
+    { "insetRight", AppearanceProp::INSET_RIGHT },
+    { "insetBottom", AppearanceProp::INSET_BOTTOM },
+    { "insetLeft", AppearanceProp::INSET_LEFT },
+    { "fontSize", AppearanceProp::FONT_SIZE },
 };
 
 bool parseHex(const std::string& text, ImU32& out)
@@ -206,15 +206,15 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
 {
     ok = true;
     if (text == "rect")
-        return AppearanceLayer::Op::Rect;
+        return AppearanceLayer::Op::RECT;
     if (text == "text")
-        return AppearanceLayer::Op::Text;
+        return AppearanceLayer::Op::TEXT;
     if (text == "image")
-        return AppearanceLayer::Op::Image;
+        return AppearanceLayer::Op::IMAGE;
     if (text == "custom")
-        return AppearanceLayer::Op::Custom;
+        return AppearanceLayer::Op::CUSTOM;
     ok = false;
-    return AppearanceLayer::Op::Rect;
+    return AppearanceLayer::Op::RECT;
 }
 
 // 状态优先级：同一属性被多个状态同时管着时，优先级高的说了算。
@@ -303,7 +303,7 @@ bool appearancePropFromName(const std::string& name, AppearanceProp& out)
 
 bool appearancePropIsColor(AppearanceProp prop)
 {
-    return prop == AppearanceProp::Fill || prop == AppearanceProp::Stroke || prop == AppearanceProp::TextColor;
+    return prop == AppearanceProp::FILL || prop == AppearanceProp::STROKE || prop == AppearanceProp::TEXT_COLOR;
 }
 
 const std::vector<AppearanceTransition>& Appearance::getTransitions(const std::string& state) const
@@ -371,9 +371,9 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             return nullptr;
         }
 
-        const char* defaultId = layer.op == AppearanceLayer::Op::Rect      ? "rect"
-                                : layer.op == AppearanceLayer::Op::Text    ? "text"
-                                : layer.op == AppearanceLayer::Op::Image   ? "image"
+        const char* defaultId = layer.op == AppearanceLayer::Op::RECT      ? "rect"
+                                : layer.op == AppearanceLayer::Op::TEXT    ? "text"
+                                : layer.op == AppearanceLayer::Op::IMAGE   ? "image"
                                                                            : "custom";
         layer.id     = node.value("id", std::string(defaultId) + std::to_string(i));
         layer.source = node.value("source", "");
@@ -620,7 +620,7 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                     return nullptr;
                 }
 
-                AppearanceProp prop = AppearanceProp::Fill;
+                AppearanceProp prop = AppearanceProp::FILL;
                 if (!appearancePropFromName(propName, prop))
                 {
                     error = "states." + stateName + "." + property + " 不认识的属性 \"" + propName + "\"";
@@ -652,7 +652,7 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 {
                     return nullptr;
                 }
-                else if (prop != AppearanceProp::Opacity)
+                else if (prop != AppearanceProp::OPACITY)
                 {
                     // 几何量（圆角/描边宽/字号/位移/内边距）的目标值也跟随 720p 缩放；
                     // 颜色与 opacity 不缩放
@@ -867,19 +867,19 @@ void AppearanceInstance::setAppearance(std::shared_ptr<const Appearance> appeara
     for (const AppearanceLayer& layer : this->impl->appearance->getLayers())
     {
         std::vector<Impl::Value> perLayer(PROP_COUNT);
-        splitColor(layer.fill, perLayer[propIndex(AppearanceProp::Fill)].channel);
-        splitColor(layer.stroke, perLayer[propIndex(AppearanceProp::Stroke)].channel);
-        splitColor(layer.textColor, perLayer[propIndex(AppearanceProp::TextColor)].channel);
-        perLayer[propIndex(AppearanceProp::StrokeWidth)].channel[0] = layer.strokeWidth;
-        perLayer[propIndex(AppearanceProp::Radius)].channel[0]      = layer.radius;
-        perLayer[propIndex(AppearanceProp::Opacity)].channel[0]     = layer.opacity;
-        perLayer[propIndex(AppearanceProp::OffsetX)].channel[0]     = layer.offset[0];
-        perLayer[propIndex(AppearanceProp::OffsetY)].channel[0]     = layer.offset[1];
-        perLayer[propIndex(AppearanceProp::InsetTop)].channel[0]    = layer.inset[0];
-        perLayer[propIndex(AppearanceProp::InsetRight)].channel[0]  = layer.inset[1];
-        perLayer[propIndex(AppearanceProp::InsetBottom)].channel[0] = layer.inset[2];
-        perLayer[propIndex(AppearanceProp::InsetLeft)].channel[0]   = layer.inset[3];
-        perLayer[propIndex(AppearanceProp::FontSize)].channel[0]    = layer.fontSize;
+        splitColor(layer.fill, perLayer[propIndex(AppearanceProp::FILL)].channel);
+        splitColor(layer.stroke, perLayer[propIndex(AppearanceProp::STROKE)].channel);
+        splitColor(layer.textColor, perLayer[propIndex(AppearanceProp::TEXT_COLOR)].channel);
+        perLayer[propIndex(AppearanceProp::STROKE_WIDTH)].channel[0] = layer.strokeWidth;
+        perLayer[propIndex(AppearanceProp::RADIUS)].channel[0]      = layer.radius;
+        perLayer[propIndex(AppearanceProp::OPACITY)].channel[0]     = layer.opacity;
+        perLayer[propIndex(AppearanceProp::OFFSET_X)].channel[0]     = layer.offset[0];
+        perLayer[propIndex(AppearanceProp::OFFSET_Y)].channel[0]     = layer.offset[1];
+        perLayer[propIndex(AppearanceProp::INSET_TOP)].channel[0]    = layer.inset[0];
+        perLayer[propIndex(AppearanceProp::INSET_RIGHT)].channel[0]  = layer.inset[1];
+        perLayer[propIndex(AppearanceProp::INSET_BOTTOM)].channel[0] = layer.inset[2];
+        perLayer[propIndex(AppearanceProp::INSET_LEFT)].channel[0]   = layer.inset[3];
+        perLayer[propIndex(AppearanceProp::FONT_SIZE)].channel[0]    = layer.fontSize;
         this->impl->values.push_back(std::move(perLayer));
     }
 }
@@ -925,8 +925,8 @@ void AppearanceInstance::setState(const std::string& state, bool active)
             ImU32 color = 0;
             switch (prop)
             {
-                case AppearanceProp::Fill: color = layer.fill; break;
-                case AppearanceProp::Stroke: color = layer.stroke; break;
+                case AppearanceProp::FILL: color = layer.fill; break;
+                case AppearanceProp::STROKE: color = layer.stroke; break;
                 default: color = layer.textColor; break;
             }
             splitColor(color, out);
@@ -935,16 +935,16 @@ void AppearanceInstance::setState(const std::string& state, bool active)
 
         switch (prop)
         {
-            case AppearanceProp::StrokeWidth: out[0] = layer.strokeWidth; break;
-            case AppearanceProp::Radius: out[0] = layer.radius; break;
-            case AppearanceProp::Opacity: out[0] = layer.opacity; break;
-            case AppearanceProp::OffsetX: out[0] = layer.offset[0]; break;
-            case AppearanceProp::OffsetY: out[0] = layer.offset[1]; break;
-            case AppearanceProp::InsetTop: out[0] = layer.inset[0]; break;
-            case AppearanceProp::InsetRight: out[0] = layer.inset[1]; break;
-            case AppearanceProp::InsetBottom: out[0] = layer.inset[2]; break;
-            case AppearanceProp::InsetLeft: out[0] = layer.inset[3]; break;
-            case AppearanceProp::FontSize: out[0] = layer.fontSize; break;
+            case AppearanceProp::STROKE_WIDTH: out[0] = layer.strokeWidth; break;
+            case AppearanceProp::RADIUS: out[0] = layer.radius; break;
+            case AppearanceProp::OPACITY: out[0] = layer.opacity; break;
+            case AppearanceProp::OFFSET_X: out[0] = layer.offset[0]; break;
+            case AppearanceProp::OFFSET_Y: out[0] = layer.offset[1]; break;
+            case AppearanceProp::INSET_TOP: out[0] = layer.inset[0]; break;
+            case AppearanceProp::INSET_RIGHT: out[0] = layer.inset[1]; break;
+            case AppearanceProp::INSET_BOTTOM: out[0] = layer.inset[2]; break;
+            case AppearanceProp::INSET_LEFT: out[0] = layer.inset[3]; break;
+            case AppearanceProp::FONT_SIZE: out[0] = layer.fontSize; break;
             default: break;
         }
     };

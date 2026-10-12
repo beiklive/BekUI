@@ -429,7 +429,7 @@ int main()
         checkFloat(header->getActiveAppearance().getBox().height,
             getTheme().number("metric.appletFrame.headerHeight", 0.0f),
             "应用外壳的页头用 applet 变体（88）");
-        frame->setHeaderStyle(AppletHeaderStyle::Popup);
+        frame->setHeaderStyle(AppletHeaderStyle::POPUP);
         check(header->getActiveAppearance().getBox().heightAuto,
             "Popup 页头换成了另一份外观（高度 auto）");
 
@@ -485,22 +485,22 @@ int main()
         frame->setBarsAnimated(false);
         check(frame->isHeaderVisible() && frame->isBottomBarVisible(), "默认页头与底栏都显示");
 
-        frame->showHeader(false);
-        check(!frame->isHeaderVisible(), "showHeader(false) 生效");
+        frame->setHeaderVisible(false);
+        check(!frame->isHeaderVisible(), "setHeaderVisible(false) 生效");
         check(header->getVisibility() == Visibility::GONE, "页头 GONE（不占位）");
 
-        frame->showBottomBar(false);
-        check(!frame->isBottomBarVisible(), "showBottomBar(false) 生效");
+        frame->setBottomBarVisible(false);
+        check(!frame->isBottomBarVisible(), "setBottomBarVisible(false) 生效");
         check(frame->getFooter()->getVisibility() == Visibility::GONE, "底栏 GONE（不占位）");
 
-        frame->showHeader(true);
-        frame->showBottomBar(true);
+        frame->setHeaderVisible(true);
+        frame->setBottomBarVisible(true);
         check(header->getVisibility() == Visibility::VISIBLE, "再显示出来");
 
         // ---- 开补间时折叠会逐帧变化 ----
         frame->setBarsAnimated(true);
         frame->setBarAnimationDuration(0.05f);
-        frame->showHeader(false);
+        frame->setHeaderVisible(false);
         check(frame->getHeader()->getVisibility() == Visibility::VISIBLE,
             "补间期间页头先保持可见（才有高度可补）");
         const float fullHeight = getTheme().number("metric.appletFrame.headerHeight", 88.0f);

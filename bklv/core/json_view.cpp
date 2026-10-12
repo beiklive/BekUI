@@ -334,12 +334,12 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         std::string error;
         const ApplyResult result = view->applyAttribute(key, value, error);
 
-        if (result == ApplyResult::Failed)
+        if (result == ApplyResult::FAILED)
         {
             addError(ctx, pointer + "/" + key, error);
             return nullptr;
         }
-        if (result == ApplyResult::NotHandled)
+        if (result == ApplyResult::NOT_HANDLED)
         {
             // 未知属性只警告，不中断——多写一个键不该让整个界面建不出来
             std::string message = "未知属性 \"" + key + "\"";

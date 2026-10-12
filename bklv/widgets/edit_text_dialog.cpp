@@ -292,10 +292,10 @@ class TextField : public AppearanceView
         }
 
         const int layerIndex = appearance.getAppearance().indexOfLayer(layer.id);
-        const float fontSize = appearance.getNumber(layerIndex, AppearanceProp::FontSize);
+        const float fontSize = appearance.getNumber(layerIndex, AppearanceProp::FONT_SIZE);
         const float size     = fontSize > 0.0f ? fontSize : 15.0f;
         const float offsetX  = font->CalcTextSizeA(size, FLT_MAX, 0.0f, before.c_str()).x;
-        const ImU32 color    = appearance.getColor(layerIndex, AppearanceProp::Fill);
+        const ImU32 color    = appearance.getColor(layerIndex, AppearanceProp::FILL);
 
         drawList->AddRectFilled(ImVec2(x + offsetX, y), ImVec2(x + offsetX + 2.0f, y + height), color);
     }

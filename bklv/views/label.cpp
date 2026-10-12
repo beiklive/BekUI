@@ -522,13 +522,13 @@ void setVerticalAlignAttr(View* v, const ResolvedValue& r)
 const AttributeTable& Label::attributes() const
 {
     static const AttributeTable table = {
-        { "text", AttributeKind::Text, setTextAttr, nullptr },
-        { "fontSize", AttributeKind::Number, setFontSizeAttr, nullptr },
-        { "textColor", AttributeKind::Color, setTextColorAttr, nullptr },
-        { "singleLine", AttributeKind::Bool, setSingleLineAttr, nullptr },
-        { "lineHeight", AttributeKind::Number, setLineHeightAttr, nullptr },
-        { "horizontalAlign", AttributeKind::Enum, setHorizontalAlignAttr, "left|center|right" },
-        { "verticalAlign", AttributeKind::Enum, setVerticalAlignAttr, "top|center|bottom" },
+        { "text", AttributeKind::TEXT, setTextAttr, nullptr },
+        { "fontSize", AttributeKind::NUMBER, setFontSizeAttr, nullptr },
+        { "textColor", AttributeKind::COLOR, setTextColorAttr, nullptr },
+        { "singleLine", AttributeKind::BOOL, setSingleLineAttr, nullptr },
+        { "lineHeight", AttributeKind::NUMBER, setLineHeightAttr, nullptr },
+        { "horizontalAlign", AttributeKind::ENUM, setHorizontalAlignAttr, "left|center|right" },
+        { "verticalAlign", AttributeKind::ENUM, setVerticalAlignAttr, "top|center|bottom" },
     };
     return table;
 }

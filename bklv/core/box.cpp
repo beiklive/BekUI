@@ -597,21 +597,21 @@ void setPaddingLeftAttr(View* v, const ResolvedValue& r)
 const AttributeTable& Box::attributes() const
 {
     static const AttributeTable table = {
-        { "axis", AttributeKind::Enum, setAxisAttr, "row|column" },
-        { "direction", AttributeKind::Enum, setDirectionAttr, "inherit|ltr|rtl" },
-        { "alignItems", AttributeKind::Enum, setAlignItemsAttr,
+        { "axis", AttributeKind::ENUM, setAxisAttr, "row|column" },
+        { "direction", AttributeKind::ENUM, setDirectionAttr, "inherit|ltr|rtl" },
+        { "alignItems", AttributeKind::ENUM, setAlignItemsAttr,
             "stretch|flexStart|center|flexEnd|baseline|auto" },
-        { "justifyContent", AttributeKind::Enum, setJustifyContentAttr,
+        { "justifyContent", AttributeKind::ENUM, setJustifyContentAttr,
             "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly" },
-        { "flexWrap", AttributeKind::Bool, setFlexWrapAttr, nullptr },
-        { "gap", AttributeKind::Number, setGapAttr, nullptr },
-        { "gapRow", AttributeKind::Number, setGapRowAttr, nullptr },
-        { "gapColumn", AttributeKind::Number, setGapColumnAttr, nullptr },
-        { "padding", AttributeKind::Number, setPaddingAttr, nullptr },
-        { "paddingTop", AttributeKind::Number, setPaddingTopAttr, nullptr },
-        { "paddingRight", AttributeKind::Number, setPaddingRightAttr, nullptr },
-        { "paddingBottom", AttributeKind::Number, setPaddingBottomAttr, nullptr },
-        { "paddingLeft", AttributeKind::Number, setPaddingLeftAttr, nullptr },
+        { "flexWrap", AttributeKind::BOOL, setFlexWrapAttr, nullptr },
+        { "gap", AttributeKind::NUMBER, setGapAttr, nullptr },
+        { "gapRow", AttributeKind::NUMBER, setGapRowAttr, nullptr },
+        { "gapColumn", AttributeKind::NUMBER, setGapColumnAttr, nullptr },
+        { "padding", AttributeKind::NUMBER, setPaddingAttr, nullptr },
+        { "paddingTop", AttributeKind::NUMBER, setPaddingTopAttr, nullptr },
+        { "paddingRight", AttributeKind::NUMBER, setPaddingRightAttr, nullptr },
+        { "paddingBottom", AttributeKind::NUMBER, setPaddingBottomAttr, nullptr },
+        { "paddingLeft", AttributeKind::NUMBER, setPaddingLeftAttr, nullptr },
     };
     return table;
 }

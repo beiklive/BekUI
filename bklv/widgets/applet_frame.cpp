@@ -85,7 +85,7 @@ void AppletFrame::setSubtitle(const std::string& subtitle)
     this->header->setSubtitle(subtitle);
 }
 
-void AppletFrame::showHeader(bool visible)
+void AppletFrame::setHeaderVisible(bool visible)
 {
     if (this->headerVisible == visible)
         return;
@@ -102,7 +102,7 @@ void AppletFrame::showHeader(bool visible)
     App::requestLayout();
 }
 
-void AppletFrame::showBottomBar(bool visible)
+void AppletFrame::setBottomBarVisible(bool visible)
 {
     if (this->bottomBarVisible == visible)
         return;
@@ -199,18 +199,18 @@ void AppletFrame::finishBarAnimation()
 
 void AppletFrame::setHeaderVisibility(Visibility visibility)
 {
-    this->showHeader(visibility == Visibility::VISIBLE);
+    this->setHeaderVisible(visibility == Visibility::VISIBLE);
 }
 
 void AppletFrame::setFooterVisibility(Visibility visibility)
 {
-    this->showBottomBar(visibility == Visibility::VISIBLE);
+    this->setBottomBarVisible(visibility == Visibility::VISIBLE);
 }
 
 void AppletFrame::setHeaderStyle(AppletHeaderStyle style)
 {
     // Popup 走另一份外观文件（widgets/header.popup.json），代码不用改
-    this->header->setAppearanceVariant(style == AppletHeaderStyle::Popup ? "popup" : "");
+    this->header->setAppearanceVariant(style == AppletHeaderStyle::POPUP ? "popup" : "");
 }
 
 void AppletFrame::attachContentView(View* view)

@@ -221,12 +221,12 @@ void setScalingTypeAttr(View* v, const ResolvedValue& r)
 const AttributeTable& Image::attributes() const
 {
     static const AttributeTable table = {
-        { "src", AttributeKind::ResourcePath, setImageSrcAttr, nullptr },
+        { "src", AttributeKind::RESOURCE_PATH, setImageSrcAttr, nullptr },
         // Image 上的 cornerRadius 指**图片本身的圆角**（子类表优先于公共表里
         // 那个背景圆角），这才是 Image 上看得见的东西。
-        { "cornerRadius", AttributeKind::Number, setImageRadiusAttr, nullptr },
-        { "scalingType", AttributeKind::Enum, setScalingTypeAttr, "fit|fill|stretch|center" },
-        { "placeholderColor", AttributeKind::Color, setImagePlaceholderAttr, nullptr },
+        { "cornerRadius", AttributeKind::NUMBER, setImageRadiusAttr, nullptr },
+        { "scalingType", AttributeKind::ENUM, setScalingTypeAttr, "fit|fill|stretch|center" },
+        { "placeholderColor", AttributeKind::COLOR, setImagePlaceholderAttr, nullptr },
     };
     return table;
 }

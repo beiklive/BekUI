@@ -25,21 +25,21 @@ AudioMixer::SoundSpec AudioMixer::specOf(Sound sound)
 {
     switch (sound)
     {
-        case Sound::FocusChange: // 短促、清亮
+        case Sound::FOCUS_CHANGE: // 短促、清亮
             return { 880.0f, 0.035f, 0.20f, false };
-        case Sound::FocusSidebar: // 比焦点音低一点，区分开
+        case Sound::FOCUS_SIDEBAR: // 比焦点音低一点，区分开
             return { 620.0f, 0.045f, 0.20f, false };
-        case Sound::Click: // 干脆的点击
+        case Sound::CLICK: // 干脆的点击
             return { 1320.0f, 0.030f, 0.28f, true };
-        case Sound::Back: // 下行感：低一些 + 长一点
+        case Sound::BACK: // 下行感：低一些 + 长一点
             return { 420.0f, 0.06f, 0.22f, false };
-        case Sound::FocusError: // 低沉 + 抖（用低频方波模拟"走到头了"）
+        case Sound::FOCUS_ERROR: // 低沉 + 抖（用低频方波模拟"走到头了"）
             return { 180.0f, 0.18f, 0.24f, true };
-        case Sound::ClickError: // 更闷的一声
+        case Sound::CLICK_ERROR: // 更闷的一声
             return { 120.0f, 0.12f, 0.22f, true };
-        case Sound::Honk: // 彩蛋
+        case Sound::HONK: // 彩蛋
             return { 240.0f, 0.30f, 0.30f, true };
-        case Sound::None:
+        case Sound::NONE:
             break;
     }
     return { 0.0f, 0.0f, 0.0f, false };
@@ -47,7 +47,7 @@ AudioMixer::SoundSpec AudioMixer::specOf(Sound sound)
 
 void AudioMixer::trigger(Sound sound)
 {
-    if (!this->enabled || sound == Sound::None)
+    if (!this->enabled || sound == Sound::NONE)
         return;
 
     // 优先用空闲声道；都占着就抢最旧的那个
@@ -307,7 +307,7 @@ float getVolume()
 
 void play(Sound sound)
 {
-    if (!g_available || sound == Sound::None)
+    if (!g_available || sound == Sound::NONE)
         return;
 
     std::lock_guard<std::mutex> lock(g_mutex);

@@ -28,8 +28,8 @@ namespace bklv
 
 enum class AppletHeaderStyle
 {
-    Regular,
-    Popup,
+    REGULAR,
+    POPUP,
 };
 
 class AppletFrame : public Box
@@ -52,8 +52,8 @@ class AppletFrame : public Box
     //
     // 隐藏时用 GONE（不占位），内容区会自动吃掉那部分高度；
     // 外壳里没有"残留间距"——页头下边的留白写在页头自己的 padding 里。
-    void showHeader(bool visible);
-    void showBottomBar(bool visible);
+    void setHeaderVisible(bool visible);
+    void setBottomBarVisible(bool visible);
     bool isHeaderVisible() const { return this->headerVisible; }
     bool isBottomBarVisible() const { return this->bottomBarVisible; }
 

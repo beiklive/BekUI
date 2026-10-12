@@ -35,7 +35,7 @@ int main()
         check(mixer.isSilent(), "初始是静音");
         checkFloat(renderPeak(mixer, 128, buffer), 0.0f, "没触发时输出全 0");
 
-        mixer.trigger(Sound::Click);
+        mixer.trigger(Sound::CLICK);
         check(!mixer.isSilent(), "触发后有活动声道");
         checkEqualInt(mixer.getActiveVoiceCount(), 1, "一个声道在响");
         check(renderPeak(mixer, 256, buffer) > 0.05f, "渲染出非零样本");
@@ -52,12 +52,12 @@ int main()
     {
         AudioMixer loud;
         loud.setVolume(1.0f);
-        loud.trigger(Sound::Click);
+        loud.trigger(Sound::CLICK);
         const float loudPeak = renderPeak(loud, 256, buffer);
 
         AudioMixer quiet;
         quiet.setVolume(0.25f);
-        quiet.trigger(Sound::Click);
+        quiet.trigger(Sound::CLICK);
         const float quietPeak = renderPeak(quiet, 256, buffer);
 
         check(quietPeak < loudPeak, "音量小则峰值小");
@@ -65,13 +65,13 @@ int main()
 
         AudioMixer muted;
         muted.setEnabled(false);
-        muted.trigger(Sound::Click);
+        muted.trigger(Sound::CLICK);
         check(muted.isSilent(), "禁用后触发不了");
         checkFloat(renderPeak(muted, 256, buffer), 0.0f, "禁用后输出全 0");
 
         // 响到一半再禁用：立刻静音
         AudioMixer half;
-        half.trigger(Sound::Honk);
+        half.trigger(Sound::HONK);
         half.fill(buffer, 128);
         half.setEnabled(false);
         check(half.isSilent(), "播放中禁用会立刻停");
@@ -82,7 +82,7 @@ int main()
         AudioMixer mixer;
         mixer.setVolume(1.0f);
         for (int i = 0; i < 6; i++)
-            mixer.trigger(Sound::Click);
+            mixer.trigger(Sound::CLICK);
         check(mixer.getActiveVoiceCount() > 1, "多个声道同时在响");
 
         mixer.fill(buffer, 512);
@@ -95,13 +95,13 @@ int main()
     std::printf("\n== 4. 边界情况 ==\n");
     {
         AudioMixer mixer;
-        mixer.trigger(Sound::None);
+        mixer.trigger(Sound::NONE);
         check(mixer.isSilent(), "None 不发声");
         checkFloat(renderPeak(mixer, 64, buffer), 0.0f, "None 输出 0");
 
         // 声道被占满后再触发：抢最旧的，不崩
         for (int i = 0; i < AudioMixer::MAX_VOICES + 3; i++)
-            mixer.trigger(Sound::Honk);
+            mixer.trigger(Sound::HONK);
         check(mixer.getActiveVoiceCount() <= AudioMixer::MAX_VOICES, "声道数不超过上限");
 
         checkFloat(mixer.fill(nullptr, 16) ? 1.0f : 0.0f, 0.0f, "空指针安全");
@@ -111,7 +111,7 @@ int main()
     std::printf("\n== 5. 设备层（无窗口下不可用，但不能崩）==\n");
     {
         check(!audio::isAvailable(), "测试环境没有音频设备");
-        audio::play(Sound::Click); // 未初始化时什么都不做
+        audio::play(Sound::CLICK); // 未初始化时什么都不做
         audio::setEnabled(false);
         check(!audio::isEnabled(), "开关可读写");
         audio::setVolume(0.3f);

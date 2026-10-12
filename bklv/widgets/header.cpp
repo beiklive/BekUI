@@ -124,10 +124,10 @@ void Header::applyTheme()
 const AttributeTable& Header::attributes() const
 {
     static const AttributeTable table = {
-        { "title", AttributeKind::Text, setHeaderTitleAttr, nullptr },
-        { "subtitle", AttributeKind::Text, setHeaderSubtitleAttr, nullptr },
-        { "icon", AttributeKind::ResourcePath, setHeaderIconAttr, nullptr },
-        { "variant", AttributeKind::String, setHeaderVariantAttr, nullptr },
+        { "title", AttributeKind::TEXT, setHeaderTitleAttr, nullptr },
+        { "subtitle", AttributeKind::TEXT, setHeaderSubtitleAttr, nullptr },
+        { "icon", AttributeKind::RESOURCE_PATH, setHeaderIconAttr, nullptr },
+        { "variant", AttributeKind::STRING, setHeaderVariantAttr, nullptr },
     };
     return table;
 }

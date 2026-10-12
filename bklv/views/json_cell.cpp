@@ -68,12 +68,12 @@ void JSONRecyclerCell::setIndex(size_t value)
 
         std::string error;
         const ApplyResult result = binding.view->applyAttribute(binding.attribute, Value(raw), error);
-        if (result != ApplyResult::Applied)
+        if (result != ApplyResult::APPLIED)
         {
             // 取不到值或类型不符都只警告：一个格子显示不出来不该让整页崩掉
             BKLV_LOG_WARNING("JSON 列表项绑定失败（字段 \"%s\" -> 属性 \"%s\"）：%s",
                 binding.field.c_str(), binding.attribute.c_str(),
-                result == ApplyResult::NotHandled ? "属性不认识" : error.c_str());
+                result == ApplyResult::NOT_HANDLED ? "属性不认识" : error.c_str());
         }
     }
 }

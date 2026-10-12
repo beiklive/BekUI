@@ -29,20 +29,20 @@ class Value
   public:
     enum class Kind
     {
-        String,
-        Number,
-        Bool,
+        STRING,
+        NUMBER,
+        BOOL,
     };
 
     Value() = default;
-    Value(const char* text) : kind(Kind::String), text(text != nullptr ? text : "") { }
-    Value(const std::string& value) : kind(Kind::String), text(value) { }
-    Value(bool boolean) : kind(Kind::Bool), boolean(boolean) { }
+    Value(const char* text) : kind(Kind::STRING), text(text != nullptr ? text : "") { }
+    Value(const std::string& value) : kind(Kind::STRING), text(value) { }
+    Value(bool boolean) : kind(Kind::BOOL), boolean(boolean) { }
 
     // 整数/浮点都走这里；bool 由上面的重载精确匹配，避免二义。
     template <typename T,
         typename = typename std::enable_if<std::is_arithmetic<T>::value && !std::is_same<T, bool>::value>::type>
-    Value(T number) : kind(Kind::Number), number(static_cast<double>(number))
+    Value(T number) : kind(Kind::NUMBER), number(static_cast<double>(number))
     {
     }
 
@@ -57,7 +57,7 @@ class Value
     bool getBool() const { return this->boolean; }
 
   private:
-    Kind kind = Kind::String;
+    Kind kind = Kind::STRING;
     std::string text;
     double number = 0.0;
     bool boolean = false;
@@ -66,14 +66,14 @@ class Value
 // 属性声明的类型。决定值怎么转换、以及出错时的措辞。
 enum class AttributeKind
 {
-    Number,       // 12 / "12" / "12px" / "@style/brls/xxx"
-    Size,         // AUTO / "auto" / 12 / "50%"
-    Bool,         // true / "true"
-    Color,        // "#RRGGBB" / "#RRGGBBAA" / "@theme/xxx"
-    Text,         // 字符串，`@i18n/key` 会被翻译
-    String,       // 字符串，不做任何解析
-    ResourcePath, // `@res/xxx` -> resourcePath()
-    Enum,         // 取值必须落在 allowed 里（"row|column"）
+    NUMBER,       // 12 / "12" / "12px" / "@style/brls/xxx"
+    SIZE,         // AUTO / "auto" / 12 / "50%"
+    BOOL,         // true / "true"
+    COLOR,        // "#RRGGBB" / "#RRGGBBAA" / "@theme/xxx"
+    TEXT,         // 字符串，`@i18n/key` 会被翻译
+    STRING,       // 字符串，不做任何解析
+    RESOURCE_PATH, // `@res/xxx` -> RESOURCE_PATH()
+    ENUM,         // 取值必须落在 allowed 里（"row|column"）
 };
 
 // 转换好的值，交给 setter。按 kind 只填其中一部分。
@@ -104,7 +104,7 @@ class AttributeTable
 
     const AttributeDef* find(const std::string& name) const;
     const std::vector<AttributeDef>& all() const { return this->defs; }
-    bool empty() const { return this->defs.empty(); }
+    bool isEmpty() const { return this->defs.empty(); }
 
     // 拼错属性名时给个候选（编辑距离最近的）。
     std::string suggest(const std::string& name) const;
@@ -115,9 +115,9 @@ class AttributeTable
 
 enum class ApplyResult
 {
-    NotHandled, // 这张表里没有这个属性
-    Applied,    // 认了，也设好了
-    Failed,     // 认识这个属性，但值不合法（error 里是人话）
+    NOT_HANDLED, // 这张表里没有这个属性
+    APPLIED,    // 认了，也设好了
+    FAILED,     // 认识这个属性，但值不合法（error 里是人话）
 };
 
 // 在表里查并应用。类型不符 / 枚举非法 -> Failed 并填 error。

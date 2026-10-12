@@ -122,7 +122,7 @@ bool PlatformSwitch::createWindow(const std::string& /*title*/, uint32_t width, 
     setGamepadSource(this->impl->gamepadSource.get());
 
     // 玩游戏不能被息屏打断。
-    this->disableScreenDimming(true, "bklv 应用运行中");
+    this->setScreenDimmingDisabled(true, "bklv 应用运行中");
 
     Logger::info("Switch 平台初始化完成");
     return true;
@@ -226,7 +226,7 @@ NetworkStatus PlatformSwitch::getNetworkStatus()
     return status;
 }
 
-void PlatformSwitch::disableScreenDimming(bool disable, const std::string& reason)
+void PlatformSwitch::setScreenDimmingDisabled(bool disable, const std::string& reason)
 {
     // appletSetLcdBacklightOffEnabled(false) 表示"不要自动关背光"。
     appletSetLcdBacklightOffEnabled(!disable);

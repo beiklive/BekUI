@@ -24,47 +24,47 @@ uint64_t getCPUTimeUsec();
 // 就是那个枚举），所以 In/Out/InOut 三挡在 9 种曲线上都齐。
 enum class EasingFunction
 {
-    linear,
+    LINEAR,
 
-    quadraticIn,
-    quadraticOut,
-    quadraticInOut,
+    QUADRATIC_IN,
+    QUADRATIC_OUT,
+    QUADRATIC_IN_OUT,
 
-    cubicIn,
-    cubicOut,
-    cubicInOut,
+    CUBIC_IN,
+    CUBIC_OUT,
+    CUBIC_IN_OUT,
 
-    quarticIn,
-    quarticOut,
-    quarticInOut,
+    QUARTIC_IN,
+    QUARTIC_OUT,
+    QUARTIC_IN_OUT,
 
-    quinticIn,
-    quinticOut,
-    quinticInOut,
+    QUINTIC_IN,
+    QUINTIC_OUT,
+    QUINTIC_IN_OUT,
 
-    sineIn,
-    sineOut,
-    sineInOut,
+    SINE_IN,
+    SINE_OUT,
+    SINE_IN_OUT,
 
-    circularIn,
-    circularOut,
-    circularInOut,
+    CIRCULAR_IN,
+    CIRCULAR_OUT,
+    CIRCULAR_IN_OUT,
 
-    exponentialIn,
-    exponentialOut,
-    exponentialInOut,
+    EXPONENTIAL_IN,
+    EXPONENTIAL_OUT,
+    EXPONENTIAL_IN_OUT,
 
-    elasticIn,
-    elasticOut,
-    elasticInOut,
+    ELASTIC_IN,
+    ELASTIC_OUT,
+    ELASTIC_IN_OUT,
 
-    backIn,
-    backOut,
-    backInOut,
+    BACK_IN,
+    BACK_OUT,
+    BACK_IN_OUT,
 
-    bounceIn,
-    bounceOut,
-    bounceInOut,
+    BOUNCE_IN,
+    BOUNCE_OUT,
+    BOUNCE_IN_OUT,
 };
 
 // 按缓动函数把 t（0~1）映射到输出值。
@@ -106,7 +106,7 @@ class Animatable : public Ticking
     void reset(float initialValue);
 
     // 追加一段动画：经过 duration 秒到达 targetValue，并指定缓动曲线。
-    void addStep(float targetValue, float duration, EasingFunction easing = EasingFunction::linear);
+    void addStep(float targetValue, float duration, EasingFunction easing = EasingFunction::LINEAR);
 
     void start();
     void stop();
@@ -126,7 +126,7 @@ class Animatable : public Ticking
     {
         float target = 0.0f;
         float duration = 0.0f;
-        EasingFunction easing = EasingFunction::linear;
+        EasingFunction easing = EasingFunction::LINEAR;
     };
 
     float value = 0.0f;

@@ -111,25 +111,25 @@ class TransformStage : public Box
         this->skew2.stop();
 
         this->aniX.reset(0.0f);
-        this->aniX.addStep(1.0f, 1.6f, EasingFunction::exponentialOut);
-        this->aniX.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
-        this->aniX.addStep(0.5f, 1.6f, EasingFunction::exponentialOut);
-        this->aniX.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
+        this->aniX.addStep(1.0f, 1.6f, EasingFunction::EXPONENTIAL_OUT);
+        this->aniX.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
+        this->aniX.addStep(0.5f, 1.6f, EasingFunction::EXPONENTIAL_OUT);
+        this->aniX.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
 
         this->aniY.reset(0.0f);
-        this->aniY.addStep(1.0f, 1.6f, EasingFunction::bounceOut);
-        this->aniY.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
-        this->aniY.addStep(1.0f, 1.6f, EasingFunction::bounceOut);
-        this->aniY.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
+        this->aniY.addStep(1.0f, 1.6f, EasingFunction::BOUNCE_OUT);
+        this->aniY.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
+        this->aniY.addStep(1.0f, 1.6f, EasingFunction::BOUNCE_OUT);
+        this->aniY.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
 
         this->skew.reset(0.0f);
-        this->skew.addStep(1.0f, 1.6f, EasingFunction::bounceOut);
-        this->skew.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
+        this->skew.addStep(1.0f, 1.6f, EasingFunction::BOUNCE_OUT);
+        this->skew.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
 
         this->skew2.reset(0.0f);
         this->skew2.addStep(0.0f, 1.6f);
-        this->skew2.addStep(1.0f, 1.6f, EasingFunction::bounceOut);
-        this->skew2.addStep(0.0f, 1.6f, EasingFunction::cubicIn);
+        this->skew2.addStep(1.0f, 1.6f, EasingFunction::BOUNCE_OUT);
+        this->skew2.addStep(0.0f, 1.6f, EasingFunction::CUBIC_IN);
 
         this->aniX.start();
         this->aniY.start();

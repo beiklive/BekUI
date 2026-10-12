@@ -1007,32 +1007,32 @@ void setShrinkAttr(View* v, const ResolvedValue& r)
 const AttributeTable& commonAttributes()
 {
     static const AttributeTable table = {
-        { "width", AttributeKind::Size, setWidthAttr, nullptr },
-        { "height", AttributeKind::Size, setHeightAttr, nullptr },
-        { "minWidth", AttributeKind::Size, setMinWidthAttr, nullptr },
-        { "minHeight", AttributeKind::Size, setMinHeightAttr, nullptr },
-        { "maxWidth", AttributeKind::Size, setMaxWidthAttr, nullptr },
-        { "maxHeight", AttributeKind::Size, setMaxHeightAttr, nullptr },
-        { "margin", AttributeKind::Number, setMarginAttr, nullptr },
-        { "marginTop", AttributeKind::Number, setMarginTopAttr, nullptr },
-        { "marginRight", AttributeKind::Number, setMarginRightAttr, nullptr },
-        { "marginBottom", AttributeKind::Number, setMarginBottomAttr, nullptr },
-        { "marginLeft", AttributeKind::Number, setMarginLeftAttr, nullptr },
-        { "grow", AttributeKind::Number, setGrowAttr, nullptr },
-        { "shrink", AttributeKind::Number, setShrinkAttr, nullptr },
-        { "alignSelf", AttributeKind::Enum, setAlignSelfAttr, "auto|flexStart|center|flexEnd|stretch|baseline" },
-        { "position", AttributeKind::Enum, setPositionTypeAttr, "relative|absolute" },
-        { "top", AttributeKind::Size, setPositionTopAttr, nullptr },
-        { "left", AttributeKind::Size, setPositionLeftAttr, nullptr },
-        { "right", AttributeKind::Size, setPositionRightAttr, nullptr },
-        { "bottom", AttributeKind::Size, setPositionBottomAttr, nullptr },
-        { "visibility", AttributeKind::Enum, setVisibilityAttr, "visible|invisible|gone" },
-        { "backgroundColor", AttributeKind::Color, setBackgroundColorAttr, nullptr },
-        { "borderColor", AttributeKind::Color, setBorderColorAttr, nullptr },
-        { "borderThickness", AttributeKind::Number, setBorderThicknessAttr, nullptr },
-        { "cornerRadius", AttributeKind::Number, setCornerRadiusAttr, nullptr },
-        { "alpha", AttributeKind::Number, setAlphaAttr, nullptr },
-        { "clipsToBounds", AttributeKind::Bool, setClipsToBoundsAttr, nullptr },
+        { "width", AttributeKind::SIZE, setWidthAttr, nullptr },
+        { "height", AttributeKind::SIZE, setHeightAttr, nullptr },
+        { "minWidth", AttributeKind::SIZE, setMinWidthAttr, nullptr },
+        { "minHeight", AttributeKind::SIZE, setMinHeightAttr, nullptr },
+        { "maxWidth", AttributeKind::SIZE, setMaxWidthAttr, nullptr },
+        { "maxHeight", AttributeKind::SIZE, setMaxHeightAttr, nullptr },
+        { "margin", AttributeKind::NUMBER, setMarginAttr, nullptr },
+        { "marginTop", AttributeKind::NUMBER, setMarginTopAttr, nullptr },
+        { "marginRight", AttributeKind::NUMBER, setMarginRightAttr, nullptr },
+        { "marginBottom", AttributeKind::NUMBER, setMarginBottomAttr, nullptr },
+        { "marginLeft", AttributeKind::NUMBER, setMarginLeftAttr, nullptr },
+        { "grow", AttributeKind::NUMBER, setGrowAttr, nullptr },
+        { "shrink", AttributeKind::NUMBER, setShrinkAttr, nullptr },
+        { "alignSelf", AttributeKind::ENUM, setAlignSelfAttr, "auto|flexStart|center|flexEnd|stretch|baseline" },
+        { "position", AttributeKind::ENUM, setPositionTypeAttr, "relative|absolute" },
+        { "top", AttributeKind::SIZE, setPositionTopAttr, nullptr },
+        { "left", AttributeKind::SIZE, setPositionLeftAttr, nullptr },
+        { "right", AttributeKind::SIZE, setPositionRightAttr, nullptr },
+        { "bottom", AttributeKind::SIZE, setPositionBottomAttr, nullptr },
+        { "visibility", AttributeKind::ENUM, setVisibilityAttr, "visible|invisible|gone" },
+        { "backgroundColor", AttributeKind::COLOR, setBackgroundColorAttr, nullptr },
+        { "borderColor", AttributeKind::COLOR, setBorderColorAttr, nullptr },
+        { "borderThickness", AttributeKind::NUMBER, setBorderThicknessAttr, nullptr },
+        { "cornerRadius", AttributeKind::NUMBER, setCornerRadiusAttr, nullptr },
+        { "alpha", AttributeKind::NUMBER, setAlphaAttr, nullptr },
+        { "clipsToBounds", AttributeKind::BOOL, setClipsToBoundsAttr, nullptr },
     };
     return table;
 }
@@ -1067,7 +1067,7 @@ ApplyResult View::applyAttribute(const std::string& name, const Value& value, st
 {
     // 子类表优先：子类可以覆盖公共属性的语义
     const ApplyResult own = applyFromTable(this, this->attributes(), name, value, error);
-    if (own != ApplyResult::NotHandled)
+    if (own != ApplyResult::NOT_HANDLED)
         return own;
 
     return applyFromTable(this, commonAttributes(), name, value, error);

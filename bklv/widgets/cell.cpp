@@ -59,7 +59,7 @@ void Cell::trigger()
 {
     if (!this->enabled)
     {
-        audio::play(Sound::ClickError);
+        audio::play(Sound::CLICK_ERROR);
         return;
     }
 
@@ -93,13 +93,13 @@ void Cell::applyTheme()
 const AttributeTable& Cell::attributes() const
 {
     static const AttributeTable table = {
-        { "title", AttributeKind::Text, [](View* v, const ResolvedValue& r) {
+        { "title", AttributeKind::TEXT, [](View* v, const ResolvedValue& r) {
              static_cast<Cell*>(v)->setTitle(r.text);
          }, nullptr },
-        { "detail", AttributeKind::Text, [](View* v, const ResolvedValue& r) {
+        { "detail", AttributeKind::TEXT, [](View* v, const ResolvedValue& r) {
              static_cast<Cell*>(v)->setDetail(r.text);
          }, nullptr },
-        { "enabled", AttributeKind::Bool, [](View* v, const ResolvedValue& r) {
+        { "enabled", AttributeKind::BOOL, [](View* v, const ResolvedValue& r) {
              static_cast<Cell*>(v)->setEnabled(r.boolean);
          }, nullptr },
     };

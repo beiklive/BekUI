@@ -47,7 +47,7 @@ DemoApp::DemoApp()
     Button* headerButton = new Button(getStr("app/hide_header"));
     headerButton->setOnClick([this, headerButton] {
         const bool next = !this->root->isHeaderVisible();
-        this->root->showHeader(next);
+        this->root->setHeaderVisible(next);
         headerButton->setText(next ? getStr("app/hide_header") : getStr("app/show_header"));
     });
     topRow->addView(headerButton);
@@ -55,7 +55,7 @@ DemoApp::DemoApp()
     Button* footerButton = new Button(getStr("app/hide_footer"));
     footerButton->setOnClick([this, footerButton] {
         const bool next = !this->root->isBottomBarVisible();
-        this->root->showBottomBar(next);
+        this->root->setBottomBarVisible(next);
         footerButton->setText(next ? getStr("app/hide_footer") : getStr("app/show_footer"));
     });
     topRow->addView(footerButton);

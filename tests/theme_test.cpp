@@ -95,12 +95,12 @@ int main()
                 checkEqual(button->getLayers()[4].id, "hlBorder", "第 4 层是描边");
 
                 checkEqual(bg.id, "bg", "第 1 层 id");
-                check(bg.op == AppearanceLayer::Op::Rect, "第 1 层是 rect");
+                check(bg.op == AppearanceLayer::Op::RECT, "第 1 层是 rect");
                 checkColor(bg.fill, IM_COL32(0x50, 0x50, 0x50, 255), "底：@theme/color.surface.raised");
                 checkFloat(bg.radius, 5.0f, "底：圆角来自 @theme/metric.radius.md");
 
                 checkEqual(title.id, "title", "第 2 层 id");
-                check(title.op == AppearanceLayer::Op::Text, "第 2 层是 text");
+                check(title.op == AppearanceLayer::Op::TEXT, "第 2 层是 text");
                 checkEqual(title.source, "text", "文字层的数据来源是 text");
                 checkFloat(title.fontSize, 18.0f, "文字：字号来自主题");
                 checkColor(title.textColor, IM_COL32(0xFF, 0xFF, 0xFF, 255), "文字：颜色来自主题");
@@ -155,13 +155,13 @@ int main()
 
         AppearanceInstance instance;
         instance.setAppearance(button);
-        checkColor(instance.getColor(0, AppearanceProp::Fill),
+        checkColor(instance.getColor(0, AppearanceProp::FILL),
             getTheme().color("color.button.defaultBg"), "初值：底是主题的按钮底色");
 
         const int hlBgIndex     = button->indexOfLayer("hlBg");
         const int hlBorderIndex = button->indexOfLayer("hlBorder");
         check(hlBgIndex > 0 && hlBorderIndex > 0, "找得到高亮层");
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), 0,
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), 0,
             "初始不聚焦：高亮底是透明的");
         check(!instance.isAnimating(), "没触发状态时不该有补间在跑");
 
@@ -176,26 +176,26 @@ int main()
 
         // 推进 60ms（该动效 120ms），应该处在中间：既不是初值也不是终值
         instance.update(0.06f);
-        const ImU32 mid = instance.getColor(hlBgIndex, AppearanceProp::Fill);
+        const ImU32 mid = instance.getColor(hlBgIndex, AppearanceProp::FILL);
         check(mid != idleFill && mid != focusedFill, "60ms 时高亮底色在中间态（不是跳变）");
         check(instance.isAnimating(), "动效还没结束");
 
         // 描边宽度同样在补
-        const float midStroke = instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth);
+        const float midStroke = instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH);
         check(midStroke > 0.0f && midStroke < 5.0f, "描边宽度在 0 与 5 之间");
 
         // 再推进到结束
         instance.update(0.2f);
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), focusedFill,
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), focusedFill,
             "结束值：高亮底 = color.highlight.background");
-        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth), 5.0f,
+        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 5.0f,
             "结束值：描边 5px（borealis 的 highlight/stroke_width）");
-        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::Stroke),
+        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::STROKE),
             getTheme().color("color.highlight.border"), "结束值：描边色 = color1");
         check(!instance.isAnimating(), "动效结束后不再是 animating");
 
         // 文字颜色同样按各自动效插值
-        checkColor(instance.getColor(2, AppearanceProp::TextColor),
+        checkColor(instance.getColor(2, AppearanceProp::TEXT_COLOR),
             getTheme().color("color.button.defaultText"), "文字色保持按钮字色（高亮不改字色）");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
@@ -208,16 +208,16 @@ int main()
             quick.setState("focused", false);  // 立刻撤销：当前值还没动
             for (int i = 0; i < 30; i++)
                 quick.update(0.05f);
-            checkColor(quick.getColor(button->indexOfLayer("hlBg"), AppearanceProp::Fill), 0,
+            checkColor(quick.getColor(button->indexOfLayer("hlBg"), AppearanceProp::FILL), 0,
                 "开了又马上关：停在初值（高亮底仍是透明），不会继续跑到状态目标");
             check(!quick.isAnimating(), "撤销后不该还有补间在跑");
         }
 
         instance.setState("focused", false);
         instance.update(0.3f);
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::Fill), idleFill,
+        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), idleFill,
             "取消聚焦后高亮底回到透明");
-        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::StrokeWidth), 0.0f,
+        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 0.0f,
             "取消聚焦后描边宽度归零");
     }
 

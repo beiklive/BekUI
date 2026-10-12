@@ -18,14 +18,14 @@ namespace bklv
 // 和 borealis 的 Sound 一一对应
 enum class Sound
 {
-    None = 0,
-    FocusChange,  // 焦点移动
-    FocusError,   // 走到不能走的方向（borealis 高亮还会抖一下）
-    Click,        // 确认/点击
-    Back,         // 返回
-    FocusSidebar, // 焦点进侧栏
-    ClickError,   // 点了禁用控件
-    Honk,         // 彩蛋
+    NONE = 0,
+    FOCUS_CHANGE,  // 焦点移动
+    FOCUS_ERROR,   // 走到不能走的方向（borealis 高亮还会抖一下）
+    CLICK,        // 确认/点击
+    BACK,         // 返回
+    FOCUS_SIDEBAR, // 焦点进侧栏
+    CLICK_ERROR,   // 点了禁用控件
+    HONK,         // 彩蛋
 };
 
 // 合成 + 混音（可无窗口测试）
@@ -56,7 +56,7 @@ class AudioMixer
   private:
     struct Voice
     {
-        Sound sound   = Sound::None;
+        Sound sound   = Sound::NONE;
         float phase   = 0.0f;
         float elapsed = 0.0f; // 秒
         bool active   = false;

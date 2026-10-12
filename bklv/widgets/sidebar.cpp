@@ -123,10 +123,10 @@ void Sidebar::setSelectedIndex(size_t index)
 const AttributeTable& Sidebar::attributes() const
 {
     static const AttributeTable table = {
-        { "title", AttributeKind::Text, [](View* v, const ResolvedValue& r) {
+        { "title", AttributeKind::TEXT, [](View* v, const ResolvedValue& r) {
              static_cast<Sidebar*>(v)->setTitle(r.text);
          }, nullptr },
-        { "panelWidth", AttributeKind::Number, [](View* v, const ResolvedValue& r) {
+        { "panelWidth", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<Sidebar*>(v)->setPanelWidth(r.number);
          }, nullptr },
     };

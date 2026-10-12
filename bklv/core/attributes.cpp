@@ -117,14 +117,14 @@ std::string kindName(AttributeKind kind)
 {
     switch (kind)
     {
-        case AttributeKind::Number: return "数字";
-        case AttributeKind::Size: return "尺寸（数字 / \"auto\" / \"50%\"）";
-        case AttributeKind::Bool: return "布尔";
-        case AttributeKind::Color: return "颜色（\"#RRGGBB\" / \"@theme/xxx\"）";
-        case AttributeKind::Text: return "字符串（支持 @i18n/）";
-        case AttributeKind::String: return "字符串";
-        case AttributeKind::ResourcePath: return "资源路径（\"@res/xxx\"）";
-        case AttributeKind::Enum: return "枚举";
+        case AttributeKind::NUMBER: return "数字";
+        case AttributeKind::SIZE: return "尺寸（数字 / \"auto\" / \"50%\"）";
+        case AttributeKind::BOOL: return "布尔";
+        case AttributeKind::COLOR: return "颜色（\"#RRGGBB\" / \"@theme/xxx\"）";
+        case AttributeKind::TEXT: return "字符串（支持 @i18n/）";
+        case AttributeKind::STRING: return "字符串";
+        case AttributeKind::RESOURCE_PATH: return "资源路径（\"@res/xxx\"）";
+        case AttributeKind::ENUM: return "枚举";
     }
     return "值";
 }
@@ -137,14 +137,14 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
 
     switch (kind)
     {
-        case AttributeKind::Number:
+        case AttributeKind::NUMBER:
         {
-            if (value.getKind() == Value::Kind::Number)
+            if (value.getKind() == Value::Kind::NUMBER)
             {
                 out.number = (float)value.getNumber();
                 return true;
             }
-            if (value.getKind() == Value::Kind::Bool)
+            if (value.getKind() == Value::Kind::BOOL)
                 break;
 
             const std::string text = stripPx(raw);
@@ -167,14 +167,14 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             break;
         }
 
-        case AttributeKind::Size:
+        case AttributeKind::SIZE:
         {
-            if (value.getKind() == Value::Kind::Number)
+            if (value.getKind() == Value::Kind::NUMBER)
             {
                 out.number = (float)value.getNumber();
                 return true;
             }
-            if (value.getKind() == Value::Kind::Bool)
+            if (value.getKind() == Value::Kind::BOOL)
                 break;
 
             const std::string text = stripPx(raw);
@@ -214,9 +214,9 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             break;
         }
 
-        case AttributeKind::Bool:
+        case AttributeKind::BOOL:
         {
-            if (value.getKind() == Value::Kind::Bool)
+            if (value.getKind() == Value::Kind::BOOL)
             {
                 out.boolean = value.getBool();
                 return true;
@@ -235,7 +235,7 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             break;
         }
 
-        case AttributeKind::Color:
+        case AttributeKind::COLOR:
         {
             const std::string text = trim(raw);
             if (text.empty())
@@ -261,7 +261,7 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             break;
         }
 
-        case AttributeKind::Text:
+        case AttributeKind::TEXT:
         {
             out.text = raw;
             if (startsWith(raw, "@i18n/"))
@@ -269,13 +269,13 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             return true;
         }
 
-        case AttributeKind::String:
+        case AttributeKind::STRING:
         {
             out.text = raw;
             return true;
         }
 
-        case AttributeKind::ResourcePath:
+        case AttributeKind::RESOURCE_PATH:
         {
             // `@res/x` 是**相对 resources 目录**的（与 borealis 的 BRLS_RESOURCES 一致），
             // 所以 "resources/" 前缀在这里补上，调用点只写文件名。
@@ -286,7 +286,7 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             return true;
         }
 
-        case AttributeKind::Enum:
+        case AttributeKind::ENUM:
         {
             const std::string text = trim(raw);
             if (text.empty())
@@ -321,7 +321,7 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
     }
 
     error = "期望 " + kindName(kind);
-    if (kind == AttributeKind::Enum && allowed != nullptr)
+    if (kind == AttributeKind::ENUM && allowed != nullptr)
         error += std::string("，可选值：") + allowed;
     error += "，得到 \"" + raw + "\"";
     return false;
@@ -360,9 +360,9 @@ std::string Value::raw() const
 {
     switch (this->kind)
     {
-        case Kind::String: return this->text;
-        case Kind::Bool: return this->boolean ? "true" : "false";
-        case Kind::Number:
+        case Kind::STRING: return this->text;
+        case Kind::BOOL: return this->boolean ? "true" : "false";
+        case Kind::NUMBER:
         {
             char buffer[32];
             if (this->number == (double)(long long)this->number)
@@ -409,15 +409,15 @@ ApplyResult applyFromTable(View* view, const AttributeTable& table, const std::s
 {
     const AttributeDef* def = table.find(name);
     if (def == nullptr)
-        return ApplyResult::NotHandled;
+        return ApplyResult::NOT_HANDLED;
 
     ResolvedValue resolved;
     if (!resolve(def->kind, value, def->allowed, resolved, error))
-        return ApplyResult::Failed;
+        return ApplyResult::FAILED;
 
     if (def->set != nullptr)
         def->set(view, resolved);
-    return ApplyResult::Applied;
+    return ApplyResult::APPLIED;
 }
 
 } // namespace bklv

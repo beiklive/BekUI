@@ -262,7 +262,7 @@ void InputManager::giveFocus(View* view)
     if (view != nullptr)
     {
         const bool sidebar = view->getClassString() == "bklv::TabCell";
-        audio::play(sidebar ? Sound::FocusSidebar : Sound::FocusChange);
+        audio::play(sidebar ? Sound::FOCUS_SIDEBAR : Sound::FOCUS_CHANGE);
     }
 
     // 换焦点：先通知旧的焦点路径，再通知新的。
@@ -416,7 +416,7 @@ void InputManager::handlePointer()
     // 而"是否响应指针"由 View::onPointerAction 决定，
     // "重复点击是否安全"由各控件自己的动作逻辑决定（比如 tab 同页切换会直接返回）。
     this->focusFromPointer(hit);
-    audio::play(Sound::Click);
+    audio::play(Sound::CLICK);
     hit->triggerAction(ControllerButton::A, true);
 }
 
@@ -441,12 +441,12 @@ void InputManager::handleActions()
 
     if (confirm)
     {
-        audio::play(Sound::Click);
+        audio::play(Sound::CLICK);
         this->currentFocus->triggerAction(ControllerButton::A);
     }
     if (back)
     {
-        audio::play(Sound::Back);
+        audio::play(Sound::BACK);
         this->currentFocus->triggerAction(ControllerButton::B);
     }
 }

@@ -62,14 +62,14 @@ Box* buildSettingsPage()
     BooleanCell* headerCell = new BooleanCell(getStr("settings/show_header"), true);
     headerCell->setOnChange([shell](bool value) {
         if (shell != nullptr)
-            shell->showHeader(value);
+            shell->setHeaderVisible(value);
     });
     switches->addView(headerCell);
 
     BooleanCell* barCell = new BooleanCell(getStr("settings/show_bottom_bar"), true);
     barCell->setOnChange([shell](bool value) {
         if (shell != nullptr)
-            shell->showBottomBar(value);
+            shell->setBottomBarVisible(value);
     });
     switches->addView(barCell);
 
@@ -106,14 +106,14 @@ Box* buildSettingsPage()
     volume->setValue(audio::getVolume());
     volume->setOnChange([](float value) {
         audio::setVolume(value);
-        audio::play(Sound::FocusChange); // 边调边听
+        audio::play(Sound::FOCUS_CHANGE); // 边调边听
     });
     soundCard->addView(volume);
 
     DetailCell* audition = new DetailCell(getStr("settings/audition"), getStr("settings/audition_hint"));
     static int soundIndex = 0;
     audition->setOnClick([audition] {
-        const Sound sounds[] = { Sound::Click, Sound::FocusChange, Sound::Back, Sound::Honk };
+        const Sound sounds[] = { Sound::CLICK, Sound::FOCUS_CHANGE, Sound::BACK, Sound::HONK };
         const int count      = (int)(sizeof(sounds) / sizeof(Sound));
         audio::play(sounds[soundIndex % count]);
         audition->setDetail(std::to_string(soundIndex % count));

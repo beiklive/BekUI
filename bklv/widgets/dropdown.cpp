@@ -265,10 +265,10 @@ void Dropdown::update()
 const AttributeTable& Dropdown::attributes() const
 {
     static const AttributeTable table = {
-        { "title", AttributeKind::Text, [](View* v, const ResolvedValue& r) {
+        { "title", AttributeKind::TEXT, [](View* v, const ResolvedValue& r) {
              static_cast<Dropdown*>(v)->setTitle(r.text);
          }, nullptr },
-        { "selected", AttributeKind::Number, [](View* v, const ResolvedValue& r) {
+        { "selected", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<Dropdown*>(v)->setSelectedIndex((size_t)r.number);
          }, nullptr },
     };

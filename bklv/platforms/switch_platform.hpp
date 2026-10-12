@@ -52,7 +52,7 @@ class PlatformSwitch : public Platform
     NetworkStatus getNetworkStatus() override;
 
     bool canDisableScreenDimming() override { return true; }
-    void disableScreenDimming(bool disable, const std::string& reason = "") override;
+    void setScreenDimmingDisabled(bool disable, const std::string& reason = "") override;
     bool isScreenDimmingDisabled() override { return this->dimmingDisabled; }
 
     bool canSetBacklightBrightness() override { return true; }
