@@ -1,6 +1,7 @@
 #include "designer/ui/designer_window.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 
@@ -33,15 +34,37 @@ bool inputString(const char* label, std::string& value, size_t maxLength = 512)
     return false;
 }
 
+// 属性表统一排版：标签画在左列，控件占右边剩余宽度。
+// 直接把 label 交给 ImGui 画在控件右侧的话，控件一宽标签就被顶出面板（踩过）。
+constexpr float kLabelWidth = 148.0f;
+
+void propLabel(const char* label)
+{
+    ImGui::TextColored(kMuted, "%s", label);
+    ImGui::SameLine(kLabelWidth);
+    ImGui::SetNextItemWidth(-1.0f);
+}
+
+// 不要 +/- 按钮：窄栏里那对按钮会把后面的内容顶出可视区
 bool inputNumberFloat(const char* label, double& value)
 {
-    float temp = (float)value;
-    if (ImGui::InputFloat(label, &temp, 1.0f, 10.0f, "%.2f"))
-    {
-        value = temp;
-        return true;
-    }
-    return false;
+    propLabel(label);
+    const bool changed = ImGui::InputScalar((std::string("##") + label).c_str(),
+        ImGuiDataType_Double, &value, nullptr, nullptr, "%.2f");
+    return changed;
+}
+
+// "#RRGGBB" / "#RRGGBBAA" → ImU32（解析不了返回 0）
+ImU32 parseHexColor(const std::string& text)
+{
+    if (text.size() < 7 || text[0] != '#')
+        return 0;
+    unsigned int value = 0;
+    if (std::sscanf(text.c_str() + 1, "%x", &value) != 1)
+        return 0;
+    if (text.size() >= 9)
+        return IM_COL32((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
+    return IM_COL32((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 255);
 }
 
 // 一层里某个值是数字、字符串还是数组
@@ -170,6 +193,8 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     this->savedText = text;
     const AppearanceDoc::Json parsed = AppearanceDoc::Json::parse(text, nullptr, false);
     this->doc.root() = parsed.is_discarded() ? AppearanceDoc::Json::object() : parsed;
+    std::snprintf(this->viewText, sizeof(this->viewText), "%s", text.c_str());
+    this->viewTextApplied = text;
     this->selection    = Selection{};
     this->selection.kind = SelKind::VIEW;
     this->previewDirty = true;
@@ -226,6 +251,7 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
 
 void DesignerWindow::drawTopBar()
 {
+    // 第一行：标题 + 项目信息（长路径中间省略，别把按钮挤歪）
     ImGui::PushStyleColor(ImGuiCol_Text, kAccent);
     ImGui::TextUnformatted("bklv 设计器");
     ImGui::PopStyleColor();
@@ -234,27 +260,21 @@ void DesignerWindow::drawTopBar()
     if (this->hasProject)
     {
         std::string root = this->project.themeRoot;
-        if (root.size() > 44)
-            root = "…" + root.substr(root.size() - 43);
+        if (root.size() > 46)
+            root = "…" + root.substr(root.size() - 45);
         ImGui::TextColored(kMuted, "%s（%s%s）· %s", this->project.name.c_str(),
             this->project.mode == ProjectMode::FORK ? "模板新建，来自 " : "直接编辑",
             this->project.templateName.c_str(), root.c_str());
         if (this->readOnly)
         {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "只读");
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "· 基准主题只读，改样式请「新建项目」");
         }
     }
     else
-    {
         ImGui::TextColored(kMuted, "还没有打开项目");
-    }
 
-    ImGui::SameLine();
-    const float buttonsWidth = 420.0f;
-    ImGui::SameLine(ImGui::GetWindowWidth() - buttonsWidth);
-    (void)buttonsWidth;
-
+    // 第二行：动作
     if (ImGui::Button("新建项目"))
         this->showNewProject = true;
     ImGui::SameLine();
@@ -266,22 +286,39 @@ void DesignerWindow::drawTopBar()
             this->errorMessage = error;
         if (!this->currentWidget.empty())
             this->openAppearance(this->currentWidget, error);
-        this->previewDirty = true;
+        this->previewDirty  = true;
         this->statusMessage = "已重新装载主题";
     }
     ImGui::SameLine();
-    if (ImGui::Button("还原") && !this->currentFilePath.empty())
+    ImGui::BeginDisabled(this->currentFilePath.empty());
+    if (ImGui::Button("还原"))
         this->revert();
     ImGui::SameLine();
-    ImGui::BeginDisabled(this->readOnly || this->currentFilePath.empty());
-    if (ImGui::Button("保存…"))
-        this->requestSave();
-    ImGui::EndDisabled();
-    if (this->dirty)
+    if (ImGui::Button("另存…"))
     {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "●未保存");
+        std::snprintf(this->saveAsPath, sizeof(this->saveAsPath), "%s",
+            this->currentFilePath.c_str());
+        this->showSaveAs = true;
     }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(this->readOnly || this->currentFilePath.empty());
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.8f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.03f, 0.13f, 0.11f, 1.0f));
+    const bool savePressed = ImGui::Button("保存（先看 diff）");
+    ImGui::PopStyleColor(2);
+    ImGui::EndDisabled();
+    if (savePressed)
+        this->requestSave();
+
+    ImGui::SameLine();
+    if (this->dirty)
+        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "● 有未保存改动");
+    else if (this->readOnly)
+        ImGui::TextColored(kMuted, "（只读浏览）");
+    else
+        ImGui::TextColored(kMuted, "已同步");
+
     ImGui::Separator();
 }
 
@@ -289,12 +326,22 @@ void DesignerWindow::drawTopBar()
 
 void DesignerWindow::drawFileList()
 {
-    ImGui::TextColored(kMuted, "主题外观（%s）", this->project.name.c_str());
+    auto fileRow = [this](const std::string& label, bool selected, bool isCurrent, const char* tag) {
+        std::string text = (isCurrent && this->dirty ? "● " : "  ") + label;
+        if (tag != nullptr)
+            text += std::string("   [") + tag + "]";
+        if (ImGui::Selectable(text.c_str(), selected))
+            return true;
+        return false;
+    };
+
+    ImGui::TextColored(kMuted, "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
+        this->project.name.c_str());
     for (const std::string& relative : this->widgetFiles)
     {
         const std::string name = widgetNameFromPath(relative);
-        const bool selected    = (name == this->currentWidget);
-        if (ImGui::Selectable(name.c_str(), selected))
+        const bool isCurrent   = (name == this->currentWidget);
+        if (fileRow(name, isCurrent, isCurrent, nullptr))
         {
             std::string error;
             if (!this->openAppearance(name, error))
@@ -303,41 +350,90 @@ void DesignerWindow::drawFileList()
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "页面视图（views/）");
+    ImGui::TextColored(kMuted, "页面视图 · %d 个（views/）", (int)this->viewFiles.size());
     if (this->viewFiles.empty())
-        ImGui::TextColored(kMuted, "（没有）");
+        ImGui::TextColored(kMuted, "  （这个项目里没有）");
     for (const std::string& file : this->viewFiles)
     {
-        if (ImGui::Selectable(file.c_str(), file == this->currentViewFile))
-        {
-            this->currentViewFile = file;
-            this->currentWidget.clear();
-            this->currentFilePath = this->project.resourcesDir() + "/views/" + file;
-            std::string text, error;
-            if (readTextFile(this->currentFilePath, text, error))
-            {
-                this->savedText = text;
-                this->doc.root() = AppearanceDoc::Json::parse(text, nullptr, false);
-                if (this->doc.root().is_discarded())
-                    this->doc.root() = AppearanceDoc::Json::object();
-            }
-            this->selection = Selection{};
-            this->selection.kind = SelKind::VIEW;
-            this->previewDirty = true;
-            this->dirty        = false;
-        }
+        const bool isCurrent = (file == this->currentViewFile);
+        if (fileRow(file, isCurrent, isCurrent, "页面"))
+            this->openViewFile(file);
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "主题表");
-    ImGui::TextColored(kMuted, "colors.json（%d 色） · metrics.json（%d 数值）",
-        getTheme().getColorCount(), (int)getTheme().getNumberKeys().size());
+    ImGui::TextColored(kMuted, "主题表 · 只读");
+    ImGui::TextColored(kMuted, "  colors.json  %d 色", getTheme().getColorCount());
+    ImGui::TextColored(kMuted, "  metrics.json %d 数值", (int)getTheme().getNumberKeys().size());
 }
 
 // ---------------------------------------------------------------- 节点树
 
+void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::string& path)
+{
+    if (!node.is_object())
+        return;
+
+    const std::string type = node.value("type", std::string("(没有 type)"));
+    const std::string id   = node.value("id", std::string());
+    std::string label      = type;
+    if (!id.empty())
+        label += "  " + id;
+
+    ImGui::PushID(path.c_str());
+    this->viewNodeCount++;
+
+    const bool selected = this->selection.kind == SelKind::VIEW && this->selection.key == path;
+    const bool open     = ImGui::TreeNodeEx("##node", ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_SpanAvailWidth
+            | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label.c_str());
+    if (ImGui::IsItemClicked())
+    {
+        this->selection      = Selection{};
+        this->selection.kind = SelKind::VIEW;
+        this->selection.key  = path;
+    }
+
+    if (open)
+    {
+        // 属性（除了 children）逐条列出来
+        for (auto it = node.begin(); it != node.end(); ++it)
+        {
+            if (it.key() == "children")
+                continue;
+            this->viewFieldCount++;
+            ImGui::TreeNodeEx((void*)(uintptr_t)(path + it.key()).c_str(),
+                ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen
+                    | ImGuiTreeNodeFlags_SpanAvailWidth,
+                "field  %s = %s", it.key().c_str(), compactValue(it.value()).c_str());
+        }
+
+        if (node.contains("children") && node["children"].is_array())
+        {
+            int index = 0;
+            for (const AppearanceDoc::Json& child : node["children"])
+            {
+                this->drawViewTree(child, path + "/" + std::to_string(index));
+                index++;
+            }
+        }
+        ImGui::TreePop();
+    }
+    ImGui::PopID();
+}
+
 void DesignerWindow::drawTree()
 {
+    // 页面视图：树里显示这棵视图树（用户要求的"逐层展开"）
+    if (!this->currentViewFile.empty())
+    {
+        this->viewNodeCount  = 0;
+        this->viewFieldCount = 0;
+        this->drawViewTree(this->doc.root(), "$");
+        if (this->viewNodeCount <= 0)
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "这个 JSON 里没有可展开的视图节点");
+        return;
+    }
+
     if (this->currentWidget.empty())
     {
         ImGui::TextColored(kMuted, "先从上面挑一个外观文件");
@@ -361,9 +457,9 @@ void DesignerWindow::drawTree()
             }
 
             // box
+            // box 的字段不默认展开：十几行字段会把层与状态挤到下面看不见
             const bool boxSelected = this->selection.kind == SelKind::BOX;
-            if (ImGui::TreeNodeEx("##box", ImGuiTreeNodeFlags_DefaultOpen
-                    | ImGuiTreeNodeFlags_SpanAvailWidth
+            if (ImGui::TreeNodeEx("##box", ImGuiTreeNodeFlags_SpanAvailWidth
                     | (boxSelected ? ImGuiTreeNodeFlags_Selected : 0), "box"))
             {
                 if (ImGui::IsItemClicked())
@@ -404,9 +500,50 @@ void DesignerWindow::drawTree()
                 std::snprintf(label, sizeof(label), "#%d  %s  %s", i + 1,
                     this->doc.layerOp(i).c_str(), this->doc.layerId(i).c_str());
                 const std::string id = "##layer" + std::to_string(i);
-                if (ImGui::TreeNodeEx(id.c_str(), ImGuiTreeNodeFlags_DefaultOpen
-                        | ImGuiTreeNodeFlags_SpanAvailWidth
-                        | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label))
+                const bool open = ImGui::TreeNodeEx(id.c_str(), ImGuiTreeNodeFlags_DefaultOpen
+                        | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap
+                        | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label);
+                // 每层一行直接给操作按钮：不用"先选中、再去属性表点"
+                {
+                    ImGui::SameLine(ImGui::GetWindowWidth() - 96.0f);
+                    ImGui::PushID(i);
+                    if (ImGui::SmallButton("↑"))
+                    {
+                        if (this->doc.moveLayer(i, -1) && this->selection.index == i)
+                            this->selection.index -= 1;
+                        this->markEdited();
+                        this->previewDirty = true;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("↓"))
+                    {
+                        if (this->doc.moveLayer(i, 1) && this->selection.index == i)
+                            this->selection.index += 1;
+                        this->markEdited();
+                        this->previewDirty = true;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("⧉"))
+                    {
+                        const int created = this->doc.duplicateLayer(i);
+                        this->selection = Selection{};
+                        this->selection.kind  = SelKind::LAYER;
+                        this->selection.index = created;
+                        this->markEdited();
+                        this->previewDirty = true;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("✕"))
+                    {
+                        this->doc.removeLayer(i);
+                        this->selection = Selection{};
+                        this->selection.kind = SelKind::FILE;
+                        this->markEdited();
+                        this->previewDirty = true;
+                    }
+                    ImGui::PopID();
+                }
+                if (open)
                 {
                     if (ImGui::IsItemClicked())
                     {
@@ -421,7 +558,8 @@ void DesignerWindow::drawTree()
                         for (auto it = layer->begin(); it != layer->end(); ++it)
                         {
                             std::string shown = compactValue(it.value());
-                            ImGui::TreeNodeEx((void*)(uintptr_t)(id + it.key()).c_str(), leafFlags,
+                            ImGui::TreeNodeEx((void*)(uintptr_t)(id + it.key()).c_str(),
+                                leafFlags | ImGuiTreeNodeFlags_NoAutoOpenOnLog,
                                 "field  %s = %s", it.key().c_str(), shown.c_str());
                             if (ImGui::IsItemClicked())
                             {
@@ -500,14 +638,29 @@ void DesignerWindow::drawStatus()
     for (const std::string& state : this->doc.stateNames())
         nodes += 1 + this->doc.channelCount(state);
 
-    ImGui::TextColored(kAccent, "节点 %d", nodes);
-    ImGui::SameLine();
-    ImGui::TextColored(kMuted, "· 层 %d · 状态 %d", this->doc.layerCount(),
-        (int)this->doc.stateNames().size());
+    if (!this->currentViewFile.empty())
+    {
+        ImGui::TextColored(kAccent, "视图节点 %d", this->viewNodeCount);
+        ImGui::SameLine();
+        ImGui::TextColored(kMuted, "· 字段 %d", this->viewFieldCount);
+    }
+    else
+    {
+        ImGui::TextColored(kAccent, "节点 %d", nodes);
+        ImGui::SameLine();
+        ImGui::TextColored(kMuted, "· 层 %d · 状态 %d", this->doc.layerCount(),
+            (int)this->doc.stateNames().size());
+    }
 
     std::string path = this->project.name;
     if (!this->currentWidget.empty())
         path += " / " + this->currentWidget;
+    else if (!this->currentViewFile.empty())
+    {
+        path += " / " + this->currentViewFile;
+        if (this->selection.kind == SelKind::VIEW && !this->selection.key.empty())
+            path += " / " + this->selection.key;
+    }
     if (this->selection.kind == SelKind::BOX)
         path += " / box";
     else if (this->selection.kind == SelKind::LAYER || this->selection.kind == SelKind::LAYER_FIELD)
@@ -612,6 +765,82 @@ std::string DesignerWindow::previewJson() const
     }
 }
 
+bool DesignerWindow::colorField(const char* label, std::string& value)
+{
+    bool changed = false;
+
+    // 色板预览：@theme 引用也解出来给个准色
+    ImU32 preview = 0;
+    if (value.rfind("@theme/", 0) == 0)
+    {
+        std::string key = value.substr(7);
+        if (key.rfind("color.", 0) == 0)
+            key = key.substr(6);
+        preview = getTheme().color(key, 0);
+    }
+    else
+        preview = parseHexColor(value); // "#RRGGBB[AA]"
+
+    propLabel(label);
+
+    ImGui::ColorButton((std::string("##sw") + label).c_str(), ImGui::ColorConvertU32ToFloat4(preview),
+        ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(22, 18));
+    ImGui::SameLine();
+
+    // 文本占中间，右边留 92 给"主题 key"下拉
+    ImGui::SetNextItemWidth(-96.0f);
+    changed |= inputString((std::string("##") + label).c_str(), value);
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(88);
+    if (ImGui::BeginCombo((std::string("##key") + label).c_str(), "主题 key…"))
+    {
+        static const char* common[] = { "accent.base", "common.transparent", "common.red",
+            "common.orange", "common.yellow", "common.green", "common.cyan", "common.blue",
+            "common.purple", "common.grey", "text.primary", "text.disabled", "text.value",
+            "surface.card", "surface.page", "button.primaryBg", "highlight.background",
+            "highlight.glow", "highlight.border", "common.shadow", "common.divider" };
+        for (const char* key : common)
+        {
+            if (ImGui::Selectable(key))
+            {
+                value   = std::string("@theme/color.") + key;
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
+bool DesignerWindow::applyViewText(std::string& error)
+{
+    const std::string text = this->viewText;
+    if (!validateJsonText(text, error))
+        return false;
+
+    // 试实例化：结构不对（未知 type、children 类型错）就别让它进预览
+    View* probe = createFromJSONString(text);
+    if (probe == nullptr)
+    {
+        error = "视图实例化失败（看日志里的具体原因：未知 type / children 结构 / include 路径）";
+        return false;
+    }
+    delete probe;
+
+    const AppearanceDoc::Json parsed = AppearanceDoc::Json::parse(text, nullptr, false);
+    if (parsed.is_discarded())
+    {
+        error = "JSON 解析失败";
+        return false;
+    }
+    this->doc.root() = parsed;
+    this->viewTextApplied = text;
+    this->previewDirty    = true;
+    this->markEdited();
+    return true;
+}
+
 void DesignerWindow::drawBoxGuides(ImVec2 origin, ImVec2 size) const
 {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -677,34 +906,86 @@ void DesignerWindow::ensurePreviewBuilt()
 
 void DesignerWindow::drawPreview()
 {
-    // 画布控制条
     ImGui::TextColored(kAccent, "预览");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    ImGui::InputInt("宽", &this->canvasWidth);
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
-    ImGui::InputInt("高", &this->canvasHeight);
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(120);
-    ImGui::Combo("缩放", &this->canvasZoom, "50%\0" "75%\0" "100%\0" "150%\0");
+    ImGui::SetNextItemWidth(132);
+    ImGui::Combo("尺寸", &this->canvasPreset,
+        "自适应（按文件类型）\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
+
+    // 自适应：按文件/选中节点猜一个合适的画布
+    if (this->canvasPreset == 0)
+    {
+        if (!this->currentViewFile.empty())
+        {
+            this->canvasWidth  = 960;
+            this->canvasHeight = 560;
+        }
+        else if (this->selection.kind == SelKind::LAYER)
+        {
+            this->canvasWidth  = 360;
+            this->canvasHeight = 200;
+        }
+        else if (this->currentWidget.rfind("cell", 0) == 0)
+        {
+            this->canvasWidth  = 420;
+            this->canvasHeight = 160;
+        }
+        else
+        {
+            this->canvasWidth  = 420;
+            this->canvasHeight = 220;
+        }
+    }
+    else if (this->canvasPreset == 1)
+    {
+        this->canvasWidth  = 1280;
+        this->canvasHeight = 720;
+    }
+    else if (this->canvasPreset == 2)
+    {
+        this->canvasWidth  = 720;
+        this->canvasHeight = 480;
+    }
+    else if (this->canvasPreset == 3)
+    {
+        this->canvasWidth  = 640;
+        this->canvasHeight = 360;
+    }
+    else
+    {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(80);
+        ImGui::InputInt("##w", &this->canvasWidth, 0, 0);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(80);
+        ImGui::InputInt("##h", &this->canvasHeight, 0, 0);
+    }
     this->canvasWidth  = std::max(40, std::min(this->canvasWidth, 4000));
     this->canvasHeight = std::max(30, std::min(this->canvasHeight, 4000));
+
+    ImGui::SameLine();
+    ImGui::Checkbox("透明网格底", &this->canvasChecker);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(96);
+    ImGui::Combo("缩放", &this->canvasZoom, "50%\0" "75%\0" "100%\0" "150%\0");
     const float zoom   = this->canvasZoom == 0 ? 0.5f : this->canvasZoom == 1 ? 0.75f
         : this->canvasZoom == 2 ? 1.0f : 1.5f;
 
-    const char* modeText = "渲染整个控件外观";
+    const char* modeText = "选中「文件」→ 渲染整个控件外观（真实控件）";
     switch (this->selection.kind)
     {
-        case SelKind::BOX: modeText = "box 段：盒模型/间距（虚线标出边界与 padding）"; break;
-        case SelKind::LAYER: modeText = "只渲染这一层"; break;
+        case SelKind::BOX: modeText = "选中「box」→ 盒模型：虚线标出边界与 padding"; break;
+        case SelKind::LAYER:
+            modeText = "选中「某一层」→ 只画这一层（棋盘格底，方便看 shadow / 半透明）";
+            break;
         case SelKind::STATE:
-        case SelKind::CHANNEL: modeText = "该状态生效时的样子（时长已归零，立刻到位）"; break;
+        case SelKind::CHANNEL:
+            modeText = "选中「某个状态」→ 该状态生效的样子（时长已归零，立刻到位）";
+            break;
         default: break;
     }
     if (!this->currentViewFile.empty())
-        modeText = "整页视图：真实实例化这棵视图树";
-    ImGui::SameLine();
+        modeText = "页面视图 → 真实实例化这棵视图树，整页渲染";
     ImGui::TextColored(kMuted, "%s", modeText);
 
     ImGui::BeginChild("##stage", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -772,11 +1053,33 @@ void DesignerWindow::drawProps()
     if (!this->currentViewFile.empty())
     {
         ImGui::TextColored(kAccent, "页面视图 %s", this->currentViewFile.c_str());
-        ImGui::TextColored(kMuted, "P2c 才开放编辑；现在可以看整页预览与原始 JSON：");
+        ImGui::TextColored(kMuted, "直接改下面的 JSON：点「应用」会先做语法校验 + 试实例化，"
+                                   "通过才进预览；「保存」走同一条（diff → 校验 → 原子写 + .bak）。");
         ImGui::Separator();
-        const std::string text = this->doc.root().is_discarded() ? this->savedText
-                                                                 : this->doc.root().dump(2);
-        ImGui::TextUnformatted(text.c_str());
+
+        const bool enterApplies = ImGui::InputTextMultiline("##viewjson", this->viewText,
+            sizeof(this->viewText), ImVec2(-1, ImGui::GetContentRegionAvail().y - 40.0f));
+
+        if (ImGui::Button("应用", ImVec2(90, 0)) || enterApplies)
+        {
+            std::string error;
+            if (this->applyViewText(error))
+                this->statusMessage = "已应用到预览（还没写盘）";
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("还原到文件内容", ImVec2(140, 0)))
+        {
+            std::snprintf(this->viewText, sizeof(this->viewText), "%s",
+                this->viewTextApplied.c_str());
+            this->statusMessage = "已还原文本";
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(kMuted, "%s", this->dirty ? "● 有未保存改动" : "已同步");
+
+        if (!this->errorMessage.empty())
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
         return;
     }
 
@@ -803,8 +1106,7 @@ void DesignerWindow::drawProps()
                 const bool has = this->doc.getBoxNumber(key, value);
                 const std::string label
                     = has ? std::string(key) : (std::string(key) + "（未设置）");
-                ImGui::SetNextItemWidth(-1);
-                if (ImGui::InputDouble(label.c_str(), &value, 1.0, 10.0, "%.1f") && has)
+                if (inputNumberFloat(label.c_str(), value) && has)
                 {
                     this->doc.setBoxNumber(key, value);
                     edited();
@@ -816,8 +1118,8 @@ void DesignerWindow::drawProps()
             std::string axis = "column";
             this->doc.getBoxString("axis", axis);
             int axisIndex = (axis == "row") ? 1 : 0;
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("axis", &axisIndex, "column\0row\0"))
+            propLabel("axis");
+            if (ImGui::Combo("##axis", &axisIndex, "column\0row\0"))
             {
                 this->doc.setBoxString("axis", axisIndex == 1 ? "row" : "column");
                 edited();
@@ -831,8 +1133,8 @@ void DesignerWindow::drawProps()
             for (int i = 0; i < 6; i++)
                 if (justify == justifyItems[i])
                     justifyIndex = i;
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("justifyContent", &justifyIndex,
+            propLabel("justifyContent");
+            if (ImGui::Combo("##justifyContent", &justifyIndex,
                     "flexStart\0center\0flexEnd\0spaceBetween\0spaceAround\0spaceEvenly\0"))
             {
                 this->doc.setBoxString("justifyContent", justifyItems[justifyIndex]);
@@ -846,8 +1148,8 @@ void DesignerWindow::drawProps()
             for (int i = 0; i < 5; i++)
                 if (align == alignItems[i])
                     alignIndex = i;
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("alignItems", &alignIndex,
+            propLabel("alignItems");
+            if (ImGui::Combo("##alignItems", &alignIndex,
                     "flexStart\0center\0flexEnd\0stretch\0baseline\0"))
             {
                 this->doc.setBoxString("alignItems", alignItems[alignIndex]);
@@ -862,8 +1164,7 @@ void DesignerWindow::drawProps()
                 std::string value;
                 if (!this->doc.getBoxString(key, value))
                     value.clear();
-                ImGui::SetNextItemWidth(-1);
-                if (inputString(key, value))
+                if (this->colorField(key, value))
                 {
                     this->doc.setBoxString(key, value);
                     edited();
@@ -892,7 +1193,6 @@ void DesignerWindow::drawProps()
                 if (kind == "number")
                 {
                     double value = it.value().get<double>();
-                    ImGui::SetNextItemWidth(-1);
                     changed = inputNumberFloat(key.c_str(), value);
                     if (changed)
                         it.value() = value;
@@ -909,8 +1209,8 @@ void DesignerWindow::drawProps()
                     std::string value;
                     if (it.value().size() > 0)
                         value = compactValue(it.value());
-                    ImGui::SetNextItemWidth(-1);
-                    if (inputString(key.c_str(), value) && !value.empty())
+                    propLabel(key.c_str());
+                    if (inputString((std::string("##") + key).c_str(), value) && !value.empty())
                     {
                         // 允许 [1,2] / 数字 两种写法，解析失败就原样留着
                         AppearanceDoc::Json parsed
@@ -924,12 +1224,27 @@ void DesignerWindow::drawProps()
                 }
                 else
                 {
-                    std::string value = kind == "string" ? it.value().get<std::string>()
-                                                        : compactValue(it.value());
-                    ImGui::SetNextItemWidth(-1);
-                    changed = inputString(key.c_str(), value);
-                    if (changed)
-                        it.value() = value;
+                    const bool looksLikeColor = (key == "fill" || key == "color" || key == "stroke"
+                        || key == "borderColor" || key == "backgroundColor");
+                    if (looksLikeColor)
+                    {
+                        std::string value = kind == "string" ? it.value().get<std::string>()
+                                                             : compactValue(it.value());
+                        if (this->colorField(key.c_str(), value))
+                        {
+                            it.value() = value;
+                            changed    = true;
+                        }
+                    }
+                    else
+                    {
+                        std::string value = kind == "string" ? it.value().get<std::string>()
+                                                            : compactValue(it.value());
+                        propLabel(key.c_str());
+                        changed = inputString((std::string("##") + key).c_str(), value);
+                        if (changed)
+                            it.value() = value;
+                    }
                 }
 
                 if (changed)
@@ -990,8 +1305,8 @@ void DesignerWindow::drawProps()
                         AppearanceDoc::Json& transition = it.value();
 
                         std::string to = compactValue(transition.value("to", AppearanceDoc::Json()));
-                        ImGui::SetNextItemWidth(-1);
-                        if (inputString("to", to))
+                        propLabel("to");
+                        if (inputString("##to", to))
                         {
                             AppearanceDoc::Json parsed
                                 = AppearanceDoc::Json::parse(to, nullptr, false);
@@ -1001,7 +1316,6 @@ void DesignerWindow::drawProps()
                         }
 
                         double duration = transition.value("duration", 120.0);
-                        ImGui::SetNextItemWidth(-1);
                         if (inputNumberFloat("duration(ms)", duration))
                         {
                             transition["duration"] = duration;
@@ -1015,8 +1329,8 @@ void DesignerWindow::drawProps()
                         for (int i = 0; i < 8; i++)
                             if (easing == easings[i])
                                 easingIndex = i;
-                        ImGui::SetNextItemWidth(-1);
-                        if (ImGui::Combo("easing", &easingIndex,
+                        propLabel("easing");
+                        if (ImGui::Combo("##easing", &easingIndex,
                                 "linear\0quadraticIn\0quadraticOut\0quadraticInOut\0cubicOut\0"
                                 "backOut\0bounceOut\0elasticOut\0"))
                         {
@@ -1105,12 +1419,32 @@ void DesignerWindow::doSave()
         return;
     }
 
-    // 保存前先编译一遍：写坏的外观不落盘
-    std::shared_ptr<const Appearance> compiled = Appearance::compile(text, getTheme(), error);
-    if (compiled == nullptr)
+    // 保存前先校验：写坏的 JSON 不落盘
+    if (this->currentViewFile.empty())
     {
-        this->errorMessage = "编译失败（没写盘）：" + error;
-        return;
+        std::shared_ptr<const Appearance> compiled = Appearance::compile(text, getTheme(), error);
+        if (compiled == nullptr)
+        {
+            this->errorMessage = "编译失败（没写盘）：" + error;
+            return;
+        }
+    }
+    else
+    {
+        View* probe = createFromJSONString(text);
+        if (probe == nullptr)
+        {
+            this->errorMessage = "视图实例化失败（没写盘）";
+            return;
+        }
+        delete probe;
+        if (!this->applyViewText(error))
+        {
+            this->errorMessage = "应用失败（没写盘）：" + error;
+            return;
+        }
+        this->savedText = text;
+        this->dirty     = false;
     }
 
     if (!writeTextFileAtomic(this->currentFilePath, text, true, error))
@@ -1204,6 +1538,34 @@ void DesignerWindow::drawModals()
         ImGui::EndPopup();
     }
 
+    if (this->showSaveAs)
+    {
+        ImGui::OpenPopup("另存为");
+        this->showSaveAs = false;
+    }
+
+    if (ImGui::BeginPopupModal("另存为", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kMuted, "导出一份 JSON 到指定路径（不影响当前文件）");
+        ImGui::SetNextItemWidth(560);
+        ImGui::InputText("##saveas", this->saveAsPath, sizeof(this->saveAsPath));
+        if (ImGui::Button("写入", ImVec2(120, 0)))
+        {
+            std::string error;
+            if (writeTextFileAtomic(this->saveAsPath, this->doc.serialize(), false, error))
+            {
+                this->statusMessage = std::string("已另存到 ") + this->saveAsPath;
+                ImGui::CloseCurrentPopup();
+            }
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     if (this->showDiff)
     {
         ImGui::OpenPopup("保存前确认改动");
@@ -1246,19 +1608,19 @@ void DesignerWindow::draw()
 
     this->drawTopBar();
 
-    const float leftWidth = 300.0f;
-    const float rightWidth = 360.0f;
+    const float leftWidth = 320.0f;
+    const float rightWidth = 420.0f;
     const ImVec2 avail = ImGui::GetContentRegionAvail();
 
     ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
     {
         ImGui::TextColored(kAccent, "文件");
-        ImGui::BeginChild("##files", ImVec2(0, 220), false);
+        ImGui::BeginChild("##files", ImVec2(0, 250), false);
         this->drawFileList();
         ImGui::EndChild();
         ImGui::Separator();
         ImGui::TextColored(kAccent, "节点树");
-        ImGui::BeginChild("##tree", ImVec2(0, ImGui::GetContentRegionAvail().y - 74), false);
+        ImGui::BeginChild("##tree", ImVec2(0, ImGui::GetContentRegionAvail().y - 78), false);
         this->drawTree();
         ImGui::EndChild();
         ImGui::Separator();

@@ -64,6 +64,8 @@ class DesignerWindow
     void drawTopBar();
     void drawFileList();
     void drawTree();
+    // 页面视图的节点树（type + id + 属性 + children 逐层展开）
+    void drawViewTree(const AppearanceDoc::Json& node, const std::string& path);
     void drawStatus();
     void drawPreview();
     void drawProps();
@@ -80,6 +82,10 @@ class DesignerWindow
     bklv::AppearanceView* createPreviewControl() const; // 按外观名挑真实控件，兜底裸 AppearanceView
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
+    // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
+    bool colorField(const char* label, std::string& value);
+    // 页面视图的文本改动：校验 + 试实例化，通过才写进 doc
+    bool applyViewText(std::string& error);
     void ensurePreviewBuilt();
 
     // ---- 保存 ----
@@ -103,6 +109,8 @@ class DesignerWindow
     AppearanceDoc doc;
     Selection selection;
 
+    int viewNodeCount   = 0;
+    int viewFieldCount  = 0;
     bool dirty          = false;
     bool previewDirty   = true;
     std::string statusMessage;
@@ -111,15 +119,22 @@ class DesignerWindow
     // 预览
     bklv::View* previewView = nullptr;
     std::string previewError;
-    int canvasWidth  = 420;
-    int canvasHeight = 160;
-    int canvasZoom   = 1;
+    int canvasPreset   = 0; // 0=自适应 1=1280x720 2=720x480 3=640x360 4=自定义
+    bool canvasChecker = true;
+    int canvasWidth    = 420;
+    int canvasHeight   = 160;
+    int canvasZoom     = 1;
 
     // 弹层
     bool showNewProject = false;
     bool showDiff       = false;
     bool showSaveAs     = false;
     std::vector<std::string> diffLines;
+    char saveAsPath[512] = "";
+
+    // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）
+    char viewText[16384] = "";
+    std::string viewTextApplied;
 
     // 新建项目表单
     int newProjectMode = 0; // 0 = 模板新建，1 = 直接编辑
