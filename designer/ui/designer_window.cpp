@@ -461,6 +461,30 @@ bool DesignerWindow::createAppearanceFile(const std::string& name, const std::st
         return false;
     }
 
+    // "另存为变体"走的就是这条路：模板为空壳、但把当前编辑中的内容原样带过去
+    if (templateName == "empty" && !this->currentWidget.empty()
+        && !this->currentFilePath.empty())
+    {
+        AppearanceDoc::Json content = this->doc.root();
+        std::string compileError;
+        if (Appearance::compile(content.dump(), getTheme(), compileError) == nullptr)
+        {
+            error = "当前外观编译不过，先修好再另存：" + compileError;
+            return false;
+        }
+        if (!createWidgetAppearance(this->project.themeDir(), name, content.dump(2) + "\n", error))
+            return false;
+
+        this->refreshFileList();
+        this->refreshThemeUsage();
+        std::string reloadError;
+        this->applyThemeFromProject(reloadError);
+        std::string openError;
+        this->openAppearance(name, openError);
+        this->statusMessage = "已另存为新外观 " + name + "（已登记进 theme.json）";
+        return true;
+    }
+
     AppearanceDoc::Json doc = AppearanceDoc::Json::object();
     doc["box"]    = AppearanceDoc::Json::object();
     doc["layers"] = AppearanceDoc::Json::array();
@@ -542,6 +566,17 @@ bool DesignerWindow::createAppearanceFile(const std::string& name, const std::st
     this->openAppearance(name, openError);
     this->statusMessage = "新建外观 " + name + "（已登记进 theme.json）";
     return true;
+}
+
+bool DesignerWindow::saveAsNewAppearance(const std::string& name, std::string& error)
+{
+    if (this->currentWidget.empty())
+    {
+        error = "先打开一个外观";
+        return false;
+    }
+    // 用当前编辑中的内容（含未保存改动）另存，core 会做重名检查 + 登记 + 编译前校验
+    return this->createAppearanceFile(name, "empty", error);
 }
 
 bool DesignerWindow::deleteCurrentAppearance(std::string& error)
@@ -1108,6 +1143,15 @@ void DesignerWindow::drawFileList()
     }
     if (!this->currentWidget.empty() && !this->readOnly)
     {
+        ImGui::SameLine();
+        if (ImGui::Button("另存为变体…"))
+        {
+            std::snprintf(this->variantName, sizeof(this->variantName), "%s_v2",
+                this->currentWidget.c_str());
+            this->showSaveAsVariant = true;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("把当前外观（含未保存改动）复制成一个新外观并登记 —— 做变体用");
         ImGui::SameLine();
         if (ImGui::Button("删除当前外观"))
             this->showDeleteAppearance = true;
@@ -3546,6 +3590,31 @@ void DesignerWindow::drawModals()
         ImGui::BulletText("写盘 = 临时文件 + rename 原子替换，并留一份 .bak");
         ImGui::Separator();
         if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    if (this->showSaveAsVariant)
+    {
+        ImGui::OpenPopup("另存为变体");
+        this->showSaveAsVariant = false;
+    }
+    if (ImGui::BeginPopupModal("另存为变体", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kMuted, "从 %s 复制一份新外观（含未保存改动），并登记进 theme.json",
+            this->currentWidget.c_str());
+        ImGui::SetNextItemWidth(320);
+        ImGui::InputText("新外观名", this->variantName, sizeof(this->variantName));
+        if (ImGui::Button("创建", ImVec2(120, 0)))
+        {
+            std::string error;
+            if (this->saveAsNewAppearance(this->variantName, error))
+                ImGui::CloseCurrentPopup();
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }

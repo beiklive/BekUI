@@ -19,6 +19,11 @@ namespace designer
 // 数值写成 JSON：整数就写整数（避免 64 → 64.0 的无意义改动）
 nlohmann::ordered_json numberValue(double value);
 
+// 按插值属性名给一个合理的默认目标值：
+// 颜色类属性给颜色串（给 0.0 的话外观会编译失败——颜色通道不接受数字），
+// 尺寸类给数字。状态通道默认值用它，省得用户加完通道先撞一次编译错误。
+nlohmann::ordered_json defaultChannelValue(const std::string& propertyName);
+
 class AppearanceDoc
 {
   public:

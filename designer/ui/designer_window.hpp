@@ -54,6 +54,8 @@ class DesignerWindow
     // 新建 / 删除外观文件（会同步 theme.json 的 widgets 清单）
     bool createAppearanceFile(const std::string& name, const std::string& templateName,
         std::string& error);
+    // 把当前外观另存为一个新外观（不变体继承，就是复制一份 + 登记），用来做变体
+    bool saveAsNewAppearance(const std::string& name, std::string& error);
     bool deleteCurrentAppearance(std::string& error);
     // 按规格选中节点："file" / "box" / "layer0" / "state:focused"（自查与脚本用）
     bool selectBySpec(const std::string& spec);
@@ -228,6 +230,8 @@ class DesignerWindow
     int newAppearanceTemplate = 0;
     bool showNewAppearance = false;
     bool showNewView       = false;
+    bool showSaveAsVariant = false;
+    char variantName[64]   = "my_variant";
     char newViewName[64]   = "my_page";
     int newViewTemplate    = 1; // 0=空页面 1=整页（页头+内容+底栏）2=卡片
     bool showDeleteAppearance = false;

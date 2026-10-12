@@ -13,6 +13,25 @@ nlohmann::ordered_json numberValue(double value)
     return nlohmann::ordered_json(value);
 }
 
+nlohmann::ordered_json defaultChannelValue(const std::string& propertyName)
+{
+    // 颜色类：fill / stroke / color / textColor / borderColor / backgroundColor
+    if (propertyName == "fill" || propertyName == "stroke" || propertyName == "color"
+        || propertyName == "textColor" || propertyName == "borderColor"
+        || propertyName == "backgroundColor")
+        return nlohmann::ordered_json("@theme/color.common.white");
+
+    if (propertyName == "opacity")
+        return numberValue(0.5);
+    if (propertyName == "radius")
+        return numberValue(6.0);
+    if (propertyName == "strokeWidth")
+        return numberValue(2.0);
+    if (propertyName.rfind("offset", 0) == 0)
+        return numberValue(2.0);
+    return numberValue(0.0);
+}
+
 bool AppearanceDoc::parse(const std::string& jsonText, std::string& error)
 {
     const Json parsed = Json::parse(jsonText, nullptr, false);
@@ -281,10 +300,14 @@ void AppearanceDoc::addChannel(const std::string& state, const std::string& chan
     this->addState(state);
     if (!this->doc["states"][state].contains(channel))
     {
+        // 通道名形如 "bg.fill"：按后半段（属性名）给默认目标值
+        const size_t dot        = channel.find_last_of('.');
+        const std::string property = (dot == std::string::npos) ? channel : channel.substr(dot + 1);
+
         Json transition = Json::object();
-        transition["to"] = 0.0;
+        transition["to"]       = defaultChannelValue(property);
         transition["duration"] = 120;
-        transition["easing"] = "quadraticOut";
+        transition["easing"]   = "quadraticOut";
         this->doc["states"][state][channel] = transition;
     }
 }

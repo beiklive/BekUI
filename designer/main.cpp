@@ -111,6 +111,14 @@ int main(int argc, char** argv)
         window.setDebugPanelsForTest(std::getenv("BKLV_DESIGNER_LOG") != nullptr,
             std::getenv("BKLV_DESIGNER_FOCUS") != nullptr);
 
+    // 自查：BKLV_DESIGNER_VARIANT=<新名> 把当前外观另存为变体
+    if (const char* variant = std::getenv("BKLV_DESIGNER_VARIANT"))
+    {
+        std::string variantError;
+        if (!window.saveAsNewAppearance(variant, variantError))
+            BKLV_LOG_WARNING("另存为变体失败：%s", variantError.c_str());
+    }
+
     // 自查：BKLV_DESIGNER_EDIT="height=64" 先改一个 box 数值
     if (const char* edit = std::getenv("BKLV_DESIGNER_EDIT"))
     {

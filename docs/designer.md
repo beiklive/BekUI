@@ -114,6 +114,23 @@ tests/designer_core_test.cpp   逻辑层的无窗口测试（62 项）
 - **对比度检查**：文字层颜色与控件底色的对比度 < 4.5:1 时进校验面板提醒
 - **日志面板**：直接复用库里的 `DebugWindow`（读日志环形缓冲），顶栏「日志」开关
 
+## 第 11 轮补的
+
+- **状态通道的默认值按属性类型给**（core `defaultChannelValue`）：颜色类属性给颜色串、
+  数值类给合适的数。以前所有新通道都是 `to: 0.0`，颜色通道一加就编译失败
+- **另存为变体**：把当前外观（含未保存改动）复制成一个新外观并登记 —— 做变体最常用的工作流。
+  core 那条 `createWidgetAppearance` 负责重名检查 + 登记 + 落盘回滚，写盘前先编译校验
+- 自查钩子补 `BKLV_DESIGNER_VARIANT=<新名>`（实测：变体文件生成、`theme.json` 登记成功、
+  外观总数 43 → 44）
+
+## 待查（记下来，不瞎猜）
+
+`BKLV_DESIGNER_FORK` + `BKLV_DESIGNER_VARIANT` 这条流程里会冒一条
+`主题颜色缺失：button.primaryText`：该 key 在仓库与 dist 的 `colors.json` 里都存在、
+界面渲染出来的颜色也对（warn-once 只在首次查询时报）。对照证据：demo 0 条、
+设计器单开文件 0 条、fork+variant 1 条。等下一轮用"在 `warnMissingKeyOnce` 里带调用点"
+的方式定位。
+
 ## 第 10 轮补的
 
 - **界面状态持久化搬进 core**（`designer/core/ui_state.*`）：以前 load/save 直接写在 UI 文件里，

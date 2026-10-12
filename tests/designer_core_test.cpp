@@ -555,6 +555,26 @@ int main()
         checkEqualInt(broken.leftWidth, 411, "坏 JSON 不动已有值");
     }
 
+    // ---------------------------------------------------------------- 状态通道的默认值
+    {
+        check(designer::defaultChannelValue("fill").is_string(), "颜色属性的默认值是颜色串");
+        check(designer::defaultChannelValue("color").is_string(), "textColor 类同理");
+        check(designer::defaultChannelValue("opacity").is_number(), "透明度是数字");
+        check(designer::defaultChannelValue("radius").is_number(), "圆角是数字");
+
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse("{\"layers\": [{\"op\": \"rect\", \"id\": \"bg\"}], \"states\": {}}", error);
+        doc.addChannel("focused", "bg.fill");
+        doc.addChannel("focused", "bg.opacity");
+
+        const auto& node = doc.root()["states"]["focused"];
+        check(node["bg.fill"]["to"].is_string(), "加出来的颜色通道给的是颜色（给 0.0 会编译失败）");
+        check(node["bg.opacity"]["to"].is_number(), "加出来的数值通道给的是数字");
+        checkEqualInt(node["bg.fill"]["duration"], 120, "默认时长");
+        checkEqual(node["bg.fill"]["easing"], "quadraticOut", "默认缓动");
+    }
+
     fs::remove_all(work, code);
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
