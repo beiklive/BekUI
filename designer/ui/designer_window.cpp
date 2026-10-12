@@ -8,6 +8,7 @@
 
 #include "bklv/3rd/imgui/imgui.h"
 #include "designer/core/diff.hpp"
+#include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_files.hpp"
 
 namespace fs = std::filesystem;
@@ -99,15 +100,11 @@ ImU32 parseHexColor(const std::string& text)
     return IM_COL32((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 255);
 }
 
-// ColorEdit4 要 float[4]：把十六进制字符串转成一个可长期持有的缓冲
-std::array<float, 4>& colorScratch(const std::string& text)
+// ColorEdit4 要 float[4]
+std::array<float, 4> colorToArray(const std::string& text)
 {
-    static std::array<float, 4> scratch = { 1.0f, 1.0f, 1.0f, 1.0f };
-    const std::string key = text; // 参数只用来表明"这次编辑的是哪个值"
-    (void)key;
     const ImVec4 color = ImGui::ColorConvertU32ToFloat4(parseHexColor(text));
-    scratch            = { color.x, color.y, color.z, color.w };
-    return scratch;
+    return { color.x, color.y, color.z, color.w };
 }
 
 // 一层里某个值是数字、字符串还是数组
@@ -156,6 +153,11 @@ bool DesignerWindow::setProject(const Project& value, bool isReadOnly, std::stri
 
     this->project     = value;
     this->hasProject  = true;
+    {
+        // 记住上次的项目，下次启动直接打开（以前每次都是 default，白点一遍）
+        std::string saveError;
+        saveProjectFile(value, resourcePath("designer_project.json"), saveError);
+    }
     this->readOnly    = isReadOnly;
     this->dirty       = false;
     this->currentWidget.clear();
@@ -201,6 +203,28 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
 {
     const std::string path = this->project.themeDir() + "/" + widgetPathFromName(widgetName);
 
+    // 已经有草稿：直接切回去（不重读磁盘，未保存的改动不能丢——审查时发现原实现会丢）
+    const auto existing = this->drafts.find(path);
+    if (existing != this->drafts.end())
+    {
+        this->currentWidget = widgetName;
+        this->currentViewFile.clear();
+        this->currentTable.clear();
+        this->currentFilePath = path;
+        this->doc             = existing->second.doc;
+        this->savedText       = existing->second.savedText;
+        this->dirty           = existing->second.dirty;
+        this->viewTextApplied = existing->second.savedText;
+        std::snprintf(this->viewText, sizeof(this->viewText), "%s",
+            existing->second.viewText.c_str());
+        this->selection     = Selection{};
+        this->previewDirty  = true;
+        this->errorMessage.clear();
+        this->lastFrameText = this->doc.serialize();
+        this->statusMessage = "切回 " + widgetName + (this->dirty ? "（有未保存改动）" : "");
+        return true;
+    }
+
     std::string text;
     if (!readTextFile(path, text, error))
         return false;
@@ -233,10 +257,32 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
 
 bool DesignerWindow::openViewFile(const std::string& fileName)
 {
+    const std::string path = this->project.resourcesDir() + "/views/" + fileName;
+
+    const auto existing = this->drafts.find(path);
+    if (existing != this->drafts.end())
+    {
+        this->currentViewFile = fileName;
+        this->currentWidget.clear();
+        this->currentTable.clear();
+        this->currentFilePath = path;
+        this->doc             = existing->second.doc;
+        this->savedText       = existing->second.savedText;
+        this->dirty           = existing->second.dirty;
+        std::snprintf(this->viewText, sizeof(this->viewText), "%s",
+            existing->second.viewText.c_str());
+        this->viewTextApplied = existing->second.viewText;
+        this->selection       = Selection{};
+        this->previewDirty    = true;
+        this->lastFrameText   = this->doc.serialize();
+        this->statusMessage   = "切回 " + fileName + (this->dirty ? "（有未保存改动）" : "");
+        return true;
+    }
+
     this->currentViewFile = fileName;
     this->currentWidget.clear();
     this->currentTable.clear();
-    this->currentFilePath = this->project.resourcesDir() + "/views/" + fileName;
+    this->currentFilePath = path;
 
     std::string text;
     std::string error;
@@ -270,6 +316,25 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
 bool DesignerWindow::openTableFile(const std::string& fileName)
 {
     const std::string path = this->project.themeDir() + "/" + fileName;
+
+    const auto existing = this->drafts.find(path);
+    if (existing != this->drafts.end())
+    {
+        this->currentTable    = fileName;
+        this->currentWidget.clear();
+        this->currentViewFile.clear();
+        this->currentFilePath = path;
+        this->doc             = existing->second.doc;
+        this->savedText       = existing->second.savedText;
+        this->dirty           = existing->second.dirty;
+        this->selection       = Selection{};
+        this->selection.kind  = SelKind::TABLE;
+        this->previewDirty    = true;
+        this->lastFrameText   = this->doc.serialize();
+        this->statusMessage   = "切回主题表 " + fileName;
+        return true;
+    }
+
     std::string text;
     std::string error;
     if (!readTextFile(path, text, error))
@@ -389,36 +454,13 @@ bool DesignerWindow::createAppearanceFile(const std::string& name, const std::st
         }
     }
 
-    const std::string relative = widgetPathFromName(name);
-    const std::string path     = this->project.themeDir() + "/" + relative;
-    if (!writeTextFileAtomic(path, doc.dump(2) + "\n", false, error))
-        return false;
-
-    // 登记进 theme.json 的 widgets[]（外观不扫目录，必须登记）
-    std::vector<std::string> widgets;
-    std::string readError;
-    readWidgetFileList(this->project.themeDir(), widgets, readError);
-    if (std::find(widgets.begin(), widgets.end(), relative) == widgets.end())
-        widgets.push_back(relative);
-
-    std::string themeText;
-    std::string themePath = this->project.themeDir() + "/theme.json";
-    if (!readTextFile(themePath, themeText, error))
-        return false;
-    AppearanceDoc::Json themeJson = AppearanceDoc::Json::parse(themeText, nullptr, false);
-    if (themeJson.is_discarded())
-    {
-        error = "theme.json 解析失败";
-        return false;
-    }
-    themeJson["widgets"] = AppearanceDoc::Json::array();
-    for (const std::string& entry : widgets)
-        themeJson["widgets"].push_back(entry);
-    if (!writeTextFileAtomic(themePath, themeJson.dump(2) + "\n", true, error))
+    // core 层做：防覆盖（同名拒绝）+ 登记 theme.json + 失败回滚
+    if (!createWidgetAppearance(this->project.themeDir(), name, doc.dump(2) + "\n", error))
         return false;
 
     this->refreshFileList();
-    this->applyThemeFromProject(readError);
+    std::string reloadError;
+    this->applyThemeFromProject(reloadError);
     std::string openError;
     this->openAppearance(name, openError);
     this->statusMessage = "新建外观 " + name + "（已登记进 theme.json）";
@@ -436,29 +478,9 @@ bool DesignerWindow::deleteCurrentAppearance(std::string& error)
     const std::string relative = widgetPathFromName(this->currentWidget);
     const std::string path     = this->project.themeDir() + "/" + relative;
 
-    std::vector<std::string> widgets;
-    readWidgetFileList(this->project.themeDir(), widgets, error);
-    widgets.erase(std::remove(widgets.begin(), widgets.end(), relative), widgets.end());
-
-    std::string themeText;
-    const std::string themePath = this->project.themeDir() + "/theme.json";
-    if (!readTextFile(themePath, themeText, error))
+    // core 层：摘掉登记 + 把文件改名成 .deleted（不是直接删，手抖还能捞回来）
+    if (!deleteWidgetAppearance(this->project.themeDir(), this->currentWidget, error))
         return false;
-    AppearanceDoc::Json themeJson = AppearanceDoc::Json::parse(themeText, nullptr, false);
-    if (themeJson.is_discarded())
-    {
-        error = "theme.json 解析失败";
-        return false;
-    }
-    themeJson["widgets"] = AppearanceDoc::Json::array();
-    for (const std::string& entry : widgets)
-        themeJson["widgets"].push_back(entry);
-    if (!writeTextFileAtomic(themePath, themeJson.dump(2) + "\n", true, error))
-        return false;
-
-    std::error_code code;
-    std::filesystem::remove(path, code);           // 外观文件本身
-    std::filesystem::remove(path + ".bak", code);  // 顺手清掉备份
 
     this->drafts.erase(path);
     this->currentWidget.clear();
@@ -468,7 +490,7 @@ bool DesignerWindow::deleteCurrentAppearance(std::string& error)
     this->previewDirty = true;
     this->refreshFileList();
     this->applyThemeFromProject(error);
-    this->statusMessage = "已删除外观 " + relative + "（并从 theme.json 摘掉）";
+    this->statusMessage = "已删除外观 " + relative + "（文件改名为 .deleted，登记已摘掉）";
     return true;
 }
 
@@ -1436,10 +1458,23 @@ void DesignerWindow::drawTableProps()
                   {
                       std::string text = it.value().get<std::string>();
                       ImGui::PushItemWidth(120.0f);
-                      if (ImGui::ColorEdit4("##c", &colorScratch(text)[0],
-                              ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs
-                                  | ImGuiColorEditFlags_AlphaPreviewHalf))
-                          edited = true;
+                      std::array<float, 4> scratch      = colorToArray(text);
+                      const bool colorPicked = ImGui::ColorEdit4("##c", scratch.data(),
+                          ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs
+                              | ImGuiColorEditFlags_AlphaPreviewHalf);
+                      if (colorPicked)
+                      {
+                          // 必须写回：只置 edited 的话取色器改了等于没改（审查时发现）
+                          char hex[16];
+                          std::snprintf(hex, sizeof(hex), "#%02X%02X%02X%02X",
+                              (int)(scratch[0] * 255.0f + 0.5f),
+                              (int)(scratch[1] * 255.0f + 0.5f),
+                              (int)(scratch[2] * 255.0f + 0.5f),
+                              (int)(scratch[3] * 255.0f + 0.5f));
+                          it.value() = std::string(hex);
+                          text       = hex;
+                          edited     = true;
+                      }
                       ImGui::PopItemWidth();
                       ImGui::SameLine();
                       ImGui::SetNextItemWidth(140);
@@ -2353,6 +2388,14 @@ void DesignerWindow::markEdited()
 
 void DesignerWindow::saveAllDirty()
 {
+    if (this->readOnly)
+    {
+        this->errorMessage = "只读主题，不能写盘";
+        return;
+    }
+
+    this->stashCurrent(); // 不先存当前这份的话，会把它上一次 stash 的旧内容写下去
+
     const std::string original = this->currentFilePath;
     int saved = 0;
 
@@ -2415,7 +2458,15 @@ void DesignerWindow::applyThemeFromProject(std::string& error)
 
 void DesignerWindow::requestSave()
 {
-    if (this->fileChangedExternally())
+    if (this->readOnly)
+    {
+        // 按钮虽然是灰的，但 Ctrl+S / 冲突弹层会绕过它 —— 基准主题绝不能被写
+        this->errorMessage = "基准主题（default / ocean）只读：请先「新建项目」用模板建一份自己的主题";
+        BKLV_LOG_WARNING("拒绝写盘：%s 是只读的基准主题", this->project.name.c_str());
+        return;
+    }
+
+    if (this->fileChangedExternally() && !this->allowOverwrite)
     {
         this->showConflict = true;
         return;
@@ -2446,6 +2497,12 @@ void DesignerWindow::requestSave()
 void DesignerWindow::doSave()
 {
     this->showDiff = false;
+
+    if (this->readOnly)
+    {
+        this->errorMessage = "只读主题，不能写盘";
+        return;
+    }
 
     const std::string text = this->doc.serialize();
 
@@ -2492,9 +2549,14 @@ void DesignerWindow::doSave()
         this->dirty     = false;
     }
 
-    if (!writeTextFileAtomic(this->currentFilePath, text, true, error))
+    // 带冲突检测的原子写（core 层，能无窗口测）：磁盘内容变了就拒绝（除非刚点过"覆盖写"）
+    const auto draftForWrite = this->drafts.find(this->currentFilePath);
+    const std::string expected
+        = draftForWrite != this->drafts.end() ? draftForWrite->second.openHash : std::string();
+    if (!writeFileChecked(this->currentFilePath, expected, text, this->allowOverwrite, true, error))
     {
         this->errorMessage = error;
+        this->showConflict = true; // 让用户选覆盖 / 重新载入
         return;
     }
 
@@ -2749,8 +2811,10 @@ void DesignerWindow::drawModals()
             this->showConflict = false;
             const auto found = this->drafts.find(this->currentFilePath);
             if (found != this->drafts.end())
-                found->second.openHash.clear(); // 让这次检查放行
+                found->second.openHash.clear();
+            this->allowOverwrite = true; // 只放行这一次，避免弹层反复弹
             this->requestSave();
+            this->allowOverwrite = false;
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -3030,7 +3094,10 @@ void DesignerWindow::draw()
     if (!this->currentFilePath.empty())
     {
         const std::string now = this->doc.serialize();
-        if (!this->lastFrameText.empty() && now != this->lastFrameText)
+        // 拖动期间不压栈（否则一次拖拽塞满撤销栈、Ctrl+Z 变成逐像素回退）；
+        // 松手那一帧再压，粒度 = 一次操作
+        const bool interacting = ImGui::IsAnyItemActive();
+        if (!interacting && !this->lastFrameText.empty() && now != this->lastFrameText)
             this->pushUndoSnapshot();
         this->lastFrameText = now;
     }

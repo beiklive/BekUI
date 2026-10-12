@@ -59,6 +59,20 @@ int main(int argc, char** argv)
             BKLV_LOG_WARNING("建项目失败：%s", forkError.c_str());
     }
 
+    // 上次打开的项目（设计器自己的小记录，放在可执行文件目录）
+    if (std::getenv("BKLV_DESIGNER_FORK") == nullptr && std::getenv("BKLV_DESIGNER_PROJECT") == nullptr)
+    {
+        designer::Project remembered;
+        std::string rememberError;
+        const std::string record = bklv::resourcePath("designer_project.json");
+        if (designer::loadProjectFile(record, remembered, rememberError)
+            && designer::directoryExists(remembered.themeDir()))
+        {
+            initial  = remembered;
+            readOnly = designer::isBaseTheme(remembered.name);
+        }
+    }
+
     std::string error;
     if (!window.setProject(initial, readOnly, error))
         BKLV_LOG_WARNING("初始主题装载失败：%s（可以点「新建项目」换一个目录）", error.c_str());
@@ -81,6 +95,10 @@ int main(int argc, char** argv)
     }
     if (const char* wantedSelect = std::getenv("BKLV_DESIGNER_SELECT"))
         window.selectBySpec(wantedSelect);
+
+    // 自查：BKLV_DESIGNER_FORCE_SAVE=1 直接触发一次保存（用来验证只读保护真的拦得住）
+    if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
+        window.forceSaveForTest();
 
     // 调试/自查：BKLV_DESIGNER_SHOT=<png> 渲染几帧后离屏截图并退出
     if (const char* shot = std::getenv("BKLV_DESIGNER_SHOT"))

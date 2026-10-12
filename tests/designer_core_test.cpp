@@ -6,6 +6,7 @@
 // 资源按可执行文件目录解析，所以开头必须 initResources()；测试产物写进
 // dist/designer_test_work/ 下，不落到仓库树里。
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -13,6 +14,7 @@
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/project.hpp"
+#include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
 
@@ -233,6 +235,53 @@ int main()
         designer::writeTextFileAtomic(file, before, false, error);
         std::string themeError;
         check(bklv::validateThemeAppearances(themeError), "整主题校验通过");
+    }
+
+    // ---------------------------------------------------------------- 新建/删除外观（core 层）
+    {
+        std::string error;
+
+        // 新建：文件 + theme.json 登记都要有
+        check(designer::createWidgetAppearance(themeRoot + "/my-skin", "my_widget",
+                                R"({"box": {}, "layers": [], "states": {}})", error), "新建外观");
+        check(fs::exists(themeRoot + "/my-skin/widgets/my_widget.json"), "文件已建");
+        std::vector<std::string> widgets;
+        designer::readWidgetFileList(themeRoot + "/my-skin", widgets, error);
+        check(std::find(widgets.begin(), widgets.end(), std::string("widgets/my_widget.json"))
+                != widgets.end(), "已登记进 theme.json");
+
+        // 同名必须被拒绝（不能覆盖用户已有的外观）
+        check(!designer::createWidgetAppearance(themeRoot + "/my-skin", "my_widget", "{}", error), "同名新建被拒");
+        check(error.find("已经存在") != std::string::npos, "拒绝时给了原因");
+        check(!designer::createWidgetAppearance(themeRoot + "/my-skin", "../evil", "{}", error), "带路径分隔符被拒");
+
+        // 删除：登记摘掉，文件改名成 .deleted（不是直接删）
+        check(designer::deleteWidgetAppearance(themeRoot + "/my-skin", "my_widget", error), "删除外观");
+        designer::readWidgetFileList(themeRoot + "/my-skin", widgets, error);
+        check(std::find(widgets.begin(), widgets.end(), std::string("widgets/my_widget.json"))
+                == widgets.end(), "登记已摘掉");
+        check(fs::exists(themeRoot + "/my-skin/widgets/my_widget.json.deleted"), "文件进了 .deleted");
+    }
+
+    // ---------------------------------------------------------------- 指纹与带冲突检测的写
+    {
+        const std::string path = themeRoot + "/my-skin/widgets/rectangle.json";
+        std::string text;
+        std::string error;
+        designer::readTextFile(path, text, error);
+
+        check(designer::fnvHash(text) == designer::fnvHash(text) && designer::fnvHash(text).size() == 16, "指纹稳定（16 位十六进制）");
+        check(designer::fnvHash("a") != designer::fnvHash("b"), "不同内容指纹不同");
+
+        check(designer::writeFileChecked(path, designer::fnvHash(text), "{\"box\": {}}", false, true,
+                error), "指纹一致时能写");
+        designer::readTextFile(path, text, error);
+
+        // 磁盘内容变了：不带 force 必须拒绝
+        check(!designer::writeFileChecked(path, "deadbeefdeadbeef", "{\"box\": {}}", false, true,
+                error), "被外部改动时拒绝写");
+        check(error.find("外部改动") != std::string::npos, "拒绝时给了原因");
+        check(designer::writeFileChecked(path, "deadbeefdeadbeef", text, true, true, error), "force 可以覆盖");
     }
 
     fs::remove_all(work, code);

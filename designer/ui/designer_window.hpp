@@ -58,6 +58,8 @@ class DesignerWindow
     bool selectBySpec(const std::string& spec);
 
     void draw();
+    // 自查用：直接走一遍保存（验证只读拦截 / 冲突检测）
+    void forceSaveForTest() { this->requestSave(); }
     bool hasUnsavedChanges() const { return this->dirty; }
 
   private:
@@ -173,6 +175,7 @@ class DesignerWindow
     // 冲突/未保存拦截
     bool showUnsavedGuard = false;
     bool showConflict     = false;
+    bool allowOverwrite   = false;  // 冲突弹层里点过"覆盖写"之后放行一次
     std::string pendingPath;
     std::string pendingWidget;
     std::string pendingViewFile;
