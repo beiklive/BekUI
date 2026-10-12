@@ -163,6 +163,33 @@ int main()
         check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
     }
 
+    // ---------------------------------------------------------------- 跨外观粘贴层
+    {
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse(R"({"layers": [{"op": "rect", "id": "bg", "fill": "#111111"}]})", error);
+
+        const Json copied = *doc.layer(0);
+        const Json pasted = Json::parse(R"({"op": "rect", "id": "bg", "fill": "#222222"})");
+
+        checkEqualInt(doc.appendLayer(pasted), 1, "追加到末尾并返回下标");
+        checkEqualInt(doc.layerCount(), 2, "现在两层");
+        checkEqual(doc.layerId(1), "bg2", "id 自动改成唯一的（bg → bg2）");
+        checkEqual(doc.layer(1)->value("fill", std::string()), "#222222", "内容原样带过来");
+
+        // 再粘一次，应该继续往后编号
+        checkEqualInt(doc.appendLayer(pasted), 2, "再粘一层");
+        checkEqual(doc.layerId(2), "bg3", "id 继续往后编");
+
+        checkEqualInt(doc.appendLayer(Json::parse("[1,2]")), -1, "不是对象就拒绝");
+        checkEqualInt(doc.layerCount(), 3, "拒绝时没改文档");
+
+        // 没有 id 的层也能粘（不强行补 id）
+        checkEqualInt(doc.appendLayer(Json::parse(R"({"op": "text"})")), 3, "没 id 也收");
+        checkEqual(doc.layerId(3), "", "没 id 就不是 id");
+        (void)copied;
+    }
+
     // ---------------------------------------------------------------- 改动分组
     {
         const Json before = Json::parse(R"({

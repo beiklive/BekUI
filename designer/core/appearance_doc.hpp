@@ -64,6 +64,10 @@ class AppearanceDoc
     bool moveLayer(int index, int delta);       // delta = -1 上移 / +1 下移
     int duplicateLayer(int index);
 
+    // 追加一份层（用于跨外观粘贴）。会自动把 id 改成唯一的（`bg` → `bg2`），
+    // 返回新层的下标；传进来的不是对象则返回 -1。
+    int appendLayer(const nlohmann::ordered_json& layer);
+
     // ---- states ----
     std::vector<std::string> stateNames() const;
     int channelCount(const std::string& state) const;

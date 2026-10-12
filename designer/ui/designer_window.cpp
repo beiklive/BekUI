@@ -87,8 +87,14 @@ void propLabel(const char* label)
 bool inputNumberFloat(const char* label, double& value)
 {
     propLabel(label);
+    // 传 step：上下方向键 ±1、Ctrl+方向键 ±10（ImGui 的 step_fast）。
+    // 以前 step 是 nullptr，方向键完全不动 —— 微调只能靠全选重打。
+    static const double kStep     = 1.0;
+    static const double kStepFast = 10.0;
     const bool changed = ImGui::InputScalar((std::string("##") + label).c_str(),
-        ImGuiDataType_Double, &value, nullptr, nullptr, "%.2f");
+        ImGuiDataType_Double, &value, &kStep, &kStepFast, "%.2f");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("方向键 ±1，Ctrl+方向键 ±10；框里也能直接输入");
     return changed;
 }
 
@@ -3264,6 +3270,43 @@ void DesignerWindow::drawProps()
 
             ImGui::Spacing();
             ImGui::TextColored(accentColor(), "层操作");
+            if (ImGui::SmallButton("复制层"))
+            {
+                if (const AppearanceDoc::Json* layer = this->doc.layer(this->selection.index))
+                {
+                    this->layerClipboard    = *layer;
+                    this->hasLayerClipboard = true;
+                    this->statusMessage = "已复制第 " + std::to_string(this->selection.index + 1)
+                        + " 层（可粘到别的外观里）";
+                }
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("复制整层到剪贴板，可以切到别的外观再粘");
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!this->hasLayerClipboard);
+            if (ImGui::SmallButton("粘贴层"))
+            {
+                const int index = this->doc.appendLayer(this->layerClipboard);
+                if (index >= 0)
+                {
+                    this->pushUndoSnapshot();
+                    this->markEdited();
+                    this->previewDirty = true;
+                    this->selection    = Selection{};
+                    this->selection.kind  = SelKind::LAYER;
+                    this->selection.index = index;
+                    this->statusMessage = "已粘贴为第 " + std::to_string(index + 1) + " 层"
+                        + (this->doc.layerId(index).empty()
+                               ? ""
+                               : "（id " + this->doc.layerId(index) + "）");
+                }
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", this->hasLayerClipboard
+                        ? "追加到当前外观末尾（id 会自动改唯一）"
+                        : "剪贴板里还没有层：先在某个外观里点「复制层」");
+            ImGui::Separator();
             if (ImGui::Button("上移"))
             {
                 if (this->doc.moveLayer(this->selection.index, -1))

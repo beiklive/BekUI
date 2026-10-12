@@ -171,6 +171,12 @@ int main(int argc, char** argv)
     }
 
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
+    // 自查：BKLV_DESIGNER_COPY_LAYER=<下标> + BKLV_DESIGNER_PASTE_LAYER=1（跨外观粘层）
+    if (const char* copyIndex = std::getenv("BKLV_DESIGNER_COPY_LAYER"))
+        window.copyLayerForTest(std::atoi(copyIndex));
+    if (std::getenv("BKLV_DESIGNER_PASTE_LAYER") != nullptr)
+        BKLV_LOG_INFO("[自查] 粘贴层 -> 下标 %d", window.pasteLayerForTest());
+
     // 自查：BKLV_DESIGNER_NEXT_CHANGE=<次数> 连点几次"下一处改动"
     if (const char* count = std::getenv("BKLV_DESIGNER_NEXT_CHANGE"))
     {

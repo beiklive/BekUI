@@ -246,6 +246,38 @@ bool AppearanceDoc::moveLayer(int index, int delta)
     return true;
 }
 
+int AppearanceDoc::appendLayer(const nlohmann::ordered_json& layer)
+{
+    if (!layer.is_object())
+        return -1;
+
+    nlohmann::ordered_json copy = layer;
+
+    // id 唯一化：同名的话外观编译不报错但语义会乱（`fill` 之类按 id 取）
+    if (copy.contains("id") && copy["id"].is_string())
+    {
+        const std::string base = copy["id"].get<std::string>();
+        std::string candidate    = base;
+        int suffix               = 2;
+        bool taken               = true;
+        while (taken)
+        {
+            taken = false;
+            for (int i = 0; i < this->layerCount(); i++)
+                if (this->layerId(i) == candidate)
+                {
+                    taken     = true;
+                    candidate = base + std::to_string(suffix++);
+                    break;
+                }
+        }
+        copy["id"] = candidate;
+    }
+
+    this->doc["layers"].push_back(copy);
+    return this->layerCount() - 1;
+}
+
 int AppearanceDoc::duplicateLayer(int index)
 {
     const Json* item = this->layer(index);

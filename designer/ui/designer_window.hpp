@@ -121,6 +121,24 @@ class DesignerWindow
     void saveAllForTest() { this->saveAllDirty(); }
     void requestSaveForTest() { this->requestSave(); }
     void nextChangeForTest(int step) { this->selectNextChange(step); }
+    void copyLayerForTest(int index)
+    {
+        if (const AppearanceDoc::Json* layer = this->doc.layer(index))
+        {
+            this->layerClipboard    = *layer;
+            this->hasLayerClipboard = true;
+        }
+    }
+    int pasteLayerForTest()
+    {
+        const int index = this->doc.appendLayer(this->layerClipboard);
+        if (index >= 0)
+        {
+            this->pushUndoSnapshot();
+            this->markEdited();
+        }
+        return index;
+    }
     void openProjectDialogForTest(const std::string& startPath)
     {
         this->showOpenProject = true;
@@ -409,6 +427,8 @@ class DesignerWindow
     bool diffExpandAll = true;            // diff 弹窗里分组默认展开
     int treeOpenRequest = 0;              // 0 不动 / 1 全展开 / 2 全收起（下一帧生效）
     std::string changeCursorPath;         // "跳到下一处改动"走到哪儿了
+    AppearanceDoc::Json layerClipboard;   // 层剪贴板（可跨外观用）
+    bool hasLayerClipboard = false;
     char saveAsPath[512] = "";
 
     // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）
