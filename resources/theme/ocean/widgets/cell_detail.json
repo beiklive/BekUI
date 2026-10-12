@@ -21,6 +21,18 @@
       "radius": "@theme/metric.radius.sm"
     },
     {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
       "op": "text",
       "id": "title",
       "source": "title",
@@ -36,18 +48,6 @@
       "fontSize": "@theme/metric.cell.detailFontSize",
       "valign": "center",
       "align": "right"
-    },
-    {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "#00000000",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
     },
     {
       "op": "rect",

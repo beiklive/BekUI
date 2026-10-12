@@ -143,20 +143,28 @@ int main()
                     "外壳底色 = color.surface.page");
 
             check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
-            check(button->getTransitions("focused").size() == 5,
-                "focused 有五条属性动效（高亮底 + 辉光 + 描边）");
+            // borealis 的 hideHighlightBackground：primary/highlight/default 聚焦时**不出高亮底**，
+            // 只有 bordered/borderless 才出。所以这里断言的条数不一样，不是漏了。
+            check(button->getTransitions("focused").size() == 4,
+                "default 按钮 focused 有四条（辉光 + 描边，无高亮底）");
+            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("button.bordered");
+            check(bordered != nullptr && bordered->getTransitions("focused").size() == 5,
+                "bordered 按钮 focused 有五条（含高亮底）");
         }
     }
 
     std::printf("\n== 5. 状态动效（tweeny 逐属性插值）==\n");
     {
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("button");
+        // 用 bordered：它聚焦时才有高亮底补间（default 是 hideHighlightBackground）
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("button.bordered");
         check(button != nullptr, "取到外观");
 
         AppearanceInstance instance;
         instance.setAppearance(button);
-        checkColor(instance.getColor(0, AppearanceProp::FILL),
-            getTheme().color("color.button.defaultBg"), "初值：底是主题的按钮底色");
+        // bordered（borealis 的 BORDERED）：**没有底**，只有描边
+        checkColor(instance.getColor(0, AppearanceProp::FILL), 0, "bordered 没有底");
+        checkColor(instance.getColor(0, AppearanceProp::STROKE),
+            getTheme().color("color.button.defaultBorder"), "bordered 有描边（颜色来自主题）");
 
         const int hlBgIndex     = button->indexOfLayer("hlBg");
         const int hlBorderIndex = button->indexOfLayer("hlBorder");
@@ -264,10 +272,13 @@ int main()
         // 这条是给"@theme/ 引用写错"兜底的：写错 key 会被 Appearance::compile 拒绝
         // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
         // 选中态整块变成洋红，就是这个错误。
-        const char* widgets[] = { "rectangle", "button", "button.ghost", "header", "bottom_bar",
+        const char* widgets[] = { "rectangle", "button", "button.ghost", "button.primary",
+            "button.highlight", "button.bordered", "button.borderless", "header", "bottom_bar",
             "slider", "tab_cell", "dialog", "dialog_backdrop",
             "dropdown", "dropdown_item", "header.popup",
-            "text_field", "edit_text_dialog", "hint_item", "hints_bar" };
+            "text_field", "edit_text_dialog", "hint_item", "hints_bar",
+            "cell", "cell_detail", "cell_bool", "cell_radio", "cell_selector", "cell_slider",
+            "cell_input" };
 
         for (const char* themeName : { "default", "ocean" })
         {
@@ -280,6 +291,27 @@ int main()
                     && (!appearance->getLayers().empty() || appearance->getBox().hasHeight
                         || appearance->getBox().hasWidth || appearance->getBox().hasPadding);
                 check(ok, std::string("  ") + themeName + " / " + widget + " 外观能编译且非空");
+
+                // 层序：高亮底（hlBg）必须画在内容层（text/image/custom）之前，
+                // 否则聚焦时"高亮底"会把内容盖住 —— 开关/单选的开关在聚焦后消失就是这个。
+                if (appearance != nullptr)
+                {
+                    const auto& layers = appearance->getLayers();
+                    int hlBgIndex = -1, contentIndex = -1;
+                    for (size_t i = 0; i < layers.size(); i++)
+                    {
+                        const std::string& id = layers[i].id;
+                        if (id == "hlBg" && hlBgIndex < 0)
+                            hlBgIndex = (int)i;
+                        if (contentIndex < 0 && (layers[i].op == AppearanceLayer::Op::TEXT
+                                || layers[i].op == AppearanceLayer::Op::IMAGE
+                                || layers[i].op == AppearanceLayer::Op::CUSTOM))
+                            contentIndex = (int)i;
+                    }
+                    check(hlBgIndex < 0 || contentIndex < 0 || hlBgIndex < contentIndex,
+                        std::string("  ") + themeName + " / " + widget
+                            + "：hlBg 在内容层之前（否则聚焦会把内容盖住）");
+                }
             }
         }
         setTheme("default");

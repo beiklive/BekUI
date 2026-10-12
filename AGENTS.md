@@ -234,6 +234,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   代码里写死的像素值**不缩放**——想跟随比例就用主题 metric 或把数字写进外观 JSON。
   画布尺寸变了要重新套用外观（外观值在 `applyTheme()` 时就取定了）并重排，
   这个由 `App::frame` 里调 `updateUiScaleFromCanvas()` 统一处理。
+- **外观层序：高亮底必须在内容层之前**（`hlBg` 要排在 `text`/`image`/`custom` 之前，
+  `hlGlow`/`hlBorder` 排在最后）。排反了的话，聚焦时那块**不透明的高亮底会把内容盖住**
+  —— 开关/单选的图形是 `custom` 层，曾因此"聚焦后开关消失"（14 个 Cell 外观全踩了）。
+  `theme_test` 现在会遍历两套主题的每一份外观断言这个顺序，别再犯。
+- **按钮有 5 种 style**（对标 borealis 的 `BUTTONSTYLE_*`）：`button`（=DEFAULT 灰底白字）、
+  `button.primary`（强调色底 + 深色字）、`button.highlight`（灰底 + 强调色字）、
+  `button.bordered`（**只有边框没有底**）、`button.borderless`（无底无框）；
+  另有我们自己的 `button.ghost`（更淡的一种）。
+  注意 borealis 的 `hideHighlightBackground`：**primary/highlight/default 聚焦时不出高亮底**，
+  只有 bordered/borderless 出 —— 在 JSON 里就是 focused 状态要不要写 `hlBg.fill`。
 - **控件外观要还原 borealis 的焦点高亮**：每个可聚焦控件的外观里有三层高亮
   （`hlBg` / `hlGlow` / `hlBorder`），focus 态把它们补到
   `color.highlight.background`、`color.highlight.glow`、`color.highlight.border`，

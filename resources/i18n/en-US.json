@@ -101,7 +101,7 @@
   "widgets": {
     "cancel": "Cancel",
     "hint": "All of these are library widgets: their look (background, border, focus highlight, state animation) comes from theme JSON.",
-    "buttons": "Buttons",
+    "buttons": "Buttons (borealis 5 styles + our ghost)",
     "ok": "OK",
     "ghost": "Ghost",
     "disabled": "Disabled",
@@ -126,7 +126,10 @@
     "image_original": "Original",
     "image_upscaled": "Upscaled",
     "image_stretched": "Stretched",
-    "image_centered": "Centered"
+    "image_centered": "Centered",
+    "button_default": "Default",
+    "button_primary": "Primary",
+    "button_highlight": "Highlight"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",

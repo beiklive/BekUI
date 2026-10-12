@@ -38,6 +38,8 @@
     "widgets/notification.json",
     "widgets/account.json",
     "widgets/button.bordered.json",
-    "widgets/button.borderless.json"
+    "widgets/button.borderless.json",
+    "widgets/button.primary.json",
+    "widgets/button.highlight.json"
   ]
 }

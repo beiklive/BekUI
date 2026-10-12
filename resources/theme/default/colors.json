@@ -50,7 +50,12 @@
     "defaultBorder": "#ffffff",
     "disabledBorder": "#ffffff",
     "primaryBg": "#01ffc9",
-    "primaryText": "#342937"
+    "primaryText": "#342937",
+    "primaryPressedBg": "#00e0b3",
+    "primaryDisabledText": "#474b4a",
+    "defaultPressedBg": "#5c5c5c",
+    "defaultDisabledText": "#ffffff",
+    "highlightDisabledText": "#07f7c6"
   },
   "card": {
     "blue": "#396091",

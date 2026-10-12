@@ -7,10 +7,10 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.radius.md",
       "stroke": "@theme/color.button.defaultBorder",
-      "strokeWidth": 2,
-      "radius": "@theme/metric.radius.md"
+      "strokeWidth": "@theme/metric.button.borderThickness"
     },
     {
       "op": "rect",
@@ -42,8 +42,7 @@
     {
       "op": "rect",
       "id": "hlGlow",
-      "stroke": "#00000000",
-      "strokeWidth": 0,
+      "fill": "#00000000",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -6.5,
@@ -55,8 +54,7 @@
     {
       "op": "rect",
       "id": "hlBorder",
-      "stroke": "#00000000",
-      "strokeWidth": 0,
+      "fill": "#00000000",
       "radius": "@theme/metric.highlight.radius",
       "inset": [
         -2.5,
@@ -67,18 +65,7 @@
     }
   ],
   "states": {
-    "disabled": {
-      "title.color": {
-        "to": "@theme/color.text.disabled",
-        "duration": 150
-      }
-    },
     "focused": {
-      "hlBg.fill": {
-        "to": "@theme/color.highlight.background",
-        "duration": 120,
-        "easing": "quadraticOut"
-      },
       "hlGlow.stroke": {
         "to": "@theme/color.highlight.glow",
         "duration": 120,
@@ -96,6 +83,25 @@
       "hlBorder.strokeWidth": {
         "to": "@theme/metric.highlight.strokeWidth",
         "duration": 120
+      },
+      "hlBg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 120,
+        "easing": "quadraticOut"
+      }
+    },
+    "disabled": {
+      "bg.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      },
+      "title.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      },
+      "bg.stroke": {
+        "to": "@theme/color.button.disabledBorder",
+        "duration": 150
       }
     }
   }

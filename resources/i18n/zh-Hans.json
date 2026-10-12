@@ -101,9 +101,9 @@
   "widgets": {
     "cancel": "取消",
     "hint": "这些都是库里的控件：外观（底/描边/焦点高亮/状态动效）由主题 JSON 描述。",
-    "buttons": "按钮",
+    "buttons": "按钮（borealis 的 5 种 style + 我们的 ghost）",
     "ok": "确定",
-    "ghost": "描边按钮",
+    "ghost": "幽灵",
     "disabled": "禁用",
     "slider": "滑块",
     "volume": "音量：{}%",
@@ -126,7 +126,10 @@
     "image_original": "原尺寸",
     "image_upscaled": "放大 170",
     "image_stretched": "拉伸变形",
-    "image_centered": "居中裁切"
+    "image_centered": "居中裁切",
+    "button_default": "默认",
+    "button_primary": "主要",
+    "button_highlight": "高亮"
   },
   "page": {
     "theme_sub": "换肤与外观驱动的控件",

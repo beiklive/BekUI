@@ -32,13 +32,18 @@
     "purple": "#3d2a5c"
   },
   "button": {
-    "defaultBg": "#1d2b3f",
-    "defaultText": "#e3ecf7",
-    "defaultBorder": "#2f4257",
-    "disabledBorder": "#3a4553",
-    "primaryBg": "#4fd1c5",
-    "primaryText": "#0d1420",
-    "highlightText": "#0d1420"
+    "defaultBg": "#3c4a5a",
+    "defaultText": "#ffffff",
+    "defaultBorder": "#dfe8f2",
+    "disabledBorder": "#dfe8f2",
+    "primaryBg": "#3aa0ff",
+    "primaryText": "#0b1a26",
+    "highlightText": "#5ad0ff",
+    "primaryPressedBg": "#2b86d8",
+    "primaryDisabledText": "#4b5a66",
+    "defaultPressedBg": "#48586a",
+    "defaultDisabledText": "#ffffff",
+    "highlightDisabledText": "#5ad0ff"
   },
   "highlight": {
     "background": "#101a26",

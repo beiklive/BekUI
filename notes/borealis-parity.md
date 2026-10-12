@@ -190,6 +190,13 @@ scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_componen
 | `Animatable::update(dt)` | 新增显式 dt 重载（`update()` 仍走全局帧时间），转场与测试都能确定性推进 |
 | 事件总线 | 三种事件类型互不串扰；`Subscription` 移动语义正确；`clear()` 可在换根时清订阅；焦点/动作事件由框架自己发 |
 
+### 按钮 style 与外观层序（本轮）
+
+| 项 | 说明 |
+|---|---|
+| 按钮 5 种 style | borealis 有 `BUTTONSTYLE_PRIMARY/HIGHLIGHT/DEFAULT/BORDERED/BORDERLESS`（theme.cpp 里有全套配色）。我们原来只有 primary 一种 + 自造的 ghost，bordered 还做错了（有底）。现在 5 种齐全（+ ghost），并且复刻了 `hideHighlightBackground` 语义 |
+| 层序 bug | 7 个 Cell 外观（× 2 套主题 = 14 份）把 `hlBg` 排在了内容层之后 → 聚焦时不透明高亮底盖住开关/单选图形（"聚焦后开关消失"）。修正后 `theme_test` 会遍历两套主题的全部外观断言层序，防回归 |
+
 ## 七点五、实现过程中顺带修掉的真 bug
 
 | 现象 | 根因 | 修法 |

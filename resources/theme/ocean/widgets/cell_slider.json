@@ -21,14 +21,6 @@
       "radius": "@theme/metric.radius.sm"
     },
     {
-      "op": "text",
-      "id": "title",
-      "source": "title",
-      "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.cell.titleFontSize",
-      "valign": "center"
-    },
-    {
       "op": "rect",
       "id": "hlBg",
       "fill": "#00000000",
@@ -39,6 +31,14 @@
         -2.5,
         -2.5
       ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.cell.titleFontSize",
+      "valign": "center"
     },
     {
       "op": "rect",

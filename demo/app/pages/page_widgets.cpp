@@ -22,16 +22,22 @@ Box* buildWidgetsPage()
     buttonCard->addView(makeText(getStr("widgets/buttons"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
-    // 四种 style 一并列出（对标 borealis components 的 button_primary/highlight/bordered/borderless）
+    // borealis 的 5 种按钮 style 全覆盖：primary / highlight / default / bordered / borderless
+    // （+ 我们自己的 ghost，作为"更淡的一种"）
     Box* buttonRow = makeRow(getTheme().number("metric.spacing.md", 12.0f));
-    buttonRow->addView(new Button(getStr("widgets/ok")));
-    buttonRow->addView(new Button(getStr("widgets/button_bordered"), "bordered"));
-    buttonRow->addView(new Button(getStr("widgets/button_borderless"), "borderless"));
-    buttonRow->addView(new Button(getStr("widgets/ghost"), "ghost"));
+    buttonRow->addView(new Button(getStr("widgets/button_default")));
+    buttonRow->addView(new Button(getStr("widgets/button_primary"), "primary"));
+    buttonRow->addView(new Button(getStr("widgets/button_highlight"), "highlight"));
+    buttonCard->addView(buttonRow);
+
+    Box* buttonRow2 = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    buttonRow2->addView(new Button(getStr("widgets/button_bordered"), "bordered"));
+    buttonRow2->addView(new Button(getStr("widgets/button_borderless"), "borderless"));
+    buttonRow2->addView(new Button(getStr("widgets/ghost"), "ghost"));
     Button* disabled = new Button(getStr("widgets/disabled"));
     disabled->setEnabled(false);
-    buttonRow->addView(disabled);
-    buttonCard->addView(buttonRow);
+    buttonRow2->addView(disabled);
+    buttonCard->addView(buttonRow2);
     page->addView(buttonCard);
 
     // ---- 滑块 ----
