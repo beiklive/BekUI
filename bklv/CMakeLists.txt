@@ -257,6 +257,7 @@ set(BKLV_CORE_SOURCES
     core/input.cpp
     core/time.cpp
     core/font.cpp
+    core/gesture.cpp
     core/graphics.cpp
     core/image_decoder.cpp
     core/resource.cpp

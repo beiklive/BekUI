@@ -173,7 +173,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       `setTranslateX/Y`、`Label::setFontScaleX/Y`）+ demo 变换页（对标 borealis Transform test）
 - [x] 缓动曲线补齐到 tweeny 那一套（borealis 的 `EasingFunction` 就是 tweeny 枚举）：
       quadratic/cubic/quartic/quintic/sine/circular/exponential/elastic/back/bounce 的 In/Out/InOut
-- [ ] **P0 控件补齐**：
+- [x] 手势（`core/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
+      + demo 变换页支持拖动方块、轻触复位
+- [ ] **P0 控件补齐**（剩余）：
       Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
       View 变换（scale/rotate/skew/fontScale）
 - [ ] **P1 核心能力**：task/thread + 异步图片加载、audio（SDL3 + Switch）、

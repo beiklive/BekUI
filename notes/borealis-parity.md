@@ -45,7 +45,7 @@
 > 顶点段实现，所以**任何控件**都能用（这是升级点）。实现细节与踩坑见下。
 | 可见性 VISIBLE/INVISIBLE/GONE | 同名 | 同名 | ✅ |
 | 动作系统 registerAction / 冒泡 | ✅ | ✅（沿父链冒泡） | ✅ |
-| 手势（tap / pan / scroll） | `GestureRecognizer` + 3 个实现 | — | ❌ 待补 |
+| 手势（tap / pan / scroll） | `core/gesture.hpp` + Tap/Pan/Scroll 识别器 | ✅ 改良 | 状态机简化成 START/STAY/END/CANCEL/SCROLL + "吃掉与否"；**识别器生命周期归 View**（`unique_ptr`，borealis 存裸指针）；纯逻辑可无窗口测 |
 | 数据绑定 / cache_helper | `bind` / `cache_helper` | `json_cell` 的绑定回调 | ⚠️ 部分 |
 
 ## 三、core 层
@@ -135,6 +135,15 @@
 | 变换里的 NaN 会让控件**静默消失** | demo 在布局算完前用 `getWidth()` 换算位移，NaN 传进了变换，整段顶点变 NaN | 库侧：`View::frame` 检测到 NaN/Inf 就报警并跳过变换（宁可"没生效"，也不要看不见）；应用侧：换算前对尺寸做 isfinite 兜底 |
 | 通知浮层看不见 | 构造时把 `hidden` 与 `shown` 两个外观状态**同时**激活，`hidden` 的透明度 0 把 `shown` 盖掉 | 状态要互斥地切：先撤旧的再开新的（和 Dialog 的 open/closed 一个套路） |
 | 窗口建好前 `App::notify` 的通知丢了 | 那时还没有根视图，只能警告丢弃 | 排进 `pendingNotifications`，`setRootView` 之后补发 |
+
+### 手势相关（本轮）
+
+| 现象/设计 | 处理 |
+|---|---|
+| 拖动一个按钮会顺手把它按下去 | 手势先派发：识别器吃掉 START 就不再当成"点击"触发动作 |
+| 滚轮会误触发拖动/轻触 | 单独的 `SCROLL` 状态，只有滚动识别器响应 |
+| 换根/销毁后手势目标成野指针 | `resetFocusState()` 里一并清 `gestureTarget`（和模态栈同一个坑） |
+| demo 里滑块/手势的 lambda 捕获了构建函数的局部变量（悬空） | 值放到 `shared_ptr` 上，捕获共享指针 |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

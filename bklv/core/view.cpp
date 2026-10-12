@@ -686,6 +686,33 @@ void View::frame(FrameContext* ctx)
 // 位移
 // ---------------------------------------------------------------------------
 
+void View::addGesture(std::unique_ptr<GestureRecognizer> gesture)
+{
+    if (gesture == nullptr)
+        return;
+
+    this->gestures.push_back(std::move(gesture));
+}
+
+bool View::dispatchGesture(GestureState state, const Point& position, const Point& delta)
+{
+    // 自己先问一遍：识别器按添加顺序，谁先吃掉算谁的
+    for (const std::unique_ptr<GestureRecognizer>& gesture : this->gestures)
+    {
+        if (gesture == nullptr || !gesture->isEnabled())
+            continue;
+
+        if (gesture->recognize(state, position, delta))
+            return true;
+    }
+
+    // 自己没接住就交给父容器（borealis 的 firstResponder 也是沿父链找）
+    if (this->hasParent())
+        return this->parent->dispatchGesture(state, position, delta);
+
+    return false;
+}
+
 void View::setTranslation(float x, float y)
 {
     this->translation.x = x;

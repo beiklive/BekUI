@@ -2,7 +2,9 @@
 
 #include "app/ui.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <memory>
 #include "bklv/bklv.hpp"
 
 using namespace bklv;
@@ -209,6 +211,7 @@ Box* buildTransformPage()
             stage->onResetSliders();
     });
     controls->addView(reset);
+
     page->addView(controls);
 
     // ---- 滑块（SliderCell 既是控制也是演示）----
@@ -216,41 +219,68 @@ Box* buildTransformPage()
     sliders->addView(makeText(getStr("transform/sliders_title"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
-    struct Row
+    // 值放在堆上：滑块的 onChange 与手势回调会活过这个构建函数，
+    // 捕获构建函数的局部引用会悬空（踩过）
+    struct Values
     {
-        SliderCell* cell;
-        float* value;
+        float transX = 0.0f, transY = 0.0f, scaleX = 1.0f, scaleY = 1.0f;
+        float skewX = 0.0f, skewY = 0.0f, rotate = 0.0f, fontSX = 1.0f, fontSY = 1.0f;
+    };
+    auto values = std::make_shared<Values>();
+
+    auto apply = [stage, values] {
+        stage->setManual(values->transX, values->transY, values->scaleX, values->scaleY,
+            values->skewX, values->skewY, values->rotate, values->fontSX, values->fontSY);
     };
 
-    float transX = 0.0f, transY = 0.0f, scaleX = 1.0f, scaleY = 1.0f;
-    float skewX = 0.0f, skewY = 0.0f, rotate = 0.0f, fontSX = 1.0f, fontSY = 1.0f;
-
     auto addSlider = [&](const char* key, float minValue, float maxValue, float initial,
-                         float* slot) {
+                         float Values::*slot) {
         SliderCell* cell = new SliderCell(getStr(key));
         cell->setRange(minValue, maxValue);
         cell->setValue(initial);
-        *slot = initial;
-        cell->setOnChange([&, slot](float value) {
-            *slot = value;
-            stage->setManual(transX, transY, scaleX, scaleY, skewX, skewY, rotate, fontSX, fontSY);
-            if (stage->onValuesChanged)
-                stage->onValuesChanged();
+        values.get()->*slot = initial;
+        cell->setOnChange([values, slot, apply](float value) {
+            values.get()->*slot = value;
+            apply();
         });
         sliders->addView(cell);
         return cell;
     };
 
-    SliderCell* cellTransX = addSlider("transform/trans_x", -1.0f, 1.0f, 0.0f, &transX);
-    SliderCell* cellTransY = addSlider("transform/trans_y", -1.0f, 1.0f, 0.0f, &transY);
-    SliderCell* cellScaleX = addSlider("transform/scale_x", 0.0f, 2.0f, 1.0f, &scaleX);
-    SliderCell* cellScaleY = addSlider("transform/scale_y", 0.0f, 2.0f, 1.0f, &scaleY);
-    SliderCell* cellSkewX  = addSlider("transform/skew_x", -0.5f, 0.5f, 0.0f, &skewX);
-    SliderCell* cellSkewY  = addSlider("transform/skew_y", -0.5f, 0.5f, 0.0f, &skewY);
-    SliderCell* cellRotate = addSlider("transform/rotate", 0.0f, 1.0f, 0.0f, &rotate);
-    SliderCell* cellFontX  = addSlider("transform/font_x", 0.5f, 2.0f, 1.0f, &fontSX);
-    SliderCell* cellFontY  = addSlider("transform/font_y", 0.5f, 2.0f, 1.0f, &fontSY);
+    SliderCell* cellTransX = addSlider("transform/trans_x", -1.0f, 1.0f, 0.0f, &Values::transX);
+    SliderCell* cellTransY = addSlider("transform/trans_y", -1.0f, 1.0f, 0.0f, &Values::transY);
+    SliderCell* cellScaleX = addSlider("transform/scale_x", 0.0f, 2.0f, 1.0f, &Values::scaleX);
+    SliderCell* cellScaleY = addSlider("transform/scale_y", 0.0f, 2.0f, 1.0f, &Values::scaleY);
+    SliderCell* cellSkewX  = addSlider("transform/skew_x", -0.5f, 0.5f, 0.0f, &Values::skewX);
+    SliderCell* cellSkewY  = addSlider("transform/skew_y", -0.5f, 0.5f, 0.0f, &Values::skewY);
+    SliderCell* cellRotate = addSlider("transform/rotate", 0.0f, 1.0f, 0.0f, &Values::rotate);
+    SliderCell* cellFontX  = addSlider("transform/font_x", 0.5f, 2.0f, 1.0f, &Values::fontSX);
+    SliderCell* cellFontY  = addSlider("transform/font_y", 0.5f, 2.0f, 1.0f, &Values::fontSY);
     page->addView(sliders);
+
+    // ---- 手势：在方块上拖动改变位移，轻触复位（鼠标/触摸都能用）----
+    stage->getSubject()->addGesture(std::make_unique<PanGestureRecognizer>(
+        PanGestureRecognizer::Callbacks{
+            nullptr,
+            [values, apply, cellTransX, cellTransY, stage](const Point& delta) {
+                // 屏幕像素增量换算成 -1~1 的归一化位移（和滑块同一量纲）
+                const float half      = std::max(1.0f, stage->getWidth() * 0.5f);
+                values->transX        = std::clamp(values->transX + delta.x / half, -1.0f, 1.0f);
+                values->transY        = std::clamp(values->transY + delta.y / half, -1.0f, 1.0f);
+                cellTransX->setValue(values->transX);
+                cellTransY->setValue(values->transY);
+                apply();
+            },
+            nullptr }));
+
+    stage->getSubject()->addGesture(std::make_unique<TapGestureRecognizer>([stage, values, apply,
+                                                                               cellTransX, cellTransY] {
+        values->transX = 0.0f;
+        values->transY = 0.0f;
+        cellTransX->setValue(0.0f);
+        cellTransY->setValue(0.0f);
+        apply();
+    }));
 
     // 补间跑的时候把滑块也带着动（borealis 的 setTickCallback 就是这个用途）
     stage->onTweenTick = [cellTransX, cellTransY, cellSkewX, cellSkewY](

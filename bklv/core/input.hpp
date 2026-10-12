@@ -179,6 +179,9 @@ class InputManager
 
     View* getRoot() const { return this->root; }
 
+    // 当前手势的目标（按下时命中的视图）；测试也可以直接喂手势事件
+    View* getGestureTarget() const { return this->gestureTarget; }
+
     // 用鼠标点击切换焦点（点击空白不改变焦点）
     void focusFromPointer(View* hit);
 
@@ -215,6 +218,7 @@ class InputManager
 
     bool pointerDown = false;
     bool pointerActive = false;
+    View* gestureTarget = nullptr;
     Point pointerPosition;
 
     // 键盘"按下沿"的上一帧状态

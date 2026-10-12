@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/geometry.hpp"
+#include "bklv/core/gesture.hpp"
 #include "bklv/core/transform.hpp"
 #include "bklv/core/input.hpp"
 
@@ -233,6 +235,20 @@ class View
     const Transform2D& getTransform() const { return this->transform; }
     void resetTransform() { this->transform.reset(); }
 
+    // ---- 手势（指针事件由 InputManager 派发过来）----
+    //
+    // 生命周期归 View：收 unique_ptr，调用方不用管释放。
+    void addGesture(std::unique_ptr<GestureRecognizer> gesture);
+    void clearGestures() { this->gestures.clear(); }
+    const std::vector<std::unique_ptr<GestureRecognizer>>& getGestures() const
+    {
+        return this->gestures;
+    }
+
+    // 把一次手势事件交给自己（再沿父链往上传）。返回 true 表示有人吃掉了。
+    // 顺序：自己 → 父 → ... → 根；每层内部按添加顺序问识别器。
+    bool dispatchGesture(GestureState state, const Point& position, const Point& delta);
+
     // ---- 焦点 ----
 
     // 这个 View 能否成为焦点（可点、可操作）。
@@ -380,6 +396,7 @@ class View
     unsigned int fontGeneration = 0; // 上一次布局所用的字体版本
     Point translation;               // 滚动/拖拽偏移（参与布局）
     Transform2D transform;           // 绘制期变换（不影响布局）
+    std::vector<std::unique_ptr<GestureRecognizer>> gestures;
     bool focused = false;
     std::vector<InputAction> actions;
     ActionIdentifier nextActionIdentifier = 1;

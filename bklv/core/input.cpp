@@ -195,6 +195,7 @@ void InputManager::resetFocusState()
 {
     this->modals.clear();
     this->currentFocus = nullptr;
+    this->gestureTarget = nullptr; // 同上：根视图一换就是野指针
 }
 
 bool InputManager::isInsideModal(View* view) const
@@ -322,7 +323,59 @@ void InputManager::handlePointer()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    if (!io.MouseDown[0])
+    const Point position(io.MousePos.x, io.MousePos.y);
+    this->pointerPosition = position;
+
+    const bool down  = io.MouseDown[0];
+    const Point delta(io.MouseDelta.x, io.MouseDelta.y);
+
+    // 有模态层时，命中判定从最上层模态开始：点到模态外面等于点空白，
+    // 不会穿透到底下的界面（这是弹窗/下拉能"拦住输入"的关键）。
+    View* hitRoot = this->hasModal() ? this->getTopModal() : this->root;
+    if (hitRoot == nullptr)
+    {
+        this->pointerDown   = down;
+        this->gestureTarget = nullptr;
+        return;
+    }
+
+    // ---- 手势：按下 / 按住移动 / 抬起 / 滚轮 ----
+    if (down && !this->pointerDown)
+    {
+        View* hit           = hitRoot->hitTest(position);
+        this->gestureTarget = hit;
+        if (hit != nullptr)
+            hit->dispatchGesture(GestureState::START, position, Point(0.0f, 0.0f));
+    }
+    else if (!down && this->pointerDown)
+    {
+        if (this->gestureTarget != nullptr)
+        {
+            this->gestureTarget->dispatchGesture(GestureState::END, position, delta);
+            this->gestureTarget = nullptr;
+        }
+    }
+    else if (down && this->gestureTarget != nullptr && (delta.x != 0.0f || delta.y != 0.0f))
+    {
+        this->gestureTarget->dispatchGesture(GestureState::STAY, position, delta);
+    }
+
+    if (down && this->gestureTarget == nullptr)
+    {
+        // 按在空白处：后面所有手势事件都忽略，直到抬起
+        this->pointerActive = true;
+    }
+
+    if (io.MouseWheel != 0.0f || io.MouseWheelH != 0.0f)
+    {
+        const float step = 40.0f; // 一格滚轮的像素量（和常见桌面一致）
+        const Point scroll(-io.MouseWheelH * step, -io.MouseWheel * step);
+        if (View* hit = hitRoot->hitTest(position))
+            hit->dispatchGesture(GestureState::SCROLL, position, scroll);
+    }
+
+    // ---- 点击：只处理按下那一刻 ----
+    if (!down)
     {
         this->pointerDown = false;
         return;
@@ -330,21 +383,24 @@ void InputManager::handlePointer()
 
     this->pointerActive = true;
 
-    if (this->root == nullptr)
-        return;
-
-    // 有模态层时，命中判定从最上层模态开始：点到模态外面等于点空白，
-    // 不会穿透到底下的界面（这是弹窗/下拉能"拦住输入"的关键）。
-    View* hitRoot = this->hasModal() ? this->getTopModal() : this->root;
-    View* hit     = hitRoot->hitTest(this->pointerPosition);
+    View* hit = hitRoot->hitTest(position);
     if (hit == nullptr)
+    {
+        this->pointerDown = true;
         return;
+    }
 
     // 只在按下的那一刻处理，按住不放不重复触发。
     const bool pressed = !this->pointerDown;
     this->pointerDown   = true;
 
     if (!pressed)
+        return;
+
+    // 手势已经吃掉这次按下（比如拖动/轻触识别器接管）就不再当成"点击"，
+    // 否则拖一个按钮会顺手把它按下去。
+    if (this->gestureTarget != nullptr && hit == this->gestureTarget
+        && !this->gestureTarget->getGestures().empty())
         return;
 
     // 先聚焦，再执行动作。
