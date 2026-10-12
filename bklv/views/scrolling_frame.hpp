@@ -73,8 +73,7 @@ class ScrollingFrame : public Box
     std::string getClassString() const override { return "bklv::ScrollingFrame"; }
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     // 每次布局后由 View::notifyLayout 触发。
     // 子类如果自己管理内容尺寸（比如 RecyclerFrame 按数据条数算高度），

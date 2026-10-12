@@ -48,11 +48,10 @@ static constexpr float UNBOUNDED_WIDTH = 100000.0f;
 
 Label::Label()
 {
-    Style style = getDefaultStyle();
-
-    this->fontSize   = style["bklv/label/default_font_size"];
-    this->lineHeight = style["bklv/label/default_line_height"];
-    this->textColor  = getDefaultTheme()["bklv/text"];
+    // 默认值全部来自 JSON 主题（字号/颜色在 applyTheme() 里按"未显式设置"再刷一次）
+    this->fontSize   = getTheme().number("metric.font.size.md", this->fontSize);
+    this->lineHeight = getTheme().number("metric.font.lineHeight", this->lineHeight);
+    this->textColor  = getTheme().color("color.text.primary", this->textColor);
 
     // 关键一步：把文本测量注册给 Yoga。
     // Yoga 会在布局过程中调用它来决定"这个节点应该多宽多高"。
@@ -389,7 +388,7 @@ void Label::onLayout()
     this->rewrap(width);
 }
 
-void Label::draw(ImDrawList* drawList, float x, float y, float width, float height, Style, FrameContext*)
+void Label::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     ImFont* font = this->resolveFont();
     if (font == nullptr || this->text.empty() || width <= 0.0f)

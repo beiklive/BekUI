@@ -64,7 +64,7 @@ class App
     // 请求下一次 frame 重新布局。
     //
     // 什么时候需要手动调：改的是"布局之外但影响布局的全局状态"，比如运行时切主题
-    // 改了 Style 数值。改视图自己的属性不用调——那些 setter 内部已经 invalidate()
+    // 改了主题里的度量值。改视图自己的属性不用调——那些 setter 内部已经 invalidate()
     // 了，会冒泡到根立刻重算一次。
     static void requestLayout();
 

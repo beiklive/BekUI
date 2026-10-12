@@ -67,7 +67,7 @@ void Image::setImage(const TextureRef& ref)
     this->invalidate();
 }
 
-void Image::draw(ImDrawList* drawList, float x, float y, float width, float height, Style, FrameContext*)
+void Image::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (width <= 0.0f || height <= 0.0f)
         return;

@@ -57,8 +57,7 @@ class Image : public View
     const bklv::AttributeTable& attributes() const override;
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     TextureRef texture;
     std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试

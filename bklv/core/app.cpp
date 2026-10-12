@@ -192,7 +192,6 @@ void App::frame()
     FrameContext ctx;
     // 画在主视口的前景绘制列表上：不依赖任何 ImGui 窗口，也不会被窗口遮挡。
     ctx.drawList   = ImGui::GetForegroundDrawList();
-    ctx.theme      = &getDefaultTheme();
     ctx.pixelRatio = 1.0f;
 
     if (this->root != nullptr)

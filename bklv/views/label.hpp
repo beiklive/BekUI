@@ -81,8 +81,7 @@ class Label : public View
     bool isTextColorExplicit() const { return this->textColorExplicit; }
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
   private:
     struct Line

@@ -21,7 +21,6 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
-#include "bklv/core/theme.hpp"
 
 namespace bklv
 {
@@ -34,7 +33,6 @@ class FrameContext
 {
   public:
     ImDrawList* drawList = nullptr; // 本帧的绘制目标，等价于 borealis 的 NVGcontext*
-    Theme* theme         = nullptr;
     float pixelRatio     = 1.0f;
 };
 
@@ -316,11 +314,10 @@ class View
     void setMeasureFunction(MeasureFunction function);
 
     // 子类唯一需要实现的绘制函数，坐标系原点在本 View 左上角。
-    virtual void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) = 0;
+    virtual void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) = 0;
 
     // 递归绘制子节点，只有 Box 会重写它。
-    virtual void drawChildren(ImDrawList*, float, float, float, float, Style, FrameContext*) { }
+    virtual void drawChildren(ImDrawList*, float, float, float, float, FrameContext*) { }
 
     // 在裁剪区域内绘制自己的内容，子类一般调用它而不是直接重写 frame。
     void drawBackground(ImDrawList* drawList, float x, float y, float width, float height);

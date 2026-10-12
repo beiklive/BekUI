@@ -330,8 +330,7 @@ void ScrollingFrame::scrollToView(View* view, bool animated)
 // 绘制
 // ---------------------------------------------------------------------------
 
-void ScrollingFrame::draw(ImDrawList* drawList, float x, float y, float width, float height, Style,
-    FrameContext*)
+void ScrollingFrame::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (!this->showIndicator || this->contentView == nullptr || width <= 0.0f || height <= 0.0f)
         return;

@@ -20,6 +20,7 @@
 #include "bklv/core/resource.hpp"
 #include "bklv/views/image.hpp"
 #include "bklv/views/json_cell.hpp"
+#include "bklv/core/theme_data.hpp"
 #include "bklv/views/label.hpp"
 
 using namespace bklv;
@@ -434,6 +435,55 @@ int main()
         checkEqual(std::to_string(getLastLoadErrorCount()), "0", "list_item.json 没有未知属性");
         check(bindings.size() == 3, "列表项模板有 3 条绑定（thumb/title/subtitle）");
         delete itemTree;
+    }
+
+
+    std::printf("\n== 主题引用：@theme/ 取颜色、@style/ 取数值（都走 JSON 主题）==\n");
+    {
+        // 视图 JSON 与外观 JSON 共用同一套 JSON 主题（core/theme_data.*），
+        // 不再有并存的 C++ 主题表；前缀写全（color./metric.）或省略都认。
+        View* root = buildAndLayout(
+            R"({"type":"Box","width":300,"height":200,"children":[
+                {"type":"Box","width":"@style/metric.radius.md","height":"@style/radius.md"},
+                {"type":"Box","width":"@style/metric.font.size.md","height":10}
+            ]})",
+            300.0f, 200.0f);
+        check(root != nullptr, "带 @style/ 的视图能建出来");
+        if (root != nullptr && root->asBox() != nullptr && root->asBox()->getChildrenCount() == 2)
+        {
+            const std::vector<View*>& kids = root->asBox()->getChildren();
+            checkFloat(kids[0]->getWidth(), getTheme().number("metric.radius.md", 0.0f),
+                "@style/metric.radius.md 解析成主题数值");
+            checkFloat(kids[0]->getHeight(), getTheme().number("metric.radius.md", 0.0f),
+                "@style/radius.md（省略 metric.）同样解析");
+            checkFloat(kids[1]->getWidth(), getTheme().number("metric.font.size.md", 0.0f),
+                "@style/metric.font.size.md 用的是主题字号");
+        }
+        else
+        {
+            check(false, "结构不对");
+        }
+
+        // 颜色：@theme/ 前缀
+        View* colorView = createFromJSONString(
+            R"({"type":"Label","text":"x","textColor":"@theme/color.accent.base"})");
+        Label* label = static_cast<Label*>(colorView);
+        check(label != nullptr, "带 @theme/ 颜色的 Label 能建出来");
+        if (label != nullptr)
+            check(label->getTextColor() == getTheme().color("color.accent.base"),
+                "@theme/color.accent.base 解析成主题颜色");
+
+        View* shortView = createFromJSONString(
+            R"({"type":"Label","text":"x","textColor":"@theme/accent.base"})");
+        Label* shortLabel = static_cast<Label*>(shortView);
+        if (shortLabel != nullptr)
+            check(shortLabel->getTextColor() == getTheme().color("color.accent.base"),
+                "@theme/accent.base（省略 color.）同样解析");
+
+        // 写错 key 必须失败，不能静默回退成洋红
+        View* bad = createFromJSONString(
+            R"({"type":"Label","text":"x","textColor":"@theme/color.__nope__"})");
+        check(bad == nullptr, "引用不存在的主题颜色会整块建不出来（报错而不是洋红）");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

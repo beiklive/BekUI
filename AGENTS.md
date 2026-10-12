@@ -214,7 +214,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   各触发一次 = 10 次/帧）。
   几条相关约定：
   ① 视图自己的 setter 已经 invalidate 了，不用手动管；改的是"影响布局的全局状态"
-     （比如运行时换 Style 数值）才需要 `App::requestLayout()`。
+     （比如换主题、UI 缩放变了）才需要 `App::requestLayout()`。
   ② **不要在同一帧里"改完立刻读布局尺寸"**——延迟一帧生效。回收器不受影响，
      因为 cell 的位置是用 `setTranslation` 摆的（见 `RecyclerFrame::layoutCell`），
      不依赖本帧的 Yoga 结果。
@@ -239,6 +239,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   圆角 `metric.highlight.radius`（6），并且**向外扩 2.5px**（inset 负数）。
   顺序是：自己的底 → hlBg → 内容 → hlGlow → hlBorder（和 borealis 的
   "高亮底画在内容之前、描边画在内容之后"一致）。
+- **主题只有一套：JSON 文件**（`core/theme_data.*`）。没有并存的 C++ 主题表了——
+  视图 JSON 的 `@theme/`（取色，走 `color.*`）与 `@style/`（取数值，走 `metric.*`）
+  和外观 JSON 的 `@theme/...` 解析的是同一份数据；前缀可省略
+  （`@theme/accent.base` == `@theme/color.accent.base`），key 不存在会**报错**而不是回退成洋红。
 - **主题与外观**（`core/theme_data.*` + `core/appearance.*` + `widgets/`）：
   换肤 = 复制 `resources/theme/default/` 改名 + 改 JSON，**不改 C++**。
   四条约定：

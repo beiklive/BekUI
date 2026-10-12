@@ -595,7 +595,6 @@ void View::frame(FrameContext* ctx)
     const float width  = this->getWidth();
     const float height = this->getHeight();
 
-    Style style = getDefaultStyle();
 
     this->drawBackground(ctx->drawList, x, y, width, height);
 
@@ -607,8 +606,8 @@ void View::frame(FrameContext* ctx)
     if (clipped)
         ctx->drawList->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
 
-    this->draw(ctx->drawList, x, y, width, height, style, ctx);
-    this->drawChildren(ctx->drawList, x, y, width, height, style, ctx);
+    this->draw(ctx->drawList, x, y, width, height, ctx);
+    this->drawChildren(ctx->drawList, x, y, width, height, ctx);
 
     if (clipped)
         ctx->drawList->PopClipRect();

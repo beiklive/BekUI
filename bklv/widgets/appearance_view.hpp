@@ -47,8 +47,7 @@ class AppearanceView : public Box
     void applyTheme() override;
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     // layer.source 的取值。默认：source == "text" 时返回 setText() 的内容。
     virtual std::string getLayerText(const std::string& source);

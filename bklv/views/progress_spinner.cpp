@@ -26,8 +26,7 @@ void ProgressSpinner::update()
         this->angle -= 2.0f * 3.14159265f;
 }
 
-void ProgressSpinner::draw(ImDrawList* drawList, float x, float y, float width, float height, Style,
-    FrameContext*)
+void ProgressSpinner::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (width <= 0.0f || height <= 0.0f || this->segments < 2)
         return;

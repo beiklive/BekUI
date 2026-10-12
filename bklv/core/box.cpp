@@ -469,7 +469,7 @@ void Box::update()
 // 绘制
 // ---------------------------------------------------------------------------
 
-void Box::drawChildren(ImDrawList*, float x, float y, float width, float height, Style, FrameContext* ctx)
+void Box::drawChildren(ImDrawList*, float x, float y, float width, float height, FrameContext* ctx)
 {
     for (View* child : this->children)
     {

@@ -34,8 +34,7 @@ class ProgressSpinner : public View
     std::string getClassString() const override { return "bklv::ProgressSpinner"; }
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     float angle     = 0.0f;
     float duration  = 1.2f;

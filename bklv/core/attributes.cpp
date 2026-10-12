@@ -9,12 +9,38 @@
 
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/theme_data.hpp"
 #include "bklv/core/resource.hpp"
-#include "bklv/core/theme.hpp"
 #include "bklv/core/view.hpp"
 
 namespace bklv
 {
+namespace
+{
+
+// 视图 JSON 里的主题引用：`@theme/...` 取颜色、`@style/...` 取数值，
+// 都落在 JSON 主题上（core/theme_data.*）：`@theme/color.a.b` / `@style/metric.a.b`。
+// 省略前缀也行（`@theme/text.primary` -> `color.text.primary`）。
+// 写法沿用外观那一套：斜杠会被容错成点分并警告；**key 不存在则报错**（不静默回退）。
+std::string normalizeViewThemeKey(const std::string& key, const char* group, const std::string& where)
+{
+    std::string normalized = key;
+    for (char& c : normalized)
+        if (c == '/')
+            c = '.';
+
+    if (normalized.rfind("color.", 0) != 0 && normalized.rfind("metric.", 0) != 0)
+        normalized = std::string(group) + normalized;
+
+    if (normalized != key)
+        BKLV_LOG_WARNING("视图 JSON 的主题引用写法：%s -> %s（%s）", key.c_str(), normalized.c_str(),
+            where.c_str());
+
+    return normalized;
+}
+
+} // namespace
+
 
 namespace
 {
@@ -125,10 +151,17 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             if (parseNumber(text, out.number))
                 return true;
 
-            // "@style/a/b" -> Style 数值
+            // "@style/metric.a.b" -> 主题里的数值
             if (startsWith(text, "@style/"))
             {
-                out.number = getDefaultStyle()[text.substr(7)];
+                const std::string key = normalizeViewThemeKey(text.substr(7), "metric.", "@style/");
+                if (!getTheme().hasNumber(key))
+                {
+                    error = "引用了不存在的主题数值：@style/" + key
+                        + "（写法是 @style/metric.a.b）";
+                    return false;
+                }
+                out.number = getTheme().number(key);
                 return true;
             }
             break;
@@ -166,7 +199,14 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             }
             if (startsWith(text, "@style/"))
             {
-                out.number = getDefaultStyle()[text.substr(7)];
+                const std::string key = normalizeViewThemeKey(text.substr(7), "metric.", "@style/");
+                if (!getTheme().hasNumber(key))
+                {
+                    error = "引用了不存在的主题数值：@style/" + key
+                        + "（写法是 @style/metric.a.b）";
+                    return false;
+                }
+                out.number = getTheme().number(key);
                 return true;
             }
             if (parseNumber(text, out.number))
@@ -208,7 +248,14 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             }
             if (startsWith(text, "@theme/"))
             {
-                out.color = getDefaultTheme()[text.substr(7)];
+                const std::string key = normalizeViewThemeKey(text.substr(7), "color.", "@theme/");
+                if (!getTheme().hasColor(key))
+                {
+                    error = "引用了不存在的主题颜色：@theme/" + key
+                        + "（写法是 @theme/color.a.b）";
+                    return false;
+                }
+                out.color = getTheme().color(key);
                 return true;
             }
             break;

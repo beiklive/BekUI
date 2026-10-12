@@ -1,6 +1,6 @@
 #pragma once
 
-// 几何与颜色基础类型，对应 borealis 的 core/geometry.hpp 与 core/theme.hpp 中的颜色部分。
+// 几何与颜色基础类型，对应 borealis 的 core/geometry.hpp。
 // 这一层不依赖 Yoga，也不依赖 ImGui，保持纯数据。
 
 #include <imgui.h>

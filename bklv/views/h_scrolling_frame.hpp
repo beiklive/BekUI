@@ -35,8 +35,7 @@ class HScrollingFrame : public Box
     std::string getClassString() const override { return "bklv::HScrollingFrame"; }
 
   protected:
-    void draw(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     View* contentView = nullptr;
 

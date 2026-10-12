@@ -229,8 +229,7 @@ void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, f
     out[3] = std::max(top, bottom);
 }
 
-void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, float height, Style,
-    FrameContext*)
+void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (width <= 0.0f || height <= 0.0f)
         return;

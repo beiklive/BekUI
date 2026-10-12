@@ -255,7 +255,6 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 set(BKLV_CORE_SOURCES
     core/logger.cpp
     core/input.cpp
-    core/theme.cpp
     core/time.cpp
     core/font.cpp
     core/graphics.cpp

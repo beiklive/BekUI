@@ -209,8 +209,7 @@ void HScrollingFrame::scrollToView(View* view, bool animated)
     this->setContentOffsetX(target, animated);
 }
 
-void HScrollingFrame::draw(ImDrawList* drawList, float x, float y, float width, float height, Style,
-    FrameContext*)
+void HScrollingFrame::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (!this->showIndicator || this->contentView == nullptr)
         return;

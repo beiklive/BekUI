@@ -109,11 +109,10 @@ class Box : public View
     const bklv::AttributeTable& attributes() const override;
 
   protected:
-    void drawChildren(ImDrawList* drawList, float x, float y, float width, float height, Style style,
-        FrameContext* ctx) override;
+    void drawChildren(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     // Box 自身不画内容，背景与边框由基类的 frame 统一处理。
-    void draw(ImDrawList*, float, float, float, float, Style, FrameContext*) override { }
+    void draw(ImDrawList*, float, float, float, float, FrameContext*) override { }
 
   private:
     Axis axis = Axis::COLUMN;
