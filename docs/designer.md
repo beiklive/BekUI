@@ -47,6 +47,20 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## 保存前的 diff：按"改在哪儿"分组
+
+`groupChanges()` / `groupKeyOf()` / `groupLabel()`（core，9 项测试）：把改动按位置分组 ——
+
+| 路径 | 分组 | 显示名 |
+|---|---|---|
+| `box.height` | `box` | 盒模型 |
+| `layers[2].fill` | `layers[2]` | 第 3 层（1 起） |
+| `states.focused.bg.fill` | `states.focused` | 状态：focused |
+
+弹窗里每组一个可折叠节点（带条数）+「全部展开/收起」，组内每条**可点**（定位到那一处）。
+弹窗定宽 820×430、列表是可滚动子区 —— 改动多时不会越长越高（最初没限高，
+列表长了会把弹窗撑出屏幕）。
+
 ## 改动的定位与"这一步改了什么"
 
 - `parseChangePath()`（core，11 项测试）：把变化路径解成"该选中哪里" ——

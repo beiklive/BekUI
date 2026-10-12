@@ -119,6 +119,7 @@ class DesignerWindow
     }
 
     void saveAllForTest() { this->saveAllDirty(); }
+    void requestSaveForTest() { this->requestSave(); }
     void openProjectDialogForTest(const std::string& startPath)
     {
         this->showOpenProject = true;
@@ -400,6 +401,7 @@ class DesignerWindow
     bool showSaveAs     = false;
     std::vector<std::string> diffLines;
     std::vector<std::string> diffPaths;   // 与 diffLines 一一对应，点条目用它定位
+    bool diffExpandAll = true;            // diff 弹窗里分组默认展开
     char saveAsPath[512] = "";
 
     // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）

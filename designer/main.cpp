@@ -171,6 +171,10 @@ int main(int argc, char** argv)
     }
 
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
+    // 自查：BKLV_DESIGNER_SHOW_DIFF=1 直接打开保存前的 diff 弹窗
+    if (std::getenv("BKLV_DESIGNER_SHOW_DIFF") != nullptr)
+        window.requestSaveForTest();
+
     if (std::getenv("BKLV_DESIGNER_SAVE_ALL") != nullptr)
         window.saveAllForTest();
 

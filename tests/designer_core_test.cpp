@@ -163,6 +163,32 @@ int main()
         check(designer::changeSummary(changes[0]).find("48 → 56") != std::string::npos, "摘要可读");
     }
 
+    // ---------------------------------------------------------------- 改动分组
+    {
+        const Json before = Json::parse(R"({
+            "box": {"height": 48},
+            "layers": [{"fill": "#111111"}, {"fill": "#222222"}],
+            "states": {"focused": {"bg.fill": {"to": "#333333"}}}
+        })");
+        const Json after = Json::parse(R"({
+            "box": {"height": 56},
+            "layers": [{"fill": "#aaaaaa"}, {"fill": "#222222"}],
+            "states": {"focused": {"bg.fill": {"to": "#444444"}}}
+        })");
+
+        const auto grouped = designer::groupChanges(designer::diffJson(before, after));
+        checkEqualSize(grouped.size(), 3, "分成三组：盒模型 / 第 1 层 / 状态 focused");
+        check(grouped.count("box") == 1, "box 一组");
+        check(grouped.count("layers[0]") == 1, "改的是第 1 层（下标 0）");
+        check(grouped.count("states.focused") == 1, "状态按名字分组");
+
+        checkEqual(designer::groupLabel("box"), "盒模型", "box 的显示名");
+        checkEqual(designer::groupLabel("layers[2]"), "第 3 层", "层号显示成 1 起");
+        checkEqual(designer::groupLabel("states.focused"), "状态：focused", "状态显示名");
+        checkEqual(designer::groupKeyOf("layers[10].fill"), "layers[10]", "两位数层号");
+        checkEqual(designer::groupKeyOf("box.height"), "box", "box 字段");
+    }
+
     // ---------------------------------------------------------------- 变化路径 → 该选中哪里
     {
         using Kind = designer::PathTarget::Kind;

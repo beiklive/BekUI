@@ -4438,21 +4438,72 @@ void DesignerWindow::drawModals()
         this->showDiff = false;
     }
 
-    if (ImGui::BeginPopupModal("保存前确认改动", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    ImGui::SetNextWindowSize(ImVec2(820.0f, 430.0f), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("保存前确认改动", nullptr, ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::TextColored(mutedColor(), "写入前会先编译校验；不通过就不写盘。会留一份 .bak。");
         ImGui::Separator();
-        // 每条改动都能点：点了就把树/属性表定位到那一处（"这条改的是哪儿"不用自己找）
+
+        // 按"改在哪儿"分组 + 可折叠：一处控件动了好几个字段时不再是一长条平铺列表。
+        // 每条都能点：点了就把树/属性表定位到那一处。
+        if (ImGui::SmallButton(this->diffExpandAll ? "全部收起" : "全部展开"))
+            this->diffExpandAll = !this->diffExpandAll;
+        ImGui::SameLine();
+        ImGui::TextColored(mutedColor(), "共 %d 处改动", (int)this->diffLines.size());
+        ImGui::Separator();
+
+        ImGui::BeginChild("##diffList", ImVec2(0.0f, 300.0f), true);
+
+        std::vector<JsonChange> changesVec;
+        changesVec.reserve(this->diffLines.size());
         for (size_t i = 0; i < this->diffLines.size(); i++)
         {
-            const std::string& line = this->diffLines[i];
-            const std::string& path = i < this->diffPaths.size() ? this->diffPaths[i] : line;
-            if (ImGui::Selectable((line + "##diff" + std::to_string(i)).c_str(),
-                    false, ImGuiSelectableFlags_AllowDoubleClick))
-                this->selectByChangePath(path);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("%s\n点一下：定位到这一处", path.c_str());
+            // diffLines 是给人看的字符串，这里只需要路径 → 重新构造一条只带 path 的记录
+            JsonChange change;
+            change.path = i < this->diffPaths.size() ? this->diffPaths[i] : std::string();
+            changesVec.push_back(change);
         }
+
+        const auto grouped = groupChanges(changesVec);
+        size_t index       = 0;
+        for (const auto& entry : grouped)
+        {
+            const std::string title = groupLabel(entry.first) + "（"
+                + std::to_string(entry.second.size()) + "）###group" + entry.first;
+
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (this->diffExpandAll)
+                flags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+            if (ImGui::TreeNodeEx(title.c_str(), flags))
+            {
+                ImGui::Indent(12.0f);
+                // 组内按原顺序取对应的那几行（grouped 里存的是同一批 path）
+                for (const JsonChange& change : entry.second)
+                {
+                    // 找到这一条在 diffLines 里的下标（路径唯一）
+                    size_t lineIndex = 0;
+                    for (size_t i = 0; i < this->diffPaths.size(); i++)
+                        if (this->diffPaths[i] == change.path)
+                        {
+                            lineIndex = i;
+                            break;
+                        }
+                    const std::string line = lineIndex < this->diffLines.size()
+                        ? this->diffLines[lineIndex]
+                        : change.path;
+                    if (ImGui::Selectable((line + "##diff" + std::to_string(index++)).c_str(),
+                            false, ImGuiSelectableFlags_AllowDoubleClick))
+                        this->selectByChangePath(change.path);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s\n点一下：定位到这一处", change.path.c_str());
+                }
+                ImGui::Unindent(12.0f);
+                ImGui::TreePop();
+            }
+        }
+
+        ImGui::EndChild();
         ImGui::Separator();
         if (ImGui::Button("写入", ImVec2(120, 0)))
             this->doSave();

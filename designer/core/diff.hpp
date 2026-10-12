@@ -3,6 +3,7 @@
 // JSON 差异：保存前给用户看"哪个键从什么变成什么"。
 // 逐叶子比较（数组按下标），所以 layers[2].fill 这种路径能直接指到属性表的哪一行。
 
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -54,5 +55,15 @@ struct PathTarget
 };
 
 PathTarget parseChangePath(const std::string& path);
+
+// 按"改在哪儿"把改动分组，给 diff 弹窗做可折叠的分组列表：
+// `box.height` → `box`；`layers[2].fill` → `layers[2]`；`states.focused.bg.fill` → `states.focused`。
+// 用 map 保证组的顺序稳定（同一份 diff 每次渲染顺序一致，别让列表乱跳）。
+std::map<std::string, std::vector<JsonChange>> groupChanges(
+    const std::vector<JsonChange>& changes);
+
+// 分组的显示名（`layers[2]` → `第 3 层`；`box` → `盒模型`；states 分组 → `状态：xxx`）
+std::string groupLabel(const std::string& groupKey);
+std::string groupKeyOf(const std::string& path);
 
 } // namespace designer
