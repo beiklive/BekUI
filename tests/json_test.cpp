@@ -510,6 +510,15 @@ int main()
         delete root;
     }
 
+    // ---- 泛化套属性（编辑器给绑定填示例值用）----
+    {
+        bklv::Label* label = new bklv::Label();
+        check(bklv::applyViewAttribute(label, "text", "换过的文字"), "能给 Label 套 text");
+        checkEqual(label->getText(), "换过的文字", "文字确实换掉了");
+        check(!bklv::applyViewAttribute(label, "不存在的属性", "x"), "未知属性被拒");
+        delete label;
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

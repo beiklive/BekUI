@@ -117,6 +117,7 @@ class DesignerWindow
     void switchTheme(const std::string& name);
     // 选中节点在预览里框出来 / 点预览反选节点
     void drawViewHighlight(ImVec2 origin, float zoom);
+    int applyBindingSamples();   // 把示例数据套到绑定的视图上，返回套用条数
     void handlePreviewClick(ImVec2 origin, float zoom);
     void drawStatus();
     void drawPreview();
@@ -190,6 +191,8 @@ class DesignerWindow
     std::vector<std::string> themeNames;   // themes.json 的 available
     std::string defaultThemeName;          // themes.json 的 default
     std::vector<bklv::Binding> pageBindings; // 页面里绑了数据的字段
+    char bindingSamples[2048] = "";          // 绑定示例数据（JSON 对象：字段 → 值）
+    std::string pendingTheme;                // 切主题时的未保存拦截
     int includeDepthGuard = 0;             // include 展开的递归保护
     char tableFilter[64] = "";
     char newAppearanceName[64] = "";

@@ -35,6 +35,17 @@ std::string normalizeEnumToken(const std::string& text)
 
 } // namespace
 
+bool applyViewAttribute(View* view, const std::string& name, const std::string& value)
+{
+    if (view == nullptr)
+        return false;
+
+    // 直接复用实例化 JSON 时那条路：类型转换、@theme / @i18n 解析、枚举宽容都在里面
+    std::string error;
+    const ApplyResult result = applyFromTable(view, view->attributes(), name, Value(value), error);
+    return result == ApplyResult::APPLIED; // 未知属性是 UNKNOWN（只警告），这里要算失败
+}
+
 bool enumMatches(const std::string& text, const char* name)
 {
     return normalizeEnumToken(text) == normalizeEnumToken(name);

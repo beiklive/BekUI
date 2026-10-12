@@ -200,6 +200,18 @@ void DesignerWindow::switchTheme(const std::string& name)
     if (name == this->project.templateName)
         next.mode = ProjectMode::FORK;
 
+    // 有未保存改动先拦：切主题会清草稿，静默丢改动是数据丢失（自审抓到的）
+    bool hasDirty = this->dirty;
+    for (const auto& entry : this->drafts)
+        if (entry.second.dirty)
+            hasDirty = true;
+    if (hasDirty)
+    {
+        this->pendingTheme   = name;
+        this->showUnsavedGuard = true;
+        return;
+    }
+
     std::string error;
     this->drafts.clear(); // 不同主题的文件互不相干，草稿不跨主题带
     if (!this->setProject(next, isBaseTheme(name), error))
@@ -1842,6 +1854,17 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
         View* created = createFromJSONString(text, &this->viewMap, &this->pageBindings);
         if (created == nullptr)
             this->previewError = "视图 JSON 实例化失败（未知 type / children 结构 / include 路径）";
+
+        // 绑定的字段在预览里没有数据源，用"示例数据"补上，否则列表/文字全是空的
+        if (!this->pageBindings.empty() && this->bindingSamples[0] == 0)
+        {
+            AppearanceDoc::Json samples = AppearanceDoc::Json::object();
+            for (const bklv::Binding& binding : this->pageBindings)
+                samples[binding.field] = "示例 " + binding.field;
+            std::snprintf(this->bindingSamples, sizeof(this->bindingSamples), "%s",
+                samples.dump(2).c_str());
+        }
+        this->applyBindingSamples();
         return created;
     }
 
@@ -2017,6 +2040,30 @@ void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, b
 
     drawList->AddRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
         IM_COL32(90, 95, 103, 255));
+}
+
+int DesignerWindow::applyBindingSamples()
+{
+    if (this->pageBindings.empty() || this->bindingSamples[0] == 0)
+        return 0;
+
+    const AppearanceDoc::Json samples
+        = AppearanceDoc::Json::parse(this->bindingSamples, nullptr, false);
+    if (samples.is_discarded() || !samples.is_object())
+        return 0;
+
+    int applied = 0;
+    for (const bklv::Binding& binding : this->pageBindings)
+    {
+        if (!samples.contains(binding.field))
+            continue;
+
+        const AppearanceDoc::Json& value = samples[binding.field];
+        const std::string text = value.is_string() ? value.get<std::string>() : value.dump();
+        if (applyViewAttribute(binding.view, binding.attribute, text))
+            applied++;
+    }
+    return applied;
 }
 
 void DesignerWindow::drawViewHighlight(ImVec2 origin, float zoom)
@@ -3181,6 +3228,20 @@ void DesignerWindow::drawModals()
                     }
                 ImGui::BulletText("%s  →  字段 %s", path.c_str(), binding.field.c_str());
             }
+        if (!this->pageBindings.empty())
+        {
+            ImGui::TextColored(kMuted, "示例数据（JSON：字段 → 值）：预览里用它填绑定");
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputTextMultiline("##samples", this->bindingSamples,
+                sizeof(this->bindingSamples), ImVec2(-1, 86.0f));
+            if (ImGui::Button("套用示例数据", ImVec2(140, 0)))
+            {
+                const int applied = this->applyBindingSamples();
+                this->statusMessage = "已套用 " + std::to_string(applied) + " 条示例数据";
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(kMuted, "（改了字段名要重新打开页面）");
+        }
         ImGui::Separator();
         ImGui::Checkbox("在预览里标号", &this->highlightFocusOrder);
         ImGui::SameLine();
@@ -3300,52 +3361,81 @@ void DesignerWindow::drawModals()
         ImGui::EndPopup();
     }
 
-    // 未保存改动拦截：切文件前弹一次，不再静默丢改动
+    // 未保存改动拦截：切文件 / 切主题前弹一次，不再静默丢改动
     if (this->showUnsavedGuard)
     {
         ImGui::OpenPopup("有未保存的改动");
         this->showUnsavedGuard = false;
     }
+
+    std::string themeToSwitch; // 点了按钮之后在弹层外面真正执行（不能在弹层里 return，会跳过 EndPopup）
+    bool discardAndSwitch = false;
     if (ImGui::BeginPopupModal("有未保存的改动", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s",
-            this->currentFilePath.c_str());
-        ImGui::TextUnformatted("这个文件有未保存的改动，切走之前要怎么办？");
+        if (!this->pendingTheme.empty())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "要切到主题「%s」",
+                this->pendingTheme.c_str());
+            ImGui::TextUnformatted("有未保存的改动，切主题会清掉草稿，怎么办？");
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s",
+                this->currentFilePath.c_str());
+            ImGui::TextUnformatted("这个文件有未保存的改动，切走之前要怎么办？");
+        }
         ImGui::Separator();
+
         if (ImGui::Button("保存并切换", ImVec2(140, 0)))
         {
-            this->doSave();
-            const std::string path = this->pendingPath;
-            const std::string widget = this->pendingWidget;
-            const std::string view = this->pendingViewFile;
+            if (!this->pendingTheme.empty())
+            {
+                this->saveAllDirty();
+                themeToSwitch = this->pendingTheme;
+            }
+            else
+            {
+                this->doSave();
+                if (!this->pendingViewFile.empty())
+                    this->openViewFile(this->pendingViewFile);
+                else
+                {
+                    std::string openError;
+                    this->openAppearance(this->pendingWidget, openError);
+                }
+                this->dirty = false;
+                this->stashCurrent();
+            }
             this->pendingPath.clear();
             this->pendingWidget.clear();
             this->pendingViewFile.clear();
-            this->dirty = false;
-            this->stashCurrent();
-            std::string error;
-            if (!view.empty())
-                this->openViewFile(view);
-            else if (!this->openAppearance(widget, error))
-                this->errorMessage = error;
-            (void)path;
+            this->pendingTheme.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
         if (ImGui::Button("丢弃改动", ImVec2(120, 0)))
         {
             this->dirty = false;
-            this->discardCurrentDraft();
-            const std::string widget = this->pendingWidget;
-            const std::string view = this->pendingViewFile;
-            this->pendingPath.clear();
-            this->pendingWidget.clear();
-            this->pendingViewFile.clear();
-            std::string error;
-            if (!view.empty())
-                this->openViewFile(view);
-            else if (!this->openAppearance(widget, error))
-                this->errorMessage = error;
+            if (!this->pendingTheme.empty())
+            {
+                themeToSwitch     = this->pendingTheme;
+                discardAndSwitch  = true;
+                this->pendingTheme.clear();
+            }
+            else
+            {
+                this->discardCurrentDraft();
+                if (!this->pendingViewFile.empty())
+                    this->openViewFile(this->pendingViewFile);
+                else
+                {
+                    std::string openError;
+                    this->openAppearance(this->pendingWidget, openError);
+                }
+                this->pendingPath.clear();
+                this->pendingWidget.clear();
+                this->pendingViewFile.clear();
+            }
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -3354,9 +3444,27 @@ void DesignerWindow::drawModals()
             this->pendingPath.clear();
             this->pendingWidget.clear();
             this->pendingViewFile.clear();
+            this->pendingTheme.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
+    }
+
+    // 真正切主题（在弹层外做）
+    if (!themeToSwitch.empty() && themeToSwitch != this->project.name)
+    {
+        Project next;
+        next.mode      = ProjectMode::INPLACE;
+        next.name      = themeToSwitch;
+        next.themeRoot = this->project.themeRoot;
+        std::string switchError;
+        this->drafts.clear();
+        if (!this->setProject(next, isBaseTheme(themeToSwitch), switchError))
+            this->errorMessage = switchError;
+        else
+            this->statusMessage = "已切到主题 " + themeToSwitch
+                + (isBaseTheme(themeToSwitch) ? "（只读浏览）" : "");
+        (void)discardAndSwitch;
     }
 
     // 外部改动：保存前发现文件被别人改了

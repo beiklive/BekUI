@@ -102,6 +102,10 @@ struct AttributeDef
 // 视图描述 JSON（camelCase）与控件外观 JSON（snake_case）的拼写差异就此抹平。
 bool enumMatches(const std::string& text, const char* name);
 
+// 用**字符串值**给视图套一个属性（按属性表的类型自己转：数字 / 颜色 / 布尔 / 文本 / 枚举）。
+// 编辑器用来"给数据绑定填示例值""单独试一个属性值"；找不到属性返回 false。
+bool applyViewAttribute(View* view, const std::string& name, const std::string& value);
+
 // 枚举值不认识时打一条**能照着改**的警告（字段名 + 可用值），返回 false 让调用方决定兜底。
 // 约定：不认识就**保持原值**不动，而不是悄悄改成别的值。
 bool warnUnknownEnumValue(const char* field, const std::string& text, const char* options);
