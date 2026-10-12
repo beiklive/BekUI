@@ -20,6 +20,7 @@
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
+#include "designer/core/ui_state.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
 
@@ -509,6 +510,49 @@ int main()
         std::string unusedText = R"({"x": "@theme/color.nobody.uses.this"})";
         const std::vector<std::string> unusedKeys = designer::collectThemeKeysInText(unusedText);
         checkEqualSize(unusedKeys.size(), 1, "没被引用的 key 也能被抽出来");
+    }
+
+    // ---------------------------------------------------------------- 界面状态持久化
+    {
+        const std::string statePath = work + "/designer_state.json";
+        designer::UiState defaults;
+        check(!designer::loadUiState(statePath, defaults), "没有状态文件时返回 false（用默认值）");
+        checkEqualInt(defaults.leftWidth, 320, "默认左栏宽度");
+
+        designer::UiState state;
+        state.leftWidth        = 411;
+        state.rightWidth       = 512;
+        state.leftCollapsed    = true;
+        state.canvasPreset     = 1;
+        state.canvasChecker    = false;
+        state.canvasZoom       = 0;
+        state.showGrid         = true;
+        state.previewCompare   = true;
+        state.lastAppearance   = "button.primary";
+        state.lastViewFile     = "page_json.json";
+
+        std::string error;
+        check(designer::saveUiState(statePath, state, error), "写出状态文件");
+        check(fs::exists(statePath), "状态文件在");
+
+        designer::UiState loaded;
+        check(designer::loadUiState(statePath, loaded), "读回状态文件");
+        checkEqualInt(loaded.leftWidth, 411, "左栏宽度回来了");
+        checkEqualInt(loaded.rightWidth, 512, "右栏宽度回来了");
+        check(loaded.leftCollapsed, "折叠状态回来了");
+        checkEqualInt(loaded.canvasPreset, 1, "画布预设回来了");
+        check(!loaded.canvasChecker, "网格底开关回来了");
+        checkEqualInt(loaded.canvasZoom, 0, "缩放回来了");
+        check(loaded.showGrid, "对齐网格开关回来了");
+        check(loaded.previewCompare, "并排对比开关回来了");
+        checkEqual(loaded.lastAppearance, "button.primary", "上次看的外观回来了");
+        checkEqual(loaded.lastViewFile, "page_json.json", "上次看的页面回来了");
+
+        // 坏 JSON 不能崩，也不该覆盖已有值
+        designer::writeTextFileAtomic(statePath, "{ 这不是 JSON", false, error);
+        designer::UiState broken = state;
+        check(!designer::loadUiState(statePath, broken), "坏 JSON 返回 false");
+        checkEqualInt(broken.leftWidth, 411, "坏 JSON 不动已有值");
     }
 
     fs::remove_all(work, code);

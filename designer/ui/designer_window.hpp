@@ -88,6 +88,11 @@ class DesignerWindow
         this->previewDirty = true;
         return true;
     }
+    // 启动时恢复"上次在看的文件"（没有环境钩子时用）
+    bool restoreLastFileIfAny();
+    void loadUiState();
+    void saveUiState();
+
     void setDebugPanelsForTest(bool log, bool focusOrder)
     {
         if (log)
@@ -152,6 +157,12 @@ class DesignerWindow
     bklv::AppearanceView* createPreviewControl() const; // 按外观名挑真实控件，兜底裸 AppearanceView
     bklv::AppearanceView* createPreviewControlFor(const std::string& name) const;
     std::string lastAppearanceName;   // 最近打开的外观（编辑主题表时拿它当预览对象）
+    std::string lastViewFile;         // 最近打开的页面视图（状态持久化 + 启动恢复）
+    // 启动时"上次在看的那份"，单独存：setProject 会打开第一个控件并覆盖
+    // lastAppearanceName，用同一个字段恢复就永远恢复不到（踩过）
+    std::string startupAppearance;
+    std::string startupViewFile;
+    bool showGrid = false;            // 预览画布的对齐网格 + 中线
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
@@ -244,8 +255,7 @@ class DesignerWindow
     bool highlightFocusOrder = false;
 
     // 设计器自己的界面状态（栏宽 / 画布 / 开关），跨次运行记住
-    void loadUiState();
-    void saveUiState();
+
 
     // 对比度检查：文字层颜色 vs 它下面的底色
     std::vector<std::string> contrastWarnings;
@@ -292,7 +302,7 @@ class DesignerWindow
     bool canvasChecker = true;
     int canvasWidth    = 420;
     int canvasHeight   = 160;
-    int canvasZoom     = 1;
+    int canvasZoom     = 2; // 0=50% 1=75% 2=100% 3=150%（默认 100%）
 
     // 弹层
     bool showNewProject = false;

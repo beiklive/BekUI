@@ -190,6 +190,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/image_diff.cpp
     core/json_patch.cpp
     core/theme_usage.cpp
+    core/ui_state.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")

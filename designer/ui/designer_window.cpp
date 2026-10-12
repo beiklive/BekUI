@@ -11,6 +11,7 @@
 #include "designer/core/json_patch.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
+#include "designer/core/ui_state.hpp"
 #include "designer/core/theme_files.hpp"
 
 namespace fs = std::filesystem;
@@ -341,6 +342,7 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     }
 
     this->currentViewFile = fileName;
+    this->lastViewFile    = fileName;
     this->currentWidget.clear();
     this->currentTable.clear();
     this->currentFilePath = path;
@@ -658,43 +660,64 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
 
 void DesignerWindow::loadUiState()
 {
-    std::string text;
-    std::string error;
-    if (!readTextFile(resourcePath("designer_state.json"), text, error))
-        return;
+    UiState state;
+    if (!designer::loadUiState(resourcePath("designer_state.json"), state))
+        return; // 第一次跑本来就没有
 
-    const AppearanceDoc::Json doc = AppearanceDoc::Json::parse(text, nullptr, false);
-    if (doc.is_discarded() || !doc.is_object())
-        return;
-
-    this->leftWidthUi      = doc.value("leftWidth", this->leftWidthUi);
-    this->rightWidthUi     = doc.value("rightWidth", this->rightWidthUi);
-    this->leftCollapsed    = doc.value("leftCollapsed", this->leftCollapsed);
-    this->canvasPreset     = doc.value("canvasPreset", this->canvasPreset);
-    this->canvasChecker    = doc.value("canvasChecker", this->canvasChecker);
-    this->canvasZoom       = doc.value("canvasZoom", this->canvasZoom);
-    this->previewContext   = doc.value("previewContext", this->previewContext);
-    this->previewCompare   = doc.value("previewCompare", this->previewCompare);
-    this->previewMaximized = doc.value("previewMaximized", this->previewMaximized);
-    this->previewSubtree   = doc.value("previewSubtree", this->previewSubtree);
+    this->leftWidthUi      = state.leftWidth;
+    this->rightWidthUi     = state.rightWidth;
+    this->leftCollapsed    = state.leftCollapsed;
+    this->canvasPreset     = state.canvasPreset;
+    this->canvasChecker    = state.canvasChecker;
+    this->canvasZoom       = state.canvasZoom;
+    this->showGrid         = state.showGrid;
+    this->previewContext   = state.previewContext;
+    this->previewCompare   = state.previewCompare;
+    this->previewMaximized = state.previewMaximized;
+    this->previewSubtree   = state.previewSubtree;
+    this->lastAppearanceName = state.lastAppearance;
+    this->lastViewFile       = state.lastViewFile;
+    this->startupAppearance  = state.lastAppearance;
+    this->startupViewFile    = state.lastViewFile;
 }
 
 void DesignerWindow::saveUiState()
 {
-    AppearanceDoc::Json doc = AppearanceDoc::Json::object();
-    doc["leftWidth"]        = this->leftWidthUi;
-    doc["rightWidth"]       = this->rightWidthUi;
-    doc["leftCollapsed"]    = this->leftCollapsed;
-    doc["canvasPreset"]     = this->canvasPreset;
-    doc["canvasChecker"]    = this->canvasChecker;
-    doc["canvasZoom"]       = this->canvasZoom;
-    doc["previewContext"]   = this->previewContext;
-    doc["previewCompare"]   = this->previewCompare;
-    doc["previewMaximized"] = this->previewMaximized;
-    doc["previewSubtree"]   = this->previewSubtree;
+    UiState state;
+    state.leftWidth        = this->leftWidthUi;
+    state.rightWidth       = this->rightWidthUi;
+    state.leftCollapsed    = this->leftCollapsed;
+    state.canvasPreset     = this->canvasPreset;
+    state.canvasChecker    = this->canvasChecker;
+    state.canvasZoom       = this->canvasZoom;
+    state.showGrid         = this->showGrid;
+    state.previewContext   = this->previewContext;
+    state.previewCompare   = this->previewCompare;
+    state.previewMaximized = this->previewMaximized;
+    state.previewSubtree   = this->previewSubtree;
+    state.lastAppearance   = this->lastAppearanceName;
+    state.lastViewFile     = this->currentViewFile.empty() ? this->lastViewFile
+                                                          : this->currentViewFile;
 
     std::string error;
-    writeTextFileAtomic(resourcePath("designer_state.json"), doc.dump(2) + "\n", false, error);
+    designer::saveUiState(resourcePath("designer_state.json"), state, error);
+}
+
+bool DesignerWindow::restoreLastFileIfAny()
+{
+    if (!this->startupViewFile.empty())
+        for (const std::string& file : this->viewFiles)
+            if (file == this->startupViewFile)
+                return this->openViewFile(this->startupViewFile);
+
+    if (!this->startupAppearance.empty())
+        for (const std::string& relative : this->widgetFiles)
+            if (widgetNameFromPath(relative) == this->startupAppearance)
+            {
+                std::string error;
+                return this->openAppearance(this->startupAppearance, error);
+            }
+    return false;
 }
 
 // ---------------------------------------------------------------- 草稿与撤销
@@ -2172,6 +2195,22 @@ void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, b
                         ImVec2(std::min(origin.x + x + 16.0f, origin.x + size.x),
                             std::min(origin.y + y + 16.0f, origin.y + size.y)), lite);
 
+    // 对齐参考：10px 网格 + 中线（看间距、看居中对不对得齐）
+    if (this->showGrid)
+    {
+        const ImU32 gridColor = IM_COL32(255, 255, 255, 18);
+        for (float x = 0; x <= size.x; x += 10.0f)
+            drawList->AddLine(ImVec2(origin.x + x, origin.y), ImVec2(origin.x + x, origin.y + size.y),
+                gridColor);
+        for (float y = 0; y <= size.y; y += 10.0f)
+            drawList->AddLine(ImVec2(origin.x, origin.y + y), ImVec2(origin.x + size.x, origin.y + y),
+                gridColor);
+        drawList->AddLine(ImVec2(origin.x + size.x * 0.5f, origin.y),
+            ImVec2(origin.x + size.x * 0.5f, origin.y + size.y), IM_COL32(0, 255, 204, 40));
+        drawList->AddLine(ImVec2(origin.x, origin.y + size.y * 0.5f),
+            ImVec2(origin.x + size.x, origin.y + size.y * 0.5f), IM_COL32(0, 255, 204, 40));
+    }
+
     if (view != nullptr)
     {
         YGNodeCalculateLayout(view->getYGNode(), size.x, size.y, YGDirectionLTR);
@@ -2348,6 +2387,10 @@ void DesignerWindow::drawPreview()
 
     ImGui::SameLine();
     ImGui::Checkbox("网格底", &this->canvasChecker);
+    ImGui::SameLine();
+    ImGui::Checkbox("对齐网格", &this->showGrid);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("10px 网格 + 中线：对间距、看居中最有用");
     ImGui::SameLine();
     if (ImGui::SmallButton("重置视图"))
     {

@@ -79,13 +79,18 @@ int main(int argc, char** argv)
         BKLV_LOG_WARNING("初始主题装载失败：%s（可以点「新建项目」换一个目录）", error.c_str());
 
     // 自查：BKLV_DESIGNER_FILE=<外观名> / SELECT=<file|box|layer<N>|state:名> / VIEW=<views 里的文件名>
+    bool filePicked = false;
     if (const char* wantedFile = std::getenv("BKLV_DESIGNER_FILE"))
     {
         std::string openError;
         window.openAppearance(wantedFile, openError);
+        filePicked = true;
     }
     if (const char* wantedView = std::getenv("BKLV_DESIGNER_VIEW"))
+    {
         window.openViewFile(wantedView);
+        filePicked = true;
+    }
     if (const char* wantedTable = std::getenv("BKLV_DESIGNER_TABLE"))
         window.openTableFile(wantedTable);
     if (const char* newAppearance = std::getenv("BKLV_DESIGNER_NEW_APPEARANCE"))
@@ -98,6 +103,10 @@ int main(int argc, char** argv)
         window.selectBySpec(wantedSelect);
 
     // 自查：BKLV_DESIGNER_FORCE_SAVE=1 直接触发一次保存（用来验证只读保护真的拦得住）
+    // 没有显式指定文件时，恢复上次在看的那个（状态里存着）
+    if (!filePicked)
+        window.restoreLastFileIfAny();
+
     if (std::getenv("BKLV_DESIGNER_LOG") != nullptr || std::getenv("BKLV_DESIGNER_FOCUS") != nullptr)
         window.setDebugPanelsForTest(std::getenv("BKLV_DESIGNER_LOG") != nullptr,
             std::getenv("BKLV_DESIGNER_FOCUS") != nullptr);
