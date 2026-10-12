@@ -30,8 +30,9 @@ struct DesignerPalette
 
 DesignerPalette currentDesignerPalette();
 
-// 把调色板套到 ImGui 全局样式上（圆角、间距、各控件配色）
-void applyDesignerStyle();
+// 把调色板套到 ImGui 全局样式上（圆角、间距、各控件配色）。
+// uiScale 会同时作用到尺寸与字体（屏大或 Retina 下默认尺寸显得过大）。
+void applyDesignerStyle(float uiScale = 1.0f);
 
 // 常用快捷取色（跟着主题走）
 ImVec4 accentColor();

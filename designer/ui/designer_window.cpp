@@ -140,7 +140,7 @@ void DesignerWindow::attach(App* application)
 {
     this->app = application;
     this->loadUiState();
-    applyDesignerStyle();
+    applyDesignerStyle(this->uiScale);
 
     // 设计器是鼠标工具：关掉 ImGui 自己的键盘/手柄导航。
     // 不关的话方向键会被 ImGui 拿去移动它内部的"焦点"，树会被滚到不知哪里去（踩过）。
@@ -715,11 +715,14 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
 void DesignerWindow::loadUiState()
 {
     UiState state;
-    if (!designer::loadUiState(resourcePath("designer_state.json"), state))
-        return; // 第一次跑本来就没有
+    // 读失败（第一次跑）也要把默认值抄进成员：loadUiState 已经把 out 留在默认值上，
+    // 提前 return 的话成员会停在头文件里那份默认值（曾经 uiScale 就这样不一致）
+    designer::loadUiState(resourcePath("designer_state.json"), state);
 
     this->leftWidthUi      = state.leftWidth;
     this->rightWidthUi     = state.rightWidth;
+    this->fileListHeightUi = state.fileListHeight;
+    this->uiScale          = clampUiScale(state.uiScale);
     this->leftCollapsed    = state.leftCollapsed;
     this->canvasPreset     = state.canvasPreset;
     this->canvasChecker    = state.canvasChecker;
@@ -741,6 +744,8 @@ void DesignerWindow::saveUiState()
     UiState state;
     state.leftWidth        = this->leftWidthUi;
     state.rightWidth       = this->rightWidthUi;
+    state.fileListHeight   = this->fileListHeightUi;
+    state.uiScale          = this->uiScale;
     state.leftCollapsed    = this->leftCollapsed;
     state.canvasPreset     = this->canvasPreset;
     state.canvasChecker    = this->canvasChecker;
@@ -1098,6 +1103,18 @@ void DesignerWindow::drawTopBar()
     if (savePressed)
         this->requestSave();
 
+    // 右半截（历史 / 校验 / 日志 / 面板 / 快捷键 / 界面缩放）在窄窗口或大缩放下会超出屏幕，
+    // 那些按钮就点不到了。这里量一下剩余宽度：不够就换行，够就留在同一行。
+    {
+        const float needed = 620.0f * this->uiScale;
+        // 用"上一个控件的右边缘"来量剩余宽度：GetCursorPosX() 在这个位置返回的是
+        // 行首（刚换过行），量出来的剩余宽度永远是满宽，判断会失效（踩过）
+        const float rightEdge = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
+        const float remain    = ImGui::GetContentRegionMax().x - rightEdge;
+        if (remain < needed)
+            ImGui::NewLine();
+    }
+
     groupBreak();
     ImGui::BeginDisabled(this->currentFilePath.empty());
     if (ImGui::Button("撤销"))
@@ -1142,6 +1159,29 @@ void DesignerWindow::drawTopBar()
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Ctrl+S 保存 · Ctrl+Z/Y 撤销重做 · Ctrl+D 复制层 · Alt+↑↓ 移层\n"
                           "F1 校验 · F2 预览最大化 · F3 跳到下一处改动");
+
+    ImGui::SameLine();
+    ImGui::TextColored(mutedColor(), "界面");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(76);
+    static const char* kScaleItems = "75%\0 85%\0 100%\0 115%\0 130%\0";
+    const int scaleIndex = this->uiScale <= 0.79f ? 0
+        : this->uiScale <= 0.92f ? 1
+        : this->uiScale <= 1.07f ? 2
+        : this->uiScale <= 1.22f ? 3
+                                 : 4;
+    const int beforeScale = scaleIndex;
+    int chosen            = scaleIndex;
+    if (ImGui::Combo("##uiscale", &chosen, kScaleItems))
+    {
+        const float values[] = { 0.75f, 0.85f, 1.0f, 1.15f, 1.3f };
+        this->uiScale        = clampUiScale(values[chosen]);
+        applyDesignerStyle(this->uiScale); // 字体 + 间距一起换
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("设计器界面整体缩放（快捷键/约定面板里的字也一起变）；\n"
+                          "屏幕大或 Retina 下觉得界面偏大就调小");
+    (void)beforeScale;
 
     ImGui::SameLine();
     if (this->dirty)
@@ -3574,7 +3614,7 @@ void DesignerWindow::applyThemeFromProject(std::string& error)
     }
 
     // 配色跟着主题走：换主题 / 热重载之后设计器自己也换色
-    applyDesignerStyle();
+    applyDesignerStyle(this->uiScale);
 }
 
 bool DesignerWindow::applyPendingViewText(std::string& error)
@@ -3870,6 +3910,71 @@ void DesignerWindow::selectByChangePath(const std::string& path)
 int DesignerWindow::selectionIndexForTest() const
 {
     return this->selection.index;
+}
+
+float DesignerWindow::drawVerticalSplitter(const char* id, float current, float minWidth,
+    float maxWidth, float sign, float defaultWidth)
+{
+    ImGui::SameLine(0.0f, 0.0f);
+    const float thickness = 7.0f;
+    const ImVec2 origin   = ImGui::GetCursorScreenPos();
+    const float height    = ImGui::GetContentRegionAvail().y;
+
+    ImGui::InvisibleButton(id, ImVec2(thickness, height));
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active  = ImGui::IsItemActive();
+
+    if (hovered || active)
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        ImGui::GetWindowDrawList()->AddRectFilled(origin,
+            ImVec2(origin.x + thickness, origin.y + height),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().accent), 3.0f);
+        ImGui::SetTooltip("拖动改栏宽（双击复位）");
+    }
+    else
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(origin.x + thickness * 0.5f, origin.y),
+            ImVec2(origin.x + thickness * 0.5f, origin.y + height),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().border));
+
+    if (active)
+        current += sign * ImGui::GetIO().MouseDelta.x;
+    if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        current = defaultWidth;
+
+    return (float)clampPanelWidth((int)current, (int)minWidth, (int)maxWidth);
+}
+
+float DesignerWindow::drawHorizontalSplitter(const char* id, float current, float minHeight,
+    float maxHeight, float defaultHeight)
+{
+    const float thickness = 7.0f;
+    const ImVec2 origin   = ImGui::GetCursorScreenPos();
+    const float width     = ImGui::GetContentRegionAvail().x;
+
+    ImGui::InvisibleButton(id, ImVec2(width, thickness));
+    const bool hovered = ImGui::IsItemHovered();
+    const bool active  = ImGui::IsItemActive();
+
+    if (hovered || active)
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+        ImGui::GetWindowDrawList()->AddRectFilled(origin,
+            ImVec2(origin.x + width, origin.y + thickness),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().accent), 3.0f);
+        ImGui::SetTooltip("拖动改高度（双击复位）");
+    }
+    else
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(origin.x, origin.y + thickness * 0.5f),
+            ImVec2(origin.x + width, origin.y + thickness * 0.5f),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().border));
+
+    if (active)
+        current += ImGui::GetIO().MouseDelta.y;
+    if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        current = defaultHeight;
+
+    return (float)clampPanelWidth((int)current, (int)minHeight, (int)maxHeight);
 }
 
 void DesignerWindow::drawSelectionBreadcrumb()
@@ -4804,7 +4909,7 @@ void DesignerWindow::draw()
     static bool styleApplied = false;
     if (!styleApplied)
     {
-        applyDesignerStyle();
+        applyDesignerStyle(this->uiScale);
         styleApplied = true;
     }
 
@@ -4849,9 +4954,13 @@ void DesignerWindow::draw()
             ImGui::SetTooltip("折叠左栏（给预览让地方）");
         ImGui::SameLine();
         panelHeader("文件", "● 未保存");
-        ImGui::BeginChild("##files", ImVec2(0, 250), false);
+        ImGui::BeginChild("##files", ImVec2(0, (float)this->fileListHeightUi), false);
         this->drawFileList();
         ImGui::EndChild();
+        // 拖它改"文件列表 / 节点树"的高度分配（双击复位）
+        this->fileListHeightUi = (int)this->drawHorizontalSplitter("##splitFiles",
+            (float)this->fileListHeightUi, 120.0f,
+            ImGui::GetContentRegionAvail().y - 160.0f, (float)kFileListDefault);
         ImGui::Separator();
         panelHeader("节点树", "点哪层渲染哪层");
         if (ImGui::SmallButton("全展开"))
@@ -4878,10 +4987,23 @@ void DesignerWindow::draw()
     }
     ImGui::EndChild();
 
+    // 拖了左栏宽度就存起来（左右两栏都要给中间留出至少 320）
+    // 注意：分隔条本身是个 ImGui item，画完之后光标会换行 ——
+    // 后面必须再 SameLine() 才能让下一栏留在同一行（不然中间/右栏会被推到看不见的地方）
+    if (!this->leftCollapsed)
+    {
+        this->leftWidthUi = (int)this->drawVerticalSplitter("##splitLeft", leftWidth, 220.0f,
+            avail.x - rightWidth - 320.0f, +1.0f, (float)kLeftWidthDefault);
+    }
     ImGui::SameLine();
+
     ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0), true);
     this->drawPreview();
     ImGui::EndChild();
+
+    ImGui::SameLine();
+    this->rightWidthUi = (int)this->drawVerticalSplitter("##splitRight", rightWidth, 300.0f,
+        avail.x - leftWidth - 320.0f, -1.0f, (float)kRightWidthDefault);
 
     ImGui::SameLine();
     ImGui::BeginChild("##props", ImVec2(rightWidth, 0), true);

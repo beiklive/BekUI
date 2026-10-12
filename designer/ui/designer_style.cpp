@@ -63,14 +63,26 @@ ImVec4 mutedColor() { return currentDesignerPalette().textDim; }
 ImVec4 cardColor() { return currentDesignerPalette().card; }
 ImVec4 borderColor() { return currentDesignerPalette().border; }
 
-void applyDesignerStyle()
+void applyDesignerStyle(float uiScale)
 {
     // 没有 ImGui 上下文时 GetStyle() 会直接踩空（attach 早于第一帧，踩过）
     if (ImGui::GetCurrentContext() == nullptr)
         return;
 
+    if (uiScale < 0.7f)
+        uiScale = 0.7f;
+    if (uiScale > 1.6f)
+        uiScale = 1.6f;
+
     const DesignerPalette palette = currentDesignerPalette();
     ImGuiStyle& style             = ImGui::GetStyle();
+
+    // 字体整体缩放（ImGui 1.92+ 的全局字体缩放）
+    style.FontScaleMain = uiScale;
+
+    // 尺寸：先按"100%"写死，再乘缩放 —— 这样每次调用都是幂等的，
+    // 不用自己去维护"原始尺寸"的一份副本
+    const float s = uiScale;
 
     // 圆角与间距：和样板房一致（6px 圆角、8px 左右内距）
     style.WindowRounding    = 0.0f;
@@ -85,14 +97,14 @@ void applyDesignerStyle()
     style.FrameBorderSize   = 1.0f;
     style.PopupBorderSize   = 1.0f;
 
-    style.WindowPadding    = ImVec2(12.0f, 12.0f);
-    style.FramePadding     = ImVec2(9.0f, 5.0f);
-    style.CellPadding      = ImVec2(6.0f, 4.0f);
-    style.ItemSpacing      = ImVec2(8.0f, 6.0f);
-    style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
-    style.IndentSpacing    = 18.0f;
-    style.ScrollbarSize    = 12.0f;
-    style.GrabMinSize      = 10.0f;
+    style.WindowPadding    = ImVec2(12.0f * s, 12.0f * s);
+    style.FramePadding     = ImVec2(9.0f * s, 5.0f * s);
+    style.CellPadding      = ImVec2(6.0f * s, 4.0f * s);
+    style.ItemSpacing      = ImVec2(8.0f * s, 6.0f * s);
+    style.ItemInnerSpacing = ImVec2(6.0f * s, 4.0f * s);
+    style.IndentSpacing    = 18.0f * s;
+    style.ScrollbarSize    = 12.0f * s;
+    style.GrabMinSize      = 10.0f * s;
 
     auto set = [&style](ImGuiCol index, const ImVec4& color) { style.Colors[index] = color; };
 

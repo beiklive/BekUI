@@ -718,6 +718,46 @@ int main()
         checkEqual(designer::themeKeyFromReference("@theme/"), "", "空引用返回空串");
     }
 
+    // ---------------------------------------------------------------- 栏宽钳制与界面缩放
+    {
+        checkEqualInt(designer::clampPanelWidth(400, 200, 600), 400, "区间内原样返回");
+        checkEqualInt(designer::clampPanelWidth(100, 200, 600), 200, "太小抬到下限");
+        checkEqualInt(designer::clampPanelWidth(900, 200, 600), 600, "太大压到上限");
+        checkEqualInt(designer::clampPanelWidth(400, 600, 200), 600,
+            "上限小于下限时优先保证下限（窗口太窄）");
+
+        checkFloat(designer::clampUiScale(1.0f), 1.0f, "正常缩放原样");
+        checkFloat(designer::clampUiScale(0.1f), 0.7f, "太小抬到 0.7");
+        checkFloat(designer::clampUiScale(9.0f), 1.6f, "太大压到 1.6");
+
+        // 新字段要能存能读（栏宽 / 列表高度 / 界面缩放）
+        designer::UiState state;
+        state.leftWidth      = 288;
+        state.rightWidth     = 512;
+        state.fileListHeight = 180;
+        state.uiScale        = 0.85f;
+        std::string error;
+        const std::string path = work + "/ui_state_widths.json";
+        check(designer::saveUiState(path, state, error), "存界面状态");
+
+        designer::UiState loaded;
+        check(designer::loadUiState(path, loaded), "读回来");
+        checkEqualInt(loaded.leftWidth, 288, "左栏宽度");
+        checkEqualInt(loaded.rightWidth, 512, "右栏宽度");
+        checkEqualInt(loaded.fileListHeight, 180, "文件列表高度");
+        checkFloat(loaded.uiScale, 0.85f, "界面缩放");
+
+        // 文件里写了越界的缩放，读回来要被钳住
+        fs::create_directories(work);
+        {
+            std::ofstream bad(path);
+            bad << R"({"uiScale": 5.0})";
+        }
+        designer::UiState clamped;
+        check(designer::loadUiState(path, clamped), "越界值也能读");
+        checkFloat(clamped.uiScale, 1.6f, "读回来时钳到上限");
+    }
+
     // ---------------------------------------------------------------- 撤销栈
     {
         designer::UndoStack history;

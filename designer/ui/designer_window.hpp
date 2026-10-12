@@ -163,6 +163,10 @@ class DesignerWindow
     // 注意：Selection 是类里**稍后**才声明的嵌套类型，成员函数声明里用不了它
     // （C++ 的类内名字查找要求先声明）—— 所以这里只暴露 int 层面的访问器
     int selectionIndexForTest() const;
+    // 拖分隔条用的宽度（点一下分隔条可以复位到默认）
+    static constexpr int kLeftWidthDefault  = 320;
+    static constexpr int kRightWidthDefault = 420;
+    static constexpr int kFileListDefault   = 250;
     void redoForTest() { this->redo(); }
     void forceSaveForTest()
     {
@@ -270,6 +274,8 @@ class DesignerWindow
     // lastAppearanceName，用同一个字段恢复就永远恢复不到（踩过）
     std::string startupAppearance;
     std::string startupViewFile;
+    float uiScale = 1.0f;             // 设计器界面整体缩放（0.7~1.6）
+    int fileListHeightUi = 250;       // 左栏里"文件列表"的高度（可拖）
     bool showGrid = false;            // 预览画布的对齐网格 + 中线
     bool onlyLayers = false;          // 树里只看层
     char propFilter[64] = "";         // 属性表字段过滤
@@ -290,6 +296,12 @@ class DesignerWindow
     void selectNextChange(int step);
     // 状态栏里的"选中路径"面包屑（可点，点了回到上一层）
     void drawSelectionBreadcrumb();
+    // 竖直分隔条：拖它改栏宽，悬停变左右箭头，双击复位。sign=+1 左栏 / -1 右栏
+    float drawVerticalSplitter(const char* id, float current, float minWidth, float maxWidth,
+        float sign, float defaultWidth);
+    // 水平分隔条：拖它改上方面板的高度，双击复位
+    float drawHorizontalSplitter(const char* id, float current, float minHeight, float maxHeight,
+        float defaultHeight);
     // 打开"把该字段套到其它层"的弹层（默认勾上所有"有或没有这个字段"的层）
     void openFieldSync(const std::string& field)
     {
