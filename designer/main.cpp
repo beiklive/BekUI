@@ -140,6 +140,19 @@ int main(int argc, char** argv)
     if (std::getenv("BKLV_DESIGNER_REDO") != nullptr)
         window.redoForTest();
 
+    // 自查：BKLV_DESIGNER_EDIT_DOC=a.b.c=<JSON 值>
+    if (const char* docEdit = std::getenv("BKLV_DESIGNER_EDIT_DOC"))
+    {
+        const std::string spec(docEdit);
+        const size_t equals = spec.find('=');
+        if (equals != std::string::npos)
+            window.applyTestDocEdit(spec.substr(0, equals), spec.substr(equals + 1));
+    }
+
+    // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
+    if (std::getenv("BKLV_DESIGNER_SAVE_ALL") != nullptr)
+        window.saveAllForTest();
+
     if (std::getenv("BKLV_DESIGNER_FORCE_SAVE") != nullptr)
         window.forceSaveForTest();
 

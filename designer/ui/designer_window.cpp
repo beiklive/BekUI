@@ -9,6 +9,7 @@
 #include "bklv/3rd/imgui/imgui.h"
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
+#include "designer/core/file_kind.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_key.hpp"
 #include "designer/core/theme_usage.hpp"
@@ -3145,66 +3146,100 @@ void DesignerWindow::markEdited()
 
 void DesignerWindow::saveAllDirty()
 {
-    if (this->readOnly && this->currentViewFile.empty())
+    if (this->readOnly)
     {
-        this->errorMessage = "只读主题，不能写盘（页面视图不受限）";
+        this->errorMessage = "只读主题，不能写盘";
         return;
+    }
+
+    // 当前页面视图里"改了没点应用"的文本也要先应用，否则全部保存会把它漏掉
+    {
+        std::string pendingError;
+        if (!this->applyPendingViewText(pendingError))
+        {
+            this->errorMessage = pendingError;
+            return;
+        }
     }
 
     this->stashCurrent(); // 不先存当前这份的话，会把它上一次 stash 的旧内容写下去
 
     const std::string original = this->currentFilePath;
-    int saved = 0;
+    int saved                  = 0;
+    int conflicts              = 0;
 
     for (auto& entry : this->drafts)
     {
         if (!entry.second.dirty)
             continue;
 
-        // 只保存"能确定是外观或页面视图"的文件
-        std::string text = entry.second.doc.serialize();
+        const std::string& path = entry.first;
+        std::string text        = entry.second.doc.serialize();
         std::string error;
+
         if (!validateJsonText(text, error))
         {
-            this->warnings.push_back(entry.first + "：" + error);
+            this->warnings.push_back(path + "：" + error);
             continue;
         }
-        View* probe = createFromJSONString(text);
-        if (probe != nullptr)
-            delete probe;
-        else
+
+        // 按文件类型选校验方式：外观要编译、页面要试实例化、主题表只看语法。
+        // 以前是"先试实例化、失败再试编译"，主题表两种都失败 → **主题表根本存不进**
+        const FileKind kind = classifyThemeFile(path, this->project.themeDir(),
+            this->project.resourcesDir());
+        if (kind == FileKind::VIEW)
         {
-            std::shared_ptr<const Appearance> compiled
-                = Appearance::compile(text, getTheme(), error);
-            if (compiled == nullptr)
+            View* probe = createFromJSONString(text);
+            if (probe == nullptr)
             {
-                this->warnings.push_back(entry.first + "：编译失败 " + error);
+                this->warnings.push_back(path + "：视图实例化失败，跳过");
+                continue;
+            }
+            delete probe;
+        }
+        else if (kind == FileKind::APPEARANCE)
+        {
+            if (Appearance::compile(text, getTheme(), error) == nullptr)
+            {
+                this->warnings.push_back(path + "：编译失败 " + error);
                 continue;
             }
         }
-
-        if (writeTextFileAtomic(entry.first, text, true, error))
+        else if (kind == FileKind::UNKNOWN)
         {
-            entry.second.dirty    = false;
+            this->warnings.push_back(path + "：认不出是什么文件，跳过");
+            continue;
+        }
+
+        // 和单个保存一样走带冲突检测的写：磁盘被外部改过就跳过并报告
+        if (writeFileChecked(path, entry.second.openHash, text, false, true, error))
+        {
+            entry.second.dirty     = false;
             entry.second.savedText = text;
-            entry.second.openHash = this->hashText(text);
+            entry.second.openHash  = this->hashText(text);
             saved++;
         }
         else
-            this->warnings.push_back(entry.first + "：" + error);
+        {
+            conflicts++;
+            this->warnings.push_back(path + "：" + error);
+        }
     }
 
     this->currentFilePath = original;
     if (saved > 0)
     {
+        this->refreshThemeUsage();
         std::string reloadError;
         this->applyThemeFromProject(reloadError);
-        this->dirty        = false;
-        this->previewDirty = true;
-        this->statusMessage = std::to_string(saved) + " 个文件已写入";
+        this->dirty         = false;
+        this->previewDirty  = true;
+        this->statusMessage = std::to_string(saved) + " 个文件已写入"
+            + (conflicts > 0 ? "，" + std::to_string(conflicts) + " 个被外部改动挡住" : "");
     }
     else
-        this->statusMessage = "没有需要写入的改动";
+        this->statusMessage
+            = conflicts > 0 ? "都被外部改动挡住了，见校验面板" : "没有需要写入的改动";
 }
 
 void DesignerWindow::applyThemeFromProject(std::string& error)

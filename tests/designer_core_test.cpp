@@ -20,6 +20,7 @@
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
+#include "designer/core/file_kind.hpp"
 #include "designer/core/theme_key.hpp"
 #include "designer/core/ui_state.hpp"
 #include "designer/core/undo_stack.hpp"
@@ -629,6 +630,33 @@ int main()
         for (int i = 1; i <= 80; i++)
             capped.push(std::to_string(i));
         checkEqualSize(capped.size(), designer::UndoStack::MAX_STEPS, "步数被上限截住");
+    }
+
+    // ---------------------------------------------------------------- 草稿是哪种文件
+    {
+        const std::string themeDir = themeRoot + "/default";
+        const std::string resDir   = themeRoot.substr(0, themeRoot.find_last_of('/'));
+
+        check(designer::classifyThemeFile(themeDir + "/widgets/button.json", themeDir, resDir)
+                == designer::FileKind::APPEARANCE,
+            "widgets/*.json 是外观");
+        check(designer::classifyThemeFile(themeDir + "/colors.json", themeDir, resDir)
+                == designer::FileKind::TABLE,
+            "colors.json 是主题表");
+        check(designer::classifyThemeFile(themeDir + "/metrics.json", themeDir, resDir)
+                == designer::FileKind::TABLE,
+            "metrics.json 是主题表");
+        check(designer::classifyThemeFile(resDir + "/views/page.json", themeDir, resDir)
+                == designer::FileKind::VIEW,
+            "views/*.json 是页面视图");
+        check(designer::classifyThemeFile("/tmp/别人的东西.json", themeDir, resDir)
+                == designer::FileKind::UNKNOWN,
+            "既不是主题文件也不是视图 → UNKNOWN（保存时会被拒）");
+        checkEqual(designer::fileKindName(designer::FileKind::TABLE), "主题表", "类型名字");
+        // 结尾带斜杠也要认
+        check(designer::classifyThemeFile(themeDir + "/widgets/x.json", themeDir + "/", resDir + "/")
+                == designer::FileKind::APPEARANCE,
+            "目录结尾带斜杠也认");
     }
 
     fs::remove_all(work, code);

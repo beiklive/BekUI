@@ -123,6 +123,26 @@ tests/designer_core_test.cpp   逻辑层的无窗口测试（62 项）
 - 自查钩子补 `BKLV_DESIGNER_VARIANT=<新名>`（实测：变体文件生成、`theme.json` 登记成功、
   外观总数 43 → 44）
 
+## 第 14 轮：修好"全部保存"（主题表根本存不进 + 绕过冲突检测）
+
+自审 `saveAllDirty` 抓到三个缺陷：
+
+1. **主题表根本存不进**：以前靠"先试实例化、失败再试编译"猜文件类型，
+   主题表两种都失败 → 只留一条警告就跳过。现在新增 core 的
+   `classifyThemeFile()`（外观 / 页面视图 / 主题表 / 未知）决定校验方式
+2. **绕过了冲突检测**：它直接 `writeTextFileAtomic`，磁盘被外部改过也照写。
+   现在和单个保存一样走 `writeFileChecked`（被挡住的文件跳过并报出来）
+3. **未应用的页面文本会被漏掉**：先 `applyPendingViewText()` 再遍历
+
+**实测**：fork 一个主题 → 改 `common.red = #FF0000` → 「全部保存」→
+文件里确实是 `#FF0000`（改前这一步是静默跳过的）。
+
+新增自查钩子：`BKLV_DESIGNER_SAVE_ALL` / `BKLV_DESIGNER_EDIT_DOC=<点分路径>=<JSON 值>`。
+
+> 过程教训：这轮我两次用"从函数 A 到函数 B 之间整段替换"的方式改代码，
+> 结果把夹在中间的 `requestSave` / `doSave` 等函数一起削掉了（链接期才发现）。
+> 改成**按大括号配对**定位函数体之后再替换；`git checkout` 兜底也只用了两次。
+
 ## 第 13 轮：撤销栈进 core + 修好"重做其实用不了"
 
 - **撤销栈抽进 core**（`designer/core/undo_stack.*`）：连续相同不重复入栈、撤销后重做、

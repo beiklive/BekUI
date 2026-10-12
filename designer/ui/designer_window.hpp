@@ -64,6 +64,36 @@ class DesignerWindow
     ~DesignerWindow() { this->saveUiState(); }
     // 自查用：直接走一遍保存（验证只读拦截 / 冲突检测）
     // 跳过 diff 弹层直接写（自查用；readOnly / 冲突 / 编译校验 / 增量写盘都照走）
+    // 自查用：按点分路径改当前文档里的一个值（比如 common.red = "#FF0000"）
+    bool applyTestDocEdit(const std::string& dottedPath, const std::string& jsonValue)
+    {
+        AppearanceDoc::Json* node = &this->doc.root();
+        size_t pos                = 0;
+        while (pos < dottedPath.size())
+        {
+            const size_t dot       = dottedPath.find('.', pos);
+            const std::string key  = dottedPath.substr(pos,
+                dot == std::string::npos ? std::string::npos : dot - pos);
+            if (dot == std::string::npos)
+            {
+                AppearanceDoc::Json parsed
+                    = AppearanceDoc::Json::parse(jsonValue, nullptr, false);
+                (*node)[key] = parsed.is_discarded() ? AppearanceDoc::Json(jsonValue) : parsed;
+                this->pushUndoSnapshot();
+                this->markEdited();
+                this->previewDirty = true;
+                return true;
+            }
+            if (!node->contains(key) || !(*node)[key].is_object())
+                (*node)[key] = AppearanceDoc::Json::object();
+            node = &(*node)[key];
+            pos  = dot + 1;
+        }
+        return false;
+    }
+
+    void saveAllForTest() { this->saveAllDirty(); }
+
     void undoForTest() { this->undo(); }
     void redoForTest() { this->redo(); }
     void forceSaveForTest()
