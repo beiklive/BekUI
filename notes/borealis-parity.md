@@ -87,11 +87,11 @@
 
 | borealis demo 页 | bklv demo | 状态 |
 |---|---|---|
-| Basic components（HScroll / 5 种按钮 / Slider / Label 对齐 / 图片 5 种缩放） | 控件页（部分） | ⚠️ 待补：图片缩放 5 例、按钮样式齐全 |
+| Basic components（HScroll / 5 种按钮 / Slider / Label 对齐 / 图片 5 种缩放） | demo「控件」页 | ✅ | HScroll + primary/bordered/borderless/ghost/disabled 五种按钮 + 滑块带实时百分比 + 左中右标签对齐 + 图片缩小/原尺寸/放大/拉伸/居中裁切 5 例 |
 | Layout and alignment（flex 四组 + grow + wireframe） | 布局页 + 设置页的 wireframe 开关 | ✅ |
 | Transform test（translate/scale/skew/rotate/fontScale + 多段缓动） | demo「变换」页 | ✅ |
-| Text test（宽高/对齐/singleLine 实时调） | 文本页（部分） | ⚠️ 待补交互式调节 |
-| Scroll test | 列表/滚动页 | ⚠️ 待补独立页 |
+| Text test（宽高/对齐/singleLine 实时调） | demo「文本」页 | ✅ | 用 SliderCell/SelectorCell/BooleanCell 实时改宽高、水平/垂直对齐、单行截断（对标 borealis 的 TextTestTab） |
+| Scroll test | demo「滚动」页 | ✅ | 独立 ScrollingFrame + 20 行按钮验证"焦点走到哪外层滚到哪" |
 | Pokedex（RecyclerFrame 两段 + 详情页） | 列表页（Recycler） | ⚠️ 待补分段与详情页导航 |
 | Settings（6 种 Cell 全家桶 + 运行时开关） | demo「设置」页 | ✅ |
 | About | — | ❌ 待补 |
@@ -133,6 +133,9 @@
 | 桌面上"无数据"时无线图标不隐藏 | `setSnapshot` 在"值没变"时提前 return，跳过了显隐更新 | 显隐先定，再看值有没有变 |
 | 开关类图标在某些外观下不可见 | 自绘层没给尺寸时几何会用到整块矩形 | 几何取主题 metric + 右对齐（同 Cell 的开关） |
 | 变换里的 NaN 会让控件**静默消失** | demo 在布局算完前用 `getWidth()` 换算位移，NaN 传进了变换，整段顶点变 NaN | 库侧：`View::frame` 检测到 NaN/Inf 就报警并跳过变换（宁可"没生效"，也不要看不见）；应用侧：换算前对尺寸做 isfinite 兜底 |
+| **关窗口时崩溃（SIGSEGV）** | 音频设备归 SDL 管，但 `App::~App` 的 `audio::shutdown()` 跑在 `PlatformSDL3` 析构（内部 `SDL_Quit()`）**之后**，`SDL_DestroyAudioStream` 拿到已拆的 SDL | 平台析构里在 `SDL_Quit()` **之前**调 `audio::shutdown()`（App 里那次成空操作）；实测退出码 0 |
+| 主题缺键静默画成品红 | `ThemeData::color()/number()` 缺键只记 **DEBUG** 日志，默认看不见 | 改成 **WARNING 且同 key 只报一次**（外观 JSON 的引用仍然是编译失败）；加上后立刻抓出本轮 3 个缺键（`color.surface.hover` 等） |
+| 改完代码好像没生效 | 21 个目标各挂一条 POST_BUILD `copy_directory` 往同一个 `dist/resources` 写，`-j` 并行时互相踩 → 间歇性 `Error 2`，失败后二进制还是旧的 | 改成**按输出目录只复制一次**（独立目标 + 各目标依赖它）；实测连续 3 次 `-j 8` 无失败 |
 | 通知浮层看不见 | 构造时把 `hidden` 与 `shown` 两个外观状态**同时**激活，`hidden` 的透明度 0 把 `shown` 盖掉 | 状态要互斥地切：先撤旧的再开新的（和 Dialog 的 open/closed 一个套路） |
 | 窗口建好前 `App::notify` 的通知丢了 | 那时还没有根视图，只能警告丢弃 | 排进 `pendingNotifications`，`setRootView` 之后补发 |
 
@@ -159,6 +162,13 @@
 | 主线程回调 | `postToMain` + `App::frame` 每帧 `pumpMainThread()`；回调里可以安全碰视图/纹理/ImGui |
 | 异步图片 | 后台 `decodeImageFile`（文件 IO + 解码），主线程 `loadTextureFromPixels` 上传；**按代数丢弃过期请求**；纹理仓库没就绪时保留 `pendingPath` 交给 `update()` 重试 |
 | 新增公开 API | `loadTextureFromPixels(rgba, w, h)`（只上传不解码） |
+
+### demo 页面覆盖（本轮）
+
+对标 `resources/xml/activity/main.xml` 的 tab 列表：components / layout / transform / text /
+scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_components 在 borealis
+里是注释掉的）。已覆盖：控件(=components)、布局、变换、文本(=text)、滚动(=scroll)、
+设置(=settings)，另外多了主题/JSON/导航/弹层四个页面（弹层即 borealis 注释掉的 popups 一类）。
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

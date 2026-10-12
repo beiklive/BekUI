@@ -155,5 +155,12 @@
     "subtitleFontSize": 14,
     "width": 200,
     "shrink": 0
+  },
+  "label": {
+    "alignDemoWidth": 200,
+    "liveWidth": 320
+  },
+  "scroll": {
+    "demoHeight": 220
   }
 }

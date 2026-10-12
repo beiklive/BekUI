@@ -114,6 +114,7 @@ DemoApp::DemoApp()
     this->addPage(getStr("tab/json"), getStr("page/json_sub"), buildJsonPage(), false);
     this->addPage(getStr("tab/nav"), getStr("page/nav_sub"), buildNavPage(), false);
     this->addPage(getStr("tab/overlay"), getStr("page/overlay_sub"), buildOverlayPage(), false);
+    this->addPage(getStr("tab/scroll"), getStr("page/scroll_sub"), buildScrollPage(), false);
     this->addPage(getStr("tab/transform"), getStr("page/transform_sub"), buildTransformPage(), false);
     setSettingsShell(this->root);
     this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);

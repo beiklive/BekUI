@@ -1,0 +1,100 @@
+{
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": "@theme/metric.control.minWidth"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "text",
+      "color": "@theme/color.button.defaultText",
+      "fontSize": "@theme/metric.button.textSize",
+      "align": "center",
+      "valign": "center",
+      "inset": [
+        0,
+        25,
+        0,
+        25
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -6.5,
+        -6.5,
+        -6.5,
+        -6.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    }
+  ],
+  "states": {
+    "disabled": {
+      "title.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
+    },
+    "focused": {
+      "hlBg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.stroke": {
+        "to": "@theme/color.highlight.glow",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.strokeWidth": {
+        "to": 11,
+        "duration": 120
+      },
+      "hlBorder.stroke": {
+        "to": "@theme/color.highlight.border",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlBorder.strokeWidth": {
+        "to": "@theme/metric.highlight.strokeWidth",
+        "duration": 120
+      }
+    }
+  }
+}

@@ -178,6 +178,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] **P0 控件补齐**：6 个 Cell、Battery/Wireless 图标化、Notification、手势、
       View 变换（scale/rotate/skew/fontScale）、account + 对应 demo 页面
 - [ ] 小遗留：account 头像圆心里"昵称首字"的视觉位置还要调（功能与测试都已通过）
+- [x] demo 页面覆盖：控件页补齐 borealis components tab（HScroll / 5 种按钮 / 滑块实时百分比 /
+      标签对齐 / 图片 5 种缩放）、文本页补交互式 Text test、新增滚动页（Scroll test）
+- [ ] demo 页面覆盖（剩余）：Pokedex 页（两段 RecyclerFrame + 详情页导航）
 - [x] debug_layer（`views/debug_layer.*` + `App::setDebugLayerEnabled`；收集边界是纯函数；
       设置页有 wireframe 开关）
 - [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +

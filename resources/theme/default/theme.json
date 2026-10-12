@@ -37,6 +37,8 @@
     "widgets/status_battery.json",
     "widgets/status_wireless.json",
     "widgets/notification.json",
-    "widgets/account.json"
+    "widgets/account.json",
+    "widgets/button.bordered.json",
+    "widgets/button.borderless.json"
   ]
 }

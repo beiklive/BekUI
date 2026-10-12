@@ -1,3 +1,4 @@
+#include "bklv/core/audio.hpp"
 #include "bklv/platforms/sdl3_platform.hpp"
 
 #if !defined(BKLV_SWITCH)
@@ -159,6 +160,10 @@ PlatformSDL3::~PlatformSDL3()
 
     if (this->sdlReady)
     {
+        // 音频设备归 SDL 管，必须在 SDL_Quit 之前关掉：App::~App 里的
+        // audio::shutdown() 跑在平台析构之后，那时 SDL 已经拆了，
+        // 再 SDL_DestroyAudioStream 就是野指针（崩溃报告踩过）。
+        audio::shutdown();
         SDL_Quit();
         this->sdlReady = false;
     }

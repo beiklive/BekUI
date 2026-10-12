@@ -3,7 +3,8 @@
     "page": "#0d1420",
     "card": "#152030",
     "raised": "#1d2b3f",
-    "sunken": "#101a26"
+    "sunken": "#101a26",
+    "hover": "#2b3a48"
   },
   "text": {
     "primary": "#e3ecf7",

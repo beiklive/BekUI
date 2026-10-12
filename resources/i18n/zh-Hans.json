@@ -19,7 +19,8 @@
     "nav": "导航",
     "overlay": "弹层",
     "settings": "设置",
-    "transform": "变换"
+    "transform": "变换",
+    "scroll": "滚动"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -104,7 +105,20 @@
     "cache": "缓存 {}%",
     "usage": "占用 {}%",
     "image": "图片",
-    "image_reload": "重新异步加载"
+    "image_reload": "重新异步加载",
+    "button_bordered": "描边",
+    "button_borderless": "无框",
+    "hscroll": "横向滚动（HScroll）",
+    "hscroll_item": "第 {} 张",
+    "label_align": "标签对齐",
+    "label_left": "左对齐",
+    "label_center": "居中",
+    "label_right": "右对齐",
+    "image_downscaled": "缩小 76",
+    "image_original": "原尺寸",
+    "image_upscaled": "放大 170",
+    "image_stretched": "拉伸变形",
+    "image_centered": "居中裁切"
   },
   "page": {
     "theme_sub": "换肤与外观驱动的控件",
@@ -116,7 +130,8 @@
     "nav_sub": "TabFrame 与 Sidebar",
     "overlay_sub": "弹窗与文本输入",
     "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入",
-    "transform_sub": "绘制期缩放 / 旋转 / 斜切 / 位移 + 多段缓动补间"
+    "transform_sub": "绘制期缩放 / 旋转 / 斜切 / 位移 + 多段缓动补间",
+    "scroll_sub": "独立滚动容器 + 焦点跟随滚动"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -127,7 +142,14 @@
     "long": "这是一段比较长的中文文字，用来演示截断与自动换行在中文下的表现。",
     "wrap": "自动换行",
     "wrap_desc": "宽度限制在 360px，超出自动折行（容差 0.5px）。",
-    "colors": "颜色档位"
+    "colors": "颜色档位",
+    "live": "交互式调节（对标 borealis Text test）",
+    "live_sample": "这段话会被上面的控件实时改尺寸、对齐与单行截断。拖到很窄时能看到省略号。",
+    "live_width": "宽度（0=auto）",
+    "live_height": "高度（0=auto）",
+    "live_valign": "垂直对齐",
+    "live_halign": "水平对齐",
+    "live_singleline": "单行截断（超宽省略）"
   },
   "layout": {
     "hint": "Yoga/Flexbox：主轴排列、交叉轴对齐、grow 分配剩余空间、百分比尺寸。",
@@ -192,5 +214,14 @@
     "rotate": "旋转",
     "font_x": "文字缩放 X",
     "font_y": "文字缩放 Y"
+  },
+  "scroll": {
+    "hint": "上面那张卡里是一个独立的滚动容器；下面一列按钮用来验证\"焦点走到哪，外层滚动跟到哪\"。",
+    "inside": "独立滚动容器（ScrollingFrame）",
+    "paragraph": "第 {} 段：滚动容器有自己的内容区高度与指示条，焦点进入时会自动把它滚进可视范围。",
+    "follow": "焦点跟随滚动",
+    "row": "第 {} 行",
+    "status_none": "还没点过",
+    "status": "上次点击：第 {} 行"
   }
 }

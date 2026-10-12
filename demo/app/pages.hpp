@@ -46,6 +46,9 @@ bklv::Box* buildNavPage();
 // 8. 弹层与输入：Dialog / EditTextDialog
 bklv::Box* buildOverlayPage();
 
+// 11. 滚动：独立滚动容器 + 焦点跟随滚动（对标 borealis 的 Scroll test）
+bklv::Box* buildScrollPage();
+
 // 10. 变换：绘制期缩放/旋转/斜切/位移 + 多段缓动补间（对标 borealis 的 Transform test）
 bklv::Box* buildTransformPage();
 

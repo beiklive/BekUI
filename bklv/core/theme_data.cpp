@@ -3,6 +3,7 @@
 #include "bklv/core/ui_scale.hpp"
 
 #include <cctype>
+#include <set>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -16,6 +17,23 @@
 
 namespace bklv
 {
+
+namespace
+{
+
+// 主题缺键只警告一次（同一个 key 反复查也不刷屏）
+void warnMissingKeyOnce(const std::string& key, const char* kind)
+{
+    static std::set<std::string> warned;
+    if (!warned.insert(key).second)
+        return;
+
+    BKLV_LOG_WARNING("主题%s缺失：%s（外观 JSON 里引用不存在的 key 会直接编译失败；"
+                     "C++ 里这样取值会退化成 fallback）",
+        kind, key.c_str());
+}
+
+} // namespace
 
 namespace
 {
@@ -272,7 +290,9 @@ ImU32 ThemeData::color(const std::string& key, ImU32 fallback) const
     if (fallbackIt != this->defaultColors.end())
         return fallbackIt->second;
 
-    BKLV_LOG_DEBUG("主题色缺失：%s", key.c_str());
+    // 缺键不能静默：以前是 DEBUG 级，界面上就画成 fallback（常见是品红），
+    // 排查半天。同一个 key 只报一次，避免每帧刷屏。
+    warnMissingKeyOnce(key, "颜色");
     return fallback;
 }
 
@@ -300,7 +320,7 @@ float ThemeData::number(const std::string& key, float fallback) const
     if (fallbackIt != this->defaultNumbers.end())
         return isScalableMetricKey(key) ? fallbackIt->second * getUiScale() : fallbackIt->second;
 
-    BKLV_LOG_DEBUG("主题数值缺失：%s", key.c_str());
+    warnMissingKeyOnce(key, "数值");
     return fallback;
 }
 

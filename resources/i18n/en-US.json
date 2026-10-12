@@ -19,7 +19,8 @@
     "nav": "Nav",
     "overlay": "Overlays",
     "settings": "Settings",
-    "transform": "Transform"
+    "transform": "Transform",
+    "scroll": "Scroll"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -104,7 +105,20 @@
     "cache": "Cache {}%",
     "usage": "Usage {}%",
     "image": "Image",
-    "image_reload": "Reload async"
+    "image_reload": "Reload async",
+    "button_bordered": "Bordered",
+    "button_borderless": "Borderless",
+    "hscroll": "HScroll",
+    "hscroll_item": "Card {}",
+    "label_align": "Label alignment",
+    "label_left": "Left",
+    "label_center": "Center",
+    "label_right": "Right",
+    "image_downscaled": "Downscaled",
+    "image_original": "Original",
+    "image_upscaled": "Upscaled",
+    "image_stretched": "Stretched",
+    "image_centered": "Centered"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",
@@ -116,7 +130,8 @@
     "nav_sub": "TabFrame and Sidebar",
     "overlay_sub": "Dialogs and text input",
     "settings_sub": "List cells: detail / bool / radio / selector / slider / input",
-    "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens"
+    "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens",
+    "scroll_sub": "Nested scroller + scroll-to-focus"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -127,7 +142,14 @@
     "long": "This is a fairly long line of text used to show truncation and wrapping.",
     "wrap": "Wrapping",
     "wrap_desc": "Limited to 360px, wraps automatically (0.5px tolerance).",
-    "colors": "Color scale"
+    "colors": "Color scale",
+    "live": "Interactive (borealis Text test)",
+    "live_sample": "This text is resized, aligned and truncated live by the cells above.",
+    "live_width": "Width (0=auto)",
+    "live_height": "Height (0=auto)",
+    "live_valign": "Vertical align",
+    "live_halign": "Horizontal align",
+    "live_singleline": "Single line"
   },
   "layout": {
     "hint": "Yoga/Flexbox: main axis, cross axis, grow, percentage sizes.",
@@ -192,5 +214,14 @@
     "rotate": "Rotate",
     "font_x": "Font scale X",
     "font_y": "Font scale Y"
+  },
+  "scroll": {
+    "hint": "The card above holds an independent scroller; the buttons below verify scroll-to-focus.",
+    "inside": "Nested scroller (ScrollingFrame)",
+    "paragraph": "Paragraph {}: the scroller has its own content height and indicator; focus scrolls it into view.",
+    "follow": "Scroll to focus",
+    "row": "Row {}",
+    "status_none": "nothing clicked yet",
+    "status": "last click: row {}"
   }
 }

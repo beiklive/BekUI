@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "bklv/bklv.hpp"
+
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
 
@@ -20,8 +22,11 @@ Box* buildWidgetsPage()
     buttonCard->addView(makeText(getStr("widgets/buttons"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
+    // 四种 style 一并列出（对标 borealis components 的 button_primary/highlight/bordered/borderless）
     Box* buttonRow = makeRow(getTheme().number("metric.spacing.md", 12.0f));
     buttonRow->addView(new Button(getStr("widgets/ok")));
+    buttonRow->addView(new Button(getStr("widgets/button_bordered"), "bordered"));
+    buttonRow->addView(new Button(getStr("widgets/button_borderless"), "borderless"));
     buttonRow->addView(new Button(getStr("widgets/ghost"), "ghost"));
     Button* disabled = new Button(getStr("widgets/disabled"));
     disabled->setEnabled(false);
@@ -109,6 +114,58 @@ Box* buildWidgetsPage()
     progressCard->addView(progressRow);
     page->addView(progressCard);
 
+    // ---- 横向滚动（对标 borealis components 的 HScroll）----
+    Rectangle* hscrollCard = makeCard();
+    hscrollCard->addView(makeText(getStr("widgets/hscroll"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    HScrollingFrame* hscroll = new HScrollingFrame();
+    hscroll->setHeight(150.0f);
+    Box* hscrollRow = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    for (int i = 0; i < 8; i++)
+    {
+        Box* item = new Box(Axis::COLUMN);
+        item->setAlignItems(AlignItems::CENTER);
+        item->setGap(6.0f);
+
+        Image* thumb = new Image();
+        thumb->setDimensions(120.0f, 68.0f);
+        thumb->setCornerRadius(getTheme().number("metric.radius.sm", 4.0f));
+        thumb->setImageFromFileAsync("resources/testcard.png");
+        item->addView(thumb);
+
+        item->addView(makeHint(getStr("widgets/hscroll_item", i + 1)));
+        hscrollRow->addView(item);
+    }
+    hscroll->setContentView(hscrollRow);
+    hscrollCard->addView(hscroll);
+    page->addView(hscrollCard);
+
+    // ---- 标签对齐（对标 borealis components 的 labels：left / center / right）----
+    Rectangle* alignCard = makeCard();
+    alignCard->addView(makeText(getStr("widgets/label_align"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    Box* alignRow = makeRow(0.0f);
+    alignRow->setJustifyContent(JustifyContent::SPACE_EVENLY);
+    alignRow->setAlignItems(AlignItems::CENTER);
+    const float alignWidth = getTheme().number("metric.label.alignDemoWidth", 200.0f);
+    for (const auto& item : std::initializer_list<std::pair<const char*, HorizontalAlign>>{
+             { "widgets/label_left", HorizontalAlign::LEFT },
+             { "widgets/label_center", HorizontalAlign::CENTER },
+             { "widgets/label_right", HorizontalAlign::RIGHT } })
+    {
+        Label* label = makeText(getStr(item.first), getTheme().number("metric.font.size.sm", 14.0f),
+            getTheme().color("color.text.primary"), true);
+        label->setWidthPercentage(30.0f);
+        label->setMinWidth(alignWidth * 0.4f);
+        label->setHorizontalAlign(item.second);
+        label->setBackgroundColor(getTheme().color("color.surface.hover"));
+        alignRow->addView(label);
+    }
+    alignCard->addView(alignRow);
+    page->addView(alignCard);
+
     // ---- 图片 ----
     Rectangle* imageCard = makeCard();
     imageCard->addView(makeText(getStr("widgets/image"),
@@ -122,6 +179,46 @@ Box* buildWidgetsPage()
     Button* reload = new Button(getStr("widgets/image_reload"));
     reload->setOnClick([image] { image->setImageFromFileAsync("resources/testcard.png"); });
     imageCard->addView(reload);
+
+    // 5 种尺寸 / 缩放组合（对标 borealis components 的 images 一节）：
+    // 缩小 / 原尺寸 / 放大 / 拉伸变形 / 居中裁切
+    Box* imageRow = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    imageRow->setAlignItems(AlignItems::CENTER);
+    imageRow->setJustifyContent(JustifyContent::SPACE_EVENLY);
+
+    struct ImageCase
+    {
+        const char* caption;
+        float width;
+        float height;
+        ImageScalingType scaling;
+    };
+    const ImageCase cases[] = {
+        { "widgets/image_downscaled", 76.0f, 76.0f, ImageScalingType::FILL },
+        { "widgets/image_original", AUTO, AUTO, ImageScalingType::FIT },
+        { "widgets/image_upscaled", 170.0f, 170.0f, ImageScalingType::FILL },
+        { "widgets/image_stretched", 300.0f, 75.0f, ImageScalingType::STRETCH },
+        { "widgets/image_centered", 140.0f, 75.0f, ImageScalingType::CENTER },
+    };
+
+    for (const ImageCase& item : cases)
+    {
+        Box* column = new Box(Axis::COLUMN);
+        column->setAlignItems(AlignItems::CENTER);
+        column->setGap(4.0f);
+
+        Image* sample = new Image();
+        sample->setWidth(item.width);
+        sample->setHeight(item.height);
+        sample->setScalingType(item.scaling);
+        sample->setCornerRadius(getTheme().number("metric.radius.sm", 4.0f));
+        sample->setImageFromFileAsync("resources/testcard.png");
+        column->addView(sample);
+
+        column->addView(makeHint(getStr(item.caption)));
+        imageRow->addView(column);
+    }
+    imageCard->addView(imageRow);
     page->addView(imageCard);
 
     return page;

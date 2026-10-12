@@ -4,7 +4,8 @@
     "page": "#2d2d2d",
     "card": "#1f2227",
     "raised": "#505050",
-    "sunken": "#323232"
+    "sunken": "#323232",
+    "hover": "#343841"
   },
   "text": {
     "primary": "#ffffff",

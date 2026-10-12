@@ -101,15 +101,39 @@ add_subdirectory(bklv)
 # 都要有一份 resources/：从哪个目录启动都能找到；测试写出来的 fixture 也落在
 # dist/ 里，不会污染仓库（以前只有 demo 复制资源，测试就退化成按工作目录解析，
 # 把 fixture 写进了仓库树，还会被打进 romfs）。
+# 实现注意：**每个输出目录只复制一次**。
+# 以前是给 21 个目标各挂一条 POST_BUILD copy_directory，全部往 dist/resources 写，
+# -j 并行时互相踩 → 间歇性失败（`make: *** [all] Error 2`），而且失败后**二进制还是旧的**，
+# 于是"改了代码没生效"这种假象会骗过验证。现在改成按输出目录建一个独立目标，
+# 其余目标依赖它，复制只发生一次。
 function(bklv_copy_resources target_name)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/resources")
-        add_custom_command(TARGET ${target_name} POST_BUILD
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/resources")
+        return()
+    endif()
+
+    # 所有目标共用 BKLV_OUT_DIR（见文件开头），按它建只复制一次的目标
+    set(out_dir "${BKLV_OUT_DIR}")
+    if(NOT out_dir)
+        set(out_dir "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    endif()
+    if(NOT out_dir)
+        message(FATAL_ERROR "bklv_copy_resources: 输出目录未知（BKLV_OUT_DIR 为空）")
+    endif()
+
+    string(MAKE_C_IDENTIFIER "${out_dir}" dir_id)
+    set(resource_target "bklv_copy_resources_${dir_id}")
+
+    if(NOT TARGET ${resource_target})
+        add_custom_target(${resource_target}
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${CMAKE_SOURCE_DIR}/resources"
-                "$<TARGET_FILE_DIR:${target_name}>/resources"
-            COMMENT "复制 resources/ 到输出目录"
+                "${out_dir}/resources"
+            COMMENT "复制 resources/ 到 ${out_dir}"
+            VERBATIM
         )
     endif()
+
+    add_dependencies(${target_name} ${resource_target})
 endfunction()
 
 # demo：页面 / tab / 列表项这一层应用代码 + 主程序
@@ -130,6 +154,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_theme.cpp
     app/pages/page_nav.cpp
     app/pages/page_overlay.cpp
+    app/pages/page_scroll.cpp
     app/pages/page_settings.cpp
     app/pages/page_transform.cpp
 )
