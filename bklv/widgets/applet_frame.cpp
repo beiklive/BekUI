@@ -1,5 +1,7 @@
 #include "bklv/widgets/applet_frame.hpp"
 
+#include "bklv/core/time.hpp"
+
 #include <algorithm>
 #include <utility>
 
@@ -231,8 +233,14 @@ void AppletFrame::pushContentView(View* view)
     if (view == nullptr)
         return;
 
+    View* outgoing = this->contentView;
+
     this->contentStack.push_back(view);
     this->attachContentView(view);
+
+    // 转场：旧页留在树上滑出去/淡出，落位时再摘掉
+    if (outgoing != nullptr && outgoing != view)
+        this->beginContentTransition(view, outgoing, true);
 }
 
 void AppletFrame::popContentView(std::function<void()> callback)
@@ -244,6 +252,7 @@ void AppletFrame::popContentView(std::function<void()> callback)
         return;
     }
 
+    View* outgoing = this->contentStack.back();
     this->contentStack.pop_back();
     this->attachContentView(this->contentStack.back());
 
@@ -251,8 +260,123 @@ void AppletFrame::popContentView(std::function<void()> callback)
     if (View* inner = this->contentBox->getDefaultFocus())
         getInputManager().giveFocus(inner);
 
-    if (callback)
+    this->pendingPopCallback = callback;
+
+    // 转场：被弹出的页面滑出去之后**释放**（它是下钻时临时建的详情页）
+    if (outgoing != nullptr && outgoing != this->contentView)
+        this->beginContentTransition(this->contentView, outgoing, false);
+    else if (callback)
+    {
+        this->pendingPopCallback = nullptr;
         callback();
+    }
+}
+
+void AppletFrame::beginContentTransition(View* incoming, View* outgoing, bool pushing)
+{
+    if (this->contentTransition == ContentTransition::NONE || this->contentTransitionDuration <= 0.0f)
+    {
+        // 不做转场：直接落位
+        this->incomingView = incoming;
+        this->outgoingView = outgoing;
+        this->transitionPushing = pushing;
+        this->finalizeTransition();
+        return;
+    }
+
+    this->incomingView      = incoming;
+    this->outgoingView      = outgoing;
+    this->transitionPushing = pushing;
+    this->pendingFreeOutgoing = !pushing; // 返回时旧页要删，下钻时旧页留在栈里
+
+    this->contentAnim.stop();
+    this->contentAnim.reset(0.0f);
+    this->contentAnim.addStep(1.0f, this->contentTransitionDuration, EasingFunction::CUBIC_OUT);
+    this->contentAnim.start();
+
+    this->transitionProgress = 0.0f;
+    this->applyContentTransition(0.0f);
+}
+
+void AppletFrame::applyContentTransition(float progress)
+{
+    const float width = this->contentBox != nullptr ? this->contentBox->getWidth() : 0.0f;
+    const bool slide  = this->contentTransition == ContentTransition::SLIDE
+        || this->contentTransition == ContentTransition::SLIDE_FADE;
+    const bool fade = this->contentTransition == ContentTransition::FADE
+        || this->contentTransition == ContentTransition::SLIDE_FADE;
+
+    if (this->incomingView != nullptr)
+    {
+        // 新页：从右边滑进来（返回时是从左边一点的位置回来）
+        const float from = slide ? (this->transitionPushing ? 1.0f : -0.25f) : 0.0f;
+        this->incomingView->setTranslateX((1.0f - progress) * from * width);
+        this->incomingView->setAlpha(fade ? progress : 1.0f);
+    }
+
+    if (this->outgoingView != nullptr)
+    {
+        const float to = slide ? (this->transitionPushing ? -0.25f : 1.0f) : 0.0f;
+        this->outgoingView->setTranslateX(progress * to * width);
+        this->outgoingView->setAlpha(fade ? 1.0f - progress : 1.0f);
+    }
+}
+
+void AppletFrame::stepContentTransition(float deltaSeconds)
+{
+    if (this->transitionProgress >= 1.0f)
+        return;
+
+    this->contentAnim.update(deltaSeconds);
+
+    const float progress = (float)this->contentAnim;
+    this->transitionProgress = progress;
+    this->applyContentTransition(progress);
+
+    if (progress >= 1.0f)
+        this->finalizeTransition();
+}
+
+void AppletFrame::finishContentTransition()
+{
+    this->stepContentTransition(getFrameDeltaSeconds());
+}
+
+void AppletFrame::finalizeTransition()
+{
+    this->transitionProgress = 1.0f;
+
+    if (this->incomingView != nullptr)
+    {
+        // 落位：清掉绘制期变换，回到正常状态
+        this->incomingView->resetTransform();
+        this->incomingView->setAlpha(1.0f);
+        this->incomingView = nullptr;
+    }
+
+    if (this->outgoingView != nullptr)
+    {
+        View* outgoing = this->outgoingView;
+        this->outgoingView = nullptr;
+
+        outgoing->resetTransform();
+        outgoing->setAlpha(1.0f);
+
+        // 摘掉（下钻时只脱离、留在栈里；返回时连视图一起释放）
+        if (outgoing->getParent() == this->contentBox)
+            this->contentBox->removeView(outgoing, this->pendingFreeOutgoing);
+        else if (this->pendingFreeOutgoing)
+            delete outgoing;
+    }
+
+    this->pendingFreeOutgoing = false;
+
+    if (this->pendingPopCallback)
+    {
+        std::function<void()> callback = this->pendingPopCallback;
+        this->pendingPopCallback       = nullptr;
+        callback();
+    }
 }
 
 void AppletFrame::refreshFooter()
@@ -266,6 +390,7 @@ void AppletFrame::update()
 {
     Box::update();
     this->updateBars();
+    this->finishContentTransition();
 }
 
 } // namespace bklv

@@ -40,6 +40,33 @@ Box* buildNavPage()
     host->addView(tabs);
     page->addView(host);
 
+    // ---- 事件总线：焦点/动作事件实时显示（进程级总线，RAII 句柄活到进程结束）----
+    Rectangle* eventCard = makeCard();
+    eventCard->addView(makeText(getStr("nav/event_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    Label* lastEvent = makeHint(getStr("nav/event_none"));
+    eventCard->addView(lastEvent);
+
+    // static：订阅句柄要活过页面构建函数；进程结束自动退订
+    static Subscription focusSub = getEventBus().subscribe<FocusChangedEvent>(
+        [lastEvent](const FocusChangedEvent& event) {
+            if (lastEvent == nullptr || event.current == nullptr)
+                return;
+            lastEvent->setText(getStr("nav/event_focus", event.current->getClassString()));
+        });
+
+    static Subscription actionSub = getEventBus().subscribe<ActionTriggeredEvent>(
+        [lastEvent](const ActionTriggeredEvent& event) {
+            if (lastEvent == nullptr || event.view == nullptr)
+                return;
+            lastEvent->setText(getStr("nav/event_action", event.view->getClassString(),
+                event.pointer ? getStr("nav/event_pointer") : getStr("nav/event_key")));
+        });
+
+    eventCard->addView(makeHint(getStr("nav/event_hint")));
+    page->addView(eventCard);
+
     return page;
 }
 

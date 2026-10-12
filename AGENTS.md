@@ -298,6 +298,17 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **裸 `AppearanceView` 也会在构造时 `applyTheme()`**：不这么做的话，
   直接 `new AppearanceView("xxx")` 的地方会拿到空外观，一笔都画不出来
   （EditTextDialog 的遮罩/面板踩过：结构对、颜色对，就是什么都不显示）。
+- **内容栈转场**（`widgets/applet_frame.*`）：`pushContentView`/`popContentView` 默认走
+  `ContentTransition::SLIDE_FADE`（0.22s），用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，
+  所以过渡期间零重排；`setContentTransition(NONE)` 直接落位。
+  两条语义要记住：① **pop 的回调等转场播完才执行**（和 Dialog"播完再摘"同一约定）；
+  ② **push 的旧页留在栈里只脱离树，pop 掉的那页在转场结束时释放**（详情页就是这种临时页）。
+  需要确定性步进（测试）用 `stepContentTransition(dt)`。
+- **事件总线**（`core/event.hpp`）：`getEventBus().subscribe<事件类型>(...)` 返回 **RAII 句柄**，
+  析构自动退订（换根/关页面时也可以 `clear()`）。框架自己发 `FocusChangedEvent` 与
+  `ActionTriggeredEvent`。
+  **不许用 `typeid`/`std::type_index`**（Switch 带 `-fno-rtti`）——总线内部用
+  "每个事件类型一个静态 token，取地址当 key"；派发期间增删订阅按快照处理。
 - **弹层与模态输入**（`core/input.cpp` 的模态栈 + `core/app.cpp` 的 `pushOverlay`）：
   `App::pushOverlay(view)` 把弹层挂到根视图最上层并切模态；`popOverlay` 摘下并恢复焦点。
   三条：

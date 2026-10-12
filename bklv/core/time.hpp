@@ -119,6 +119,10 @@ class Animatable : public Ticking
     float getValue() const { return this->value; }
     void update() override;
 
+    // 显式推进：不依赖全局帧时间。
+    // 转场这类需要确定性步进的场景（以及测试）用这个，update() 内部就是调它。
+    void update(float deltaSeconds);
+
     operator float() const { return this->value; }
 
   private:

@@ -393,11 +393,16 @@ int main()
         check(frame->getContentStackSize() == 3, "再下钻三层");
 
         // 逐层返回，返回的是**同一个对象**（说明只脱离不销毁）
+        // 转场语义：回调要等转场播完才执行（和 Dialog"播完再摘"同一约定）
         bool called = false;
         frame->popContentView([&called] { called = true; });
-        check(called, "popContentView 调了回调");
+        check(!called, "转场期间回调还没跑");
+        frame->stepContentTransition(1.0f);
+        check(called, "转场结束后回调执行");
         check(frame->getContentView() == pageB, "退回到第二层");
+
         frame->popContentView();
+        frame->stepContentTransition(1.0f);
         check(frame->getContentView() == pageA, "退回第一层");
         check(frame->getContentStackSize() == 1, "只剩一层");
 

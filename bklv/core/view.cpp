@@ -1,3 +1,4 @@
+#include "bklv/core/event.hpp"
 #include "bklv/core/view.hpp"
 
 #include <algorithm>
@@ -780,6 +781,15 @@ void View::unregisterAction(ActionIdentifier identifier)
 
 bool View::triggerAction(ControllerButton button, bool pointer)
 {
+    // 动作事件：全局 UI / 日志可以订阅（对标 borealis 把点击做成可订阅事件）
+    {
+        ActionTriggeredEvent event;
+        event.view    = this;
+        event.button  = static_cast<int>(button);
+        event.pointer = pointer;
+        getEventBus().publish(event);
+    }
+
     // 指针：只认命中视图自己的动作。hitTest 只会返回可聚焦视图，
     // 所以不需要冒泡（点按钮的文字区域时命中的也是按钮本身）。
     if (pointer)

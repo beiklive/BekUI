@@ -328,15 +328,19 @@ void Animatable::setEndCallback(std::function<void(bool finished)> callback)
 
 void Animatable::update()
 {
+    // 用受保护的帧间隔：没有 ImGui 上下文时（无窗口测试）也能跑
+    this->update(getFrameDeltaSeconds());
+}
+
+void Animatable::update(float deltaTime)
+{
     if (this->currentStep >= this->steps.size())
     {
         this->stop();
         return;
     }
 
-    // 用受保护的帧间隔：没有 ImGui 上下文时（无窗口测试）也能跑
-    const float deltaTime = getFrameDeltaSeconds();
-    const Step& step      = this->steps[this->currentStep];
+    const Step& step = this->steps[this->currentStep];
 
     this->stepElapsed += deltaTime;
 

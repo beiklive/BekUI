@@ -89,7 +89,14 @@
     "page_c": "第三页内容",
     "body_a": "切到别的 tab 再切回来，这一页不会被重建。",
     "body_b": "页面内容由使用方提供，TabFrame 只管切换与外观。",
-    "body_c": "tab 格子的外观来自主题里的 widgets/tab_cell.json。"
+    "body_c": "tab 格子的外观来自主题里的 widgets/tab_cell.json。",
+    "event_title": "事件总线",
+    "event_none": "还没收到事件（动一下焦点试试）",
+    "event_focus": "焦点 → {}",
+    "event_action": "动作：{}（{}）",
+    "event_pointer": "鼠标",
+    "event_key": "按键/手柄",
+    "event_hint": "框架把焦点变化与动作触发发到事件总线，这一行由订阅回调实时更新；订阅句柄是 RAII 的，析构自动退订。"
   },
   "widgets": {
     "cancel": "取消",

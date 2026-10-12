@@ -258,6 +258,7 @@ set(BKLV_CORE_SOURCES
     core/task.cpp
     core/time.cpp
     core/font.cpp
+    core/event.cpp
     core/gesture.cpp
     core/graphics.cpp
     core/image_decoder.cpp

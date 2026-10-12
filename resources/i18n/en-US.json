@@ -89,7 +89,14 @@
     "page_c": "Third page",
     "body_a": "Switch away and back - this page is not rebuilt.",
     "body_b": "Content is provided by the caller; TabFrame only handles switching and appearance.",
-    "body_c": "Tab cell appearance comes from widgets/tab_cell.json in the theme."
+    "body_c": "Tab cell appearance comes from widgets/tab_cell.json in the theme.",
+    "event_title": "Event bus",
+    "event_none": "no events yet (move the focus)",
+    "event_focus": "focus -> {}",
+    "event_action": "action: {} ({})",
+    "event_pointer": "pointer",
+    "event_key": "key/pad",
+    "event_hint": "The framework publishes focus/action events on the bus; this line is updated by a subscriber. Handles are RAII and unsubscribe on destruction."
   },
   "widgets": {
     "cancel": "Cancel",

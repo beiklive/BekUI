@@ -1,4 +1,5 @@
 #include "bklv/core/audio.hpp"
+#include "bklv/core/event.hpp"
 #include "bklv/core/input.hpp"
 
 #include "bklv/core/time.hpp"
@@ -257,6 +258,14 @@ void InputManager::giveFocus(View* view)
 
     if (view != nullptr && !view->isFocusable() && view->getDefaultFocus() == nullptr)
         return;
+
+    // 焦点变化事件（全局 UI 可以订阅它做联动）
+    {
+        FocusChangedEvent event;
+        event.previous = this->currentFocus;
+        event.current  = view;
+        getEventBus().publish(event);
+    }
 
     // 焦点反馈音：侧栏条目单独一种（和 borealis 的 SOUND_FOCUS_SIDEBAR 一致）
     if (view != nullptr)

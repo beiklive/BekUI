@@ -19,6 +19,7 @@
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
 #include "bklv/core/gamepad.hpp"
+#include "bklv/core/event.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/gesture.hpp"
 #include "bklv/core/graphics.hpp"

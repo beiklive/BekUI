@@ -61,12 +61,12 @@
 | logger | `core/logger.hpp` + `views/debug_window` | ✅ |
 | platform / assets | `core/platform.hpp` / `core/resource.hpp` | ✅ |
 | view / box / frame_context | `core/view.hpp` / `core/box.hpp` | ✅ |
-| activity（Activity 栈 + 转场动画） | `AppletFrame` 的内容栈 | ⚠️ 无独立 Activity 与转场动画（待补） |
+| activity（Activity 栈 + 转场动画） | `AppletFrame` 内容栈 + `ContentTransition` | ✅ 改良 | 内容栈等价于 Activity 栈；转场用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，不参与布局所以过渡期间零重排。borealis 的转场捆在 Activity/XML 上，我们做成 `setContentTransition(NONE/SLIDE/FADE/SLIDE_FADE)` + 时长，push/pop 对称；**pop 的回调等转场播完再执行**（和 Dialog"播完再摘"同一约定），popped 视图在转场结束时释放 |
 | audio（8 种系统音效） | `core/audio.hpp`（8 种音效，**代码合成**） | ✅ 改良 | borealis **只有 Switch 出声**（用 Nintendo 内置音效）、桌面什么都不做；我们代码合成，桌面 + Switch 同一套，且不随包带任何音频素材。Switch 的 audren 输出还没接（需要真机） |
 | **video** | — | ❌ 见"无法实现"一节 |
 | notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
 | task / thread（异步任务、线程池） | `core/task.hpp`（固定 2 worker + 主线程回调） | ✅ 改良 | borealis 用 `brls::async` + `ASYNC_RETAIN` 宏；这里是普通线程池，回调**保证在主线程**跑（由 `App::frame` 每帧 pump），没有宏 |
-| **event**（事件总线） | 动作系统 | ⚠️ 部分 |
+| event（事件总线） | `core/event.hpp` + 焦点/动作内置事件 | ✅ 改良 | 按事件类型订阅（`subscribe<FocusChangedEvent>`）；**不用 typeid**（Switch 带 `-fno-rtti`），改用静态 token 取地址当 key；订阅句柄是 **RAII** 的，析构自动退订；派发期间增删订阅安全（快照语义） |
 | gesture / touch/ | `core/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
 | singleton / util / main | — | ➖ 工具类，不逐个对等 |
 
@@ -180,6 +180,15 @@ scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_componen
 | 段头 | `getSectionTitle(section)` **返回空串 = 不占表头行**；段头 cell 用 `RecyclerSectionHeader`，标题经**虚函数** `onSectionTitle` 下发（不用 RTTI，Switch 构建带 `-fno-rtti`） |
 | 兼容 | 单段老写法（只重写 `getItemCount()`）一行都不用改 |
 | 单元 | `RecyclerCell::setSectionIndex(section, index)`，`getSection()/getIndex()`；`getIndex()` 在单段时仍是行号 |
+
+### 转场与事件总线（本轮）
+
+| 项 | 说明 |
+|---|---|
+| 转场实现 | 只用绘制期变换 + `Animatable`，**不触发布局**；`stepContentTransition(dt)` 可确定性步进 → 无窗口可测（33 项） |
+| 转场语义 | push：新页从右侧滑入+淡入，旧页左移让位（留在栈里，返回时状态还在）；pop：被弹出页滑出**并释放**，回调等转场结束 |
+| `Animatable::update(dt)` | 新增显式 dt 重载（`update()` 仍走全局帧时间），转场与测试都能确定性推进 |
+| 事件总线 | 三种事件类型互不串扰；`Subscription` 移动语义正确；`clear()` 可在换根时清订阅；焦点/动作事件由框架自己发 |
 
 ## 七点五、实现过程中顺带修掉的真 bug
 

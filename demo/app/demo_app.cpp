@@ -125,7 +125,6 @@ DemoApp::DemoApp()
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_INFO("UI 缩放：%.3f（主题尺寸按 1280x720 写）", (double)getUiScale());
 
-    this->selectPage(0);
 }
 
 void DemoApp::addPage(const std::string& name, const std::string& subtitle, Box* view,
