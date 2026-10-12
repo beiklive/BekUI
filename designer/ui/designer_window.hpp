@@ -89,6 +89,8 @@ class DesignerWindow
     void drawViewTree(const AppearanceDoc::Json& node, const std::string& path);
     void drawStatus();
     void drawPreview();
+    void drawPreviewCanvas(ImVec2 origin, ImVec2 size, bklv::View* view, bool checker);
+    bklv::View* buildPreviewView(const std::string& jsonOverride);
     void drawProps();
     void drawTableProps();          // 主题表：键列表 + 颜色/数值编辑
     void drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
@@ -141,7 +143,6 @@ class DesignerWindow
     // ---- 其它面板 ----
     void drawDirtyOverview();
     void drawWarningsPanel();
-    void drawHelpPopup(const char* key);
 
     bklv::App* app = nullptr;
 
@@ -177,6 +178,7 @@ class DesignerWindow
     std::string pendingViewFile;
 
     // 面板开关
+    bool showHelp      = false;
     bool showOverview  = false;
     bool showWarnings  = false;
     bool previewMaximized = false;
@@ -187,7 +189,15 @@ class DesignerWindow
     char treeFilter[64] = "";
 
     // 预览交互
-    bool previewContext = false;   // 放进样例容器里看间距/父容器效果
+    bool previewContext   = false; // 放进样例容器里看间距/父容器效果
+    bool previewSubtree   = false; // 页面视图：只渲染选中子树（否则整页）
+    bool previewCompare   = false; // 并排对比：左=编辑中，右=磁盘上的原文件
+    int previewStateIndex = 0;     // 0=默认 1=focused 2=pressed 3=disabled 4=selected
+    float canvasPanX = 0.0f;
+    float canvasPanY = 0.0f;
+    int leftWidthUi  = 320;
+    int rightWidthUi = 420;
+    bool leftCollapsed = false;
 
     int viewNodeCount   = 0;
     int viewFieldCount  = 0;
@@ -198,6 +208,7 @@ class DesignerWindow
 
     // 预览
     bklv::View* previewView = nullptr;
+    bklv::View* compareView = nullptr;   // 并排对比：磁盘上那份
     std::string previewError;
     int canvasPreset   = 0; // 0=自适应 1=1280x720 2=720x480 3=640x360 4=自定义
     bool canvasChecker = true;

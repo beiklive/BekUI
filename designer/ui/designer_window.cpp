@@ -35,6 +35,34 @@ bool inputString(const char* label, std::string& value, size_t maxLength = 512)
     return false;
 }
 
+// 字段速查：属性表标签悬停时显示（讲清"这个字段干什么 / 能写什么"）
+const char* helpTextFor(const char* key)
+{
+    static const std::pair<const char*, const char*> help[] = {
+        { "box", "盒模型与布局：只有写了的字段才会套用，空 box 不会冲掉控件默认值" },
+        { "height", "数字按 720p 缩放；也可写 \"auto\" / \"50%\" / @theme/metric.a.b" },
+        { "radius", "圆角半径（会被 UI 缩放乘）" },
+        { "paddingTop", "上下内边距（数字或 @theme/metric...）" },
+        { "paddingSides", "左右内边距" },
+        { "gap", "子节点间距" },
+        { "axis", "主轴方向：row / column（AppearanceView 默认 column，横向控件要写 row）" },
+        { "justifyContent", "主轴对齐：flexStart / center / flexEnd / spaceBetween / spaceAround / spaceEvenly" },
+        { "alignItems", "交叉轴对齐：flexStart / center / flexEnd / stretch / baseline" },
+        { "backgroundColor", "底色，@theme/color.x.y 或 #RRGGBB[AA]" },
+        { "layers", "绘制结构，顺序就是绘制顺序：hlBg 在内容层前，shadow 在底色前，hlGlow/hlBorder 最后" },
+        { "op", "层类型：rect / text / image / shadow / custom（custom 的语义绘制在 C++ 里）" },
+        { "fill", "填充色（shadow 层里是阴影浓度）" },
+        { "inset", "[上,右,下,左] 相对控件范围的收缩；负数=向外扩" },
+        { "shadow", "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空" },
+        { "cutout", "挖空：只画外圈，内圈一个顶点都不落，后面加半透明底也不会透出阴影" },
+        { "states", "状态动效：通道写 <层id>.<属性名>，to/duration(ms)/easing" },
+    };;
+    for (const auto& entry : help)
+        if (std::strcmp(entry.first, key) == 0)
+            return entry.second;
+    return nullptr;
+}
+
 // 属性表统一排版：标签画在左列，控件占右边剩余宽度。
 // 直接把 label 交给 ImGui 画在控件右侧的话，控件一宽标签就被顶出面板（踩过）。
 constexpr float kLabelWidth = 148.0f;
@@ -42,6 +70,9 @@ constexpr float kLabelWidth = 148.0f;
 void propLabel(const char* label)
 {
     ImGui::TextColored(kMuted, "%s", label);
+    if (const char* help = helpTextFor(label))
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", help);
     ImGui::SameLine(kLabelWidth);
     ImGui::SetNextItemWidth(-1.0f);
 }
@@ -762,6 +793,11 @@ void DesignerWindow::drawTopBar()
     ImGui::SameLine();
     if (ImGui::Button("校验面板"))
         this->showWarnings = true;
+    ImGui::SameLine();
+    if (ImGui::Button("快捷键/约定"))
+        this->showHelp = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Ctrl+S 保存 · Ctrl+Z/Y 撤销重做 · Ctrl+D 复制层 · Alt+↑↓ 移层 · F1 校验 · F2 预览最大化");
 
     ImGui::SameLine();
     if (this->dirty)
@@ -953,6 +989,8 @@ void DesignerWindow::drawTree()
                 }
                 for (const std::string& key : this->doc.boxKeys())
                 {
+                    if (this->treeFilter[0] != 0 && key.find(this->treeFilter) == std::string::npos)
+                        continue;
                     AppearanceDoc::Json value;
                     std::string shown;
                     if (this->doc.getBoxString(key, shown))
@@ -976,6 +1014,10 @@ void DesignerWindow::drawTree()
             // 层
             for (int i = 0; i < this->doc.layerCount(); i++)
             {
+                if (this->treeFilter[0] != 0
+                    && this->doc.layerId(i).find(this->treeFilter) == std::string::npos
+                    && this->doc.layerOp(i).find(this->treeFilter) == std::string::npos)
+                    continue;
                 const bool selected = (this->selection.kind == SelKind::LAYER
                                           || this->selection.kind == SelKind::LAYER_FIELD)
                     && this->selection.index == i;
@@ -1248,38 +1290,6 @@ std::string DesignerWindow::previewJson() const
     }
 }
 
-void DesignerWindow::drawHelpPopup(const char* key)
-{
-    // 字段速查（悬停提示）：只讲"这个字段是干什么的 / 取值范围"
-    static const std::pair<const char*, const char*> help[] = {
-        { "box", "盒模型与布局：只有写了的字段才会套用，空 box 不会冲掉控件默认值" },
-        { "height", "数字按 720p 缩放；也可写 \"auto\" / \"50%\" / @theme/metric.a.b" },
-        { "radius", "圆角半径（会被 UI 缩放乘）" },
-        { "paddingTop", "上下内边距（数字或 @theme/metric...）" },
-        { "paddingSides", "左右内边距" },
-        { "gap", "子节点间距" },
-        { "axis", "主轴方向：row / column（AppearanceView 默认 column，横向控件要写 row）" },
-        { "justifyContent", "主轴对齐：flexStart / center / flexEnd / spaceBetween / spaceAround / spaceEvenly" },
-        { "alignItems", "交叉轴对齐：flexStart / center / flexEnd / stretch / baseline" },
-        { "backgroundColor", "底色，@theme/color.x.y 或 #RRGGBB[AA]" },
-        { "layers", "绘制结构，顺序就是绘制顺序：hlBg 在内容层前，shadow 在底色前，hlGlow/hlBorder 最后" },
-        { "op", "层类型：rect / text / image / shadow / custom（custom 的语义绘制在 C++ 里）" },
-        { "fill", "填充色（shadow 层里是阴影浓度）" },
-        { "inset", "[上,右,下,左] 相对控件范围的收缩；负数=向外扩" },
-        { "shadow", "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空" },
-        { "cutout", "挖空：只画外圈，内圈一个顶点都不落，后面加半透明底也不会透出阴影" },
-        { "states", "状态动效：通道写 <层id>.<属性名>，to/duration(ms)/easing" },
-    };
-    for (const auto& entry : help)
-    {
-        if (std::strcmp(entry.first, key) == 0)
-        {
-            ImGui::SetTooltip("%s", entry.second);
-            return;
-        }
-    }
-}
-
 void DesignerWindow::drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
     const std::function<void(const std::string&)>& onPick)
 {
@@ -1288,10 +1298,8 @@ void DesignerWindow::drawAddFieldCombo(const char* id, const std::vector<std::st
         return;
 
     for (const std::string& key : candidates)
-    {
         if (ImGui::Selectable(key.c_str()))
             onPick(key);
-    }
     ImGui::EndCombo();
 }
 
@@ -1491,6 +1499,112 @@ void DesignerWindow::drawBoxGuides(ImVec2 origin, ImVec2 size) const
         IM_COL32(0, 255, 204, 255), "padding 内的内容区");
 }
 
+View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
+{
+    // 页面视图：直接实例化那棵视图树（可以只实例化选中的子树）
+    if (!this->currentViewFile.empty())
+    {
+        std::string text = jsonOverride;
+        if (text.empty())
+        {
+            std::string readError;
+            readTextFile(this->currentFilePath, text, readError);
+        }
+
+        if (this->previewSubtree && this->selection.kind == SelKind::VIEW
+            && !this->selection.key.empty())
+        {
+            // 按树的路径取出那一棵子树（$.$/1/0 这种），单独实例化
+            std::string nodeText;
+            const AppearanceDoc::Json* node = &this->doc.root();
+            std::string path                = this->selection.key;
+            size_t start                    = 0;
+            while (start < path.size() && node != nullptr)
+            {
+                const size_t next = path.find('/', start + 1);
+                const std::string step = path.substr(start + 1, next - start - 1);
+                if (step == "$")
+                {
+                    node = &this->doc.root();
+                }
+                else if (node->contains("children") && (*node)["children"].is_array())
+                {
+                    const int index = std::atoi(step.c_str());
+                    if (index < 0 || index >= (int)(*node)["children"].size())
+                        node = nullptr;
+                    else
+                        node = &(*node)["children"][(size_t)index];
+                }
+                else
+                    node = nullptr;
+
+                if (next == std::string::npos)
+                    break;
+                start = next;
+            }
+            if (node != nullptr && node->is_object())
+                nodeText = node->dump();
+            text = nodeText.empty() ? text : nodeText;
+        }
+
+        View* created = createFromJSONString(text);
+        if (created == nullptr)
+            this->previewError = "视图 JSON 实例化失败（未知 type / children 结构 / include 路径）";
+        return created;
+    }
+
+    if (this->currentWidget.empty())
+        return nullptr;
+
+    AppearanceView* control = this->createPreviewControl();
+    std::string compileError;
+    if (!control->applyAppearanceJson(jsonOverride.empty() ? this->previewJson() : jsonOverride,
+            compileError))
+    {
+        this->previewError = compileError;
+        delete control;
+        return nullptr;
+    }
+
+    // 状态：状态节点 / 状态工具栏都能驱动它（工具栏用真实时长，能看动效过程）
+    const std::string state = (this->selection.kind == SelKind::STATE
+                                  || this->selection.kind == SelKind::CHANNEL)
+        ? this->selection.state
+        : std::string();
+    if (!state.empty())
+        control->setAppearanceState(state, true);
+    else
+    {
+        static const char* toolbarStates[] = { "", "focused", "pressed", "disabled", "selected" };
+        const char* wanted = toolbarStates[this->previewStateIndex];
+        if (wanted[0] != 0)
+            control->setAppearanceState(wanted, true);
+    }
+
+    // 样例容器：把控件放进一个真实的横向容器里，看间距/父容器的效果
+    if (this->previewContext)
+    {
+        Box* host = new Box(Axis::ROW);
+        host->setGap(12.0f);
+        host->setPadding(16.0f, 16.0f, 16.0f, 16.0f);
+        host->setAlignItems(AlignItems::CENTER);
+        host->addView(control);
+
+        Rectangle* sibling = new Rectangle("card");
+        sibling->setWidth(90.0f);
+        sibling->setHeight(40.0f);
+        host->addView(sibling);
+
+        Rectangle* tail = new Rectangle("card");
+        tail->setWidth(90.0f);
+        tail->setHeight(40.0f);
+        host->addView(tail);
+        return host;
+    }
+
+    return control;
+}
+
 void DesignerWindow::ensurePreviewBuilt()
 {
     if (!this->previewDirty)
@@ -1505,46 +1619,64 @@ void DesignerWindow::ensurePreviewBuilt()
         this->previewView = nullptr;
     }
 
-    // 页面视图：直接实例化那棵视图树
-    if (!this->currentViewFile.empty())
+    this->previewView = this->buildPreviewView(std::string());
+
+    if (this->compareView != nullptr)
     {
-        std::string text;
-        std::string readError;
-        if (readTextFile(this->currentFilePath, text, readError))
-            this->previewView = createFromJSONString(text);
-        if (this->previewView == nullptr)
-            this->previewError = readError.empty() ? "视图 JSON 实例化失败（看日志）" : readError;
-        return;
+        delete this->compareView;
+        this->compareView = nullptr;
+    }
+    if (this->previewCompare)
+        this->compareView = this->buildPreviewView(this->savedText);
+}
+
+void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, bool checker)
+{
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    // 底：棋盘格方便看 shadow / 半透明，否则用页面底色
+    const ImU32 dark = checker ? IM_COL32(38, 38, 38, 255) : IM_COL32(45, 45, 45, 255);
+    const ImU32 lite = checker ? IM_COL32(48, 48, 48, 255) : dark;
+    drawList->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), dark);
+    if (checker)
+        for (int y = 0; y < (int)size.y; y += 16)
+            for (int x = 0; x < (int)size.x; x += 16)
+                if (((x / 16) + (y / 16)) % 2 == 0)
+                    drawList->AddRectFilled(ImVec2(origin.x + (float)x, origin.y + (float)y),
+                        ImVec2(std::min(origin.x + x + 16.0f, origin.x + size.x),
+                            std::min(origin.y + y + 16.0f, origin.y + size.y)), lite);
+
+    if (view != nullptr)
+    {
+        YGNodeCalculateLayout(view->getYGNode(), size.x, size.y, YGDirectionLTR);
+        view->notifyLayout();
+        view->update();
+        view->setTranslation(origin.x, origin.y);
+
+        FrameContext ctx;
+        ctx.drawList   = drawList;
+        ctx.pixelRatio = 1.0f;
+
+        drawList->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y), true);
+        view->frame(&ctx);
+        drawList->PopClipRect();
     }
 
-    if (this->currentWidget.empty())
-        return;
-
-    AppearanceView* control = this->createPreviewControl();
-    std::string compileError;
-    if (!control->applyAppearanceJson(this->previewJson(), compileError))
-    {
-        this->previewError = compileError;
-        delete control;
-        return;
-    }
-
-    // 状态预览：把该状态打开（duration 已经归零，立刻到位）
-    if (this->selection.kind == SelKind::STATE || this->selection.kind == SelKind::CHANNEL)
-        control->setAppearanceState(this->selection.state, true);
-
-    this->previewView = control;
+    drawList->AddRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
+        IM_COL32(90, 95, 103, 255));
 }
 
 void DesignerWindow::drawPreview()
 {
+    // ---- 控制行 1：画布 ----
     ImGui::TextColored(kAccent, "预览");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(132);
-    ImGui::Combo("尺寸", &this->canvasPreset,
-        "自适应（按文件类型）\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
+    ImGui::SetNextItemWidth(120);
+    ImGui::Combo("##size", &this->canvasPreset,
+        "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("画布尺寸。自适应按文件类型给：整页 960×560、单元格 420×160、单层 360×200");
 
-    // 自适应：按文件/选中节点猜一个合适的画布
     if (this->canvasPreset == 0)
     {
         if (!this->currentViewFile.empty())
@@ -1596,75 +1728,146 @@ void DesignerWindow::drawPreview()
     this->canvasHeight = std::max(30, std::min(this->canvasHeight, 4000));
 
     ImGui::SameLine();
-    ImGui::Checkbox("透明网格底", &this->canvasChecker);
+    ImGui::Checkbox("网格底", &this->canvasChecker);
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(96);
-    ImGui::Combo("缩放", &this->canvasZoom, "50%\0" "75%\0" "100%\0" "150%\0");
-    const float zoom   = this->canvasZoom == 0 ? 0.5f : this->canvasZoom == 1 ? 0.75f
+    if (ImGui::SmallButton("重置视图"))
+    {
+        this->canvasZoom = 2;
+        this->canvasPanX = 0.0f;
+        this->canvasPanY = 0.0f;
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("滚轮缩放、中键（或按住空格）拖动平移");
+
+    const float zoom = this->canvasZoom == 0 ? 0.5f : this->canvasZoom == 1 ? 0.75f
         : this->canvasZoom == 2 ? 1.0f : 1.5f;
 
-    const char* modeText = "选中「文件」→ 渲染整个控件外观（真实控件）";
+    // ---- 控制行 2：状态工具栏 + 上下文/子树/对比 ----
+    ImGui::TextColored(kMuted, "状态");
+    ImGui::SameLine();
+    static const char* stateLabels[] = { "默认", "focused", "pressed", "disabled", "selected" };
+    for (int i = 0; i < 5; i++)
+    {
+        if (i > 0)
+            ImGui::SameLine();
+        const bool active = (this->previewStateIndex == i);
+        if (active)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.64f, 1.0f));
+        if (ImGui::SmallButton(stateLabels[i]))
+        {
+            this->previewStateIndex = i;
+            this->previewDirty      = true;
+        }
+        if (active)
+            ImGui::PopStyleColor();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("按状态看效果动效（用真实时长，能看到过程）");
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("样例容器", &this->previewContext))
+        this->previewDirty = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("把控件放进一个横向容器里看间距/父容器效果（不再是孤立的一块）");
+
+    if (!this->currentViewFile.empty())
+    {
+        ImGui::SameLine();
+        if (ImGui::Checkbox("只渲染选中子树", &this->previewSubtree))
+            this->previewDirty = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Checkbox("并排对比", &this->previewCompare))
+        this->previewDirty = true;
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("左边=正在编辑的，右边=磁盘上那份（改前改后一眼看出差别）");
+
+    // ---- 差异标注：设计器与真机可能不一样的地方，写在明面上 ----
+    {
+        const float uiScale = (float)this->canvasWidth / 1280.0f;
+        ImGui::TextColored(kMuted,
+            "画布 %d×%d · UI 缩放按画布宽算 ≈ %.2f×（真机 = 窗口宽/1280）· 主题目录 %s",
+            this->canvasWidth, this->canvasHeight, uiScale,
+            this->currentTable.empty() && this->project.themeRoot.empty() ? "-"
+                                                                         : this->project.themeDir().c_str());
+    }
+
+    const char* modeText = "选中「文件」→ 整个控件外观（真实控件）";
     switch (this->selection.kind)
     {
         case SelKind::BOX: modeText = "选中「box」→ 盒模型：虚线标出边界与 padding"; break;
-        case SelKind::LAYER:
-            modeText = "选中「某一层」→ 只画这一层（棋盘格底，方便看 shadow / 半透明）";
-            break;
+        case SelKind::LAYER: modeText = "选中「某一层」→ 只画这一层"; break;
         case SelKind::STATE:
-        case SelKind::CHANNEL:
-            modeText = "选中「某个状态」→ 该状态生效的样子（时长已归零，立刻到位）";
-            break;
+        case SelKind::CHANNEL: modeText = "选中「某个状态」→ 该状态生效的样子"; break;
+        case SelKind::TABLE: modeText = "主题表没有预览（颜色/数值改完直接看控件页）"; break;
         default: break;
     }
     if (!this->currentViewFile.empty())
-        modeText = "页面视图 → 真实实例化这棵视图树，整页渲染";
+        modeText = this->previewSubtree ? "页面视图 → 只渲染选中的那一棵子树"
+                                        : "页面视图 → 真实实例化整页";
+    if (this->previewCompare)
+        modeText = "并排对比：左=编辑中 / 右=磁盘上那份";
     ImGui::TextColored(kMuted, "%s", modeText);
 
     ImGui::BeginChild("##stage", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
 
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const ImVec2 size((float)this->canvasWidth * zoom, (float)this->canvasHeight * zoom);
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    // 滚轮缩放 + 中键/空格拖动
+    if (ImGui::IsWindowHovered())
+    {
+        const float wheel = ImGui::GetIO().MouseWheel;
+        if (wheel > 0.0f && this->canvasZoom < 3)
+            this->canvasZoom++;
+        else if (wheel < 0.0f && this->canvasZoom > 0)
+            this->canvasZoom--;
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)
+            || (ImGui::GetIO().KeyShift && ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+        {
+            const ImVec2 delta = ImGui::GetIO().MouseDelta;
+            this->canvasPanX += delta.x;
+            this->canvasPanY += delta.y;
+        }
+    }
 
-    // 画布底：棋盘格方便看 shadow / 半透明
-    const ImU32 dark = IM_COL32(38, 38, 38, 255);
-    const ImU32 lite = IM_COL32(48, 48, 48, 255);
-    drawList->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), dark);
-    for (int y = 0; y < (int)size.y; y += 16)
-        for (int x = 0; x < (int)size.x; x += 16)
-            if (((x / 16) + (y / 16)) % 2 == 0)
-                drawList->AddRectFilled(ImVec2(origin.x + (float)x, origin.y + (float)y),
-                    ImVec2(std::min(origin.x + x + 16.0f, origin.x + size.x),
-                        std::min(origin.y + y + 16.0f, origin.y + size.y)), lite);
+    const ImVec2 stagePos(ImGui::GetCursorScreenPos().x + this->canvasPanX,
+        ImGui::GetCursorScreenPos().y + this->canvasPanY);
+    const ImVec2 size((float)this->canvasWidth * zoom, (float)this->canvasHeight * zoom);
 
     this->ensurePreviewBuilt();
 
     if (this->selection.kind == SelKind::BOX)
-        this->drawBoxGuides(origin, size);
+        this->drawBoxGuides(stagePos, size);
 
-    if (this->previewView != nullptr)
+    if (this->previewCompare)
     {
-        // 手动驱动这一棵视图：它不在 App 的视图树里，所以布局/更新/绘制都自己来。
-        // frame() 用的是视图自己的（Yoga 算出来的）绝对坐标，所以把它平移到画布原点。
-        View* view = this->previewView;
-        YGNodeCalculateLayout(view->getYGNode(), size.x, size.y, YGDirectionLTR);
-        view->notifyLayout();
-        view->update();
-        view->setTranslation(origin.x, origin.y);
-
-        FrameContext ctx;
-        ctx.drawList   = drawList;
-        ctx.pixelRatio = 1.0f;
-
-        drawList->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y), true);
-        view->frame(&ctx);
-        drawList->PopClipRect();
+        const float half = std::max(60.0f, size.x);
+        this->drawPreviewCanvas(stagePos, ImVec2(half, size.y), this->previewView,
+            this->canvasChecker);
+        ImGui::GetWindowDrawList()->AddText(ImVec2(stagePos.x + 6, stagePos.y + 4),
+            IM_COL32(0, 255, 204, 255), "编辑中");
+        const ImVec2 rightPos(stagePos.x + half + 24.0f, stagePos.y);
+        this->drawPreviewCanvas(rightPos, ImVec2(half, size.y), this->compareView,
+            this->canvasChecker);
+        ImGui::GetWindowDrawList()->AddText(ImVec2(rightPos.x + 6, rightPos.y + 4),
+            IM_COL32(255, 183, 77, 255), "磁盘上那份");
+        ImGui::Dummy(ImVec2(half * 2.0f + 32.0f, size.y + 8.0f));
+    }
+    else
+    {
+        this->drawPreviewCanvas(stagePos, size, this->previewView, this->canvasChecker);
+        ImGui::Dummy(ImVec2(size.x + 8.0f, size.y + 8.0f));
     }
 
-    drawList->AddRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
-        IM_COL32(90, 95, 103, 255));
+    // 鼠标在画布上的坐标（对齐时有用）
+    if (ImGui::IsWindowHovered())
+    {
+        const ImVec2 mouse = ImGui::GetIO().MousePos;
+        const float localX = (mouse.x - stagePos.x) / zoom;
+        const float localY = (mouse.y - stagePos.y) / zoom;
+        if (localX >= 0.0f && localY >= 0.0f && localX <= this->canvasWidth
+            && localY <= this->canvasHeight)
+            ImGui::SetTooltip("画布坐标 (%.0f, %.0f)", localX, localY);
+    }
 
-    ImGui::Dummy(ImVec2(size.x + 8.0f, size.y + 8.0f));
     ImGui::EndChild();
 
     if (!this->previewError.empty())
@@ -2394,6 +2597,30 @@ void DesignerWindow::drawModals()
         ImGui::EndPopup();
     }
 
+    if (this->showHelp)
+    {
+        ImGui::OpenPopup("快捷键与约定");
+        this->showHelp = false;
+    }
+    if (ImGui::BeginPopupModal("快捷键与约定", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kAccent, "快捷键");
+        ImGui::BulletText("Ctrl+S 保存（先看 diff）· Ctrl+Z / Ctrl+Y 撤销 · 重做");
+        ImGui::BulletText("Ctrl+D 复制当前层 · Alt+↑ / Alt+↓ 上移 / 下移当前层");
+        ImGui::BulletText("F1 校验面板 · F2 预览最大化 · 滚轮缩放画布 · 中键/Shift+左键 平移");
+        ImGui::Separator();
+        ImGui::TextColored(kAccent, "约定（改样式前值得知道）");
+        ImGui::BulletText("尺寸/字号按 720p 写，运行时按窗口宽等比缩放；opacity/duration 不缩放");
+        ImGui::BulletText("层序：shadow 在底色前；hlBg 在内容层前；hlGlow / hlBorder 最后");
+        ImGui::BulletText("主题引用 @theme/color.a.b 或 @theme/metric.a.b，key 不存在会编译失败");
+        ImGui::BulletText("外观必须在 theme.json 的 widgets[] 里登记（设计器里「新建外观」会自动登记）");
+        ImGui::BulletText("写盘 = 临时文件 + rename 原子替换，并留一份 .bak");
+        ImGui::Separator();
+        if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     if (this->showNewAppearance)
     {
         ImGui::OpenPopup("新建外观文件");
@@ -2735,8 +2962,8 @@ void DesignerWindow::draw()
 
     this->drawTopBar();
 
-    const float leftWidth = 320.0f;
-    const float rightWidth = 420.0f;
+    const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
+    const float rightWidth = (float)this->rightWidthUi;
     const ImVec2 avail = ImGui::GetContentRegionAvail();
 
     if (this->previewMaximized)
@@ -2750,13 +2977,29 @@ void DesignerWindow::draw()
     }
 
     ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
+    if (this->leftCollapsed)
     {
+        if (ImGui::Button("»"))
+            this->leftCollapsed = false;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("展开左栏");
+    }
+    else
+    {
+        if (ImGui::SmallButton("«"))
+            this->leftCollapsed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("折叠左栏（给预览让地方）");
+        ImGui::SameLine();
         ImGui::TextColored(kAccent, "文件");
         ImGui::BeginChild("##files", ImVec2(0, 250), false);
         this->drawFileList();
         ImGui::EndChild();
         ImGui::Separator();
         ImGui::TextColored(kAccent, "节点树");
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
+            sizeof(this->treeFilter));
         ImGui::BeginChild("##tree", ImVec2(0, ImGui::GetContentRegionAvail().y - 78), false);
         this->drawTree();
         ImGui::EndChild();
