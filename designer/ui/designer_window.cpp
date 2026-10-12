@@ -1660,38 +1660,8 @@ void DesignerWindow::drawStatus()
             (int)this->doc.stateNames().size());
     }
 
-    std::string path = this->project.name;
-    if (!this->currentWidget.empty())
-        path += " / " + this->currentWidget;
-    else if (!this->currentViewFile.empty())
-    {
-        path += " / " + this->currentViewFile;
-        if (this->selection.kind == SelKind::VIEW && !this->selection.key.empty())
-            path += " / " + this->selection.key;
-    }
-    if (this->selection.kind == SelKind::BOX)
-        path += " / box";
-    else if (this->selection.kind == SelKind::LAYER || this->selection.kind == SelKind::LAYER_FIELD)
-    {
-        path += " / layers[" + std::to_string(this->selection.index) + "] "
-            + this->doc.layerId(this->selection.index);
-        if (this->selection.kind == SelKind::LAYER_FIELD)
-            path += "." + this->selection.key;
-    }
-    else if (this->selection.kind == SelKind::STATE || this->selection.kind == SelKind::CHANNEL)
-    {
-        path += " / states." + this->selection.state;
-        if (this->selection.kind == SelKind::CHANNEL)
-        {
-            const AppearanceDoc::Json& node = this->doc.root()["states"][this->selection.state];
-            int index = 0;
-            for (auto it = node.begin(); it != node.end() && index < this->selection.index;
-                 ++it, ++index)
-            {
-            }
-        }
-    }
-    ImGui::TextColored(mutedColor(), "%s", path.c_str());
+    // 这里原来是另一行"路径"文本，和下面的面包屑重复，已删掉
+    this->drawSelectionBreadcrumb();
 
     if (!this->statusMessage.empty())
         ImGui::TextColored(mutedColor(), "%s", this->statusMessage.c_str());
@@ -3332,7 +3302,7 @@ void DesignerWindow::drawProps()
                 edited();
             }
             ImGui::SameLine();
-            if (ImGui::Button("复制"))
+            if (ImGui::Button("就地复制"))
             {
                 const int created = this->doc.duplicateLayer(this->selection.index);
                 if (created >= 0)
@@ -3970,6 +3940,14 @@ void DesignerWindow::drawSelectionBreadcrumb()
             crumb(("#" + std::to_string(this->selection.index + 1) + " 层").c_str(),
                 SelKind::LAYER, this->selection.index, nullptr, false);
             crumb(this->selection.key.c_str(), SelKind::LAYER_FIELD, this->selection.index,
+                this->selection.key.c_str(), true);
+            break;
+        case SelKind::STATE:
+            crumb(("states." + this->selection.state).c_str(), SelKind::STATE, -1, nullptr, true);
+            break;
+        case SelKind::CHANNEL:
+            crumb(("states." + this->selection.state).c_str(), SelKind::STATE, -1, nullptr, false);
+            crumb(this->selection.key.c_str(), SelKind::CHANNEL, this->selection.index,
                 this->selection.key.c_str(), true);
             break;
         default:
