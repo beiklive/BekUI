@@ -9,7 +9,7 @@
     {
       "op": "shadow",
       "id": "sh",
-      "fill": "#000000F0",
+      "fill": "#00000080",
       "opacity" : 22,
       "feather": 10,
       "radius": 40,

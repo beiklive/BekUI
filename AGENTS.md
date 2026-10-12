@@ -281,6 +281,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   接口刻意不叫 `getItemCount(section)`（borealis 的重载写法）——派生类只重写一个
   会把另一个名字隐藏掉，属于典型 C++ 坑。段头 cell 继承 `RecyclerSectionHeader`，
   标题通过虚函数 `onSectionTitle` 下发（Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
+- **JSON 语法细节查 `docs/json-syntax.md`**（四类 JSON 的完整键表 / 取值 / 枚举拼写 / 报错行为）；
+  下面几条是**约定**，别改错了。
 - **控件的样式全在 JSON 里**（`resources/theme/<主题>/widgets/<控件>.json`）：
   一份外观由三段组成——
   ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/

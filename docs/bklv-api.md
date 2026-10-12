@@ -227,6 +227,9 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 界面不刷新时先怀疑"漏置脏"：用 `BKLV_FORCE_RELAYOUT=1` 跑一次，退回每帧全量重算，
 现象消失就说明有地方改了布局状态却没 `invalidate()`（或该用 `requestLayout()`）。
 
+> 四类 JSON（视图描述 / 控件外观 / 主题 / 文案）的完整键表、取值形式与枚举拼写，
+> 见 [`json-syntax.md`](json-syntax.md)。
+
 ## 主题与外观
 
 换肤不需要改代码：复制 `resources/theme/default/` 改名，改里面的 JSON，再在

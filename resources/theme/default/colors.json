@@ -41,7 +41,7 @@
   },
   "$comment": "默认主题：对齐 borealis 的暗色主题（Switch 风格）。色值见 borealis core/theme.cpp 的 darkThemeValues。",
   "surface": {
-    "page": "#2d2d2d",
+    "page": "#616161",
     "card": "#1f2227",
     "raised": "#505050",
     "sunken": "#323232",
