@@ -1,4 +1,8 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.slider.height"
+  },
   "layers": [
     {
       "op": "rect",

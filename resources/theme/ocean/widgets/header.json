@@ -1,4 +1,9 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.header.height",
+    "shrink": 0
+  },
   "layers": [
     {
       "op": "rect",

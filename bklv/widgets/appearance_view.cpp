@@ -117,6 +117,10 @@ void AppearanceView::applyTheme()
     if (this->isAppearanceStateActive("focused"))
         this->appearance.setState("focused", true);
 
+    // 盒模型/布局样式也来自同一份 JSON（顶层 "box" 段）：
+    // 只套用写了的字段，所以控件在代码里设的值不会被空 box 冲掉。
+    applyAppearanceBox(this, this->appearance.getAppearance().getBox());
+
     // 字号/内容可能变了，固有尺寸要重算
     this->markMeasureDirty();
     this->invalidate();

@@ -13,12 +13,7 @@ namespace bklv
 HintItemView::HintItemView()
     : AppearanceView("hint_item", false)
 {
-    // borealis 的 hint.xml：内边距 4/16、圆角 6、图标 25.5、文字 21.5、两者间距 8
-    this->setPadding(getTheme().number("metric.hintItem.paddingY", 4.0f),
-        getTheme().number("metric.hintItem.paddingX", 16.0f),
-        getTheme().number("metric.hintItem.paddingY", 4.0f),
-        getTheme().number("metric.hintItem.paddingX", 16.0f));
-    this->setHeight(AUTO);
+    // 内边距/高度来自 widgets/hint_item.json 的 box 段（borealis 的 4/16）
     this->enableContentMeasurement();
     this->applyTheme();
 }
@@ -58,17 +53,7 @@ std::string HintItemView::getLayerText(const std::string& source)
 HintsBar::HintsBar(const std::string&)
     : Box(Axis::ROW)
 {
-    this->setWidthPercentage(100.0f);
-    this->setHeight(AUTO);
-    // 不参与压缩：内容区要的比剩下的多时，该被压的是内容区（它会滚动），
-    // 不是提示栏（压了就只剩半条，图标都放不下）
-    this->setShrink(0.0f);
-    this->setAlignItems(AlignItems::CENTER);
-    // 条目间距：borealis 的 footer 里 hint 之间留的是 side padding 量级
-    this->setHeight(getTheme().number("metric.appletFrame.footerHeight", 73.0f));
-    // borealis 的 applet_frame/footer_padding_sides = 25
-    this->setPadding(0.0f, 25.0f, 0.0f, 25.0f);
-    this->setGap(getTheme().number("metric.spacing.lg", 16.0f));
+    // 宽高/内边距/间距/不压缩 全在 widgets/hints_bar.json 的 box 段里
 }
 
 void HintsBar::refresh()

@@ -151,6 +151,35 @@ int main()
             "切回 default 后外观也回来了");
     }
 
+    std::printf("\n== 3.5 控件样式真的来自 JSON：改 box 段，控件尺寸跟着变 ==\n");
+    {
+        writeFile("resources/theme/box-skin/theme.json",
+            R"({"name":"box-skin","version":1,"widgets":["widgets/button.json"]})");
+        writeFile("resources/theme/box-skin/widgets/button.json",
+            R"({"box":{"height":72,"padding":[4,20,4,20]},
+                "layers":[{"op":"rect","id":"bg","fill":"@theme/color.button.defaultBg"}]})");
+
+        Button* button = new Button("尺寸来自 JSON");
+        YGNodeCalculateLayout(button->getYGNode(), 300.0f, 200.0f, YGDirectionLTR);
+        checkFloat(button->getHeight(), getTheme().number("metric.control.height", 0.0f),
+            "默认主题：按钮高度 = metric.control.height");
+
+        check(setTheme("box-skin"), "切到 box-skin");
+        button->applyTheme();
+        // getHeight() 读的是 Yoga 布局结果，改完样式要重跑一次布局（延迟生效）
+        YGNodeCalculateLayout(button->getYGNode(), 300.0f, 200.0f, YGDirectionLTR);
+        checkFloat(button->getHeight(), 72.0f, "皮肤把 box.height 改成 72，控件高度跟着变");
+        checkFloat(button->getPaddingTop(), 4.0f, "box.padding 也生效");
+        checkFloat(button->getPaddingLeft(), 20.0f, "box.padding 左边距生效");
+
+        setTheme("default");
+        button->applyTheme();
+        YGNodeCalculateLayout(button->getYGNode(), 300.0f, 200.0f, YGDirectionLTR);
+        checkFloat(button->getHeight(), getTheme().number("metric.control.height", 0.0f),
+            "切回默认主题后高度回到主题值");
+        delete button;
+    }
+
     std::printf("\n== 4. 主题只覆盖未被显式设置过的值 ==\n");
     {
         // 跟随主题

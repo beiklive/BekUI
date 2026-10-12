@@ -12,12 +12,9 @@ Sidebar::Sidebar(const std::string& title)
     : Box(Axis::COLUMN)
     , title(title)
 {
-    this->setWidth(getTheme().number("metric.sidebar.width", 200.0f));
-    // 高度不写 100%：父容器（通常是 grow 的行/列）会 stretch 它，
-    // 写 100% 而父高度又由内容决定时会形成循环，把底栏挤出可视区（踩过）
-    this->setHeight(AUTO);
-    this->setShrink(0.0f);
-    this->setGap(getTheme().number("metric.spacing.xs", 4.0f));
+    // 面板样式（宽/不压缩/内边距/间距/底色/圆角）全在 widgets/sidebar.json 的 box 段里。
+    // 高度写的是 auto：父容器会 stretch 它，写 100% 而父高度又由内容决定时会形成死循环
+    // （踩过：底栏被挤出可视区）。
 
     this->headerBox = new Box(Axis::ROW);
     this->headerBox->setWidthPercentage(100.0f);
@@ -54,9 +51,8 @@ Sidebar::Sidebar(const std::string& title)
 
 void Sidebar::applyPanelLook()
 {
-    this->setBackgroundColor(getTheme().color("color.surface.card"));
-    this->setCornerRadius(getTheme().number("metric.radius.lg", 10.0f));
-    this->setPadding(getTheme().number("metric.spacing.sm", 8.0f));
+    // 换肤/改缩放时重新套用（值都在 widgets/sidebar.json 的 box 段里）
+    applyWidgetBox(this, "sidebar");
 }
 
 void Sidebar::setPanelWidth(float width)
@@ -70,8 +66,8 @@ void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onSele
 
     TabCell* cell = new TabCell();
     cell->setTitle(itemTitle);
-    // 侧栏条目高度用 sidebar.itemHeight（borealis 是 70），不是 tab 格子那档
-    cell->setHeight(getTheme().number("metric.sidebar.itemHeight", 70.0f));
+    // 侧栏条目比 tab 格子高（borealis 是 70）：走 tab_cell 的 "sidebar" 变体
+    cell->setAppearanceVariant("sidebar");
     cell->setOnSelect([this, index, onSelect] {
         this->setSelectedIndex(index);
         if (onSelect)

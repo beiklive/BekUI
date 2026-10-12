@@ -1,4 +1,14 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.dropdown.height",
+    "padding": [
+      "@theme/metric.spacing.sm",
+      "@theme/metric.spacing.md",
+      "@theme/metric.spacing.sm",
+      "@theme/metric.spacing.md"
+    ]
+  },
   "layers": [
     {
       "op": "rect",

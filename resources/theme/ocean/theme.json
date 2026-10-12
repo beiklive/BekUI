@@ -19,6 +19,11 @@
     "widgets/edit_text_dialog.json",
     "widgets/hint_item.json",
     "widgets/hints_bar.json",
-    "widgets/rectangle.card.json"
+    "widgets/rectangle.card.json",
+    "widgets/sidebar.json",
+    "widgets/applet_frame.json",
+    "widgets/dropdown_popup.json",
+    "widgets/header.applet.json",
+    "widgets/tab_cell.sidebar.json"
   ]
 }

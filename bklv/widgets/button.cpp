@@ -36,11 +36,6 @@ Button::Button(const std::string& text, const std::string& variant)
 {
     this->setText(text);
 
-    // 尺寸默认值来自主题（构造时取一次；用户随后 setHeight/setWidth 会覆盖它）
-    const ThemeData& theme = getTheme();
-    this->setHeight(theme.number("metric.control.height", 40.0f));
-    this->setMinWidth(theme.number("metric.control.minWidth", 120.0f));
-
     // 点一下就执行（不用先聚焦再按回车），键盘/手柄走 A 键
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, getStr("hints/ok"), [this](View*) { this->trigger(); });

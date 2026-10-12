@@ -1,4 +1,8 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.textField.height"
+  },
   "layers": [
     {
       "op": "rect",

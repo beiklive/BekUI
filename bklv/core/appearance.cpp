@@ -1,4 +1,5 @@
 #include "bklv/core/appearance.hpp"
+#include "bklv/core/box.hpp"
 
 #include <algorithm>
 #include <array>
@@ -445,6 +446,140 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         appearance->layers.push_back(layer);
     }
 
+    // ---- 盒模型/布局（顶层 "box" 段）----
+    if (doc.contains("box") && doc["box"].is_object())
+    {
+        const Json& boxNode = doc["box"];
+        AppearanceBox& box  = appearance->box;
+
+        // 长度值：数字=像素（按 720p 缩放）、"50%"=百分比、"auto"=由内容决定、
+        // "@theme/metric.a.b"=主题数值
+        auto readLength = [&](const Json& node, float& out, bool& percent, bool& autoFlag,
+                              const std::string& where) -> bool {
+            percent  = false;
+            autoFlag = false;
+            if (node.is_string())
+            {
+                const std::string text = node.get<std::string>();
+                if (text == "auto")
+                {
+                    autoFlag = true;
+                    return true;
+                }
+                if (!text.empty() && text.back() == '%')
+                {
+                    out      = std::strtof(text.c_str(), nullptr);
+                    percent  = true;
+                    return true;
+                }
+            }
+            if (!resolveNumber(node, theme, out, error, where))
+                return false;
+            out = scalePixels(out);
+            return true;
+        };
+
+        auto readEdges = [&](const Json& node, float* edges, const std::string& where) -> bool {
+            // 单值（数字或 "@theme/metric.x" 引用）：四边同值
+            if (node.is_number() || node.is_string())
+            {
+                float all = 0.0f;
+                if (!resolveNumber(node, theme, all, error, where))
+                    return false;
+                all = scalePixels(all);
+                for (int i = 0; i < 4; i++)
+                    edges[i] = all;
+                return true;
+            }
+            if (!node.is_array() || node.size() != 4)
+            {
+                error = where + " 要写成数字、@theme/ 引用或 [上, 右, 下, 左]";
+                return false;
+            }
+            for (size_t i = 0; i < 4; i++)
+            {
+                if (!resolveNumber(node[i], theme, edges[i], error,
+                        where + "[" + std::to_string(i) + "]"))
+                    return false;
+                edges[i] = scalePixels(edges[i]);
+            }
+            return true;
+        };
+
+        auto readNumber = [&](const char* key, float& out, bool& has, const std::string& where) {
+            if (!boxNode.contains(key))
+                return true;
+            if (!resolveNumber(boxNode[key], theme, out, error, where + "." + key))
+                return false;
+            out = scalePixels(out);
+            has = true;
+            return true;
+        };
+
+        const std::string where = "box";
+        if (boxNode.contains("width") && !readLength(boxNode["width"], box.width, box.widthPercent,
+                                          box.widthAuto, where + ".width"))
+            return nullptr;
+        box.hasWidth = boxNode.contains("width");
+
+        if (boxNode.contains("height") && !readLength(boxNode["height"], box.height, box.heightPercent,
+                                           box.heightAuto, where + ".height"))
+            return nullptr;
+        box.hasHeight = boxNode.contains("height");
+
+        if (!readNumber("minWidth", box.minWidth, box.hasMinWidth, where))
+            return nullptr;
+        if (!readNumber("minHeight", box.minHeight, box.hasMinHeight, where))
+            return nullptr;
+        if (!readNumber("gap", box.gap, box.hasGap, where))
+            return nullptr;
+        if (!readNumber("grow", box.grow, box.hasGrow, where))
+            return nullptr;
+        if (!readNumber("shrink", box.shrink, box.hasShrink, where))
+            return nullptr;
+        if (!readNumber("cornerRadius", box.cornerRadius, box.hasCornerRadius, where))
+            return nullptr;
+        if (!readNumber("borderThickness", box.borderThickness, box.hasBorderThickness, where))
+            return nullptr;
+
+        if (boxNode.contains("padding"))
+        {
+            if (!readEdges(boxNode["padding"], box.padding, where + ".padding"))
+                return nullptr;
+            box.hasPadding = true;
+        }
+        if (boxNode.contains("margin"))
+        {
+            if (!readEdges(boxNode["margin"], box.margin, where + ".margin"))
+                return nullptr;
+            box.hasMargin = true;
+        }
+        if (boxNode.contains("justifyContent") && boxNode["justifyContent"].is_string())
+        {
+            box.justify   = boxNode["justifyContent"].get<std::string>();
+            box.hasJustify = true;
+        }
+        if (boxNode.contains("alignItems") && boxNode["alignItems"].is_string())
+        {
+            box.align   = boxNode["alignItems"].get<std::string>();
+            box.hasAlign = true;
+        }
+        if (boxNode.contains("backgroundColor"))
+        {
+            if (!resolveColor(boxNode["backgroundColor"], theme, box.background, error,
+                    where + ".backgroundColor"))
+                return nullptr;
+            box.hasBackground = true;
+        }
+        if (boxNode.contains("borderColor"))
+        {
+            if (!resolveColor(boxNode["borderColor"], theme, box.borderColor, error,
+                    where + ".borderColor"))
+                return nullptr;
+            box.hasBorderColor = true;
+        }
+    }
+
     // 状态
     if (doc.contains("states") && doc["states"].is_object())
     {
@@ -553,6 +688,104 @@ std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
 
     cache[key] = appearance;
     return appearance;
+}
+
+namespace
+{
+
+JustifyContent justifyFromName(const std::string& name)
+{
+    if (name == "center")
+        return JustifyContent::CENTER;
+    if (name == "flex_end" || name == "end")
+        return JustifyContent::FLEX_END;
+    if (name == "space_between")
+        return JustifyContent::SPACE_BETWEEN;
+    if (name == "space_around")
+        return JustifyContent::SPACE_AROUND;
+    if (name == "space_evenly")
+        return JustifyContent::SPACE_EVENLY;
+
+    return JustifyContent::FLEX_START;
+}
+
+AlignItems alignFromName(const std::string& name)
+{
+    if (name == "center")
+        return AlignItems::CENTER;
+    if (name == "flex_end" || name == "end")
+        return AlignItems::FLEX_END;
+    if (name == "stretch")
+        return AlignItems::STRETCH;
+    if (name == "baseline")
+        return AlignItems::BASELINE;
+
+    return AlignItems::FLEX_START;
+}
+
+} // namespace
+
+void applyAppearanceBox(Box* view, const AppearanceBox& box)
+{
+    if (view == nullptr)
+        return;
+
+    if (box.hasWidth)
+    {
+        if (box.widthAuto)
+            view->setWidth(AUTO);
+        else if (box.widthPercent)
+            view->setWidthPercentage(box.width);
+        else
+            view->setWidth(box.width);
+    }
+    if (box.hasHeight)
+    {
+        if (box.heightAuto)
+            view->setHeight(AUTO);
+        else if (box.heightPercent)
+            view->setHeightPercentage(box.height);
+        else
+            view->setHeight(box.height);
+    }
+
+    if (box.hasMinWidth)
+        view->setMinWidth(box.minWidth);
+    if (box.hasMinHeight)
+        view->setMinHeight(box.minHeight);
+    if (box.hasPadding)
+        view->setPadding(box.padding[0], box.padding[1], box.padding[2], box.padding[3]);
+    if (box.hasMargin)
+        view->setMargins(box.margin[0], box.margin[1], box.margin[2], box.margin[3]);
+    if (box.hasGap)
+        view->setGap(box.gap);
+    if (box.hasGrow)
+        view->setGrow(box.grow);
+    if (box.hasShrink)
+        view->setShrink(box.shrink);
+    if (box.hasJustify)
+        view->setJustifyContent(justifyFromName(box.justify));
+    if (box.hasAlign)
+        view->setAlignItems(alignFromName(box.align));
+    if (box.hasBackground)
+        view->setBackgroundColor(box.background);
+    if (box.hasCornerRadius)
+        view->setCornerRadius(box.cornerRadius);
+    if (box.hasBorderThickness)
+        view->setBorderThickness(box.borderThickness);
+    if (box.hasBorderColor)
+        view->setBorderColor(box.borderColor);
+}
+
+bool applyWidgetBox(Box* view, const std::string& name, const std::string& variant)
+{
+    const std::string full = variant.empty() ? name : name + "." + variant;
+    const std::shared_ptr<const Appearance> appearance = getWidgetAppearance(full);
+    if (appearance == nullptr)
+        return false;
+
+    applyAppearanceBox(view, appearance->getBox());
+    return true;
 }
 
 void clearAppearanceCache()

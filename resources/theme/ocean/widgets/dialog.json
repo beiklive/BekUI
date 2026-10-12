@@ -1,4 +1,10 @@
 {
+  "box": {
+    "width": "@theme/metric.dialog.width",
+    "height": "@theme/metric.dialog.height",
+    "padding": "@theme/metric.spacing.lg",
+    "justifyContent": "flex_end"
+  },
   "layers": [
     {
       "op": "rect",

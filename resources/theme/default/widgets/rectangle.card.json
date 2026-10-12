@@ -1,4 +1,10 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.card.padding",
+    "gap": "@theme/metric.spacing.sm"
+  },
   "layers": [
     {
       "op": "rect",

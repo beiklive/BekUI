@@ -148,6 +148,35 @@ int main()
                 checkColor(title.textColor, IM_COL32(0xFF, 0xFF, 0xFF, 255), "文字：颜色来自主题");
             }
 
+            // 盒模型也在 JSON 里（顶层 box 段）
+            const AppearanceBox& box = button->getBox();
+            check(box.hasHeight, "button 的 box 声明了 height");
+            checkFloat(box.height, getTheme().number("metric.control.height", 0.0f),
+                "button.box.height 解析成主题数值");
+            check(box.hasMinWidth, "button 的 box 声明了 minWidth");
+
+            // 百分比 / auto / 四边内边距
+            std::shared_ptr<const Appearance> card = getWidgetAppearance("rectangle.card");
+            check(card != nullptr && card->getBox().hasWidth && card->getBox().widthPercent,
+                "card 的宽度是百分比");
+            checkFloat(card->getBox().width, 100.0f, "card 宽度 100%");
+            check(card->getBox().hasPadding, "card 声明了 padding");
+
+            std::shared_ptr<const Appearance> bar = getWidgetAppearance("hints_bar");
+            check(bar != nullptr && bar->getBox().hasPadding, "hints_bar 声明了 padding");
+            if (bar != nullptr)
+                checkFloat(bar->getBox().padding[1], getTheme().number("metric.hintsBar.paddingX", 0.0f),
+                    "hints_bar 左右内边距来自主题");
+            check(bar != nullptr && bar->getBox().hasHeight
+                    && !bar->getBox().heightPercent && !bar->getBox().heightAuto,
+                "hints_bar 高度是具体像素而不是 auto");
+
+            std::shared_ptr<const Appearance> shell = getWidgetAppearance("applet_frame");
+            check(shell != nullptr && shell->getBox().hasBackground, "applet_frame 声明了底色");
+            if (shell != nullptr)
+                checkColor(shell->getBox().background, getTheme().color("color.surface.page"),
+                    "外壳底色 = color.surface.page");
+
             check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
             check(button->getTransitions("focused").size() == 5,
                 "focused 有五条属性动效（高亮底 + 辉光 + 描边）");

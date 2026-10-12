@@ -11,11 +11,12 @@ namespace bklv
 AppletFrame::AppletFrame(View* contentView)
     : Box(Axis::COLUMN)
 {
-    this->setWidthPercentage(100.0f);
-    this->setHeightPercentage(100.0f);
+    // 外壳尺寸与页面底色来自 widgets/applet_frame.json 的 box 段
 
     this->header = new Header();
-    this->header->setHeight(getTheme().number("metric.appletFrame.headerHeight", 88.0f));
+    // 应用外壳的页头比独立页头高（88，borealis 的 applet_frame/header_height）：
+    // 走 header 的 "applet" 变体，也就是另一份 JSON，而不是在代码里改它的高度
+    this->header->setAppearanceVariant("applet");
     this->addView(this->header);
 
     // 内容区：撑满页头与底栏之间的空间
@@ -23,7 +24,7 @@ AppletFrame::AppletFrame(View* contentView)
     this->contentBox->setWidthPercentage(100.0f);
     this->contentBox->setGrow(1.0f);
     this->contentBox->setShrink(1.0f);
-    this->contentBox->setMarginTop(getTheme().number("metric.spacing.md", 12.0f));
+    this->contentBox->setMarginTop(getTheme().number("metric.appletFrame.contentTop", 12.0f));
     this->addView(this->contentBox);
 
     // 底栏：默认是提示栏（[按键图标] 说明 …），这也正是 borealis 的做法
@@ -70,7 +71,8 @@ AppletFrame::~AppletFrame()
 
 void AppletFrame::applyTheme()
 {
-    this->setBackgroundColor(getTheme().color("color.surface.page", IM_COL32(45, 45, 45, 255)));
+    // 尺寸 + 页面底色（对应 borealis 的 brls/background）都来自 themes/<主题>/widgets/applet_frame.json
+    applyWidgetBox(this, "applet_frame");
 }
 
 void AppletFrame::setTitle(const std::string& title)

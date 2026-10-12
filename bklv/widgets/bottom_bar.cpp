@@ -28,9 +28,7 @@ BottomBar::BottomBar(const std::string& text, const std::string& variant)
     : AppearanceView(variant.empty() ? "bottom_bar" : "bottom_bar." + variant, false)
 {
     this->setText(text);
-    this->setWidthPercentage(100.0f);
-    this->setHeight(getTheme().number("metric.bottomBar.height", 36.0f));
-    this->setShrink(0.0f); // 底栏不参与压缩
+    // 宽高/不压缩来自外观 JSON 的 box 段（widgets/bottom_bar.json）
     this->enableContentMeasurement();
 
     this->applyTheme();

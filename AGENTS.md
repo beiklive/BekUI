@@ -239,6 +239,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   圆角 `metric.highlight.radius`（6），并且**向外扩 2.5px**（inset 负数）。
   顺序是：自己的底 → hlBg → 内容 → hlGlow → hlBorder（和 borealis 的
   "高亮底画在内容之前、描边画在内容之后"一致）。
+- **控件的样式全在 JSON 里**（`resources/theme/<主题>/widgets/<控件>.json`）：
+  一份外观由三段组成——
+  ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/
+     justifyContent/alignItems/backgroundColor/cornerRadius/borderThickness/borderColor）。
+     长度写数字（按 720p 缩放）、`"auto"`、`"50%"` 或 `@theme/metric.a.b`；
+     `padding`/`margin` 可以写一个值（四边同值）或 `[上,右,下,左]`。
+     只有写了的字段才会被套用，所以空 box 不会冲掉控件的默认值。
+  ② `layers`：绘制结构。③ `states`：状态动效。
+  **控件在代码里只写行为**（有哪些子节点、数据从哪来、语义绘制）；
+  尺寸/间距/颜色/圆角一律从 JSON 来。容器类控件（不是 AppearanceView 的）
+  调 `applyWidgetBox(this, "<控件名>")` 也能吃到同一份 box 段。
+  同一控件要多套尺寸就加变体文件（如 `header.applet.json`、`tab_cell.sidebar.json`），
+  代码里用 `setAppearanceVariant("applet")` 切，而不是在代码里改高度。
 - **主题只有一套：JSON 文件**（`core/theme_data.*`）。没有并存的 C++ 主题表了——
   视图 JSON 的 `@theme/`（取色，走 `color.*`）与 `@style/`（取数值，走 `metric.*`）
   和外观 JSON 的 `@theme/...` 解析的是同一份数据；前缀可省略

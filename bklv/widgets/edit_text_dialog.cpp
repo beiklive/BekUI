@@ -238,8 +238,7 @@ class TextField : public AppearanceView
     TextField()
         : AppearanceView("text_field", false)
     {
-        this->setWidthPercentage(100.0f);
-        this->setHeight(getTheme().number("metric.textField.height", 48.0f));
+        // 宽高来自 widgets/text_field.json 的 box 段
         this->enableContentMeasurement();
         this->applyTheme();
     }
@@ -343,7 +342,7 @@ EditTextDialog::EditTextDialog()
             + std::to_string(this->model.getMaxLength());
     };
     this->field = field;
-    this->field->setMarginTop(getTheme().number("metric.spacing.lg", 16.0f)); // 给标题层让位
+    this->field->setMarginTop(getTheme().number("metric.editTextDialog.fieldTop", 16.0f)); // 给标题层让位
     panel->addView(this->field);
 
     this->confirmButton = new Button(getStr("hints/ok"));

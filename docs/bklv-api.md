@@ -228,6 +228,9 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 
 ```json
 // resources/theme/ocean/widgets/button.json
+// box 段管盒模型（尺寸/内边距/圆角/底色…），layers 管绘制结构，states 管状态动效
+{ "box": { "height": "@theme/metric.control.height", "padding": [15, 25, 15, 25] },
+  "layers": [
 { "layers": [
     { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
       "radius": "@theme/metric/radius.md" },

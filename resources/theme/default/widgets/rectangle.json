@@ -1,4 +1,7 @@
 {
+  "box": {
+    "height": "auto"
+  },
   "layers": [
     {
       "op": "rect",

@@ -1,4 +1,17 @@
 {
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.appletFrame.footerHeight",
+    "shrink": 0,
+    "padding": [
+      0,
+      "@theme/metric.hintsBar.paddingX",
+      0,
+      "@theme/metric.hintsBar.paddingX"
+    ],
+    "gap": "@theme/metric.spacing.lg",
+    "alignItems": "center"
+  },
   "layers": [
     {
       "op": "rect",

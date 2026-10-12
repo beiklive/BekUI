@@ -10,10 +10,7 @@ namespace bklv
 TabCell::TabCell()
     : AppearanceView("tab_cell", true)
 {
-    // 内边距不用 setPadding（那是 Box 的）：文字层的 inset 写在 JSON 里，
-    // 固有宽度由 AppearanceView 的测量函数算出来。
-    this->setHeight(getTheme().number("metric.tabCell.height", 34.0f));
-    this->setShrink(0.0f); // tab 多了应该横向滚动，而不是被压扁
+    // 高度/不压缩/内边距全在 widgets/tab_cell.json 的 box 段里
 
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, "切换", [this](View*) { this->trigger(); });

@@ -1,4 +1,11 @@
 {
+  "box": {
+    "width": "@theme/metric.editTextDialog.width",
+    "height": "auto",
+    "padding": "@theme/metric.spacing.lg",
+    "gap": "@theme/metric.spacing.md",
+    "justifyContent": "flex_end"
+  },
   "layers": [
     {
       "op": "rect",

@@ -1,4 +1,8 @@
 {
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": "@theme/metric.control.minWidth"
+  },
   "layers": [
     {
       "op": "rect",

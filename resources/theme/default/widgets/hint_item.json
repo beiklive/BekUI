@@ -1,4 +1,13 @@
 {
+  "box": {
+    "height": "auto",
+    "padding": [
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX",
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX"
+    ]
+  },
   "layers": [
     {
       "op": "text",

@@ -29,8 +29,7 @@ void setSliderVariantAttr(View* v, const ResolvedValue& r)
 Slider::Slider(const std::string& variant)
     : AppearanceView(variant.empty() ? "slider" : "slider." + variant, true)
 {
-    this->setWidthPercentage(100.0f);
-    this->setHeight(getTheme().number("metric.slider.height", 32.0f));
+    // 宽高在 widgets/slider.json 的 box 段里
     this->onPointerAction = true;
 
     // 手柄上左右调整

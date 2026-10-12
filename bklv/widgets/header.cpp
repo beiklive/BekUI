@@ -29,10 +29,7 @@ void setHeaderVariantAttr(View* v, const ResolvedValue& r)
 Header::Header(const std::string& variant)
     : AppearanceView(variant.empty() ? "header" : "header." + variant, false)
 {
-    // 高度来自主题；宽度铺满父容器
-    this->setWidthPercentage(100.0f);
-    this->setHeight(getTheme().number("metric.header.height", 48.0f));
-    this->setShrink(0.0f); // 页头不参与压缩
+    // 宽高/不压缩/布局都来自外观 JSON 的 box 段（widgets/header.json）
     this->enableContentMeasurement();
 
     this->applyTheme();

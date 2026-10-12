@@ -21,7 +21,6 @@ void setVariantAttr(View* v, const ResolvedValue& r)
 Rectangle::Rectangle(const std::string& variant)
     : AppearanceView(variant.empty() ? "rectangle" : "rectangle." + variant, false)
 {
-    this->setHeight(AUTO);
     this->applyTheme();
 }
 

@@ -41,6 +41,8 @@
 namespace bklv
 {
 
+class Box;
+
 class ThemeData;
 
 // 可插值的属性。颜色占 4 个通道，标量占 1 个。
@@ -109,6 +111,39 @@ struct AppearanceTransition
     std::string easing       = "linear";
 };
 
+// 控件的盒模型/布局样式：和 layers 一样写在控件外观 JSON 里（顶层 `"box"` 段）。
+//
+//   "box": { "height": "@theme/metric.button.height", "minWidth": 120,
+//            "padding": [15, 25, 15, 25], "gap": 8, "grow": 1,
+//            "justifyContent": "center", "alignItems": "center",
+//            "backgroundColor": "@theme/color.surface.card", "cornerRadius": 8 }
+//
+// 数值按 720p 缩放（百分比字符串按百分比处理，"auto" 表示由内容决定）。
+// 只有写了的字段才会被套用，所以控件自己的默认值不会被空 box 冲掉。
+struct AppearanceBox
+{
+    bool hasWidth = false, hasHeight = false, hasMinWidth = false, hasMinHeight = false;
+    bool hasPadding = false, hasMargin = false, hasGap = false;
+    bool hasGrow = false, hasShrink = false;
+    bool hasJustify = false, hasAlign = false;
+    bool hasBackground = false, hasCornerRadius = false;
+    bool hasBorderThickness = false, hasBorderColor = false;
+
+    float width = 0.0f, height = 0.0f, minWidth = 0.0f, minHeight = 0.0f;
+    bool widthPercent = false, heightPercent = false;
+    bool widthAuto = false, heightAuto = false;
+    float padding[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // top / right / bottom / left
+    float margin[4]  = { 0.0f, 0.0f, 0.0f, 0.0f };
+    float gap        = 0.0f;
+    float grow = 0.0f, shrink = 1.0f;
+    std::string justify;
+    std::string align;
+    ImU32 background   = 0;
+    float cornerRadius = 0.0f;
+    float borderThickness = 0.0f;
+    ImU32 borderColor     = 0;
+};
+
 class Appearance
 {
   public:
@@ -117,6 +152,7 @@ class Appearance
         std::string& error);
 
     const std::vector<AppearanceLayer>& getLayers() const { return this->layers; }
+    const AppearanceBox& getBox() const { return this->box; }
     const std::vector<std::string>& getStateNames() const { return this->stateNames; }
     const std::vector<AppearanceTransition>& getTransitions(const std::string& state) const;
 
@@ -125,12 +161,21 @@ class Appearance
 
   private:
     std::vector<AppearanceLayer> layers;
+    AppearanceBox box;
     std::vector<std::string> stateNames;
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
 };
 
 // 当前主题下某个控件的外观（带缓存）。主题里没有该文件时返回 nullptr。
 std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget);
+
+// 把外观里的盒模型段套到一个 Box 上（AppearanceView 在 applyTheme 里自动调；
+// 容器类控件——Sidebar / AppletFrame 这种不是 AppearanceView 的——也能自己调）。
+void applyAppearanceBox(Box* view, const AppearanceBox& box);
+
+// 取 widgets/<name>.json 并套用它的 box 段；variant 非空时取 <name>.<variant>.json。
+// 返回 false 表示主题里没有这份外观。
+bool applyWidgetBox(Box* view, const std::string& name, const std::string& variant = "");
 
 // 换主题后清掉外观缓存（setTheme 会调）。
 void clearAppearanceCache();

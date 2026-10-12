@@ -43,7 +43,8 @@
   "appletFrame": {
     "headerHeight": 88,
     "footerHeight": 73,
-    "paddingSides": 30
+    "paddingSides": 30,
+    "contentTop": 12
   },
   "sidebar": {
     "width": 260,
@@ -62,13 +63,16 @@
   "dropdown": {
     "height": 70,
     "itemHeight": 60,
-    "itemTextSize": 20
+    "itemTextSize": 20,
+    "popupWidth": 280,
+    "popupMinWidth": 180
   },
   "textField": {
     "height": 48
   },
   "editTextDialog": {
-    "width": 560
+    "width": 560,
+    "fieldTop": 16
   },
   "button": {
     "textSize": 18,
@@ -87,5 +91,8 @@
   },
   "list": {
     "itemHeight": 64
+  },
+  "hintsBar": {
+    "paddingX": 25
   }
 }

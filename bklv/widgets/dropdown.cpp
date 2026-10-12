@@ -22,11 +22,7 @@ class DropdownTrigger : public AppearanceView
     DropdownTrigger()
         : AppearanceView("dropdown", true)
     {
-        this->setWidthPercentage(100.0f);
-        this->setHeight(getTheme().number("metric.dropdown.height", 44.0f));
-        this->setPadding(
-            getTheme().number("metric.spacing.sm", 8.0f), getTheme().number("metric.spacing.md", 12.0f),
-            getTheme().number("metric.spacing.sm", 8.0f), getTheme().number("metric.spacing.md", 12.0f));
+        // 宽高/内边距来自 widgets/dropdown.json 的 box 段
         this->onPointerAction = true;
         this->enableContentMeasurement();
         this->applyTheme();
@@ -62,11 +58,7 @@ class DropdownTrigger : public AppearanceView
 DropdownOption::DropdownOption()
     : AppearanceView("dropdown_item", true)
 {
-    this->setWidthPercentage(100.0f);
-    this->setHeight(getTheme().number("metric.dropdown.itemHeight", 38.0f));
-    this->setPadding(
-        getTheme().number("metric.spacing.sm", 8.0f), getTheme().number("metric.spacing.md", 12.0f),
-        getTheme().number("metric.spacing.sm", 8.0f), getTheme().number("metric.spacing.md", 12.0f));
+    // 宽高/内边距来自 widgets/dropdown_item.json 的 box 段
     this->onPointerAction = true;
     this->enableContentMeasurement();
     this->registerAction(ControllerButton::A, "选择", [this](View*) { this->trigger(); });
@@ -101,7 +93,7 @@ DropdownPopup::DropdownPopup()
 
     this->anchorBox = new Box(Axis::COLUMN);
     this->anchorBox->setPositionType(PositionType::ABSOLUTE);
-    this->anchorBox->setWidth(280.0f);
+    this->anchorBox->setWidth(getTheme().number("metric.dropdown.popupWidth", 280.0f));
 
     this->list = new ScrollingFrame();
     this->list->setWidthPercentage(100.0f);
@@ -146,7 +138,8 @@ void DropdownPopup::setAnchor(float x, float y, float width)
 {
     this->anchorBox->setPositionLeft(x);
     this->anchorBox->setPositionTop(y);
-    this->anchorBox->setWidth(std::max(180.0f, width));
+    this->anchorBox->setWidth(
+        std::max(getTheme().number("metric.dropdown.popupMinWidth", 180.0f), width));
 }
 
 void DropdownPopup::dismiss()
