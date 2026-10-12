@@ -123,13 +123,30 @@ tests/designer_core_test.cpp   逻辑层的无窗口测试（62 项）
 - 自查钩子补 `BKLV_DESIGNER_VARIANT=<新名>`（实测：变体文件生成、`theme.json` 登记成功、
   外观总数 43 → 44）
 
+## 第 12 轮：定位并修掉那条 spurious 警告
+
+上一轮记的 `主题颜色缺失：button.primaryText` 定位到根因了，**是设计器自己的 bug**：
+
+- 主题加载时把 `colors.json` 展平成**带 `color.` 前缀**的键（`color.button.primaryText`），
+  而外观里可以省前缀写 `@theme/accent.base`
+- 设计器查表时**把 `color.` 前缀剥掉了** → 一直在查不存在的键 → 色板取到 fallback、
+  **对比度检查也整个失效**（查空 → 拿 fallback 当底色算）
+- 修法：新增 `designer/core/theme_key.*` 的 `themeKeyFromReference()` 做统一归一
+  （补前缀、斜杠容错、非 `@theme` 引用返回空串），设计器三处查表全走它；测试 5 项
+
+顺带两件事：
+
+- **缺键警告带上现场信息**（当前主题、已装载色数、同前缀的已装载键），
+  就是这条诊断信息把根因照出来的；把"两个颜色表都是空的"这种情况单独点明
+  （那是"主题还没装载"，不是 key 拼错）
+- **对比度检查的底色取法修正**：改成"文字层之前最后一个不透明 rect 层"，
+  比以前只看 `box.backgroundColor` 准得多。修好后与独立算的数完全一致：
+  `dropdown/title` 3.2:1、`account/initial` 3.8:1 —— **这两个是主题里真实偏低的**
+  （正文建议 ≥ 4.5:1）
+
 ## 待查（记下来，不瞎猜）
 
-`BKLV_DESIGNER_FORK` + `BKLV_DESIGNER_VARIANT` 这条流程里会冒一条
-`主题颜色缺失：button.primaryText`：该 key 在仓库与 dist 的 `colors.json` 里都存在、
-界面渲染出来的颜色也对（warn-once 只在首次查询时报）。对照证据：demo 0 条、
-设计器单开文件 0 条、fork+variant 1 条。等下一轮用"在 `warnMissingKeyOnce` 里带调用点"
-的方式定位。
+（上一轮记的 `主题颜色缺失：button.primaryText` 已在第 12 轮定位并修复，见上。）
 
 ## 第 10 轮补的
 

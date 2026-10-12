@@ -52,6 +52,7 @@ class ThemeData
 
     // 已装载的 key 数量（测试与诊断）。
     int getColorCount() const { return (int)this->colors.size(); }
+    int getDefaultColorCount() const { return (int)this->defaultColors.size(); }
 
     // 键列表（排序后），给编辑器做下拉/只读表格用
     std::vector<std::string> getColorKeys() const;

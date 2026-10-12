@@ -31,9 +31,26 @@ void warnMissingKeyOnce(const std::string& key, const char* kind)
     if (!warned.insert(key).second)
         return;
 
-    BKLV_LOG_WARNING("主题%s缺失：%s（外观 JSON 里引用不存在的 key 会直接编译失败；"
-                     "C++ 里这样取值会退化成 fallback）",
-        kind, key.c_str());
+    // 现场信息要够定位：光说"缺 key"看不出是"主题还没装载"还是"调用方把 key 传错了"
+    // （曾经靠这条日志排查了半天，见 AGENTS 的"缺键不能静默"）
+    const ThemeData& theme = getTheme();
+    BKLV_LOG_WARNING("主题%s缺失：%s（当前主题 %s；已装载 %d 色 / 默认 %d 色；"
+                     "外观 JSON 里引用不存在的 key 会直接编译失败，C++ 里取值会退化成 fallback）",
+        kind, key.c_str(), theme.getName().c_str(), theme.getColorCount(),
+        (int)theme.getDefaultColorCount());
+    // 临时诊断：把装载进来的同前缀 key 打出来，看清到底存的是什么名字
+    {
+        const std::string prefix = key.substr(0, key.find('.') + 1);
+        std::string nearby;
+        int shown = 0;
+        for (const auto& entry : theme.getColorKeys())
+            if (entry.rfind(prefix, 0) == 0 && shown++ < 6)
+                nearby += entry + "  ";
+        BKLV_LOG_WARNING("  ↑ 装载进来的 %s* 有：%s", prefix.c_str(), nearby.c_str());
+    }
+    if (theme.getColorCount() == 0 && theme.getDefaultColorCount() == 0)
+        BKLV_LOG_WARNING("  ↑ 两个颜色表都是空的：说明这是**主题装载之前**的取值，"
+                         "不是 key 拼错");
 }
 
 } // namespace

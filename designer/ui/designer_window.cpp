@@ -10,6 +10,7 @@
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
 #include "designer/core/theme_edit.hpp"
+#include "designer/core/theme_key.hpp"
 #include "designer/core/theme_usage.hpp"
 #include "designer/core/ui_state.hpp"
 #include "designer/core/theme_files.hpp"
@@ -1704,13 +1705,10 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
 
     // 色板预览：@theme 引用也解出来给个准色
     ImU32 preview = 0;
-    if (value.rfind("@theme/", 0) == 0)
-    {
-        std::string key = value.substr(7);
-        if (key.rfind("color.", 0) == 0)
-            key = key.substr(6);
+    // 查表要用**带 color. 前缀的全名**（主题加载时就是这么展平的）；
+    // 以前在这里把前缀剥掉了，结果色板与对比度检查都在查不存在的键（踩过）
+    if (const std::string key = themeKeyFromReference(value); !key.empty())
         preview = getTheme().color(key, 0);
-    }
     else
         preview = parseHexColor(value); // "#RRGGBB[AA]"
 
@@ -1718,11 +1716,9 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
 
     ImGui::ColorButton((std::string("##sw") + label).c_str(), ImGui::ColorConvertU32ToFloat4(preview),
         ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(22, 18));
-    if (value.rfind("@theme/", 0) == 0)
+    if (!themeKeyFromReference(value).empty())
     {
-        std::string lookup = value.substr(7);
-        if (lookup.rfind("color.", 0) != 0 && lookup.rfind("metric.", 0) != 0)
-            lookup = "color." + lookup;
+        const std::string lookup = themeKeyFromReference(value);
         const auto found = this->themeUsage.find(lookup);
         const int users  = found == this->themeUsage.end() ? 0 : (int)found->second.size();
         if (ImGui::IsItemHovered())
@@ -2160,29 +2156,39 @@ void DesignerWindow::ensurePreviewBuilt()
         std::string background;
         this->doc.getBoxString("backgroundColor", background);
         ImU32 backgroundU32 = 0;
-        if (background.rfind("@theme/", 0) == 0)
-        {
-            std::string key = background.substr(7);
-            if (key.rfind("color.", 0) == 0)
-                key = key.substr(6);
-            backgroundU32 = getTheme().color(key, 0);
-        }
+        if (const std::string backgroundKey = themeKeyFromReference(background);
+            !backgroundKey.empty())
+            backgroundU32 = getTheme().color(backgroundKey, 0);
         else
             backgroundU32 = parseHexColor(background);
 
-        for (const AppearanceDoc::Json& layer : this->doc.root().value("layers", AppearanceDoc::Json::array()))
+        // 底色怎么取：文字层之前最后一个"有底色"的 rect 层最贴近实际
+        // （只用 box.backgroundColor 会误报——很多控件是把底色画在 rect 层里的）
+        const auto& allLayers = this->doc.root().value("layers", AppearanceDoc::Json::array());
+        for (const AppearanceDoc::Json& layer : allLayers)
         {
-            if (!layer.is_object() || layer.value("op", std::string()) != "text")
+            if (!layer.is_object())
+                continue;
+
+            if (layer.value("op", std::string()) == "rect")
+            {
+                const std::string fill = layer.value("fill", std::string());
+                ImU32 fillColor        = 0;
+                if (const std::string fillKey = themeKeyFromReference(fill); !fillKey.empty())
+                    fillColor = getTheme().color(fillKey, 0);
+                else
+                    fillColor = parseHexColor(fill);
+                if ((fillColor & IM_COL32_A_MASK) != 0)
+                    backgroundU32 = fillColor;
+                continue;
+            }
+
+            if (layer.value("op", std::string()) != "text")
                 continue;
             const std::string color = layer.value("color", std::string());
-            ImU32 textU32           = 0;
-            if (color.rfind("@theme/", 0) == 0)
-            {
-                std::string key = color.substr(7);
-                if (key.rfind("color.", 0) == 0)
-                    key = key.substr(6);
-                textU32 = getTheme().color(key, 0);
-            }
+            ImU32 textU32 = 0;
+            if (const std::string textKey = themeKeyFromReference(color); !textKey.empty())
+                textU32 = getTheme().color(textKey, 0);
             else
                 textU32 = parseHexColor(color);
 
@@ -2203,6 +2209,7 @@ void DesignerWindow::ensurePreviewBuilt()
                     "文字层 %s 与底色的对比度只有 %.1f:1（正文建议 ≥ 4.5:1）",
                     layer.value("id", std::string("?")).c_str(), ratio);
                 this->contrastWarnings.push_back(buffer);
+                BKLV_LOG_WARNING("对比度检查：%s", buffer);
             }
         }
     }

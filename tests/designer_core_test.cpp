@@ -20,6 +20,7 @@
 #include "designer/core/project.hpp"
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
+#include "designer/core/theme_key.hpp"
 #include "designer/core/ui_state.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
@@ -573,6 +574,23 @@ int main()
         check(node["bg.opacity"]["to"].is_number(), "加出来的数值通道给的是数字");
         checkEqualInt(node["bg.fill"]["duration"], 120, "默认时长");
         checkEqual(node["bg.fill"]["easing"], "quadraticOut", "默认缓动");
+    }
+
+    // ---------------------------------------------------------------- 主题引用归一
+    {
+        // 主题加载时把 colors.json 展平成**带 color. 前缀**的键；
+        // 外观里可以省前缀写 @theme/accent.base。两边必须归一到同一个名字，
+        // 否则查表查空、值悄悄退化成 fallback（色板与对比度检查就这么失效过）
+        checkEqual(designer::themeKeyFromReference("@theme/color.accent.base"), "color.accent.base",
+            "带前缀的引用原样");
+        checkEqual(designer::themeKeyFromReference("@theme/accent.base"), "color.accent.base",
+            "省前缀的颜色引用补上 color.");
+        checkEqual(designer::themeKeyFromReference("@theme/metric.radius.md"), "metric.radius.md",
+            "metric 引用保持 metric.");
+        checkEqual(designer::themeKeyFromReference("@theme/color/button/primaryText"),
+            "color.button.primaryText", "写成斜杠也认");
+        checkEqual(designer::themeKeyFromReference("#00ffcc"), "", "字面量颜色不算主题引用");
+        checkEqual(designer::themeKeyFromReference("@theme/"), "", "空引用返回空串");
     }
 
     fs::remove_all(work, code);

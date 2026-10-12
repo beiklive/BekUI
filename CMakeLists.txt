@@ -191,6 +191,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/json_patch.cpp
     core/theme_usage.cpp
     core/ui_state.cpp
+    core/theme_key.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")
