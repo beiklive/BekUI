@@ -344,6 +344,38 @@ int main()
         check(getTheme().color("color.common.overlay", 0) != 0, "common.overlay 有值（遮罩色）");
         check(getTheme().color("color.common.divider", 0) != 0, "common.divider 有值（分割线）");
 
+        // 基础色板：红橙黄绿青蓝紫 + 黑/白/灰，各带 Light/Dark 档
+        struct Palette
+        {
+            const char* name;
+            ImU32 base;
+        };
+        const Palette hues[] = {
+            { "red", IM_COL32(0xf4, 0x43, 0x36, 255) },
+            { "orange", IM_COL32(0xff, 0x98, 0x00, 255) },
+            { "yellow", IM_COL32(0xff, 0xeb, 0x3b, 255) },
+            { "green", IM_COL32(0x4c, 0xaf, 0x50, 255) },
+            { "cyan", IM_COL32(0x00, 0xbc, 0xd4, 255) },
+            { "blue", IM_COL32(0x21, 0x96, 0xf3, 255) },
+            { "purple", IM_COL32(0x9c, 0x27, 0xb0, 255) },
+            { "pink", IM_COL32(0xe9, 0x1e, 0x63, 255) },
+            { "brown", IM_COL32(0x79, 0x55, 0x48, 255) },
+            { "grey", IM_COL32(0x9e, 0x9e, 0x9e, 255) },
+        };
+        for (const Palette& hue : hues)
+        {
+            const std::string base  = std::string("color.common.") + hue.name;
+            const std::string light = base + "Light";
+            const std::string dark  = base + "Dark";
+
+            checkColor(getTheme().color(base, 0), hue.base,
+                std::string("common.") + hue.name + " 是标准色");
+            check(getTheme().color(light, 0) != 0 && getTheme().color(light, 0) != hue.base,
+                std::string("common.") + hue.name + "Light 存在且与 base 不同");
+            check(getTheme().color(dark, 0) != 0 && getTheme().color(dark, 0) != hue.base,
+                std::string("common.") + hue.name + "Dark 存在且与 base 不同");
+        }
+
         // 换到 ocean 也必须有（调色板每套主题各一份）
         setTheme("ocean");
         checkColor(getTheme().color("color.common.transparent", IM_COL32(1, 2, 3, 4)), 0,

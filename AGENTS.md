@@ -204,10 +204,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   可用宽度由 Yoga 算，父容器又常把子节点定成"恰好等于文字宽度"。不留容差时：
   ① 单行截断会把够短的文字截成一个省略号（tab 标题踩过：中文全变 `…`，ASCII 反而正常）；
   ② 多行换行会把"两个字一行"的标题拆成两行（侧栏标题"导航"踩过）。
-- **原始色值统一放 `color.common.*`**（每套主题 `colors.json` 的**第一组**，语义组跟在后面）：
-  `transparent` / `white` / `black` / `overlay`（模态遮罩）/ `divider`（1px 半透明线）/
-  `shadow`（阴影基准色）/ `focusRing` / `textMuted`。widget JSON 要写"透明"就写
-  `@theme/color.common.transparent`，别再散 `"#00000000"`（曾经在 60 处重复）。
+- **基础色板与原始色值都在 `color.common.*`**（每套主题 `colors.json` 的**第一组**，语义组跟在后面）：
+  ① 色板：`red` / `orange` / `yellow` / `green` / `cyan` / `blue` / `purple` / `pink` / `brown` / `grey`，
+  **每个都有 `XxxLight` / `XxxDark` 两档**（Material 三档，如 `common.blue` = #2196f3）；
+  ② 原色：`black` / `white` / `transparent` / `overlay`（模态遮罩）/ `divider`（1px 半透明线）/
+  `shadow`（阴影基准色）/ `focusRing` / `textMuted`。
+  写"透明"就用 `@theme/color.common.transparent`，别再散 `"#00000000"`（曾经在 60 处重复）。
   注意 `colors.json` **不支持 key 之间互相引用**（`@theme/` 只在视图/外观 JSON 里解析），
   所以语义键（`button.primaryBg` 这类）仍是字面量；想改整体配色就一起改。
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，

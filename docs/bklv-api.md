@@ -259,10 +259,19 @@ app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建�
 
 ### 常用色（`color.common.*`）
 
-每套主题的 `colors.json` 第一组是**原始调色板**，语义组（`surface` / `text` / `button` …）跟在后面：
+每套主题的 `colors.json` 第一组是**通用色板 + 原始色值**，语义组（`surface` / `text` / `button` …）跟在后面：
+
+| 组 | 键 | 说明 |
+|---|---|---|
+| 基础色板 | `red` `orange` `yellow` `green` `cyan` `blue` `purple` `pink` `brown` `grey` | 每个还有 `XxxLight` / `XxxDark` 两档（Material 三档） |
+| 原色 | `black` `white` `transparent` | 纯色与全透明 |
+| 常用半透明 | `overlay`（模态遮罩）`divider`（1px 分割线）`shadow`（阴影基准） | |
+| 其它 | `focusRing` `textMuted` | |
 
 ```json
-"common": { "transparent": "#00000000", "white": "#ffffff", "black": "#000000",
+"common": { "red": "#f44336", "redLight": "#e57373", "redDark": "#d32f2f",
+            "blue": "#2196f3", "…": "…",
+            "transparent": "#00000000", "white": "#ffffff", "black": "#000000",
             "overlay": "#00000080", "divider": "#ffffff1f",
             "shadow": "#00000073", "focusRing": "#00ffcc", "textMuted": "#8b929b" }
 ```
