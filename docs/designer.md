@@ -35,6 +35,27 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
   改任何一项立刻重建预览。数字和颜色都能写 `@theme/...` 引用。
 - **保存**：先给 diff（哪个键从什么变成什么）→ 编译校验（不通过不写盘）→ 原子写 + `.bak` → 热重载。
 
+## 快捷键与几个界面约定
+
+| 键 | 作用 |
+|---|---|
+| Ctrl+S | 保存（先弹 diff） |
+| Ctrl+Z / Ctrl+Y | 撤销 / 重做（帧级快照，最多 64 步） |
+| Ctrl+D | 复制当前层 |
+| Alt+↑ / Alt+↓ | 上移 / 下移当前层 |
+| F1 | 校验面板（整主题校验 + 层序提醒） |
+| F2 | 预览最大化 |
+| 滚轮 / 中键（或 Shift+左键） | 画布缩放 / 平移 |
+
+- **多文件同时改**：每份打开的文件的编辑状态都留着（草稿），切文件会拦截未保存改动
+  （保存并切换 / 丢弃 / 取消）；「改动总览」列出所有脏文件并可一键全部保存
+- **外部改动**：打开时记文件指纹，保存前发现磁盘变了会拦（覆盖 / 重新载入 / 取消）
+- 外观文件必须在 `theme.json` 的 `widgets[]` 里登记 —— 界面上的「新建外观」会自动登记，
+  写盘前还会先编译一遍（模板引用了不存在的主题 key 会当场报错，不落坏文件）
+- 主题表 `colors.json` / `metrics.json` 也能改（颜色用取色器、数值可拖），保存后热重载
+- 两处没做到位的：整页预览里**覆盖高亮**选中节点（需要库导出 JSON↔视图节点映射）、
+  保存仍是整文件重写（键序与 `$` 元信息保住，写前 diff + 冲突检测 + `.bak`）
+
 ## 自查开关（脚本 / CI 用）
 
 ```bash
@@ -42,6 +63,8 @@ BKLV_DESIGNER_PROJECT=my-skin          # 直接打开仓库里的某个主题
 BKLV_DESIGNER_FORK=my-skin             # 先按模板新建一份再打开
 BKLV_DESIGNER_FILE=button.primary      # 打开某个外观
 BKLV_DESIGNER_VIEW=page_json.json      # 打开某个页面视图
+BKLV_DESIGNER_TABLE=colors.json        # 打开主题表
+BKLV_DESIGNER_NEW_APPEARANCE=my_widget # 新建一个外观文件（会登记进 theme.json）
 BKLV_DESIGNER_SELECT=layer0            # 选中节点：file|box|layer<N>|state:<名>
 BKLV_DESIGNER_SHOT=/tmp/a.png          # 渲染若干帧后离屏截图并退出
 ```
