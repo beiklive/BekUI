@@ -92,7 +92,7 @@
 | Transform test（translate/scale/skew/rotate/fontScale + 多段缓动） | demo「变换」页 | ✅ |
 | Text test（宽高/对齐/singleLine 实时调） | demo「文本」页 | ✅ | 用 SliderCell/SelectorCell/BooleanCell 实时改宽高、水平/垂直对齐、单行截断（对标 borealis 的 TextTestTab） |
 | Scroll test | demo「滚动」页 | ✅ | 独立 ScrollingFrame + 20 行按钮验证"焦点走到哪外层滚到哪" |
-| Pokedex（RecyclerFrame 两段 + 详情页） | 列表页（Recycler） | ⚠️ 待补分段与详情页导航 |
+| Pokedex（RecyclerFrame 两段 + 详情页） | 列表页（单段 Recycler） | ❌ 待补：**borealis 的 RecyclerDataSource 有 `numberOfSections` / 分段表头 / 每段自己的 cell 类型**，我们的回收器是扁平的 → 这是控件层缺口，补完再拼 Pokedex 页 |
 | Settings（6 种 Cell 全家桶 + 运行时开关） | demo「设置」页 | ✅ |
 | About | — | ❌ 待补 |
 | （被注释的）Popups / notifications / dialogs | 弹层页（部分） | ⚠️ 待补 Notification |
