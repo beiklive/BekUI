@@ -9,6 +9,8 @@
 //   中   预览区（选中什么渲染什么：控件外观 / box / 单层 / 状态 / 整页视图）
 //   右   属性表（按节点类型给表单，改完立刻重建预览）
 
+#include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -18,6 +20,19 @@
 
 namespace designer
 {
+
+// 一份"打开的文件的编辑状态"。
+// 多文件同时改：切文件时把当前这份存进 drafts，切回来接着改（不再丢改动）。
+struct Draft
+{
+    AppearanceDoc doc;
+    std::string savedText;              // 上次保存/打开时的原文（diff 与"还原"用）
+    std::string openHash;               // 打开时的文件指纹（检测被外部改动）
+    std::string viewText;               // 页面视图的文本编辑缓冲
+    std::vector<std::string> undo;      // 撤销栈（整份 JSON 快照）
+    std::vector<std::string> redo;
+    bool dirty = false;
+};
 
 class DesignerWindow
 {
@@ -33,6 +48,12 @@ class DesignerWindow
     bool openAppearance(const std::string& widgetName, std::string& error);
     // 打开 resources/views 下的某个页面视图
     bool openViewFile(const std::string& fileName);
+    // 打开主题表（colors.json / metrics.json）——可编辑
+    bool openTableFile(const std::string& fileName);
+    // 新建 / 删除外观文件（会同步 theme.json 的 widgets 清单）
+    bool createAppearanceFile(const std::string& name, const std::string& templateName,
+        std::string& error);
+    bool deleteCurrentAppearance(std::string& error);
     // 按规格选中节点："file" / "box" / "layer0" / "state:focused"（自查与脚本用）
     bool selectBySpec(const std::string& spec);
 
@@ -69,6 +90,10 @@ class DesignerWindow
     void drawStatus();
     void drawPreview();
     void drawProps();
+    void drawTableProps();          // 主题表：键列表 + 颜色/数值编辑
+    void drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
+        const std::function<void(const std::string&)>& onPick);
+    bool colorPickerPopup(const char* id, std::string& value); // 取色器（写回字面量）
     void drawModals();
 
     // ---- 数据 ----
@@ -93,6 +118,31 @@ class DesignerWindow
     void doSave();
     void revert();
 
+    // ---- 草稿（多文件同时改）----
+    Draft& currentDraft();
+    void stashCurrent();
+    void restoreDraftFor(const std::string& path);
+    void switchTo(const std::string& path, const std::string& widgetName,
+        const std::string& viewFile); // 带"未保存改动"拦截的切换
+    void discardCurrentDraft();
+
+    // ---- 撤销/重做 ----
+    void pushUndoSnapshot();
+    void undo();
+    void redo();
+
+    // ---- 外部改动检测 ----
+    std::string hashText(const std::string& text) const;
+    bool fileChangedExternally() const;
+
+    // ---- 批量保存 ----
+    void saveAllDirty();
+
+    // ---- 其它面板 ----
+    void drawDirtyOverview();
+    void drawWarningsPanel();
+    void drawHelpPopup(const char* key);
+
     bklv::App* app = nullptr;
 
     Project project;
@@ -103,11 +153,41 @@ class DesignerWindow
     std::vector<std::string> viewFiles;   // "views/page_json.json"
     std::string currentWidget;            // 短名，空 = 没开外观文件
     std::string currentViewFile;
+    std::string currentTable;     // colors.json / metrics.json
+    char tableFilter[64] = "";
+    char newAppearanceName[64] = "";
+    int newAppearanceTemplate = 0;
+    bool showNewAppearance = false;
+    bool showDeleteAppearance = false;
     std::string currentFilePath;          // 绝对路径
     std::string savedText;                // 上次保存/打开时的原文（diff 与"还原"用）
 
     AppearanceDoc doc;
     Selection selection;
+
+    // 多文件草稿：key = 文件绝对路径（当前这份也在里面，切文件时换出换入）
+    std::map<std::string, Draft> drafts;
+    std::string lastFrameText;   // 帧末快照：下一帧发现不同就压进撤销栈
+
+    // 冲突/未保存拦截
+    bool showUnsavedGuard = false;
+    bool showConflict     = false;
+    std::string pendingPath;
+    std::string pendingWidget;
+    std::string pendingViewFile;
+
+    // 面板开关
+    bool showOverview  = false;
+    bool showWarnings  = false;
+    bool previewMaximized = false;
+    std::vector<std::string> warnings;
+
+    // 搜索
+    char fileFilter[64] = "";
+    char treeFilter[64] = "";
+
+    // 预览交互
+    bool previewContext = false;   // 放进样例容器里看间距/父容器效果
 
     int viewNodeCount   = 0;
     int viewFieldCount  = 0;

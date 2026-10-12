@@ -200,6 +200,10 @@ bool setTheme(const std::string& name);
 // 保存/重载前跑它：避免把一份写坏的外观应用上去，界面变空白还查不出原因。
 bool validateThemeAppearances(std::string& error);
 
+// 可插值的属性名清单（fill / opacity / radius / ...）。
+// 编辑器做"给状态加通道"的下拉直接用这个，别在外面再抄一份。
+const std::vector<std::string>& appearancePropNames();
+
 // ---------------------------------------------------------------------------
 // 运行期状态（每个 View 一份）
 // ---------------------------------------------------------------------------

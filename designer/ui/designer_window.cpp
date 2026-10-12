@@ -1,6 +1,7 @@
 #include "designer/ui/designer_window.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -65,6 +66,17 @@ ImU32 parseHexColor(const std::string& text)
     if (text.size() >= 9)
         return IM_COL32((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
     return IM_COL32((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 255);
+}
+
+// ColorEdit4 要 float[4]：把十六进制字符串转成一个可长期持有的缓冲
+std::array<float, 4>& colorScratch(const std::string& text)
+{
+    static std::array<float, 4> scratch = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const std::string key = text; // 参数只用来表明"这次编辑的是哪个值"
+    (void)key;
+    const ImVec4 color = ImGui::ColorConvertU32ToFloat4(parseHexColor(text));
+    scratch            = { color.x, color.y, color.z, color.w };
+    return scratch;
 }
 
 // 一层里某个值是数字、字符串还是数组
@@ -167,6 +179,7 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
 
     this->currentWidget    = widgetName;
     this->currentViewFile.clear();
+    this->currentTable.clear();
     this->currentFilePath  = path;
     this->savedText        = text;
     this->dirty            = false;
@@ -174,6 +187,16 @@ bool DesignerWindow::openAppearance(const std::string& widgetName, std::string& 
     this->previewDirty     = true;
     this->errorMessage.clear();
     this->statusMessage    = "打开 " + widgetName;
+
+    // 这份文件的第一份草稿：记指纹 + 把当前内容压进撤销栈的第 0 步
+    Draft& draft = this->drafts[path];
+    draft.savedText = text;
+    draft.openHash  = this->hashText(text);
+    draft.dirty     = false;
+    draft.undo.clear();
+    draft.redo.clear();
+    draft.undo.push_back(text);
+    this->lastFrameText = text;
     return true;
 }
 
@@ -181,6 +204,7 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
 {
     this->currentViewFile = fileName;
     this->currentWidget.clear();
+    this->currentTable.clear();
     this->currentFilePath = this->project.resourcesDir() + "/views/" + fileName;
 
     std::string text;
@@ -195,12 +219,257 @@ bool DesignerWindow::openViewFile(const std::string& fileName)
     this->doc.root() = parsed.is_discarded() ? AppearanceDoc::Json::object() : parsed;
     std::snprintf(this->viewText, sizeof(this->viewText), "%s", text.c_str());
     this->viewTextApplied = text;
+    Draft& draft = this->drafts[this->currentFilePath];
+    draft.savedText = text;
+    draft.openHash  = this->hashText(text);
+    draft.dirty     = false;
+    draft.undo.clear();
+    draft.redo.clear();
+    draft.undo.push_back(text);
+    draft.viewText = text;
+    this->lastFrameText = text;
     this->selection    = Selection{};
     this->selection.kind = SelKind::VIEW;
     this->previewDirty = true;
     this->dirty        = false;
     this->statusMessage = "打开 " + fileName;
     return true;
+}
+
+bool DesignerWindow::openTableFile(const std::string& fileName)
+{
+    const std::string path = this->project.themeDir() + "/" + fileName;
+    std::string text;
+    std::string error;
+    if (!readTextFile(path, text, error))
+    {
+        this->errorMessage = error;
+        return false;
+    }
+
+    const AppearanceDoc::Json parsed = AppearanceDoc::Json::parse(text, nullptr, false);
+    if (parsed.is_discarded())
+    {
+        this->errorMessage = fileName + " 不是合法 JSON";
+        return false;
+    }
+
+    if (!this->currentFilePath.empty() && this->currentFilePath != path)
+        this->stashCurrent();
+
+    this->currentTable     = fileName;
+    this->currentWidget.clear();
+    this->currentViewFile.clear();
+    this->currentFilePath  = path;
+    this->savedText        = text;
+    this->doc.root()       = parsed;
+    this->dirty            = false;
+    this->selection        = Selection{};
+    this->selection.kind   = SelKind::TABLE;
+    this->previewDirty     = true;
+    this->lastFrameText    = text;
+
+    Draft& draft    = this->drafts[path];
+    draft.savedText = text;
+    draft.openHash  = this->hashText(text);
+    draft.dirty     = false;
+    draft.undo.clear();
+    draft.redo.clear();
+    draft.undo.push_back(text);
+    this->statusMessage = "打开主题表 " + fileName;
+    return true;
+}
+
+bool DesignerWindow::createAppearanceFile(const std::string& name, const std::string& templateName,
+    std::string& error)
+{
+    if (name.empty())
+    {
+        error = "名字不能为空";
+        return false;
+    }
+
+    AppearanceDoc::Json doc = AppearanceDoc::Json::object();
+    doc["box"]    = AppearanceDoc::Json::object();
+    doc["layers"] = AppearanceDoc::Json::array();
+    doc["states"] = AppearanceDoc::Json::object();
+
+    auto rectLayer = [](const char* id, const char* fill) {
+        AppearanceDoc::Json layer = AppearanceDoc::Json::object();
+        layer["op"]     = "rect";
+        layer["id"]     = id;
+        layer["fill"]   = fill;
+        layer["radius"] = "@theme/metric.radius.md";
+        layer["inset"]  = AppearanceDoc::Json::array({ 0, 0, 0, 0 });
+        return layer;
+    };
+
+    if (templateName == "button")
+    {
+        doc["box"]["height"]        = "@theme/metric.control.height";
+        doc["box"]["axis"]          = "row";
+        doc["box"]["justifyContent"] = "center";
+        doc["box"]["alignItems"]    = "center";
+        doc["layers"].push_back(rectLayer("bg", "#3A3F47FF"));
+        AppearanceDoc::Json text = AppearanceDoc::Json::object();
+        text["op"]       = "text";
+        text["id"]       = "title";
+        text["source"]   = "text";
+        text["color"]    = "@theme/color.text.primary";
+        text["fontSize"] = "@theme/metric.font.size.md";
+        text["align"]    = "center";
+        text["valign"]   = "center";
+        doc["layers"].push_back(text);
+    }
+    else if (templateName == "cell")
+    {
+        doc["box"]["height"]         = 70;
+        doc["box"]["axis"]           = "row";
+        doc["box"]["alignItems"]     = "center";
+        doc["box"]["paddingSides"]   = 16;
+        doc["box"]["paddingTop"]     = 12.5;
+        doc["layers"].push_back(rectLayer("bg", "#00000000"));
+        AppearanceDoc::Json text = AppearanceDoc::Json::object();
+        text["op"]      = "text";
+        text["id"]      = "title";
+        text["source"]  = "title";
+        text["color"]   = "@theme/color.text.primary";
+        text["fontSize"] = 22;
+        text["valign"]  = "center";
+        doc["layers"].push_back(text);
+    }
+    else if (templateName == "card")
+    {
+        doc["box"]["radius"]        = 12;
+        doc["box"]["paddingSides"]  = 16;
+        doc["box"]["paddingTop"]    = 14;
+        doc["box"]["backgroundColor"] = "@theme/color.surface.card";
+        doc["layers"].push_back(rectLayer("bg", "@theme/color.surface.card"));
+    }
+    // "empty" 就是上面那份空壳
+
+    // 先编译一遍：模板里引用了不存在的主题 key 要当场报错，不能落一个坏文件
+    {
+        std::string compileError;
+        if (Appearance::compile(doc.dump(), getTheme(), compileError) == nullptr)
+        {
+            error = "模板编译失败（没写盘）：" + compileError;
+            return false;
+        }
+    }
+
+    const std::string relative = widgetPathFromName(name);
+    const std::string path     = this->project.themeDir() + "/" + relative;
+    if (!writeTextFileAtomic(path, doc.dump(2) + "\n", false, error))
+        return false;
+
+    // 登记进 theme.json 的 widgets[]（外观不扫目录，必须登记）
+    std::vector<std::string> widgets;
+    std::string readError;
+    readWidgetFileList(this->project.themeDir(), widgets, readError);
+    if (std::find(widgets.begin(), widgets.end(), relative) == widgets.end())
+        widgets.push_back(relative);
+
+    std::string themeText;
+    std::string themePath = this->project.themeDir() + "/theme.json";
+    if (!readTextFile(themePath, themeText, error))
+        return false;
+    AppearanceDoc::Json themeJson = AppearanceDoc::Json::parse(themeText, nullptr, false);
+    if (themeJson.is_discarded())
+    {
+        error = "theme.json 解析失败";
+        return false;
+    }
+    themeJson["widgets"] = AppearanceDoc::Json::array();
+    for (const std::string& entry : widgets)
+        themeJson["widgets"].push_back(entry);
+    if (!writeTextFileAtomic(themePath, themeJson.dump(2) + "\n", true, error))
+        return false;
+
+    this->refreshFileList();
+    this->applyThemeFromProject(readError);
+    std::string openError;
+    this->openAppearance(name, openError);
+    this->statusMessage = "新建外观 " + name + "（已登记进 theme.json）";
+    return true;
+}
+
+bool DesignerWindow::deleteCurrentAppearance(std::string& error)
+{
+    if (this->currentWidget.empty())
+    {
+        error = "当前没有打开外观文件";
+        return false;
+    }
+
+    const std::string relative = widgetPathFromName(this->currentWidget);
+    const std::string path     = this->project.themeDir() + "/" + relative;
+
+    std::vector<std::string> widgets;
+    readWidgetFileList(this->project.themeDir(), widgets, error);
+    widgets.erase(std::remove(widgets.begin(), widgets.end(), relative), widgets.end());
+
+    std::string themeText;
+    const std::string themePath = this->project.themeDir() + "/theme.json";
+    if (!readTextFile(themePath, themeText, error))
+        return false;
+    AppearanceDoc::Json themeJson = AppearanceDoc::Json::parse(themeText, nullptr, false);
+    if (themeJson.is_discarded())
+    {
+        error = "theme.json 解析失败";
+        return false;
+    }
+    themeJson["widgets"] = AppearanceDoc::Json::array();
+    for (const std::string& entry : widgets)
+        themeJson["widgets"].push_back(entry);
+    if (!writeTextFileAtomic(themePath, themeJson.dump(2) + "\n", true, error))
+        return false;
+
+    std::error_code code;
+    std::filesystem::remove(path, code);           // 外观文件本身
+    std::filesystem::remove(path + ".bak", code);  // 顺手清掉备份
+
+    this->drafts.erase(path);
+    this->currentWidget.clear();
+    this->currentFilePath.clear();
+    this->currentTable.clear();
+    this->dirty       = false;
+    this->previewDirty = true;
+    this->refreshFileList();
+    this->applyThemeFromProject(error);
+    this->statusMessage = "已删除外观 " + relative + "（并从 theme.json 摘掉）";
+    return true;
+}
+
+bool DesignerWindow::colorPickerPopup(const char* id, std::string& value)
+{
+    bool changed = false;
+    ImGui::SameLine();
+    if (ImGui::SmallButton((std::string("取色##") + id).c_str()))
+        ImGui::OpenPopup((std::string("##picker") + id).c_str());
+
+    if (ImGui::BeginPopup((std::string("##picker") + id).c_str()))
+    {
+        // 当前是 @theme 引用时，取色器改的是"字面量"，等于解引用后写死
+        std::array<float, 4> color = { 0.0f, 0.0f, 0.0f, 1.0f };
+        {
+            const ImVec4 converted = ImGui::ColorConvertU32ToFloat4(parseHexColor(value));
+            color = { converted.x, converted.y, converted.z, converted.w };
+        }
+        if (ImGui::ColorPicker4("##pick", color.data(),
+                ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf))
+        {
+            char buffer[16];
+            std::snprintf(buffer, sizeof(buffer), "#%02X%02X%02X%02X",
+                (int)(color[0] * 255.0f + 0.5f), (int)(color[1] * 255.0f + 0.5f),
+                (int)(color[2] * 255.0f + 0.5f), (int)(color[3] * 255.0f + 0.5f));
+            value   = buffer;
+            changed = true;
+        }
+        ImGui::TextColored(kMuted, "取色会写成 #RRGGBBAA 字面量（不再跟主题走）");
+        ImGui::EndPopup();
+    }
+    return changed;
 }
 
 bool DesignerWindow::selectBySpec(const std::string& spec)
@@ -245,6 +514,164 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
         return false;
     }
     return false;
+}
+
+// ---------------------------------------------------------------- 草稿与撤销
+
+Draft& DesignerWindow::currentDraft()
+{
+    return this->drafts[this->currentFilePath];
+}
+
+std::string DesignerWindow::hashText(const std::string& text) const
+{
+    // FNV-1a：只为"这个文件被外部改过没有"用，不要求抗碰撞
+    unsigned long long hash = 1469598103934665603ULL;
+    for (const char c : text)
+    {
+        hash ^= (unsigned char)c;
+        hash *= 1099511628211ULL;
+    }
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), "%016llx", hash);
+    return buffer;
+}
+
+// 把当前编辑状态存进 drafts（切文件 / 保存前都会调）
+void DesignerWindow::stashCurrent()
+{
+    if (this->currentFilePath.empty())
+        return;
+
+    Draft& draft      = this->drafts[this->currentFilePath];
+    draft.doc         = this->doc;
+    draft.savedText   = this->savedText;
+    draft.dirty       = this->dirty;
+    draft.viewText    = this->viewText;
+    if (draft.openHash.empty())
+        draft.openHash = this->hashText(this->savedText);
+}
+
+void DesignerWindow::restoreDraftFor(const std::string& path)
+{
+    const auto found = this->drafts.find(path);
+    if (found == this->drafts.end())
+        return;
+
+    this->doc        = found->second.doc;
+    this->savedText  = found->second.savedText;
+    this->dirty      = found->second.dirty;
+    std::snprintf(this->viewText, sizeof(this->viewText), "%s", found->second.viewText.c_str());
+    this->previewDirty = true;
+}
+
+// 带"未保存改动"拦截的切换：脏了就弹确认，不脏直接切
+void DesignerWindow::switchTo(const std::string& path, const std::string& widgetName,
+    const std::string& viewFile)
+{
+    if (this->dirty && !this->currentFilePath.empty() && path != this->currentFilePath)
+    {
+        this->pendingPath       = path;
+        this->pendingWidget     = widgetName;
+        this->pendingViewFile   = viewFile;
+        this->showUnsavedGuard  = true;
+        return;
+    }
+
+    if (!this->currentFilePath.empty() && path != this->currentFilePath)
+        this->stashCurrent();
+
+    std::string error;
+    if (!viewFile.empty())
+        this->openViewFile(viewFile);
+    else if (!this->openAppearance(widgetName, error))
+        this->errorMessage = error;
+}
+
+void DesignerWindow::discardCurrentDraft()
+{
+    this->drafts.erase(this->currentFilePath);
+}
+
+bool DesignerWindow::fileChangedExternally() const
+{
+    if (this->currentFilePath.empty())
+        return false;
+
+    std::string onDisk;
+    std::string error;
+    if (!readTextFile(this->currentFilePath, onDisk, error))
+        return false; // 文件都没了，交给写盘那步报错
+
+    const auto found = this->drafts.find(this->currentFilePath);
+    const std::string openHash
+        = (found != this->drafts.end() && !found->second.openHash.empty())
+        ? found->second.openHash
+        : this->hashText(this->savedText);
+    return this->hashText(onDisk) != openHash;
+}
+
+void DesignerWindow::pushUndoSnapshot()
+{
+    if (this->currentFilePath.empty())
+        return;
+
+    Draft& draft    = this->currentDraft();
+    const std::string now = this->doc.serialize();
+    if (draft.undo.empty() || draft.undo.back() != now)
+    {
+        draft.undo.push_back(now);
+        if (draft.undo.size() > 64)
+            draft.undo.erase(draft.undo.begin()); // 只留最近 64 步
+        draft.redo.clear();
+    }
+}
+
+void DesignerWindow::undo()
+{
+    if (this->currentFilePath.empty())
+        return;
+    Draft& draft = this->currentDraft();
+    if (draft.undo.size() < 2)
+    {
+        this->statusMessage = "没有可撤销的步骤";
+        return;
+    }
+
+    draft.redo.push_back(draft.undo.back());
+    draft.undo.pop_back();
+
+    std::string error;
+    this->doc.parse(draft.undo.back(), error);
+    this->viewTextApplied = this->doc.serialize();
+    std::snprintf(this->viewText, sizeof(this->viewText), "%s", this->viewTextApplied.c_str());
+    this->dirty        = true;
+    this->previewDirty = true;
+    this->statusMessage = "已撤销";
+}
+
+void DesignerWindow::redo()
+{
+    if (this->currentFilePath.empty())
+        return;
+    Draft& draft = this->currentDraft();
+    if (draft.redo.empty())
+    {
+        this->statusMessage = "没有可重做的步骤";
+        return;
+    }
+
+    const std::string text = draft.redo.back();
+    draft.redo.pop_back();
+    draft.undo.push_back(text);
+
+    std::string error;
+    this->doc.parse(text, error);
+    this->viewTextApplied = this->doc.serialize();
+    std::snprintf(this->viewText, sizeof(this->viewText), "%s", this->viewTextApplied.c_str());
+    this->dirty        = true;
+    this->previewDirty = true;
+    this->statusMessage = "已重做";
 }
 
 // ---------------------------------------------------------------- 顶栏
@@ -312,8 +739,33 @@ void DesignerWindow::drawTopBar()
         this->requestSave();
 
     ImGui::SameLine();
+    ImGui::BeginDisabled(this->currentFilePath.empty());
+    if (ImGui::Button("撤销"))
+        this->undo();
+    ImGui::SameLine();
+    if (ImGui::Button("重做"))
+        this->redo();
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    {
+        int dirtyCount = 0;
+        for (const auto& entry : this->drafts)
+            if (entry.second.dirty)
+                dirtyCount++;
+        if (ImGui::Button("改动总览"))
+            this->showOverview = true;
+        ImGui::SameLine();
+        ImGui::TextColored(dirtyCount > 0 ? ImVec4(1.0f, 0.72f, 0.3f, 1.0f) : kMuted,
+            dirtyCount > 0 ? "%d 个文件有未保存改动" : "都已同步", dirtyCount);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("校验面板"))
+        this->showWarnings = true;
+
+    ImGui::SameLine();
     if (this->dirty)
-        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "● 有未保存改动");
+        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "● 当前文件未保存");
     else if (this->readOnly)
         ImGui::TextColored(kMuted, "（只读浏览）");
     else
@@ -335,18 +787,22 @@ void DesignerWindow::drawFileList()
         return false;
     };
 
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##filter", "过滤外观名…", this->fileFilter, sizeof(this->fileFilter));
     ImGui::TextColored(kMuted, "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
         this->project.name.c_str());
     for (const std::string& relative : this->widgetFiles)
     {
         const std::string name = widgetNameFromPath(relative);
-        const bool isCurrent   = (name == this->currentWidget);
-        if (fileRow(name, isCurrent, isCurrent, nullptr))
-        {
-            std::string error;
-            if (!this->openAppearance(name, error))
-                this->errorMessage = error;
-        }
+        const std::string path = this->project.themeDir() + "/" + relative;
+        if (this->fileFilter[0] != 0 && name.find(this->fileFilter) == std::string::npos)
+            continue;
+
+        const bool isCurrent = (name == this->currentWidget);
+        const auto found     = this->drafts.find(path);
+        const bool isDirty   = (found != this->drafts.end() && found->second.dirty) || (isCurrent && this->dirty);
+        if (fileRow(name, isCurrent, isDirty, nullptr))
+            this->switchTo(path, name, std::string());
     }
 
     ImGui::Separator();
@@ -355,15 +811,42 @@ void DesignerWindow::drawFileList()
         ImGui::TextColored(kMuted, "  （这个项目里没有）");
     for (const std::string& file : this->viewFiles)
     {
+        const std::string path = this->project.resourcesDir() + "/views/" + file;
+        if (this->fileFilter[0] != 0 && file.find(this->fileFilter) == std::string::npos)
+            continue;
         const bool isCurrent = (file == this->currentViewFile);
-        if (fileRow(file, isCurrent, isCurrent, "页面"))
-            this->openViewFile(file);
+        const auto found     = this->drafts.find(path);
+        const bool isDirty   = (found != this->drafts.end() && found->second.dirty) || (isCurrent && this->dirty);
+        if (fileRow(file, isCurrent, isDirty, "页面"))
+            this->switchTo(path, std::string(), file);
     }
 
     ImGui::Separator();
-    ImGui::TextColored(kMuted, "主题表 · 只读");
-    ImGui::TextColored(kMuted, "  colors.json  %d 色", getTheme().getColorCount());
-    ImGui::TextColored(kMuted, "  metrics.json %d 数值", (int)getTheme().getNumberKeys().size());
+    if (!this->readOnly)
+    {
+        if (ImGui::Button("新建外观…"))
+        {
+            std::snprintf(this->newAppearanceName, sizeof(this->newAppearanceName), "my_widget");
+            this->showNewAppearance = true;
+        }
+    }
+    if (!this->currentWidget.empty() && !this->readOnly)
+    {
+        ImGui::SameLine();
+        if (ImGui::Button("删除当前外观"))
+            this->showDeleteAppearance = true;
+    }
+
+    ImGui::Separator();
+    ImGui::TextColored(kMuted, "主题表（可编辑）");
+    for (const char* table : { "colors.json", "metrics.json" })
+    {
+        const std::string path = this->project.themeDir() + "/" + table;
+        const auto found       = this->drafts.find(path);
+        const bool isDirty     = found != this->drafts.end() && found->second.dirty;
+        if (fileRow(table, table == this->currentTable, isDirty, nullptr))
+            this->openTableFile(table);
+    }
 }
 
 // ---------------------------------------------------------------- 节点树
@@ -765,6 +1248,53 @@ std::string DesignerWindow::previewJson() const
     }
 }
 
+void DesignerWindow::drawHelpPopup(const char* key)
+{
+    // 字段速查（悬停提示）：只讲"这个字段是干什么的 / 取值范围"
+    static const std::pair<const char*, const char*> help[] = {
+        { "box", "盒模型与布局：只有写了的字段才会套用，空 box 不会冲掉控件默认值" },
+        { "height", "数字按 720p 缩放；也可写 \"auto\" / \"50%\" / @theme/metric.a.b" },
+        { "radius", "圆角半径（会被 UI 缩放乘）" },
+        { "paddingTop", "上下内边距（数字或 @theme/metric...）" },
+        { "paddingSides", "左右内边距" },
+        { "gap", "子节点间距" },
+        { "axis", "主轴方向：row / column（AppearanceView 默认 column，横向控件要写 row）" },
+        { "justifyContent", "主轴对齐：flexStart / center / flexEnd / spaceBetween / spaceAround / spaceEvenly" },
+        { "alignItems", "交叉轴对齐：flexStart / center / flexEnd / stretch / baseline" },
+        { "backgroundColor", "底色，@theme/color.x.y 或 #RRGGBB[AA]" },
+        { "layers", "绘制结构，顺序就是绘制顺序：hlBg 在内容层前，shadow 在底色前，hlGlow/hlBorder 最后" },
+        { "op", "层类型：rect / text / image / shadow / custom（custom 的语义绘制在 C++ 里）" },
+        { "fill", "填充色（shadow 层里是阴影浓度）" },
+        { "inset", "[上,右,下,左] 相对控件范围的收缩；负数=向外扩" },
+        { "shadow", "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空" },
+        { "cutout", "挖空：只画外圈，内圈一个顶点都不落，后面加半透明底也不会透出阴影" },
+        { "states", "状态动效：通道写 <层id>.<属性名>，to/duration(ms)/easing" },
+    };
+    for (const auto& entry : help)
+    {
+        if (std::strcmp(entry.first, key) == 0)
+        {
+            ImGui::SetTooltip("%s", entry.second);
+            return;
+        }
+    }
+}
+
+void DesignerWindow::drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
+    const std::function<void(const std::string&)>& onPick)
+{
+    ImGui::SetNextItemWidth(-1);
+    if (!ImGui::BeginCombo(id, "+ 添加字段…"))
+        return;
+
+    for (const std::string& key : candidates)
+    {
+        if (ImGui::Selectable(key.c_str()))
+            onPick(key);
+    }
+    ImGui::EndCombo();
+}
+
 bool DesignerWindow::colorField(const char* label, std::string& value)
 {
     bool changed = false;
@@ -791,6 +1321,8 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
     ImGui::SetNextItemWidth(-96.0f);
     changed |= inputString((std::string("##") + label).c_str(), value);
 
+    changed |= this->colorPickerPopup(label, value);
+
     ImGui::SameLine();
     ImGui::SetNextItemWidth(88);
     if (ImGui::BeginCombo((std::string("##key") + label).c_str(), "主题 key…"))
@@ -809,6 +1341,20 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
             }
         }
         ImGui::EndCombo();
+    }
+
+    // @theme 引用：显示解出来的色值 + 一键跳到主题表那个 key
+    if (value.rfind("@theme/", 0) == 0)
+    {
+        ImGui::SameLine();
+        if (ImGui::SmallButton((std::string("定位##") + label).c_str()))
+        {
+            this->openTableFile("colors.json");
+            std::string key = value.substr(7);
+            if (key.rfind("color.", 0) == 0)
+                key = key.substr(6);
+            std::snprintf(this->tableFilter, sizeof(this->tableFilter), "%s", key.c_str());
+        }
     }
     return changed;
 }
@@ -839,6 +1385,92 @@ bool DesignerWindow::applyViewText(std::string& error)
     this->previewDirty    = true;
     this->markEdited();
     return true;
+}
+
+void DesignerWindow::drawTableProps()
+{
+    ImGui::TextColored(kAccent, "主题表 %s", this->currentTable.c_str());
+    ImGui::TextColored(kMuted, "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##tableFilter", "过滤 key…", this->tableFilter, sizeof(this->tableFilter));
+    ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+    ImGui::Separator();
+
+    bool edited = false;
+
+    // 递归遍历（键是点分层级；$ 开头的是元信息）
+    std::function<void(AppearanceDoc::Json&, const std::string&)> walk
+        = [&](AppearanceDoc::Json& node, const std::string& prefix) {
+              for (auto it = node.begin(); it != node.end(); ++it)
+              {
+                  const std::string key = prefix.empty() ? it.key() : prefix + "." + it.key();
+                  if (!it.key().empty() && it.key()[0] == '$')
+                      continue;
+
+                  if (it.value().is_object())
+                  {
+                      if (ImGui::TreeNodeEx((void*)(uintptr_t)key.c_str(),
+                              ImGuiTreeNodeFlags_SpanAvailWidth
+                                  | (prefix.empty() ? ImGuiTreeNodeFlags_DefaultOpen : 0),
+                              "%s", it.key().c_str()))
+                      {
+                          walk(it.value(), key);
+                          ImGui::TreePop();
+                      }
+                      continue;
+                  }
+
+                  if (this->tableFilter[0] != 0 && key.find(this->tableFilter) == std::string::npos)
+                      continue;
+
+                  ImGui::PushID(key.c_str());
+                  if (it.value().is_string())
+                  {
+                      std::string text = it.value().get<std::string>();
+                      ImGui::PushItemWidth(120.0f);
+                      if (ImGui::ColorEdit4("##c", &colorScratch(text)[0],
+                              ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs
+                                  | ImGuiColorEditFlags_AlphaPreviewHalf))
+                          edited = true;
+                      ImGui::PopItemWidth();
+                      ImGui::SameLine();
+                      ImGui::SetNextItemWidth(140);
+                      if (inputString("##hex", text))
+                      {
+                          it.value() = text;
+                          edited     = true;
+                      }
+                      ImGui::SameLine();
+                      ImGui::Text("%s", key.c_str());
+                  }
+                  else if (it.value().is_number())
+                  {
+                      double value = it.value().get<double>();
+                      ImGui::PushItemWidth(120.0f);
+                      if (ImGui::DragScalar("##n", ImGuiDataType_Double, &value, 0.5, nullptr,
+                              nullptr, "%.2f"))
+                      {
+                          it.value() = value;
+                          edited     = true;
+                      }
+                      ImGui::PopItemWidth();
+                      ImGui::SameLine();
+                      ImGui::Text("%s", key.c_str());
+                  }
+                  else
+                      ImGui::TextColored(kMuted, "%s = %s", key.c_str(),
+                          compactValue(it.value()).c_str());
+                  ImGui::PopID();
+              }
+          };
+
+    walk(this->doc.root(), "");
+
+    if (edited)
+    {
+        this->markEdited();
+        this->previewDirty = true;
+    }
 }
 
 void DesignerWindow::drawBoxGuides(ImVec2 origin, ImVec2 size) const
@@ -1044,9 +1676,15 @@ void DesignerWindow::drawPreview()
 
 void DesignerWindow::drawProps()
 {
-    if (this->currentWidget.empty() && this->currentViewFile.empty())
+    if (this->currentWidget.empty() && this->currentViewFile.empty() && this->currentTable.empty())
     {
         ImGui::TextColored(kMuted, "选一个文件");
+        return;
+    }
+
+    if (!this->currentTable.empty())
+    {
+        this->drawTableProps();
         return;
     }
 
@@ -1106,12 +1744,33 @@ void DesignerWindow::drawProps()
                 const bool has = this->doc.getBoxNumber(key, value);
                 const std::string label
                     = has ? std::string(key) : (std::string(key) + "（未设置）");
-                if (inputNumberFloat(label.c_str(), value) && has)
+                propLabel(label.c_str());
+                ImGui::PushID(key);
+                double dragged = value;
+                const bool changedNumber = ImGui::DragScalar("##v", ImGuiDataType_Double,
+                    &dragged, 0.5, nullptr, nullptr, "%.1f");
+                ImGui::SameLine();
+                if (ImGui::SmallButton("✕") && has)
                 {
-                    this->doc.setBoxNumber(key, value);
+                    this->doc.removeBoxKey(key);
+                    edited();
+                }
+                ImGui::PopID();
+                if (changedNumber && has)
+                {
+                    this->doc.setBoxNumber(key, dragged);
                     edited();
                 }
             }
+
+            // box 允许加任何已知字段（以前只能改文件里已经写了的键）
+            static const std::vector<std::string> boxCandidates = { "width", "height", "minWidth",
+                "minHeight", "maxWidth", "radius", "paddingTop", "paddingSides", "paddingBottom",
+                "gap", "grow", "shrink", "borderThickness", "opacity", "marginTop", "marginSides" };
+            this->drawAddFieldCombo("##addBoxField", boxCandidates, [this, &edited](const std::string& key) {
+                this->doc.setBoxNumber(key, 0.0);
+                edited();
+            });
 
             ImGui::Separator();
             ImGui::TextColored(kMuted, "布局");
@@ -1180,8 +1839,23 @@ void DesignerWindow::drawProps()
             if (layer == nullptr)
                 break;
 
-            ImGui::TextColored(kMuted, "第 %d 层 · %s", this->selection.index + 1,
-                this->doc.layerOp(this->selection.index).c_str());
+            ImGui::TextColored(kMuted, "第 %d 层", this->selection.index + 1);
+
+            // op 可切换（以前只能改 JSON 文本）
+            {
+                const char* ops[] = { "rect", "text", "image", "shadow", "custom" };
+                std::string current = this->doc.layerOp(this->selection.index);
+                int opIndex         = 0;
+                for (int i = 0; i < 5; i++)
+                    if (current == ops[i])
+                        opIndex = i;
+                propLabel("op");
+                if (ImGui::Combo("##op", &opIndex, "rect\0text\0image\0shadow\0custom\0"))
+                {
+                    (*layer)["op"] = ops[opIndex];
+                    edited();
+                }
+            }
 
             for (auto it = layer->begin(); it != layer->end(); ++it)
             {
@@ -1249,7 +1923,52 @@ void DesignerWindow::drawProps()
 
                 if (changed)
                     edited();
+
+                // 删字段（id / op 不给删：层没有它们就没法引用）
+                if (key != "id" && key != "op")
+                {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("✕"))
+                    {
+                        this->doc.removeLayerKey(this->selection.index, key);
+                        edited();
+                        ImGui::PopID();
+                        break;
+                    }
+                }
                 ImGui::PopID();
+            }
+
+            // 按 op 给"可加的字段"清单（字段表不再只是"文件里写了什么"）
+            {
+                const std::string op = this->doc.layerOp(this->selection.index);
+                std::vector<std::string> candidates = { "inset", "offset", "width", "height",
+                    "opacity", "align", "valign", "radius" };
+                if (op == "text")
+                    candidates.insert(candidates.end(),
+                        { "source", "text", "color", "fontSize", "wrap", "singleLine" });
+                else if (op == "image")
+                    candidates.insert(candidates.end(), { "source", "scaling", "tint" });
+                else if (op == "shadow")
+                    candidates.insert(candidates.end(),
+                        { "fill", "feather", "spread", "cutout" });
+                else
+                    candidates.insert(candidates.end(), { "fill", "stroke", "strokeWidth" });
+
+                this->drawAddFieldCombo("##addLayerField", candidates,
+                    [this, edited](const std::string& key) {
+                        AppearanceDoc::Json value = 0.0;
+                        if (key == "id" || key == "source" || key == "text" || key == "align"
+                            || key == "valign" || key == "scaling" || key == "fill" || key == "color"
+                            || key == "stroke" || key == "tint")
+                            value = std::string("#00000000");
+                        if (key == "cutout")
+                            value = false;
+                        if (key == "inset" || key == "offset")
+                            value = AppearanceDoc::Json::array({ 0, 0, 0, 0 });
+                        this->doc.setLayerValue(this->selection.index, key, value);
+                        edited();
+                    });
             }
 
             ImGui::Separator();
@@ -1291,6 +2010,50 @@ void DesignerWindow::drawProps()
         {
             const std::string state = this->selection.state;
             ImGui::TextColored(kMuted, "状态 %s", state.c_str());
+
+            // 加通道：下拉选层 id + 下拉选属性名（以前要手打 <层id>.<属性名>）
+            {
+                static int layerIndex = 0;
+                static int propIndex  = 0;
+                const auto& props     = appearancePropNames();
+
+                propLabel("加通道");
+                ImGui::SetNextItemWidth(140);
+                std::string preview = this->doc.layerId(layerIndex);
+                if (preview.empty())
+                    preview = "（选层）";
+                if (ImGui::BeginCombo("##chLayer", preview.c_str()))
+                {
+                    for (int i = 0; i < this->doc.layerCount(); i++)
+                    {
+                        const bool selected = (i == layerIndex);
+                        const std::string label = std::to_string(i + 1) + "  " + this->doc.layerId(i);
+                        if (ImGui::Selectable(label.c_str(), selected))
+                            layerIndex = i;
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(140);
+                const std::string propName = props.empty() ? "fill" : props[(size_t)propIndex % props.size()];
+                if (ImGui::BeginCombo("##chProp", propName.c_str()))
+                {
+                    for (size_t i = 0; i < props.size(); i++)
+                        if (ImGui::Selectable(props[i].c_str(), (int)i == propIndex))
+                            propIndex = (int)i;
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("加"))
+                {
+                    const std::string id = this->doc.layerId(layerIndex);
+                    if (!id.empty() && !props.empty())
+                    {
+                        this->doc.addChannel(state, id + "." + props[(size_t)propIndex % props.size()]);
+                        edited();
+                    }
+                }
+            }
 
             if (this->doc.root()["states"].contains(state))
             {
@@ -1338,6 +2101,13 @@ void DesignerWindow::drawProps()
                             edited();
                         }
                     }
+                    if (ImGui::SmallButton("删掉这个通道"))
+                    {
+                        this->doc.removeChannel(state, index);
+                        edited();
+                        ImGui::PopID();
+                        break;
+                    }
                     ImGui::Separator();
                     ImGui::PopID();
                 }
@@ -1373,7 +2143,65 @@ void DesignerWindow::drawProps()
 void DesignerWindow::markEdited()
 {
     this->dirty = true;
+    if (!this->currentFilePath.empty())
+        this->currentDraft().dirty = true;
     this->statusMessage = "已修改（未保存）";
+}
+
+void DesignerWindow::saveAllDirty()
+{
+    const std::string original = this->currentFilePath;
+    int saved = 0;
+
+    for (auto& entry : this->drafts)
+    {
+        if (!entry.second.dirty)
+            continue;
+
+        // 只保存"能确定是外观或页面视图"的文件
+        std::string text = entry.second.doc.serialize();
+        std::string error;
+        if (!validateJsonText(text, error))
+        {
+            this->warnings.push_back(entry.first + "：" + error);
+            continue;
+        }
+        View* probe = createFromJSONString(text);
+        if (probe != nullptr)
+            delete probe;
+        else
+        {
+            std::shared_ptr<const Appearance> compiled
+                = Appearance::compile(text, getTheme(), error);
+            if (compiled == nullptr)
+            {
+                this->warnings.push_back(entry.first + "：编译失败 " + error);
+                continue;
+            }
+        }
+
+        if (writeTextFileAtomic(entry.first, text, true, error))
+        {
+            entry.second.dirty    = false;
+            entry.second.savedText = text;
+            entry.second.openHash = this->hashText(text);
+            saved++;
+        }
+        else
+            this->warnings.push_back(entry.first + "：" + error);
+    }
+
+    this->currentFilePath = original;
+    if (saved > 0)
+    {
+        std::string reloadError;
+        this->applyThemeFromProject(reloadError);
+        this->dirty        = false;
+        this->previewDirty = true;
+        this->statusMessage = std::to_string(saved) + " 个文件已写入";
+    }
+    else
+        this->statusMessage = "没有需要写入的改动";
 }
 
 void DesignerWindow::applyThemeFromProject(std::string& error)
@@ -1384,6 +2212,12 @@ void DesignerWindow::applyThemeFromProject(std::string& error)
 
 void DesignerWindow::requestSave()
 {
+    if (this->fileChangedExternally())
+    {
+        this->showConflict = true;
+        return;
+    }
+
     const std::string current = this->doc.serialize();
     AppearanceDoc::Json before = AppearanceDoc::Json::parse(this->savedText, nullptr, false);
     AppearanceDoc::Json after  = AppearanceDoc::Json::parse(current, nullptr, false);
@@ -1420,7 +2254,15 @@ void DesignerWindow::doSave()
     }
 
     // 保存前先校验：写坏的 JSON 不落盘
-    if (this->currentViewFile.empty())
+    if (!this->currentTable.empty())
+    {
+        if (!validateJsonText(text, error))
+        {
+            this->errorMessage = error;
+            return;
+        }
+    }
+    else if (this->currentViewFile.empty())
     {
         std::shared_ptr<const Appearance> compiled = Appearance::compile(text, getTheme(), error);
         if (compiled == nullptr)
@@ -1455,6 +2297,20 @@ void DesignerWindow::doSave()
 
     this->savedText = text;
     this->dirty     = false;
+
+    // 草稿同步：脏标记清掉、指纹更新成刚写下去的内容
+    Draft& draft   = this->currentDraft();
+    draft.savedText = text;
+    draft.dirty     = false;
+    draft.openHash  = this->hashText(text);
+
+    // 整主题校验结果进"校验面板"
+    this->warnings.clear();
+    std::string themeError;
+    if (!validateThemeAppearances(themeError))
+        this->warnings.push_back("整主题校验失败：" + themeError);
+    for (const std::string& warning : this->doc.layerOrderWarnings())
+        this->warnings.push_back("层序：" + warning);
 
     // 热重载：重新读盘 + 清外观缓存，然后把预览重建
     std::string reloadError;
@@ -1538,6 +2394,239 @@ void DesignerWindow::drawModals()
         ImGui::EndPopup();
     }
 
+    if (this->showNewAppearance)
+    {
+        ImGui::OpenPopup("新建外观文件");
+        this->showNewAppearance = false;
+    }
+    if (ImGui::BeginPopupModal("新建外观文件", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kMuted, "会在 %s/widgets/ 下建文件，并登记进 theme.json", this->project.themeDir().c_str());
+        ImGui::SetNextItemWidth(320);
+        ImGui::InputText("外观名", this->newAppearanceName, sizeof(this->newAppearanceName));
+        ImGui::SetNextItemWidth(320);
+        ImGui::Combo("模板", &this->newAppearanceTemplate,
+            "空壳\0rectangle（一块底）\0button（底 + 文字）\0cell（行高 70 + 标题）\0card（卡片底）\0");
+        static const char* templates[] = { "empty", "rectangle", "button", "cell", "card" };
+        if (ImGui::Button("创建", ImVec2(120, 0)))
+        {
+            std::string error;
+            if (this->createAppearanceFile(this->newAppearanceName,
+                    templates[this->newAppearanceTemplate], error))
+                ImGui::CloseCurrentPopup();
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    if (this->showDeleteAppearance)
+    {
+        ImGui::OpenPopup("删除外观");
+        this->showDeleteAppearance = false;
+    }
+    if (ImGui::BeginPopupModal("删除外观", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f),
+            "要删掉 %s 吗？会同时从 theme.json 摘掉这个登记。", this->currentWidget.c_str());
+        ImGui::TextColored(kMuted, "（文件本身删掉，.bak 也清掉；想反悔只能靠 git）");
+        if (ImGui::Button("删除", ImVec2(120, 0)))
+        {
+            std::string error;
+            if (this->deleteCurrentAppearance(error))
+                ImGui::CloseCurrentPopup();
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    // 未保存改动拦截：切文件前弹一次，不再静默丢改动
+    if (this->showUnsavedGuard)
+    {
+        ImGui::OpenPopup("有未保存的改动");
+        this->showUnsavedGuard = false;
+    }
+    if (ImGui::BeginPopupModal("有未保存的改动", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "%s",
+            this->currentFilePath.c_str());
+        ImGui::TextUnformatted("这个文件有未保存的改动，切走之前要怎么办？");
+        ImGui::Separator();
+        if (ImGui::Button("保存并切换", ImVec2(140, 0)))
+        {
+            this->doSave();
+            const std::string path = this->pendingPath;
+            const std::string widget = this->pendingWidget;
+            const std::string view = this->pendingViewFile;
+            this->pendingPath.clear();
+            this->pendingWidget.clear();
+            this->pendingViewFile.clear();
+            this->dirty = false;
+            this->stashCurrent();
+            std::string error;
+            if (!view.empty())
+                this->openViewFile(view);
+            else if (!this->openAppearance(widget, error))
+                this->errorMessage = error;
+            (void)path;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("丢弃改动", ImVec2(120, 0)))
+        {
+            this->dirty = false;
+            this->discardCurrentDraft();
+            const std::string widget = this->pendingWidget;
+            const std::string view = this->pendingViewFile;
+            this->pendingPath.clear();
+            this->pendingWidget.clear();
+            this->pendingViewFile.clear();
+            std::string error;
+            if (!view.empty())
+                this->openViewFile(view);
+            else if (!this->openAppearance(widget, error))
+                this->errorMessage = error;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(100, 0)))
+        {
+            this->pendingPath.clear();
+            this->pendingWidget.clear();
+            this->pendingViewFile.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    // 外部改动：保存前发现文件被别人改了
+    if (this->showConflict)
+    {
+        ImGui::OpenPopup("文件被外部改动过");
+        this->showConflict = false;
+    }
+    if (ImGui::BeginPopupModal("文件被外部改动过", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("磁盘上的这个文件和我打开时不一样了（别的编辑器 / git checkout）。");
+        ImGui::TextColored(kMuted, "%s", this->currentFilePath.c_str());
+        ImGui::Separator();
+        if (ImGui::Button("覆盖写（保留我的）", ImVec2(180, 0)))
+        {
+            this->showConflict = false;
+            const auto found = this->drafts.find(this->currentFilePath);
+            if (found != this->drafts.end())
+                found->second.openHash.clear(); // 让这次检查放行
+            this->requestSave();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("重新载入（丢我的）", ImVec2(180, 0)))
+        {
+            this->dirty = false;
+            this->discardCurrentDraft();
+            std::string error;
+            if (this->currentViewFile.empty())
+                this->openAppearance(this->currentWidget, error);
+            else
+                this->openViewFile(this->currentViewFile);
+            this->statusMessage = "已重新载入磁盘上的内容";
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    // 改动总览：所有脏文件 + 各自的差异条数 + 一键全部保存
+    if (this->showOverview)
+    {
+        ImGui::OpenPopup("改动总览");
+        this->showOverview = false;
+    }
+    if (ImGui::BeginPopupModal("改动总览", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        int dirtyCount = 0;
+        for (const auto& entry : this->drafts)
+        {
+            if (!entry.second.dirty)
+                continue;
+            dirtyCount++;
+
+            AppearanceDoc::Json before
+                = AppearanceDoc::Json::parse(entry.second.savedText, nullptr, false);
+            int changes = 0;
+            if (!before.is_discarded())
+                changes = (int)diffJson(before, entry.second.doc.root()).size();
+
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "●");
+            ImGui::SameLine();
+            ImGui::Text("%s", entry.first.c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(kMuted, "（%d 处改动）", changes);
+            ImGui::SameLine();
+            if (ImGui::SmallButton((std::string("切到##") + entry.first).c_str()))
+            {
+                this->currentFilePath = entry.first;
+                this->restoreDraftFor(entry.first);
+                this->currentWidget = widgetNameFromPath(entry.first);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        if (dirtyCount == 0)
+            ImGui::TextColored(kMuted, "没有未保存的改动");
+        ImGui::Separator();
+        if (ImGui::Button("全部保存", ImVec2(120, 0)))
+        {
+            this->saveAllDirty();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    // 校验面板：整主题校验结果 + 当前文件的层序提醒 + 最近一次错误
+    if (this->showWarnings)
+    {
+        ImGui::OpenPopup("校验 / 警告");
+        this->showWarnings = false;
+    }
+    if (ImGui::BeginPopupModal("校验 / 警告", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kMuted, "保存时会跑整主题校验；这里也能手动跑一次。");
+        if (ImGui::Button("现在校验整主题", ImVec2(160, 0)))
+        {
+            this->warnings.clear();
+            std::string error;
+            if (validateThemeAppearances(error))
+                this->warnings.push_back("整主题校验通过：" + this->project.name);
+            else
+                this->warnings.push_back("整主题校验失败：" + error);
+        }
+        ImGui::Separator();
+        for (const std::string& warning : this->warnings)
+            ImGui::TextWrapped("%s", warning.c_str());
+        for (const std::string& warning : this->doc.layerOrderWarnings())
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "层序：%s", warning.c_str());
+        if (this->warnings.empty() && this->doc.layerOrderWarnings().empty())
+            ImGui::TextColored(kMuted, "没有警告");
+        if (!this->errorMessage.empty())
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", this->errorMessage.c_str());
+        ImGui::Separator();
+        if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     if (this->showSaveAs)
     {
         ImGui::OpenPopup("另存为");
@@ -1606,11 +2695,59 @@ void DesignerWindow::draw()
             ImGui::GetWindowSize().y, ImGui::GetScrollY(), ImGui::GetContentRegionAvail().x,
             ImGui::GetContentRegionAvail().y);
 
+    // 快捷键（ImGui 的键盘输入在 SDL3 后端默认开着，直接用 io.KeysDown 的封装）
+    if (ImGui::GetCurrentContext() != nullptr && !ImGui::GetIO().WantTextInput)
+    {
+        const bool ctrl = ImGui::GetIO().KeyCtrl;
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+            this->requestSave();
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_Z, false))
+            this->undo();
+        if (ctrl && (ImGui::IsKeyPressed(ImGuiKey_Y, false)
+                        || (ImGui::GetIO().KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false))))
+            this->redo();
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_D, false) && this->selection.kind == SelKind::LAYER)
+        {
+            this->doc.duplicateLayer(this->selection.index);
+            this->markEdited();
+            this->previewDirty = true;
+        }
+        if (ImGui::GetIO().KeyAlt && this->selection.kind == SelKind::LAYER)
+        {
+            if (ImGui::IsKeyPressed(ImGuiKey_UpArrow, false) && this->doc.moveLayer(this->selection.index, -1))
+            {
+                this->selection.index -= 1;
+                this->markEdited();
+                this->previewDirty = true;
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_DownArrow, false) && this->doc.moveLayer(this->selection.index, 1))
+            {
+                this->selection.index += 1;
+                this->markEdited();
+                this->previewDirty = true;
+            }
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_F1, false))
+            this->showWarnings = !this->showWarnings;
+        if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
+            this->previewMaximized = !this->previewMaximized;
+    }
+
     this->drawTopBar();
 
     const float leftWidth = 320.0f;
     const float rightWidth = 420.0f;
     const ImVec2 avail = ImGui::GetContentRegionAvail();
+
+    if (this->previewMaximized)
+    {
+        ImGui::BeginChild("##previewMax", ImVec2(0, 0), true);
+        this->drawPreview();
+        ImGui::EndChild();
+        this->drawModals();
+        ImGui::End();
+        return;
+    }
 
     ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
     {
@@ -1644,6 +2781,16 @@ void DesignerWindow::draw()
 
     this->drawModals();
     ImGui::End();
+
+    // 帧级自动入栈：这一帧结束时发现文档和上一帧不同，就把上一帧的状态压进撤销栈。
+    // 输入框是"改完才返回 true"，所以只能在帧边界比较，粒度 = 一次改动。
+    if (!this->currentFilePath.empty())
+    {
+        const std::string now = this->doc.serialize();
+        if (!this->lastFrameText.empty() && now != this->lastFrameText)
+            this->pushUndoSnapshot();
+        this->lastFrameText = now;
+    }
 }
 
 } // namespace designer

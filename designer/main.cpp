@@ -71,6 +71,14 @@ int main(int argc, char** argv)
     }
     if (const char* wantedView = std::getenv("BKLV_DESIGNER_VIEW"))
         window.openViewFile(wantedView);
+    if (const char* wantedTable = std::getenv("BKLV_DESIGNER_TABLE"))
+        window.openTableFile(wantedTable);
+    if (const char* newAppearance = std::getenv("BKLV_DESIGNER_NEW_APPEARANCE"))
+    {
+        std::string createError;
+        if (!window.createAppearanceFile(newAppearance, "button", createError))
+            BKLV_LOG_WARNING("新建外观失败：%s", createError.c_str());
+    }
     if (const char* wantedSelect = std::getenv("BKLV_DESIGNER_SELECT"))
         window.selectBySpec(wantedSelect);
 

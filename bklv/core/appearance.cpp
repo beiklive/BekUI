@@ -875,6 +875,17 @@ void clearAppearanceCache()
     appearanceCache().clear();
 }
 
+const std::vector<std::string>& appearancePropNames()
+{
+    static const std::vector<std::string> names = [] {
+        std::vector<std::string> list;
+        for (int i = 0; i < PROP_COUNT; i++)
+            list.push_back(PROP_NAMES[i].name);
+        return list;
+    }();
+    return names;
+}
+
 bool validateThemeAppearances(std::string& error)
 {
     const ThemeData& theme = getTheme();
