@@ -19,7 +19,6 @@ namespace demo
 Box* buildWidgetsPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/widgets")));
     page->addView(makeHint(getStr("widgets/hint")));
 
     // ---- 按钮 ----

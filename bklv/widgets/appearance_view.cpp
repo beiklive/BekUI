@@ -150,6 +150,10 @@ void AppearanceView::onFocusLost()
 
 void AppearanceView::update()
 {
+    // AppearanceView 也是容器（底栏里装提示栏/状态区、页头里装图标与标题、
+    // 弹窗面板里装按钮行），必须先递归子树——不递归的话子树永远不会 update
+    Box::update();
+
     if (!this->appearance.isAnimating())
         return;
 

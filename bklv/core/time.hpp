@@ -77,6 +77,9 @@ class Animatable : public Ticking
     void start();
     void stop();
 
+    // 停止状态（补间跑完会自己停）
+    bool isStopped() const { return !this->isTicking(); }
+
     void setEndCallback(std::function<void(bool finished)> callback);
 
     float getValue() const { return this->value; }

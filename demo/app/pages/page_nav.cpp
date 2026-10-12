@@ -27,7 +27,6 @@ Box* makeTabContent(const std::string& title, const std::string& body)
 Box* buildNavPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/nav")));
     page->addView(makeHint(getStr("nav/hint")));
 
     // TabFrame 自己撑满一块区域：切页时旧页面只脱离不销毁

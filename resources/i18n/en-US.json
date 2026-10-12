@@ -3,7 +3,11 @@
     "title": "bklv capability overview",
     "pages": "Pages",
     "show_log": "Show log",
-    "hide_log": "Hide log"
+    "hide_log": "Hide log",
+    "hide_header": "Hide header",
+    "show_header": "Show header",
+    "hide_footer": "Hide bar",
+    "show_footer": "Show bar"
   },
   "tab": {
     "widgets": "Widgets",

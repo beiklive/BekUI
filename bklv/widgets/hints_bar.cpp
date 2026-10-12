@@ -106,6 +106,7 @@ void HintsBar::update()
 
 
 
+
     this->refresh();
 }
 

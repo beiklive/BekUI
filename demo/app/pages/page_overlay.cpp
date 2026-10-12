@@ -15,7 +15,6 @@ namespace demo
 Box* buildOverlayPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/overlay")));
     page->addView(makeHint(getStr("overlay/hint")));
 
     // ---- 弹窗 ----

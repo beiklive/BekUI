@@ -1,8 +1,22 @@
 {
   "box": {
     "width": "100%",
-    "height": "@theme/metric.bottomBar.height",
-    "shrink": 0
+    "height": "@theme/metric.appletFrame.footerHeight",
+    "shrink": 0,
+    "margin": [
+      0,
+      "@theme/metric.hints.footerMarginSides",
+      0,
+      "@theme/metric.hints.footerMarginSides"
+    ],
+    "padding": [
+      "@theme/metric.hints.footerPaddingTopBottom",
+      "@theme/metric.hints.footerPaddingSides",
+      "@theme/metric.hints.footerPaddingTopBottom",
+      "@theme/metric.hints.footerPaddingSides"
+    ],
+    "alignItems": "stretch",
+    "axis": "row"
   },
   "layers": [
     {
@@ -11,21 +25,6 @@
       "fill": "@theme/color.border.subtle",
       "height": 1,
       "valign": "top"
-    },
-    {
-      "op": "text",
-      "id": "text",
-      "source": "text",
-      "color": "@theme/color.text.dim",
-      "fontSize": "@theme/metric.font.size.sm",
-      "align": "left",
-      "valign": "center",
-      "inset": [
-        0,
-        0,
-        0,
-        4
-      ]
     }
   ]
 }

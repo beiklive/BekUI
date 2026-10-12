@@ -158,6 +158,16 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ---
 
+## 页头与底部栏全局化（2025-10 需求确认后实施）
+
+- [x] 页头/底栏提到外壳级：`AppletFrame[Header / content(grow) / BottomBar]`，
+      内容区吃剩余高度；隐藏时用 GONE，栏里不留固定外边距
+- [x] 底栏**合并成一个**：左侧提示（HintsBar）+ 右侧状态区（StatusArea：桌面时钟、Switch 电量）
+- [x] 页头按 borealis 改成 `[图标][标题][右侧区]`（header_icon.json 管图标尺寸与左边距）
+- [x] 显隐用实例方法 `showHeader/showBottomBar`，`setBarsAnimated` 控制是否走补间折叠
+- [x] 页面不再自己画标题行（标题归全局页头）
+- [x] 修 `AppearanceView::update()` 不递归子树（底栏里的提示栏因此从不刷新）
+
 ## 对齐 borealis 的视觉与 demo 重做
 
 - [x] **UI 按 720p 比例缩放**（`core/ui_scale.*`）：主题尺寸按 1280x720 写，

@@ -184,7 +184,8 @@ void Animatable::update()
         return;
     }
 
-    const float deltaTime = ImGui::GetIO().DeltaTime;
+    // 用受保护的帧间隔：没有 ImGui 上下文时（无窗口测试）也能跑
+    const float deltaTime = getFrameDeltaSeconds();
     const Step& step      = this->steps[this->currentStep];
 
     this->stepElapsed += deltaTime;

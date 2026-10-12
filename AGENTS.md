@@ -244,6 +244,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/
      justifyContent/alignItems/backgroundColor/cornerRadius/borderThickness/borderColor）。
      长度写数字（按 720p 缩放）、`"auto"`、`"50%"` 或 `@theme/metric.a.b`；
+     另有 `axis`（row/column）——AppearanceView 默认是 column，页头/底栏这类横向的要写明；
      `padding`/`margin` 可以写一个值（四边同值）或 `[上,右,下,左]`。
      只有写了的字段才会被套用，所以空 box 不会冲掉控件的默认值。
   ② `layers`：绘制结构。③ `states`：状态动效。
@@ -305,7 +306,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   A/B 也走同一套（borealis 的 A/B 会重复）。
   **一个物理键一个重复状态**：以前两个键（方向键 + WASD）共用一个"边沿状态"，
   互相把对方清掉 → 按住方向键每帧都判成"刚按下"，导航飙到帧率。
-- **提示栏用控件而不是覆盖层**（`widgets/hints_bar.*`）：AppletFrame 的底栏就是它，
+- **页头与底部栏是外壳级的（全局），内容区吃剩余高度**（`widgets/applet_frame.*`）：
+  结构按 borealis：`AppletFrame[ Header / content(grow) / BottomBar ]`，
+  其中 `Header = [图标][标题][右侧区]`（widgets/header*.json + header_icon.json），
+  `BottomBar = [提示(左) | 状态区(右)]`（widgets/bottom_bar.json），
+  Header 的左右外边距用 `appletFrame.paddingSides`、底栏用 `hints.footerMarginSides`。
+  显隐用**实例方法** `showHeader(bool)` / `showBottomBar(bool)`：隐藏时看 `GONE`（不占位），
+  所以内容区自动吃掉那部分高度；**栏里不能留固定外边距**（页头下边的留白写在页头自己的
+  padding 里），否则隐藏后会留下空隙。
+  `setBarsAnimated(true)`（默认）时用 `core/time.hpp` 的 `Animatable` 补间折叠：
+  动画期间两栏保持 VISIBLE 并逐帧改高度 + `App::requestLayout()`，补间结束才真正 GONE。
+- **`AppearanceView` 是容器，`update()` 必须先 `Box::update()` 递归子树**：
+  底栏里的提示栏/状态区、页头里的标题、弹窗面板里的按钮行都靠这条，
+  漏了的话子树永远不会 update（踩过：提示栏一直不刷新、看着像空的）。
+- **提示栏用控件而不是覆盖层**（`widgets/hints_bar.*`）：它是底栏的左侧内容，
   条目按当前焦点的动作重建（签名没变就不重建，避免每帧重排）。
   图标是**图标字体的私有区字形**（码位同 borealis 的 `Hint::getKeyIcon`）：
   Switch 靠系统字体 `NintendoExt` 回退，桌面随包带 `resources/font/switch_icons.ttf`。

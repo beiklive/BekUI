@@ -34,7 +34,13 @@
     "minWidth": 132
   },
   "header": {
-    "height": 55
+    "height": 55,
+    "titleFontSize": 28,
+    "paddingSides": 35,
+    "paddingTopBottom": 15,
+    "imageSpacing": 18,
+    "titleTopOffset": 7,
+    "separatorThickness": 1
   },
   "bottomBar": {
     "height": 73
@@ -79,7 +85,8 @@
     "headerHeight": 88,
     "footerHeight": 73,
     "paddingSides": 30,
-    "contentTop": 12
+    "contentTop": 12,
+    "separatorThickness": 1
   },
   "card": {
     "padding": 16
@@ -89,5 +96,14 @@
   },
   "hintsBar": {
     "paddingX": 25
+  },
+  "hints": {
+    "footerMarginSides": 30,
+    "footerPaddingSides": 25,
+    "footerPaddingTopBottom": 8
+  },
+  "status": {
+    "fontSize": 21.5,
+    "itemSpacing": 21
   }
 }

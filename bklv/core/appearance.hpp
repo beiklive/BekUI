@@ -125,7 +125,7 @@ struct AppearanceBox
     bool hasWidth = false, hasHeight = false, hasMinWidth = false, hasMinHeight = false;
     bool hasPadding = false, hasMargin = false, hasGap = false;
     bool hasGrow = false, hasShrink = false;
-    bool hasJustify = false, hasAlign = false;
+    bool hasJustify = false, hasAlign = false, hasAxis = false;
     bool hasBackground = false, hasCornerRadius = false;
     bool hasBorderThickness = false, hasBorderColor = false;
 
@@ -138,6 +138,7 @@ struct AppearanceBox
     float grow = 0.0f, shrink = 1.0f;
     std::string justify;
     std::string align;
+    std::string axis; // row / column
     ImU32 background   = 0;
     float cornerRadius = 0.0f;
     float borderThickness = 0.0f;

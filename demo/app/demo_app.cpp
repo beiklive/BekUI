@@ -18,6 +18,7 @@ DemoApp::DemoApp()
     // ---- 外壳：AppletFrame（页头 + 提示栏底栏）----
     this->root = new AppletFrame();
     this->root->setTitle(getStr("app/title"));
+    this->root->setSubtitle(getStr("app/subtitle"));
 
     // ---- 内容：左 侧栏 + 右 子页面 ----
     Box* body = makeRow(getTheme().number("metric.spacing.xl", 24.0f), AlignItems::STRETCH);
@@ -31,9 +32,25 @@ DemoApp::DemoApp()
     right->setShrink(1.0f);
     right->setHeight(AUTO);
 
-    // 右上角：日志窗口开关（不用记快捷键）
-    Box* topRow = makeRow(0.0f, AlignItems::CENTER);
+    // 右上角：日志开关 + 全局页头/底栏显隐（这两样是外壳级的，所有页面共用）
+    Box* topRow = makeRow(getTheme().number("metric.spacing.sm", 8.0f), AlignItems::CENTER);
     topRow->setJustifyContent(JustifyContent::FLEX_END);
+
+    Button* headerButton = new Button(getStr("app/hide_header"));
+    headerButton->setOnClick([this, headerButton] {
+        const bool next = !this->root->isHeaderVisible();
+        this->root->showHeader(next);
+        headerButton->setText(next ? getStr("app/hide_header") : getStr("app/show_header"));
+    });
+    topRow->addView(headerButton);
+
+    Button* footerButton = new Button(getStr("app/hide_footer"));
+    footerButton->setOnClick([this, footerButton] {
+        const bool next = !this->root->isBottomBarVisible();
+        this->root->showBottomBar(next);
+        footerButton->setText(next ? getStr("app/hide_footer") : getStr("app/show_footer"));
+    });
+    topRow->addView(footerButton);
 
     Button* logButton = new Button(getStr("app/show_log"));
     logButton->setOnClick([this, logButton] {

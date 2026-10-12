@@ -14,7 +14,6 @@ Box* buildTextPage()
     const ThemeData& theme = getTheme();
 
     Box* page = makeColumn(theme.number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/text")));
     page->addView(makeHint(getStr("text/hint")));
 
     // ---- 字号档位（全部来自主题，换肤/缩放会跟着变）----

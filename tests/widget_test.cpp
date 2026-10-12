@@ -217,34 +217,34 @@ int main()
         header.setSubtitle("副标题");
         checkEqual(header.getTitle(), "标题", "标题进了控件");
 
+        // 页头按 borealis 的结构：图标 / 标题 / 右侧区 都是子节点，装饰只有下边线
         const Appearance& appearance = header.getActiveAppearance();
-        check(appearance.getLayers().size() == 4, "Header 四层：色条 / 标题 / 副标题 / 下边线");
-        if (appearance.getLayers().size() == 4)
+        check(appearance.getLayers().size() == 1, "Header 只有一层装饰：下边线");
+        if (!appearance.getLayers().empty())
         {
-            const AppearanceLayer& accent   = appearance.getLayers()[0];
-            const AppearanceLayer& title    = appearance.getLayers()[1];
-            const AppearanceLayer& subtitle = appearance.getLayers()[2];
-            const AppearanceLayer& line     = appearance.getLayers()[3];
-
-            checkFloat(accent.width, 5.0f, "色条用显式 width=5（brls/header/rectangle_width）");
-            check(accent.op == AppearanceLayer::Op::Rect, "色条是 rect 层");
-
-            checkEqual(title.source, "title", "标题层的数据源是 title");
-            checkEqual(subtitle.source, "subtitle", "副标题层的数据源是 subtitle");
-            checkEqual(subtitle.align, "right", "副标题右对齐");
-
-            checkFloat(line.height, 1.0f, "下边线用显式 height=1");
-            checkEqual(line.valign, "bottom", "下边线贴底");
+            checkFloat(appearance.getLayers()[0].height, 1.0f, "下边线 height=1");
+            checkEqual(appearance.getLayers()[0].valign, "bottom", "下边线贴底");
         }
 
-        BottomBar bar("A 确定    B 返回");
-        check(bar.getActiveAppearance().getLayers().size() == 2, "BottomBar 两层：上边线 + 文字");
-        if (bar.getActiveAppearance().getLayers().size() == 2)
-        {
+        check(header.getIcon() != nullptr, "页头有图标位");
+        check(header.getIcon()->getVisibility() == Visibility::GONE, "没设图标时图标隐藏");
+        check(header.getHintBox() != nullptr, "页头有右侧区");
+        check(header.getHintBox()->getChildrenCount() == 1, "右侧区里放着副标题");
+        checkFloat(header.getTitleLabel()->getFontSize(),
+            getTheme().number("metric.header.titleFontSize", 0.0f),
+            "标题字号来自主题（brls/applet_frame/header_title_font_size）");
+
+        const Appearance& iconAppearance = header.getIcon()->getActiveAppearance();
+        check(iconAppearance.getBox().hasMargin, "图标左边距来自 header_icon.json 的 box");
+
+        // 底栏 = 上边线（外观层）+ 左侧提示 + 右侧状态区（子节点），一个控件装齐
+        BottomBar bar;
+        check(bar.getHints() != nullptr, "底栏里有提示栏");
+        check(bar.getStatus() != nullptr, "底栏里有状态区");
+        check(bar.getActiveAppearance().getLayers().size() == 1, "底栏一层：上边线");
+        if (!bar.getActiveAppearance().getLayers().empty())
             checkEqual(bar.getActiveAppearance().getLayers()[0].valign, "top", "上边线贴上");
-            checkEqual(bar.getActiveAppearance().getLayers()[1].source, "text", "文字层数据源是 text");
-        }
-        checkEqual(bar.getText(), "A 确定    B 返回", "底栏文字");
+        check(bar.getActiveAppearance().getBox().hasHeight, "底栏高度来自 box 段");
     }
 
     std::printf("\n== 6. Slider：进度与外观分段 ==\n");
@@ -374,13 +374,51 @@ int main()
         pageAButton->triggerAction(ControllerButton::B, false);
         check(dismissed, "只剩一层时按 B 才交给 onDismiss");
 
-        // 页头样式切换 = 换一份外观文件
+        // 页头样式切换 = 换一份外观文件（applet 变体 88 高 → popup 变体 auto）
         Header* header = frame->getHeader();
-        checkEqual(header->getActiveAppearance().getLayers()[1].align, "left", "常规页头标题左对齐");
+        checkFloat(header->getActiveAppearance().getBox().height,
+            getTheme().number("metric.appletFrame.headerHeight", 0.0f),
+            "应用外壳的页头用 applet 变体（88）");
         frame->setHeaderStyle(AppletHeaderStyle::Popup);
-        checkEqual(header->getActiveAppearance().getLayers().size() == 4
-                ? header->getActiveAppearance().getLayers()[1].align : std::string("?"),
-            "center", "Popup 页头标题居中（换了外观文件）");
+        check(header->getActiveAppearance().getBox().heightAuto,
+            "Popup 页头换成了另一份外观（高度 auto）");
+
+        // ---- 全局显隐：关掉补间时立刻切换，内容区吃掉那部分高度 ----
+        frame->setBarsAnimated(false);
+        check(frame->isHeaderVisible() && frame->isBottomBarVisible(), "默认页头与底栏都显示");
+
+        frame->showHeader(false);
+        check(!frame->isHeaderVisible(), "showHeader(false) 生效");
+        check(header->getVisibility() == Visibility::GONE, "页头 GONE（不占位）");
+
+        frame->showBottomBar(false);
+        check(!frame->isBottomBarVisible(), "showBottomBar(false) 生效");
+        check(frame->getFooter()->getVisibility() == Visibility::GONE, "底栏 GONE（不占位）");
+
+        frame->showHeader(true);
+        frame->showBottomBar(true);
+        check(header->getVisibility() == Visibility::VISIBLE, "再显示出来");
+
+        // ---- 开补间时折叠会逐帧变化 ----
+        frame->setBarsAnimated(true);
+        frame->setBarAnimationDuration(0.05f);
+        frame->showHeader(false);
+        check(frame->getHeader()->getVisibility() == Visibility::VISIBLE,
+            "补间期间页头先保持可见（才有高度可补）");
+        const float fullHeight = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+        bool shrank = false;
+        for (int i = 0; i < 30; i++)
+        {
+            Ticking::updateTickings(); // 补间是全局 ticking 驱动的
+            frame->update();
+            // 高度要读布局结果，所以每帧跑一次布局（正常运行由 App::frame 负责）
+            YGNodeCalculateLayout(frame->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+            if (frame->getHeader()->getHeight() < fullHeight)
+                shrank = true;
+        }
+        check(shrank, "补间过程中页头高度在逐步变小");
+        check(frame->getHeader()->getVisibility() == Visibility::GONE,
+            "补间结束后页头才真正 GONE");
 
         root->removeView(frame, true);
         delete root;

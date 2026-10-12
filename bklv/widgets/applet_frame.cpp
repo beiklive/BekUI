@@ -1,7 +1,9 @@
 #include "bklv/widgets/applet_frame.hpp"
 
+#include <algorithm>
 #include <utility>
 
+#include "bklv/core/app.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -24,15 +26,10 @@ AppletFrame::AppletFrame(View* contentView)
     this->contentBox->setWidthPercentage(100.0f);
     this->contentBox->setGrow(1.0f);
     this->contentBox->setShrink(1.0f);
-    this->contentBox->setMarginTop(getTheme().number("metric.appletFrame.contentTop", 12.0f));
     this->addView(this->contentBox);
 
-    // 底栏：默认是提示栏（[按键图标] 说明 …），这也正是 borealis 的做法
-    this->hintsBar = new HintsBar();
-    this->addView(this->hintsBar);
-
+    // 底栏：一个控件同时装提示（左）与状态区（右），对应 borealis 的 BottomBar
     this->footer = new BottomBar();
-    this->footer->setVisibility(Visibility::GONE); // 文字底栏默认不显示
     this->addView(this->footer);
 
     // B：逐层返回；已经在最外层就交给 onDismiss
@@ -85,24 +82,126 @@ void AppletFrame::setSubtitle(const std::string& subtitle)
     this->header->setSubtitle(subtitle);
 }
 
+void AppletFrame::showHeader(bool visible)
+{
+    if (this->headerVisible == visible)
+        return;
+
+    this->headerVisible = visible;
+
+    if (this->barsAnimated)
+    {
+        this->startBarAnimation();
+        return;
+    }
+
+    this->header->setVisibility(visible ? Visibility::VISIBLE : Visibility::GONE);
+    App::requestLayout();
+}
+
+void AppletFrame::showBottomBar(bool visible)
+{
+    if (this->bottomBarVisible == visible)
+        return;
+
+    this->bottomBarVisible = visible;
+
+    if (this->barsAnimated)
+    {
+        this->startBarAnimation();
+        return;
+    }
+
+    this->footer->setVisibility(visible ? Visibility::VISIBLE : Visibility::GONE);
+    App::requestLayout();
+}
+
+// 折叠补间：把栏高从整高补到 0（或反过来）。
+// 动画期间每帧写一次高度并请求重排——布局是"一帧最多一次"的，所以不会白算。
+void AppletFrame::startBarAnimation()
+{
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    this->headerAnim.reset(this->headerVisible ? 0.0f : 1.0f);
+    this->headerAnim.addStep(this->headerVisible ? 1.0f : 0.0f, this->barDuration);
+
+    this->footerAnim.reset(this->bottomBarVisible ? 0.0f : 1.0f);
+    this->footerAnim.addStep(this->bottomBarVisible ? 1.0f : 0.0f, this->barDuration);
+
+    // 动画期间必须是可见的（不然 GONE 了就没有高度可补）
+    this->header->setVisibility(Visibility::VISIBLE);
+    this->footer->setVisibility(Visibility::VISIBLE);
+    this->header->setHeight(std::max(1.0f, headerFull * this->headerAnim.getValue()));
+    this->footer->setHeight(std::max(1.0f, footerFull * this->footerAnim.getValue()));
+
+    // 两个补间都结束时再收敛（期间每帧写高度 + 请求重排）
+    this->headerAnim.setEndCallback([this](bool) { this->finishBarAnimation(); });
+    this->footerAnim.setEndCallback([this](bool) { this->finishBarAnimation(); });
+
+    this->animating = true;
+    this->headerAnim.start();
+    this->footerAnim.start();
+
+    App::requestLayout();
+}
+
+void AppletFrame::updateBars()
+{
+    if (!this->animating)
+        return;
+
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    const float headerRatio = (float)this->headerAnim;
+    const float footerRatio = (float)this->footerAnim;
+
+    this->header->setHeight(std::max(1.0f, headerFull * headerRatio));
+    this->footer->setHeight(std::max(1.0f, footerFull * footerRatio));
+
+    App::requestLayout(); // 补间期间每帧都要重排（布局是延迟的，一帧最多一次）
+}
+
+// 两段补间都跑完：把该藏的栏真正 GONE 掉（这样空间是平滑让出来的）
+void AppletFrame::finishBarAnimation()
+{
+    if (!this->headerAnim.isStopped() || !this->footerAnim.isStopped())
+        return;
+
+    this->animating = false;
+
+    if (!this->headerVisible)
+    {
+        this->header->setHeight(getTheme().number("metric.appletFrame.headerHeight", 88.0f));
+        this->header->setVisibility(Visibility::GONE);
+    }
+    else
+    {
+        this->header->setHeight(getTheme().number("metric.appletFrame.headerHeight", 88.0f));
+    }
+
+    if (!this->bottomBarVisible)
+    {
+        this->footer->setHeight(getTheme().number("metric.appletFrame.footerHeight", 73.0f));
+        this->footer->setVisibility(Visibility::GONE);
+    }
+    else
+    {
+        this->footer->setHeight(getTheme().number("metric.appletFrame.footerHeight", 73.0f));
+    }
+
+    App::requestLayout();
+}
+
 void AppletFrame::setHeaderVisibility(Visibility visibility)
 {
-    this->header->setVisibility(visibility);
+    this->showHeader(visibility == Visibility::VISIBLE);
 }
 
 void AppletFrame::setFooterVisibility(Visibility visibility)
 {
-    this->footer->setVisibility(visibility);
-    this->hintsBar->setVisibility(visibility == Visibility::VISIBLE && this->useTextFooter
-            ? Visibility::GONE
-            : visibility);
-}
-
-void AppletFrame::setUseTextFooter(bool value)
-{
-    this->useTextFooter = value;
-    this->hintsBar->setVisibility(value ? Visibility::GONE : Visibility::VISIBLE);
-    this->footer->setVisibility(value ? Visibility::VISIBLE : Visibility::GONE);
+    this->showBottomBar(visibility == Visibility::VISIBLE);
 }
 
 void AppletFrame::setHeaderStyle(AppletHeaderStyle style)
@@ -155,14 +254,15 @@ void AppletFrame::popContentView(std::function<void()> callback)
 
 void AppletFrame::refreshFooter()
 {
-    // 提示栏的内容由 HintsBar::update() 按当前焦点刷新（这里是切页后的即时同步）
-    if (this->hintsBar != nullptr)
-        this->hintsBar->refresh();
+    // 提示按当前焦点刷新（HintsBar 自己每帧也会按签名差异刷，这里是切页后的即时同步）
+    if (this->footer != nullptr)
+        this->footer->refreshHints();
 }
 
 void AppletFrame::update()
 {
     Box::update();
+    this->updateBars();
 }
 
 } // namespace bklv

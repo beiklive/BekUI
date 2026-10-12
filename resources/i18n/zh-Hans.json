@@ -3,7 +3,11 @@
     "title": "bklv 能力总览",
     "pages": "页面",
     "show_log": "显示日志",
-    "hide_log": "隐藏日志"
+    "hide_log": "隐藏日志",
+    "hide_header": "隐藏页头",
+    "show_header": "显示页头",
+    "hide_footer": "隐藏底栏",
+    "show_footer": "显示底栏"
   },
   "tab": {
     "widgets": "控件",

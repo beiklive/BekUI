@@ -564,6 +564,11 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             box.align   = boxNode["alignItems"].get<std::string>();
             box.hasAlign = true;
         }
+        if (boxNode.contains("axis") && boxNode["axis"].is_string())
+        {
+            box.axis    = boxNode["axis"].get<std::string>();
+            box.hasAxis = true;
+        }
         if (boxNode.contains("backgroundColor"))
         {
             if (!resolveColor(boxNode["backgroundColor"], theme, box.background, error,
@@ -763,6 +768,8 @@ void applyAppearanceBox(Box* view, const AppearanceBox& box)
         view->setGrow(box.grow);
     if (box.hasShrink)
         view->setShrink(box.shrink);
+    if (box.hasAxis)
+        view->setAxis(box.axis == "row" ? Axis::ROW : Axis::COLUMN);
     if (box.hasJustify)
         view->setJustifyContent(justifyFromName(box.justify));
     if (box.hasAlign)

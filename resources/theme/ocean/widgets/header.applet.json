@@ -2,49 +2,27 @@
   "box": {
     "width": "100%",
     "height": "@theme/metric.appletFrame.headerHeight",
-    "shrink": 0
+    "shrink": 0,
+    "margin": [
+      0,
+      "@theme/metric.appletFrame.paddingSides",
+      0,
+      "@theme/metric.appletFrame.paddingSides"
+    ],
+    "padding": [
+      "@theme/metric.header.paddingTopBottom",
+      "@theme/metric.header.paddingSides",
+      "@theme/metric.header.paddingTopBottom",
+      "@theme/metric.header.paddingSides"
+    ],
+    "alignItems": "center",
+    "axis": "row"
   },
   "layers": [
     {
       "op": "rect",
-      "id": "accent",
-      "fill": "@theme/color.header.rectangle",
-      "width": 5,
-      "inset": [
-        8,
-        0,
-        8,
-        0
-      ]
-    },
-    {
-      "op": "text",
-      "id": "title",
-      "source": "title",
-      "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.lg",
-      "align": "left",
-      "valign": "center",
-      "inset": [
-        0,
-        0,
-        0,
-        16
-      ]
-    },
-    {
-      "op": "text",
-      "id": "subtitle",
-      "source": "subtitle",
-      "color": "@theme/color.header.subtitle",
-      "fontSize": "@theme/metric.font.size.sm",
-      "align": "right",
-      "valign": "center"
-    },
-    {
-      "op": "rect",
       "id": "line",
-      "fill": "@theme/color.header.border",
+      "fill": "@theme/color.border.subtle",
       "height": 1,
       "valign": "bottom"
     }

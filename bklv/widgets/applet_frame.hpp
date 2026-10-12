@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/time.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
-#include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/header.hpp"
 
 namespace bklv
@@ -48,6 +48,22 @@ class AppletFrame : public Box
     void setTitle(const std::string& title);
     void setSubtitle(const std::string& subtitle);
 
+    // ---- 全局显隐（页头 / 底栏是外壳级的，所有页面共用同一份）----
+    //
+    // 隐藏时用 GONE（不占位），内容区会自动吃掉那部分高度；
+    // 外壳里没有"残留间距"——页头下边的留白写在页头自己的 padding 里。
+    void showHeader(bool visible);
+    void showBottomBar(bool visible);
+    bool isHeaderVisible() const { return this->headerVisible; }
+    bool isBottomBarVisible() const { return this->bottomBarVisible; }
+
+    // 显隐时是否走补间（默认开）；关掉就是立刻切换
+    void setBarsAnimated(bool animated) { this->barsAnimated = animated; }
+    bool isBarsAnimated() const { return this->barsAnimated; }
+    // 补间时长（秒）
+    void setBarAnimationDuration(float seconds) { this->barDuration = seconds; }
+
+    // 兼容旧的语义：VISIBLE / GONE 两态
     void setHeaderVisibility(Visibility visibility);
     void setFooterVisibility(Visibility visibility);
     void setHeaderStyle(AppletHeaderStyle style);
@@ -56,11 +72,7 @@ class AppletFrame : public Box
     void setOnDismiss(std::function<void()> handler) { this->onDismiss = std::move(handler); }
 
     Header* getHeader() const { return this->header; }
-    HintsBar* getHintsBar() const { return this->hintsBar; }
-
-    // 想要"上边线 + 一行文字"的底栏时用它（提示栏与文字底栏二选一，默认提示栏）
     BottomBar* getFooter() const { return this->footer; }
-    void setUseTextFooter(bool value);
     Box* getContentBox() const { return this->contentBox; }
 
     void update() override;
@@ -74,10 +86,21 @@ class AppletFrame : public Box
     void attachContentView(View* view);
     void refreshFooter();
 
+    // 折叠动画：从整高补到 0（隐藏）/ 从 0 补到整高（显示）
+    void startBarAnimation();
+    void updateBars();
+    void finishBarAnimation();
+
     Header* header       = nullptr;
-    HintsBar* hintsBar   = nullptr;
     BottomBar* footer    = nullptr;
-    bool useTextFooter   = false;
+
+    bool headerVisible    = true;
+    bool bottomBarVisible = true;
+    bool barsAnimated     = true;
+    float barDuration     = 0.18f; // 秒
+    Animatable headerAnim{ 1.0f };
+    Animatable footerAnim{ 1.0f };
+    bool animating        = false;
     Box* contentBox      = nullptr;
     View* contentView    = nullptr;
     std::vector<View*> contentStack;

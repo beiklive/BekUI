@@ -162,14 +162,21 @@ int main()
             checkFloat(card->getBox().width, 100.0f, "card 宽度 100%");
             check(card->getBox().hasPadding, "card 声明了 padding");
 
-            std::shared_ptr<const Appearance> bar = getWidgetAppearance("hints_bar");
-            check(bar != nullptr && bar->getBox().hasPadding, "hints_bar 声明了 padding");
+            // 提示行本身只是"左侧内容"；高度与左右留白归底栏（borealis 的 hints/* 在 footer 上）
+            std::shared_ptr<const Appearance> hints = getWidgetAppearance("hints_bar");
+            check(hints != nullptr && hints->getBox().hasGap, "hints_bar 声明了条目间距");
+
+            std::shared_ptr<const Appearance> bar = getWidgetAppearance("bottom_bar");
+            check(bar != nullptr && bar->getBox().hasPadding, "bottom_bar 声明了 padding");
             if (bar != nullptr)
-                checkFloat(bar->getBox().padding[1], getTheme().number("metric.hintsBar.paddingX", 0.0f),
-                    "hints_bar 左右内边距来自主题");
-            check(bar != nullptr && bar->getBox().hasHeight
-                    && !bar->getBox().heightPercent && !bar->getBox().heightAuto,
-                "hints_bar 高度是具体像素而不是 auto");
+            {
+                checkFloat(bar->getBox().padding[1],
+                    getTheme().number("metric.hints.footerPaddingSides", 0.0f),
+                    "底栏左右内边距来自主题（borealis footer_padding_sides）");
+                check(bar->getBox().hasHeight && !bar->getBox().heightAuto,
+                    "底栏高度是具体像素");
+                check(bar->getBox().hasMargin, "底栏声明了左右外边距（footer_margin_sides）");
+            }
 
             std::shared_ptr<const Appearance> shell = getWidgetAppearance("applet_frame");
             check(shell != nullptr && shell->getBox().hasBackground, "applet_frame 声明了底色");
@@ -310,7 +317,10 @@ int main()
             for (const char* widget : widgets)
             {
                 std::shared_ptr<const Appearance> appearance = getWidgetAppearance(widget);
-                const bool ok = appearance != nullptr && !appearance->getLayers().empty();
+                // 非空 = 至少声明了 layers 或 box（纯布局控件可以只写 box）
+                const bool ok = appearance != nullptr
+                    && (!appearance->getLayers().empty() || appearance->getBox().hasHeight
+                        || appearance->getBox().hasWidth || appearance->getBox().hasPadding);
                 check(ok, std::string("  ") + themeName + " / " + widget + " 外观能编译且非空");
             }
         }

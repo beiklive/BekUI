@@ -17,16 +17,6 @@ Label* makeText(const std::string& text, float size, ImU32 color, bool singleLin
     return label;
 }
 
-Label* makeTitle(const std::string& text)
-{
-    Label* label = new Label();
-    label->setText(text);
-    // 不写死字号/颜色：交给主题（未显式设置的值换肤时会跟着变）
-    label->setFontSizeExplicit(false);
-    label->setTextColorExplicit(false);
-    return label;
-}
-
 Label* makeHint(const std::string& text)
 {
     Label* label = new Label();

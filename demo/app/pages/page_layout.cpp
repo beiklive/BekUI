@@ -29,7 +29,6 @@ Box* buildLayoutPage()
     const ThemeData& theme = getTheme();
 
     Box* page = makeColumn(theme.number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/layout")));
     page->addView(makeHint(getStr("layout/hint")));
 
     // ---- 主轴排列 ----

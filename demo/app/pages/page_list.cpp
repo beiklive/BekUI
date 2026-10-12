@@ -22,7 +22,6 @@ ListPageResult buildListPage()
     page->setHeightPercentage(100.0f);
     page->setGap(getTheme().number("metric.spacing.sm", 8.0f));
 
-    page->addView(makeTitle(getStr("tab/list")));
     page->addView(makeHint(getStr("list/hint")));
 
     RecyclerFrame* list = new RecyclerFrame();

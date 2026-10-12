@@ -25,6 +25,7 @@
     "widgets/applet_frame.json",
     "widgets/dropdown_popup.json",
     "widgets/header.applet.json",
-    "widgets/tab_cell.sidebar.json"
+    "widgets/tab_cell.sidebar.json",
+    "widgets/header_icon.json"
   ]
 }

@@ -6,7 +6,8 @@
       "@theme/metric.hintItem.paddingX",
       "@theme/metric.hintItem.paddingY",
       "@theme/metric.hintItem.paddingX"
-    ]
+    ],
+    "axis": "row"
   },
   "layers": [
     {

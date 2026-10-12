@@ -25,7 +25,6 @@ void setThemeSwitchApp(App* app)
 Box* buildThemePage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
-    page->addView(makeTitle(getStr("tab/theme")));
     page->addView(makeHint(getStr("theme/hint")));
 
     // ---- 换肤 ----
