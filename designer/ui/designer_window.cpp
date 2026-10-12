@@ -1398,6 +1398,8 @@ void DesignerWindow::drawTree()
     // 文件
     {
         const bool selected = this->selection.kind == SelKind::FILE;
+        if (this->treeOpenRequest != 0)
+            ImGui::SetNextItemOpen(this->treeOpenRequest == 1, ImGuiCond_Always);
         if (ImGui::TreeNodeEx("##file", ImGuiTreeNodeFlags_DefaultOpen
                 | ImGuiTreeNodeFlags_SpanAvailWidth
                 | (selected ? ImGuiTreeNodeFlags_Selected : 0), "file  %s", this->currentWidget.c_str()))
@@ -1411,6 +1413,8 @@ void DesignerWindow::drawTree()
             // box
             // box 的字段不默认展开：十几行字段会把层与状态挤到下面看不见
             const bool boxSelected = this->selection.kind == SelKind::BOX;
+            if (this->treeOpenRequest != 0)
+                ImGui::SetNextItemOpen(this->treeOpenRequest == 1, ImGuiCond_Always);
             if (ImGui::TreeNodeEx("##box", ImGuiTreeNodeFlags_SpanAvailWidth
                     | (boxSelected ? ImGuiTreeNodeFlags_Selected : 0), "box"))
             {
@@ -1463,6 +1467,8 @@ void DesignerWindow::drawTree()
                 const ImGuiTreeNodeFlags layerFlags = this->onlyLayers
                     ? (ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen)
                     : ImGuiTreeNodeFlags_DefaultOpen;
+                if (this->treeOpenRequest != 0)
+                    ImGui::SetNextItemOpen(this->treeOpenRequest == 1, ImGuiCond_Always);
                 const bool open = ImGui::TreeNodeEx(id.c_str(), layerFlags
                         | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap
                         | (selected ? ImGuiTreeNodeFlags_Selected : 0), "%s", label);
@@ -1591,6 +1597,8 @@ void DesignerWindow::drawTree()
 
     // 层序硬约定的提醒 + 一键按约定重排
     const std::vector<std::string> orderWarnings = this->doc.layerOrderWarnings();
+    this->treeOpenRequest = 0; // 只在点的那一帧生效，之后用户还能自己折起来
+
     for (const std::string& warning : orderWarnings)
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "⚠ %s", warning.c_str());
     if (!orderWarnings.empty() && !this->readOnly)
@@ -2924,6 +2932,17 @@ void DesignerWindow::drawProps()
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("复制当前选中节点那一段的 JSON（选中层 → 该层；选中 box → box；否则整份）");
+    if (!this->changedFieldPaths.empty())
+    {
+        if (ImGui::SmallButton("下一处改动 (F3)"))
+            this->selectNextChange(1);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("上一处"))
+            this->selectNextChange(-1);
+        ImGui::SameLine();
+        ImGui::TextColored(accentColor(), "%d 处", (int)this->changedFieldPaths.size());
+    }
+
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##propFilter", "过滤字段（比如 fill / radius）…",
         this->propFilter, sizeof(this->propFilter));
@@ -3809,6 +3828,36 @@ void DesignerWindow::selectByChangePath(const std::string& path)
     this->statusMessage = "已定位到 " + path;
 }
 
+void DesignerWindow::selectNextChange(int step)
+{
+    // 自己先刷一次：这个集合平时是在帧里算的，从别处（自查钩子/快捷键之外的调用）进来
+    // 可能还没算过 —— 依赖调用时机会变成一个很难查的空集合（踩过）
+    this->refreshChangedPaths();
+
+    if (this->changedFieldPaths.empty())
+    {
+        this->statusMessage = "这份文件还没有未保存的改动";
+        return;
+    }
+
+    // changedFieldPaths 是有序集合，按路径顺序循环走
+    std::vector<std::string> paths(this->changedFieldPaths.begin(), this->changedFieldPaths.end());
+    size_t index = 0;
+    const auto found = std::find(paths.begin(), paths.end(), this->changeCursorPath);
+    if (found != paths.end())
+    {
+        const ptrdiff_t current = std::distance(paths.begin(), found);
+        index = (size_t)((current + step + (ptrdiff_t)paths.size()) % (ptrdiff_t)paths.size());
+    }
+    else
+        index = step >= 0 ? 0 : paths.size() - 1;
+
+    this->changeCursorPath = paths[index];
+    this->selectByChangePath(this->changeCursorPath);
+    this->statusMessage = "改动 " + std::to_string(index + 1) + "/"
+        + std::to_string(paths.size()) + "：" + this->changeCursorPath;
+}
+
 bool DesignerWindow::isLayerChanged(int index) const
 {
     const std::string prefix = "layers[" + std::to_string(index) + "].";
@@ -3820,7 +3869,9 @@ bool DesignerWindow::isLayerChanged(int index) const
 
 void DesignerWindow::refreshChangedPaths()
 {
-    const std::string now = this->dirty ? this->viewTextApplied : std::string();
+    // 缓存键用**文档自身的序列化**：之前用 viewTextApplied，它在某些路径上还是空串，
+    // 与初始值相同 → 直接早退，集合永远是空的（自查钩子把这个照出来了）
+    const std::string now = this->currentFilePath.empty() ? std::string() : this->doc.serialize();
     if (now == this->changedPathsSource)
         return; // 文档没变，不用重算
 
@@ -4573,6 +4624,13 @@ void DesignerWindow::draw()
 
     this->refreshChangedPaths();
 
+    // 跳到下一处改动：F3 往下、Shift+F3 往上（只在不输入文字时响应）
+    if (ImGui::GetCurrentContext() != nullptr && !ImGui::GetIO().WantTextInput)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_F3, false))
+            this->selectNextChange(ImGui::GetIO().KeyShift ? -1 : 1);
+    }
+
     this->drawTopBar();
 
     const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
@@ -4610,11 +4668,19 @@ void DesignerWindow::draw()
         ImGui::EndChild();
         ImGui::Separator();
         panelHeader("节点树", "点哪层渲染哪层");
+        if (ImGui::SmallButton("全展开"))
+            this->treeOpenRequest = 1;
+        ImGui::SameLine();
+        if (ImGui::SmallButton("只到层"))
+            this->treeOpenRequest = 2;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("把下面的字段收起来，只留层（和「只看层」同一件事，但只生效一次）");
+        ImGui::SameLine();
         ImGui::Checkbox("只看层", &this->onlyLayers);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("把每层下面的字段行收起来，只留层本身 —— 找控件、调顺序时更快");
         ImGui::SameLine();
-        ImGui::TextColored(mutedColor(), "共 %d 层", this->doc.layerCount());
+        ImGui::TextColored(mutedColor(), "%d 层", this->doc.layerCount());
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
             sizeof(this->treeFilter));

@@ -120,6 +120,7 @@ class DesignerWindow
 
     void saveAllForTest() { this->saveAllDirty(); }
     void requestSaveForTest() { this->requestSave(); }
+    void nextChangeForTest(int step) { this->selectNextChange(step); }
     void openProjectDialogForTest(const std::string& startPath)
     {
         this->showOpenProject = true;
@@ -251,6 +252,8 @@ class DesignerWindow
     bool isLayerChanged(int index) const;
     // diff 列表点一下 → 选中对应的地方（层 / 层字段 / box）
     void selectByChangePath(const std::string& path);
+    // 在"改动过的字段"里往下/往上跳一处（step = +1 / -1）
+    void selectNextChange(int step);
     std::string previewJson() const;                    // 按选中节点生成"给预览用的外观 JSON"
     void drawBoxGuides(ImVec2 origin, ImVec2 size) const;
     // 色板 + 文本 + 常用主题 key 下拉；返回 true 表示改过
@@ -402,6 +405,8 @@ class DesignerWindow
     std::vector<std::string> diffLines;
     std::vector<std::string> diffPaths;   // 与 diffLines 一一对应，点条目用它定位
     bool diffExpandAll = true;            // diff 弹窗里分组默认展开
+    int treeOpenRequest = 0;              // 0 不动 / 1 全展开 / 2 全收起（下一帧生效）
+    std::string changeCursorPath;         // "跳到下一处改动"走到哪儿了
     char saveAsPath[512] = "";
 
     // 页面视图：原始 JSON 文本编辑（应用前先校验 + 试实例化）

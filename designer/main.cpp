@@ -171,6 +171,16 @@ int main(int argc, char** argv)
     }
 
     // 自查：BKLV_DESIGNER_SAVE_ALL=1 走一次"全部保存"
+    // 自查：BKLV_DESIGNER_NEXT_CHANGE=<次数> 连点几次"下一处改动"
+    if (const char* count = std::getenv("BKLV_DESIGNER_NEXT_CHANGE"))
+    {
+        for (int i = 0; i < std::atoi(count); i++)
+        {
+            window.nextChangeForTest(1);
+            BKLV_LOG_INFO("[自查] 跳改动 %d：%s", i + 1, window.statusForTest().c_str());
+        }
+    }
+
     // 自查：BKLV_DESIGNER_SHOW_DIFF=1 直接打开保存前的 diff 弹窗
     if (std::getenv("BKLV_DESIGNER_SHOW_DIFF") != nullptr)
         window.requestSaveForTest();
