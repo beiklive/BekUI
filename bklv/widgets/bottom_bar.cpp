@@ -15,9 +15,11 @@ BottomBar::BottomBar(const std::string& variant)
     
     this->status = new StatusArea();
 
-    this->addView(this->status);
-    this->addView(new bklv::Padding());
+    // 顺序按 borealis 的 bottomBarXML：Hints 在前、Status 在后，中间用 Padding 顶开
+    // （AGENTS.md 的约定 + widget_test 有断言；之前被改成 status 在前，断言一直红）
     this->addView(this->hints);
+    this->addView(new bklv::Padding());
+    this->addView(this->status);
 }
 
 void BottomBar::applyTheme()

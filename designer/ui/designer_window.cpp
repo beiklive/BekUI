@@ -169,11 +169,43 @@ bool DesignerWindow::setProject(const Project& value, bool isReadOnly, std::stri
     this->previewDirty = true;
 
     this->refreshFileList();
+    this->refreshThemes();
 
     // 默认打开第一个外观文件，界面一进来就有的看
     if (!this->widgetFiles.empty())
         this->openAppearance(widgetNameFromPath(this->widgetFiles.front()), error);
     return true;
+}
+
+void DesignerWindow::refreshThemes()
+{
+    this->themeNames.clear();
+    this->defaultThemeName.clear();
+    std::string error;
+    readThemesFile(this->project.themeRoot, this->themeNames, this->defaultThemeName, error);
+    if (this->themeNames.empty())
+        this->themeNames.push_back(this->project.name); // 至少留当前主题
+}
+
+void DesignerWindow::switchTheme(const std::string& name)
+{
+    if (name == this->project.name)
+        return;
+
+    // 切主题：基准主题（default/ocean）只读浏览，自建主题可直接编辑
+    Project next;
+    next.mode      = ProjectMode::INPLACE;
+    next.name      = name;
+    next.themeRoot = this->project.themeRoot;
+    if (name == this->project.templateName)
+        next.mode = ProjectMode::FORK;
+
+    std::string error;
+    this->drafts.clear(); // 不同主题的文件互不相干，草稿不跨主题带
+    if (!this->setProject(next, isBaseTheme(name), error))
+        this->errorMessage = error;
+    else
+        this->statusMessage = "已切到主题 " + name + (isBaseTheme(name) ? "（只读浏览）" : "");
 }
 
 void DesignerWindow::refreshFileList()
@@ -816,6 +848,41 @@ void DesignerWindow::drawTopBar()
     if (ImGui::Button("新建项目"))
         this->showNewProject = true;
     ImGui::SameLine();
+    ImGui::SetNextItemWidth(180);
+    if (ImGui::BeginCombo("##theme", this->project.name.c_str()))
+    {
+        for (const std::string& name : this->themeNames)
+        {
+            std::string label = name;
+            if (name == this->defaultThemeName)
+                label += "   （默认）";
+            if (ImGui::Selectable(label.c_str(), name == this->project.name))
+                this->switchTheme(name);
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("切换正在编辑的主题（default / ocean 是只读的基准主题）");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(this->readOnly || this->project.name == this->defaultThemeName);
+    if (ImGui::Button("设为默认"))
+    {
+        std::string error;
+        std::string currentDefault;
+        std::vector<std::string> available;
+        if (readThemesFile(this->project.themeRoot, available, currentDefault, error)
+            && writeThemesFile(this->project.themeRoot, available, this->project.name, error))
+        {
+            this->defaultThemeName = this->project.name;
+            this->statusMessage    = "已把 " + this->project.name + " 设为默认主题";
+        }
+        else
+            this->errorMessage = error;
+    }
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("写进 themes.json 的 default：以后启动就用它（只读主题不给改）");
+    ImGui::SameLine();
     if (ImGui::Button("重载"))
     {
         std::string error;
@@ -1009,9 +1076,48 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
     if (!id.empty())
         label += "  " + id;
     if (node.contains("bind"))
-        label += "   ⟲ " + compactValue(node["bind"]);
+        label += "   [bind " + compactValue(node["bind"]) + "]";
     if (node.contains("include"))
-        label += "   ⤵ " + compactValue(node["include"]);
+        label += "   [include " + compactValue(node["include"]) + "]";
+
+    // include 节点：把被包含的文件展开成子节点（递归有上限，include 环由库那边兜底）
+    if (node.contains("include") && node["include"].is_string())
+    {
+        const std::string includePath = node["include"].get<std::string>();
+        ImGui::PushID(path.c_str());
+        this->viewNodeCount++;
+        const bool open = ImGui::TreeNodeEx("##include",
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
+            "[include]  %s", includePath.c_str());
+        if (open)
+        {
+            if (this->includeDepthGuard >= 6)
+                ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "（嵌套太深，不再展开）");
+            else
+            {
+                std::string includedText;
+                std::string readError;
+                if (!readTextFile(resourcePath(includePath), includedText, readError))
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "%s", readError.c_str());
+                else
+                {
+                    const AppearanceDoc::Json included
+                        = AppearanceDoc::Json::parse(includedText, nullptr, false);
+                    if (included.is_discarded())
+                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.55f, 1.0f), "被包含的文件不是合法 JSON");
+                    else
+                    {
+                        this->includeDepthGuard++;
+                        this->drawViewTree(included, path + "#include");
+                        this->includeDepthGuard--;
+                    }
+                }
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+        return;
+    }
 
     ImGui::PushID(path.c_str());
     this->viewNodeCount++;
@@ -1732,7 +1838,8 @@ View* DesignerWindow::buildPreviewView(const std::string& jsonOverride)
         }
 
         this->viewMap.clear();
-        View* created = createFromJSONString(text, &this->viewMap);
+        this->pageBindings.clear();
+        View* created = createFromJSONString(text, &this->viewMap, &this->pageBindings);
         if (created == nullptr)
             this->previewError = "视图 JSON 实例化失败（未知 type / children 结构 / include 路径）";
         return created;
@@ -2118,6 +2225,17 @@ void DesignerWindow::drawPreview()
             this->canvasWidth, this->canvasHeight, uiScale,
             this->currentTable.empty() && this->project.themeRoot.empty() ? "-"
                                                                          : this->project.themeDir().c_str());
+        if (this->canvasWidth != 1280)
+        {
+            if (ImGui::SmallButton("按真机 720p 画布"))
+            {
+                this->canvasPreset   = 1; // 1280×720
+                this->canvasChecker  = true;
+                this->previewDirty   = true;
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("主题里的尺寸都按 1280×720 写：量间距、看字号对齐时用这个画布最准");
+        }
     }
 
     const char* modeText = "选中「文件」→ 整个控件外观（真实控件）";
@@ -3045,6 +3163,24 @@ void DesignerWindow::drawModals()
             for (size_t i = 0; i < this->focusOrder.size(); i++)
                 ImGui::BulletText("%d. %s", (int)i + 1, this->focusOrder[i].c_str());
         }
+
+        // 数据绑定：哪个节点绑了哪个字段（预览里没有数据源，绑定出来的内容是空的）
+        ImGui::Separator();
+        ImGui::TextColored(kAccent, "数据绑定");
+        if (this->pageBindings.empty())
+            ImGui::TextColored(kMuted, "这个页面没有 bind");
+        else
+            for (const bklv::Binding& binding : this->pageBindings)
+            {
+                std::string path = "(未在映射里)";
+                for (const bklv::InstantiatedView& entry : this->viewMap)
+                    if (entry.view == binding.view)
+                    {
+                        path = entry.pointer.empty() ? "/" : entry.pointer;
+                        break;
+                    }
+                ImGui::BulletText("%s  →  字段 %s", path.c_str(), binding.field.c_str());
+            }
         ImGui::Separator();
         ImGui::Checkbox("在预览里标号", &this->highlightFocusOrder);
         ImGui::SameLine();

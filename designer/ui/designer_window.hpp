@@ -113,6 +113,8 @@ class DesignerWindow
     void drawTree();
     // 页面视图的节点树（type + id + 属性 + children 逐层展开）
     void drawViewTree(const AppearanceDoc::Json& node, const std::string& path);
+    void refreshThemes();
+    void switchTheme(const std::string& name);
     // 选中节点在预览里框出来 / 点预览反选节点
     void drawViewHighlight(ImVec2 origin, float zoom);
     void handlePreviewClick(ImVec2 origin, float zoom);
@@ -185,6 +187,10 @@ class DesignerWindow
     std::string currentWidget;            // 短名，空 = 没开外观文件
     std::string currentViewFile;
     std::string currentTable;     // colors.json / metrics.json
+    std::vector<std::string> themeNames;   // themes.json 的 available
+    std::string defaultThemeName;          // themes.json 的 default
+    std::vector<bklv::Binding> pageBindings; // 页面里绑了数据的字段
+    int includeDepthGuard = 0;             // include 展开的递归保护
     char tableFilter[64] = "";
     char newAppearanceName[64] = "";
     int newAppearanceTemplate = 0;

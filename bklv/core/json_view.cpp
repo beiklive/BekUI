@@ -556,7 +556,8 @@ View* createFromJSONString(const std::string& json)
     return createFromJSONString(json, nullptr);
 }
 
-View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map)
+View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map,
+    std::vector<Binding>* bindings)
 {
     const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::fromString(json, "<string>");
     if (tmpl == nullptr)
@@ -571,8 +572,12 @@ View* createFromJSONString(const std::string& json, std::vector<InstantiatedView
         if (g_activeContext != nullptr)
             return tmpl->instantiate();
         g_activeContext = &ctx;
+        // 注意：这里设了 g_activeContext，ViewTemplate::instantiate 会走嵌套分支直接返回，
+        // 那条路径**不会**把 bindings 拷出来（映射走指针所以看不出来）。所以在这里自己拷。
         View* view      = tmpl->instantiate();
         g_activeContext = nullptr;
+        if (bindings != nullptr && view != nullptr)
+            *bindings = ctx.bindings;
 
         // pointer 里带着模板来源前缀（字符串模板是 "<string>"，文件是路径）。
         // 导出给编辑器之前把它剥掉，变成"相对这份文档"的 JSON Pointer。

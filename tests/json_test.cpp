@@ -487,6 +487,29 @@ int main()
         delete root;
     }
 
+    // ---- 绑定也能一起导出（编辑器要列"哪个字段绑了数据"）----
+    {
+        std::vector<bklv::InstantiatedView> map;
+        std::vector<bklv::Binding> bindings;
+        const char* json = R"({
+            "type": "Box",
+            "children": [
+                { "type": "Label", "bind": "page/title" },
+                { "type": "Label", "text": "没有绑定" }
+            ]
+        })";
+
+        bklv::View* root = bklv::createFromJSONString(json, &map, &bindings);
+        check(root != nullptr, "带绑定的实例化成功");
+        checkEqualSize(bindings.size(), 1, "只有一个节点绑了数据");
+        if (!bindings.empty())
+        {
+            checkEqual(bindings[0].field, "page/title", "绑定的字段名");
+            check(bindings[0].view == map[1].view, "绑定的视图能和映射对上（好定位路径）");
+        }
+        delete root;
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

@@ -98,7 +98,9 @@ struct InstantiatedView
 };
 
 // 同 createFromJSONString，但额外导出映射（按创建顺序，含 include 进来的子树）
-View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map);
+// bindings 非空时也导出数据绑定（哪个视图绑了哪个字段）
+View* createFromJSONString(const std::string& json, std::vector<InstantiatedView>* map,
+    std::vector<Binding>* bindings = nullptr);
 
 // ---- 测试与诊断 ----
 
