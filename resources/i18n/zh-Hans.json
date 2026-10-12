@@ -17,7 +17,8 @@
     "json": "JSON",
     "theme": "主题",
     "nav": "导航",
-    "overlay": "弹层"
+    "overlay": "弹层",
+    "settings": "设置"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -27,7 +28,17 @@
   },
   "hints": {
     "ok": "确定",
-    "cancel": "取消"
+    "cancel": "取消",
+    "on": "开",
+    "off": "关",
+    "next": "下一个",
+    "previous": "上一个",
+    "back": "返回",
+    "open": "打开",
+    "delete": "删除",
+    "save": "保存",
+    "input": "请输入…",
+    "submit": "提交"
   },
   "json": {
     "row_title": "第 {} 行（模板相同，数据不同）",
@@ -101,7 +112,8 @@
     "list_sub": "回收列表（单元格复用）",
     "json_sub": "整块界面来自 JSON 描述",
     "nav_sub": "TabFrame 与 Sidebar",
-    "overlay_sub": "弹窗与文本输入"
+    "overlay_sub": "弹窗与文本输入",
+    "settings_sub": "列表型 Cell：详情 / 开关 / 单选 / 选择器 / 滑块 / 输入"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -127,5 +139,27 @@
   },
   "overlay": {
     "hint": "弹层与模态输入：打开时输入切模态（点外面、方向键都不会穿透），关闭后焦点回到原处。"
+  },
+  "settings": {
+    "hint": "整页由 Cell 组成。空格/回车切换开关与单选，左右键换选择器，滑块直接调。",
+    "about_title": "当前状态",
+    "backend": "图形后端",
+    "theme": "当前主题",
+    "switches_title": "开关",
+    "show_header": "显示页头",
+    "show_bottom_bar": "显示底栏",
+    "animate_bars": "页头/底栏补间",
+    "show_log": "显示日志窗口",
+    "selectors_title": "选择器与滑块",
+    "theme_select": "主题",
+    "bar_duration": "补间时长（秒）",
+    "radios_title": "单选",
+    "radio_a": "选项 A",
+    "radio_b": "选项 B",
+    "radio_c": "选项 C",
+    "inputs_title": "输入",
+    "input_text": "网址",
+    "input_text_default": "https://github.com",
+    "input_number": "数字（只收数字）"
   }
 }

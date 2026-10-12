@@ -61,5 +61,17 @@
     "rectangle": "#a0a0a0",
     "subtitle": "#a3a3a3",
     "border": "#4e4e4e"
+  },
+  "cell": {
+    "background": "#00000000"
+  },
+  "switch": {
+    "trackOff": "#4a4e55",
+    "trackOn": "#00ffcc",
+    "knob": "#ffffff"
+  },
+  "radio": {
+    "border": "#8b929b",
+    "dot": "#00ffcc"
   }
 }

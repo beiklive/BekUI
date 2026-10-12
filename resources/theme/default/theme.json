@@ -26,6 +26,13 @@
     "widgets/dropdown_popup.json",
     "widgets/header.applet.json",
     "widgets/tab_cell.sidebar.json",
-    "widgets/header_icon.json"
+    "widgets/header_icon.json",
+    "widgets/cell.json",
+    "widgets/cell_detail.json",
+    "widgets/cell_bool.json",
+    "widgets/cell_radio.json",
+    "widgets/cell_selector.json",
+    "widgets/cell_slider.json",
+    "widgets/cell_input.json"
   ]
 }

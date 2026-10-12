@@ -43,5 +43,17 @@
     "background": "#101a26",
     "border": "#4fd1c5",
     "glow": "#4fd1c533"
+  },
+  "cell": {
+    "background": "#00000000"
+  },
+  "switch": {
+    "trackOff": "#4a4e55",
+    "trackOn": "#00ffcc",
+    "knob": "#ffffff"
+  },
+  "radio": {
+    "border": "#8b929b",
+    "dot": "#00ffcc"
   }
 }

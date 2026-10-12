@@ -16,12 +16,12 @@
 | dialog / dropdown / edit_text_dialog | 同名 | ✅ | 我们的模态栈由 `InputManager` 管，`App::pushOverlay` 挂载 |
 | applet_frame / bottom_bar / tab_frame / sidebar | 同名 | ✅ | 页头/底栏全局化 + 内容区吃剩余高度 + 补间折叠 |
 | `views/hint`（提示图标） | `widgets/hints_bar` + `hint_item` | ✅ | 改良：提示是底栏左侧内容，按焦点动作重建（他们是一个独立 Hint 单例） |
-| **`views/cells/cell_bool`** | — | ❌ 待补 | BooleanCell：一条列表项 + 开关 |
-| **`views/cells/cell_detail`** | — | ❌ 待补 | DetailCell：标题 + 右侧详情文字（可点击） |
-| **`views/cells/cell_input`** | — | ❌ 待补 | InputCell / InputNumericCell：列表项里调起输入 |
-| **`views/cells/cell_radio`** | — | ❌ 待补 | RadioCell：单选圆点 |
-| **`views/cells/cell_selector`** | — | ❌ 待补 | SelectorCell：左右切换的选项 |
-| **`views/cells/cell_slider`** | — | ❌ 待补 | SliderCell：列表项里的滑块 |
+| `views/cells/cell_bool` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | BooleanCell：一条列表项 + 开关 |
+| `views/cells/cell_detail` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | DetailCell：标题 + 右侧详情文字（可点击） |
+| `views/cells/cell_input` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | InputCell / InputNumericCell：列表项里调起输入 |
+| `views/cells/cell_radio` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | RadioCell：单选圆点 |
+| `views/cells/cell_selector` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | SelectorCell：左右切换的选项 |
+| `views/cells/cell_slider` | `widgets/cell.*`（`bklv/widgets/cell.hpp`） | ✅ | SliderCell：列表项里的滑块 |
 | **`views/widgets/battery`** | `widgets/status_area`（只有文字电量） | ⚠️ 改造 | 目标：图标 + 电量条（他们用 `img/sys/battery_*` 的图，我们要自绘/自备图） |
 | **`views/widgets/wireless`** | — | ❌ 待补 | 网络图标 + 信号等级（wifi 0~3 / 以太网） |
 | **`views/widgets/account`** | — | ❌ 待补 | 头像 + 昵称；数据源要可插拔（Switch 用 account 服务，桌面无） |
@@ -120,6 +120,14 @@
 | 手势用 `new TapGestureRecognizer` 手动挂 | 容易漏 delete | 识别器归 `View` 拥有（`addGesture` 接管生命周期） |
 | Battery / Wireless 直接读平台 | 桌面没法显示、无法测试 | 数据源接口 + 默认实现（Switch 真数据、桌面可注入），控件本身可无窗口测试 |
 | Yoga 默认 `flexShrink: 0` 未处理 | 内容变高会挤压同列兄弟（我们踩过：按钮行 48 → 28） | `ScrollingFrame` 用 `flex-basis: 0` + `shrink: 1`；并写进 AGENTS 约定 |
+
+## 七点五、实现过程中顺带修掉的真 bug
+
+| 现象 | 根因 | 修法 |
+|---|---|---|
+| 列表里从"内嵌滑块的单元格"往下走，焦点卡住不动 | `Box::getNextFocus` 把"当前焦点自己"（经 `getDefaultFocus()` 解析回来）当成候选，用最低分短路了整个搜索，于是永远不往父容器冒泡 | 解析出的候选等于 `currentView` 时跳过；`widget_test` 加了 4 项跨容器导航回归 |
+| 设置页的开关/单选圆点画不出来 | 基类 `Cell` 构造期调 `applyTheme()`，此时**虚函数不会派发到子类**，开关/单选的配色一直是 0 | 派生类构造末尾自己再调一次 `applyTheme()`；测试断言"构造后配色已就绪" |
+| 开关的自定义层铺满整行 | 自定义层没在 JSON 里给尺寸，几何用了整块矩形 | 自绘时按主题 `metric.switch.*` / `metric.radio.*` 取几何并右对齐；配色在 `applyTheme` 时取好（draw 里不查主题） |
 
 ## 八、执行批次与验收
 

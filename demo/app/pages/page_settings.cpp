@@ -1,0 +1,142 @@
+#include "app/pages.hpp"
+
+#include "app/ui.hpp"
+#include "bklv/bklv.hpp"
+
+using namespace bklv;
+
+namespace demo
+{
+
+namespace
+{
+
+bklv::AppletFrame* g_settingsShell = nullptr;
+
+std::string backendName()
+{
+    return getGraphicsBackendName();
+}
+
+} // namespace
+
+void setSettingsShell(bklv::AppletFrame* shell)
+{
+    g_settingsShell = shell;
+}
+
+// 设置页：对标 borealis demo 的 Settings tab——整页由列表型 Cell 组成。
+// 这一页同时也是 Cell 家族的演示：detail / bool / radio / selector / slider / input。
+Box* buildSettingsPage()
+{
+    Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
+    page->addView(makeHint(getStr("settings/hint")));
+
+    AppletFrame* shell = g_settingsShell;
+
+    // ---- 说明信息（DetailCell）----
+    Rectangle* about = makeCard();
+    about->addView(makeText(getStr("settings/about_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    DetailCell* backend = new DetailCell(getStr("settings/backend"), backendName());
+    about->addView(backend);
+
+    DetailCell* theme = new DetailCell(getStr("settings/theme"), getTheme().getName());
+    about->addView(theme);
+    page->addView(about);
+
+    // ---- 开关（BooleanCell）----
+    Rectangle* switches = makeCard();
+    switches->addView(makeText(getStr("settings/switches_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    BooleanCell* headerCell = new BooleanCell(getStr("settings/show_header"), true);
+    headerCell->setOnChange([shell](bool value) {
+        if (shell != nullptr)
+            shell->showHeader(value);
+    });
+    switches->addView(headerCell);
+
+    BooleanCell* barCell = new BooleanCell(getStr("settings/show_bottom_bar"), true);
+    barCell->setOnChange([shell](bool value) {
+        if (shell != nullptr)
+            shell->showBottomBar(value);
+    });
+    switches->addView(barCell);
+
+    BooleanCell* animCell = new BooleanCell(getStr("settings/animate_bars"), true);
+    animCell->setOnChange([shell](bool value) {
+        if (shell != nullptr)
+            shell->setBarsAnimated(value);
+    });
+    switches->addView(animCell);
+
+    BooleanCell* logCell = new BooleanCell(getStr("settings/show_log"), false);
+    switches->addView(logCell);
+    page->addView(switches);
+
+    // ---- 选择器（SelectorCell）----
+    Rectangle* selectors = makeCard();
+    selectors->addView(makeText(getStr("settings/selectors_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    SelectorCell* themeSelector = new SelectorCell(getStr("settings/theme_select"));
+    themeSelector->setOptions({ "default", "ocean" });
+    themeSelector->setOnChange([](int, const std::string& value) { setTheme(value); });
+    selectors->addView(themeSelector);
+
+    SliderCell* duration = new SliderCell(getStr("settings/bar_duration"));
+    duration->setRange(0.05f, 0.60f);
+    duration->setValue(0.18f);
+    duration->setOnChange([shell](float value) {
+        if (shell != nullptr)
+            shell->setBarAnimationDuration(value);
+    });
+    selectors->addView(duration);
+    page->addView(selectors);
+
+    // ---- 单选（RadioCell）：互斥由这一组自己管 ----
+    Rectangle* radios = makeCard();
+    radios->addView(makeText(getStr("settings/radios_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    static std::vector<RadioCell*> group;
+    group.clear();
+    for (const char* key : { "settings/radio_a", "settings/radio_b", "settings/radio_c" })
+    {
+        RadioCell* radio = new RadioCell(getStr(key), group.empty());
+        group.push_back(radio);
+        radios->addView(radio);
+    }
+    for (size_t i = 0; i < group.size(); i++)
+    {
+        group[i]->setOnChange([i](bool selected) {
+            if (!selected)
+                return;
+            for (size_t j = 0; j < group.size(); j++)
+                if (j != i)
+                    group[j]->setSelected(false);
+        });
+    }
+    page->addView(radios);
+
+    // ---- 输入（InputCell）----
+    Rectangle* inputs = makeCard();
+    inputs->addView(makeText(getStr("settings/inputs_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+
+    InputCell* text = new InputCell(getStr("settings/input_text"));
+    text->setDetail(getStr("settings/input_text_default"));
+    inputs->addView(text);
+
+    InputCell* number = new InputCell(getStr("settings/input_number"));
+    number->setNumeric(true);
+    number->setDetail("1280");
+    inputs->addView(number);
+    page->addView(inputs);
+
+    return page;
+}
+
+} // namespace demo

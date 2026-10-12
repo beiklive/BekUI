@@ -286,6 +286,7 @@ set(BKLV_CORE_SOURCES
     widgets/button.cpp
     widgets/header.cpp
     widgets/bottom_bar.cpp
+    widgets/cell.cpp
     widgets/slider.cpp
     widgets/tab_frame.cpp
     widgets/sidebar.cpp

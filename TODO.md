@@ -163,7 +163,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 清单与原因见 [`notes/borealis-parity.md`](notes/borealis-parity.md)（对照方式：逐个头文件对读）。
 分批：
 
-- [ ] **P0 控件补齐**：6 个 Cell（bool/detail/input/radio/selector/slider）、
+- [x] 6 个列表 Cell（`widgets/cell.*`：detail / bool / radio / selector / slider / input）
+      + demo 设置页（对标 borealis Settings tab）
+- [ ] **P0 控件补齐**：
       Battery/Wireless 做成图标化状态区、Notification、手势（tap/pan/scroll）、
       View 变换（scale/rotate/skew/fontScale）
 - [ ] **P1 核心能力**：task/thread + 异步图片加载、audio（SDL3 + Switch）、

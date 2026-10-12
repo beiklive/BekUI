@@ -18,6 +18,7 @@
 #include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/cell.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"
@@ -180,6 +181,53 @@ int main()
         checkFloat(scroller->getHeight(), 300.0f - 48.0f, "内容变矮后滚动器仍然占满剩余空间");
 
         delete column;
+    }
+
+    std::printf("\n== 3.7 跨容器的方向导航（焦点不会被当前焦点自己卡住）==\n");
+    {
+        // 两张卡片各自装一个按钮：焦点在卡 1 的按钮上时，按"下"要能走到卡 2 的按钮。
+        // 踩过：卡片（不可聚焦的容器）把子树里的默认焦点当成候选，
+        // 而那个候选正是当前焦点自己 → 用最低分短路，永远不冒泡。
+        Box* page = new Box(Axis::COLUMN);
+        page->setWidth(600.0f);
+        page->setHeight(400.0f);
+
+        Box* cardA = new Box(Axis::COLUMN);
+        cardA->setWidthPercentage(100.0f);
+        cardA->setHeight(80.0f);
+        Button* buttonA = new Button("A");
+        cardA->addView(buttonA);
+        page->addView(cardA);
+
+        Box* cardB = new Box(Axis::COLUMN);
+        cardB->setWidthPercentage(100.0f);
+        cardB->setHeight(80.0f);
+        Button* buttonB = new Button("B");
+        cardB->addView(buttonB);
+        page->addView(cardB);
+
+        YGNodeCalculateLayout(page->getYGNode(), 600.0f, 400.0f, YGDirectionLTR);
+
+        check(buttonA->getNextFocus(FocusDirection::DOWN, buttonA) == buttonB,
+            "同层容器里能往下走");
+        check(buttonB->getNextFocus(FocusDirection::UP, buttonB) == buttonA,
+            "反向也能走回来");
+        check(buttonA->getNextFocus(FocusDirection::DOWN, buttonA) != buttonA,
+            "不会把当前焦点自己当候选");
+
+        // 步进器（不可聚焦）+ 内嵌滑块的那种结构：从滑块往下也要能走出去
+        Box* cardC = new Box(Axis::COLUMN);
+        cardC->setWidthPercentage(100.0f);
+        cardC->setHeight(80.0f);
+        SliderCell* cell = new SliderCell("滑块");
+        cardC->addView(cell);
+        page->addView(cardC);
+        YGNodeCalculateLayout(page->getYGNode(), 600.0f, 400.0f, YGDirectionLTR);
+
+        check(cell->getSlider()->getNextFocus(FocusDirection::UP, cell->getSlider()) == buttonB,
+            "从内嵌滑块往上走能跨出所在的卡片");
+
+        delete page;
     }
 
     std::printf("\n== 4. 主题只覆盖未被显式设置过的值 ==\n");

@@ -175,6 +175,12 @@ View* Box::getNextFocus(FocusDirection direction, View* currentView)
         if (candidate == nullptr)
             continue;
 
+        // 解析回来的就是当前焦点自己时要跳过：否则一个不可聚焦的容器（比如 SliderCell）
+        // 会把"子树里的默认焦点"当成候选，用最低分短路掉整个搜索，
+        // 于是永远不往父容器冒泡——跨卡片的下移就卡在原地了（踩过）。
+        if (candidate == currentView)
+            continue;
+
         const Point target(candidate->getFrame().getCenterX(), candidate->getFrame().getCenterY());
         const float dx = target.x - origin.x;
         const float dy = target.y - origin.y;

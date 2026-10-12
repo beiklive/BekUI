@@ -48,6 +48,7 @@
 #include "bklv/widgets/applet_frame.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/cell.hpp"
 #include "bklv/widgets/dialog.hpp"
 #include "bklv/widgets/dropdown.hpp"
 #include "bklv/widgets/edit_text_dialog.hpp"

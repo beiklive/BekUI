@@ -105,5 +105,23 @@
   "status": {
     "fontSize": 21.5,
     "itemSpacing": 21
+  },
+  "cell": {
+    "height": 56,
+    "paddingX": 16,
+    "paddingY": 8,
+    "gap": 12,
+    "titleFontSize": 18,
+    "detailFontSize": 16,
+    "sliderWidth": 240
+  },
+  "switch": {
+    "width": 52,
+    "height": 26,
+    "knob": 20
+  },
+  "radio": {
+    "size": 22,
+    "stroke": 2
   }
 }

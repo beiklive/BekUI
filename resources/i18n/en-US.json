@@ -17,7 +17,8 @@
     "json": "JSON",
     "theme": "Theme",
     "nav": "Nav",
-    "overlay": "Overlays"
+    "overlay": "Overlays",
+    "settings": "Settings"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -27,7 +28,17 @@
   },
   "hints": {
     "ok": "OK",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "on": "On",
+    "off": "Off",
+    "next": "Next",
+    "previous": "Previous",
+    "back": "Back",
+    "open": "Open",
+    "delete": "Delete",
+    "save": "Save",
+    "input": "Enter text…",
+    "submit": "Submit"
   },
   "json": {
     "row_title": "Row {} (same template, different data)",
@@ -101,7 +112,8 @@
     "list_sub": "Recycler list (cell reuse)",
     "json_sub": "A whole screen described in JSON",
     "nav_sub": "TabFrame and Sidebar",
-    "overlay_sub": "Dialogs and text input"
+    "overlay_sub": "Dialogs and text input",
+    "settings_sub": "List cells: detail / bool / radio / selector / slider / input"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -127,5 +139,27 @@
   },
   "overlay": {
     "hint": "Overlays and modal input: input becomes modal while open (clicks outside and arrows do not pass through), and focus returns afterwards."
+  },
+  "settings": {
+    "hint": "The whole page is made of cells. Space/Enter toggles switches and radios, left/right changes selectors.",
+    "about_title": "Status",
+    "backend": "Renderer",
+    "theme": "Theme",
+    "switches_title": "Switches",
+    "show_header": "Show header",
+    "show_bottom_bar": "Show bottom bar",
+    "animate_bars": "Animate bars",
+    "show_log": "Show log window",
+    "selectors_title": "Selector and slider",
+    "theme_select": "Theme",
+    "bar_duration": "Bar animation (s)",
+    "radios_title": "Radios",
+    "radio_a": "Option A",
+    "radio_b": "Option B",
+    "radio_c": "Option C",
+    "inputs_title": "Inputs",
+    "input_text": "URL",
+    "input_text_default": "https://github.com",
+    "input_number": "Number (digits only)"
   }
 }

@@ -130,6 +130,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_theme.cpp
     app/pages/page_nav.cpp
     app/pages/page_overlay.cpp
+    app/pages/page_settings.cpp
 )
 
 set(BKLV_APP_ABS "")

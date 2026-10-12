@@ -101,6 +101,8 @@ DemoApp::DemoApp()
     this->addPage(getStr("tab/json"), getStr("page/json_sub"), buildJsonPage(), false);
     this->addPage(getStr("tab/nav"), getStr("page/nav_sub"), buildNavPage(), false);
     this->addPage(getStr("tab/overlay"), getStr("page/overlay_sub"), buildOverlayPage(), false);
+    setSettingsShell(this->root);
+    this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);
 
     BKLV_LOG_INFO("界面已就绪：%d 个页面（左侧栏导航）", (int)this->pages.size());
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());

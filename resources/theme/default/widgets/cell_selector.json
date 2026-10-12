@@ -1,0 +1,107 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.cell.height",
+    "shrink": 0,
+    "axis": "row",
+    "alignItems": "center",
+    "gap": "@theme/metric.cell.gap",
+    "padding": [
+      "@theme/metric.cell.paddingY",
+      "@theme/metric.cell.paddingX",
+      "@theme/metric.cell.paddingY",
+      "@theme/metric.cell.paddingX"
+    ]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.cell.background",
+      "radius": "@theme/metric.radius.sm"
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.cell.titleFontSize",
+      "valign": "center"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -6.5,
+        -6.5,
+        -6.5,
+        -6.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    }
+  ],
+  "states": {
+    "focused": {
+      "hlBg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.stroke": {
+        "to": "@theme/color.highlight.glow",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.strokeWidth": {
+        "to": 11,
+        "duration": 120
+      },
+      "hlBorder.stroke": {
+        "to": "@theme/color.highlight.border",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlBorder.strokeWidth": {
+        "to": "@theme/metric.highlight.strokeWidth",
+        "duration": 120
+      }
+    },
+    "disabled": {
+      "bg.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      },
+      "title.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
+    }
+  }
+}
