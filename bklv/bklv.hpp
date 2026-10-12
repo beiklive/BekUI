@@ -15,6 +15,7 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/audio.hpp"
+#include "bklv/core/cache.hpp"
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
