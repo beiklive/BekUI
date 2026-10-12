@@ -13,6 +13,7 @@
 #include "bklv/bklv.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "bklv/core/image_writer.hpp"
+#include "bklv/widgets/widget_types.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/image_diff.hpp"
 #include "designer/core/project.hpp"
@@ -63,6 +64,7 @@ std::string makeTheme(const std::string& root, const std::string& name)
 int main()
 {
     bklv::initResources();
+    bklv::registerWidgetViewTypes(); // 不建 App 的场合要自己注册（App::App() 会自动注册）
 
     const std::string work = workRoot();
     std::error_code code;
@@ -349,6 +351,75 @@ int main()
         const std::string diffPath = work + "/shot_diff.png";
         check(designer::writeDiffImage(diffPath, pathA, pathB, error), "差异图写出成功");
         check(fs::exists(diffPath), "差异图文件存在");
+    }
+
+    // ---------------------------------------------------------------- 控件类型对 JSON 可见
+    {
+        bklv::View* button = bklv::createFromJSONString(
+            R"({"type": "Button", "text": "确定", "variant": "primary"})");
+        check(button != nullptr, "JSON 里能用 Button");
+
+        bklv::View* rectangle = bklv::createFromJSONString(
+            R"({"type": "Rectangle", "variant": "card", "cornerRadius": 12})");
+        check(rectangle != nullptr, "JSON 里能用 Rectangle");
+
+        bklv::View* frame = bklv::createFromJSONString(
+            R"({"type": "AppletFrame", "children": [
+                 {"type": "Header", "title": "页面"},
+                 {"type": "Box", "grow": 1},
+                 {"type": "BottomBar"}]})");
+        check(frame != nullptr, "JSON 里能搭 AppletFrame 整页");
+
+        delete button;
+        delete rectangle;
+        delete frame;
+    }
+
+    // ---------------------------------------------------------------- 层序自动重排
+    {
+        AppearanceDoc doc;
+        std::string error;
+        doc.parse(
+            R"({"layers": [{"op": "text", "id": "title"}, {"op": "rect", "id": "bg"}, {"op": "rect", "id": "hlBg"}, {"op": "shadow", "id": "shadow"}, {"op": "rect", "id": "hlGlow"}]})",
+            error);
+        checkEqualInt((int)doc.layerOrderWarnings().size(), 2, "重排前 2 条层序提醒");
+
+        check(doc.reorderLayersByConvention(), "执行重排");
+        checkEqual(doc.layerId(0), "shadow", "第 1 层是 shadow");
+        checkEqual(doc.layerId(1), "bg", "第 2 层是底色");
+        checkEqual(doc.layerId(2), "hlBg", "第 3 层是 hlBg");
+        checkEqual(doc.layerId(3), "title", "第 4 层是内容");
+        checkEqual(doc.layerId(4), "hlGlow", "最后是 hlGlow");
+        checkEqualInt((int)doc.layerOrderWarnings().size(), 0, "重排后没有提醒");
+        check(!doc.reorderLayersByConvention(), "已经合规时不再动");
+    }
+
+    // ---------------------------------------------------------------- 新建页面视图
+    {
+        std::string error;
+        const std::string viewsDir = work + "/resources/views";
+
+        check(designer::createViewFile(viewsDir, "my_page", "empty", error), "新建空页面");
+        check(fs::exists(viewsDir + "/my_page.json"), "文件已建");
+
+        check(designer::createViewFile(viewsDir, "full_page", "page", error), "新建整页模板");
+        std::string text;
+        designer::readTextFile(viewsDir + "/full_page.json", text, error);
+        check(text.find("AppletFrame") != std::string::npos, "整页模板带 AppletFrame");
+        check(text.find("BottomBar") != std::string::npos, "整页模板带底栏");
+
+        check(designer::createViewFile(viewsDir, "card_page", "card", error), "新建卡片模板");
+
+        // 重名/带路径分隔符都要拒绝
+        check(!designer::createViewFile(viewsDir, "my_page", "empty", error), "重名被拒");
+        check(!designer::createViewFile(viewsDir, "../evil", "empty", error), "带路径被拒");
+
+        // 生成的页面必须能实例化（模板写错就不该落盘）
+        std::string json;
+        designer::readTextFile(viewsDir + "/card_page.json", json, error);
+        bklv::View* view = bklv::createFromJSONString(json);
+        check(view != nullptr, "生成的页面能实例化");
+        delete view;
     }
 
     fs::remove_all(work, code);

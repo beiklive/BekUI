@@ -105,7 +105,8 @@ class DesignerWindow
     void drawPreviewCanvas(ImVec2 origin, ImVec2 size, bklv::View* view, bool checker);
     bklv::View* buildPreviewView(const std::string& jsonOverride);
     void drawProps();
-    void drawTableProps();          // 主题表：键列表 + 颜色/数值编辑
+    void drawTableProps();
+    bool drawEnumCombo(const char* id, const std::string& key, std::string& value);          // 主题表：键列表 + 颜色/数值编辑
     void drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
         const std::function<void(const std::string&)>& onPick);
     bool colorPickerPopup(const char* id, std::string& value); // 取色器（写回字面量）
@@ -172,6 +173,9 @@ class DesignerWindow
     char newAppearanceName[64] = "";
     int newAppearanceTemplate = 0;
     bool showNewAppearance = false;
+    bool showNewView       = false;
+    char newViewName[64]   = "my_page";
+    int newViewTemplate    = 1; // 0=空页面 1=整页（页头+内容+底栏）2=卡片
     bool showDeleteAppearance = false;
     std::string currentFilePath;          // 绝对路径
     std::string savedText;                // 上次保存/打开时的原文（diff 与"还原"用）

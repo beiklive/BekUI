@@ -297,6 +297,43 @@ void AppearanceDoc::removeChannel(const std::string& state, int index)
         node.erase(it);
 }
 
+bool AppearanceDoc::reorderLayersByConvention()
+{
+    if (this->layerCount() < 2)
+        return false;
+
+    const std::vector<Json> original = this->doc["layers"].get<std::vector<Json>>();
+
+    // rank 越小越先画
+    auto rankOf = [this](const Json& layer) {
+        const std::string op = layer.value("op", std::string("rect"));
+        const std::string id = layer.value("id", std::string());
+        if (op == "shadow")
+            return 0;
+        if (id == "hlBg")
+            return 2;
+        if (id == "hlGlow" || id == "hlBorder")
+            return 5;
+        if (op == "text" || op == "image" || op == "custom")
+            return 3;
+        if (op == "rect")
+            return 1; // 自己的底色
+        return 4;
+    };
+
+    std::vector<Json> sorted = original;
+    std::stable_sort(sorted.begin(), sorted.end(),
+        [&rankOf](const Json& a, const Json& b) { return rankOf(a) < rankOf(b); });
+
+    if (sorted == original)
+        return false;
+
+    this->doc["layers"] = Json::array();
+    for (const Json& layer : sorted)
+        this->doc["layers"].push_back(layer);
+    return true;
+}
+
 std::vector<std::string> AppearanceDoc::layerOrderWarnings() const
 {
     std::vector<std::string> warnings;

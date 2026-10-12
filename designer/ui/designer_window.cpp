@@ -944,6 +944,11 @@ void DesignerWindow::drawFileList()
 
     ImGui::Separator();
     ImGui::TextColored(kMuted, "页面视图 · %d 个（views/）", (int)this->viewFiles.size());
+    if (!this->readOnly)
+    {
+        if (ImGui::SmallButton("新建页面…"))
+            this->showNewView = true;
+    }
     if (this->viewFiles.empty())
         ImGui::TextColored(kMuted, "  （这个项目里没有）");
     for (const std::string& file : this->viewFiles)
@@ -998,6 +1003,10 @@ void DesignerWindow::drawViewTree(const AppearanceDoc::Json& node, const std::st
     std::string label      = type;
     if (!id.empty())
         label += "  " + id;
+    if (node.contains("bind"))
+        label += "   ⟲ " + compactValue(node["bind"]);
+    if (node.contains("include"))
+        label += "   ⤵ " + compactValue(node["include"]);
 
     ImGui::PushID(path.c_str());
     this->viewNodeCount++;
@@ -1254,9 +1263,27 @@ void DesignerWindow::drawTree()
         }
     }
 
-    // 层序硬约定的提醒
-    for (const std::string& warning : this->doc.layerOrderWarnings())
+    // 层序硬约定的提醒 + 一键按约定重排
+    const std::vector<std::string> orderWarnings = this->doc.layerOrderWarnings();
+    for (const std::string& warning : orderWarnings)
         ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f), "⚠ %s", warning.c_str());
+    if (!orderWarnings.empty() && !this->readOnly)
+    {
+        if (ImGui::SmallButton("按约定重排层序"))
+        {
+            if (this->doc.reorderLayersByConvention())
+            {
+                this->markEdited();
+                this->previewDirty = true;
+                this->selection    = Selection{};
+                this->selection.kind = SelKind::FILE;
+                this->statusMessage
+                    = "已按 shadow → 底色 → hlBg → 内容 → hlGlow/hlBorder 重排（保存前可撤销）";
+            }
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Ctrl+Z 可以撤销；重排只动顺序，不改任何字段");
+    }
 }
 
 // ---------------------------------------------------------------- 左下状态
@@ -1407,6 +1434,47 @@ void DesignerWindow::drawAddFieldCombo(const char* id, const std::vector<std::st
         if (ImGui::Selectable(key.c_str()))
             onPick(key);
     ImGui::EndCombo();
+}
+
+bool DesignerWindow::drawEnumCombo(const char* id, const std::string& key, std::string& value)
+{
+    // 这几个字段就那么几个合法取值，文本框写错了要等编译报错才知道
+    static const std::pair<const char*, const std::vector<std::string>> tables[] = {
+        { "align", { "left", "center", "right" } },
+        { "valign", { "top", "center", "bottom" } },
+        { "scaling", { "fit", "fill", "stretch", "center" } },
+        { "axis", { "row", "column" } },
+        { "direction", { "ltr", "rtl" } },
+    };
+
+    for (const auto& entry : tables)
+    {
+        if (key != entry.first)
+            continue;
+
+        int index = 0;
+        for (size_t i = 0; i < entry.second.size(); i++)
+            if (value == entry.second[i])
+                index = (int)i;
+
+        const std::string current = value.empty() ? entry.second[0] : value;
+        propLabel(key.c_str());
+        ImGui::PushID(id);
+        if (ImGui::BeginCombo("##enum", current.c_str()))
+        {
+            for (size_t i = 0; i < entry.second.size(); i++)
+                if (ImGui::Selectable(entry.second[i].c_str(), (int)i == index))
+                {
+                    value = entry.second[i];
+                    ImGui::PopID();
+                    return true;
+                }
+            ImGui::EndCombo();
+        }
+        ImGui::PopID();
+        return false;
+    }
+    return false;
 }
 
 bool DesignerWindow::colorField(const char* label, std::string& value)
@@ -2058,8 +2126,14 @@ void DesignerWindow::drawPreview()
         default: break;
     }
     if (!this->currentViewFile.empty())
+    {
         modeText = this->previewSubtree ? "页面视图 → 只渲染选中的那一棵子树"
                                         : "页面视图 → 真实实例化整页";
+        // 页面里有绑定的话，预览拿不到数据（列表/卡片会是空的），得说明白
+        if (this->doc.root().dump().find("\"bind\"") != std::string::npos)
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.3f, 1.0f),
+                "⚠ 这个页面有数据绑定（bind）：预览里没有数据源，绑定出来的内容会是空的");
+    }
     if (this->previewCompare)
         modeText = "并排对比：左=编辑中 / 右=磁盘上那份";
     ImGui::TextColored(kMuted, "%s", modeText);
@@ -2352,6 +2426,22 @@ void DesignerWindow::drawProps()
                 ImGui::PushID(key.c_str());
                 const std::string kind = valueKind(it.value());
                 bool changed = false;
+
+                // 枚举字段给下拉（align / valign / scaling / axis / direction）
+                if (kind == "string" && (key == "align" || key == "valign" || key == "scaling"
+                                            || key == "axis" || key == "direction"))
+                {
+                    std::string text = it.value().get<std::string>();
+                    if (this->drawEnumCombo(key.c_str(), key, text))
+                    {
+                        it.value() = text;
+                        changed    = true;
+                    }
+                    if (changed)
+                        edited();
+                    ImGui::PopID();
+                    continue;
+                }
 
                 if (kind == "number")
                 {
@@ -2966,6 +3056,40 @@ void DesignerWindow::drawModals()
         ImGui::BulletText("写盘 = 临时文件 + rename 原子替换，并留一份 .bak");
         ImGui::Separator();
         if (ImGui::Button("关闭", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
+    if (this->showNewView)
+    {
+        ImGui::OpenPopup("新建页面视图");
+        this->showNewView = false;
+    }
+    if (ImGui::BeginPopupModal("新建页面视图", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(kMuted, "会在 %s/views/ 下建文件（views 不扫目录，写出来就能用）",
+            this->project.resourcesDir().c_str());
+        ImGui::SetNextItemWidth(320);
+        ImGui::InputText("页面名", this->newViewName, sizeof(this->newViewName));
+        ImGui::SetNextItemWidth(320);
+        ImGui::Combo("模板", &this->newViewTemplate,
+            "空页面\0整页（页头 + 内容 + 底栏）\0卡片\0");
+        static const char* viewTemplates[] = { "empty", "page", "card" };
+        if (ImGui::Button("创建", ImVec2(120, 0)))
+        {
+            std::string error;
+            if (createViewFile(this->project.resourcesDir() + "/views", this->newViewName,
+                    viewTemplates[this->newViewTemplate], error))
+            {
+                this->refreshFileList();
+                this->openViewFile(std::string(this->newViewName) + ".json");
+                ImGui::CloseCurrentPopup();
+            }
+            else
+                this->errorMessage = error;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消", ImVec2(120, 0)))
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }

@@ -114,6 +114,18 @@ tests/designer_core_test.cpp   逻辑层的无窗口测试（62 项）
 - **对比度检查**：文字层颜色与控件底色的对比度 < 4.5:1 时进校验面板提醒
 - **日志面板**：直接复用库里的 `DebugWindow`（读日志环形缓冲），顶栏「日志」开关
 
+## 这一轮补的
+
+- **枚举字段给下拉**：层的 `align` / `valign` / `scaling` / `axis` / `direction` 不再手打；
+  `fontSize` 列出主题里的字号 key，`source` 列出可用槽位（也都能手写）
+- **按约定重排层序**：层序提醒旁边给一个按钮（shadow → 底色 → hlBg → 内容 → hlGlow/hlBorder），
+  只动顺序不改字段，Ctrl+Z 可撤
+- **新建页面视图**：空页面 / 整页（页头+内容+底栏）/ 卡片，写盘前先试着实例化
+- **`bind` / `include` 看得见**：树里节点带 `⟲ bind` / `⤵ include` 角标；页面有绑定时
+  预览栏提醒"预览里没有数据源，绑定出来的内容是空的"
+- **JSON 页面能用控件类型**（见 `docs/json-syntax.md`）：`Button` / `Rectangle` / `AppletFrame`
+  / `Header` / `BottomBar` / Cell 家族等已注册，App 启动时自动注册
+
 ## 写在明面上的"没做到位"
 
 - 保存是**整文件重写**（键序保住、缩进沿用原文件、内容没变就跳过、写前 diff + 冲突检测 +

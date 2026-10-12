@@ -12,6 +12,7 @@
 #include "bklv/core/i18n.hpp"
 #include "bklv/views/label.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/widget_types.hpp"
 
 #include <cstdlib>
 #include <functional>
@@ -298,6 +299,9 @@ void App::popOverlay(View* overlay, bool free)
 
 App::App()
 {
+    // 让页面 JSON 也能用外观驱动的控件（Button / Rectangle / AppletFrame …）
+    registerWidgetViewTypes();
+
     g_currentApp = this;
     // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
     // 这样后面任何一步失败（甚至崩溃）都能留下线索。

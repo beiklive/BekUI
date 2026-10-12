@@ -20,6 +20,11 @@ bool createWidgetAppearance(const std::string& themeDir, const std::string& name
 bool deleteWidgetAppearance(const std::string& themeDir, const std::string& name,
     std::string& error);
 
+// 新建页面视图 <viewsDir>/<name>.json。重名拒绝；views 不扫目录，写出来就能用。
+// template: empty / page（页头+内容+底栏）/ card
+bool createViewFile(const std::string& viewsDir, const std::string& name,
+    const std::string& templateName, std::string& error);
+
 // 文件内容指纹（FNV-1a）：用来判断"磁盘上的文件在我打开之后被改过没有"
 std::string fnvHash(const std::string& text);
 

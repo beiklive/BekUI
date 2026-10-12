@@ -5,6 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "bklv/core/json_view.hpp"
 #include "designer/core/theme_files.hpp"
 
 namespace fs = std::filesystem;
@@ -121,6 +122,96 @@ bool deleteWidgetAppearance(const std::string& themeDir, const std::string& name
         }
     }
     return true;
+}
+
+bool createViewFile(const std::string& viewsDir, const std::string& name,
+    const std::string& templateName, std::string& error)
+{
+    if (name.empty())
+    {
+        error = "名字不能为空";
+        return false;
+    }
+    if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+    {
+        error = "名字里不能带路径分隔符";
+        return false;
+    }
+
+    const std::string relative = name + ".json";
+    const std::string path     = viewsDir + "/" + relative;
+
+    std::error_code code;
+    fs::create_directories(viewsDir, code); // views/ 可能还不存在（第一次建页面）
+    if (fs::exists(path, code))
+    {
+        error = "已经存在同名的页面视图：" + relative;
+        return false;
+    }
+
+    auto label = [](const char* text, double size) {
+        Json node = Json::object();
+        node["type"]      = "Label";
+        node["text"]      = text;
+        node["fontSize"]  = size;
+        node["textColor"] = "@theme/color.text.primary";
+        return node;
+    };
+
+    Json doc = Json::object();
+    if (templateName == "page")
+    {
+        // AppletFrame[ 页头 / 内容(grow) / 底栏 ]
+        doc["type"] = "AppletFrame";
+        Json header = Json::object();
+        header["type"]    = "Header";
+        header["variant"] = "applet";
+        header["title"]   = name;
+
+        Json content = Json::object();
+        content["type"]  = "Box";
+        content["axis"]  = "column";
+        content["grow"]  = 1;
+        content["gap"]   = 12;
+        content["children"] = Json::array({ label("内容区", 18) });
+
+        Json footer = Json::object();
+        footer["type"] = "BottomBar";
+
+        doc["children"] = Json::array({ header, content, footer });
+    }
+    else if (templateName == "card")
+    {
+        doc["type"]   = "Rectangle";
+        doc["variant"] = "card";
+        Json column   = Json::object();
+        column["type"]     = "Box";
+        column["axis"]     = "column";
+        column["gap"]      = 8;
+        column["padding"]  = 12;
+        column["children"] = Json::array({ label("卡片标题", 16), label("卡片说明", 13) });
+        doc["children"]    = Json::array({ column });
+    }
+    else
+    {
+        doc["type"]     = "Box";
+        doc["axis"]     = "column";
+        doc["children"] = Json::array({ label("新页面", 18) });
+    }
+
+    const std::string text = doc.dump(2) + "\n";
+    {
+        // 先试着实例化：模板写错就别落文件（跟新建外观一个道理）
+        bklv::View* probe = bklv::createFromJSONString(text);
+        if (probe == nullptr)
+        {
+            error = "模板实例化失败（没写盘，看日志）";
+            return false;
+        }
+        delete probe;
+    }
+
+    return writeTextFileAtomic(path, text, false, error);
 }
 
 std::string fnvHash(const std::string& text)

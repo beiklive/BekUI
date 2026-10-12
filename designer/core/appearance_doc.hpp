@@ -67,6 +67,10 @@ class AppearanceDoc
     // 层序硬约定（hlBg 在内容层前、shadow 在底色前、hlGlow/hlBorder 最后）违反时给出提示
     std::vector<std::string> layerOrderWarnings() const;
 
+    // 按上面的约定自动重排（返回 true 表示真的动过）。
+    // 顺序：shadow → 底色 rect → hlBg → 内容(text/image/custom) → 其他 rect → hlGlow/hlBorder
+    bool reorderLayersByConvention();
+
   private:
     Json doc = Json::object();
 };

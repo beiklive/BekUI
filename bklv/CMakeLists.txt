@@ -301,6 +301,7 @@ set(BKLV_CORE_SOURCES
     widgets/tab_frame.cpp
     widgets/sidebar.cpp
     widgets/status_area.cpp
+    widgets/widget_types.cpp
     widgets/dialog.cpp
     widgets/dropdown.cpp
     widgets/applet_frame.cpp
