@@ -46,7 +46,7 @@
 | 可见性 VISIBLE/INVISIBLE/GONE | 同名 | 同名 | ✅ |
 | 动作系统 registerAction / 冒泡 | ✅ | ✅（沿父链冒泡） | ✅ |
 | 手势（tap / pan / scroll） | `core/gesture.hpp` + Tap/Pan/Scroll 识别器 | ✅ 改良 | 状态机简化成 START/STAY/END/CANCEL/SCROLL + "吃掉与否"；**识别器生命周期归 View**（`unique_ptr`，borealis 存裸指针）；纯逻辑可无窗口测 |
-| 数据绑定 / cache_helper | `bind` / `cache_helper` | `json_cell` 绑定回调 + 纹理路径缓存；`Image::setImageFromFileAsync` 异步加载 | ⚠️ 部分 |
+| 数据绑定 / cache_helper | `View::setId/getId/getView(id)` + `core/cache.hpp` | ✅ 改良 | `bind` 那套（`BRLS_BIND` 宏 + `BoundView`）是 **XML 时代**的产物：从 XML 建树只能按 id 找子视图。我们代码建树直接持指针，JSON 建的树用 `getView(id)` 就够，不需要宏；`cache_helper` 补成 `LruCache`（容量 + LRU + 脏标记 + `Pin` 钉住 + 命中统计），接口收成三个动作、纯数据可无窗口测 |
 
 ## 三、core 层
 
