@@ -396,6 +396,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 例外只有两种，都写进注释：① STL 风格的 `std::string::empty()` 这类**标准库**成员照旧；
 ② 数据取值用 `get*`（`getBool`），即使返回 bool 也不算状态查询。
 
+## 截图（离屏，不用系统录屏权限）
+
+`App::requestScreenshot(path, delayFrames)` 会把"再渲染 N 帧之后"的那一帧从后缓冲读出来
+存成 PNG，然后退出。**不要用 macOS 的 `screencapture` 做验证**：没给屏幕录制权限时它只能
+拍到壁纸（这个坑在验证 demo 页面时踩过，白折腾很久）。
+
+```bash
+BKLV_DEMO_PAGE=5 BKLV_SCREENSHOT=/tmp/dex.png ./dist/demo   # 直接开第 6 页并截图
+```
+
+实现：`RenderBackend::readPixels()`（OpenGL 后端已实现，读回时上下翻转）+ `core/image_writer.*`
+（stb_image_write，第三方头文件的警告在这一个编译单元里局部压掉）。
+`BKLV_DEMO_PAGE` / `BKLV_SCREENSHOT` 是 demo 的调试开关，给自己看效果或做 CI 基线都方便。
+
 ## 测试
 
 无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：

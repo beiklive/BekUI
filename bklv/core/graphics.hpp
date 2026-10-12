@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 #include "imgui.h"
 
@@ -83,6 +84,21 @@ class RenderBackend
 
     // 交换缓冲。
     virtual void present() = 0;
+
+    // ---- 帧读回 ----
+    //
+    // 把当前已经画完、还没交换的后缓冲读成 RGBA8（左上角为原点）。
+    // 离屏截图用：不依赖系统录屏权限，CI 里也能跑。默认返回 false（后端没实现）。
+    virtual bool readPixels(int x, int y, int width, int height,
+        std::vector<unsigned char>& outRgba)
+    {
+        (void)x;
+        (void)y;
+        (void)width;
+        (void)height;
+        (void)outRgba;
+        return false;
+    }
 
     // ---- 纹理 ----
 

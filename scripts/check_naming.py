@@ -30,6 +30,8 @@ ACTION_PREFIXES = (
     "set", "play", "trigger", "submit", "handle", "refresh", "load", "apply",
     "run", "dispatch", "insert", "backspace", "delete", "move", "update",
     "create", "mainLoop", "collect", "check", "ensure", "wants",
+    # 动作类：读/写/请求/捕获/存取都算动作返回是否成功（约定见 AGENTS.md）
+    "read", "write", "request", "capture", "save", "parse", "copy", "install",
 )
 # 布尔开关的非法动词前缀
 BAD_BOOL_SETTER = re.compile(r"\bvoid\s+(enable|disable|show|hide)([A-Z]\w*)\s*\([^)]*\bbool\b")

@@ -104,6 +104,32 @@ void OpenGLBackend::renderDrawData(ImDrawData* drawData)
     ImGui_ImplOpenGL3_RenderDrawData(drawData);
 }
 
+bool OpenGLBackend::readPixels(int x, int y, int width, int height,
+    std::vector<unsigned char>& outRgba)
+{
+    if (width <= 0 || height <= 0)
+        return false;
+
+    outRgba.assign((size_t)width * (size_t)height * 4u, 0);
+
+    // glReadPixels 的原点在左下角，读回来要上下翻一下才是"左上角为原点"
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, outRgba.data());
+
+    const size_t stride = (size_t)width * 4u;
+    std::vector<unsigned char> row(stride);
+    for (int i = 0; i < height / 2; i++)
+    {
+        unsigned char* top    = outRgba.data() + (size_t)i * stride;
+        unsigned char* bottom = outRgba.data() + (size_t)(height - 1 - i) * stride;
+        std::copy(top, top + stride, row.data());
+        std::copy(bottom, bottom + stride, top);
+        std::copy(row.begin(), row.end(), bottom);
+    }
+
+    return true;
+}
+
 void OpenGLBackend::present()
 {
     if (this->window != nullptr)

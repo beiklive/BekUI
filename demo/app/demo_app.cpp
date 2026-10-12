@@ -1,6 +1,8 @@
 #include "app/demo_app.hpp"
 
 #include "app/pages.hpp"
+
+#include <cstdlib>
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
 
@@ -121,7 +123,31 @@ DemoApp::DemoApp()
     setSettingsShell(this->root);
     this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);
 
-    BKLV_LOG_INFO("界面已就绪：%d 个页面（左侧栏导航）", (int)this->pages.size());
+    // 起始页：默认第一页；截图/调试时用 BKLV_DEMO_PAGE=<下标> 直接开某一页
+    size_t startPage = 0;
+    if (const char* requested = std::getenv("BKLV_DEMO_PAGE"))
+    {
+        const int parsed = std::atoi(requested);
+        if (parsed >= 0 && (size_t)parsed < this->pages.size())
+            startPage = (size_t)parsed;
+        else
+            BKLV_LOG_WARNING("BKLV_DEMO_PAGE=%s 越界（共 %d 页），用第一页", requested,
+                (int)this->pages.size());
+    }
+    this->selectPage(startPage);
+
+    // 离屏截图（截图/CI 用）：BKLV_SCREENSHOT=<png 路径>，可选 BKLV_SCREENSHOT_FRAMES=<等几帧>
+    if (const char* shotPath = std::getenv("BKLV_SCREENSHOT"))
+    {
+        int frames = 5;
+        if (const char* requested = std::getenv("BKLV_SCREENSHOT_FRAMES"))
+            frames = std::atoi(requested);
+        if (App* app = App::getCurrent())
+            app->requestScreenshot(shotPath, frames);
+    }
+
+    BKLV_LOG_INFO("界面已就绪：%d 个页面（左侧栏导航），起始页 %d",
+        (int)this->pages.size(), (int)startPage);
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_INFO("UI 缩放：%.3f（主题尺寸按 1280x720 写）", (double)getUiScale());
 

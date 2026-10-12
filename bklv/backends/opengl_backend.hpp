@@ -34,6 +34,8 @@ class OpenGLBackend : public RenderBackend
     void clear(const float rgba[4]) override;
     void renderDrawData(ImDrawData* drawData) override;
     void present() override;
+    bool readPixels(int x, int y, int width, int height,
+        std::vector<unsigned char>& outRgba) override;
 
     // ---- 纹理 ----
     TextureHandle createTexture(const unsigned char* pixels, int width, int height) override;

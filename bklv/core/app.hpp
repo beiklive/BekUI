@@ -86,6 +86,11 @@ class App
     // 通知层（想改位置/上限/样式就自己拿它调）
     NotificationManager* getNotifications();
 
+    // 离屏截图：再渲染 delayFrames 帧之后把这一帧读出来存成 PNG，然后退出。
+    // 不依赖系统录屏权限（macOS 的 screencapture 没权限时只能拍到壁纸），CI 也能用。
+    // 返回 false 表示当前后端不支持帧读回。
+    bool requestScreenshot(const std::string& path, int delayFrames = 3);
+
     // 调试层：把所有视图的边界框出来（对标 borealis 的 debug view / wireframe）
     void setDebugLayerEnabled(bool enabled);
     bool isDebugLayerEnabled() const { return this->debugLayer != nullptr; }
@@ -110,11 +115,16 @@ class App
     bool isIniPersistenceEnabled() const { return this->iniPersistenceEnabled; }
 
   private:
+    void saveScreenshot(class RenderBackend* backend, float width, float height);
+
     void frame();
 
     View* root = nullptr;
     NotificationManager* notifications = nullptr;
     DebugLayer* debugLayer = nullptr;
+    std::string screenshotPath;      // 非空表示要截图
+    int screenshotDelay = 0;         // 还要等几帧
+    bool quitRequested  = false;
     bool debugLayerRequested = false; // 根视图还没就绪时先记下（setRootView 后再开）
     // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
     std::vector<std::pair<std::string, float>> pendingNotifications;

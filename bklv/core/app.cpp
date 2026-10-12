@@ -1,4 +1,5 @@
 #include "bklv/core/app.hpp"
+#include "bklv/core/image_writer.hpp"
 #include "bklv/core/audio.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -198,6 +199,32 @@ void App::notify(const std::string& text, float duration)
 
     manager->notify(text, duration);
     this->requestLayout();
+}
+
+void App::saveScreenshot(RenderBackend* backend, float width, float height)
+{
+    std::vector<unsigned char> pixels;
+    if (!backend->readPixels(0, 0, (int)width, (int)height, pixels))
+    {
+        BKLV_LOG_ERROR("后端不支持帧读回，截图失败：%s", this->screenshotPath.c_str());
+        return;
+    }
+
+    if (!writePngFile(this->screenshotPath, pixels.data(), (int)width, (int)height, 4))
+        BKLV_LOG_ERROR("截图写文件失败：%s", this->screenshotPath.c_str());
+    else
+        BKLV_LOG_INFO("截图已保存：%s（%dx%d）", this->screenshotPath.c_str(), (int)width,
+            (int)height);
+}
+
+bool App::requestScreenshot(const std::string& path, int delayFrames)
+{
+    if (path.empty())
+        return false;
+
+    this->screenshotPath  = path;
+    this->screenshotDelay = delayFrames < 0 ? 0 : delayFrames;
+    return true;
 }
 
 void App::setDebugLayerEnabled(bool enabled)
@@ -427,12 +454,28 @@ int App::run(const std::string& title, int width, int height)
 
     // 平台自己的循环包装：Switch 上需要先做 applet / EGL 初始化。
     platform->runLoop([&]() {
-        while (platform->mainLoopIteration())
+        while (!this->quitRequested && platform->mainLoopIteration())
         {
             backend->newFrame();
             this->frame();
             backend->clear(clearColor);
             backend->renderDrawData(ImGui::GetDrawData());
+
+            // 截图要在交换之前读后缓冲（交换之后内容未定义）
+            if (!this->screenshotPath.empty())
+            {
+                if (this->screenshotDelay > 0)
+                {
+                    this->screenshotDelay--;
+                }
+                else
+                {
+                    this->saveScreenshot(backend, width, height);
+                    this->screenshotPath.clear();
+                    this->quitRequested = true;
+                }
+            }
+
             backend->present();
         }
         return true;
