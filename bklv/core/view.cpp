@@ -178,6 +178,12 @@ void View::setGrow(float grow)
     this->invalidate();
 }
 
+void View::setFlexBasis(float basis)
+{
+    YGNodeStyleSetFlexBasis(this->ygNode, basis);
+    this->invalidate();
+}
+
 void View::setShrink(float shrink)
 {
     YGNodeStyleSetFlexShrink(this->ygNode, shrink);

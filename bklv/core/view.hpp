@@ -132,6 +132,11 @@ class View
 
     // ---- 布局：弹性 ----
     void setGrow(float grow);
+
+    // flex 基准尺寸。grow 要和 basis 0 一起用才是"占满剩余空间"：
+    // basis 默认 auto（=内容尺寸）时，内容一大，Yoga 会按比例连兄弟节点一起压缩
+    // （踩过：内容区里的滚动器把同列的按钮行从 48 压到 28）。
+    void setFlexBasis(float basis);
     void setShrink(float shrink);
     float getGrow() const;
 

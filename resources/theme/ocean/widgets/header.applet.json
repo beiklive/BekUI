@@ -1,6 +1,5 @@
 {
   "box": {
-    "width": "100%",
     "height": "@theme/metric.appletFrame.headerHeight",
     "shrink": 0,
     "margin": [

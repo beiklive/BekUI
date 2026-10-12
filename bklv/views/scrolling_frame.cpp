@@ -23,6 +23,13 @@ ScrollingFrame::ScrollingFrame()
 {
     // 这是滚动容器的核心：裁剪掉超出自身的部分。
     this->setClipsToBounds(true);
+    // 滚动容器必须能被压缩：内容比可用空间高时，该由它吸收溢出并滚动，
+    // 而不是把父容器/后面的兄弟顶开（Yoga 的 flexShrink 默认是 0，和 CSS 不同）。
+    // 踩过：内容区里的滚动器随页面内容变高（499~519），把底栏区域顶出去。
+    this->setShrink(1.0f);
+    // 基准尺寸设 0：滚动器只按"剩余空间"定高，不拿内容高度当基准。
+    // 否则内容一大，Yoga 会按比例压缩同一列里的其它节点（按钮行被压矮就是这么来的）。
+    this->setFlexBasis(0.0f);
     // 内边距设置
     this->setPadding(5.0f, 15.0f, 5.0f, 15.0f);
 }

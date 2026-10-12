@@ -24,6 +24,9 @@ AppletFrame::AppletFrame(View* contentView)
     // 内容区：撑满页头与底栏之间的空间
     this->contentBox = new Box(Axis::COLUMN);
     this->contentBox->setWidthPercentage(100.0f);
+    // 内容子节点默认横向拉满：这样应用给内容加"auto 宽 + 左右 margin"时，
+    // 拿到的是"内容区宽 - 边距"，不会像 100% + margin 那样多出边距那一段
+    this->contentBox->setAlignItems(AlignItems::STRETCH);
     this->contentBox->setGrow(1.0f);
     this->contentBox->setShrink(1.0f);
     this->addView(this->contentBox);

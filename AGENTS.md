@@ -316,6 +316,14 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   padding 里），否则隐藏后会留下空隙。
   `setBarsAnimated(true)`（默认）时用 `core/time.hpp` 的 `Animatable` 补间折叠：
   动画期间两栏保持 VISIBLE 并逐帧改高度 + `App::requestLayout()`，补间结束才真正 GONE。
+- **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
+  内容的右上按钮被推出边界，都踩过）。要"填满父容器再留边距"就用 **auto 宽 + margin**，
+  父容器负责 stretch（`AppletFrame` 的内容区已经 `alignItems: stretch`）。
+- **滚动容器用 `flex-basis: 0` + `flex-shrink: 1`**（`views/scrolling_frame.*`）：
+  Yoga 的 flexShrink 默认是 **0**，而 basis 默认是内容尺寸。两者不改的话，内容一高，
+  Yoga 会按比例把**同一列里的兄弟节点一起压缩**（按钮行 48 → 28），滚动器自己的高度
+  也随内容变 → 每次切页内容区高度都变，看着像底栏在上下闪。
+  `grow` 配 `basis 0` 才是"只占剩余空间"。
 - **`AppearanceView` 是容器，`update()` 必须先 `Box::update()` 递归子树**：
   底栏里的提示栏/状态区、页头里的标题、弹窗面板里的按钮行都靠这条，
   漏了的话子树永远不会 update（踩过：提示栏一直不刷新、看着像空的）。

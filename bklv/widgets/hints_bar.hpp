@@ -45,6 +45,7 @@ class HintsBar : public Box
     // 立刻按当前焦点刷新（一般不用手动调，update() 会做）
     void refresh();
 
+
     // 没有提示时是否隐藏（默认隐藏，免得留一条空栏）
     void setHideWhenEmpty(bool value) { this->hideWhenEmpty = value; }
 

@@ -15,6 +15,7 @@
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/label.hpp"
+#include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/header.hpp"
@@ -178,6 +179,38 @@ int main()
         checkFloat(button->getHeight(), getTheme().number("metric.control.height", 0.0f),
             "切回默认主题后高度回到主题值");
         delete button;
+    }
+
+    std::printf("\n== 3.6 滚动容器只吃剩余空间，不压缩同列的兄弟节点 ==\n");
+    {
+        // 踩过：滚动器拿"内容高度"当 flex 基准，内容一大，Yoga 按比例把同列的
+        // 按钮行从 48 压到 28 → 每次切页内容区高度都变，看着像底栏在上下闪。
+        Box* column = new Box(Axis::COLUMN);
+        column->setWidth(400.0f);
+        column->setHeight(300.0f);
+
+        Box* topRow = new Box(Axis::ROW);
+        topRow->setHeight(48.0f);
+        column->addView(topRow);
+
+        ScrollingFrame* scroller = new ScrollingFrame();
+        scroller->setGrow(1.0f);
+        Box* content = new Box(Axis::COLUMN);
+        content->setHeight(900.0f); // 内容远高于可用空间
+        scroller->setContentView(content);
+        column->addView(scroller);
+
+        YGNodeCalculateLayout(column->getYGNode(), 400.0f, 300.0f, YGDirectionLTR);
+        checkFloat(topRow->getHeight(), 48.0f, "内容再高也不会压扁同列的兄弟");
+        checkFloat(scroller->getHeight(), 300.0f - 48.0f, "滚动器拿满剩余空间");
+        checkFloat(content->getHeight(), 900.0f, "内容保持自己的高度（可滚动）");
+
+        // 换一页内容（更矮），滚动器高度不变
+        content->setHeight(120.0f);
+        YGNodeCalculateLayout(column->getYGNode(), 400.0f, 300.0f, YGDirectionLTR);
+        checkFloat(scroller->getHeight(), 300.0f - 48.0f, "内容变矮后滚动器仍然占满剩余空间");
+
+        delete column;
     }
 
     std::printf("\n== 4. 主题只覆盖未被显式设置过的值 ==\n");
@@ -382,6 +415,54 @@ int main()
         frame->setHeaderStyle(AppletHeaderStyle::Popup);
         check(header->getActiveAppearance().getBox().heightAuto,
             "Popup 页头换成了另一份外观（高度 auto）");
+
+        // ---- 外壳的边距与内容区高度（踩过：页头/底栏 100% 宽 + 左右外边距会溢出右边距；
+        //      内容区高度跟着页面内容变，看着像底栏在动）----
+        {
+            Box* outside = new Box(Axis::COLUMN);
+            outside->setWidth(1280.0f);
+            outside->setHeight(720.0f);
+            AppletFrame* shell = new AppletFrame();
+            outside->addView(shell);
+            YGNodeCalculateLayout(outside->getYGNode(), 1280.0f, 720.0f, YGDirectionLTR);
+
+            const float side = getTheme().number("metric.appletFrame.paddingSides", 0.0f);
+            checkFloat(shell->getHeader()->getWidth(), 1280.0f - 2.0f * side,
+                "页头宽度扣掉左右外边距（不是 100% + margin 溢出）");
+            checkFloat(shell->getFooter()->getWidth(), 1280.0f - 2.0f * side,
+                "底栏宽度扣掉左右外边距");
+            checkFloat(shell->getFooter()->getFrame().y + shell->getFooter()->getHeight(), 720.0f,
+                "底栏贴着窗口底边");
+
+            // 应用给内容加"auto 宽 + 左右 margin"时，得到的是 内容区宽 − 边距。
+            // 写成 100% + margin 会多出边距那一段（踩过：右上按钮被推出边界）
+            Box* content = new Box(Axis::COLUMN);
+            content->setWidth(AUTO);
+            content->setMargins(0.0f, side, 0.0f, side);
+            shell->pushContentView(content);
+            YGNodeCalculateLayout(outside->getYGNode(), 1280.0f, 720.0f, YGDirectionLTR);
+            checkFloat(content->getWidth(), 1280.0f - 2.0f * side,
+                "内容 auto 宽 + 左右 margin = 内容区宽扣掉边距");
+            checkFloat(content->getX(), side, "内容左边距生效");
+            shell->popContentView();
+
+            // 内容换成更高的东西，内容区高度与底栏位置都不该变
+            const float contentHeight = shell->getContentBox()->getHeight();
+            const float footerY       = shell->getFooter()->getFrame().y;
+
+            Box* tall = new Box(Axis::COLUMN);
+            tall->setHeight(1200.0f); // 比内容区高一截
+            shell->pushContentView(tall);
+            YGNodeCalculateLayout(outside->getYGNode(), 1280.0f, 720.0f, YGDirectionLTR);
+
+            checkFloat(shell->getContentBox()->getHeight(), contentHeight,
+                "内容比内容区高时，内容区高度不变");
+            checkFloat(shell->getFooter()->getFrame().y, footerY,
+                "内容比内容区高时，底栏不会被动走");
+
+            outside->removeView(shell, true);
+            delete outside;
+        }
 
         // ---- 全局显隐：关掉补间时立刻切换，内容区吃掉那部分高度 ----
         frame->setBarsAnimated(false);

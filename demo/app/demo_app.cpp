@@ -10,6 +10,14 @@
 
 using namespace bklv;
 
+namespace
+{
+
+
+
+
+} // namespace
+
 namespace demo
 {
 
@@ -22,7 +30,13 @@ DemoApp::DemoApp()
 
     // ---- 内容：左 侧栏 + 右 子页面 ----
     Box* body = makeRow(getTheme().number("metric.spacing.xl", 24.0f), AlignItems::STRETCH);
-    body->setHeight(AUTO); // 高度由 AppletFrame 内容区的 stretch 决定
+    // 内容列吃满内容区：父（AppletFrame 的 contentBox）高度是确定的，
+    // 用 grow 拿剩余高度，再靠交叉轴 stretch 让左右两列都填满。
+    // 之前 body 高度是 auto，百分比/百分比高度全都无效 → 整个内容区高度跟着页面内容变
+    body->setHeight(AUTO);
+    body->setGrow(1.0f);
+    body->setWidth(AUTO); // 有左右 margin 时不能写 100%：会多出边距那一段
+    body->setAlignItems(AlignItems::STRETCH);
 
     this->sidebar = new Sidebar(getStr("app/pages"));
     body->addView(this->sidebar);
@@ -30,7 +44,7 @@ DemoApp::DemoApp()
     Box* right = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
     right->setGrow(1.0f);
     right->setShrink(1.0f);
-    right->setHeight(AUTO);
+    right->setHeight(AUTO); // 交叉轴 stretch 会让它填满 body
 
     // 右上角：日志开关 + 全局页头/底栏显隐（这两样是外壳级的，所有页面共用）
     Box* topRow = makeRow(getTheme().number("metric.spacing.sm", 8.0f), AlignItems::CENTER);
@@ -74,8 +88,15 @@ DemoApp::DemoApp()
     this->pageSlot->setWidthPercentage(100.0f);
     this->pageSlot->setGrow(1.0f);
 
-    right->addView(this->contentHost);
+    // 页面内容放进 ScrollingFrame：它会裁剪 + 滚动。
+    // 之前 scroller 建了却没挂进树，页面比内容区高时就画到底栏上（看着像底栏在闪）
+    this->scroller->setContentView(this->contentHost);
+    right->addView(this->scroller);
     body->addView(right);
+    // 内容区左右留白：和页头/底栏的 margin 用同一个主题值，四边看起来才是一套
+    const float sideMargin = getTheme().number("metric.appletFrame.paddingSides", 30.0f);
+    body->setMargins(0.0f, sideMargin, 0.0f, sideMargin);
+
     this->root->pushContentView(body);
 
     // ---- 页面（顺序就是侧栏顺序）----
