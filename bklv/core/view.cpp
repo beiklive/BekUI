@@ -920,34 +920,44 @@ void setPositionBottomAttr(View* v, const ResolvedValue& r)
 
 void setVisibilityAttr(View* v, const ResolvedValue& r)
 {
-    if (r.text == "visible")
+    if (enumMatches(r.text, "visible"))
         v->setVisibility(Visibility::VISIBLE);
-    else if (r.text == "invisible")
+    else if (enumMatches(r.text, "invisible"))
         v->setVisibility(Visibility::INVISIBLE);
-    else
+    else if (enumMatches(r.text, "gone"))
         v->setVisibility(Visibility::GONE);
+    else
+        warnUnknownEnumValue("visibility", r.text, "visible|invisible|gone");
 }
 
 void setPositionTypeAttr(View* v, const ResolvedValue& r)
 {
-    v->setPositionType(r.text == "absolute" ? PositionType::ABSOLUTE : PositionType::RELATIVE);
+    if (enumMatches(r.text, "absolute"))
+        v->setPositionType(PositionType::ABSOLUTE);
+    else if (enumMatches(r.text, "relative"))
+        v->setPositionType(PositionType::RELATIVE);
+    else
+        warnUnknownEnumValue("position", r.text, "relative|absolute");
 }
 
 void setAlignSelfAttr(View* v, const ResolvedValue& r)
 {
     // 注意 setAlignSelf 收的是 AlignSelf，不是 AlignItems——两者值集不同，别混。
-    if (r.text == "flexStart")
+    if (enumMatches(r.text, "flexStart"))
         v->setAlignSelf(AlignSelf::FLEX_START);
-    else if (r.text == "center")
+    else if (enumMatches(r.text, "center"))
         v->setAlignSelf(AlignSelf::CENTER);
-    else if (r.text == "flexEnd")
+    else if (enumMatches(r.text, "flexEnd"))
         v->setAlignSelf(AlignSelf::FLEX_END);
-    else if (r.text == "stretch")
+    else if (enumMatches(r.text, "stretch"))
         v->setAlignSelf(AlignSelf::STRETCH);
-    else if (r.text == "baseline")
+    else if (enumMatches(r.text, "baseline"))
         v->setAlignSelf(AlignSelf::BASELINE);
-    else
+    else if (enumMatches(r.text, "auto"))
         v->setAlignSelf(AlignSelf::AUTO);
+    else
+        warnUnknownEnumValue("alignSelf", r.text,
+            "auto|flexStart|center|flexEnd|stretch|baseline");
 }
 
 void setMarginAttr(View* v, const ResolvedValue& r)

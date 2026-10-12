@@ -202,13 +202,13 @@ void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, f
     // 装饰件靠这个表达：色条 width=4、下边线 height=1 + valign=bottom。
     if (layer.width > 0.0f)
     {
-        if (layer.align == "center")
+        if (enumMatches(layer.align, "center"))
         {
             const float center = (left + right) * 0.5f;
             left               = center - layer.width * 0.5f;
             right              = left + layer.width;
         }
-        else if (layer.align == "right")
+        else if (enumMatches(layer.align, "right"))
         {
             left = right - layer.width;
         }
@@ -220,13 +220,13 @@ void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, f
 
     if (layer.height > 0.0f)
     {
-        if (layer.valign == "center")
+        if (enumMatches(layer.valign, "center"))
         {
             const float middle = (top + bottom) * 0.5f;
             top                = middle - layer.height * 0.5f;
             bottom             = top + layer.height;
         }
-        else if (layer.valign == "bottom")
+        else if (enumMatches(layer.valign, "bottom"))
         {
             top = bottom - layer.height;
         }
@@ -325,15 +325,15 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 const ImVec2 textSize = font->CalcTextSizeA(size, FLT_MAX, 0.0f, content.c_str());
 
                 float textX = rect[0];
-                if (layer.align == "center")
+                if (enumMatches(layer.align, "center"))
                     textX = rect[0] + ((rect[2] - rect[0]) - textSize.x) * 0.5f;
-                else if (layer.align == "right")
+                else if (enumMatches(layer.align, "right"))
                     textX = rect[2] - textSize.x;
 
                 float textY = rect[1];
-                if (layer.valign == "center")
+                if (enumMatches(layer.valign, "center"))
                     textY = rect[1] + ((rect[3] - rect[1]) - textSize.y) * 0.5f;
-                else if (layer.valign == "bottom")
+                else if (enumMatches(layer.valign, "bottom"))
                     textY = rect[3] - textSize.y;
 
                 drawList->AddText(font, size, ImVec2(textX, textY), scaleAlpha(textColor), content.c_str());

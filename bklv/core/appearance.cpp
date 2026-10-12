@@ -225,15 +225,15 @@ bool resolveNumber(const Json& node, const ThemeData& theme, float& out, std::st
 AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
 {
     ok = true;
-    if (text == "rect")
+    if (enumMatches(text, "rect"))
         return AppearanceLayer::Op::RECT;
-    if (text == "text")
+    if (enumMatches(text, "text"))
         return AppearanceLayer::Op::TEXT;
-    if (text == "image")
+    if (enumMatches(text, "image"))
         return AppearanceLayer::Op::IMAGE;
-    if (text == "shadow")
+    if (enumMatches(text, "shadow"))
         return AppearanceLayer::Op::SHADOW;
-    if (text == "custom")
+    if (enumMatches(text, "custom"))
         return AppearanceLayer::Op::CUSTOM;
     ok = false;
     return AppearanceLayer::Op::RECT;
@@ -261,43 +261,47 @@ tweeny::tween<float> makeTween(float from, float to, uint32_t frames, const std:
 {
     using namespace tweeny::easing;
 
-    if (easing == "quadraticIn")
+    if (enumMatches(easing, "quadraticIn"))
         return tweeny::from(from).to(to).via(quadraticIn).during(frames).build();
-    if (easing == "quadraticOut")
+    if (enumMatches(easing, "quadraticOut"))
         return tweeny::from(from).to(to).via(quadraticOut).during(frames).build();
-    if (easing == "quadraticInOut")
+    if (enumMatches(easing, "quadraticInOut"))
         return tweeny::from(from).to(to).via(quadraticInOut).during(frames).build();
-    if (easing == "cubicIn")
+    if (enumMatches(easing, "cubicIn"))
         return tweeny::from(from).to(to).via(cubicIn).during(frames).build();
-    if (easing == "cubicOut")
+    if (enumMatches(easing, "cubicOut"))
         return tweeny::from(from).to(to).via(cubicOut).during(frames).build();
-    if (easing == "cubicInOut")
+    if (enumMatches(easing, "cubicInOut"))
         return tweeny::from(from).to(to).via(cubicInOut).during(frames).build();
-    if (easing == "quarticOut")
+    if (enumMatches(easing, "quarticOut"))
         return tweeny::from(from).to(to).via(quarticOut).during(frames).build();
-    if (easing == "quinticOut")
+    if (enumMatches(easing, "quinticOut"))
         return tweeny::from(from).to(to).via(quinticOut).during(frames).build();
-    if (easing == "sinusoidalIn")
+    if (enumMatches(easing, "sinusoidalIn"))
         return tweeny::from(from).to(to).via(sinusoidalIn).during(frames).build();
-    if (easing == "sinusoidalOut")
+    if (enumMatches(easing, "sinusoidalOut"))
         return tweeny::from(from).to(to).via(sinusoidalOut).during(frames).build();
-    if (easing == "sinusoidalInOut")
+    if (enumMatches(easing, "sinusoidalInOut"))
         return tweeny::from(from).to(to).via(sinusoidalInOut).during(frames).build();
-    if (easing == "exponentialOut")
+    if (enumMatches(easing, "exponentialOut"))
         return tweeny::from(from).to(to).via(exponentialOut).during(frames).build();
-    if (easing == "circularOut")
+    if (enumMatches(easing, "circularOut"))
         return tweeny::from(from).to(to).via(circularOut).during(frames).build();
-    if (easing == "backOut")
+    if (enumMatches(easing, "backOut"))
         return tweeny::from(from).to(to).via(backOut).during(frames).build();
-    if (easing == "backInOut")
+    if (enumMatches(easing, "backInOut"))
         return tweeny::from(from).to(to).via(backInOut).during(frames).build();
-    if (easing == "bounceOut")
+    if (enumMatches(easing, "bounceOut"))
         return tweeny::from(from).to(to).via(bounceOut).during(frames).build();
-    if (easing == "elasticOut")
+    if (enumMatches(easing, "elasticOut"))
         return tweeny::from(from).to(to).via(elasticOut).during(frames).build();
-    if (easing == "stepped")
+    if (enumMatches(easing, "stepped"))
         return tweeny::from(from).to(to).via(stepped).during(frames).build();
 
+    warnUnknownEnumValue("easing", easing,
+        "linear|quadraticIn/Out/InOut|cubicIn/Out/InOut|quarticOut|quinticOut|"
+        "sinusoidalIn/Out/InOut|exponentialOut|circularOut|backOut/backInOut|bounceOut|"
+        "elasticOut|stepped");
     return tweeny::from(from).to(to).via(linear).during(frames).build();
 }
 
@@ -402,6 +406,24 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         layer.align  = node.value("align", "left");
         layer.valign = node.value("valign", "center");
         layer.scaling = node.value("scaling", "fit");
+
+        // 这三项拼错时在**编译期**警告一次（绘制期每帧都比一遍，在那儿报会刷屏）
+        {
+            const std::string alignWhere = where + ".align";
+            if (!(enumMatches(layer.align, "left") || enumMatches(layer.align, "center")
+                    || enumMatches(layer.align, "right")))
+                warnUnknownEnumValue(alignWhere.c_str(), layer.align, "left|center|right");
+
+            const std::string valignWhere = where + ".valign";
+            if (!(enumMatches(layer.valign, "center") || enumMatches(layer.valign, "top")
+                    || enumMatches(layer.valign, "bottom")))
+                warnUnknownEnumValue(valignWhere.c_str(), layer.valign, "center|top|bottom");
+
+            const std::string scalingWhere = where + ".scaling";
+            if (!enumMatches(layer.scaling, "fit"))
+                warnUnknownEnumValue(scalingWhere.c_str(), layer.scaling,
+                    "fit（其它缩放由控件自己在 custom 层处理）");
+        }
 
         // 颜色 / 数值字段
         struct ColorField
@@ -725,34 +747,45 @@ std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
 namespace
 {
 
-JustifyContent justifyFromName(const std::string& name)
+// 外观 box 的枚举也走宽容匹配：flex_start / flexStart / FLEX_START 都认
+// （视图描述 JSON 传统写 camelCase、外观 JSON 传统写 snake_case，统一后两边随便写）
+// 返回 false = 这个名字不认识（已打警告），调用方**不要动**当前值
+bool justifyFromName(const std::string& name, JustifyContent& out)
 {
-    if (name == "center")
-        return JustifyContent::CENTER;
-    if (name == "flex_end" || name == "end")
-        return JustifyContent::FLEX_END;
-    if (name == "space_between")
-        return JustifyContent::SPACE_BETWEEN;
-    if (name == "space_around")
-        return JustifyContent::SPACE_AROUND;
-    if (name == "space_evenly")
-        return JustifyContent::SPACE_EVENLY;
-
-    return JustifyContent::FLEX_START;
+    if (enumMatches(name, "flexStart"))
+        out = JustifyContent::FLEX_START;
+    else if (enumMatches(name, "center"))
+        out = JustifyContent::CENTER;
+    else if (enumMatches(name, "flexEnd"))
+        out = JustifyContent::FLEX_END;
+    else if (enumMatches(name, "spaceBetween"))
+        out = JustifyContent::SPACE_BETWEEN;
+    else if (enumMatches(name, "spaceAround"))
+        out = JustifyContent::SPACE_AROUND;
+    else if (enumMatches(name, "spaceEvenly"))
+        out = JustifyContent::SPACE_EVENLY;
+    else
+        return warnUnknownEnumValue("justifyContent", name,
+            "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly");
+    return true;
 }
 
-AlignItems alignFromName(const std::string& name)
+bool alignFromName(const std::string& name, AlignItems& out)
 {
-    if (name == "center")
-        return AlignItems::CENTER;
-    if (name == "flex_end" || name == "end")
-        return AlignItems::FLEX_END;
-    if (name == "stretch")
-        return AlignItems::STRETCH;
-    if (name == "baseline")
-        return AlignItems::BASELINE;
-
-    return AlignItems::FLEX_START;
+    if (enumMatches(name, "flexStart"))
+        out = AlignItems::FLEX_START;
+    else if (enumMatches(name, "center"))
+        out = AlignItems::CENTER;
+    else if (enumMatches(name, "flexEnd"))
+        out = AlignItems::FLEX_END;
+    else if (enumMatches(name, "stretch"))
+        out = AlignItems::STRETCH;
+    else if (enumMatches(name, "baseline"))
+        out = AlignItems::BASELINE;
+    else
+        return warnUnknownEnumValue("alignItems", name,
+            "flexStart|center|flexEnd|stretch|baseline");
+    return true;
 }
 
 } // namespace
@@ -796,11 +829,26 @@ void applyAppearanceBox(Box* view, const AppearanceBox& box)
     if (box.hasShrink)
         view->setShrink(box.shrink);
     if (box.hasAxis)
-        view->setAxis(box.axis == "row" ? Axis::ROW : Axis::COLUMN);
+    {
+        if (enumMatches(box.axis, "row"))
+            view->setAxis(Axis::ROW);
+        else if (enumMatches(box.axis, "column"))
+            view->setAxis(Axis::COLUMN);
+        else
+            warnUnknownEnumValue("axis", box.axis, "row|column");
+    }
     if (box.hasJustify)
-        view->setJustifyContent(justifyFromName(box.justify));
+    {
+        JustifyContent justify = JustifyContent::FLEX_START;
+        if (justifyFromName(box.justify, justify))
+            view->setJustifyContent(justify);
+    }
     if (box.hasAlign)
-        view->setAlignItems(alignFromName(box.align));
+    {
+        AlignItems alignment = AlignItems::STRETCH;
+        if (alignFromName(box.align, alignment))
+            view->setAlignItems(alignment);
+    }
     if (box.hasBackground)
         view->setBackgroundColor(box.background);
     if (box.hasCornerRadius)

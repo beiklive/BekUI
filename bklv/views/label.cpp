@@ -499,23 +499,27 @@ void setLineHeightAttr(View* v, const ResolvedValue& r)
 void setHorizontalAlignAttr(View* v, const ResolvedValue& r)
 {
     Label* label = static_cast<Label*>(v);
-    if (r.text == "center")
+    if (enumMatches(r.text, "left"))
+        label->setHorizontalAlign(HorizontalAlign::LEFT);
+    else if (enumMatches(r.text, "center"))
         label->setHorizontalAlign(HorizontalAlign::CENTER);
-    else if (r.text == "right")
+    else if (enumMatches(r.text, "right"))
         label->setHorizontalAlign(HorizontalAlign::RIGHT);
     else
-        label->setHorizontalAlign(HorizontalAlign::LEFT);
+        warnUnknownEnumValue("horizontalAlign", r.text, "left|center|right");
 }
 
 void setVerticalAlignAttr(View* v, const ResolvedValue& r)
 {
     Label* label = static_cast<Label*>(v);
-    if (r.text == "center")
+    if (enumMatches(r.text, "top"))
+        label->setVerticalAlign(VerticalAlign::TOP);
+    else if (enumMatches(r.text, "center"))
         label->setVerticalAlign(VerticalAlign::CENTER);
-    else if (r.text == "bottom")
+    else if (enumMatches(r.text, "bottom"))
         label->setVerticalAlign(VerticalAlign::BOTTOM);
     else
-        label->setVerticalAlign(VerticalAlign::TOP);
+        warnUnknownEnumValue("verticalAlign", r.text, "top|center|bottom");
 }
 
 } // namespace

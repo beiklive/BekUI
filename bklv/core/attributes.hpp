@@ -97,6 +97,15 @@ struct AttributeDef
 };
 
 // 一个类的属性表。静态存续（函数内 static），不随实例分配。
+// 枚举字符串的**宽容匹配**：忽略大小写与 `_` / `-` 分隔符。
+// 于是 flexEnd / flex_end / FLEX_END / FlexEnd 都命中同一个值 ——
+// 视图描述 JSON（camelCase）与控件外观 JSON（snake_case）的拼写差异就此抹平。
+bool enumMatches(const std::string& text, const char* name);
+
+// 枚举值不认识时打一条**能照着改**的警告（字段名 + 可用值），返回 false 让调用方决定兜底。
+// 约定：不认识就**保持原值**不动，而不是悄悄改成别的值。
+bool warnUnknownEnumValue(const char* field, const std::string& text, const char* options);
+
 class AttributeTable
 {
   public:

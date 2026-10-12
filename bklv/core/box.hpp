@@ -63,6 +63,8 @@ class Box : public View
     // 主轴方向：ROW 横向、COLUMN 纵向。
     void setAxis(Axis axis);
     Axis getAxis() const { return this->axis; }
+    JustifyContent getJustifyContent() const { return this->justifyContent; }
+    AlignItems getAlignItems() const { return this->alignItems; }
 
     // 主轴排列方向（LTR / RTL）。
     void setDirection(Direction direction);
@@ -116,6 +118,9 @@ class Box : public View
 
   private:
     Axis axis = Axis::COLUMN;
+    // 记一份，getter / 诊断要用（Yoga 那边也设了，这里是镜像）
+    JustifyContent justifyContent = JustifyContent::FLEX_START;
+    AlignItems alignItems        = AlignItems::STRETCH;
     std::vector<View*> children;
 };
 

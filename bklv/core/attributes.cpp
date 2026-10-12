@@ -15,6 +15,38 @@
 
 namespace bklv
 {
+
+namespace
+{
+
+// 归一：只留字母数字并转小写，`_` 与 `-` 直接丢掉
+std::string normalizeEnumToken(const std::string& text)
+{
+    std::string out;
+    out.reserve(text.size());
+    for (char c : text)
+    {
+        if (c == '_' || c == '-' || c == ' ')
+            continue;
+        out.push_back((char)std::tolower((unsigned char)c));
+    }
+    return out;
+}
+
+} // namespace
+
+bool enumMatches(const std::string& text, const char* name)
+{
+    return normalizeEnumToken(text) == normalizeEnumToken(name);
+}
+
+bool warnUnknownEnumValue(const char* field, const std::string& text, const char* options)
+{
+    BKLV_LOG_WARNING("%s 不认识 \"%s\"（可用：%s；大小写与 _ 都不敏感，flexEnd == flex_end）",
+        field, text.c_str(), options);
+    return false;
+}
+
 namespace
 {
 
@@ -292,24 +324,20 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             if (text.empty())
                 break;
 
-            // allowed 是 "a|b|c"，逐段比。大小写不敏感，写起来宽松些。
-            std::string lower = text;
-            for (char& c : lower)
-                c = (char)std::tolower((unsigned char)c);
-
+            // allowed 是 "a|b|c"，逐段宽容比：大小写与 `_`/`-` 都不敏感
+            // （于是视图描述 JSON 写 flexEnd、控件外观 JSON 写 flex_end 都能过）。
+            // 命中后回传表里登记的标准写法，后续 setter 只认一种拼写。
             const std::string list = allowed != nullptr ? allowed : "";
             size_t begin           = 0;
             while (begin <= list.size())
             {
-                const size_t end   = list.find('|', begin);
-                std::string option = list.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
-                std::string optionLower = option;
-                for (char& c : optionLower)
-                    c = (char)std::tolower((unsigned char)c);
+                const size_t end = list.find('|', begin);
+                const std::string option
+                    = list.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
 
-                if (optionLower == lower)
+                if (!option.empty() && enumMatches(text, option.c_str()))
                 {
-                    out.text = option; // 回传表里登记的标准写法
+                    out.text = option; // 标准写法
                     return true;
                 }
                 if (end == std::string::npos)

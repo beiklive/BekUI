@@ -132,9 +132,8 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `cornerRadius` | NUMBER |
 | `placeholderColor` | COLOR：加载中/失败时的底色 |
 
-> ⚠ **两套 DSL 的枚举拼写不一样，这是当前的实情**（见文末"已知不一致"）：
-> 视图描述 JSON 用 **camelCase**（`flexEnd` / `spaceBetween`），
-> 控件外观 JSON 用 **snake_case**（`flex_end` / `space_between`）。照表抄，别混用。
+> ✅ **枚举拼写已统一**：两套 JSON 都接受 camelCase 与 snake_case，**大小写、`_`、`-` 都不敏感**
+> （`flexEnd` == `flex_end` == `FLEX_END` == `Flex-End`）。下表列的是标准写法，随便挑一种写都行。
 
 ### 行为与限制
 
@@ -315,18 +314,34 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 ---
 
-## 六、已知不一致（照抄时注意）
+## 六、枚举与字段的容错规则
 
-| 概念 | 视图描述 JSON | 控件外观 JSON |
-|---|---|---|
-| 主轴对齐 `justifyContent` | `flexStart` / `center` / `flexEnd` / `spaceBetween` / `spaceAround` / `spaceEvenly` | `flexStart` / `center` / `flex_end` / `space_between` / `space_around` / `space_evenly`（`end` 也是 `flex_end`） |
-| 交叉轴对齐 `alignItems` | `flexStart` / `center` / `flexEnd` / `stretch` / `baseline` / `auto` | `flexStart` / `center` / `flex_end` / `stretch` / `baseline` |
-| 方向 | `axis`（`row`/`column`）+ `direction`（`inherit`/`ltr`/`rtl`） | 只有 `axis`（`row`/`column`） |
-| 图片缩放 | `scalingType`（`fit`/`fill`/`stretch`/`center`） | 层的 `scaling`（`fit` + 控件自己解释） |
+| 规则 | 说明 |
+|---|---|
+| 拼写宽容 | 枚举值忽略大小写与 `_` / `-`：`flexEnd` / `flex_end` / `FLEX_END` / `Flex-End` 等价（视图描述 JSON 与外观 JSON 一样） |
+| 视图描述 JSON 里拼错 | **不建这个控件** + 可读报错：`JSON 视图 <string>/justifyContent: 期望 枚举，可选值：flexStart|center|flexEnd|…，得到 "spacebetwen"` |
+| 外观 JSON 的 box 里拼错 | 打一条警告（带字段名与可用值）并**保持控件当前值不动**（不再静默改成默认值） |
+| 外观 JSON 的层字段（`align` / `valign` / `scaling`）拼错 | 编译期警告一次（绘制期不重复报，避免刷屏） |
+| `op` / `states` 里引用不存在的层 / `@theme` key 不存在 | **编译失败**（error 日志 + 空外观），不静默兜底 |
+| 其余数值/颜色写坏 | 编译失败，报错里有位置（`box.width` / `layers[2].fill` 这种路径） |
 
-两边都写错时的表现不同：视图描述 JSON 里拼错枚举值会**静默落到默认值**
-（对齐变回 `flexStart`），外观 JSON 里拼错则落到最后一个 `if` 的兜底值。
-建议将来统一成"两边都接受 camelCase 与 snake_case"，改之前先按上表写。
+各字段的标准写法：
+
+| 概念 | 取值（两种拼写等价） |
+|---|---|
+| `justifyContent` | `flexStart` / `center` / `flexEnd` / `spaceBetween` / `spaceAround` / `spaceEvenly` |
+| `alignItems` | `flexStart` / `center` / `flexEnd` / `stretch` / `baseline`（视图侧还多一个 `auto`） |
+| `alignSelf` | `auto` / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline` |
+| `axis` | `row` / `column` |
+| `direction` | `inherit` / `ltr` / `rtl`（只有视图描述 JSON 有） |
+| `visibility` | `visible` / `invisible` / `gone` |
+| `position` | `relative` / `absolute` |
+| `horizontalAlign` | `left` / `center` / `right` |
+| `verticalAlign` | `top` / `center` / `bottom` |
+| 图片 `scalingType`（视图）/ 层 `scaling`（外观） | `fit` / `fill` / `stretch` / `center`（层的 `scaling` 目前只由控件自己解释，写别的会警告） |
+| 层 `align` / `valign` | `left`/`center`/`right`，`center`/`top`/`bottom` |
+| 层 `op` | `rect` / `text` / `image` / `shadow` / `custom` |
+| `easing` | 见第 3 节清单；拼错时警告并回退 `linear` |
 
 ## 七、常见错误与排查
 
@@ -339,4 +354,5 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 | 阴影被底色盖住 / 透出来 | `shadow` 层要在底色之前；不透明底用不上 `cutout`，半透明底要 `"cutout": true` |
 | 圆角变成直角 | 自己拼矩形带子会被 `AddRectFilled` 把圆角钳到边长一半；用现成的 `radius` / shadow 实现 |
 | `"50%"` 没效果 | 只有 `width` / `height` 支持百分比 |
+| 枚举写错 | 视图描述 JSON 会**建不出控件**并在日志里列可选值；外观 JSON 只警告并保持原值（见第 6 节） |
 | 切语言界面没变 | 文案在控件构造时已解析成字符串，需要重建视图（见 AGENTS） |

@@ -307,6 +307,7 @@ void Box::setDirection(Direction direction)
 
 void Box::setJustifyContent(JustifyContent justify)
 {
+    this->justifyContent = justify;
     switch (justify)
     {
         case JustifyContent::DEFAULT:
@@ -334,6 +335,7 @@ void Box::setJustifyContent(JustifyContent justify)
 
 void Box::setAlignItems(AlignItems alignment)
 {
+    this->alignItems = alignment;
     switch (alignment)
     {
         case AlignItems::DEFAULT:
@@ -502,49 +504,65 @@ namespace
 
 void setAxisAttr(View* v, const ResolvedValue& r)
 {
-    v->asBox()->setAxis(r.text == "row" ? Axis::ROW : Axis::COLUMN);
+    if (enumMatches(r.text, "row"))
+        v->asBox()->setAxis(Axis::ROW);
+    else if (enumMatches(r.text, "column"))
+        v->asBox()->setAxis(Axis::COLUMN);
+    else
+        warnUnknownEnumValue("axis", r.text, "row|column");
 }
 
 void setDirectionAttr(View* v, const ResolvedValue& r)
 {
-    Box* box          = v->asBox();
-    const Direction d = r.text == "ltr" ? Direction::LEFT_TO_RIGHT
-                                        : (r.text == "rtl" ? Direction::RIGHT_TO_LEFT : Direction::INHERIT);
-    box->setDirection(d);
+    Box* box = v->asBox();
+    if (enumMatches(r.text, "ltr"))
+        box->setDirection(Direction::LEFT_TO_RIGHT);
+    else if (enumMatches(r.text, "rtl"))
+        box->setDirection(Direction::RIGHT_TO_LEFT);
+    else if (enumMatches(r.text, "inherit"))
+        box->setDirection(Direction::INHERIT);
+    else
+        warnUnknownEnumValue("direction", r.text, "inherit|ltr|rtl");
 }
 
 void setAlignItemsAttr(View* v, const ResolvedValue& r)
 {
     Box* box = v->asBox();
-    if (r.text == "flexStart")
+    if (enumMatches(r.text, "flexStart"))
         box->setAlignItems(AlignItems::FLEX_START);
-    else if (r.text == "center")
+    else if (enumMatches(r.text, "center"))
         box->setAlignItems(AlignItems::CENTER);
-    else if (r.text == "flexEnd")
+    else if (enumMatches(r.text, "flexEnd"))
         box->setAlignItems(AlignItems::FLEX_END);
-    else if (r.text == "baseline")
+    else if (enumMatches(r.text, "baseline"))
         box->setAlignItems(AlignItems::BASELINE);
-    else if (r.text == "auto")
+    else if (enumMatches(r.text, "auto"))
         box->setAlignItems(AlignItems::AUTO);
-    else
+    else if (enumMatches(r.text, "stretch"))
         box->setAlignItems(AlignItems::STRETCH);
+    else
+        warnUnknownEnumValue("alignItems", r.text,
+            "flexStart|center|flexEnd|stretch|baseline|auto");
 }
 
 void setJustifyContentAttr(View* v, const ResolvedValue& r)
 {
     Box* box = v->asBox();
-    if (r.text == "center")
+    if (enumMatches(r.text, "flexStart"))
+        box->setJustifyContent(JustifyContent::FLEX_START);
+    else if (enumMatches(r.text, "center"))
         box->setJustifyContent(JustifyContent::CENTER);
-    else if (r.text == "flexEnd")
+    else if (enumMatches(r.text, "flexEnd"))
         box->setJustifyContent(JustifyContent::FLEX_END);
-    else if (r.text == "spaceBetween")
+    else if (enumMatches(r.text, "spaceBetween"))
         box->setJustifyContent(JustifyContent::SPACE_BETWEEN);
-    else if (r.text == "spaceAround")
+    else if (enumMatches(r.text, "spaceAround"))
         box->setJustifyContent(JustifyContent::SPACE_AROUND);
-    else if (r.text == "spaceEvenly")
+    else if (enumMatches(r.text, "spaceEvenly"))
         box->setJustifyContent(JustifyContent::SPACE_EVENLY);
     else
-        box->setJustifyContent(JustifyContent::FLEX_START);
+        warnUnknownEnumValue("justifyContent", r.text,
+            "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly");
 }
 
 void setFlexWrapAttr(View* v, const ResolvedValue& r)

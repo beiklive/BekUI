@@ -49,9 +49,11 @@ int main()
     std::printf("\n== 2. 拍平成点分层 key ==\n");
     {
         const ThemeData& theme = getTheme();
-        // 默认主题对齐 borealis 的暗色主题（Switch 风格）
-        checkColor(theme.color("color.surface.page"), IM_COL32(0x2D, 0x2D, 0x2D, 255),
-            "color.surface.page == #2d2d2d（brls/background）");
+        // 页面底色是**主题自己的选择**（改主题就跟着改这里的黄金值）；
+        // 底线是它必须存在且不透明——半透明的页面底色会让整个界面透出清屏色
+        const ImU32 page = theme.color("color.surface.page", 0);
+        check((page >> 24) == 0xFF, "color.surface.page 存在且不透明");
+        checkColor(page, IM_COL32(0x61, 0x61, 0x61, 255), "color.surface.page == #616161");
         checkColor(theme.color("color.surface.card"), IM_COL32(0x1F, 0x22, 0x27, 255),
             "color.surface.card == #1f2227（brls/highlight/background）");
         checkColor(theme.color("color.accent.base"), IM_COL32(0x00, 0xFF, 0xCC, 255),

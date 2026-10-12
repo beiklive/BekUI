@@ -281,6 +281,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   接口刻意不叫 `getItemCount(section)`（borealis 的重载写法）——派生类只重写一个
   会把另一个名字隐藏掉，属于典型 C++ 坑。段头 cell 继承 `RecyclerSectionHeader`，
   标题通过虚函数 `onSectionTitle` 下发（Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
+- **枚举值大小写与 `_`/`-` 都不敏感**（`enumMatches`，两套 JSON 一致）：
+  `flexEnd` == `flex_end` == `FLEX_END`。视图描述 JSON 里拼错 → 不建控件 + 报错（列出可选值）；
+  外观 JSON 里拼错 → 警告 + **保持原值不动**（`justifyFromName` 这类返回 bool，别退回默认值）。
+  加新枚举字段时用 `enumMatches` + `warnUnknownEnumValue`，别写 `== "flexEnd"` 这种精确比较。
 - **JSON 语法细节查 `docs/json-syntax.md`**（四类 JSON 的完整键表 / 取值 / 枚举拼写 / 报错行为）；
   下面几条是**约定**，别改错了。
 - **控件的样式全在 JSON 里**（`resources/theme/<主题>/widgets/<控件>.json`）：

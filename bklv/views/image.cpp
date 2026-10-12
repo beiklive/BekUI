@@ -212,14 +212,16 @@ void setImagePlaceholderAttr(View* v, const ResolvedValue& r)
 void setScalingTypeAttr(View* v, const ResolvedValue& r)
 {
     Image* image = static_cast<Image*>(v);
-    if (r.text == "fill")
+    if (enumMatches(r.text, "fit"))
+        image->setScalingType(ImageScalingType::FIT);
+    else if (enumMatches(r.text, "fill"))
         image->setScalingType(ImageScalingType::FILL);
-    else if (r.text == "stretch")
+    else if (enumMatches(r.text, "stretch"))
         image->setScalingType(ImageScalingType::STRETCH);
-    else if (r.text == "center")
+    else if (enumMatches(r.text, "center"))
         image->setScalingType(ImageScalingType::CENTER);
     else
-        image->setScalingType(ImageScalingType::FIT);
+        warnUnknownEnumValue("scalingType", r.text, "fit|fill|stretch|center");
 }
 
 } // namespace
