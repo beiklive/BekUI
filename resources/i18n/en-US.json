@@ -262,6 +262,10 @@
     "card_default": "Default shadow",
     "card_soft": "Large feather + spread",
     "card_lifted": "Large offset (floating)",
-    "params_hint": "Feather/offset/radius/color all live in the widget JSON; shadows also support state animations (e.g. deeper shadow.opacity on focus)."
+    "params_hint": "Feather/offset/radius/color all live in the widget JSON; shadows also support state animations (e.g. deeper shadow.opacity on focus).",
+    "cutout_title": "Shadow cutout",
+    "card_glass": "No cutout: shadow bleeds through",
+    "card_glasscut": "Cutout: clean inside",
+    "cutout_hint": "With \"cutout\": true on a shadow layer, only the outer ring is drawn (the widget rect is punched out), so a translucent background will not reveal the shadow. The two cards share the same translucent fill."
   }
 }

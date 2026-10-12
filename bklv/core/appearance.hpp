@@ -77,7 +77,7 @@ struct AppearanceLayer
         RECT,   // fill / stroke / strokeWidth / radius
         TEXT,   // source(数据名) / color / fontSize / align / valign / inset
         IMAGE,  // source(数据名) / scaling / radius / inset
-        SHADOW, // 阴影：fill(色) / feather(羽化) / spread(外扩) / radius / offset(x,y)
+        SHADOW, // 阴影：fill(色) / feather(羽化) / spread(外扩) / radius / offset(x,y) / cutout(挖空内圈)
         CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
     };
 
@@ -98,6 +98,10 @@ struct AppearanceLayer
     // SHADOW 层：羽化半径与外扩量（都按 720p 缩放）
     float feather     = 0.0f;
     float spread      = 0.0f;
+    // SHADOW 层：挖掉控件自身矩形，只画外圈（borealis 的 NVG_HOLE 做法）。
+    // 关掉时阴影是一整块（垫在控件下面），如果底色是半透明的会透出阴影；
+    // 打开后内圈不画，后面加的层即使是透明色也不会叠出阴影。
+    bool cutout       = false;
     // 显式宽高（0 表示用 inset 收缩后的整个范围）。
     // 装饰件要用：色条（width 4）、下边线（height 1）。给定后按 align/valign 摆放。
     float width       = 0.0f;

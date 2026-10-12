@@ -310,7 +310,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
                 shadow::drawSoft(drawList, rect[0] + offsetX, rect[1] + offsetY,
                     rect[2] + offsetX, rect[3] + offsetY, radius, fill, alphaScale, feather,
-                    spread);
+                    spread, layer.cutout);
                 break;
             }
 

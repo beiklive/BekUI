@@ -439,6 +439,9 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             { "feather", &layer.feather, true },
             { "spread", &layer.spread, true },
         };
+        if (node.contains("cutout") && node["cutout"].is_boolean())
+            layer.cutout = node["cutout"].get<bool>();
+
         for (const NumberField& field : numberFields)
         {
             if (!node.contains(field.key))

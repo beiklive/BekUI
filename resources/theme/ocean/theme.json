@@ -43,6 +43,8 @@
     "widgets/button.bordered.json",
     "widgets/button.borderless.json",
     "widgets/button.primary.json",
-    "widgets/button.highlight.json"
+    "widgets/button.highlight.json",
+    "widgets/rectangle.card.glass.json",
+    "widgets/rectangle.card.glasscut.json"
   ]
 }

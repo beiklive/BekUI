@@ -1,8 +1,11 @@
 // 无窗口测试：阴影层与模糊档位开关。
 
 #include <cstdio>
+#include <utility>
 #include <cstdlib>
 #include <string>
+
+#include "bklv/3rd/imgui/imgui.h"
 
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
@@ -114,6 +117,66 @@ int main()
         check(true, "drawList 为空时安全返回");
 
         shadow::setQuality(ShadowQuality::FAST);
+    }
+
+    std::printf("\n== 5. cutout：挖空内圈（顶点级验证）==\n");
+    {
+        // 建一个真正的 ImGui 上下文，就能拿到合法的 ImDrawList 并检查顶点
+        // （手搓 ImDrawListSharedData 会空指针段错误，见 AGENTS 的踩坑记录）
+        ImGui::CreateContext();
+        {
+            const ImU32 color = IM_COL32(0, 0, 0, 200);
+            const float minX = 0.0f, minY = 0.0f, maxX = 100.0f, maxY = 100.0f;
+
+            auto insideCount = [&](bool cutout) {
+                ImDrawList list(ImGui::GetDrawListSharedData());
+                list._ResetForNewFrame(); // 没有这一下 PrimReserve 会越界（CmdBuffer 里还没有 cmd）
+                shadow::drawSoft(&list, minX, minY, maxX, maxY, 8.0f, color, 1.0f, 10.0f, 0.0f,
+                    cutout);
+
+                int inside = 0;
+                for (int i = 0; i < list.VtxBuffer.Size; i++)
+                {
+                    const ImVec2 p = list.VtxBuffer[i].pos;
+                    // 严格落在控件矩形内部（留 0.5px 容差给浮点）
+                    if (p.x > minX + 0.5f && p.x < maxX - 0.5f && p.y > minY + 0.5f
+                        && p.y < maxY - 0.5f)
+                        inside++;
+                }
+                const int verts = list.VtxBuffer.Size;
+                list._ResetForNewFrame();
+                return std::pair<int, int>(inside, verts);
+            };
+
+            const auto plain  = insideCount(false);
+            const auto cutout = insideCount(true);
+
+            // 不开挖空：一整块填充，内圈有大量顶点
+            check(plain.first > 0, "不开 cutout 时阴影铺满（内圈有顶点，会透出半透明底色）");
+            // 开挖空：四条带子，内圈一个顶点都没有
+            checkEqualInt(cutout.first, 0, "cutout 时内圈里没有任何顶点");
+            // 四条带都要在（圆角矩形是扇形展开，顶点数不固定，按包围范围断言更实在）
+            {
+                ImDrawList list(ImGui::GetDrawListSharedData());
+                list._ResetForNewFrame();
+                shadow::drawSoft(&list, minX, minY, maxX, maxY, 8.0f, color, 1.0f, 10.0f, 0.0f,
+                    true);
+
+                bool top = false, bottom = false, left = false, right = false;
+                for (int i = 0; i < list.VtxBuffer.Size; i++)
+                {
+                    const ImVec2 p = list.VtxBuffer[i].pos;
+                    if (p.y < minY) top = true;
+                    if (p.y > maxY) bottom = true;
+                    if (p.x < minX) left = true;
+                    if (p.x > maxX) right = true;
+                }
+                check(top && bottom && left && right,
+                    "上/下/左/右四条带都画到了（外圈完整，不是只挖了中间）");
+                check(cutout.second > plain.second, "挖空后顶点更多（四带 vs 一整块）");
+            }
+        }
+        ImGui::DestroyContext();
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

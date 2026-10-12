@@ -294,6 +294,9 @@ app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建�
 ]
 ```
 
+- **`"cutout": true`**（可选）：把控件自身矩形挖掉，只画外圈。不开时阴影是垫在控件下面
+  的一整块——底色若是半透明就会透出阴影；开了之后内圈不画，后面加的层哪怕是透明色也干净
+  （borealis 的 `nvgBoxGradient` + `NVG_HOLE` 就是永远这么做）
 - `fill` 的 alpha 就是阴影浓度；`opacity`、`feather`、`spread`、`offsetX/offsetY` 都能进
   `states` 做动效（例如聚焦时 `"shadow.opacity": { "to": 0.7 }`）
 - 绘制档位是**全局开关**，两种都是多层近似：`fast`（8 层，默认）/ `smooth`（24 层高斯权重）

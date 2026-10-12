@@ -7,17 +7,34 @@
   },
   "layers": [
     {
-      "op" : "rect",
-      "id" : "border",
-      "strokeWidth" : 2,
-      "stroke" : "@theme/color.border.default",
+      "op": "shadow",
+      "id": "sh",
+      "fill": "#000000F0",
+      "opacity" : 22,
+      "feather": 10,
       "radius": 40,
-      "inset" :
-      [
-        3,-15,3,-15
+      "inset": [
+        3,
+        -15,
+        3,
+        -15
       ],
-      "align" : "center",
-      "valign" : "center"
+      "offset": [1, 1]
+    },
+    {
+      "op": "rect",
+      "id": "border",
+      "strokeWidth": 2,
+      "stroke": "@theme/color.common.grey",
+      "radius": 40,
+      "inset": [
+        3,
+        -15,
+        3,
+        -15
+      ],
+      "align": "center",
+      "valign": "center"
     }
   ]
 }

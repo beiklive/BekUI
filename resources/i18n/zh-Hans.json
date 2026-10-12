@@ -262,6 +262,10 @@
     "card_default": "默认阴影",
     "card_soft": "大羽化 + 外扩",
     "card_lifted": "大偏移（浮起来）",
-    "params_hint": "羽化/偏移/圆角/颜色全在 widget 的 JSON 里；阴影也支持状态动效（如聚焦时 shadow.opacity 加深）。"
+    "params_hint": "羽化/偏移/圆角/颜色全在 widget 的 JSON 里；阴影也支持状态动效（如聚焦时 shadow.opacity 加深）。",
+    "cutout_title": "阴影裁剪（cutout）",
+    "card_glass": "不裁：半透明底透出阴影",
+    "card_glasscut": "裁：内圈不留阴影",
+    "cutout_hint": "shadow 层写 \"cutout\": true 后只画外圈（挖掉控件自身矩形），后面加的层哪怕设成透明色也不会叠出阴影。左边两张卡片底色同样半透明，只是 cutout 不同。"
   }
 }

@@ -290,7 +290,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      `padding`/`margin` 可以写一个值（四边同值）或 `[上,右,下,左]`。
      只有写了的字段才会被套用，所以空 box 不会冲掉控件的默认值。
   ② `layers`：绘制结构，op 有 `rect` / `text` / `image` / **`shadow`** / `custom`。
-  `shadow` 层是柔化投影（`fill` 浓度、`feather` 羽化、`radius` 圆角、`offset` 位移、`spread` 外扩），
+  `shadow` 层是柔化投影（`fill` 浓度、`feather` 羽化、`radius` 圆角、`offset` 位移、`spread` 外扩、
+  **`cutout` 挖空开关**），
   **必须写在自己的底色之前**（`theme_test` 有断言），绘制档位由全局开关
   `bklv::shadow::setQuality(FAST/SMOOTH)` 或 `BKLV_SHADOW_QUALITY=smooth` 决定。
   ③ `states`：状态动效。
@@ -394,10 +395,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （以前写死 13，加两个属性后 per-layer 数组少两格，越界写把堆写坏、崩在 malloc 里）。
   加 `AppearanceProp` + `ALL_PROPS` + `PROP_NAMES` + 每层初值 + `getNumber` 回落，
   五处要同步，`static_assert` 与顺序自检会兜住。
-- **无窗口测试别手搓 `ImDrawList`**：`ImDrawList list(&sharedData)` 没有 ImGui 上下文时
-  `_Data` 不可用，调 `AddRectFilled` 直接段错误（shadow_test 踩过）。
-  想验证绘制就断言"会画几层/几个顶点"这类可数的事实（`shadow::layerCount()`），
-  或者干脆用离屏截图。
+- **`shadow` 的 `cutout`**：打开后只画外圈（把控件自身矩形挖掉，borealis 用 `NVG_HOLE`
+  做同一件事），内圈一个顶点都不落 → 后面加的层即使是**半透明底色也不会透出阴影**。
+  实现是四条带子（ImGui 的填充不支持带洞路径），`shadow::drawSoft(..., cutout)`。
+  默认关，按需在 shadow 层写 `"cutout": true`。
+- **测试里要画东西就用真 ImGui 上下文**：`ImGui::CreateContext()` 之后
+  `ImDrawList list(ImGui::GetDrawListSharedData())` 是合法的，但**必须紧跟
+  `list._ResetForNewFrame()`** —— 否则内部还没有 draw cmd，`PrimReserve` 会越界崩溃
+  （shadow_test 先后踩过这两种崩法）。拿不到上下文时（或不想建）就只断言
+  "会画几层"这类可数事实（`shadow::layerCount()`）。
 - **底栏顺序：提示在左、状态在右**（borealis 的 `bottomBarXML` 是 `Hints` 在前，
   外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、

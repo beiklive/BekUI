@@ -82,7 +82,7 @@ int layerCount()
 }
 
 void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY, float radius,
-    ImU32 color, float alphaScale, float feather, float spread)
+    ImU32 color, float alphaScale, float feather, float spread, bool cutout)
 {
     if (drawList == nullptr || maxX <= minX || maxY <= minY)
         return;
@@ -119,8 +119,37 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
         if (alpha == 0)
             continue;
 
-        drawList->AddRectFilled(ImVec2(minX - expand, minY - expand),
-            ImVec2(maxX + expand, maxY + expand), rgb | (alpha << 24), radius + expand);
+        const float outerMinX = minX - expand;
+        const float outerMinY = minY - expand;
+        const float outerMaxX = maxX + expand;
+        const float outerMaxY = maxY + expand;
+        const ImU32 col       = rgb | (alpha << 24);
+
+        if (!cutout)
+        {
+            drawList->AddRectFilled(ImVec2(outerMinX, outerMinY), ImVec2(outerMaxX, outerMaxY),
+                col, radius + expand);
+            continue;
+        }
+
+        // 挖空内圈：拆成上下左右四条带子来画（ImGui 的填充不支持带洞的路径）。
+        // 外圈圆角保留在四条带的外侧，视觉上仍是一圈柔和阴影。
+        const ImDrawFlags roundTop     = ImDrawFlags_RoundCornersTop;
+        const ImDrawFlags roundBottom  = ImDrawFlags_RoundCornersBottom;
+        const ImDrawFlags roundLeft    = ImDrawFlags_RoundCornersLeft;
+        const ImDrawFlags roundRight   = ImDrawFlags_RoundCornersRight;
+        const float outerRadius        = radius + expand;
+
+        // 上、下两带：整宽
+        drawList->AddRectFilled(ImVec2(outerMinX, outerMinY), ImVec2(outerMaxX, minY), col,
+            outerRadius, roundTop);
+        drawList->AddRectFilled(ImVec2(outerMinX, maxY), ImVec2(outerMaxX, outerMaxY), col,
+            outerRadius, roundBottom);
+        // 左、右两带：只占中间高度（避开已经画过的角）
+        drawList->AddRectFilled(ImVec2(outerMinX, minY), ImVec2(minX, maxY), col, outerRadius,
+            roundLeft);
+        drawList->AddRectFilled(ImVec2(maxX, minY), ImVec2(outerMaxX, maxY), col, outerRadius,
+            roundRight);
     }
 }
 

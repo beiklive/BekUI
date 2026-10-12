@@ -63,6 +63,17 @@ Box* buildShadowPage()
     paramsCard->addView(makeHint(getStr("shadow/params_hint")));
     page->addView(paramsCard);
 
+    // 半透明底色才看得出 cutout 的差别：不开时阴影会从透明底里透出来
+    Rectangle* cutCard = makeCard();
+    cutCard->addView(makeText(getStr("shadow/cutout_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+    Box* cutRow = makeRow(getTheme().number("metric.spacing.md", 12.0f), AlignItems::STRETCH);
+    cutRow->addView(makeShadowCard("glass", getStr("shadow/card_glass")));
+    cutRow->addView(makeShadowCard("glasscut", getStr("shadow/card_glasscut")));
+    cutCard->addView(cutRow);
+    cutCard->addView(makeHint(getStr("shadow/cutout_hint")));
+    page->addView(cutCard);
+
     return page;
 }
 

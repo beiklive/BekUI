@@ -43,8 +43,11 @@ int layerCount();
 // 画一团柔和阴影（多层圆角矩形近似）。外观层的 SHADOW 走这条，
 // 控件自己在 custom 层画的东西（比如滑块把手）也可以直接调它。
 // alphaScale 会与颜色自带的 alpha 相乘。
+// cutout = true 时挖掉 (minX..maxX, minY..maxY) 这块（只画外圈），
+// 这样控件自身矩形里不会留下阴影——底色即使半透明也不会透出阴影（borealis 用 NVG_HOLE 做同一件事）。
 void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY,
-    float radius, ImU32 color, float alphaScale, float feather, float spread);
+    float radius, ImU32 color, float alphaScale, float feather, float spread,
+    bool cutout = false);
 
 // 清掉"已经读过环境变量"的标记（测试用：改完环境变量再读一次）
 void resetEnvironmentProbeForTest();

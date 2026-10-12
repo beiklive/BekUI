@@ -245,6 +245,7 @@ borealis 的阴影是 `View::setShadowType(NONE/GENERIC/CUSTOM)` + `nvgBoxGradie
 | 是否可多个 | 一个 View 一种 | 一个控件可有任意多个阴影层 |
 | 状态动效 | 无（只能靠主题换） | `shadow.opacity` / `feather` / `offsetY` 都能插值 |
 | 绘制 | NanoVG `nvgBoxGradient` | ImDrawList 多层圆角矩形（`fast` 8 层 / `smooth` 24 层高斯权重） |
+| 内圈挖空 | **总是**（`NVG_HOLE`，阴影只在外圈） | `"cutout": true` 时挖空（默认关，能垫在控件下面） |
 | 真模糊 | 无（也是近似） | 没做离屏高斯（要三后端各加离屏渲染）；档位开关留好了 |
 
 已应用：卡片、弹窗、下拉弹出、通知、编辑输入弹窗（JSON 层），滑块把手（custom 层里调
