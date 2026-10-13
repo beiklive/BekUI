@@ -84,6 +84,20 @@ void Button::update()
         this->setAppearanceState("pressed", false);
 }
 
+void Button::setSwitched(bool on)
+{
+    if (this->switched == on)
+        return;
+
+    this->switched = on;
+
+    // 开关的视觉是外观状态（on / off），过渡动画由主题里的 duration/easing 描述。
+    // 两个状态互斥地打开，AppearanceInstance 会按外观补间过去（不是瞬间切换）。
+    this->setAppearanceState("off", !on);
+    this->setAppearanceState("on", on);
+    this->invalidate();
+}
+
 const AttributeTable& Button::attributes() const
 {
     static const AttributeTable table = {

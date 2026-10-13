@@ -23,7 +23,8 @@
     "scroll": "Scroll",
     "pokedex": "Pokédex",
     "shadow": "Shadow",
-    "icons": "Icons"
+    "icons": "Icons",
+    "base": "Base widgets"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -149,7 +150,8 @@
     "scroll_sub": "Nested scroller + scroll-to-focus",
     "pokedex_sub": "Sectioned recycler + detail navigation",
     "shadow_sub": "shadow layers and blur quality",
-    "icons_sub": "All glyphs of both icon fonts: 10 per row, code below"
+    "icons_sub": "All glyphs of both icon fonts: 10 per row, code below",
+    "base_sub": "Containers & button variants"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -283,5 +285,26 @@
   "pager": {
     "loading": "Loading…",
     "load_failed": "Failed to load"
+  },
+  "base_widgets": {
+    "hint": "Everything here is composed from theme JSON: edit base/ and every derived widget follows.",
+    "containers": "Containers",
+    "component_inner": "Component box",
+    "buttons": "Button variants",
+    "btn_text": "Text",
+    "btn_icon_text": "Icon + text",
+    "btn_switch_text": "Text switch",
+    "btn_switch_icon": "Icon switch",
+    "btn_info": "Info button",
+    "btn_dropdown": "Dropdown",
+    "btn_selector_number": "Selector · number",
+    "btn_selector_list": "Selector · list",
+    "selector_hint": "Press a selector to enter edit mode: focus is pinned, L/R adjusts, holding repeats; press again to exit.",
+    "on": "On",
+    "off": "Off",
+    "info_value": "Info",
+    "option_a": "Option A",
+    "option_b": "Option B",
+    "option_c": "Option C"
   }
 }

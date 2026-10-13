@@ -357,6 +357,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      换肤不再动它；要跟随主题就 `setXxxExplicit(false)`。
   ⑤ **装饰件用显式 `width`/`height`**：层默认铺满"控件范围按 inset 收缩后"的区域，
      给了 `width`（如色条 4）或 `height`（如下边线 1）就按 `align`/`valign` 摆放。
+  ⑥ **`import` 让外观引用外观**（`"import": "base/box.component"` 或字符串数组）：
+     逐字段合并、**当前文件优先**——对象递归合并，`layers` 按 `id` 合并（同 id 的层合并字段，
+     新 id 追加），其它数组整体替换，标量覆盖。所以"改 base/box.component 的边框，
+     所有 import 它的按钮一起变"，而按钮自己写的字段仍然赢。
+     循环引用、深度 > 8、父级不存在都会**报错**（不静默降级）。
+  ⑦ **一行里放多个内容层要用 inset 排队，并写 `measureContent: "sum"`**：
+     绘制层不是流式布局（`align: left` 的两个层会叠在左边，参考 `base/hint_item` 给
+     文字层写 `inset: [0,0,0,34]` 跳过图标）；默认固有尺寸取"最宽的一层"，
+     一行里的图标 + 文字 + 信息必须按行**求和**才不会溢出（`measureContent: "sum"`）。
   缺项回退链：当前主题 → default → 控件空外观（警告，不崩）。
 - **文本输入（IME）**（`core/ime.*` + `widgets/edit_text_dialog.*`）：
   平台决定走哪条路——`ImeManager::open()` 返回 true 表示平台接管
@@ -536,6 +545,23 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   → 帧变了才 `updateTexture()` **就地换内容**（不重建纹理、不参与布局）。
   只在**可见**时推进（离屏不占上传带宽）。纹理是视图自己上传的（`ownsTexture`），
   析构/换图时必须 `releaseTexture()`，别漏。
+- **组合按钮与选择器**（`widgets/button.*` + `widgets/selector_button.*`，
+  外观 `widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`）：
+  1）**变体 = 组合外观**，代码只给内容和行为。`AppearanceView::setAppearanceName(name)`
+     换基名（名字是主题里的完整路径，如 `widget/button.icon_text`）；一行放置靠层 inset。
+  2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字体字形）与
+     `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
+     `getLayerFont` 对 id/source 为 `icon` 的层返回 `getIconFont()`
+     （用正文字体会把图标画成方块）。`Dropdown` 的触发器也能换这套外观。
+  3）开关类（`switch_text` / `switch_icon`）用**外观状态** `on`/`off` 表达布尔态
+     （`Button::setSwitched`），过渡动画由主题里那两个状态的 duration/easing 描述 ——
+     不要再写一套动画代码；图案开关的滑块位移就是 `knob.offsetX` 补间。
+  4）**选择器按钮**：`SelectorMode::NUMBER`（min/max/step/小数位，按步长吸附后**夹取**）
+     或 `LIST`（越界**环绕**）。点按/A 进设置态，进入后
+     `getInputManager().setFocusCapture(this)` 把焦点钉住：方向键不再导航，
+     全部转给 `View::handleDirectionalInput(direction)`（新虚函数，返回 true = 消费）。
+     长按连发不用自己写计时器 —— InputManager 的 KeyRepeater 就在这条路上
+     （首按立刻、之后 250ms/100ms）。失焦自动 `endEditing()`，不会留下"还在改"的控件。
 - **`RenderBackend::updateTexture()`**：动图换帧用的"就地更新"接口（GL/GLES 走
   `glTexSubImage2D`，Vulkan 走 staging + 屏障 + `vkCmdCopyBufferToImage`）。
   没有它的后端返回 false（默认实现），上层当作"这次换帧失败"处理。

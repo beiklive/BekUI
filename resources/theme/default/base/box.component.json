@@ -1,0 +1,28 @@
+{
+  "import": "base/box",
+  "box": {
+    "measureContent": "sum",
+    "padding": ["@theme/metric.component.paddingY", "@theme/metric.component.paddingX",
+                "@theme/metric.component.paddingY", "@theme/metric.component.paddingX"]
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.common.shadow",
+      "feather": "@theme/metric.component.shadowFeather",
+      "spread": "@theme/metric.component.shadowSpread",
+      "radius": "@theme/metric.component.radius",
+      "offset": ["@theme/metric.component.shadowOffsetX", "@theme/metric.component.shadowOffsetY"],
+      "cutout": true
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.common.transparent",
+      "stroke": "@theme/color.common.white",
+      "strokeWidth": "@theme/metric.component.borderWidth",
+      "radius": "@theme/metric.component.radius"
+    }
+  ]
+}

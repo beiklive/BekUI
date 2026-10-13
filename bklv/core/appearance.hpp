@@ -137,6 +137,9 @@ struct AppearanceBox
     bool hasGrow = false, hasShrink = false;
     bool hasJustify = false, hasAlign = false, hasAxis = false;
     bool hasBackground = false, hasCornerRadius = false;
+    // 固有尺寸测量方式：默认取"最宽的那一层"（max）；组合外观（一行里放图标+文字+信息）
+    // 要按行**求和**，否则量出来只有最宽的一层，文字会溢出控件（写 measureContent: "sum"）
+    bool measureSum = false;
     bool hasBorderThickness = false, hasBorderColor = false;
 
     float width = 0.0f, height = 0.0f, minWidth = 0.0f, minHeight = 0.0f;

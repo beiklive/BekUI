@@ -165,15 +165,25 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 **外观名 = 相对主题根的路径去掉扩展名**：`base/button.json` → `"base/button"`；
 变体是后缀：`base/button.json` + 变体 `primary` → 文件 `base/button.primary.json`。
 
-一份外观 = 三段，`layers` 必填（纯布局控件写 `"layers": []`）：
+一份外观 = 三段，`layers` 必填（纯布局控件写 `"layers": []`），另有一个可选的 `import`：
 
 ```json
 {
+  "import":  "base/box.component",
   "box":     { "…": "盒模型与布局" },
   "layers":  [ { "op": "rect", "…": "绘制结构，按数组顺序画" } ],
   "states":  { "focused": { "bg.fill": { "to": "#ffffff", "duration": 120 } } }
 }
 ```
+
+### `import`：外观引用外观
+
+- 值可以是字符串或字符串数组；**逐字段合并，当前文件优先**。
+- 对象（`box` / `states` / 单个 state）递归合并；`layers` 按 `id` 合并
+  （同 id 的层合并字段、子赢；新 id 追加在后面）；其它数组整体替换；标量覆盖。
+- 循环引用 / 链深 > 8 / 父级不存在 → **编译失败**（错误信息指出是哪个 import）。
+- 一行里放多个内容层时：层不是流式布局（用 `inset` 排队），并给 box 写
+  `"measureContent": "sum"` 让固有宽度按行求和（默认取"最宽的那一层"）。
 
 ### `box`：盒模型 / 布局
 

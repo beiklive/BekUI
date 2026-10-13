@@ -34,6 +34,10 @@ class AppearanceView : public Box
     // 传空串表示用控件默认的那份。
     void setAppearanceVariant(const std::string& variant);
 
+    // 换基名（默认由构造函数给）。名字 = 主题里的路径名（"base/button"、"widget/button"）。
+    // 同一个控件类要按不同"组合外观"出场时用它，比给每个变体建子类省事。
+    void setAppearanceName(const std::string& name);
+
     // 状态：focused / pressed / disabled / selected / hover。
     // 打开状态会让外观里的对应动效跑起来（tweeny 插值）。
     void setAppearanceState(const std::string& state, bool active);
@@ -45,6 +49,16 @@ class AppearanceView : public Box
 
     void update() override;
     void applyTheme() override;
+
+    // ---- 组合变体用的内容槽（外观里 source = "icon" / "info" 的层显示它们）----
+    //
+    // 图标是图标字体的字形；信息文字放右侧（下拉框当前值、开关的"开/关"、选择器数值…）。
+    // 放在基类是因为这些组合外观不只 Button 用（Dropdown 也能换上去）。
+    void setIcon(const std::string& glyph);
+    const std::string& getIcon() const { return this->icon; }
+
+    void setInfoText(const std::string& value);
+    const std::string& getInfoText() const { return this->infoText; }
 
     // 直接套一份**外部的**外观 JSON（用当前主题解析）。
     // 设计器靠它做"改了但还没保存也能看到效果"：编译 → 换成这一份 → 重排。
@@ -103,6 +117,8 @@ class AppearanceView : public Box
     std::string variant;        // 当前 variant；空表示用默认
     std::string text;
     bool focusable = false;
+    std::string icon;
+    std::string infoText;
     bool pressed   = false;
     AppearanceInstance appearance;
 };

@@ -197,5 +197,28 @@
     "offsetX": 0,
     "offsetY": 4,
     "spread": 0
+  },
+  "component": {
+    "borderWidth": 2,
+    "radius": 10,
+    "shadowOffsetX": 2,
+    "shadowOffsetY": 2,
+    "shadowFeather": 10,
+    "shadowSpread": 0,
+    "paddingX": 16,
+    "paddingY": 10
+  },
+  "layout": {
+    "padding": 12
+  },
+  "buttonVariant": {
+    "gap": 10,
+    "iconSize": 26,
+    "infoFontSize": 16,
+    "switchWidth": 46,
+    "switchHeight": 24,
+    "switchKnob": 18,
+    "switchTravel": 22,
+    "arrowSize": 22
   }
 }

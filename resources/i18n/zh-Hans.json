@@ -23,7 +23,8 @@
     "scroll": "滚动",
     "pokedex": "图鉴",
     "shadow": "阴影",
-    "icons": "图标"
+    "icons": "图标",
+    "base": "基础控件"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -149,7 +150,8 @@
     "scroll_sub": "独立滚动容器 + 焦点跟随滚动",
     "pokedex_sub": "分段回收列表 + 详情页导航",
     "shadow_sub": "外观 JSON 的 shadow 层与模糊档位",
-    "icons_sub": "两套图标字体的全部字形：一排 10 个，格子下面是码位"
+    "icons_sub": "两套图标字体的全部字形：一排 10 个，格子下面是码位",
+    "base_sub": "容器与按钮变体"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -283,5 +285,26 @@
   "pager": {
     "loading": "正在载入…",
     "load_failed": "载入失败"
+  },
+  "base_widgets": {
+    "hint": "这一页的控件都由主题 JSON 组合出来：改 base/ 下的外观，所有衍生控件一起变。",
+    "containers": "容器",
+    "component_inner": "组件容器",
+    "buttons": "按钮变体",
+    "btn_text": "普通按钮",
+    "btn_icon_text": "图标文字",
+    "btn_switch_text": "文字开关",
+    "btn_switch_icon": "图案开关",
+    "btn_info": "信息按钮",
+    "btn_dropdown": "下拉框",
+    "btn_selector_number": "选择器·数值",
+    "btn_selector_list": "选择器·列表",
+    "selector_hint": "点选择器进入设置态：焦点会钉在它身上，LR / 左右方向键调值，长按连发；再点一次退出。",
+    "on": "开",
+    "off": "关",
+    "info_value": "信息",
+    "option_a": "选项 A",
+    "option_b": "选项 B",
+    "option_c": "选项 C"
   }
 }

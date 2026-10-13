@@ -192,6 +192,22 @@ void InputManager::handleNavigation()
     const bool heldLeft  = keysLeft || gamepad.isDirectionHeld(FocusDirection::LEFT);
     const bool heldRight = keysRight || gamepad.isDirectionHeld(FocusDirection::RIGHT);
 
+    // 焦点捕获：方向键直接转给捕获者（选择器设置态靠这条调值），
+    // 同时**吃掉**所有方向导航 —— 焦点必须钉在它身上。
+    // 走同一套 KeyRepeater，所以长按连发是现成的（首按立刻，之后 250ms/100ms）。
+    if (this->focusCapture != nullptr)
+    {
+        if (this->repeatUp.step(heldUp, now))
+            this->focusCapture->handleDirectionalInput(FocusDirection::UP);
+        else if (this->repeatDown.step(heldDown, now))
+            this->focusCapture->handleDirectionalInput(FocusDirection::DOWN);
+        else if (this->repeatLeft.step(heldLeft, now))
+            this->focusCapture->handleDirectionalInput(FocusDirection::LEFT);
+        else if (this->repeatRight.step(heldRight, now))
+            this->focusCapture->handleDirectionalInput(FocusDirection::RIGHT);
+        return;
+    }
+
     if (this->repeatUp.step(heldUp, now))
         this->navigate(FocusDirection::UP);
     else if (this->repeatDown.step(heldDown, now))
@@ -473,6 +489,13 @@ void InputManager::popModal()
 View* InputManager::getTopModal() const
 {
     return this->modals.empty() ? nullptr : this->modals.back().modal;
+}
+
+void InputManager::setFocusCapture(View* view)
+{
+    this->focusCapture = view;
+    if (view != nullptr)
+        this->giveFocus(view);
 }
 
 void InputManager::giveFocus(View* view)

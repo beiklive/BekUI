@@ -1,0 +1,6 @@
+{
+  "import": "base/box",
+  "box": {
+    "padding": "@theme/metric.layout.padding"
+  }
+}

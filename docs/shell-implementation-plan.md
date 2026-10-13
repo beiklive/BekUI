@@ -1460,3 +1460,63 @@ tests/image_format_test → 152 项 0 失败（新增）：
   和**升级命令**（brew / apt / pacman / 官方安装包）。
 - 新增的可选依赖一律"缺了也不报错"（见上）。
 - 额外构建目录共用 `dist/` 导致的"验收跑错二进制"写进了 AGENTS（这次自己踩到）。
+
+---
+
+## v31 主题分层重构 + 组合控件（import / box 变体 / 8 个按钮变体 / 选择器）
+
+### 一、主题目录（名字 = 路径，清单提前写）
+
+```
+resources/theme/themes.json             主题清单（不扫目录）
+resources/theme/<主题>/theme.json       元信息（name/author/description）+ files[] 清单
+resources/theme/<主题>/tokens/          colors.json / metrics.json
+resources/theme/<主题>/base/            基础控件外观（单个容器/元素）
+resources/theme/<主题>/widget/          二级控件外观（import base 组合出来）
+resources/theme/<主题>/view/            页面与视图描述（结构 + 外观，createViewFromTheme 装载）
+```
+
+- 外观名 = 相对主题根的路径去扩展名（`base/button.json` → `base/button`；变体是点拼后缀）。
+- `theme.json` 的清单键从 `widgets[]` 变成 `files[]`；旧布局仍可读但会打迁移警告。
+- C++ 里所有外观引用改成路径名；`ThemeData` 新增 `viewJson/getViewNames/getAuthor/getDescription`。
+- 设计器：名字↔路径映射改为"路径去扩展名"、清单读写换 `files[]`、
+  新建外观允许 `base/`+`widget/` 前缀并自动建目录、视图目录改到 `<主题>/view`。
+
+### 二、import（外观继承）
+
+逐字段合并、当前优先：对象递归；`layers` 按 id 合并；数组整体替换；标量覆盖。
+循环 / 太深 / 缺父级 → 编译失败（带链路的错误信息）。
+`base/box.component`（组件容器：2px 白边 + 2px xy 阴影 + 透明底 + 圆角 10，阴影层 `cutout`）
+是 8 个按钮变体的公共父级 —— 改它，所有按钮一起变。
+
+### 三、控件
+
+- `base/box`（标准容器）、`base/box.layout`（布局容器：无边框无背景 + 默认内边距）、
+  `base/box.component`（组件容器）。
+- `widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`：
+  组合外观 + 代码只写内容与行为。内容槽 `setIcon/setInfoText` 上移到 `AppearanceView`
+  （Dropdown 触发器也能用）；开关用外观状态 `on/off` 表达（补间由主题描述）；
+  `measureContent: "sum"` 让一行的图标+文字+信息按行求和，不再溢出。
+- `SelectorButton`：数值模式（min/max/step/小数位，吸附后夹取）与列表模式（越界环绕）；
+  点按进/出设置态；设置态用 **焦点捕获**（`InputManager::setFocusCapture` +
+  `View::handleDirectionalInput`）让方向键只改值、不做导航；长按复用 KeyRepeater 连发。
+- demo 新增"基础控件"页（第 15 页）：两个容器 + 8 个按钮变体 + 两种选择器。
+
+### 四、验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2789 项）；gl/vk 均"构建通过，零警告"
+python3 scripts/check_naming.py → 142 个文件全部符合约定
+tests/base_widget_test（新）→ 91 项 0 失败：import 合并/缺失与循环报错、8 个变体层齐与层序、
+  开关 on/off 状态、选择器数值（步长吸附/夹取/小数位/回调）与列表（环绕）、
+  设置态焦点捕获（进入钉住、退出放开、失焦自动退出）
+tests/theme_test → 439 项 0 失败（第 8 节改成遍历主题自己的 files[]）
+运行时（临时改起始页 + requestScreenshot，已回滚）：GL/VK 都能跑；截图确认容器两种变体、
+  8 个按钮变体（图标/信息/开关补间/选择器箭头）渲染正常，日志零 warn/error
+```
+
+### 五、已知待打磨
+
+- 组合外观的层位置靠 `inset` 手排（绘制层不是流式布局）：图标 26 + 间距 10 = 文字左内缩 36，
+  信息文字右内缩 20。改图标尺寸时要同步这些数字（或用 `measureContent: "sum"` + inset 一起调）。
+- 选择器变体较宽，demo 里数值与列表各占一行。

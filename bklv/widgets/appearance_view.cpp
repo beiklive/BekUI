@@ -37,6 +37,7 @@ void AppearanceView::enableContentMeasurement()
 
         float intrinsicWidth  = 0.0f;
         float intrinsicHeight = 0.0f;
+        float sumWidth        = 0.0f;
 
         for (const AppearanceLayer& layer : current.getLayers())
         {
@@ -65,9 +66,18 @@ void AppearanceView::enableContentMeasurement()
                     layerHeight = (float)texture.height;
             }
 
-            intrinsicWidth  = std::max(intrinsicWidth, layerWidth + layer.inset[1] + layer.inset[3]);
+            const float layerOuterWidth = layerWidth + layer.inset[1] + layer.inset[3];
+            intrinsicWidth  = std::max(intrinsicWidth, layerOuterWidth);
             intrinsicHeight = std::max(intrinsicHeight, layerHeight + layer.inset[0] + layer.inset[2]);
+
+            // 一行里放多个内容层（图标 + 文字 + 信息）时宽度要**累加**：只取最大值会让
+            // 文字溢出控件。组合外观在 box 里写 measureContent: "sum" 打开这条。
+            if (layer.op == AppearanceLayer::Op::TEXT || layer.op == AppearanceLayer::Op::IMAGE)
+                sumWidth += layerOuterWidth;
         }
+
+        if (current.getBox().measureSum && sumWidth > 0.0f)
+            intrinsicWidth = std::max(intrinsicWidth, sumWidth);
 
         // 受约束时收缩到可用宽度（文字层会按自己的规则截断，这里只上报尺寸）
         if (widthMode != YGMeasureModeUndefined && !std::isnan(width))
@@ -91,6 +101,15 @@ void AppearanceView::setText(const std::string& value)
     // 文字变了，固有尺寸跟着变（外观驱动控件靠测量函数定宽）
     this->markMeasureDirty();
     this->invalidate();
+}
+
+void AppearanceView::setAppearanceName(const std::string& name)
+{
+    if (this->appearanceName == name)
+        return;
+
+    this->appearanceName = name;
+    this->applyTheme();
 }
 
 void AppearanceView::setAppearanceVariant(const std::string& value)
@@ -186,10 +205,34 @@ void AppearanceView::update()
     this->appearance.update(getFrameDeltaSeconds());
 }
 
+void AppearanceView::setIcon(const std::string& glyph)
+{
+    if (this->icon == glyph)
+        return;
+
+    this->icon = glyph;
+    this->markMeasureDirty();
+    this->invalidate();
+}
+
+void AppearanceView::setInfoText(const std::string& value)
+{
+    if (this->infoText == value)
+        return;
+
+    this->infoText = value;
+    this->markMeasureDirty();
+    this->invalidate();
+}
+
 std::string AppearanceView::getLayerText(const std::string& source)
 {
     if (source == "text")
         return this->text;
+    if (source == "icon")
+        return this->icon;
+    if (source == "info")
+        return this->infoText;
     return {};
 }
 
@@ -198,8 +241,15 @@ TextureRef AppearanceView::getLayerImage(const std::string&)
     return TextureRef();
 }
 
-ImFont* AppearanceView::getLayerFont(const AppearanceLayer&)
+ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
 {
+    // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块
+    if (layer.id == "icon" || layer.source == "icon")
+    {
+        ImFont* iconFont = getIconFont();
+        if (iconFont != nullptr)
+            return iconFont;
+    }
     return getDefaultFont();
 }
 

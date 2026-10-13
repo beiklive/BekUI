@@ -283,6 +283,13 @@ class View
     // 自己是不是滚动容器（ensureFocusVisible 靠它找最近的滚动祖先）。
     virtual bool isScrollable() const { return false; }
 
+    // 方向键被"焦点捕获"时先问它（见 InputManager::setFocusCapture）
+    virtual bool handleDirectionalInput(FocusDirection direction)
+    {
+        (void)direction;
+        return false;
+    }
+
     virtual void onFocusGained() { }
     virtual void onFocusLost() { }
 

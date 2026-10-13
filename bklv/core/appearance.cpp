@@ -351,6 +351,152 @@ int Appearance::indexOfLayer(const std::string& layerId) const
     return -1;
 }
 
+namespace
+{
+
+// import：一个外观可以引用别的外观，**合并规则逐字段生效**（不是整段替换）：
+//   · 对象（box / states / 单个 state …）递归合并，子文件的同名字段赢
+//   · layers 数组按 id 合并：同 id 的层递归合并（子赢），新 id 追加在后面
+//   · 其它数组整体替换（子赢）
+//   · 标量：子赢
+// 所以"base/box.component 改了内边距，所有 import 它的按钮一起变"，
+// 而按钮自己写的字段仍然优先（用户要的"当前控件设置覆盖导入的"）。
+Json mergeJson(const Json& base, const Json& over)
+{
+    if (!base.is_object() || !over.is_object())
+        return over;
+
+    Json result = base;
+    for (auto it = over.begin(); it != over.end(); ++it)
+    {
+        const std::string& key = it.key();
+        if (key == "layers" && it.value().is_array() && result.contains("layers")
+            && result["layers"].is_array())
+        {
+            // 按 id 合并层：相同 id 的合并字段，新 id 追加
+            Json merged = Json::array();
+            Json consumed = Json::array();
+
+            for (const Json& baseLayer : result["layers"])
+            {
+                Json layer = baseLayer;
+                if (baseLayer.is_object() && baseLayer.contains("id"))
+                {
+                    for (const Json& overLayer : it.value())
+                    {
+                        if (overLayer.is_object() && overLayer.contains("id")
+                            && overLayer["id"] == baseLayer["id"])
+                        {
+                            layer = mergeJson(baseLayer, overLayer);
+                            consumed.push_back(overLayer["id"]);
+                        }
+                    }
+                }
+                merged.push_back(layer);
+            }
+
+            for (const Json& overLayer : it.value())
+            {
+                bool already = false;
+                if (overLayer.is_object() && overLayer.contains("id"))
+                    for (const Json& id : consumed)
+                        if (id == overLayer["id"])
+                            already = true;
+                if (!already)
+                    merged.push_back(overLayer);
+            }
+
+            result["layers"] = merged;
+            continue;
+        }
+
+        if (result.contains(key) && result[key].is_object() && it.value().is_object())
+            result[key] = mergeJson(result[key], it.value());
+        else
+            result[key] = it.value();
+    }
+    return result;
+}
+
+// 把 import 链解析成一份扁平文档；visited 用于循环检测
+bool resolveImports(const Json& doc, const ThemeData& theme, std::vector<std::string>& visited,
+    Json& out, std::string& error)
+{
+    if (!doc.contains("import"))
+    {
+        out = doc;
+        return true;
+    }
+
+    std::vector<std::string> names;
+    if (doc["import"].is_string())
+        names.push_back(doc["import"].get<std::string>());
+    else if (doc["import"].is_array())
+    {
+        for (const Json& entry : doc["import"])
+            if (entry.is_string())
+                names.push_back(entry.get<std::string>());
+    }
+    else
+    {
+        error = "import 必须是字符串或字符串数组";
+        return false;
+    }
+
+    if (visited.size() >= 8)
+    {
+        error = "import 链太深（超过 8 层）：" + names.front();
+        return false;
+    }
+
+    Json base = Json::object();
+    for (const std::string& name : names)
+    {
+        if (std::find(visited.begin(), visited.end(), name) != visited.end())
+        {
+            error = "import 出现循环引用：" + name;
+            return false;
+        }
+
+        const std::string* importedJson = theme.widgetAppearanceJson(name);
+        if (importedJson == nullptr)
+        {
+            error = "import 的外观不存在：\"" + name + "\"（检查名字与 theme.json 的 files[]）";
+            return false;
+        }
+
+        Json importedDoc;
+        try
+        {
+            importedDoc = Json::parse(*importedJson);
+        }
+        catch (const Json::parse_error& e)
+        {
+            error = "import 的 " + name + " 语法错误：" + e.what();
+            return false;
+        }
+
+        visited.push_back(name);
+        Json resolved;
+        const bool ok = resolveImports(importedDoc, theme, visited, resolved, error);
+        visited.pop_back();
+        if (!ok)
+        {
+            error = name + " -> " + error;
+            return false;
+        }
+
+        base = mergeJson(base, resolved);
+    }
+
+    Json self = doc;
+    self.erase("import");
+    out = mergeJson(base, self);
+    return true;
+}
+
+} // namespace
+
 std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, const ThemeData& theme,
     std::string& error)
 {
@@ -367,6 +513,15 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 line++;
         error = "外观 JSON 语法错误（第 " + std::to_string(line) + " 行）：" + e.what();
         return nullptr;
+    }
+
+    if (doc.is_object() && doc.contains("import"))
+    {
+        std::vector<std::string> visited;
+        Json resolved;
+        if (!resolveImports(doc, theme, visited, resolved, error))
+            return nullptr;
+        doc = std::move(resolved);
     }
 
     if (!doc.is_object() || !doc.contains("layers") || !doc["layers"].is_array())
@@ -619,6 +774,16 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         {
             box.axis    = boxNode["axis"].get<std::string>();
             box.hasAxis = true;
+        }
+        if (boxNode.contains("measureContent") && boxNode["measureContent"].is_string())
+        {
+            const std::string mode = boxNode["measureContent"].get<std::string>();
+            if (enumMatches(mode, "sum"))
+                box.measureSum = true;
+            else if (enumMatches(mode, "max"))
+                box.measureSum = false;
+            else
+                warnUnknownEnumValue("measureContent", mode, "max|sum");
         }
         if (boxNode.contains("backgroundColor"))
         {

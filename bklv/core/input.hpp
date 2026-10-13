@@ -186,6 +186,14 @@ class InputManager
     void giveFocus(View* view);
     View* getCurrentFocus() const { return this->currentFocus; }
 
+    // ---- 焦点捕获（选择器进入设置态时用）----
+    //
+    // 捕获期间：方向键不再做焦点导航，而是转给这个视图的 handleDirectionalInput()；
+    // 视图像素级地"钉住焦点"，只有它能消费方向键（B/A 之类的动作照常沿父链冒泡）。
+    // 传 nullptr 解除。视图先被销毁时由调用方负责解除（Views 的常规约定：析构前先放开）。
+    void setFocusCapture(View* view);
+    View* getFocusCapture() const { return this->focusCapture; }
+
     // ---- 模态层（弹窗 / 下拉 / applet 面板）----
     //
     // pushModal() 会把当前焦点存起来，并把"指针命中"和"方向导航"限制在 modal 子树内
@@ -383,6 +391,7 @@ class InputManager
     void triggerFocusEdgeHit(FocusDirection direction);
 
     View* currentFocus = nullptr;
+    View* focusCapture = nullptr;
 
     // 撞边反馈
     std::function<void(FocusDirection, View*)> onFocusEdgeHit;

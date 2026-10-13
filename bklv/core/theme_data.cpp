@@ -456,11 +456,16 @@ std::vector<std::string> ThemeData::getNumberKeys() const
 
 std::vector<std::string> ThemeData::getWidgetNames() const
 {
+    // 同上：并上 default 主题的外观（皮肤只覆盖一部分是常态）
     std::vector<std::string> names;
-    names.reserve(this->widgetJson.size());
+    names.reserve(this->widgetJson.size() + this->defaultWidgetJson.size());
     for (const auto& entry : this->widgetJson)
         names.push_back(entry.first);
+    for (const auto& entry : this->defaultWidgetJson)
+        if (this->widgetJson.find(entry.first) == this->widgetJson.end())
+            names.push_back(entry.first);
     std::sort(names.begin(), names.end());
+    names.erase(std::unique(names.begin(), names.end()), names.end());
     return names;
 }
 
@@ -479,11 +484,17 @@ const std::string* ThemeData::viewJson(const std::string& name) const
 
 std::vector<std::string> ThemeData::getViewNames() const
 {
+    // 当前主题 + default 主题的并集：查 viewJson() 时也会回退到 default，
+    // 只列当前主题的话，皮肤里没覆盖的视图就"查得到但列不出来"。
     std::vector<std::string> names;
-    names.reserve(this->viewJsonMap.size());
+    names.reserve(this->viewJsonMap.size() + this->defaultViewJson.size());
     for (const auto& entry : this->viewJsonMap)
         names.push_back(entry.first);
+    for (const auto& entry : this->defaultViewJson)
+        if (this->viewJsonMap.find(entry.first) == this->viewJsonMap.end())
+            names.push_back(entry.first);
     std::sort(names.begin(), names.end());
+    names.erase(std::unique(names.begin(), names.end()), names.end());
     return names;
 }
 

@@ -54,6 +54,9 @@ bklv::Box* buildIconsPage();
 // 2. 基础控件：Button / Slider / Dropdown / ProgressSpinner / Image
 bklv::Box* buildWidgetsPage();
 
+// 2b. 容器与按钮变体：base/box 的两种变体 + 8 个组合按钮（widget/button.*）
+bklv::Box* buildBaseWidgetsPage();
+
 // 3. 文本：截断、换行、对齐、字号
 bklv::Box* buildTextPage();
 

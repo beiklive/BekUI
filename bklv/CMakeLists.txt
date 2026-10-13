@@ -358,6 +358,7 @@ set(BKLV_CORE_SOURCES
     widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp
+    widgets/selector_button.cpp
     widgets/header.cpp
     widgets/bottom_bar.cpp
     widgets/cell.cpp

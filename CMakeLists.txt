@@ -175,6 +175,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_settings.cpp
     app/pages/page_shadow.cpp
     app/pages/page_icons.cpp
+    app/pages/page_base_widgets.cpp
     app/pages/page_transform.cpp
 )
 
