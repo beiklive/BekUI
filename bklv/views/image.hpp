@@ -51,6 +51,18 @@ class Image : public View
     bool setAnimationFromFile(const std::string& path);
     bool setAnimationFromMemory(const void* data, size_t size);
 
+    // ---- SVG（矢量图）----
+    //
+    // SVG 没有固定像素尺寸：按**视图自己的布局尺寸**栅格化，尺寸变了（换窗口/缩放/改宽高）
+    // 会自动重新栅格化并重建纹理 —— 这就是矢量图的代价，缓存键必须带上尺寸。
+    // 没编 SVG 支持（BKLV_WITH_SVG=OFF）时返回 false 并保持原图。
+    bool setSvgFromFile(const std::string& path);
+    bool setSvgFromMemory(const void* data, size_t size);
+    bool hasSvg() const { return !this->svgData.empty(); }
+    // 已经栅格化的尺寸（0 表示还没栅格化过）
+    int getSvgRasterWidth() const { return this->svgRasterWidth; }
+    int getSvgRasterHeight() const { return this->svgRasterHeight; }
+
     bool hasAnimation() const { return !this->animation.frames.empty(); }
     size_t getAnimationFrameCount() const { return this->animation.frames.size(); }
     size_t getAnimationFrameIndex() const { return this->animationFrame; }
@@ -91,6 +103,11 @@ class Image : public View
     // 异步解码回调的生命周期护栏：Image 先被销毁时回调直接放弃（否则是 use-after-free）
     AliveFlag alive;
     std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
+    // SVG：原始文档字节（栅格化时机由尺寸决定，所以留着源数据）
+    std::vector<unsigned char> svgData;
+    int svgRasterWidth  = 0;
+    int svgRasterHeight = 0;
+
     // 动图：解好的帧 + 播放状态
     DecodedAnimation animation;
     float animationElapsed      = 0.0f;
@@ -102,6 +119,8 @@ class Image : public View
 
     // 释放自己上传的纹理（不动缓存里的静态图）
     void releaseOwnedTexture();
+    // 按当前布局尺寸（拿不到就用文档自带尺寸）栅格化 SVG
+    void rasterizeSvg();
     bool applyAnimation(DecodedAnimation loaded);
     void uploadAnimationFrame();
 

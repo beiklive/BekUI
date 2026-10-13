@@ -50,6 +50,9 @@ int main()
             { "tiny.jpg", ImageFormat::JPEG },
             { "tiny.bmp", ImageFormat::BMP },
             { "anim.gif", ImageFormat::GIF },
+            { "tiny.webp", ImageFormat::WEBP },
+            { "anim.webp", ImageFormat::WEBP },
+            { "tiny.svg", ImageFormat::SVG },
             { "not_an_image.txt", ImageFormat::UNKNOWN },
         };
 
@@ -89,7 +92,7 @@ int main()
 
     std::printf("\n== 2. 各格式都能解码出 RGBA8（stride = width * 4）==\n");
     {
-        const char* files[] = { "solid.png", "tiny.jpg", "tiny.bmp", "anim.gif" };
+        const char* files[] = { "solid.png", "tiny.jpg", "tiny.bmp", "anim.gif", "tiny.webp" };
         for (const char* name : files)
         {
             DecodedImage image = decodeImageFile(fixture(name).c_str());
@@ -214,12 +217,93 @@ int main()
         check(first.pixels == animation.frames[0], "静态入口给的正是第一帧");
     }
 
+    std::printf("\n== 6b. WebP：静态 + 动图（libwebp）==\n");
+    if (!isImageFormatSupported(ImageFormat::WEBP))
+    {
+        std::printf("  [跳过] 这个构建没有编 WebP 解码（BKLV_WITH_WEBP=OFF 或子模块缺失）\n");
+    }
+    else
+    {
+        DecodedImage still = decodeImageFile(fixture("tiny.webp").c_str());
+        check(still.isValid(), "静态 WebP 解码成功（失败原因：" + still.getError() + "）");
+        if (still.isValid())
+        {
+            checkEqualInt(still.width, 2, "WebP 宽 2");
+            checkEqualInt(still.height, 2, "WebP 高 2");
+            checkEqualInt(still.stride, still.width * 4, "WebP stride = 宽 × 4");
+
+            // 和 PNG 那条路一样：非预乘（libwebp 给的就是直通 alpha）
+            unsigned char px[4] = { 0 };
+            pixelAt(still, 1, 0, px);
+            checkEqualInt(px[3], 128, "WebP 半透明像素 alpha 128");
+            checkEqualInt(px[0], 255, "WebP 解出来是**非预乘**的 255");
+        }
+
+        DecodedAnimation animation = decodeAnimationFile(fixture("anim.webp").c_str());
+        check(animation.isValid(), "WebP 动图解码成功（失败原因：" + animation.getError() + "）");
+        if (animation.isValid())
+        {
+            checkEqualSize(animation.getFrameCount(), 4, "WebP 动图 4 帧");
+            checkEqualInt(animation.width, 64, "WebP 动图画布宽 64");
+            checkEqualInt(animation.height, 64, "WebP 动图画布高 64");
+            checkFloat(animation.delays[0], 0.08f, "WebP 帧延迟 80ms");
+            check(animation.frames[0] != animation.frames[1], "WebP 两帧内容不同");
+            check(frameIndexAt(animation, 0.04f) == 0, "WebP 第 0 帧相位");
+            check(frameIndexAt(animation, 0.12f) == 1, "WebP 第 1 帧相位");
+        }
+    }
+
+    std::printf("\n== 6c. SVG：按给定尺寸栅格化（lunasvg）==\n");
+    if (!isImageFormatSupported(ImageFormat::SVG))
+    {
+        std::printf("  [跳过] 这个构建没有编 SVG 支持（BKLV_WITH_SVG=OFF 或子模块缺失）\n");
+    }
+    else
+    {
+        // tiny.svg：左半 50% 透明红（背景透明），右半不透明绿，文档尺寸 8x8
+        DecodedImage intrinsic = decodeImageFile(fixture("tiny.svg").c_str());
+        check(intrinsic.isValid(), "SVG 用文档自带尺寸能解（失败原因：" + intrinsic.getError() + "）");
+        if (intrinsic.isValid())
+        {
+            checkEqualInt(intrinsic.width, 8, "SVG 文档尺寸宽 8");
+            checkEqualInt(intrinsic.height, 8, "SVG 文档尺寸高 8");
+
+            unsigned char px[4] = { 0 };
+            pixelAt(intrinsic, 1, 4, px);
+            // fill-opacity=0.5 会落在 127 或 128（0.5 × 255 = 127.5，取整方向由光栅化器决定）
+            check(px[3] == 127 || px[3] == 128,
+                "SVG 半透明部分 alpha ≈ 128（实际 " + std::to_string(px[3]) + "）");
+            checkEqualInt(px[0], 255, "SVG 解出来是**非预乘**的 255（lunasvg 位图是预乘的，必须转）");
+            checkEqualInt(px[1], 0, "SVG 半透明红没有绿分量");
+
+            pixelAt(intrinsic, 6, 4, px);
+            checkEqualInt(px[1], 255, "SVG 右半是绿色");
+            checkEqualInt(px[3], 255, "SVG 右半不透明");
+        }
+
+        DecodedImage big = decodeSvgFile(fixture("tiny.svg").c_str(), 16, 16);
+        check(big.isValid(), "SVG 能按指定尺寸栅格化");
+        checkEqualInt(big.width, 16, "按 16x16 栅格化");
+        checkEqualInt(big.height, 16, "按 16x16 栅格化（高）");
+
+        DecodedImage wide = decodeSvgFile(fixture("tiny.svg").c_str(), 32, 8);
+        checkEqualInt(wide.width, 32, "换个尺寸重新栅格化（宽 32）");
+        checkEqualInt(wide.height, 8, "换个尺寸重新栅格化（高 8）");
+
+        DecodedImage huge = decodeSvgFile(fixture("tiny.svg").c_str(), 20000, 20000);
+        check(!huge.isValid(), "SVG 也吃尺寸上限");
+        check(huge.getError().find("超限") != std::string::npos,
+            "SVG 超限的错误信息说明尺寸超限：" + huge.getError());
+    }
+
     std::printf("\n== 7. 没有动画解码器的格式要明确报错 ==\n");
     {
         DecodedAnimation pngAnimation = decodeAnimationFile(fixture("solid.png").c_str());
         check(!pngAnimation.isValid(), "PNG 没有动画");
         check(pngAnimation.getError().find("暂不支持") != std::string::npos,
             "PNG 的错误信息说明暂不支持：" + pngAnimation.getError());
+        check(pngAnimation.getError().find("WebP") != std::string::npos,
+            "错误信息里列了支持的动图格式（GIF / WebP）：" + pngAnimation.getError());
 
         DecodedAnimation none = decodeAnimationMemory(nullptr, 0);
         check(!none.isValid() && !none.getError().empty(), "空动画数据失败并带原因");
@@ -283,9 +367,40 @@ int main()
         delete image;
     }
 
+    std::printf("\n== 9b. Image 视图：SVG 互斥与状态 ==\n");
+    if (!isImageFormatSupported(ImageFormat::SVG))
+    {
+        std::printf("  [跳过] 没有 SVG 支持\n");
+    }
+    else
+    {
+        Image* image = new Image();
+        check(!image->hasSvg(), "新视图没有 SVG");
+        check(image->setSvgFromFile(fixture("tiny.svg")), "装得上 SVG");
+        check(image->hasSvg(), "hasSvg() 为真");
+        check(!image->hasAnimation(), "SVG 与动图互斥（装 SVG 会清掉动图）");
+        checkEqualInt(image->getSvgRasterWidth(), 0, "纹理仓库没就绪时不栅格化（留给 update）");
+
+        check(image->setAnimationFromFile(fixture("anim.gif")), "反过来也能装动图");
+        check(!image->hasSvg(), "装动图会清掉 SVG");
+        delete image;
+
+        Image* bad = new Image();
+        check(!bad->setSvgFromFile(fixture("no_such.svg")), "文件不存在时失败");
+        check(!bad->setSvgFromMemory(nullptr, 0), "空数据失败");
+        delete bad;
+    }
+
     std::printf("\n== 10. 当前解码器信息 ==\n");
     {
         check(getImageDecoderName() != nullptr && getImageDecoderName()[0] != 0, "解码器名非空");
+        check(isImageFormatSupported(ImageFormat::PNG), "PNG 永远支持");
+        check(isImageFormatSupported(ImageFormat::JPEG), "JPEG 永远支持");
+        check(isImageFormatSupported(ImageFormat::BMP), "BMP 永远支持");
+        check(isImageFormatSupported(ImageFormat::GIF), "GIF 永远支持（含动画）");
+        std::printf("  [数据] WebP=%d SVG=%d（1=这个构建编进去了）\n",
+            isImageFormatSupported(ImageFormat::WEBP) ? 1 : 0,
+            isImageFormatSupported(ImageFormat::SVG) ? 1 : 0);
         std::printf("  [数据] 平台解码器 = %s\n", getImageDecoderName());
         std::printf("  [数据] 上限：单边 %d，单帧 %zu 像素，动画 %zu 像素 / %zu 帧\n",
             getImageLimits().maxDimension, getImageLimits().maxPixels,

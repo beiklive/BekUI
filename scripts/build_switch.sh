@@ -23,15 +23,22 @@ CLEAN=0
 for arg in "$@"; do
     case "${arg}" in
         --clean|--force) CLEAN=1 ;;
-        *) echo "未知参数：${arg}（只支持 --clean）" >&2; exit 1 ;;
+        --no-webp) WITH_WEBP=0 ;;
+        --no-svg) WITH_SVG=0 ;;
+        *) echo "未知参数：${arg}（支持 --clean / --no-webp / --no-svg）" >&2; exit 1 ;;
     esac
 done
+
+# 可选图片解码器（子模块存在就默认开；编不过时可以用 --no-webp / --no-svg 关掉）
+WITH_WEBP="${WITH_WEBP:-1}"
+WITH_SVG="${WITH_SVG:-1}"
 
 # ---- 工具链 ----
 export DEVKITPRO="${DEVKITPRO:-/opt/devkitpro}"
 DEVKITA64="${DEVKITPRO}/devkitA64"
 PORTLIBS="${DEVKITPRO}/portlibs/switch"
 LIBNX="${DEVKITPRO}/libnx"
+CC="${DEVKITA64}/bin/aarch64-none-elf-gcc"
 CXX="${DEVKITA64}/bin/aarch64-none-elf-g++"
 ELF2NRO="${DEVKITPRO}/tools/bin/elf2nro"
 BUILD_ROMFS="${DEVKITPRO}/tools/bin/build_romfs"
@@ -80,8 +87,42 @@ INCLUDES=(-I"${ROOT_DIR}"
 # 关掉异常会让 C++ 标准库的部分设施不能用（std::filesystem 出错只能 terminate），
 # 而 JSON 解析这类"输入不可信"的代码需要可控的失败路径。保留异常后仍约定：
 # 库的公开 API 不向外抛异常，失败用返回值 + 日志表达。
+# ---- 可选解码器 ----
+WEBP_SOURCES=()
+if [[ "${WITH_WEBP}" -eq 1 && -d "${THIRD_DIR}/webp/src/dec" ]]; then
+    # libwebp 的 config.h 是它自己的 CMake 生成的；这里**不定义 HAVE_CONFIG_H**，
+    # 让它走"编译器探测"的默认分支（源码里是 #ifdef HAVE_CONFIG_H 才 include）。
+    # 只取解码需要的目录：dec/demux/dsp/utils —— 不带编码器与 sharpyuv，nro 更小。
+    DEFINES+=(-DBKLV_USE_WEBP)
+    INCLUDES+=(-I"${THIRD_DIR}/webp" -I"${THIRD_DIR}/webp/src")
+    while IFS= read -r -d '' f; do
+        WEBP_SOURCES+=("$f")
+    done < <(find "${THIRD_DIR}/webp/src/dec" "${THIRD_DIR}/webp/src/demux" \
+        "${THIRD_DIR}/webp/src/dsp" "${THIRD_DIR}/webp/src/utils" -name '*.c' -print0 | sort -z)
+else
+    echo "提示：没编 WebP 解码（子模块缺失或 --no-webp）" >&2
+fi
+
+SVG_SOURCES=()
+if [[ "${WITH_SVG}" -eq 1 && -d "${THIRD_DIR}/lunasvg/source" && -d "${THIRD_DIR}/plutovg/source" ]]; then
+    DEFINES+=(-DBKLV_USE_SVG -DLUNASVG_BUILD -DLUNASVG_BUILD_STATIC -DPLUTOVG_BUILD -DPLUTOVG_BUILD_STATIC)
+    INCLUDES+=(-I"${THIRD_DIR}/lunasvg/include" -I"${THIRD_DIR}/lunasvg/source"
+        -I"${THIRD_DIR}/plutovg/include" -I"${THIRD_DIR}/plutovg/source")
+    while IFS= read -r -d '' f; do
+        SVG_SOURCES+=("$f")
+    done < <(find "${THIRD_DIR}/lunasvg/source" -name '*.cpp' -print0 | sort -z)
+    while IFS= read -r -d '' f; do
+        SVG_SOURCES+=("$f")
+    done < <(find "${THIRD_DIR}/plutovg/source" -name '*.c' -print0 | sort -z)
+else
+    echo "提示：没编 SVG 支持（子模块缺失或 --no-svg）" >&2
+fi
+
 CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti
     "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
+
+# C 源文件：不传 -std=c++17 / -fno-rtti（那是 C++ 的），第三方代码的警告也放开
+CFLAGS=(-std=c11 -O2 "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 
 # ---- 源文件 ----
 # core 与 views 全都要，按目录收集。
@@ -159,8 +200,28 @@ compile_one() {
     OBJS+=("${obj}")
 }
 
+# C 源文件（libwebp / plutovg）必须用 C 编译器：拿 g++ 当 C++ 编会挂
+compile_c_one() {
+    local src="$1"
+    local rel="${src#"${ROOT_DIR}/"}"
+    local obj="${BUILD_DIR}/${rel%.c}.o"
+    local dep="${obj%.o}.d"
+    mkdir -p "$(dirname "${obj}")"
+    if needs_rebuild "${src}" "${obj}" "${dep}"; then
+        "${CC}" "${CFLAGS[@]}" -MMD -MP -c "${src}" -o "${obj}"
+    fi
+    OBJS+=("${obj}")
+}
+
 for src in "${BKLV_SOURCES[@]}" "${IMGUI_SOURCES[@]}" "${DEMO_SOURCES[@]}"; do
     compile_one "${src}"
+done
+
+for src in "${WEBP_SOURCES[@]}" "${SVG_SOURCES[@]}"; do
+    case "${src}" in
+        *.c) compile_c_one "${src}" ;;
+        *) compile_one "${src}" ;;
+    esac
 done
 
 # Yoga 需要 C++20（与桌面构建一致），其余代码保持 C++17。

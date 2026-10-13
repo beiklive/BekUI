@@ -16,3 +16,12 @@
 [submodule "bklv/3rd/json"]
 	path = bklv/3rd/json
 	url = https://github.com/nlohmann/json.git
+[submodule "bklv/3rd/webp"]
+	path = bklv/3rd/webp
+	url = https://github.com/webmproject/libwebp
+[submodule "bklv/3rd/lunasvg"]
+	path = bklv/3rd/lunasvg
+	url = https://github.com/sammycage/lunasvg
+[submodule "bklv/3rd/plutovg"]
+	path = bklv/3rd/plutovg
+	url = https://github.com/sammycage/plutovg

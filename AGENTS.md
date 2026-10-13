@@ -67,6 +67,13 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 ### 改构建时注意
 
+- **多个构建目录共用同一个 `dist/`**：CMake 的输出目录固定是 `${CMAKE_SOURCE_DIR}/dist`
+  （VK 是 `dist/vk/`），所以任何额外构建目录（`build/asan`、`build/dbg`、`/tmp/xxx`）
+  都会把可执行文件写进同一个 `dist/`。它们的产物时间戳比 `build/gl` 的目标文件新，
+  make 会认为"已是最新"而**不重新链接** —— 于是你以为在验收 A 配置，实际跑的是 B 的二进制
+  （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本，
+  check.sh 的检查项数也跟着少了一截）。跑完额外构建目录后要
+  `rm -f dist/*_test dist/demo dist/designer && cmake --build build/gl -j 8` 强制重链。
 - 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 查 core/views/widgets，
   根 `CMakeLists.txt` 查 demo），不用等链接期。
 - 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
@@ -164,7 +171,9 @@ Vulkan 后端（`bklv/backends/vulkan_backend.cpp`）有几条不好从代码一
 | `bklv/3rd/yoga` | Flexbox 布局 |
 | `bklv/3rd/tweeny` | 补间动画（库本身不用，保留给后续的属性动画） |
 | `bklv/3rd/SDL` | 桌面的窗口/输入/GL 上下文（源码编译成静态库） |
-| `bklv/3rd/stb` | Linux/Windows/Switch 的图片解码 |
+| `bklv/3rd/stb` | 位图解码（PNG/JPEG/BMP）+ GIF（含动画） |
+| `bklv/3rd/webp` | WebP 解码（静态 + 动图），可选：`BKLV_WITH_WEBP` |
+| `bklv/3rd/lunasvg` + `bklv/3rd/plutovg` | SVG 栅格化，可选：`BKLV_WITH_SVG` |
 | `bklv/3rd/json` | nlohmann/json：JSON 视图描述与 i18n 文案（单头文件，全 inline，无需编源文件） |
 
 系统只要求：`cmake`（编 SDL3）、以及平台本身的工具链。
@@ -491,6 +500,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   + `STBI_ONLY_GIF`，两份 stb 靠 static 避免符号冲突，第三方警告在该 TU 里局部压掉）。
   `stbi_load_gif_from_memory()` 直接给**合成好的整幅帧** + 每帧延迟（毫秒），
   帧内的局部矩形/透明/disposal 都由它处理 —— 所以 GIF 播放只剩"按时换帧"。
+  WebP 同理走 libwebp 的 `WebPAnimDecoder`（`image_decoder_webp.cpp`），帧也是合成好的。
+  SVG 在 `image_decoder_svg.cpp`：**必须给像素尺寸**（`decodeSvgFile/Memory(path, w, h)`，
+  给 0 用文档自带尺寸）；lunasvg 的位图是 **ARGB32 预乘**，用它的 `Bitmap::convertToRGBA()`
+  转成非预乘 RGBA（自己手写容易漏通道顺序）。
+  **两个可选解码器都不许让配置失败**：CMake 里 `BKLV_WITH_WEBP` / `BKLV_WITH_SVG`
+  先探测子模块是否存在，缺了就只打一条提示并定义不启用 —— 对应的 TU 编成"返回带
+  error 的空图"的桩，调用方只看到一句人话错误。Switch 脚本用 `--no-webp/--no-svg` 关。
 - **动图播放挂在既有帧时钟上**（`views/image.*`）：`update()` 里 `stepAnimation(getFrameDeltaSeconds())`
   → `frameIndexAt(animation, elapsed)`（对一轮总时长**取模**，不漂移、暂停回来不补播）
   → 帧变了才 `updateTexture()` **就地换内容**（不重建纹理、不参与布局）。
@@ -621,7 +637,8 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
                     / dialog / dropdown / edit_text_dialog / hints_bar
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
-  3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb
+  3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
+                    / webp（可选）/ lunasvg + plutovg（可选，SVG）
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
 demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo

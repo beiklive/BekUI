@@ -6,6 +6,8 @@
 //   macOS            —— ImageIO（系统自带，零依赖；顺带支持 HEIC/TIFF/WebP 等）
 //   Linux/Win/Switch —— stb_image（源码随仓库，跨平台）
 //   GIF（所有平台）   —— 自带的 stb_image GIF 解码器（image_decoder_gif.cpp）
+//   WebP             —— libwebp（可选依赖：CMake 的 BKLV_WITH_WEBP，静态 + 动图）
+//   SVG              —— lunasvg + plutovg（可选依赖：CMake 的 BKLV_WITH_SVG）
 //
 // 三条约定（新增解码器时必须遵守）：
 //   ① 输出**非预乘（straight）RGBA8**：ImGui 的混合方程是
@@ -30,14 +32,19 @@ enum class ImageFormat
     JPEG,
     BMP,
     GIF,
-    WEBP,   // 只有 macOS 的 ImageIO 能解
-    TIFF,   // 同上
+    WEBP,   // 有 libwebp 时走 libwebp（全平台一致）；否则 macOS 交给 ImageIO
+    SVG,    // 矢量图：必须给栅格化尺寸，见 decodeSvgFile/Memory
+    TIFF,   // 只有 macOS 的 ImageIO 能解
     HEIC,   // HEIF/HEIC/AVIF 一族（ftyp box）
     ICO,    // 同上
 };
 
 // 只读开头几个字节就能认出来；认不出返回 UNKNOWN
 ImageFormat detectImageFormat(const void* data, size_t size);
+
+// 这个构建能不能解这种格式（可选解码器没编进来时是 false）。
+// 调用方（比如"打开文件"对话框、素材导入）可以先查一下，别等到解码失败才发现。
+bool isImageFormatSupported(ImageFormat format);
 const char* getImageFormatName(ImageFormat format);
 
 // 尺寸/像素上限：超过就拒绝解码（畸形 PNG 能声明天文数字尺寸，Switch 上会直接 OOM）。
@@ -95,6 +102,11 @@ struct DecodedAnimation
 // 按"已经播了多久"算该显示第几帧：内部对一轮总时长**取模**，所以不会累积漂移，
 // 卡帧/切页回来也不会补播一堆帧。elapsed 为负按 0 处理；空动画返回 0。
 size_t frameIndexAt(const DecodedAnimation& animation, float elapsedSeconds);
+
+// SVG 栅格化：**必须给像素尺寸**（SVG 没有固定分辨率；给 0 表示用文档自带尺寸）。
+// 没有编 SVG 支持时返回带 error 的空图。视图按自己的布局尺寸调用它，尺寸变了要重新栅格化。
+DecodedImage decodeSvgFile(const char* path, int width, int height);
+DecodedImage decodeSvgMemory(const void* data, size_t size, int width, int height);
 
 // 从文件解码（内部读文件 → 走 decodeImageMemory）。失败返回的 isValid() 为 false。
 DecodedImage decodeImageFile(const char* path);

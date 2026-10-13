@@ -132,7 +132,8 @@
     "button_default": "Default",
     "button_primary": "Primary",
     "button_highlight": "Highlight",
-    "image_animated": "Animated GIF (frame clock)"
+    "image_animated": "Animated GIF (frame clock)",
+    "image_svg": "SVG (rasterized at view size)"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",

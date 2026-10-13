@@ -244,6 +244,21 @@ Box* buildWidgetsPage()
     animatedColumn->addView(makeHint(getStr("widgets/image_animated")));
 
     animatedRow->addView(animatedColumn);
+
+    // SVG：矢量图没有固定分辨率，Image 按**自己的布局尺寸**栅格化，尺寸变了会自动重新栅格化。
+    // 手动验收点：换窗口大小 / 改 uiScale 时它依然清晰（不是被拉伸的位图）。
+    Box* svgColumn = new Box(Axis::COLUMN);
+    svgColumn->setAlignItems(AlignItems::CENTER);
+    svgColumn->setGap(4.0f);
+
+    Image* svg = new Image();
+    svg->setWidth(96.0f);
+    svg->setHeight(96.0f);
+    svg->setSvgFromFile("resources/svg_demo.svg");
+    svgColumn->addView(svg);
+    svgColumn->addView(makeHint(getStr("widgets/image_svg")));
+
+    animatedRow->addView(svgColumn);
     imageCard->addView(animatedRow);
     page->addView(imageCard);
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include "bklv/core/image_decoder.hpp"
 #include "bklv/core/logger.hpp"
@@ -63,9 +64,111 @@ bool Image::setAnimationFromMemory(const void* data, size_t size)
     return this->applyAnimation(std::move(loaded));
 }
 
+bool Image::setSvgFromFile(const std::string& path)
+{
+    std::FILE* file = std::fopen(resourcePath(path).c_str(), "rb");
+    if (file == nullptr)
+    {
+        Logger::warning("SVG 读不到文件：" + path);
+        return false;
+    }
+
+    std::fseek(file, 0, SEEK_END);
+    const long size = std::ftell(file);
+    std::fseek(file, 0, SEEK_SET);
+
+    std::vector<unsigned char> bytes;
+    if (size > 0)
+    {
+        bytes.resize((size_t)size);
+        if (std::fread(bytes.data(), 1, bytes.size(), file) != bytes.size())
+            bytes.clear();
+    }
+    std::fclose(file);
+
+    if (bytes.empty())
+    {
+        Logger::warning("SVG 读不到内容：" + path);
+        return false;
+    }
+
+    return this->setSvgFromMemory(bytes.data(), bytes.size());
+}
+
+bool Image::setSvgFromMemory(const void* data, size_t size)
+{
+    if (data == nullptr || size == 0)
+        return false;
+
+    this->releaseOwnedTexture();
+
+    const unsigned char* bytes = static_cast<const unsigned char*>(data);
+    this->svgData.assign(bytes, bytes + size);
+    this->svgRasterWidth  = 0;
+    this->svgRasterHeight = 0;
+    this->animation       = DecodedAnimation(); // SVG 与动图互斥
+    this->pendingPath.clear();
+
+    // 立刻按当前尺寸栅格化一次（尺寸为 0 时用文档自带尺寸）
+    this->rasterizeSvg();
+    return !this->svgData.empty();
+}
+
+void Image::rasterizeSvg()
+{
+    if (this->svgData.empty() || !isTextureStoreReady())
+        return;
+
+    int width  = (int)(this->getWidth() + 0.5f);
+    int height = (int)(this->getHeight() + 0.5f);
+
+    // 布局还没算出尺寸时（auto 尺寸）先按文档自带的来
+    if (width <= 0 || height <= 0)
+    {
+        width  = 0;
+        height = 0;
+    }
+
+    if (width == this->svgRasterWidth && height == this->svgRasterHeight
+        && this->texture.isValid())
+        return; // 尺寸没变，不用重来
+
+    DecodedImage rasterized = decodeSvgMemory(this->svgData.data(), this->svgData.size(), width, height);
+    if (!rasterized.isValid())
+    {
+        Logger::warning("SVG 栅格化失败："
+            + (rasterized.getError().empty() ? std::string("未知原因") : rasterized.getError()));
+        return;
+    }
+
+    const TextureRef created =
+        loadTextureFromPixels(rasterized.pixels.data(), rasterized.width, rasterized.height);
+    if (!created.isValid())
+        return;
+
+    this->releaseOwnedTexture();
+    this->texture         = created;
+    this->ownsTexture     = true;
+    this->svgRasterWidth  = width;
+    this->svgRasterHeight = height;
+
+    // 尺寸为 auto 时用第一次栅格化的结果定尺寸，避免退化成 0x0
+    if (this->getWidth() <= 0.0f)
+        this->setWidth((float)rasterized.width);
+    if (this->getHeight() <= 0.0f)
+        this->setHeight((float)rasterized.height);
+
+    this->invalidate();
+}
+
 bool Image::applyAnimation(DecodedAnimation loaded)
 {
     this->releaseOwnedTexture();
+
+    // SVG 与动图互斥：换过来时把另一边的状态清掉
+    this->svgData.clear();
+    this->svgRasterWidth  = 0;
+    this->svgRasterHeight = 0;
 
     this->animation        = std::move(loaded);
     this->animationElapsed = 0.0f;
@@ -199,6 +302,10 @@ bool Image::setImageFromFile(const std::string& path)
 
 void Image::update()
 {
+    // SVG：布局尺寸变了就重新栅格化（换窗口 / 改宽高 / uiScale 变化都会走这里）
+    if (this->hasSvg())
+        this->rasterizeSvg();
+
     // 动图：只在**可见**时推进帧时钟（离屏时不占上传带宽），回来按绝对时间对齐
     if (this->hasAnimation())
     {

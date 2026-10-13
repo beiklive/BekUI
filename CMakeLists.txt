@@ -11,7 +11,23 @@
 #
 # 用法见 README.md。
 
-cmake_minimum_required(VERSION 3.24)
+# 先只要求 3.16（老版本的 CMake 不会在这里直接硬报错），然后给一条**看得懂**的版本提示：
+# 真正需要 3.24 的是 SDL3 子模块 —— 它用 $<LINK_LIBRARY:FRAMEWORK,...>（CMake 3.24 起才有）
+# 链接 macOS 的系统框架；tweeny 子模块要 3.23。写死 3.24 的话，用户只会看到
+# "CMake 3.24 or higher is required"，看不出是谁要求的、该怎么办。
+cmake_minimum_required(VERSION 3.16)
+
+if(CMAKE_VERSION VERSION_LESS 3.24)
+    message(FATAL_ERROR
+        "本项目需要 CMake ≥ 3.24，当前是 ${CMAKE_VERSION}。\n"
+        "  · SDL3 子模块用 $<LINK_LIBRARY:FRAMEWORK,...> 链接 macOS 系统框架（3.24 起支持）\n"
+        "  · tweeny 子模块要求 ≥ 3.23\n"
+        "升级办法：\n"
+        "  · macOS: brew upgrade cmake\n"
+        "  · Ubuntu/Debian: 用 Kitware 的 apt 源装新版（发行版自带通常偏旧）\n"
+        "  · Windows/MSYS2: pacman -S mingw-w64-x86_64-cmake\n"
+        "  · 或者用 CMake 官方安装包 / pip install cmake")
+endif()
 
 # 先不带语言调用一次 project()，只为拿到 CMAKE_SYSTEM_NAME。
 # 在 MSYS2 的「MSYS」环境里，CMake 判定的是 CMAKE_SYSTEM_NAME=MSYS 而 WIN32 为空；

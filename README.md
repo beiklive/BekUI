@@ -74,7 +74,9 @@ cd BekUI
 git submodule update --init --recursive
 ```
 
-只需要 `cmake`，SDL3 作为子目录一起编，**不需要 `brew install sdl3`**：
+**需要 CMake ≥ 3.24**（SDL3 用 `$<LINK_LIBRARY:FRAMEWORK,...>` 链接 macOS 系统框架、
+tweeny 要 ≥ 3.23）。版本不够时配置阶段会直接告诉你缺什么、怎么升级。
+除此之外只需要 `cmake`，SDL3 作为子目录一起编，**不需要 `brew install sdl3`**：
 
 ```bash
 cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
@@ -88,6 +90,25 @@ cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk   # 产物�
 
 不需要 Vulkan 就别碰 `build/vk`：只有它需要额外的 Vulkan SDK（见下）。
 `-DBKLV_TARGETS=<完整名字>` 可以只编指定目标（逗号分隔多个），目前只有一个目标。
+
+### 图片格式与可选解码器
+
+| 格式 | 解码器 | 备注 |
+|---|---|---|
+| PNG / JPEG / BMP | macOS 用系统 ImageIO，其余平台用 stb_image | 基础位图 |
+| GIF（静态 + 动图） | stb_image（全平台同一份实现） | 逐帧播放，帧已在解码器里合成好 |
+| WebP（静态 + 动图） | libwebp（`bklv/3rd/webp`） | 用 `-DBKLV_WITH_WEBP=OFF` 关掉 |
+| SVG | lunasvg + plutovg | 用 `-DBKLV_WITH_SVG=OFF` 关掉；按视图尺寸栅格化 |
+| HEIC / TIFF / ICO 等 | 只有 macOS 的 ImageIO 能解 | 非 macOS 上会明确报"不支持该格式" |
+
+两个可选解码器**缺子模块也不会让配置失败**：没拉下来时对应功能自动关闭，
+调用时返回一句明确的错误（而不是编译不过）。Switch 那边用
+`./scripts/build_switch.sh --no-webp / --no-svg` 关。
+
+**像素统一是非预乘 RGBA8**（ImGui 的混合方程是直通 alpha：GL 用
+`SRC_ALPHA/ONE_MINUS_SRC_ALPHA`，Vulkan 用 `VK_BLEND_FACTOR_SRC_ALPHA`）。
+macOS 的 ImageIO 与 lunasvg 的位图都是预乘的，两条路都在解码后做了反预乘，
+否则半透明图会整体偏暗。解码前还会按头部卡尺寸上限（单边 8192、单帧 4K 像素）。
 
 ### 运行
 
@@ -299,7 +320,10 @@ bklv/platforms/*           PlatformSDL3 / PlatformSwitch
 | [`bklv/3rd/yoga`](https://github.com/facebook/yoga) | `v3.2.1` | Flexbox 自动布局、尺寸约束和间距 | MIT |
 | [`bklv/3rd/tweeny`](https://github.com/mobius3/tweeny) | `v4.1.0` | C++17 头文件动画插值、缓动和关键帧（库当前未用，保留给后续的属性动画） | MIT |
 | [`bklv/3rd/SDL`](https://github.com/libsdl-org/SDL) | `release-3.4.16` | 窗口、输入事件、手柄和 OpenGL 上下文（源码编译成静态库） | zlib |
-| [`bklv/3rd/stb`](https://github.com/nothings/stb) | 上游 master | `stb_image.h`：Linux / Windows / Switch 的图片解码 | public domain / MIT |
+| [`bklv/3rd/stb`](https://github.com/nothings/stb) | 上游 master | `stb_image.h`：Linux / Windows / Switch 的位图解码 + GIF（含逐帧动画） | public domain / MIT |
+| [`bklv/3rd/webp`](https://github.com/webmproject/libwebp) | `v1.5.0` | WebP 解码（静态 + 动图），只编解码器与 demux | BSD-3-Clause |
+| [`bklv/3rd/lunasvg`](https://github.com/sammycage/lunasvg) | `v3.1.0` | SVG 解析与栅格化 | MIT |
+| [`bklv/3rd/plutovg`](https://github.com/sammycage/plutovg) | 上游 main（固定提交） | lunasvg 的光栅化后端 | MIT |
 
 Yoga 固定在 `v3.2.1` 对应提交 `042f501`，Tweeny 固定在 `v4.1.0` 对应提交 `68a7f44`。
 Git 子模块记录精确提交，因此克隆项目后可复现相同版本。

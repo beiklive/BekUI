@@ -1388,3 +1388,75 @@ tests/image_format_test → 100 项 0 失败
   VK：同上 → createTexture 与 updateTexture 在 Vulkan 上也跑通
 demo：`resources/anim_demo.gif`（64x64、4 帧、每帧 80ms）加在"控件"页的图片卡里作为手动验收点
 ```
+
+---
+
+## v30 补全 WebP 与 SVG（都走可选依赖，零网络配置）
+
+### 一、依赖
+
+| 子模块 | 版本 | 用途 | 许可证 |
+|---|---|---|---|
+| `bklv/3rd/webp` | libwebp **v1.5.0** | WebP 解码（静态 + 动图），只编解码器与 demux | BSD-3 |
+| `bklv/3rd/lunasvg` | **v3.1.0** | SVG 解析 | MIT |
+| `bklv/3rd/plutovg` | 上游 main（固定提交） | lunasvg 的光栅化后端 | MIT |
+
+- **不用 lunasvg 自己的 CMakeLists**：它用 `FetchContent` 在配置阶段去网上拉 plutovg
+  （要联网 + 多一个隐藏依赖）。我们把 plutovg 也作为自己的子模块，按源文件直接编
+  `bklv_svg`（lunasvg 的 `source/*.cpp` + plutovg 的 `source/*.c`），配置/编译全程离线。
+- libwebp 只编解码需要的目录（dec/demux/dsp/utils），工具/编码器/示例/thread 全关。
+- **两个都缺子模块也不会配置失败**：`BKLV_WITH_WEBP` / `BKLV_WITH_SVG` 先探测文件是否存在，
+  缺了就只打一条提示、定义不启用；对应 TU 编成"返回带 error 的空图"的桩。
+  新增 `isImageFormatSupported(ImageFormat)`，调用方能在**运行期**查这个构建支持什么。
+  验证过：`-DBKLV_WITH_WEBP=OFF -DBKLV_WITH_SVG=OFF` 能配置、能编、测试自动跳过相关小节。
+
+### 二、WebP
+
+- 静态：`WebPGetInfo` 先卡尺寸上限 → `WebPDecodeRGBA`（libwebp 给的是**非预乘** RGBA，正合契约）。
+- 动图：`WebPAnimDecoder`（webpdemux）→ **合成好的整幅帧** + 时间戳；帧延迟用相邻时间戳差值
+  换算（首帧用第二帧回填，末帧沿用前一帧），和 GIF 一样挂在同一套帧时钟上，没有第二套播放器。
+- 有 libwebp 时 WebP 全平台都走它（避免"桌面能解、Switch 不能解"）；没编才回落到平台解码器
+  （macOS 的 ImageIO 仍然能解 WebP）。
+
+### 三、SVG
+
+- **必须给像素尺寸**：新增 `decodeSvgFile/Memory(data, size, width, height)`（给 0 用文档自带尺寸）。
+- `Image::setSvgFromFile(path)`：留着源文档，按**视图自己的布局尺寸**栅格化；
+  `update()` 里发现尺寸变了（换窗口 / 改宽高 / uiScale 变化）就重新栅格化并重建纹理 ——
+  这就是矢量图的代价，缓存键必须带尺寸。
+- **像素转换容易踩**：lunasvg 的 `Bitmap` 是 **ARGB32 预乘**，而本项目契约是 **RGBA 非预乘**；
+  用它的 `Bitmap::convertToRGBA()`（自己手写容易漏通道顺序），测试里用半透明 SVG 钉住这一点。
+
+### 四、Switch
+
+`scripts/build_switch.sh` 里：libwebp 的 C 源用 `${CC}`（`-std=c11`）编 —— **不能用 g++ 当 C++ 编**；
+并且**不定义 `HAVE_CONFIG_H`**（libwebp 的 config.h 是它自己 CMake 生成的，源码里是
+`#ifdef HAVE_CONFIG_H` 才 include，不定义就走编译器探测的默认分支）。lunasvg/plutovg 同理。
+子模块缺失或编不过时用 `--no-webp` / `--no-svg` 关掉。
+（Switch 真机未验证，桌面 GL/VK 已验证。）
+
+### 五、验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2530 项）；gl/vk 均"构建通过，零警告"
+tests/image_format_test → 152 项 0 失败（新增）：
+  静态 WebP 2x2 解码 + 半透明像素是**非预乘**的 255
+  WebP 动图 4 帧 / 64x64 / 延迟 80ms / 帧内容不同 / frameIndexAt 相位
+  SVG 文档自带尺寸 8x8；同一文档按 16x16 与 32x8 重新栅格化
+  SVG 半透明部分 alpha≈128 且 RGB 是 255（lunasvg 预乘位图转换正确）
+  SVG 也吃尺寸上限（20000x20000 被拒）
+  isImageFormatSupported：PNG/JPEG/BMP/GIF 恒真，WebP/SVG 按构建
+  Image 视图：SVG 与动图互斥、装图/清状态
+关掉可选解码器后：配置 ✓ 编译 ✓ 测试 114 项 0 失败（相关小节打印"[跳过]"）
+运行时（临时改起始页 + 打栅格化日志，已回滚）：GL/VK 都打出"SVG 栅格化 96x96"，无 warning/error
+```
+
+### 六、CMake 报错的排查结论（用户反馈"配置阶段就报错"）
+
+本机复现了 5 种场景都没事（fresh GL、fresh VK、只编 designer、已有 build/gl、同目录切后端），
+所以**把可疑处都补上了**：
+- 版本要求写死 `3.24` 时，老 CMake 只会说"CMake 3.24 or higher is required"，看不出是谁要的 →
+  现在先声明 3.16，再显式检查并报出**原因**（SDL3 的 `$<LINK_LIBRARY:FRAMEWORK,...>`、tweeny ≥ 3.23）
+  和**升级命令**（brew / apt / pacman / 官方安装包）。
+- 新增的可选依赖一律"缺了也不报错"（见上）。
+- 额外构建目录共用 `dist/` 导致的"验收跑错二进制"写进了 AGENTS（这次自己踩到）。

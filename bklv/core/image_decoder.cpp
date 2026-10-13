@@ -19,10 +19,16 @@
 namespace bklv
 {
 
-// GIF 解码器（image_decoder_gif.cpp）：文件内使用
+// 各格式解码器（各自一个编译单元）：文件内使用
 namespace detail
 {
 DecodedAnimation decodeGifAnimation(const unsigned char* data, size_t size);
+DecodedImage decodeWebPImage(const unsigned char* data, size_t size);
+DecodedAnimation decodeWebPAnimation(const unsigned char* data, size_t size);
+DecodedImage decodeSvgMemory(const unsigned char* data, size_t size, int width, int height);
+// 可选解码器是否编进来了（对应 TU 里按宏给出真/假）
+bool isWebPSupported();
+bool isSvgSupported();
 }
 
 namespace
@@ -162,6 +168,23 @@ ImageFormat detectImageFormat(const void* data, size_t size)
     if (startsWith(bytes, size, "\0\0\x01\0", 4))
         return ImageFormat::ICO;
 
+    // SVG 是文本：允许前导空白与 UTF-8 BOM，认 "<?xml" 或 "<svg"
+    {
+        size_t offset = 0;
+        if (size >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            offset = 3;
+        while (offset < size
+            && (bytes[offset] == ' ' || bytes[offset] == '\t' || bytes[offset] == '\r'
+                || bytes[offset] == '\n'))
+            offset++;
+
+        if (size - offset >= 5
+            && (std::memcmp(bytes + offset, "<?xml", 5) == 0
+                || std::memcmp(bytes + offset, "<svg ", 5) == 0
+                || (size - offset >= 4 && std::memcmp(bytes + offset, "<svg", 4) == 0)))
+            return ImageFormat::SVG;
+    }
+
     // HEIF/HEIC/AVIF：ISO-BMFF，第 4 字节起是 ftyp box，品牌决定具体格式
     if (startsWith(bytes, size, "ftyp", 4, 4) && size >= 12)
     {
@@ -178,6 +201,37 @@ ImageFormat detectImageFormat(const void* data, size_t size)
     return ImageFormat::UNKNOWN;
 }
 
+bool isImageFormatSupported(ImageFormat format)
+{
+    switch (format)
+    {
+        case ImageFormat::PNG:
+        case ImageFormat::JPEG:
+        case ImageFormat::BMP:
+            // 平台解码器永远在（macOS 的 ImageIO / 其余平台的 stb）
+            return true;
+        case ImageFormat::GIF:
+            // GIF 解码器（stb）永远编进来
+            return true;
+        case ImageFormat::WEBP:
+            return detail::isWebPSupported();
+        case ImageFormat::SVG:
+            return detail::isSvgSupported();
+        case ImageFormat::TIFF:
+        case ImageFormat::HEIC:
+        case ImageFormat::ICO:
+            // 只有 macOS 的 ImageIO 认这些
+#if defined(__APPLE__) && !defined(BKLV_FORCE_STB_IMAGE)
+            return true;
+#else
+            return false;
+#endif
+        case ImageFormat::UNKNOWN:
+            break;
+    }
+    return false;
+}
+
 const char* getImageFormatName(ImageFormat format)
 {
     switch (format)
@@ -187,6 +241,7 @@ const char* getImageFormatName(ImageFormat format)
         case ImageFormat::BMP: return "BMP";
         case ImageFormat::GIF: return "GIF";
         case ImageFormat::WEBP: return "WebP";
+        case ImageFormat::SVG: return "SVG";
         case ImageFormat::TIFF: return "TIFF";
         case ImageFormat::HEIC: return "HEIC/AVIF";
         case ImageFormat::ICO: return "ICO";
@@ -657,6 +712,25 @@ DecodedImage decodeImageMemory(const void* data, size_t size)
         return result;
     }
 
+    if (format == ImageFormat::SVG)
+    {
+        // SVG 走 lunasvg 栅格化（尺寸用文档自带的）
+        result = detail::decodeSvgMemory(static_cast<const unsigned char*>(data), size, 0, 0);
+        return result;
+    }
+
+    if (format == ImageFormat::WEBP)
+    {
+#if defined(BKLV_USE_WEBP)
+        // 有 libwebp 就统一走它（全平台同一份实现，避免桌面能解、Switch 不能解）
+        result = detail::decodeWebPImage(static_cast<const unsigned char*>(data), size);
+        return result;
+#else
+        // 没编 libwebp：交给平台解码器试（macOS 的 ImageIO 能解 WebP），
+        // 其余平台会走到下面的"不支持"分支并说明原因
+#endif
+    }
+
     if (!isPlatformFormats(format))
     {
         if (format == ImageFormat::UNKNOWN)
@@ -721,9 +795,17 @@ DecodedAnimation decodeAnimationMemory(const void* data, size_t size)
     }
 
     const ImageFormat format = detectImageFormat(data, size);
+
+    if (format == ImageFormat::WEBP)
+    {
+        // 只有编了 libwebp 的构建支持 WebP 动图（demux）
+        return detail::decodeWebPAnimation(static_cast<const unsigned char*>(data), size);
+    }
+
     if (format != ImageFormat::GIF)
     {
-        result.error = std::string("暂不支持 ") + getImageFormatName(format) + " 动画（目前只有 GIF）";
+        result.error = std::string("暂不支持 ") + getImageFormatName(format)
+            + " 动画（目前只有 GIF 与 WebP）";
         return result;
     }
 
@@ -735,6 +817,32 @@ DecodedAnimation decodeAnimationMemory(const void* data, size_t size)
         return result;
 
     return detail::decodeGifAnimation(static_cast<const unsigned char*>(data), size);
+}
+
+DecodedImage decodeSvgMemory(const void* data, size_t size, int width, int height)
+{
+    return detail::decodeSvgMemory(static_cast<const unsigned char*>(data), size, width, height);
+}
+
+DecodedImage decodeSvgFile(const char* path, int width, int height)
+{
+    if (path == nullptr)
+    {
+        DecodedImage result;
+        result.error = "路径为空";
+        return result;
+    }
+
+    std::vector<unsigned char> bytes;
+    std::string error;
+    if (!readWholeFile(path, bytes, error))
+    {
+        DecodedImage result;
+        result.error = error;
+        return result;
+    }
+
+    return detail::decodeSvgMemory(bytes.data(), bytes.size(), width, height);
 }
 
 DecodedAnimation decodeAnimationFile(const char* path)

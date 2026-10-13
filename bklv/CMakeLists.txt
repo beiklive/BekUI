@@ -26,7 +26,11 @@ set(BKLV_3RD "${BKLV_DIR}/3rd")
 # 独立配置时（直接在 bklv/ 里跑 cmake）需要自己的 project()。被 add_subdirectory
 # 引入时 CMAKE_SOURCE_DIR 指向外层工程，就不会重复调用。
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    cmake_minimum_required(VERSION 3.24)
+    # 版本要求与仓库根一致，理由见根 CMakeLists.txt（SDL3 需要 3.24）
+    cmake_minimum_required(VERSION 3.16)
+    if(CMAKE_VERSION VERSION_LESS 3.24)
+        message(FATAL_ERROR "bklv 需要 CMake ≥ 3.24，当前是 ${CMAKE_VERSION}")
+    endif()
     project(bklv LANGUAGES C CXX)
 endif()
 
@@ -204,6 +208,62 @@ endif()
 # Yoga：单独用 C++20 编译
 # ---------------------------------------------------------------------------
 #
+# ---------------------------------------------------------------------------
+# 可选图片解码器：WebP（libwebp）与 SVG（lunasvg + plutovg）
+#
+# 两者都是**可选**的：子模块没拉下来（或显式关掉）时配置阶段只给一条提示、不报错，
+# 编译出来的库里对应的分支会明确说"这个构建没有编 X 解码"。这样别人 clone 完
+# 没跑 `git submodule update --init --recursive` 也能编过。
+# ---------------------------------------------------------------------------
+
+option(BKLV_WITH_WEBP "启用 WebP 解码（需要 bklv/3rd/webp 子模块）" ON)
+option(BKLV_WITH_SVG "启用 SVG 栅格化（需要 bklv/3rd/lunasvg + bklv/3rd/plutovg 子模块）" ON)
+
+if(BKLV_WITH_WEBP AND EXISTS "${BKLV_3RD}/webp/CMakeLists.txt")
+    # 只要解码器 + demux（动图）：编码器、命令行工具、示例全关 —— Switch 上省体积，
+    # 也避免它们把 -Wall 的警告带进来。
+    foreach(_webp_option
+        WEBP_BUILD_ANIM_UTILS WEBP_BUILD_CWEBP WEBP_BUILD_DWEBP WEBP_BUILD_GIF2WEBP
+        WEBP_BUILD_IMG2WEBP WEBP_BUILD_VWEBP WEBP_BUILD_WEBPINFO WEBP_BUILD_WEBPMUX
+        WEBP_BUILD_LIBWEBPMUX WEBP_BUILD_EXTRAS WEBP_BUILD_WEBP_JS WEBP_BUILD_FUZZTEST
+        WEBP_USE_THREAD)
+        set(${_webp_option} OFF CACHE BOOL "" FORCE)
+    endforeach()
+    add_subdirectory("${BKLV_3RD}/webp" "${CMAKE_CURRENT_BINARY_DIR}/webp" EXCLUDE_FROM_ALL)
+    target_link_libraries(bklv_opts INTERFACE webp webpdemux)
+    target_compile_definitions(bklv_opts INTERFACE BKLV_USE_WEBP)
+    message(STATUS "bklv：WebP 解码已启用（libwebp 解码器 + demux）")
+elseif(BKLV_WITH_WEBP)
+    message(STATUS "bklv：没找到 bklv/3rd/webp，WebP 解码关闭（git submodule update --init --recursive）")
+endif()
+
+if(BKLV_WITH_SVG
+    AND EXISTS "${BKLV_3RD}/lunasvg/source/lunasvg.cpp"
+    AND EXISTS "${BKLV_3RD}/plutovg/source/plutovg-canvas.c")
+    # **不用 lunasvg 自己的 CMakeLists**：它会用 FetchContent 去网上拉 plutovg，
+    # 配置阶段要联网、还多一个隐藏依赖。这里按源文件自己编，plutovg 也是我们的子模块，
+    # 于是整个配置/编译过程完全离线。
+    file(GLOB_RECURSE BKLV_LUNASVG_SOURCES CONFIGURE_DEPENDS "${BKLV_3RD}/lunasvg/source/*.cpp")
+    file(GLOB_RECURSE BKLV_PLUTOVG_SOURCES CONFIGURE_DEPENDS "${BKLV_3RD}/plutovg/source/*.c")
+
+    add_library(bklv_svg STATIC ${BKLV_LUNASVG_SOURCES} ${BKLV_PLUTOVG_SOURCES})
+    target_include_directories(bklv_svg
+        PUBLIC "${BKLV_3RD}/lunasvg/include"
+        PRIVATE "${BKLV_3RD}/lunasvg/source" "${BKLV_3RD}/plutovg/include"
+            "${BKLV_3RD}/plutovg/source")
+    # 和它们自己 CMakeLists 的静态构建定义保持一致
+    target_compile_definitions(bklv_svg PRIVATE
+        LUNASVG_BUILD LUNASVG_BUILD_STATIC PLUTOVG_BUILD PLUTOVG_BUILD_STATIC)
+    set_target_properties(bklv_svg PROPERTIES
+        CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON C_STANDARD 11 C_STANDARD_REQUIRED ON
+        POSITION_INDEPENDENT_CODE ON)
+    target_link_libraries(bklv_opts INTERFACE bklv_svg)
+    target_compile_definitions(bklv_opts INTERFACE BKLV_USE_SVG)
+    message(STATUS "bklv：SVG 支持已启用（lunasvg + plutovg）")
+elseif(BKLV_WITH_SVG)
+    message(STATUS "bklv：没找到 bklv/3rd/lunasvg（或 plutovg），SVG 支持关闭")
+endif()
+
 # 不用 add_subdirectory(3rd/yoga/yoga)：它 include 的 cmake/project-defaults.cmake
 # 会在目录作用域里 add_compile_options(-Wall -Werror -fno-rtti) 并
 # set(CMAKE_CXX_STANDARD 20)，把 -Werror 传染给整个工程、破坏零警告约定。
@@ -265,6 +325,8 @@ set(BKLV_CORE_SOURCES
     core/graphics.cpp
     core/image_decoder.cpp
     core/image_decoder_gif.cpp
+    core/image_decoder_webp.cpp
+    core/image_decoder_svg.cpp
     core/image_writer.cpp
     core/resource.cpp
     core/i18n.cpp
