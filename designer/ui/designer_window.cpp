@@ -96,6 +96,33 @@ const char* layerOpLabel(const std::string& op)
     return op.c_str();
 }
 
+// 字段名 → 中文标签。界面上一律显示中文（用户明确要求"能中文就中文"）。
+const char* fieldLabel(const char* key)
+{
+    struct Pair { const char* key; const char* label; };
+    static const Pair pairs[] = {
+        { "width", "宽度" }, { "height", "高度" }, { "minWidth", "最小宽度" },
+        { "minHeight", "最小高度" }, { "maxWidth", "最大宽度" }, { "maxHeight", "最大高度" },
+        { "padding", "内边距" }, { "paddingTop", "上内边距" }, { "paddingSides", "左右内边距" },
+        { "paddingBottom", "下内边距" }, { "paddingLeft", "左内边距" },
+        { "paddingRight", "右内边距" }, { "margin", "外边距" }, { "marginTop", "上外边距" },
+        { "marginSides", "左右外边距" }, { "marginBottom", "下外边距" },
+        { "radius", "圆角" }, { "cornerRadius", "圆角" }, { "borderThickness", "描边宽度" },
+        { "borderColor", "描边颜色" }, { "backgroundColor", "背景颜色" }, { "gap", "间距" },
+        { "grow", "伸展" }, { "shrink", "收缩" }, { "opacity", "不透明度" },
+        { "axis", "主轴" }, { "justifyContent", "主轴对齐" }, { "alignItems", "交叉轴对齐" },
+        { "inset", "内缩" }, { "align", "水平对齐" }, { "valign", "垂直对齐" },
+        { "fill", "填充" }, { "stroke", "描边" }, { "strokeWidth", "描边宽度" },
+        { "color", "文字颜色" }, { "fontSize", "字号" }, { "source", "数据来源" },
+        { "text", "文字" }, { "bind", "绑定" }, { "src", "图片" }, { "scaling", "缩放方式" },
+        { "id", "标识" }, { "op", "绘制类型" },
+    };
+    for (const Pair& pair : pairs)
+        if (std::strcmp(pair.key, key) == 0)
+            return pair.label;
+    return key;
+}
+
 bool inputNumberFloat(const char* label, double& value)
 {
     propLabel(label);
@@ -3141,7 +3168,7 @@ void DesignerWindow::drawProps()
                 const bool present = has || isString || isArray;
                 ImGui::TextColored(
                     present ? mutedColor() : ImGui::GetStyle().Colors[ImGuiCol_TextDisabled],
-                    "%s", key);
+                    "%s", fieldLabel(key));
                 if (ImGui::IsItemHovered())
                     ImGui::SetTooltip("%s%s", key,
                         present ? "" : "（当前没写，改了才写进来）");
