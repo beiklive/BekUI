@@ -261,10 +261,57 @@ void Shell::pushDialog(View* dialog, const DialogOptions& options)
 
     this->overlayLayer->addView(dialog);
     this->dialogStack.push_back(dialog);
-    getInputManager().pushModal(dialog, options.closeOnBack);
+    this->dialogOptionStack.push_back(options);
+
+    // B 键的读取点：模态子树里没人处理 B 时由外壳决定关不关（closeOnBack）。
+    // 用 ModalEntry 上的兜底而不是全局槽位 —— 生命周期随模态栈结束，
+    // 不会留下指向已销毁 Shell 的回调；先拷贝再调（回调里会 popModal）。
+    getInputManager().pushModal(dialog, options.closeOnBack,
+        [this](ControllerButton button) { return this->handleModalUnhandled(button); });
+
+    // 点弹窗之外的区域关闭（closeOnDimClick）。
+    // F1(b)：不动 hitTest/focusFromPointer 的焦点语义，只登记"模态内空白点击"回调，
+    // 由这里判点是否落在弹窗矩形内。弹窗自己的空白区域不算"外面"，不关。
+    if (options.closeOnDimClick)
+    {
+        getInputManager().setModalEmptyClickHandler([this, dialog](const Point& position) {
+            if (this->dialogStack.empty() || this->dialogStack.back() != dialog)
+                return;
+            if (!dialog->getFrame().contains(position))
+                this->popDialog(dialog);
+        });
+    }
 }
 
-void Shell::popDialog(View* dialog)
+bool Shell::handleModalUnhandled(ControllerButton button)
+{
+    if (button != ControllerButton::B || this->dialogStack.empty())
+        return false;
+
+    if (!this->dialogOptionStack.empty() && !this->dialogOptionStack.back().closeOnBack)
+        return false;
+
+    this->popDialog(this->dialogStack.back());
+    return true;
+}
+
+void Shell::setOnBackRequested(std::function<bool()> handler)
+{
+    this->onBackRequested = std::move(handler);
+
+    // 非模态时的 B 路由：注册一个隐藏的 B 动作挂在外壳自己身上，
+    // 焦点在内容树里按 B 会沿父链冒泡到外壳（页头/底栏不在焦点链里，不受影响）。
+    if (!this->backActionRegistered)
+    {
+        this->backActionRegistered = true;
+        this->registerAction(ControllerButton::B, "", [this](View*) {
+            if (this->onBackRequested)
+                this->onBackRequested();
+        }, true);
+    }
+}
+
+void Shell::popDialog(View* dialog, bool free)
 {
     if (this->dialogStack.empty())
         return;
@@ -275,22 +322,25 @@ void Shell::popDialog(View* dialog)
 
     View* top = this->dialogStack.back();
     this->dialogStack.pop_back();
+    if (!this->dialogOptionStack.empty())
+        this->dialogOptionStack.pop_back();
 
     // 顺序要紧（F3）：先在**仍在树里**时 popModal —— 模态栈用它保存的原焦点恢复，
     // 而它只校验 savedFocus->getParent()；若先摘视图，恢复出来的焦点会落到已脱离树的面板上。
     getInputManager().popModal();
 
-    // 再从树上摘掉：不摘的话弹窗会永久留在覆盖层里（既泄漏又继续被绘制）
+    // 再从树上摘掉：不摘的话弹窗会永久留在覆盖层里（既泄漏又继续被绘制）。
+    // free 的默认值与 App::pushOverlay/popOverlay 一致：挂上去之后所有权归外壳。
     if (top != nullptr && top->getParent() == this->overlayLayer)
-        this->overlayLayer->removeView(top);
+        this->overlayLayer->removeView(top, free);
 
-    // 遮罩与弹窗一一对应，跟着一起摘
+    // 遮罩与弹窗一一对应，跟着一起摘；它是外壳 new 的，所以永远由外壳释放
     if (!this->dimStack.empty())
     {
         View* dim = this->dimStack.back();
         this->dimStack.pop_back();
         if (dim != nullptr && dim->getParent() == this->overlayLayer)
-            this->overlayLayer->removeView(dim);
+            this->overlayLayer->removeView(dim, true);
     }
 }
 

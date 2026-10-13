@@ -22,6 +22,7 @@ namespace bklv
 {
 
 class View;
+class Box;
 
 // 导航方向
 enum class FocusDirection
@@ -189,9 +190,20 @@ class InputManager
     //
     // pushModal() 会把当前焦点存起来，并把"指针命中"和"方向导航"限制在 modal 子树内
     // （点到外面等于点空白，不会穿透到下面的界面）；popModal() 恢复之前的焦点。
-    // 传 closeOnBack=true 时按 B 会直接关闭这一层（modal 自己也可以注册 B 动作先处理）。
-    void pushModal(View* modal, bool closeOnBack = true);
+    //
+    // onUnhandled：模态子树里没人消费这个按键时的兜底（返回 true = 已处理）。
+    // 壳层用它做 closeOnBack（`Shell::pushDialog` 传进来，内部再走 popDialog，
+    // 这样 Shell 的弹窗栈/遮罩栈不会跟输入层脱节）。挂在 ModalEntry 上而不是全局槽位，
+    // 生命周期随模态栈一起结束，不会留下指向已销毁 Shell 的回调。
+    //
+    // closeOnBack：**没有** onUnhandled 时的兜底语义 —— 直接 popModal()。
+    // 壳层在场时永远走 onUnhandled（它传的 closeOnBack 与自己的 DialogOptions 一致）。
+    using ModalUnhandledHandler = std::function<bool(ControllerButton)>;
+    void pushModal(View* modal, bool closeOnBack = true, ModalUnhandledHandler onUnhandled = nullptr);
     void popModal();
+    // 最上层模态登记的"空白处点击"回调（Shell 用来实现 closeOnDimClick）。
+    // 注册点在 pushModal 之后；点模态内的空白（hitTest 返回 nullptr）时触发。
+    void setModalEmptyClickHandler(std::function<void(const Point&)> handler);
     View* getTopModal() const;
     bool hasModal() const { return !this->modals.empty(); }
     // view 是否在最上层模态的子树里（模态生效时用来限制导航）
@@ -224,6 +236,23 @@ class InputManager
     // 是否已经用鼠标点击过；点击后焦点会跟着鼠标走
     bool isPointerActive() const { return this->pointerActive; }
 
+    // ---- 设备无关的输入入口 ----
+    //
+    // update() 每帧从 ImGuiIO / 手柄读状态之后，内部也走这两个入口。
+    // 单独暴露的理由（v15 审计）：handleActions/handlePointer 直接读 ImGui::GetIO()，
+    // 无窗口测试根本驱动不了它们 —— 「B 路由 / 点遮罩关闭」这类行为就只能靠人肉试。
+    // 平台层（Switch 等）也可以绕过 ImGui 直接喂事件。
+
+    // 一次指针点击（按下那一刻）。命中 → 聚焦 + 派发 A 动作；
+    // 没命中且在模态内 → 交给该模态登记的「空白处回调」（弹窗点外部关闭用）。
+    // 返回是否命中了视图。
+    bool dispatchPointerClick(const Point& position);
+
+    // 把一个动作交给当前焦点。有模态时**只在模态子树内**逐级派发（不冒泡出模态），
+    // 没人处理再问模态登记的 onUnhandled；没有模态时沿父链正常冒泡。
+    // 返回是否被消费。
+    bool dispatchAction(ControllerButton button);
+
     // ---- 方向导航 ----
 
     // 按方向移动焦点。键盘/手柄由 update() 每帧调用；
@@ -240,6 +269,16 @@ class InputManager
     }
     void clearSystemAction(int key) { this->systemActions.erase(key); }
     bool hasSystemAction(int key) const { return this->systemActions.count(key) > 0; }
+
+    // 触发一次系统键（按下沿语义）。有 ImGui 上下文时 update() 内部也走这里；
+    // 平台层（Switch 的 HOME/CAPTURE 到不了 ImGui，见 v15）与无窗口测试可以直接喂。
+    // 返回是否有注册的动作被触发。
+    bool dispatchSystemKey(int key);
+
+    // 本帧这个动作是否已经被系统键消费（handleActions 靠它避免同帧双响应：
+    // 在 A/B 上注册系统键时，系统键与普通动作各吃一次是 bug）。
+    // 暴露出来是为了让平台层与测试能检查同帧互斥是否生效。
+    bool isActionConsumedThisFrame(ControllerButton button) const;
 
     void navigate(FocusDirection direction);
 
@@ -283,10 +322,14 @@ class InputManager
     // ---- 焦点记忆（跨层 / 同层换页）----
 
     // 记下当前焦点（跨层用：内容层 ↔ 弹窗）。
+    //
+    // 记忆是**栈**（v15 的 F5）：弹窗套弹窗时每一层各压一条，逐级还原；
+    // 单槽的话里层弹窗一打开就把外层记的覆盖掉，关到外层时回不到原控件。
     void remember();
 
-    // 恢复到 remember() 记下的控件。恢复成功返回 true；
-    // 目标不在了就退该范围的默认焦点，连默认焦点都没有则**保持当前焦点不动**。
+    // 恢复到最近一次 remember() 记下的控件，并**弹出**那条记录。
+    // 恢复成功返回 true；目标不在了就退该范围的默认焦点，
+    // 连默认焦点都没有则**保持当前焦点不动**。
     //
     // 名字说明：原本叫 restore()，但 bool 返回值的动作方法要过
     // scripts/check_naming.py 的前缀白名单（is/has/can/get + 动词表），
@@ -296,6 +339,18 @@ class InputManager
     // 按页面 id 记忆（同层换页用：主页 → 游戏库 → 回主页回到原卡片）。
     void rememberFor(const std::string& key);
     bool loadFocusFor(const std::string& key);
+
+    // ---- 跨层进出（弹窗打开 / 关闭时由壳层调）----
+
+    // 进层：先 remember()（压栈），再把焦点交给这一层的默认焦点。
+    // 层没有默认焦点时保持当前焦点不动（v14：覆盖层无默认焦点时输入仍被模态吃住）。
+    void enterLayer(Box* layerRoot);
+
+    // 出层：loadFocus() 还原上一次记下的焦点（失败时它内部已退该范围默认焦点）。
+    //
+    // 返回 void 是硬约束（v15 的 F4）：`leave` 不在 check_naming.py 的动作前缀表里，
+    // 写成 `bool leaveLayer()` 会被判违规；而"不许改白名单脚本"是定稿。
+    void leaveLayer();
 
     // 内部时钟推进（秒）。正常运行由 update() 用帧间隔累加；
     // 测试要确定性地验证撞边节流 / 长按重复时手动调。
@@ -309,6 +364,10 @@ class InputManager
     void handleNavigation();
     void handlePointer();
     void handleActions();
+
+    // 从当前焦点往上走到"范围根"（含）为止，逐级只看**这一级自己**注册的动作。
+    // 不用 View::triggerAction 的理由见 dispatchAction 的注释（它会冒到根视图）。
+    bool dispatchActionWithinScope(ControllerButton button);
 
     // 从 ImGuiIO 里读键盘边沿；keyIndex 用 ImGuiKey_*
     bool isKeyDownAny(int keyA, int keyB) const;
@@ -330,13 +389,15 @@ class InputManager
 
     // 系统键：优先级高于模态（见 setSystemAction 注释）
     std::map<int, std::function<void()>> systemActions;
+    // 本帧已被系统键消费的动作（A/B）。handleNavigation 顶部清空并填充，
+    // handleActions 用它避免"同一个 A/B 被系统键与普通动作各吃一次"（v15 另两条）。
+    std::vector<ControllerButton> consumedActionsThisFrame;
     float edgeHitMinInterval = 0.12f; // 秒
     double lastEdgeHitTime   = -1.0;  // 内部时钟（秒），< 0 表示还没触发过
     bool navigationBlockedByPolicy = false; // 本次 navigate 是否被策略拦下
 
-    // 焦点记忆（不存裸指针）
-    FocusRecord rememberedFocus;
-    bool hasRememberedFocus = false;
+    // 焦点记忆（不存裸指针）。跨层记忆是**栈**：逐级压、逐级弹（v15 F5）。
+    std::vector<FocusRecord> rememberedStack;
     std::map<std::string, FocusRecord> keyedFocusRecords;
 
     // 长按重复：borealis 的 250ms 触发 / 100ms 重复
@@ -351,6 +412,10 @@ class InputManager
         View* modal         = nullptr;
         View* savedFocus    = nullptr;
         bool closeOnBack    = true;
+        // 模态子树里没人消费按键时的兜底（Shell 用它做 closeOnBack → popDialog）
+        ModalUnhandledHandler onUnhandled;
+        // 点在模态内空白处（hitTest 返回 nullptr）时的回调（Shell 用它做 closeOnDimClick）
+        std::function<void(const Point&)> onEmptyClick;
     };
     std::vector<ModalEntry> modals;
     View* root         = nullptr;

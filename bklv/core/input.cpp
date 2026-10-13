@@ -139,15 +139,38 @@ void InputManager::setRepeatInterval(int milliseconds)
     this->repeatBack.setInterval(milliseconds);
 }
 
+namespace
+{
+
+// 系统键用的 ImGuiKey → 手柄按钮映射：只为了知道"这个系统键吃掉了哪个动作"，
+// 好让同帧的 handleActions 不再吃第二次（v15 另两条）。映射不上的返回 NONE。
+ControllerButton controllerButtonForKey(int key)
+{
+    if (key == ImGuiKey_Enter || key == ImGuiKey_Space || key == ImGuiKey_GamepadFaceDown)
+        return ControllerButton::A;
+    if (key == ImGuiKey_Escape || key == ImGuiKey_GamepadFaceRight)
+        return ControllerButton::B;
+    return ControllerButton::NONE;
+}
+
+} // namespace
+
 void InputManager::handleNavigation()
 {
     // 系统键最先处理：**优先级高于模态**（模态只挡导航与指针命中，不挡截图/Home/退出）。
     // 用 IsKeyPressed 的边缘语义，避免按住时每帧触发；无 ImGui 上下文（无窗口测试）时跳过。
+    this->consumedActionsThisFrame.clear();
     if (!this->systemActions.empty() && ImGui::GetCurrentContext() != nullptr)
     {
+        // 先收集本帧按下的键再逐个触发：回调里可能增删系统键注册表，
+        // 边遍历边调会让迭代器失效。
+        std::vector<int> pressed;
         for (const auto& entry : this->systemActions)
             if (entry.second && ImGui::IsKeyPressed((ImGuiKey)entry.first, false))
-                entry.second();
+                pressed.push_back(entry.first);
+
+        for (int key : pressed)
+            this->dispatchSystemKey(key);
     }
 
     // 时间来自帧间隔累加：键盘、手柄、各平台共用同一套计时，不需要平台 API
@@ -177,6 +200,32 @@ void InputManager::handleNavigation()
         this->navigate(FocusDirection::LEFT);
     else if (this->repeatRight.step(heldRight, now))
         this->navigate(FocusDirection::RIGHT);
+}
+
+bool InputManager::dispatchSystemKey(int key)
+{
+    auto it = this->systemActions.find(key);
+    if (it == this->systemActions.end() || !it->second)
+        return false;
+
+    // 先拷再调：回调里可能注销/改写这个注册表（那是它的自由）
+    std::function<void()> handler = it->second;
+    handler();
+
+    // 系统键也是某个动作键（A/B）时记一笔：同帧 handleActions 不许再吃一次（v15 另两条）
+    const ControllerButton consumed = controllerButtonForKey(key);
+    if (consumed != ControllerButton::NONE)
+        this->consumedActionsThisFrame.push_back(consumed);
+
+    return true;
+}
+
+bool InputManager::isActionConsumedThisFrame(ControllerButton button) const
+{
+    for (ControllerButton consumed : this->consumedActionsThisFrame)
+        if (consumed == button)
+            return true;
+    return false;
 }
 
 void InputManager::markNavigationBlockedByPolicy()
@@ -356,6 +405,11 @@ void InputManager::resetFocusState()
     this->currentFocus = nullptr;
     this->gestureTarget = nullptr; // 同上：根视图一换就是野指针
 
+    // 跨层焦点记忆栈也一起清：它记的是旧树里的路径，留着只会得到无意义的一层
+    // （按页记忆 keyedFocusRecords 不清：它是"页面 id → 路径"，解析失败会自然退默认焦点）。
+    this->rememberedStack.clear();
+    this->consumedActionsThisFrame.clear();
+
     // 撞边节流也一起复位：换根/重建视图后第一次撞边应该照常反馈，
     // 不能因为上一次的残留时间戳被静默吞掉。
     this->lastEdgeHitTime = -1.0;
@@ -373,7 +427,7 @@ bool InputManager::isInsideModal(View* view) const
     return false;
 }
 
-void InputManager::pushModal(View* modal, bool closeOnBack)
+void InputManager::pushModal(View* modal, bool closeOnBack, ModalUnhandledHandler onUnhandled)
 {
     if (modal == nullptr)
         return;
@@ -382,6 +436,7 @@ void InputManager::pushModal(View* modal, bool closeOnBack)
     entry.modal       = modal;
     entry.savedFocus  = this->currentFocus;
     entry.closeOnBack = closeOnBack;
+    entry.onUnhandled = std::move(onUnhandled);
     this->modals.push_back(entry);
 
     // 焦点先进模态里的默认焦点（否则第一次方向键会从外面开始算）
@@ -389,6 +444,14 @@ void InputManager::pushModal(View* modal, bool closeOnBack)
         this->giveFocus(inner);
     else if (modal->isFocusable())
         this->giveFocus(modal);
+}
+
+void InputManager::setModalEmptyClickHandler(std::function<void(const Point&)> handler)
+{
+    if (this->modals.empty())
+        return;
+
+    this->modals.back().onEmptyClick = std::move(handler);
 }
 
 void InputManager::popModal()
@@ -620,16 +683,41 @@ bool InputManager::applyFocusRecord(const FocusRecord& record)
 
 void InputManager::remember()
 {
-    this->rememberedFocus    = this->captureFocusRecord("");
-    this->hasRememberedFocus = true;
+    // 栈：弹窗套弹窗时每一层各压一条，逐级还原（单槽会被里层覆盖，见 v15 F5）
+    this->rememberedStack.push_back(this->captureFocusRecord(""));
 }
 
 bool InputManager::loadFocus()
 {
-    if (!this->hasRememberedFocus)
+    if (this->rememberedStack.empty())
         return false;
 
-    return this->applyFocusRecord(this->rememberedFocus);
+    FocusRecord record = this->rememberedStack.back();
+    this->rememberedStack.pop_back();
+
+    return this->applyFocusRecord(record);
+}
+
+void InputManager::enterLayer(Box* layerRoot)
+{
+    this->remember();
+
+    if (layerRoot == nullptr)
+        return;
+
+    // 取该层默认焦点；没有就保持当前焦点不动（v14）
+    if (View* inner = layerRoot->getDefaultFocus())
+    {
+        if (this->canFocus(inner))
+            this->giveFocus(inner);
+    }
+}
+
+void InputManager::leaveLayer()
+{
+    // loadFocus() 内部已经含"失败退该范围默认焦点"，都没有时保持当前焦点不动。
+    // 返回 void 是 check_naming.py 的硬约束（`leave` 不在动作前缀表里，见 v15 F4）。
+    this->loadFocus();
 }
 
 void InputManager::rememberFor(const std::string& key)
@@ -644,6 +732,107 @@ bool InputManager::loadFocusFor(const std::string& key)
         return false;
 
     return this->applyFocusRecord(it->second);
+}
+
+bool InputManager::dispatchActionWithinScope(ControllerButton button)
+{
+    View* scope = this->navigationScope();
+    if (this->currentFocus == nullptr || scope == nullptr)
+        return false;
+
+    for (View* v = this->currentFocus; v != nullptr; v = v->getParent())
+    {
+        // 只看**这一级自己**注册的动作（getActions 是公开的）：
+        // View::triggerAction 会顺带沿父链一路冒到根视图，模态弹窗不处理按键时
+        // 就会打到 Shell 的默认动作，违反"弹窗优先于外壳"（v15 F2）。
+        for (const InputAction& action : v->getActions())
+        {
+            if (action.button != button || !action.listener)
+                continue;
+
+            // 先拷出来：listener 里可能 unregister 自己（会改 actions 这个 vector）
+            ActionListener listener = action.listener;
+            listener(v);
+            return true;
+        }
+
+        if (v == scope)
+            break;
+    }
+
+    return false;
+}
+
+bool InputManager::dispatchAction(ControllerButton button)
+{
+    if (button == ControllerButton::NONE || this->currentFocus == nullptr)
+        return false;
+
+    if (!this->hasModal())
+        return this->currentFocus->triggerAction(button);
+
+    // ① 模态子树内逐级派发（到模态根为止，不冒泡出模态）
+    if (this->dispatchActionWithinScope(button))
+        return true;
+
+    // ② 没人处理：交给模态登记的兜底（Shell 用它把 closeOnBack 变成 popDialog，
+    //    这样 Shell 的弹窗栈与遮罩栈不会跟输入层脱节）。
+    //    先拷贝再调 —— 回调通常以 popModal() 收尾，会析构正在执行的那个 std::function。
+    if (this->modals.back().onUnhandled != nullptr)
+    {
+        ModalUnhandledHandler handler = this->modals.back().onUnhandled;
+        if (handler(button))
+            return true;
+    }
+
+    // ③ 没有兜底时退回模态自己的 closeOnBack 语义（直接关这一层）
+    if (button == ControllerButton::B && this->modals.back().closeOnBack
+        && !this->modals.empty())
+    {
+        this->popModal();
+        return true;
+    }
+
+    return false;
+}
+
+bool InputManager::dispatchPointerClick(const Point& position)
+{
+    // 有模态层时命中判定从最上层模态开始：点到模态外面等于点空白，不穿透到底下的界面
+    View* hitRoot = this->hasModal() ? this->getTopModal() : this->root;
+    if (hitRoot == nullptr)
+        return false;
+
+    this->pointerActive = true;
+
+    View* hit = hitRoot->hitTest(position);
+    if (hit == nullptr)
+    {
+        // 模态内的**空白**（弹窗外、或弹窗自己的非可聚焦区域）。
+        // 这里不动 hitTest / focusFromPointer 的焦点语义（v15 的 F1(b)）：
+        // 只把"点在哪儿"交给最上层模态登记的回调，由 Shell 判是否在弹窗矩形外。
+        // 同样先拷贝回调再调（它内部会 popDialog → popModal → 析构原回调）。
+        if (this->hasModal())
+        {
+            std::function<void(const Point&)> handler = this->modals.back().onEmptyClick;
+            if (handler)
+                handler(position);
+        }
+        return false;
+    }
+
+    // 手势已经吃掉这次按下（比如拖动/轻触识别器接管）就不再当成"点击"，
+    // 否则拖一个按钮会顺手把它按下去。
+    if (this->gestureTarget != nullptr && hit == this->gestureTarget
+        && !this->gestureTarget->getGestures().empty())
+        return true;
+
+    // 先聚焦，再执行动作。
+    // 每次都尝试执行（不判断焦点是否变化）：否则第二次点同一个按钮就没反应了。
+    this->focusFromPointer(hit);
+    audio::play(Sound::CLICK);
+    hit->triggerAction(ControllerButton::A, true);
+    return true;
 }
 
 void InputManager::focusFromPointer(View* hit)
@@ -748,35 +937,14 @@ void InputManager::handlePointer()
         return;
     }
 
-    this->pointerActive = true;
-
-    View* hit = hitRoot->hitTest(position);
-    if (hit == nullptr)
-    {
-        this->pointerDown = true;
-        return;
-    }
-
     // 只在按下的那一刻处理，按住不放不重复触发。
     const bool pressed = !this->pointerDown;
     this->pointerDown   = true;
-
     if (!pressed)
         return;
 
-    // 手势已经吃掉这次按下（比如拖动/轻触识别器接管）就不再当成"点击"，
-    // 否则拖一个按钮会顺手把它按下去。
-    if (this->gestureTarget != nullptr && hit == this->gestureTarget
-        && !this->gestureTarget->getGestures().empty())
-        return;
-
-    // 先聚焦，再执行动作。
-    // 每次都尝试执行（不判断焦点是否变化）：否则第二次点同一个按钮就没反应了，
-    // 而"是否响应指针"由 View::onPointerAction 决定，
-    // "重复点击是否安全"由各控件自己的动作逻辑决定（比如 tab 同页切换会直接返回）。
-    this->focusFromPointer(hit);
-    audio::play(Sound::CLICK);
-    hit->triggerAction(ControllerButton::A, true);
+    // 点击逻辑全部在 dispatchPointerClick 里（设备无关入口，无窗口测试也走同一条路）
+    this->dispatchPointerClick(position);
 }
 
 void InputManager::handleActions()
@@ -792,8 +960,18 @@ void InputManager::handleActions()
 
     const double now = this->clock;
 
-    const bool confirm = this->repeatConfirm.step(heldConfirm, now);
-    const bool back    = this->repeatBack.step(heldBack, now);
+    bool confirm = this->repeatConfirm.step(heldConfirm, now);
+    bool back    = this->repeatBack.step(heldBack, now);
+
+    // 本帧已被系统键吃掉的动作不再响应（同一个 A/B 只算一次，见 v15 另两条）。
+    // 仍然要调 step()（上面已经调过）以推进长按状态，否则按住时会一直判成"刚按下"。
+    for (ControllerButton consumed : this->consumedActionsThisFrame)
+    {
+        if (consumed == ControllerButton::A)
+            confirm = false;
+        else if (consumed == ControllerButton::B)
+            back = false;
+    }
 
     if (this->currentFocus == nullptr)
         return;
@@ -801,12 +979,12 @@ void InputManager::handleActions()
     if (confirm)
     {
         audio::play(Sound::CLICK);
-        this->currentFocus->triggerAction(ControllerButton::A);
+        this->dispatchAction(ControllerButton::A);
     }
     if (back)
     {
         audio::play(Sound::BACK);
-        this->currentFocus->triggerAction(ControllerButton::B);
+        this->dispatchAction(ControllerButton::B);
     }
 }
 

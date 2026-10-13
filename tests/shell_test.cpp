@@ -96,20 +96,22 @@ int main()
     check(isInside(fillView, shell->getOverlayLayer()), "铺满挂到覆盖层");
 
     // 7b) 弹窗：挂覆盖层 + 切模态 + 按栈序弹出
+    //     free=false：这个测试要复用同一个视图继续断言，不能让它被 popDialog 释放
     View* dialog = new Box(Axis::COLUMN);
     shell->pushDialog(dialog);
     check(getInputManager().hasModal(), "pushDialog 后进入模态");
     check(shell->hasDialog(), "pushDialog 后 hasDialog 为真");
     check(shell->getTopDialog() == dialog, "栈顶就是刚推入的弹窗");
     check(isInside(dialog, shell->getOverlayLayer()), "弹窗挂在覆盖层里");
-    shell->popDialog(dialog);
+    shell->popDialog(dialog, false);
     check(!getInputManager().hasModal(), "popDialog 后退出模态");
     check(shell->getTopDialog() == nullptr, "栈空后栈顶为空");
     check(!shell->hasDialog(), "弹出后 hasDialog 为假");
     check(!isInside(dialog, shell->getOverlayLayer()), "弹窗已从覆盖层摘掉（不留残影）");
     check(dialog->getParent() == nullptr, "摘掉后没有父节点");
+    delete dialog;
 
-    // 7c) 系统键注册表（无窗口下只能测注册/查询/注销；按键触发由有窗口的运行验证）
+    // 7c) 系统键注册表（无窗口下只能测注册/查询/注销；按键触发的边缘语义见 shell_dialog_test）
     getInputManager().setSystemAction(ImGuiKey_F12, [] {});
     check(getInputManager().hasSystemAction(ImGuiKey_F12), "注册系统键后可查到");
     check(!getInputManager().hasSystemAction(ImGuiKey_F11), "未注册的键查不到");
@@ -123,15 +125,17 @@ int main()
     check(dim != nullptr, "dim=true 生成了遮罩");
     check(isInside(dim, shell->getOverlayLayer()), "遮罩挂在覆盖层");
     check(dim != dialog2, "遮罩不是弹窗本身");
-    shell->popDialog(dialog2);
+    shell->popDialog(dialog2, false);
     check(shell->getDimLayer() == nullptr, "弹出后遮罩也摘掉");
+    delete dialog2;
 
     View* dialog3 = new Box(Axis::COLUMN);
     DialogOptions noDim;
     noDim.dim = false;
     shell->pushDialog(dialog3, noDim);
     check(shell->getDimLayer() == nullptr, "dim=false 不生成遮罩");
-    shell->popDialog(dialog3);
+    shell->popDialog(dialog3, false);
+    delete dialog3;
 
     // 8) 空指针不崩
     shell->addToCorner(nullptr, Corner::CENTER, 0.0f, 0.0f);

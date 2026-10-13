@@ -804,3 +804,54 @@ python3 scripts/check_naming.py
 5. 新 setter 必须在 **public 段**；命名要过 `check_naming.py`
    （已知不过的前缀：`restore`、`leave`、`wrap` —— 用 `loadFocus`/`void leaveLayer` 这类规避）
 6. 每步收尾都要：`./scripts/check.sh`（只增不减、GL/VK 零警告）+ `check_naming.py` + 截图复核
+
+---
+
+## v17 第 4 步完成（本会话第二段）
+
+### 交付（全部入库）
+
+| 小块 | 落点 | 对策 |
+|---|---|---|
+| 设备无关输入入口 | `InputManager::dispatchPointerClick(Point)` / `dispatchAction(ControllerButton)` / `dispatchSystemKey(int)` | v15 另两条：`handlePointer/handleActions` 读 `ImGui::GetIO()`，无窗口测试驱动不了 |
+| `closeOnDimClick` | `Shell::pushDialog` 里 `setModalEmptyClickHandler`，`hitTest==nullptr` 时回调 | **F1(b)**：不动 `hitTest`/`focusFromPointer` 焦点语义；点弹窗 `getFrame()` 内不关 |
+| `closeOnBack` 读取点 | `pushModal(modal, closeOnBack, onUnhandled)` 的 `ModalEntry::onUnhandled` → `Shell::handleModalUnhandled` → `popDialog` | **F2**：回调挂在 ModalEntry 上（随模态栈销毁，不留悬空 `this`）；先拷贝再调（回调内 `popModal` 会析构原 `std::function`） |
+| B 键限定子树派发 | `dispatchActionWithinScope`：从焦点往上走到 `navigationScope()`（模态根）为止，只看**这一级自己**的 `getActions()` | **F2**：不用 `View::triggerAction`（它会冒到根视图、打到 Shell 默认动作） |
+| `enterLayer(Box*)` / `leaveLayer()` | `InputManager`；出层就是 `loadFocus()` | **F4**：`leave` 不在 `ACTION_PREFIXES` 里 → 只能 `void leaveLayer()` |
+| 焦点记忆改栈 | `std::vector<FocusRecord> rememberedStack`；`remember()` 压、`loadFocus()` 弹 | **F5**：单槽时弹窗套弹窗互相覆盖 |
+| 系统键同帧双响应 | `consumedActionsThisFrame` + `controllerButtonForKey`；`handleActions` 跳过本帧被系统键吃掉的 A/B | 顺带修了"回调里增删 `systemActions` 导致迭代器失效"（先收集按键再触发） |
+
+### 顺带修正的两个既有问题
+
+1. **`Shell::popDialog` 会释放弹窗却不告诉调用方**：`Box::removeView(view, bool free = true)`
+   默认 `free=true`，原实现 `removeView(top)` 等于 delete。签名补成
+   `popDialog(View* dialog, bool free = true)`（与 `App::popOverlay(overlay, free = true)` 同约定），
+   遮罩（外壳 new 的）永远由外壳释放。`tests/shell_test.cpp` 7b/7d 原来在 popDialog 之后
+   继续读 `dialog->getParent()` —— 那是 UAF 读取（碰巧通过），已改成 `free=false` + 自己 delete。
+2. `resetFocusState()` 现在也清 `rememberedStack` 与 `consumedActionsThisFrame`
+   （`keyedFocusRecords` 不清：按页记忆的路径解析失败会自然退默认焦点）。
+
+### 测试
+
+新增 `tests/shell_dialog_test.cpp`（**49 项**，无窗口）：
+closeOnDimClick（弹窗内空白不关 / 弹窗外关 / `closeOnDimClick=false` 不关）、
+closeOnBack（读取点生效、焦点回原控件、遮罩同摘）、B 限定子树派发（非模态冒泡到外壳、
+模态内不冒泡、弹窗自己的 B 动作优先）、enterLayer/leaveLayer 逐级还原、
+记忆栈后进先出、系统键标记 A 与换帧清空。
+
+**一个实施中发现的约束**：`enterLayer` 的"进层/出层还原"依赖**从范围根出发的下标路径**，
+所以被测的层必须真的挂在根树里（第一版测试用游离的 Box，路径建不出来 → 还原失败）。
+
+### 验收原文（本会话实测）
+
+```
+=== 接口命名检查 ===
+命名检查：137 个文件全部符合约定
+构建通过，零警告   （gl 与 vk 都是）
+全部检查通过（2062 项）      # 上一版 2013，只增不减
+```
+
+### 第 5~7 步仍未做
+
+按附录 D 做 `Pager` + 迁移 demo 14 页；第 6 步按页背景 + `TransitionHost`；第 7 步删旧
+`AppletFrame`（保留 JSON 类型名 `"AppletFrame"`）+ 设计器回归 + 文档收尾。
