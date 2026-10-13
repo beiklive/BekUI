@@ -241,6 +241,24 @@ void Shell::pushDialog(View* dialog, const DialogOptions& options)
     if (dialog == nullptr)
         return;
 
+    // 遮罩先进树：子节点顺序 = 绘制顺序，所以它画在弹窗**之下**、内容层之上
+    if (options.dim)
+    {
+        Box* dim = new Box(Axis::COLUMN);
+        dim->setPositionType(PositionType::ABSOLUTE);
+        dim->setPositionTop(0.0f);
+        dim->setPositionRight(0.0f);
+        dim->setPositionBottom(0.0f);
+        dim->setPositionLeft(0.0f);
+        dim->setBackgroundColor((ImU32)options.dimColor);
+        this->overlayLayer->addView(dim);
+        this->dimStack.push_back(dim);
+    }
+    else
+    {
+        this->dimStack.push_back(nullptr);
+    }
+
     this->overlayLayer->addView(dialog);
     this->dialogStack.push_back(dialog);
     getInputManager().pushModal(dialog, options.closeOnBack);
@@ -265,6 +283,15 @@ void Shell::popDialog(View* dialog)
     // 再从树上摘掉：不摘的话弹窗会永久留在覆盖层里（既泄漏又继续被绘制）
     if (top != nullptr && top->getParent() == this->overlayLayer)
         this->overlayLayer->removeView(top);
+
+    // 遮罩与弹窗一一对应，跟着一起摘
+    if (!this->dimStack.empty())
+    {
+        View* dim = this->dimStack.back();
+        this->dimStack.pop_back();
+        if (dim != nullptr && dim->getParent() == this->overlayLayer)
+            this->overlayLayer->removeView(dim);
+    }
 }
 
 } // namespace bklv

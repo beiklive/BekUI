@@ -116,6 +116,23 @@ int main()
     getInputManager().clearSystemAction(ImGuiKey_F12);
     check(!getInputManager().hasSystemAction(ImGuiKey_F12), "注销后查不到");
 
+    // 7d) dim 遮罩：默认生成、插在弹窗之前（绘制在下）、弹出时一起摘掉
+    View* dialog2 = new Box(Axis::COLUMN);
+    shell->pushDialog(dialog2);
+    View* dim = shell->getDimLayer();
+    check(dim != nullptr, "dim=true 生成了遮罩");
+    check(isInside(dim, shell->getOverlayLayer()), "遮罩挂在覆盖层");
+    check(dim != dialog2, "遮罩不是弹窗本身");
+    shell->popDialog(dialog2);
+    check(shell->getDimLayer() == nullptr, "弹出后遮罩也摘掉");
+
+    View* dialog3 = new Box(Axis::COLUMN);
+    DialogOptions noDim;
+    noDim.dim = false;
+    shell->pushDialog(dialog3, noDim);
+    check(shell->getDimLayer() == nullptr, "dim=false 不生成遮罩");
+    shell->popDialog(dialog3);
+
     // 8) 空指针不崩
     shell->addToCorner(nullptr, Corner::CENTER, 0.0f, 0.0f);
     shell->addToEdge(nullptr, Edge::LEFT, 0.0f);

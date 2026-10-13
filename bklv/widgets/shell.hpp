@@ -38,7 +38,9 @@ struct DialogOptions
 {
     bool dim             = true;   // 弹窗后加遮罩（待实现）
     bool closeOnDimClick = true;   // 点遮罩关闭（待实现）
-    bool closeOnBack     = true;   // 按 B 关闭
+    bool closeOnBack     = true;   // 按 B 关闭（读取点见 v15 审计：还没接上）
+    // 遮罩底色。默认半透明黑；上层应传主题色 `@theme/color.common.overlay` 以跟随换肤。
+    unsigned int dimColor = 0x8C000000u; // IM_COL32(0,0,0,140)
 };
 
 // 应用外壳：四层结构（取代旧 AppletFrame 的三段式）。
@@ -96,6 +98,8 @@ class Shell : public Box
     // 遮罩（dim）与"点遮罩关闭"随后补；本版先落模态与焦点语义。
     void pushDialog(View* dialog, const DialogOptions& options = DialogOptions());
     void popDialog(View* dialog);
+    // 遮罩层（dim=true 时生成；插在弹窗**之前**入树 = 绘制在弹窗之下）。栈里与弹窗一一对应。
+    View* getDimLayer() const { return this->dimStack.empty() ? nullptr : this->dimStack.back(); }
     bool hasDialog() const { return !this->dialogStack.empty(); }
     View* getTopDialog() const { return this->dialogStack.empty() ? nullptr : this->dialogStack.back(); }
 
@@ -114,6 +118,7 @@ class Shell : public Box
     Box* hudLayer      = nullptr;
 
     std::vector<View*> dialogStack;
+    std::vector<View*> dimStack;
 
     View* headerView = nullptr;
     View* footerView = nullptr;
