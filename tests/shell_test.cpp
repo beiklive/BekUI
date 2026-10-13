@@ -107,6 +107,13 @@ int main()
     check(shell->getTopDialog() == nullptr, "栈空后栈顶为空");
     check(!shell->hasDialog(), "弹出后 hasDialog 为假");
 
+    // 7c) 系统键注册表（无窗口下只能测注册/查询/注销；按键触发由有窗口的运行验证）
+    getInputManager().setSystemAction(ImGuiKey_F12, [] {});
+    check(getInputManager().hasSystemAction(ImGuiKey_F12), "注册系统键后可查到");
+    check(!getInputManager().hasSystemAction(ImGuiKey_F11), "未注册的键查不到");
+    getInputManager().clearSystemAction(ImGuiKey_F12);
+    check(!getInputManager().hasSystemAction(ImGuiKey_F12), "注销后查不到");
+
     // 8) 空指针不崩
     shell->addToCorner(nullptr, Corner::CENTER, 0.0f, 0.0f);
     shell->addToEdge(nullptr, Edge::LEFT, 0.0f);

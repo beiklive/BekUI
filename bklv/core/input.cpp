@@ -141,6 +141,15 @@ void InputManager::setRepeatInterval(int milliseconds)
 
 void InputManager::handleNavigation()
 {
+    // 系统键最先处理：**优先级高于模态**（模态只挡导航与指针命中，不挡截图/Home/退出）。
+    // 用 IsKeyPressed 的边缘语义，避免按住时每帧触发；无 ImGui 上下文（无窗口测试）时跳过。
+    if (!this->systemActions.empty() && ImGui::GetCurrentContext() != nullptr)
+    {
+        for (const auto& entry : this->systemActions)
+            if (entry.second && ImGui::IsKeyPressed((ImGuiKey)entry.first, false))
+                entry.second();
+    }
+
     // 时间来自帧间隔累加：键盘、手柄、各平台共用同一套计时，不需要平台 API
     this->clock += (double)getFrameDeltaSeconds();
     const double now = this->clock;

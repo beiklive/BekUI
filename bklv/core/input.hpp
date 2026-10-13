@@ -231,6 +231,16 @@ class InputManager
     //
     // 算法照 borealis（方案附录 B3）：**顺序索引扫描 ±1 + 父链冒泡**，不是几何最近邻。
     // 确实走不动时给一次撞边反馈（节流）；被 CrossBoxPolicy::NONE 拦住则静默。
+    // 系统键：截图 / Home / 退出这类**优先级高于模态**的按键。
+    // 弹窗打开时模态只挡"导航与指针命中"，系统键照样触发（落点在 handleNavigation 最顶部）。
+    // key 用 ImGuiKey 的整数值，与 handleNavigation 里的键盘处理同一套。
+    void setSystemAction(int key, std::function<void()> handler)
+    {
+        this->systemActions[key] = std::move(handler);
+    }
+    void clearSystemAction(int key) { this->systemActions.erase(key); }
+    bool hasSystemAction(int key) const { return this->systemActions.count(key) > 0; }
+
     void navigate(FocusDirection direction);
 
     // 这个视图现在能不能当焦点：可聚焦 + 未禁用 + 沿父链可见 + 未被模态遮挡。
@@ -317,6 +327,9 @@ class InputManager
 
     // 撞边反馈
     std::function<void(FocusDirection, View*)> onFocusEdgeHit;
+
+    // 系统键：优先级高于模态（见 setSystemAction 注释）
+    std::map<int, std::function<void()>> systemActions;
     float edgeHitMinInterval = 0.12f; // 秒
     double lastEdgeHitTime   = -1.0;  // 内部时钟（秒），< 0 表示还没触发过
     bool navigationBlockedByPolicy = false; // 本次 navigate 是否被策略拦下
