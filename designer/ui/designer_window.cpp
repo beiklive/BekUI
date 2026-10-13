@@ -3089,20 +3089,6 @@ void DesignerWindow::drawProps()
         ImGui::SetTooltip("复制当前选中节点那一段的 JSON（选中层 → 该层；选中 box → box；否则整份）");
     if (!this->changedFieldPaths.empty())
     {
-        if (ImGui::CollapsingHeader(("改动 " + std::to_string(this->changedFieldPaths.size())
-                + " 处（点条目定位）###changedList").c_str()))
-        {
-            ImGui::Indent(10.0f);
-            for (const std::string& path : this->changedFieldPaths)
-            {
-                if (ImGui::Selectable((path + "##chg" + path).c_str(), false,
-                        ImGuiSelectableFlags_AllowDoubleClick))
-                    this->selectByChangePath(path);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("点一下：跳到这一处");
-            }
-            ImGui::Unindent(10.0f);
-        }
 
         if (ImGui::SmallButton("下一处改动 (F3)"))
             this->selectNextChange(1);
@@ -3308,10 +3294,6 @@ void DesignerWindow::drawProps()
                 }
             }
 
-            this->drawAddFieldCombo("##addBoxField", boxCandidates, [this, &edited](const std::string& key) {
-                this->doc.setBoxNumber(key, 0.0);
-                edited();
-            });
 
             if (ImGui::CollapsingHeader("布局", ImGuiTreeNodeFlags_DefaultOpen))
             {
@@ -3546,20 +3528,6 @@ void DesignerWindow::drawProps()
                 else
                     candidates.insert(candidates.end(), { "fill", "stroke", "strokeWidth" });
 
-                this->drawAddFieldCombo("##addLayerField", candidates,
-                    [this, edited](const std::string& key) {
-                        AppearanceDoc::Json value = 0.0;
-                        if (key == "id" || key == "source" || key == "text" || key == "align"
-                            || key == "valign" || key == "scaling" || key == "fill" || key == "color"
-                            || key == "stroke" || key == "tint")
-                            value = std::string("#00000000");
-                        if (key == "cutout")
-                            value = false;
-                        if (key == "inset" || key == "offset")
-                            value = AppearanceDoc::Json::array({ 0, 0, 0, 0 });
-                        this->doc.setLayerValue(this->selection.index, key, value);
-                        edited();
-                    });
             }
 
             if (this->propFilter[0] != 0 && layer->empty())
