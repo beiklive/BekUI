@@ -1701,15 +1701,19 @@ void DesignerWindow::drawTree()
                         ImGui::EndPopup();
                     }
                 }
+                // 点这一行就选中它。**必须放在"只看层"判断之外**：
+                // 「只看层」默认是开着的，而它下面那段子块会被跳过 —— 放在里面就会出现
+                // "点节点右边属性不跟着更新"（用户报的 bug，根因就是这个）
+                if (ImGui::IsItemClicked())
+                {
+                    this->selection = Selection{};
+                    this->selection.kind  = SelKind::LAYER;
+                    this->selection.index = i;
+                    this->previewDirty    = true;
+                }
+
                 if (open && !this->onlyLayers)
                 {
-                    if (ImGui::IsItemClicked())
-                    {
-                        this->selection = Selection{};
-                        this->selection.kind  = SelKind::LAYER;
-                        this->selection.index = i;
-                        this->previewDirty = true;
-                    }
                     const AppearanceDoc::Json* layer = this->doc.layer(i);
                     if (layer != nullptr)
                     {
