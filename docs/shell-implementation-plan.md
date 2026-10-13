@@ -171,7 +171,11 @@ struct PageState {            // v2：页面级记忆
 
 ## 5. v1 审查的 5 个必修项（已并入）
 
-**5.1 焦点真相合一**：`App` 已有焦点/模态状态（`resetFocusState`、`isInsideModal`）→
+**5.1 焦点真相合一**（实现时已定位到具体位置）：焦点状态就在 **`bklv/core/input.hpp`** 里
+（`currentFocus`（:201）、`getCurrentFocus()`（:150）、`isInsideModal()`（:162）、
+`resetFocusState()`（:166））→ **不要新建一个独立的 `FocusManager` 类**，
+而是**扩展现有的这个类**（同一份状态上加跨层/记忆/循环/撞边），否则必然两套真相。
+原表述如下（保留）：`App` 已有焦点/模态状态（`resetFocusState`、`isInsideModal`）→
 `FocusManager` 为**唯一真相**，`App` 只转发；实现时列出 App 旧字段的迁移/删除清单，
 并在 `App::setRootView()` 时把根注册给 FocusManager。
 
