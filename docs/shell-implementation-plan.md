@@ -1,269 +1,232 @@
-# bklv 外壳重构 · 完整实施方案（可执行版）
+# bklv 外壳重构 · 完整实施方案 v2（经三轮场景推演审查）
 
-> 定稿：用户确认"都按你的建议来"。设计讨论见 `docs/layers-and-focus.md`，
-> 方案总览见 `docs/shell-refactor-plan.md`，**本文件是实现落地清单**。
+> 本文件是唯一实现依据。讨论记录：`docs/layers-and-focus.md`、`docs/shell-refactor-plan.md`。
+> v2 相对 v1 的改动全部来自三轮场景推演（见文末"三轮审查记录"）。
+> 原则：**每个能力先推演使用场景，再决定需要哪些配套能力**，不留"能编译但不好用"的接口。
 
-## 0. 范围、不变量与工作纪律
+## 0. 不变量与工作纪律
 
-**范围**：`bklv/`（库）新增外壳与焦点管理；`demo/`（14 页）迁移到新外壳；`tests/` 补测试与迁移。
-
-**不变量（每步都必须成立）**：
-1. `./scripts/check.sh` 全绿（当前基线 **GL+VK 1832 项、零警告**），不得回归既有测试
+**不变量（每步都必须成立）**
+1. `./scripts/check.sh` 全绿；**验收基数为当前 1832 项的下限**，只增不减、GL/VK 零警告
 2. 改代码用**精确锚点 + 单处替换 + 立刻构建 + 截图复核**；删代码块用**括号配对器**
-   （同时数 `()` 与 `{}`）。正则删块 / 找 `});` / 宽泛字面量替换这三种方式本项目各翻车过一次
-3. 改坏立即 `git checkout` 回退，**不把坏代码留在工作区**
-4. 样式能在 JSON 里表达的，就不要只留 C++ 接口（本项目约定：控件样式全在 JSON）
+   （同时数 `()` 与 `{}`）—— 正则删块 / 找 `});` / 宽泛字面量替换这三种方式本项目各翻车过一次
+3. 改坏立即 `git checkout` 回退，不把坏代码留在工作区
+4. 样式能在 JSON 表达的，不要只留 C++ 接口
 
-## 1. 接口风格约定（照 `AGENTS.md` / borealis）
+## 1. 接口风格（照 AGENTS / borealis）
 
-| 类别 | 规则 | 例 |
-|---|---|---|
-| 类型 | PascalCase，无前缀 | `Shell` / `FocusManager` / `Pager` |
-| 枚举值 | UPPER_SNAKE | `PositionType::ABSOLUTE`、`CrossBoxPolicy::SAME_PARENT_ONLY` |
-| 方法 | camelCase，动词开头 | `setPositionType` / `addToCorner` / `enterLayer` |
-| 状态查询 | `is*` / `has*` / `can*` | `isHeaderVisible()` / `canFocus()` |
-| 取值 | `get*` | `getContentLayer()` / `getCurrent()` |
-| 开关 | `set<名词>Enabled/Visible/Animated` | `setHeaderVisible` / `setBackdropVisible` |
-| 回调 | `setOnXxx` | `setOnFocusLost` |
-| 文件 | snake_case，一控件一对 `.hpp/.cpp` | `shell.hpp` / `focus_manager.hpp` / `pager.hpp` |
+PascalCase 类型 · UPPER_SNAKE 枚举值 · camelCase 动词方法 · `is*/has*/can*` 查询 · `get*` 取值 ·
+`set<名词>Enabled/Visible` 开关 · `setOnXxx` 回调 · snake_case 文件。
+已有 `PositionType` / `AlignSelf` 的注释就写着"对应 borealis 的 …"，新接口继续同风格。
 
-## 2. 现有可复用原语（已核实，带行号）
+## 2. 架构
 
-| 能力 | 位置 |
+```
+Shell（取代旧 AppletFrame；保留 JSON 类型名 "AppletFrame" 作为别名，见 5.3）
+├─ BackdropLayer   背景层  绝对定位；本期只做图片；**支持按页切换背景**（淡入）
+├─ ContentLayer    内容层  Yoga 根；Pager（页面栈 / 同层换页）
+├─ OverlayLayer    覆盖层  Yoga 根；页头 | 底栏 | **遮罩 + 弹窗**
+├─ HudLayer        浮层    绝对定位、不吃输入；toast、常驻指示
+└─ TransitionHost  过渡层  绝对定位、**仅动画期间存在**；跨层飞行元素（v2 修正：不再挂 HudLayer）
+```
+
+### 层契约
+
+| 规则 | 内容 |
 |---|---|
-| 定位方式 `PositionType{RELATIVE,ABSOLUTE}` + `setPositionType` | `core/view.hpp:93,167`（注释写明"对应 borealis 的 PositionType"） |
-| 四边偏移 + 百分比：`setPositionTop/Right/Bottom/Left`、`...Percentage` | `core/view.hpp:159-166` |
-| 交叉轴自对齐 `AlignSelf{AUTO,FLEX_START,CENTER,FLEX_END,STRETCH,BASELINE}` + `setAlignSelf` | `core/view.hpp:82,170` |
-| 外边距 `setMargins(t,r,b,l)` | `core/view.hpp:147` |
-| 裁剪 `setClipsToBounds` | `core/view.hpp:204` |
-| **绝对坐标** `getFrame()` | `core/view.cpp:413`（= getX/getY/w/h） |
-| 模态弹层 `App::pushOverlay(view, closeOnBack)` / `popOverlay(view, free)` | `core/app.hpp:99-100` |
-| 默认焦点扩展点 `getDefaultFocus()` | 子类扩展点（AGENTS 约定 + 控件已用） |
-| 可聚焦查询 `isFocusable()` | `core/view.hpp:259` |
-| 转场期间不挪焦点（既有约定） | `widgets/applet_frame.hpp:62` |
-| `setContentView` **只摘不删** | `views/scrolling_frame.cpp:71-74`（注释写明所有权在调用方） |
-| JSON 属性表已支持 `alignSelf` | `core/view.cpp:1044` |
-| JSON 属性表**未支持** `positionType` / 四边偏移 | 同上（只有函数，无表项）→ 本方案补 |
+| 绘制顺序 | 背景 → 内容 → 覆盖 → 浮层 → 过渡 |
+| 重排 | **表述修正**：绝对定位节点**仍在 Yoga 树里**。真实含义是"内容变化不触发 layout，只有尺寸变化才 layout" |
+| 焦点 | 只在**内容层与覆盖层**之间切换；页头/底栏默认**不可聚焦**（需显式 `setFocusable(true)`） |
+| 模态 | 用**标记**（`pushModal` / `modalityRoot`），不靠层号 |
+| 内容避让 | **不自动**：页面显式 `getHeaderInsets()/getFooterInsets()`；**动画期间返回目标值** |
+| 安全区 | `setSafeAreaInsets(EdgeInsets)`：所有层按安全区内缩（Switch 前置需求） |
+| 坐标 | 跨层读 `getFrame()`（绝对）；不换算 |
+| 视口变化 | 绝对层挂画布尺寸变化通知 → `requestLayout()`；百分比定位自动跟随，像素定位保持不变（文档写明） |
 
-## 3. 要新增的能力（清单）
+## 3. 能力清单（v1 全部 + 三轮推演新增）
 
-| # | 能力 | 归属 | 说明 |
-|---|---|---|---|
-| 1 | `Shell` 四层 + insets 查询 + `pushDialog` + `addToCorner/addToEdge` | `bklv/widgets/shell.*` | 取代旧 `AppletFrame` |
-| 2 | `positionType` / `positionTop/Right/Bottom/Left`(+%) 进 JSON 属性表 | `core/view.cpp` 属性表 | 让布局能在 JSON 表达 |
-| 3 | `margin: auto`（`setMarginAuto(Edge)` + JSON `"marginLeft": "auto"`）| `core/view.*` | 流式布局里把单个子件推到边（成本小，建议纳入） |
-| 4 | `FocusManager`：默认焦点 / 栈式记忆 / 补救 / 几何最近邻导航 / 跨 box 三档 / 模态约束 | `bklv/core/focus_manager.*` | 本次重点 |
-| 5 | 动作路由：B 键优先级 弹窗 → 内容 → 底栏/页头 → shell 默认 | `Shell` + `core/input.cpp` | 分层后父链冒泡失效 |
-| 6 | `Pager`：懒加载 + 预加载（`IPage::preload/build/release`） | `bklv/widgets/pager.*` | 页面不留常驻 |
-| 7 | `FlyingItem`：跨层幽灵动画（不真移动视图） | `bklv/widgets/flying_item.*` | 共享元素转场 |
-| 8 | 静态背景图 | `Shell` 的 `BackdropLayer` + 现成 `Image` | 视频后续排期 |
-
-### 接口草案（按第 1 节风格）
-
+### 3.1 `Shell`
 ```cpp
-// ---- Shell ----
-enum class Corner { TOP_LEFT, TOP_CENTER, TOP_RIGHT,
-                    CENTER_LEFT, CENTER, CENTER_RIGHT,
-                    BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT };
+enum class Corner { TOP_LEFT, TOP_CENTER, TOP_RIGHT, CENTER_LEFT, CENTER,
+                    CENTER_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT };
 enum class Edge { TOP, RIGHT, BOTTOM, LEFT };
+
+struct DialogOptions {
+    bool dim             = true;   // 弹窗后加遮罩
+    bool closeOnDimClick = true;
+    bool closeOnBack     = true;
+};
 
 class Shell : public View {
 public:
-    Shell();
-    Box* getBackdropLayer();  Box* getContentLayer();
-    Box* getOverlayLayer();   Box* getHudLayer();
+    Box* getBackdropLayer(); Box* getContentLayer();
+    Box* getOverlayLayer();  Box* getHudLayer(); Box* getTransitionHost();
 
-    // 顶层件（页头/底栏）放覆盖层
-    void setHeaderVisible(bool visible);
-    void setFooterVisible(bool visible);
-    bool isHeaderVisible() const;
-    bool isFooterVisible() const;
-    // 页面显式查询留白（内容避让不自动）
-    EdgeInsets getHeaderInsets() const;
+    void setHeaderVisible(bool);  void setFooterVisible(bool);
+    bool isHeaderVisible() const; bool isFooterVisible() const;
+    EdgeInsets getHeaderInsets() const;   // 动画期间返回**目标值**
     EdgeInsets getFooterInsets() const;
+    void setSafeAreaInsets(EdgeInsets);
 
-    // 角落/边缘定位（内部 = PositionType::ABSOLUTE + 对应边偏移）
-    void addToCorner(View* view, Corner corner, float insetX, float insetY);
-    void addToEdge(View* view, Edge edge, float inset);
+    void addToCorner(View*, Corner, float insetX, float insetY);
+    void addToEdge(View*, Edge, float inset);
+    void fillLayer(View*);                       // 四边 0（loading 遮罩等）
 
-    // 弹窗挂覆盖层顶部（模态标记），系统级模态仍走 App::pushOverlay
-    void pushDialog(View* dialog, bool closeOnBack = true);
-    void popDialog(View* dialog);
+    void setBackdropFor(const std::string& pageId, View* backdrop);  // 按页背景，切换淡入
+    void showBackdropFor(const std::string& pageId);
 
-    void setOnBackRequested(std::function<bool()> handler);  // 返回 true 表示已处理
+    void pushDialog(View*, DialogOptions = {});  // 挂覆盖层顶部 + 模态标记 + 遮罩
+    void popDialog(View*);
+
+    void setSystemAction(Key, std::function<void()>);        // 不被模态吞：截图/Home/退出
+    void setOnBackRequested(std::function<bool()>);          // true = 已处理
 };
+```
 
-// ---- 焦点 ----
+### 3.2 焦点（`bklv/core/focus_manager.*`）
+```cpp
 enum class FocusDirection { UP, DOWN, LEFT, RIGHT };
 enum class CrossBoxPolicy { ALLOW, SAME_PARENT_ONLY, NONE };
 
-struct FocusRecord {                       // 存"路径 + hint"，不存裸 View*
-    int          layer;                    // 0=内容层 1=覆盖层
-    std::string  pageId;
-    std::string  viewPath;
-    int          hint = -1;                // 上次列表下标等，交给 getDefaultFocus(hint)
+struct FocusRecord {            // 存**路径 + hint**，绝不存裸 View*
+    int layer;                  // 0=内容层 1=覆盖层
+    std::string pageId;         // 同层换页也用它做键
+    std::string viewPath;
+    int hint = -1;              // 上次列表下标等
 };
 
 class FocusManager {
 public:
-    View* getCurrent() const;                       // 唯一真相（焦点框只读它）
-    void  setCurrent(View* view, FocusReason reason);
+    View* getCurrent() const;                      // **唯一真相**（App 只转发，见 5.1）
+    void  setCurrent(View*, FocusReason);
 
-    void  enterLayer(Box* layerRoot);               // remember() → 取该层默认焦点
-    bool  leaveLayer();                             // restore() → 失败退本层默认焦点
-    void  remember();                               // 入栈
-    bool  restore();                                // 出栈：校验存在性 + hint
+    void  enterLayer(Box* layerRoot);              // remember() → 取该层默认焦点
+    bool  leaveLayer();                            // restore() → 失败退本层默认焦点
+    void  remember(); void rememberFor(const std::string& key);   // v2：同层换页按页记忆
+    bool  restore();  bool restoreFor(const std::string& key);
 
-    bool  move(FocusDirection dir);                 // 几何最近邻 + 冒泡 + 出口策略
-    void  setCrossBoxPolicy(View* box, CrossBoxPolicy policy);  // 局部生效，内层可覆盖
-    bool  canFocus(View* view) const;               // 四条件（见第 4 步）
-};
-
-// ---- 页面 ----
-struct PageContext { /* GameRepo& repo; ImageCache& images; AppSettings& settings; */ };
-class IPage {
-public:
-    virtual ~IPage() = default;
-    virtual void  preload(PageContext& ctx) = 0;
-    virtual View* build(PageContext& ctx)   = 0;
-    virtual void  release()                 = 0;
-    virtual bool  isReady() const           = 0;
-};
-
-class Pager {
-public:
-    void  setSlot(ScrollingFrame* slot);
-    void  registerPage(const std::string& id, IPage* page);
-    void  preload(const std::string& id);           // 只预热数据
-    void  show(const std::string& id);              // 即时构建 + 焦点交接 + 删旧页
-    View* getCurrentView() const;
+    bool  move(FocusDirection);                    // 几何最近邻 + 冒泡 + 出口策略
+    void  setCrossBoxPolicy(View*, CrossBoxPolicy);
+    void  setLayerSwitchOnEdge(bool);              // v2：到边界是否跨层，**默认 false**
+    bool  canFocus(View*) const;                   // 四条件
+    void  ensureFocusVisible();                    // v2：把焦点元素滚进视野（回收列表必需）
 };
 ```
 
-## 4. 分步实施（每步都可独立验收）
+### 3.3 页面（`bklv/widgets/pager.*`）
+```cpp
+using PageFactory = std::function<View*(PageContext&)>;
 
-### 第 1 步 · 布局原语补齐（先做，因为后面都依赖它）
-- 改动：`core/view.cpp` 属性表加 `positionType`（`relative|absolute`）与
-  `positionTop/Right/Bottom/Left`（数值或 `"50%"`）；`View::setMarginAuto(Edge)` + JSON `"auto"`
-- 测试：`tests/layout_test`（或并入 `box_test`）：绝对定位不参与 flex；四边偏移生效；
-  百分比偏移；`alignSelf` 覆盖父 `alignItems`；`margin auto` 把子件推到边
-- 验收：`check.sh` 全绿 + 截图确认角落定位（页头左图标/中标题/右按钮）
+class Pager {
+public:
+    void setSlot(ScrollingFrame* slot);
+    void setPageFactory(const std::string& id, PageFactory);     // v2：工厂式，不强推继承
+    PreloadHandle preload(const std::string& id);                // v2：可取消
+    void cancelPreload(const std::string& id);                   // 快速连按必需
+    void show(const std::string& id);                            // 构建 → 挂载 → 给焦点 → 删旧页
+    View* getCurrentView() const;
+};
+struct PageState {            // v2：页面级记忆
+    FocusRecord focus;
+    float scrollOffset = 0.0f;
+};
+```
+`ScrollingFrame` 补 `getScrollOffset()/setScrollOffset()`（页面级记忆与"返回原地"需要）。
 
-### 第 2 步 · `Shell` 四层骨架
-- 新增 `bklv/widgets/shell.*`；四层用绝对定位铺满视口；`insets` 查询；层跟随画布尺寸
-- `addToCorner/addToEdge` 语义封装
-- 测试：层尺寸随视口；页头/底栏显隐后 `getHeaderInsets()` 正确变化；
-  绝对层不触发布局（用现有 `App::getLayoutCount()` 断言静止时 0 次）
-- 验收：demo 里临时挂一个 Shell 显示四层颜色/背景图，截图
+### 3.4 其它
+- `FlyingItem`：跨层飞行元素（挂 `TransitionHost`，动画结束销毁或交回）
+- 静态背景图：`Image` + `BackdropLayer`
 
-### 第 3 步 · `FocusManager`（本次重点）
-- 新增 `bklv/core/focus_manager.*`；`canFocus` 四条件
-  （`isFocusable && !isDisabled && isVisibleInTree && isReachableFromModal`）
-- 跨层：`enterLayer/leaveLayer` 时序（**显示完成后**取默认焦点；**开始关闭**就恢复；
-  恢复失败退本层默认；本层无默认焦点则保持焦点、输入归模态）
-- 层内：几何最近邻导航 + 同 Box 冒泡 + `axis` 定主轴 + 跨 box 三档
-- 测试（6 条）：记住/恢复；原控件销毁退默认；覆盖层无默认焦点时保持；
-  模态下方向键不进页头底栏；跨 box 三档；弹窗套弹窗逐级还原
-- 验收：6 条测试全绿
+## 4. 七步实施（每步独立验收）
 
-### 第 4 步 · 动作路由 + 模态标记 + `pushDialog`
-- B 键优先级：弹窗 → 内容页 → 底栏/页头 → shell 默认
-- `pushDialog()` 挂覆盖层顶部并打模态标记；`App::pushOverlay` 保留给系统级
-- 测试：模态时方向键/确定键只作用于弹窗；关闭后焦点按第 3 步规则恢复
+| 步 | 内容 | 测试 | 关键验收 |
+|---|---|---|---|
+| 1 | 布局原语：`positionType`+四边偏移(+%)**进 JSON 属性表**、`EdgeInsets` 类型、`addToCorner/addToEdge/fillLayer` | 5 | 角落定位截图；JSON 可表达 |
+| 2 | `Shell` 四层 + insets（目标值语义）+ 安全区 + 视口通知链 | 4 | 层随视口；静止时 `getLayoutCount()` 不增长 |
+| 3 | **`FocusManager`**：跨层 + 同层换页记忆 + 层内几何导航 + 三档 + `ensureFocusVisible` | **10** | 见 4.1 |
+| 4 | 焦点真相合一（App 转发）+ 动作路由 + `setSystemAction` + `pushDialog`（遮罩/dim） | 5 | 模态下系统键仍生效；关闭后焦点正确 |
+| 5 | `Pager`（工厂 + 取消 + 失败 + loading + 滚动记忆）+ **迁移 demo 14 页** | 6 | 切页只活 1 个页面；快速连按不崩 |
+| 6 | 背景按页切换 + `TransitionHost` 跨层飞行 | 4 | item 飞到覆盖层之上再落回 |
+| 7 | 删旧 `AppletFrame`（保留 JSON 类型名）+ 设计器回归 + 文档 + 清缓存 | — | 全绿、`designer_core_test` 不回归 |
 
-### 第 5 步 · `Pager` 懒加载 + 迁移 demo
-- 新增 `bklv/widgets/pager.*`；切页顺序：**先挂新页 → 给焦点 → 再删旧页**
-- 迁移 demo 14 页到 `IPage` + `Shell`（`demo/app/demo_app.*`、`pages/page_settings`、
-  `pages/page_pokedex`、`pages.hpp`、`main.cpp`）
-- 迁移 `tests/widget_test.cpp` / `tests/transition_test.cpp`（它们直接用 `AppletFrame`）
-- 测试：切页后只有 1 个页面视图存活；预加载只拉数据（不建视图）；焦点交接正确
-- 验收：demo 全部页面可切换、无内存增长、截图对比
+### 4.1 焦点验收测试（10 条）
 
-### 第 6 步 · 跨层飞行 + 背景图 + 收尾
-- `FlyingItem`（幽灵绘制，不真移动视图）；`BackdropLayer` 接 `Image`
-- 删旧 `AppletFrame`（此时已无使用者；`bklv/bklv.hpp` 伞头文件同步）
-- 文档：更新 `AGENTS.md`（Shell 约定、焦点规则）、`docs/`；清理构建缓存
+1. 记住 → 恢复：焦点回原控件
+2. **原控件已销毁** → 退本层默认焦点（不崩、不悬空）
+3. 覆盖层无默认焦点 → **保持焦点**、输入仍被模态吃住
+4. 模态打开时方向键**不**进页头/底栏
+5. 跨 box 三档：`ALLOW` 出去 / `SAME_PARENT_ONLY` 出不去 / `NONE` 停边界
+6. 弹窗套弹窗 → 焦点栈逐级还原
+7. **同层换页**：主页 → 游戏库 → 返回主页，焦点回到原卡片（`rememberFor`）
+8. **回收列表**：滚动后焦点元素不可见时 `ensureFocusVisible()` 把它滚回来
+9. **边界策略**：`setLayerSwitchOnEdge(false)` 时在内容层顶部按 UP 停在边界，不去页头
+10. **快速连按**：A→B→C 连续切页，取消的预加载不得再改 UI
 
-## 5. 新旧对照
+## 5. v1 审查的 5 个必修项（已并入）
 
-| 旧 | 新 |
-|---|---|
-| `AppletFrame : Box(COLUMN)`（header/content/footer 三段式） | `Shell`（四层） |
-| `setHeaderVisible/setBottomBarVisible` | `setHeaderVisible/setFooterVisible`（件在覆盖层） |
-| 内容自动避让 | 页面显式 `getHeaderInsets()/getFooterInsets()` |
-| 焦点靠树序 | `FocusManager`（显式焦点链 + 几何导航 + 栈式记忆） |
-| 页面常驻（demo `pages[]`） | `Pager` 懒加载 + 预加载 |
-| `pushContentView/popContentView` 用于下钻 | 保留（层级导航），同层换页走 `Pager` |
-| 模态只由 `App::pushOverlay` | `Shell::pushDialog`（覆盖层内）+ `App::pushOverlay`（系统级） |
+**5.1 焦点真相合一**：`App` 已有焦点/模态状态（`resetFocusState`、`isInsideModal`）→
+`FocusManager` 为**唯一真相**，`App` 只转发；实现时列出 App 旧字段的迁移/删除清单，
+并在 `App::setRootView()` 时把根注册给 FocusManager。
 
-## 6. 验收总表
+**5.2 "绝对定位不参与重排"措辞修正**：见层契约表（内容变化不触发 layout ≠ 不在树里）。
 
-| 项 | 标准 |
-|---|---|
-| 测试 | `./scripts/check.sh` 全绿；焦点 6 条 + 布局 5 条 + Shell 3 条 + Pager 3 条 |
-| 警告 | GL/VK **零警告** |
-| 视觉 | 每步截图复核：角落定位、四层可见性、切页、弹窗层级、跨层飞行 |
-| 性能 | 界面静止时 `App::getLayoutCount()` 不再增长（绝对层不参与重排） |
-| 不回归 | demo 14 页可切换；既有 widget/transition 测试语义不变（仅 API 迁移） |
+**5.3 JSON 类型名兼容**：`registerWidgetViewTypes()` 注册过 `AppletFrame` →
+**保留 `"AppletFrame"` 类型名**（内部构造 `Shell`），否则用户已有 JSON 失效；新增 `"Shell"` 也可用。
 
-## 7. 风险与对策
+**5.4 insets 与显隐动画**：页头折叠是逐帧改高度 → insets **返回目标值**，动画结束一次性重排；
+页面若想逐帧跟随可自行 `setOnInsetsChanged`。
+
+**5.5 转场归属**：`SLIDE_FADE` 由 **`Pager`** 负责（ContentLayer 内绘制期变换），
+Shell 不做页面转场，只做层间淡入（背景/遮罩）。
+
+## 6. 风险与对策（v2 增量）
 
 | 风险 | 对策 |
 |---|---|
-| 分层后焦点顺序失效 | 第 3 步先落地 + 6 条测试，之后再动 demo |
-| 交叉轴/主轴搞混导致"单个子件推不到边" | 明确：主轴靠绝对定位、交叉轴用 `alignSelf`；测试各覆盖一条 |
-| 页面销毁留下悬空焦点/指针 | 焦点记录存路径 + hint；切页顺序"先挂新页给焦点、再删旧页" |
-| 绝对层尺寸不同步 | 绝对层挂画布尺寸变化通知，测试覆盖改视口 |
-| 迁移面大（demo 14 页 + 2 个测试） | 先新增后迁移再删旧；旧 `AppletFrame` 活到最后一步才删 |
+| 焦点与回收列表冲突（View* 被复用） | 焦点记录存路径 + hint；`ensureFocusVisible()`；测试 8 |
+| 快速连按导致"幽灵页面" | 预加载可取消 + 取消后回调必须校验（测试 10） |
+| 遮罩吃掉系统键 | `setSystemAction` 优先级**高于**模态（测试见第 4 步） |
+| 安全区在 Switch 上被忽略 | 层统一按 `setSafeAreaInsets` 内缩，纳入第 2 步验收 |
+| 过渡层残留 | `TransitionHost` 仅动画期存在，动画结束断言层内为空（测试见第 6 步） |
+| 迁移面大（demo 14 页 + 2 测试 + 设计器） | 先新增 → 再迁移 → 最后删旧；旧类活到第 7 步 |
 
-## 8. 未纳入（明确不做）
+## 7. 明确不做
 
-- 背景**视频**（后续排期；本期只做图片）
-- 用 `TabFrame` 做懒加载（语义是"内容托管、切换不销毁"，与"离开即释放"相反）
-- 跨层动画用"真移动视图"（要处理换父节点/Yoga 抖动/坐标换算/焦点悬空四件事）
+背景视频（后续排期）· 用 `TabFrame` 做懒加载（语义相反）· 跨层动画"真移动视图" ·
+`margin: auto`（v2 移出关键路径；如需要单独一小步做）· RTL 镜像布局。
 
 ---
 
-## 附：方案自审发现（待并入正文，优先级 A > B > C）
+## 附：三轮审查记录（每轮 = 场景推演 → 发现 → 并入）
 
-### A. 必须改（影响正确性）
+### 第 1 轮 · 场景推演：页面与焦点
+| 场景 | 发现 | 并入 |
+|---|---|---|
+| 主页 → 游戏库 → 返回主页，希望回到原卡片 | 同层换页也需要焦点记忆，`enterLayer` 只管跨层 | `rememberFor/restoreFor`（能力 3.2） |
+| 游戏库 → 详情 → 返回，希望回到原列表项与位置 | 焦点记了，**滚动位置没记** | `PageState{scrollOffset}` + `ScrollingFrame::get/setScrollOffset` |
+| 回收列表滚动后，焦点元素被移出屏幕 | 焦点"存在但看不见" | `ensureFocusVisible()`（测试 8） |
+| 内容层顶部按 UP 是否跳到页头 | 需要策略，不能写死 | `setLayerSwitchOnEdge(bool)`，**默认 false**（测试 9） |
+| 截图/Home/退出键在弹窗打开时还要生效 | 系统键不能被模态吞 | `setSystemAction()` 优先级高于模态（第 4 步） |
 
-1. **焦点真相会变成两套**：`App` 里已经有焦点/模态状态（`resetFocusState`、`isInsideModal`），
-   新增 `FocusManager` 不能与它并存 → 必须明确"FocusManager 是唯一真相，App 只转发"，
-   并列出 App 现有焦点字段的迁移/删除清单。
-2. **"绝对定位不参与重排"表述不准确**：绝对定位节点仍在 Yoga 树里。
-   真实含义是"**内容变化不触发 layout**，尺寸变化时才 layout"。措辞不改，实现时会走错路。
-3. **JSON 类型名兼容**：`registerWidgetViewTypes()` 注册过 `AppletFrame` 类型名，
-   主题/设计器 JSON 里可能写着 `"type": "AppletFrame"` → 删旧类会让用户 JSON 失效。
-   必须**保留类型名**（内部换成 Shell 实现）或提供别名。
-4. **insets 与显隐动画**：现在页头折叠是逐帧改高度 + `requestLayout()`。
-   若页面也逐帧避让 → 每帧重排。要定策略：动画期间 insets 用**目标值**，动画结束一次性重排
-   （或页面自选"逐帧跟随"）。
-5. **转场归属没写**：`SLIDE_FADE` 现在实现在 `AppletFrame` 内 → 移到谁？
-   建议明确：**转场由 `Pager` 负责**（在 ContentLayer 内做绘制期变换），否则第 5 步必漏。
+### 第 2 轮 · 场景推演：层与定位
+| 场景 | 发现 | 并入 |
+|---|---|---|
+| 主页有大封面、游戏库要另一张背景 | 背景层需要**按页切换** | `setBackdropFor(pageId, view)` + 淡入 |
+| 弹窗要压暗背景、点遮罩关闭 | 遮罩没地方放 | 覆盖层内加遮罩 + `DialogOptions{dim, closeOnDimClick}` |
+| 全屏 loading 遮罩 | 需要"四边 0"的便捷写法 | `fillLayer(view)` |
+| Switch 有安全区/圆角 | 层要统一内缩 | `setSafeAreaInsets(EdgeInsets)`（第 2 步验收） |
+| 跨层飞行元素放哪 | 挂 HudLayer 会污染常驻浮层 | **新增 `TransitionHost`**（仅动画期存在） |
+| 视口尺寸变化后绝对件怎么算 | 百分比跟随、像素不变 | 契约表写明 + 第 2 步测试 |
+| 绝对定位是否"不参与 Yoga" | 措辞错误，会导致错误实现 | 修正措辞（5.2） |
 
-### B. 顺序与范围调整
-
-6. `margin: auto` 不在关键路径 → 从第 1 步挪出（独立小步或最后做）。
-7. **尽早做纵向切片**：第 2/3 步完成后就在 demo 挂一个最小 Shell（2 页 + 1 弹窗）验证集成，
-   不要等到第 5 步才接真程序。
-8. `Pager` 别硬推继承：先给最小可用 `setPageFactory(id, fn)`，`IPage` 作为可选封装。
-9. `FlyingItem`、背景图非关键路径 → 可延后。
-
-### C. 方案里缺的具体项
-
-10. `EdgeInsets` 类型：先确认库里有没有，没有就定义（或直接用 4 个 float）。
-11. 视口尺寸变化的通知链要写清（谁通知绝对层、何时 `requestLayout()`）。
-12. 覆盖层里"哪些参与焦点"要明确（页头/底栏默认不参与、弹窗参与）——
-    这决定 `enterLayer()` 的默认焦点落在谁身上。
-13. 焦点导航的测试脚手架要写明（手动 `YGNodeCalculateLayout` + `notifyLayout` 驱动几何），
-    否则"无窗口可测"会在实现时才暴露。
-14. **迁移清单漏了设计器**：它驱动预览（手动布局）、`theme_edit.cpp` 有 `AppletFrame` 模板串、
-    `designer_core_test` 有引用 → 要一并回归。
-15. 验收基数表述改为"以当前 1832 项为**下限**，只增不减"。
-
-### D. 保留意见（请你判断）
-
-16. `Shell::pushDialog` 与 `App::pushOverlay` 的二分：若未来要"全屏模态页面"
-    （如启动游戏的黑屏过渡）可能不够。建议给判定标准：**是否需要盖住页头/底栏 + 是否需要独立焦点域**；
-    需要就走 `App::pushOverlay`，否则走 `Shell::pushDialog`。
+### 第 3 轮 · 场景推演：异步、集成与回归
+| 场景 | 发现 | 并入 |
+|---|---|---|
+| A→B→C 快速连按切页 | 被取消的预加载仍可能改 UI | `preload` 返回 `PreloadHandle` + `cancelPreload`（测试 10） |
+| 预加载失败（文件缺失/解析错） | 会显示空页，没有反馈 | `IPage::onPreloadFailed` + 错误视图 |
+| 数据未就绪就进入页面 | 需要统一 loading | `IPage::buildLoading()`（Pager 负责显示） |
+| 游戏库 3000 条元数据 | 全量预加载会爆内存 | 约定 `preload` 只拉"首屏 + n"；缩略图按预算淘汰 |
+| demo 14 页 + 2 测试 + 设计器都要迁移 | 漏了设计器 | 第 7 步加设计器回归（`theme_edit.cpp` 模板串、`designer_core_test`） |
+| `App` 与新 `FocusManager` 状态重叠 | 两套真相必打架 | 5.1 合一（App 只转发） |
+| 删旧类会让用户 JSON 失效 | 类型名兼容 | 5.3 保留 `"AppletFrame"` |
+| 验收基数会随测试增加而变 | 表述不严谨 | 改为"以 1832 项为下限，只增不减" |
