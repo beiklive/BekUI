@@ -1,5 +1,7 @@
 #include "bklv/core/font.hpp"
 
+#include "bklv/core/icon_font.hpp"
+
 #include <cstdio>
 #include <string>
 
@@ -222,6 +224,30 @@ void loadFonts()
         else
         {
             Logger::info("没找到图标字体 resources/font/switch_icons.ttf，hint 图标用文字代替");
+    }
+
+    // Material Icons：库自带的图标库（core/icon_font.*）。
+    // **必须在这里装**：图集一旦建好，再加字体就会崩（设计器里踩过 segfault）。
+    {
+        const std::string materialPath
+            = bklv::resourcePath("resources/font/MaterialIcons-Regular.ttf");
+        if (fileExists(materialPath.c_str()))
+        {
+            ImFontConfig config;
+            config.FontDataOwnedByAtlas = true;
+            ImFont* material = io.Fonts->AddFontFromFileTTF(materialPath.c_str(),
+                ICON_FONT_SIZE, &config, PUA_RANGES);
+            if (material != nullptr)
+            {
+                bklv::icon::setFont(material);
+                Logger::info("已加载图标库：resources/font/MaterialIcons-Regular.ttf");
+            }
+            else
+                Logger::warning("图标字体解析失败：resources/font/MaterialIcons-Regular.ttf");
+        }
+        else
+            Logger::info("没找到 resources/font/MaterialIcons-Regular.ttf，图标用文字代替");
+    
         }
     }
 
