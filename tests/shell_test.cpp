@@ -62,6 +62,12 @@ int main()
     checkFloat(shell->getSafeAreaBottom(), 30.0f, "安全区 bottom");
     checkFloat(shell->getSafeAreaLeft(), 40.0f, "安全区 left");
 
+    // 4b) EdgeInsets 重载（顺带让新类型有调用点）
+    shell->setSafeAreaInsets(EdgeInsets::all(12.0f));
+    checkFloat(shell->getSafeAreaTop(), 12.0f, "EdgeInsets::all 四边同值");
+    shell->setSafeAreaInsets(EdgeInsets(1.0f, 2.0f, 3.0f, 4.0f));
+    checkFloat(shell->getSafeAreaLeft(), 4.0f, "EdgeInsets 重载透传 left");
+
     // 5) 真角落：直接挂到覆盖层
     View* cornerA = new Box(Axis::COLUMN);
     shell->addToCorner(cornerA, Corner::TOP_RIGHT, 16.0f, 12.0f);

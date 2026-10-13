@@ -1,5 +1,6 @@
 #include "bklv/widgets/shell.hpp"
 
+#include "bklv/core/geometry.hpp"
 #include "bklv/views/padding.hpp"
 
 namespace bklv

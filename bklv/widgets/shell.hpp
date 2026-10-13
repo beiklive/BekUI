@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/geometry.hpp"
 
 #include <functional>
 
@@ -72,6 +73,10 @@ class Shell : public Box
 
     // 安全区：四层统一内缩（Switch 的圆角/刘海）
     void setSafeAreaInsets(float top, float right, float bottom, float left);
+    void setSafeAreaInsets(const EdgeInsets& insets)
+    {
+        this->setSafeAreaInsets(insets.top, insets.right, insets.bottom, insets.left);
+    }
     float getSafeAreaTop() const { return this->safeTop; }
     float getSafeAreaRight() const { return this->safeRight; }
     float getSafeAreaBottom() const { return this->safeBottom; }
