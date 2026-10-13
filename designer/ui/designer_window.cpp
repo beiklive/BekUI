@@ -3319,8 +3319,8 @@ void DesignerWindow::drawProps()
             std::string axis = "column";
             this->doc.getBoxString("axis", axis);
             int axisIndex = (axis == "row") ? 1 : 0;
-            propLabel("axis");
-            if (ImGui::Combo("##axis", &axisIndex, "column\0row\0"))
+            propLabel(fieldLabel("axis"));
+            if (ImGui::Combo("##axis", &axisIndex, "纵向\0横向\0"))
             {
                 this->doc.setBoxString("axis", axisIndex == 1 ? "row" : "column");
                 edited();
@@ -3334,9 +3334,9 @@ void DesignerWindow::drawProps()
             for (int i = 0; i < 6; i++)
                 if (justify == justifyItems[i])
                     justifyIndex = i;
-            propLabel("justifyContent");
+            propLabel(fieldLabel("justifyContent"));
             if (ImGui::Combo("##justifyContent", &justifyIndex,
-                    "flexStart\0center\0flexEnd\0spaceBetween\0spaceAround\0spaceEvenly\0"))
+                    "起始\0居中\0末尾\0两端对齐\0均匀分布\0等距分布\0"))
             {
                 this->doc.setBoxString("justifyContent", justifyItems[justifyIndex]);
                 edited();
@@ -3349,9 +3349,9 @@ void DesignerWindow::drawProps()
             for (int i = 0; i < 5; i++)
                 if (align == alignItems[i])
                     alignIndex = i;
-            propLabel("alignItems");
+            propLabel(fieldLabel("alignItems"));
             if (ImGui::Combo("##alignItems", &alignIndex,
-                    "flexStart\0center\0flexEnd\0stretch\0baseline\0"))
+                    "起始\0居中\0末尾\0拉伸\0基线\0"))
             {
                 this->doc.setBoxString("alignItems", alignItems[alignIndex]);
                 edited();
@@ -3368,7 +3368,7 @@ void DesignerWindow::drawProps()
                 std::string value;
                 if (!this->doc.getBoxString(key, value))
                     value.clear();
-                if (this->colorField(key, value))
+                if (this->colorField(fieldLabel(key), value))
                 {
                     this->doc.setBoxString(key, value);
                     edited();
