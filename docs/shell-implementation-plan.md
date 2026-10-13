@@ -761,3 +761,46 @@ python3 scripts/check_naming.py
 - 注册在 A/B 上的系统键**不会阻止同帧 `handleActions` 再吃一次**（双响应）；要互斥需记录"本帧已消费的键"
 - 无窗口测试**驱动不了** `handleActions/handlePointer`（读 `ImGui::GetIO()`，`input.cpp:682/777`）-> 「B 路由 / 点遮罩关闭 / 系统键穿过模态」要可测，得留**设备无关入口**（如 `bool dispatchAction(ControllerButton)` + 指针按下入口），否则只能像 `shell_test` 7c 那样只断言注册表
 - Switch 后端只映射 Plus/Minus/L/R/X/Y（`imgui_impl_libvk.cpp:105-118`），HOME/CAPTURE 到不了应用，将来要平台级触发入口
+
+---
+
+## v16 交接（本会话目标轮次用尽，从这里继续）
+
+### 已完成（全部入库、全绿）
+
+| 步 | 内容 | 测试 |
+|---|---|---|
+| 1 | 布局原语：现有 `position`/`top/left/right/bottom` 本来就齐；补 `EdgeInsets` + 文档 + 测试 | 53 |
+| 2 | `Shell` 四层（Backdrop/Content/Overlay/Hud）+ insets + 安全区 + `addToCorner/addToEdge/fillLayer` + `EdgeInsets` 重载 | 29 |
+| 3 | **焦点管理**：顺序索引导航 + 父链冒泡、默认焦点三级、`canFocus` 四条件、跨 box 三档、默认不循环 + wrap、撞边回调（带方向 + 节流）+ 抖动、焦点记忆（路径 + hint，不存裸指针）、`ensureFocusVisible` | 82 |
+| 4（部分） | `DialogOptions` + `pushDialog/popDialog`（模态栈 + `removeView` + F3 顺序）+ `setSystemAction`（优先级高于模态）+ **dim 遮罩**（与弹窗同生共死） | +46（shell_test） |
+
+**当前基线：全绿 2013 项、GL/VK 零警告、工作区干净。**
+
+### 第 4 步剩余（对策都写在上文 v14/v15）
+
+1. `closeOnDimClick`：按 **F1(b)** 加"模态内空点回调"（`hit==nullptr` 时由 Shell 判点不在弹窗
+   `getFrame()` 内）—— 不要动 `hitTest`/`focusFromPointer` 的焦点语义
+2. `closeOnBack` 的**读取点**（现在 `input.cpp:384` 只写不读）+ **B 键限定子树派发**（F2：
+   `triggerAction` 会沿父链走到根，要在 Shell 里走到 modal 根为止）
+3. `enterLayer`/`leaveLayer`（**F4：`void leaveLayer()`**，`leave` 不在动作前缀表）
+4. 焦点记忆从**单槽改栈**（F5，`input.hpp:325`）—— 弹窗套弹窗会互相覆盖
+5. 系统键与 `handleActions` 同帧双响应（A/B 上注册系统键时）
+
+### 第 5~7 步
+
+- **第 5 步**：按 **附录 D** 做（`Pager` + 可取消预加载 + 失败/loading + 页面级记忆 +
+  **迁移 demo 14 页** + 逐页截图）。注意附录 D1-5 已核实：`ScrollingFrame` 的
+  `setContentOffsetY/getContentOffsetY` **本来就有**，直接复用
+- **第 6 步**：按页背景（`setBackdropFor`）+ `TransitionHost` 跨层飞行（**不要**把飞行元素挂 HudLayer）
+- **第 7 步**：删旧 `AppletFrame`（**保留 JSON 类型名 `"AppletFrame"`**）+ 设计器回归 + 文档与缓存收尾
+
+### 继续做时的纪律（都是本会话踩出来的）
+
+1. **每改一处立刻构建**；绝不攒改多个文件后一次构建
+2. 精确锚点 + 单处替换；删块用**括号配对器**；**禁止**正则删块、禁止找 `});` 当结尾
+3. 并发写者在场时**绝不用 `git add -A`**；不在写者活跃时 `reset`/`stash` 它的文件
+4. 回退只认**已验证过的提交号**
+5. 新 setter 必须在 **public 段**；命名要过 `check_naming.py`
+   （已知不过的前缀：`restore`、`leave`、`wrap` —— 用 `loadFocus`/`void leaveLayer` 这类规避）
+6. 每步收尾都要：`./scripts/check.sh`（只增不减、GL/VK 零警告）+ `check_naming.py` + 截图复核
