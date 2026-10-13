@@ -14,11 +14,14 @@
 //   · 面板**半透明**（底色是 surface.card 压了 alpha），压着内容也能看清字
 //   · 一行一条日志，**不换行**（超宽直接被裁剪；要看全就把面板拉宽）
 //   · 字号取主题里**最小**的字号（`metric.font.size.xs`，没有就退到 sm）
+//   · **不支持滚动**：永远显示最新的一批（"即时显示"）。要翻历史就开文件输出去文件里看，
+//     面板只负责"现在发生了什么"，所以没有 scrollTo/scrollBy/滚轮那一套。
 //
 // **绘制开销（这是硬要求：日志再多也不能拖慢主循环）**
 //   · 缓存里只存 `const LogEntry*`（**不复制字符串**），只在「日志版本 / 过滤 / 字号 / 字体」
 //     变化时重建一次；同一帧里来 1000 条也只重建一次。
-//   · 行高固定 → 可见区间用**一次除法**算出来（不是从头遍历），只画屏幕里那十几行。
+//   · 行高固定 + 不滚动 → 可见区间就是"最后 N 行"，一次除法/比较算出来（不是从头遍历），
+//     只画屏幕里那十几行。
 //   · 每行只调一次 `AddText`（前缀 + 正文先进一个**复用缓冲**，容量只增不减 → 稳态零分配）。
 //   · 头部状态行同理：内容没变就复用上一帧的字符串。
 //   · 面板不可见时 `View::frame` 直接返回，一帧一个 draw call 都不产生。
@@ -57,18 +60,13 @@ class DebugLogView : public View
     void setShowLocation(bool show) { this->showLocation = show; this->invalidateRows(); }
     bool isShowLocation() const { return this->showLocation; }
 
-    // ---- 滚动 ----
-    void setAutoScroll(bool enabled) { this->autoScroll = enabled; }
-    bool isAutoScroll() const { return this->autoScroll; }
-    // 滚到最新一条
-    void scrollToBottom();
-    // 按"行"滚动（正数 = 看更新的日志）；滚到底部会重新打开自动跟随
-    void scrollBy(int lines);
-    void setScrollOffset(float offset);
-    float getScrollOffset() const { return this->scrollOffset; }
-    // 内容总高（所有可见行的高度和）与最大可滚动量
-    float getContentHeight() const { return this->totalHeight; }
-    float getMaxScroll() const;
+    // ---- "即时显示"的可见窗口（**没有滚动**：永远是最后一批）----
+    // 面板高度能放下的行数（至少 1 行；头部状态行与内边距都扣掉）
+    size_t getVisibleRowCount() const;
+    // 当前从第几行开始画（= 总行数 - 可见行数，所以永远贴着最新）
+    size_t getFirstVisibleRow() const;
+    // 最新一行是否在可见窗口里（不支持滚动，所以这条永远成立）
+    bool isShowingLatest() const;
 
     // ---- 读取/清理 ----
     // 缓存里有多少行（= 通过过滤的日志条数）
@@ -157,10 +155,6 @@ class DebugLogView : public View
 
     bool showTime     = true;
     bool showLocation = true;
-    bool autoScroll   = true;
-
-    float scrollOffset = 0.0f;
-    float totalHeight  = 0.0f;
 
     // 主题值（applyTheme 时取好，draw 只读）
     float fontSize    = 15.0f;

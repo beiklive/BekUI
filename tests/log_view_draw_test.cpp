@@ -108,19 +108,18 @@ int main()
         std::printf("  [数据] 30 条 %d 顶点 / %d 命令；1000 条 %d 顶点 / %d 命令\n",
             small.vertices, small.commands, big.vertices, big.commands);
 
-        std::printf("\n== 2. 滚动到任意位置，绘制量不变（可见区间是 O(1) 算出来的）==\n");
-        const float maxScroll = view->getMaxScroll();
-        check(maxScroll > 0.0f, "1000 行足够长，能滚");
+        std::printf("\n== 2. 面板只画「最后 N 行」（不滚动）==\n");
+        check(view->isShowingLatest(), "永远贴着最新");
+        check(view->getFirstVisibleRow() + view->getVisibleRowCount() >= view->getCachedRowCount(),
+            "可见窗口覆盖到最后一行");
 
-        view->setScrollOffset(maxScroll * 0.5f);
+        // 再多来 2000 条：可见窗口跟着推，绘制量仍然只跟面板能放几行有关
+        fillLogs(3000);
         view->update();
-        const DrawStats middle = drawOnce(view, list);
-        checkEqualInt(middle.vertices, big.vertices, "滚到中间：顶点数不变");
-
-        view->scrollToBottom();
-        view->update();
-        const DrawStats bottom = drawOnce(view, list);
-        checkEqualInt(bottom.vertices, big.vertices, "滚到底：顶点数不变");
+        const DrawStats more = drawOnce(view, list);
+        checkEqualInt(more.vertices, big.vertices, "日志涨到 3000 条：顶点数还是不变");
+        check(view->isShowingLatest(), "仍然贴着最新");
+        check(view->getFirstVisibleRow() > 0, "窗口已经从第 0 行往前推了");
 
         std::printf("\n== 3. 反复画同一帧：不再重建缓存、顶点数稳定 ==\n");
         const uint64_t rebuilds = view->getRebuildCount();
@@ -128,15 +127,15 @@ int main()
         {
             view->update();
             const DrawStats again = drawOnce(view, list);
-            checkEqualInt(again.vertices, bottom.vertices, "重复绘制顶点数不变");
+            checkEqualInt(again.vertices, more.vertices, "重复绘制顶点数不变");
         }
         check(view->getRebuildCount() == rebuilds, "20 帧没有新日志：行缓存一次都没重建");
 
-        // 只改滚动位置也不重建（缓存只看日志版本/过滤/字号/字体）
-        view->scrollBy(-3);
+        // 过滤变化才重建（缓存只看日志版本/过滤/字号/字体）
+        view->setLevelVisible(bklv::LogLevel::INFO, false);
         view->update();
         drawOnce(view, list);
-        check(view->getRebuildCount() == rebuilds, "只滚动不重建缓存");
+        check(view->getRebuildCount() == rebuilds + 1, "过滤变化才重建一次缓存");
 
         std::printf("\n== 4. 一帧耗时参考值（1000 行、面板里画十几行）==\n");
         {

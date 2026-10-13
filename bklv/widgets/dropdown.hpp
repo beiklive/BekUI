@@ -58,7 +58,10 @@ class DropdownPanel : public AppearanceView
     std::string getClassString() const override { return "bklv::DropdownPanel"; }
 };
 
-// 弹层：**全屏、透明**的一层（接住"点外面"），里面放锚定好的那块板
+// 弹层 = **遮罩层 + 弹窗面板**：
+//   · 遮罩铺满全屏（`color.common.overlay`），把底下的界面压暗 —— 用户要的"点一下弹出列表弹窗"
+//   · 面板（DropdownPanel）画在遮罩**之上**，里面是选项列表，锚在触发器附近
+//   · 遮罩本身不可聚焦：点它 = 点空白 → 走模态的空白点击回调 → 关掉整层
 class DropdownPopup : public Box
 {
   public:
@@ -71,6 +74,9 @@ class DropdownPopup : public Box
     void setOptions(const std::vector<std::string>& options, size_t selected,
         std::function<void(size_t)> onSelect);
 
+    // 遮罩色跟随主题（换肤后重新取）
+    void applyTheme() override;
+
     void setAnchor(float x, float y, float width);
     // 按可用空间定列表高度：优先下方、放不下且上方更宽裕就翻到上方，两边都不够就压缩高度
     void fitToSpace(float triggerTop, float triggerBottom, float gap, float canvasHeight,
@@ -79,8 +85,11 @@ class DropdownPopup : public Box
     // 自己关掉时通知 Dropdown（否则 isOpen() 要等下一帧 update 才同步）
     void setOnClosed(std::function<void()> handler) { this->onClosed = std::move(handler); }
 
-    // 那块板（测试要断它的外观）
+    // 那块板 / 遮罩（测试要断它们）
     AppearanceView* getPanel() const { return this->anchorBox; }
+    Box* getMask() const { return this->mask; }
+    // 当前已选中的那一项（没有选项时 nullptr）
+    DropdownOption* getSelectedOption() const;
     ScrollingFrame* getList() const { return this->list; }
     Box* getListContent() const { return this->listContent; }
     std::vector<DropdownOption*>& getOptions() { return this->options; }
@@ -88,10 +97,12 @@ class DropdownPopup : public Box
     std::string getClassString() const override { return "bklv::DropdownPopup"; }
 
   private:
+    Box* mask                 = nullptr;
     DropdownPanel* anchorBox  = nullptr;
     ScrollingFrame* list      = nullptr;
     Box* listContent          = nullptr;
     std::vector<DropdownOption*> options;
+    size_t selectedIndex      = 0;
     std::function<void()> onClosed;
 };
 

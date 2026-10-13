@@ -219,8 +219,24 @@ int main()
             }
             check(hasPanelFill, "弹窗面板有底色（主题里的 dropdown_popup 真被用上了）");
             check(hasShadow, "弹窗面板有投影层");
-            check(!popup->isFocusable(), "全屏点击层不可聚焦（不吃焦点只吃空白点击）");
-            check(!popup->getPanel()->isFocusable(), "那块板也不可聚焦");
+            check(!popup->isFocusable(), "弹层不可聚焦（不吃焦点只吃空白点击）");
+            check(!popup->getPanel()->isFocusable(), "面板也不可聚焦");
+
+            // ---- 遮罩层：铺满、压暗，且画在面板**之前**（之下）----
+            Box* mask = popup->getMask();
+            check(mask != nullptr, "弹层里有遮罩层");
+            check(mask->getBackgroundColor() != 0, "遮罩取到了主题的 overlay 色");
+            int maskIndex = -1;
+            int panelIndex = -1;
+            for (size_t i = 0; i < popup->getChildrenCount(); i++)
+            {
+                if (popup->getChildren()[i] == mask)
+                    maskIndex = (int)i;
+                if (popup->getChildren()[i] == popup->getPanel())
+                    panelIndex = (int)i;
+            }
+            check(maskIndex == 0 && panelIndex > maskIndex, "遮罩在面板之前绘制（面板画在遮罩上）");
+            check(!mask->isFocusable(), "遮罩不可聚焦（点它等于点空白）");
         }
 
         // ---- Shell 版：demo 的真实结构（Shell 根 + 内容层里的下拉 + 覆盖层弹窗）----
@@ -248,8 +264,31 @@ int main()
         check(getInputManager().getTopModal() == shellDropdown->getPopupForTest(),
             "弹层挂在 Shell 根上并成为最上层模态");
 
+        // 焦点 = 当前已选中的那一项（这一段的 selected 还是 0）
+        check(getInputManager().getCurrentFocus() == shellDropdown->getPopupForTest()->getOptions()[0],
+            "弹窗打开后焦点落在当前已选项上");
+
+        // 遮罩铺满画布
         YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
         shell->notifyLayout();
+        checkFloat(shellDropdown->getPopupForTest()->getMask()->getFrame().width, 800.0f,
+            "遮罩铺满画布（宽）");
+        checkFloat(shellDropdown->getPopupForTest()->getMask()->getFrame().height, 600.0f,
+            "遮罩铺满画布（高）");
+
+        // 先选一项把遮罩层关掉（顺便验证"选任意 item 就关闭"）
+        shellDropdown->getPopupForTest()->getOptions()[0]->trigger();
+        check(!shellDropdown->isOpen(), "选中任意一项后关闭（遮罩层一起收掉）");
+        check(!getInputManager().hasModal(), "关闭后模态退掉、底下界面恢复可点");
+
+        // 把已选项换成第 3 项，再开一次：焦点应当落到"当前已选中的那一项"
+        shellDropdown->setSelectedIndex(2);
+        shellDropdown->open();
+        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        shell->notifyLayout();
+        check(getInputManager().getCurrentFocus() == shellDropdown->getPopupForTest()->getOptions()[2],
+            "重新打开时焦点跟着「当前已选项」走");
+
         DropdownOption* second = shellDropdown->getPopupForTest()->getOptions()[1];
         const Rect secondFrame  = second->getFrame();
         getInputManager().dispatchPointerClick(Point(secondFrame.getCenterX(), secondFrame.getCenterY()));

@@ -1180,3 +1180,43 @@ tests/log_view_draw_test 31 · overlay_test 62 · log_view_test 48，全 0 失�
 demo 逐页截图 14/14 exit=0；日志面板截图（半透明/一行一条/更多行）；
 下拉弹窗截图（面板 + 阴影 + 选中高亮 + 贴底翻转）
 ```
+
+---
+
+## v25 两项用户反馈（日志面板去掉滚动 / 下拉改成遮罩层 + 弹窗）
+
+### 1. 日志面板：**不支持滚动**，即时显示最新
+
+- 删掉整套滚动接口（`setAutoScroll/isAutoScroll/scrollToBottom/scrollBy/setScrollOffset/
+  getScrollOffset/getMaxScroll/getContentHeight`）与 `update()` 里的滚轮处理。
+- 可见窗口固定成"**最后 N 行**"：`firstVisible = 总行数 − 可见行数`（可见行数由面板高度除行高算出）。
+  要看历史就开 `Logger::setFileOutput()` 去文件里翻 —— 面板只负责"现在发生了什么"。
+- 新增三个只读查询（测试与排查用）：`getVisibleRowCount()` / `getFirstVisibleRow()` /
+  `isShowingLatest()`。
+- 收益：每帧开销从 5.5 微秒降到 **约 2 微秒**（少了滚动结算与两处分支）。
+
+### 2. 下拉：点击后在**遮罩层**上绘制弹窗，聚焦当前已选项
+
+- `DropdownPopup` 现在是 **遮罩 + 面板** 两层：
+  - 遮罩铺满全屏（`color.common.overlay`，和 Dialog 遮罩同一个键）→ 底下界面被压暗；
+  - 面板（`DropdownPanel : AppearanceView`，外观 `dropdown_popup`）画在遮罩**之上**，
+    里面是可滚动的选项列表，锚在触发器附近（放不下会翻到上方）。
+- 打开时**焦点落在"当前已选项"**：`listContent->setDefaultFocusedIndex(selected)` 让
+  `pushModal` 的默认焦点逻辑找到它，另外再显式 `giveFocus` 一次（"上次焦点记忆"优先级更高，
+  会盖过默认索引 → 不显式给就会回到上次停的那一项），随后 `ensureFocusVisible()` 把它滚进视野。
+- **选中任意一项即关闭整层**（`onSelect` → `dismiss` → `popOverlay`），焦点回到触发器。
+- 像素级验收（截图比对，解码 PNG 取点）：
+  ```
+  侧栏 (50,50,50) → (25,25,25)；右上按钮 (153,153,153) → (76,76,76)；内容底 (26,26,31) → (13,13,15)
+  ```
+  即遮罩正好把底下界面压暗一半 ✓
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2358 项）   # v24 为 2344；gl/vk 均"构建通过，零警告"
+python3 scripts/check_naming.py → 命名检查：137 个文件全部符合约定
+log_view_test 50 · log_view_draw_test 33 · overlay_test 72，全 0 失败
+log_view_draw_test 数据：30 条 162 顶点/3 命令、1000 条 162 顶点/3 命令、平均 1.8 微秒/帧
+demo 截图：日志面板显示最新 #230~#244（不滚动）；下拉弹窗（遮罩 + 面板 + 已选项聚焦）
+```

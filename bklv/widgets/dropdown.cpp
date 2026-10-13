@@ -100,6 +100,15 @@ DropdownPopup::DropdownPopup()
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, "关闭", [this](View*) { this->dismiss(); });
 
+    // 遮罩铺满：先压暗背景，面板再画在它上面（子节点顺序 = 绘制顺序）
+    this->mask = new Box(Axis::COLUMN);
+    this->mask->setPositionType(PositionType::ABSOLUTE);
+    this->mask->setPositionTop(0.0f);
+    this->mask->setPositionRight(0.0f);
+    this->mask->setPositionBottom(0.0f);
+    this->mask->setPositionLeft(0.0f);
+    this->addView(this->mask);
+
     // 那块板是**外观驱动**的：底/圆角/边框/阴影来自 widgets/dropdown_popup.json
     // （以前这里及弹层本身都是裸 Box，主题里注册好的那份外观根本没人用 →
     //  弹出来只有几行悬空文字，没有"面板"）
@@ -119,6 +128,21 @@ DropdownPopup::DropdownPopup()
     this->list->setContentView(this->listContent);
 
     this->addView(this->anchorBox);
+
+    this->applyTheme();
+}
+
+// 遮罩色跟随主题（`color.common.overlay`：和弹窗遮罩同一个键）
+void DropdownPopup::applyTheme()
+{
+    if (this->mask != nullptr)
+        this->mask->setBackgroundColor(getTheme().color("color.common.overlay"));
+}
+
+DropdownOption* DropdownPopup::getSelectedOption() const
+{
+    const size_t index = static_cast<size_t>(this->selectedIndex);
+    return index < this->options.size() ? this->options[index] : nullptr;
 }
 
 void DropdownPopup::setOptions(const std::vector<std::string>& names, size_t selected,
@@ -127,6 +151,7 @@ void DropdownPopup::setOptions(const std::vector<std::string>& names, size_t sel
     for (DropdownOption* option : this->options)
         this->listContent->removeView(option, true);
     this->options.clear();
+    this->selectedIndex = names.empty() ? 0 : std::min(selected, names.size() - 1);
 
     for (size_t i = 0; i < names.size(); i++)
     {
@@ -144,6 +169,10 @@ void DropdownPopup::setOptions(const std::vector<std::string>& names, size_t sel
         this->listContent->addView(option);
         this->options.push_back(option);
     }
+
+    // 默认焦点 = **当前已选中的那一项**（pushModal 会按 getDefaultFocus 找它）
+    this->listContent->setDefaultFocusedIndex(
+        this->options.empty() ? -1 : static_cast<int>(this->selectedIndex));
 }
 
 void DropdownPopup::setAnchor(float x, float y, float width)
@@ -297,6 +326,13 @@ void Dropdown::open()
         ? app->getRootView()->getHeight()
         : 0.0f;
     this->popup->fitToSpace(frame.y, frame.getMaxY(), 4.0f, canvasHeight, this->options.size());
+
+    // 焦点落到**当前已选中**的那一项（没有就第一项），并把它滚进视野
+    // —— pushModal 的默认焦点逻辑按 defaultFocusedIndex 也会找到同一个，
+    //    这里显式给一次是为了"上次焦点记忆"不会盖过它。
+    if (DropdownOption* selected = this->popup->getSelectedOption())
+        getInputManager().giveFocus(selected);
+    getInputManager().ensureFocusVisible();
 
     // 点到列表外面（弹层自己的非可聚焦区域）就关掉。弹层是**非可聚焦**容器，
     // hitTest 返回 nullptr 时走的是模态的"空白点击"回调 —— 正是这个场景。

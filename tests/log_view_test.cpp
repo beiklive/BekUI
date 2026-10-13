@@ -134,9 +134,7 @@ int main()
                      "它应该仍然只占一行，超出的部分被面板宽度裁掉，而不是折成好几行。");
         view->update();
         checkEqualSize(view->getCachedRowCount(), rowsBefore + 1, "超长日志也只占一行（不换行）");
-        checkFloat(view->getContentHeight(),
-            (float)view->getCachedRowCount() * view->getRowHeightPx(),
-            "总高 = 行数 × 固定行高（一行一条）");
+        check(view->isShowingLatest(), "不支持滚动：面板永远停在最新的一批上");
 
         // 新日志到达 → 行数跟上
         Logger::info("第五条");
@@ -172,11 +170,11 @@ int main()
         check(view->getRowText(0).find("挤掉的日志 136") != std::string::npos,
             "第一条是最早还留着的那条");
 
-        // 只滚动不该重建缓存（重建由"日志版本/过滤/字号/字体"决定）
+        // 反复 update 不该重建缓存（重建只由"日志版本/过滤/字号/字体"决定）
         const uint64_t before = view->getRebuildCount();
-        view->scrollBy(-5);
         view->update();
-        check(view->getRebuildCount() == before, "只滚动不重建缓存");
+        view->update();
+        check(view->getRebuildCount() == before, "没有新日志时不重建缓存");
 
         delete view;
         Logger::setMaxEntries(1000); // 还原，别影响后面的小节
@@ -213,42 +211,58 @@ int main()
         delete view;
     }
 
-    std::printf("\n== 3. 滚动：贴底跟随 / 手动滚开暂停 / 边界裁剪 ==\n");
+    std::printf("\n== 3. 不支持滚动：永远只显示最新的一批 ==\n");
     {
         Logger::clear();
         DebugLogView* view = new DebugLogView();
-        layoutPanel(view, 600.0f, 200.0f);
+
+        // 面板矮一点，能放下多少行一目了然
+        view->setEnabled(true);
+        view->setWidth(600.0f);
+        view->setHeight(200.0f);
+        layoutTree(view, 600.0f, 200.0f);
 
         for (int i = 0; i < 60; i++)
             Logger::info("日志行 " + std::to_string(i));
         view->update();
 
-        check(view->isAutoScroll(), "默认自动跟随");
-        check(view->getContentHeight() > 0.0f, "内容高度算出来了");
-        check(view->getMaxScroll() > 0.0f, "内容比面板高，能滚");
-        checkFloat(view->getScrollOffset(), view->getMaxScroll(), "自动跟随时停在底部");
+        const size_t fit = view->getVisibleRowCount();
+        check(fit > 1, "面板高度能放下若干行");
+        checkEqualSize(view->getCachedRowCount(), 60, "缓存里仍然是全部 60 条");
+        checkEqualSize(view->getFirstVisibleRow(), 60 - fit, "从「最后 fit 行」开始画（贴住最新）");
+        check(view->isShowingLatest(), "最新一条一定在可见窗口里");
+        check(view->getRowText(59).find("日志行 59") != std::string::npos, "最后一行就是最新日志");
 
-        // 往上滚：暂停自动跟随
-        view->scrollBy(-3);
-        check(view->getScrollOffset() < view->getMaxScroll(), "往上滚离开了底部");
-        check(!view->isAutoScroll(), "手动滚开就暂停自动跟随");
-
-        // 再来新日志：视线不被拽走
-        const float keep = view->getScrollOffset();
-        Logger::info("新日志不该把视角拽走");
+        // 继续写日志：窗口跟着往前推，永远贴着最新
+        for (int i = 60; i < 90; i++)
+            Logger::info("日志行 " + std::to_string(i));
         view->update();
-        checkFloat(view->getScrollOffset(), keep, "暂停跟随后新日志不改滚动位置");
+        checkEqualSize(view->getFirstVisibleRow(), 90 - view->getVisibleRowCount(),
+            "新日志到达：窗口跟着往前推（不需要滚动）");
+        check(view->isShowingLatest(), "依然贴着最新");
+        check(view->getRowText(89).find("日志行 89") != std::string::npos, "最新一条还是最后一行");
 
-        // 滚回底部：恢复自动跟随
-        view->scrollToBottom();
-        check(view->isAutoScroll(), "scrollToBottom 恢复自动跟随");
-        checkFloat(view->getScrollOffset(), view->getMaxScroll(), "scrollToBottom 到底");
+        // 日志比可见行数少时：从头画（没有空窗）
+        Logger::clear();
+        for (int i = 0; i < 3; i++)
+            Logger::info("少量日志 " + std::to_string(i));
+        view->update();
+        checkEqualSize(view->getFirstVisibleRow(), 0, "日志比面板能放的行数少时从第 0 行开始");
+        check(view->isShowingLatest(), "少量日志时也贴着最新");
 
-        // 边界
-        view->setScrollOffset(-100.0f);
-        checkFloat(view->getScrollOffset(), 0.0f, "负偏移被裁到 0");
-        view->setScrollOffset(1.0e9f);
-        checkFloat(view->getScrollOffset(), view->getMaxScroll(), "超大偏移被裁到最大值");
+        // 面板变高：可见行数变多，窗口起点跟着回退，仍然贴着最新
+        Logger::clear();
+        for (int i = 0; i < 60; i++)
+            Logger::info("日志行 " + std::to_string(i));
+        view->update();
+        const size_t shortFit = view->getVisibleRowCount();
+
+        view->setHeight(500.0f);
+        layoutTree(view, 600.0f, 500.0f);
+        view->update();
+        check(view->getVisibleRowCount() > shortFit, "面板变高 → 能放下的行数变多");
+        check(view->isShowingLatest(), "面板变高之后依然贴着最新");
+        checkFloat(view->getRowHeightPx(), view->getFontSize() * 1.4f, "行高固定（字号 × 行高倍数）");
 
         delete view;
     }

@@ -116,34 +116,31 @@ float DebugLogView::getRowsHeight() const
     return this->getRowHeight() + 8.0f;
 }
 
-float DebugLogView::getMaxScroll() const
+// 面板能放下几行（头部状态行 + 上下内边距都扣掉；至少 1 行）
+size_t DebugLogView::getVisibleRowCount() const
 {
-    const float viewHeight = this->getHeight() - this->getRowsHeight() - this->padding * 2.0f;
-    if (viewHeight <= 0.0f)
-        return 0.0f;
+    const float rowsHeight = this->getHeight() - this->getRowsHeight() - this->padding * 2.0f;
+    if (rowsHeight <= 0.0f)
+        return 1;
 
-    return std::max(0.0f, this->totalHeight - viewHeight);
+    const float rowHeight = this->getRowHeight();
+    if (rowHeight <= 0.0f)
+        return 1;
+
+    const size_t count = static_cast<size_t>(rowsHeight / rowHeight);
+    return count > 0 ? count : 1;
 }
 
-void DebugLogView::scrollToBottom()
+// 不滚动 → 可见窗口永远是"最后 N 行"
+size_t DebugLogView::getFirstVisibleRow() const
 {
-    this->autoScroll   = true;
-    this->scrollOffset = this->getMaxScroll();
+    const size_t visible = this->getVisibleRowCount();
+    return this->rows.size() > visible ? this->rows.size() - visible : 0;
 }
 
-void DebugLogView::scrollBy(int lines)
+bool DebugLogView::isShowingLatest() const
 {
-    const float step = this->lineHeight * this->fontSize;
-    this->setScrollOffset(this->scrollOffset + step * static_cast<float>(lines));
-}
-
-void DebugLogView::setScrollOffset(float offset)
-{
-    const float maxScroll = this->getMaxScroll();
-    this->scrollOffset    = std::clamp(offset, 0.0f, maxScroll);
-
-    // 手动滚到最底下就恢复自动跟随；否则暂停（否则新日志会把视角拽走）
-    this->autoScroll = this->scrollOffset >= maxScroll - 0.5f;
+    return this->getFirstVisibleRow() + this->getVisibleRowCount() >= this->rows.size();
 }
 
 // ---------------------------------------------------------------------------
@@ -231,14 +228,7 @@ void DebugLogView::rebuildRowsIfNeeded()
         this->rows.push_back(row);
     }
 
-    // 一行一条、不换行 → 每行等高，总量就是"行数 × 行高"
-    this->totalHeight = this->getRowHeight() * static_cast<float>(this->rows.size());
-
-    // 新日志到达时贴着底部；关掉自动跟随就保持用户的位置（只做边界裁剪）
-    if (this->autoScroll)
-        this->scrollOffset = this->getMaxScroll();
-    else
-        this->setScrollOffset(this->scrollOffset);
+    // 一行一条、不换行、不滚动：画的时候直接取"最后 N 行"，这里不用算总高
 }
 
 // ---------------------------------------------------------------------------
@@ -253,23 +243,8 @@ void DebugLogView::update()
     if (!this->isEnabled())
         return;
 
+    // 不支持滚动：这里只需要维护"最新那批行"的缓存
     this->rebuildRowsIfNeeded();
-
-    // 鼠标滚轮：调试面板不吃焦点，所以自己判"指针在不在面板里"。
-    // 读 ImGui 状态前先确认有上下文（无窗口测试没有），和 ScrollingFrame 同一约定。
-    if (ImGui::GetCurrentContext() != nullptr)
-    {
-        ImGuiIO& io    = ImGui::GetIO();
-        const Rect frame = this->getFrame();
-        if (frame.contains(Point(io.MousePos.x, io.MousePos.y)) && io.MouseWheel != 0.0f)
-        {
-            const float step = this->lineHeight * this->fontSize * 3.0f;
-            this->setScrollOffset(this->scrollOffset - io.MouseWheel * step);
-        }
-    }
-
-    if (this->autoScroll)
-        this->scrollOffset = this->getMaxScroll();
 }
 
 // ---------------------------------------------------------------------------
@@ -355,20 +330,17 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
         return;
     }
 
-    // 行高固定 → 第一行可见行号一次除法就能算出来（不用从头遍历）
-    const float scrolled = std::max(0.0f, this->scrollOffset);
-    size_t first         = static_cast<size_t>(scrolled / rowHeight);
-    if (first >= this->rows.size())
-        first = this->rows.size() - 1;
+    // 不滚动 → 可见窗口就是"最后 N 行"（N 由面板高度除行高算出来）
+    const float textX     = x + this->padding;
+    const float clipRight = max.x - this->padding;
 
-    const float textX       = x + this->padding;
-    const float clipRight   = max.x - this->padding;
-    const float firstOffset = static_cast<float>(first) * rowHeight - scrolled;
+    const size_t visible = this->getVisibleRowCount();
+    size_t first         = this->rows.size() > visible ? this->rows.size() - visible : 0;
 
     // 不换行：超出面板宽度的部分直接裁掉（PushClipRect 管住左右）
     drawList->PushClipRect(ImVec2(textX, rowsTop), ImVec2(clipRight, rowsBottom), true);
 
-    float rowY = rowsTop + firstOffset;
+    float rowY = rowsTop;
     for (size_t i = first; i < this->rows.size(); i++)
     {
         if (rowY > rowsBottom)
