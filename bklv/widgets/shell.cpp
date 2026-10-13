@@ -250,6 +250,23 @@ Shell::~Shell()
             delete view;
 }
 
+void Shell::playEnterTransition(View* view)
+{
+    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
+    this->transition.playEnter(view, width);
+}
+
+void Shell::playExitTransition(View* view, std::function<void()> onFinished)
+{
+    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
+    this->transition.playExit(view, width, std::move(onFinished));
+}
+
+void Shell::stepContentTransition(float deltaSeconds)
+{
+    this->transition.step(deltaSeconds);
+}
+
 // 把 view 挂到内容层里，并把上一任从树上摘下来（**不删**：它还在栈里）
 void Shell::attachContentView(View* view)
 {
@@ -263,19 +280,47 @@ void Shell::attachContentView(View* view)
     this->contentLayer->addView(view);
 }
 
+View* Shell::detachContentView()
+{
+    View* leaving = this->contentView;
+    if (leaving != nullptr && leaving->getParent() == this->contentLayer)
+        this->contentLayer->removeView(leaving, false);
+
+    this->contentView = nullptr;
+    return leaving;
+}
+
 void Shell::pushContentView(View* view)
 {
     if (view == nullptr)
         return;
 
+    // 上一段转场还没播完：先落位（否则栈与画面会对不上）
+    this->transition.finishNow();
+
     View* outgoing = this->contentView;
-
     this->contentStack.push_back(view);
-    this->attachContentView(view);
 
-    // 转场：旧层已经脱离树，只让新层滑进来/淡入
-    if (outgoing != nullptr && outgoing != view)
-        this->beginContentTransition(view, outgoing, true);
+    // 首屏：没有旧层可让位，直接挂上（也不做入场：刚起界面就滑一下很怪）
+    if (outgoing == nullptr)
+    {
+        this->attachContentView(view);
+        return;
+    }
+
+    // **旧层先出场**（它还挂在树上，所以看得到），出场播完再摘它、挂新层、新层入场。
+    // 旧层不删：下钻时它留在栈里，返回时还要用。
+    this->playExitTransition(outgoing, [this, view] {
+        this->detachContentView();
+
+        this->attachContentView(view);
+
+        // 焦点落到新层里的第一个可聚焦项
+        if (View* inner = this->contentLayer->getDefaultFocus())
+            getInputManager().giveFocus(inner);
+
+        this->playEnterTransition(view);
+    });
 }
 
 void Shell::popContentView(std::function<void()> callback)
@@ -287,132 +332,41 @@ void Shell::popContentView(std::function<void()> callback)
         return;
     }
 
+    this->transition.finishNow();
+
     View* outgoing = this->contentStack.back();
     this->contentStack.pop_back();
 
     View* incoming = this->contentStack.back();
-    this->attachContentView(incoming);
-
-    // 退回上一层时把焦点放到新内容里的第一个可聚焦项上
-    if (View* inner = this->contentLayer->getDefaultFocus())
-        getInputManager().giveFocus(inner);
-
     this->pendingPopCallback = callback;
 
-    // 转场：被弹出的页面滑出去之后**释放**（它是下钻时临时建的详情页）
-    if (outgoing != nullptr && outgoing != this->contentView)
-        this->beginContentTransition(this->contentView, outgoing, false);
-    else if (callback)
-    {
-        this->pendingPopCallback = nullptr;
-        callback();
-    }
+    // **被弹出的临时页先出场**，出场播完再释放它、挂回上一层、让上一层入场。
+    // 注意顺序：先把它从内容层摘下来再 delete，不能让 contentView 指着已释放的对象。
+    this->playExitTransition(outgoing, [this, incoming, outgoing] {
+        View* leaving = outgoing;
+        if (this->contentView == leaving)
+            this->detachContentView();
+
+        if (leaving->getParent() == this->contentLayer)
+            this->contentLayer->removeView(leaving, true);
+        else
+            delete leaving;
+
+        this->attachContentView(incoming);
+
+        if (View* inner = this->contentLayer->getDefaultFocus())
+            getInputManager().giveFocus(inner);
+
+        this->playEnterTransition(incoming);
+
+        // pop 的回调等**出场**播完才跑（此时被弹出的页已经可以释放了）
+        std::function<void()> done = this->pendingPopCallback;
+        this->pendingPopCallback   = nullptr;
+        if (done)
+            done();
+    });
 }
 
-void Shell::beginContentTransition(View* incoming, View* outgoing, bool pushing)
-{
-    if (this->contentTransition == ContentTransition::NONE || this->contentTransitionDuration <= 0.0f)
-    {
-        // 不做转场：直接落位
-        this->incomingView        = incoming;
-        this->outgoingView        = outgoing;
-        this->transitionPushing   = pushing;
-        this->pendingFreeOutgoing = !pushing; // 返回时旧层要删，下钻时旧层留在栈里
-        this->finalizeTransition();
-        return;
-    }
-
-    this->incomingView        = incoming;
-    this->outgoingView        = outgoing;
-    this->transitionPushing   = pushing;
-    this->pendingFreeOutgoing = !pushing;
-
-    this->contentAnim.stop();
-    this->contentAnim.reset(0.0f);
-    this->contentAnim.addStep(1.0f, this->contentTransitionDuration, EasingFunction::CUBIC_OUT);
-    this->contentAnim.start();
-
-    this->transitionProgress = 0.0f;
-    this->applyContentTransition(0.0f);
-}
-
-void Shell::applyContentTransition(float progress)
-{
-    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
-    const bool slide  = this->contentTransition == ContentTransition::SLIDE
-        || this->contentTransition == ContentTransition::SLIDE_FADE;
-    const bool fade = this->contentTransition == ContentTransition::FADE
-        || this->contentTransition == ContentTransition::SLIDE_FADE;
-
-    if (this->incomingView != nullptr)
-    {
-        // 新层：从右边滑进来（返回时是从左边一点的位置回来）
-        const float from = slide ? (this->transitionPushing ? 1.0f : -0.25f) : 0.0f;
-        this->incomingView->setTranslateX((1.0f - progress) * from * width);
-        this->incomingView->setAlpha(fade ? progress : 1.0f);
-    }
-
-    // 旧层已经脱离树（不参与绘制），这里同步它的状态只是为了"落位后一切归零"，
-    // 免得回栈里再用时残留一个半透明的旧值。
-    if (this->outgoingView != nullptr)
-    {
-        const float to = slide ? (this->transitionPushing ? -0.25f : 1.0f) : 0.0f;
-        this->outgoingView->setTranslateX(progress * to * width);
-        this->outgoingView->setAlpha(fade ? 1.0f - progress : 1.0f);
-    }
-}
-
-void Shell::stepContentTransition(float deltaSeconds)
-{
-    if (this->transitionProgress >= 1.0f)
-        return;
-
-    this->contentAnim.update(deltaSeconds);
-
-    const float progress = (float)this->contentAnim;
-    this->transitionProgress = progress;
-    this->applyContentTransition(progress);
-
-    if (progress >= 1.0f)
-        this->finalizeTransition();
-}
-
-void Shell::finalizeTransition()
-{
-    this->transitionProgress = 1.0f;
-
-    if (this->incomingView != nullptr)
-    {
-        // 落位：清掉绘制期变换，回到正常状态
-        this->incomingView->resetTransform();
-        this->incomingView->setAlpha(1.0f);
-        this->incomingView = nullptr;
-    }
-
-    if (this->outgoingView != nullptr)
-    {
-        View* outgoing      = this->outgoingView;
-        this->outgoingView  = nullptr;
-
-        outgoing->resetTransform();
-        outgoing->setAlpha(1.0f);
-
-        // 下钻时旧层只脱离、留在栈里；返回时连视图一起释放
-        if (outgoing->getParent() == this->contentLayer)
-            this->contentLayer->removeView(outgoing, this->pendingFreeOutgoing);
-        else if (this->pendingFreeOutgoing)
-            delete outgoing;
-    }
-
-    this->pendingFreeOutgoing = false;
-
-    if (this->pendingPopCallback)
-    {
-        std::function<void()> callback = this->pendingPopCallback;
-        this->pendingPopCallback       = nullptr;
-        callback();
-    }
-}
 
 
 // 弹窗：挂覆盖层顶部 + 切模态（模态栈会保存当前焦点，关闭时自动恢复；
@@ -670,7 +624,7 @@ void Shell::update()
     Box::update();
 
     this->stepBackdropTransition(getFrameDeltaSeconds());
-    this->stepContentTransition(getFrameDeltaSeconds());
+    this->transition.step(getFrameDeltaSeconds());
     this->releaseTransitionHostIfEmpty();
 }
 

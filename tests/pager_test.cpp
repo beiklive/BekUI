@@ -132,11 +132,13 @@ int main()
 
         View* pageA = pager->getCurrentView();
         pager->show("b");
-        check(g_livePages == 1, "切页后仍然只活 1 个页面（旧页已 delete）");
-        check(g_createdPages == 2, "切页建了第 2 个页面");
-        check(pager->getCurrentView() != pageA, "当前页换了");
-        check(slot->getContentView() == pager->getCurrentView(), "槽里是新页");
+        check(pager->isExiting(), "切页先让旧页出场（两段式转场的第一段）");
+        check(pager->getCurrentView() != pageA, "逻辑上的当前页立刻换成新页");
         check(pager->isShowing("b"), "isShowing(\"b\") 为真");
+        pager->finishPageTransition();
+        check(g_livePages == 1, "转场落位后只活 1 个页面（旧页已 delete）");
+        check(g_createdPages == 2, "切页建了第 2 个页面");
+        check(slot->getContentView() == pager->getCurrentView(), "槽里是新页");
 
         // 重复 show 同一页：不重建、不重挂
         const int createdBefore = g_createdPages;
@@ -144,11 +146,13 @@ int main()
         pager->show("b");
         check(g_createdPages == createdBefore, "重复 show 同一页不重建");
         check(pager->getCurrentView() == currentBefore, "重复 show 当前页不变");
+        check(!pager->isPageTransitioning(), "重复 show 也不起转场");
         check(g_livePages == 1, "重复 show 之后还是只活 1 个页面");
 
-        // 切到"没有任何页"过之后：只建新页、删旧页
+        // 来回切：每次只建新页、删旧页
         pager->show("a");
-        check(g_livePages == 1, "来回切页始终只有 1 个页面活着");
+        pager->finishPageTransition();
+        check(g_livePages == 1, "来回切页落位后仍然只有 1 个页面活着");
         check(g_createdPages == 3, "每次切页都重新建页面（页面不缓存）");
 
         delete pager; // Pager 必须先于视图树析构（它拥有当前页）
@@ -301,6 +305,7 @@ int main()
         pager->setPageFactory("b", [](PageContext&) -> View* { return makePage(); });
 
         pager->show("a");
+        pager->finishPageTransition();
         layoutTree(root, 400.0f, 300.0f);
 
         check(slot->getScrollRange() > 0.0f, "页面够高，滚动范围 > 0");
@@ -313,10 +318,14 @@ int main()
         checkFloat(slot->getContentOffsetY(), 120.0f, "先手动把滚动位置挪到 120");
 
         pager->show("b");
+        pager->finishPageTransition();
         check(pager->isShowing("b"), "切到 b 页");
+        layoutTree(root, 400.0f, 300.0f);
+        pager->update();
         checkFloat(slot->getContentOffsetY(), 0.0f, "b 页的滚动位置是 0");
 
         pager->show("a");
+        pager->finishPageTransition();
         check(pager->isShowing("a"), "切回 a 页");
         layoutTree(root, 400.0f, 300.0f);
         pager->update(); // 滚动位置要等布局算完才落得下去（见 Pager::update 注释）
@@ -329,6 +338,7 @@ int main()
 
         // 没记过的页：滚动位置保持 0，不崩
         pager->show("b");
+        pager->finishPageTransition();
         checkFloat(slot->getContentOffsetY(), 0.0f, "b 页没有记忆时偏移为 0");
         check(pager->loadPageState("never-seen") == false, "没记过的页 loadPageState 返回 false");
 
@@ -338,7 +348,7 @@ int main()
         delete root;
     }
 
-    std::printf("\n== 5. 同级换页的转场（绘制期变换，零重排）==\n");
+    std::printf("\n== 5. 同级换页的转场：旧页出场 → 新页入场 ==\n");
     {
         resetInput();
 
@@ -354,61 +364,85 @@ int main()
         pager->setSlot(slot);
         pager->setPageFactory("a", [](PageContext&) -> View* { return makePage(); });
         pager->setPageFactory("b", [](PageContext&) -> View* { return makePage(); });
-        pager->setPageTransitionDuration(0.2f);
+        pager->setTransitionDuration(0.2f);
 
         check(!pager->isPageTransitioning(), "初始没有转场");
-        checkEqualInt((int)pager->getPageTransition(), (int)ContentTransition::SLIDE_FADE,
-            "默认是 SLIDE_FADE");
+        checkEqualInt((int)pager->getEnterTransition(), (int)ContentTransition::SLIDE_FADE,
+            "默认入场是 SLIDE_FADE");
+        checkEqualInt((int)pager->getExitTransition(), (int)ContentTransition::SLIDE_FADE,
+            "默认出场也是 SLIDE_FADE");
 
         // 首屏：没有旧页可让位 → 不做转场
         pager->show("a");
         check(!pager->isPageTransitioning(), "首屏不产生转场（没有旧页）");
         checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "首屏不透明");
-
         layoutTree(root, 400.0f, 300.0f);
 
-        // 切页：新页从右边滑入 + 淡入
+        View* oldPage = pager->getCurrentView();
+
+        // ---- 第一段：旧页出场 ----
         pager->show("b");
         View* pageB = pager->getCurrentView();
-        check(pager->isPageTransitioning(), "切页进入转场");
-        check(pageB->getTransform().translateX > 0.0f, "新页从右侧开始（位移为正）");
+        check(pager->isExiting(), "切页先让旧页出场");
+        check(slot->getContentView() == oldPage, "出场期间槽里还是旧页（所以看得到）");
+        check(pageB->getParent() == nullptr, "新页这时还没挂上");
+        checkFloat(oldPage->getAlpha(), 1.0f, "出场起点：旧页不透明");
+
+        pager->stepPageTransition(0.1f);
+        check(oldPage->getTransform().translateX < 0.0f, "旧页在往左滑");
+        check(oldPage->getAlpha() < 1.0f, "旧页在淡出");
+
+        pager->stepPageTransition(0.5f);
+        check(!pager->isExiting(), "出场结束");
+
+        // ---- 第二段：换页 + 新页入场 ----
+        check(slot->getContentView() == pageB, "出场播完新页才挂上");
+        check(pageB->getParent() != nullptr, "新页进了视图树");
+        check(pager->isEntering(), "接着新页入场");
+        check(pageB->getTransform().translateX > 0.0f, "新页从右侧开始入场");
         check(pageB->getAlpha() < 0.2f, "新页起始接近透明");
 
         const float startX = pageB->getTransform().translateX;
         pager->stepPageTransition(0.1f);
-        check(pager->isPageTransitioning(), "半程仍在转场");
         check(pageB->getTransform().translateX < startX, "新页在向左走");
         check(pageB->getAlpha() > 0.0f, "新页在变清晰");
 
         pager->stepPageTransition(0.5f);
-        check(!pager->isPageTransitioning(), "转场结束");
+        check(!pager->isPageTransitioning(), "两段都播完");
         checkFloat(pageB->getTransform().translateX, 0.0f, "落位：位移归零");
         checkFloat(pageB->getAlpha(), 1.0f, "落位：完全不透明");
+        checkEqualSize(g_livePages, 1, "落位后只活 1 个页面");
 
-        // 快速连按：上一段转场还没播完就再切 → 直接落位
-        // （不这么做的话每页都停在"刚起步"的位置，内容大半在屏幕外，越快按越看不到内容）
+        // 上一段没播完就再切：先把上一段落位，再起新的一段（不留幽灵页）
         pager->show("a");
-        check(pager->isPageTransitioning(), "上一段播完后切页会起新转场");
-        pager->show("b"); // 这一段还在跑
-        check(!pager->isPageTransitioning(), "转场没播完就再切：不再起新转场");
-        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "快速连按时新页直接落位（不透明）");
-        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f,
-            "快速连按时新页不位移（内容立刻可见）");
-        checkEqualSize(g_livePages, 1, "快速连按切页仍然只活 1 个页面");
+        check(pager->isPageTransitioning(), "又起了一段转场");
+        pager->show("b");
+        pager->finishPageTransition();
+        check(pager->isShowing("b"), "连续快速切页最终停在最后请求的那一页");
+        checkEqualSize(g_livePages, 1, "快速连按落位后也只活 1 个页面");
+        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "落位后新页不透明");
 
-        // FADE：只淡入不位移（上一段已经落位，注意要切到**另一页**才真的换页）
-        pager->setPageTransition(ContentTransition::FADE);
+        // FADE：只淡不滑（入场/出场分开配也成立）
+        pager->setEnterTransition(ContentTransition::FADE);
+        pager->setExitTransition(ContentTransition::FADE);
         pager->show("a");
-        check(pager->isShowing("a"), "切到 a 页");
-        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f, "FADE 不位移");
-        check(pager->getCurrentView()->getAlpha() < 0.2f, "FADE 仍然淡入");
+        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "出场阶段新页还没入场");
+        checkFloat(slot->getContentView()->getTransform().translateX, 0.0f, "FADE 出场不位移");
+        pager->stepPageTransition(0.5f);
+        check(pager->isEntering(), "出场完接着入场");
+        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f, "FADE 入场不位移");
+        check(pager->getCurrentView()->getAlpha() < 0.2f, "FADE 入场有淡入");
 
         // NONE：直接落位
-        pager->setPageTransition(ContentTransition::NONE);
+        pager->setEnterTransition(ContentTransition::NONE);
+        pager->setExitTransition(ContentTransition::NONE);
+        pager->finishPageTransition();
         pager->show("b");
         check(!pager->isPageTransitioning(), "NONE 不产生转场");
         checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "NONE 直接不透明");
         checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f, "NONE 不位移");
+        check(slot->getContentView() == pager->getCurrentView(), "NONE 时槽里直接是新页");
+        checkEqualSize(g_livePages, 1, "NONE 时也立刻只活 1 个页面");
 
         delete pager;
         input.setRoot(nullptr);

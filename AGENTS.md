@@ -334,12 +334,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **裸 `AppearanceView` 也会在构造时 `applyTheme()`**：不这么做的话，
   直接 `new AppearanceView("xxx")` 的地方会拿到空外观，一笔都画不出来
   （EditTextDialog 的遮罩/面板踩过：结构对、颜色对，就是什么都不显示）。
-- **内容栈转场**（`widgets/shell.*` 的 `Shell::pushContentView`/`popContentView`）：默认走
-  `ContentTransition::SLIDE_FADE`（0.22s），用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，
-  所以过渡期间零重排；`setContentTransition(NONE)` 直接落位。
-  两条语义要记住：① **pop 的回调等转场播完才执行**（和 Dialog"播完再摘"同一约定）；
-  ② **push 的旧页留在栈里只脱离树，pop 掉的那页在转场结束时释放**（详情页就是这种临时页）。
-  需要确定性步进（测试）用 `stepContentTransition(dt)`。
+- **转场：入场 / 出场分开**（`core/transition.hpp` 的 `ViewTransition`，
+  `widgets/shell.*` 的内容栈与 `widgets/pager.*` 的同级换页共用它）。
+  入场 = 新页面板从右滑入 + 淡入；出场 = 旧页面板向左滑出 + 淡出。两段都是**绘制期变换**
+  （`setTranslateX`/`setAlpha`，`View::frame` 会把整棵子树一起变）→ 过渡期间**零重排**。
+  接口：`setEnterTransition/setExitTransition`（`NONE`/`SLIDE`/`FADE`/`SLIDE_FADE`）+
+  `setTransitionDuration` + `isEntering()/isExiting()/isTransitioning()` +
+  `finishContentTransition()/finishPageTransition()`（立刻落位）。
+  语义要点：
+  ① **两段是串行的**：旧页先出场（它还挂在树上，所以看得到），出场播完才摘/删它、
+     再挂新页并让它入场 —— 所以下钻/切页都能看到两层各动一次，不是"旧页瞬间消失"。
+  ② **回调等出场播完才执行**（和 Dialog"播完再摘"同一约定），此时被弹出的临时页可以释放。
+  ③ push 的旧页留在栈里只脱离树；pop 掉的那页在**出场播完时**释放。
+  ④ 需要确定性步进（测试）用 `stepContentTransition(dt)`／`stepPageTransition(dt)`。
 - **异步回调要带生命周期护栏**（`core/alive.hpp`）：`task::run*` 的 `done` 在主线程执行，
   但发起时捕获的 `this` 可能已经析构（换页、重建视图树、回收器释放）→ 裸捕获就是
   use-after-free。做法是成员放一个 `AliveFlag`，回调捕获 `alive.handle()`（`weak_ptr`），

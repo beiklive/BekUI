@@ -3,6 +3,8 @@
 #include "bklv/core/box.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
+// 转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里
+#include "bklv/core/transition.hpp"
 #include "bklv/core/time.hpp"
 
 #include <functional>
@@ -37,18 +39,6 @@ enum class Edge
     LEFT,
 };
 
-// 内容栈下钻/返回的转场方式（对标 borealis 的 Activity 转场，但用的是绘制期变换，
-// 不参与布局，所以过渡期间不会触发重排）。
-//
-// 从旧 AppletFrame 搬过来的 —— 层级下钻（列表 → 详情）的转场归内容栈的持有者，
-// 也就是 Shell；**同级换页**的转场归 Pager（见方案 5.5）。
-enum class ContentTransition
-{
-    NONE,       // 直接切
-    SLIDE,      // 新页从右边滑入
-    FADE,       // 交叉淡入
-    SLIDE_FADE, // 滑动 + 淡入淡出（默认）
-};
 
 // 弹窗选项。放在类外：C++ 不允许把"带默认成员初值的嵌套类型"用作同类内的默认实参。
 struct DialogOptions
@@ -182,20 +172,54 @@ class Shell : public Box
     }
     size_t getContentStackSize() const { return this->contentStack.size(); }
 
-    // 内容栈的转场（时间单位是秒）
-    void setContentTransition(ContentTransition value) { this->contentTransition = value; }
-    ContentTransition getContentTransition() const { return this->contentTransition; }
-    void setContentTransitionDuration(float seconds) { this->contentTransitionDuration = seconds; }
-    float getContentTransitionDuration() const { return this->contentTransitionDuration; }
+    // ---- 内容栈的转场：**入场 / 出场分开**（时间单位是秒）----
+    //
+    // 入场 = 新层滑入/淡入；出场 = 旧层滑出/淡出，**出场播完才摘/删它**
+    // （所以下钻/返回都能看到两层各动一次，不再是"旧层瞬间消失"）。
+    void setEnterTransition(ContentTransition value)
+    {
+        this->transition.setEnter(value, this->transition.getEnterDuration());
+    }
+    ContentTransition getEnterTransition() const { return this->transition.getEnter(); }
+    void setExitTransition(ContentTransition value)
+    {
+        this->transition.setExit(value, this->transition.getExitDuration());
+    }
+    ContentTransition getExitTransition() const { return this->transition.getExit(); }
 
+    // 入场/出场各一段时长
+    void setTransitionDuration(float seconds)
+    {
+        this->transition.setBoth(this->transition.getEnter(), seconds);
+    }
+    float getTransitionDuration() const { return this->transition.getEnterDuration(); }
+
+    // 旧的"一个开关"写法：两边都设成同一个（保留给已有调用方/测试）
+    void setContentTransition(ContentTransition value)
+    {
+        this->transition.setBoth(value, this->transition.getEnterDuration());
+    }
+    ContentTransition getContentTransition() const { return this->transition.getEnter(); }
+    void setContentTransitionDuration(float seconds) { this->setTransitionDuration(seconds); }
+    float getContentTransitionDuration() const { return this->getTransitionDuration(); }
+
+    // 直接对某个视图播一次入场/出场（宿主也能用；出场回调里可以接着摘/删它）
+    void playEnterTransition(View* view);
+    void playExitTransition(View* view, std::function<void()> onFinished = nullptr);
+
+    bool isEntering() const { return this->transition.isEntering(); }
+    bool isExiting() const { return this->transition.isExiting(); }
+    bool isTransitioning() const { return this->transition.isActive(); }
     // 正在转场？（转场期间焦点先不挪，等落位再给新页）
-    bool isContentTransitioning() const { return this->transitionProgress < 1.0f; }
+    bool isContentTransitioning() const { return this->transition.isActive(); }
 
     // 推进转场：update() 内部按帧间隔调；测试可以直接喂固定 dt（确定性）
     void stepContentTransition(float deltaSeconds);
+    // 立刻落位（把正在跑的那段收尾，含出场回调）
+    void finishContentTransition() { this->transition.finishNow(); }
 
-    // 转场中的旧视图（调试/测试用）
-    View* getOutgoingContentView() const { return this->outgoingView; }
+    // 正在出场的那个视图（入场期间是 nullptr；调试/测试用）
+    View* getOutgoingContentView() const { return this->transition.getOutgoing(); }
 
     void update() override;
 
@@ -216,11 +240,10 @@ class Shell : public Box
     // 过渡层空了就摘掉释放（仅动画期存在）
     void releaseTransitionHostIfEmpty();
 
-    // 内容栈转场内部：挂载当前层 / 开始 / 应用进度 / 落位
+    // 内容栈内部：把 view 挂到内容层、并把上一任摘下来（不删）
     void attachContentView(View* view);
-    void beginContentTransition(View* incoming, View* outgoing, bool pushing);
-    void applyContentTransition(float progress);
-    void finalizeTransition();
+    // 摘掉当前挂着的层（不删），把 contentView 置空 —— 出场结束后的收尾
+    View* detachContentView();
 
     Box* backdropLayer = nullptr;
     Box* contentLayer  = nullptr;
@@ -235,16 +258,9 @@ class Shell : public Box
     // 当前**挂在树里**的那一层（== contentStack.back()；转场期间旧层已脱离）
     View* contentView = nullptr;
 
-    // 内容栈转场状态
-    ContentTransition contentTransition = ContentTransition::SLIDE_FADE;
-    float contentTransitionDuration     = 0.22f; // 秒
-    View* outgoingView                  = nullptr; // 转场中被弹掉/让位的那一层
-    View* incomingView                  = nullptr;
-    bool transitionPushing              = true;
-    float transitionProgress            = 1.0f;    // 1 = 没有转场
-    Animatable contentAnim{ 1.0f };
+    // 内容栈转场（入场/出场两个方向；一次只跑一段）
+    ViewTransition transition;
     std::function<void()> pendingPopCallback;
-    bool pendingFreeOutgoing = false;
     // 与 dialogStack 一一对应的选项（closeOnBack 的读取点在这里）
     std::vector<DialogOptions> dialogOptionStack;
 

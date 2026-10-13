@@ -37,6 +37,17 @@ View* makePlaceholderView(const std::string& text)
 
 Pager::~Pager()
 {
+    // 正在**出场**的旧页：它的出场回调还没跑（宿主析构得比转场早时就会这样），
+    // 而它已经从槽里摘下来了 —— 既不在树上也不是 currentView，不在这里删就漏了。
+    if (View* leaving = this->transition.getTarget();
+        leaving != nullptr && leaving != this->currentView)
+    {
+        if (this->slot != nullptr && leaving->getParent() == this->slot)
+            this->slot->evictContentView();
+
+        delete leaving;
+    }
+
     // 当前页归 Pager 所有。槽还在就先让它摘（ScrollingFrame 只摘不删），再自己删，
     // 这样不会和槽的析构重复释放。
     if (this->currentView != nullptr)
@@ -113,6 +124,9 @@ void Pager::show(const std::string& id)
     }
     this->showing = true;
 
+    // 上一段转场还没播完就又要切页：先落位（否则槽里的页与 currentView 会对不上）
+    this->transition.finishNow();
+
     // 快速连按：切页会把"别的页正在飞的预加载"取消掉（它再来回调必须被丢弃）
     if (!this->pendingPreloadId.empty() && this->pendingPreloadId != id)
         this->cancelPreload(this->pendingPreloadId);
@@ -129,11 +143,8 @@ void Pager::show(const std::string& id)
 
     View* outgoing = this->currentView;
 
-    // 焦点原本在不在这一页里？（要在 setContentView 之前算：挂上新页后旧页就脱离树了）
-    // 在 → 切页时把焦点交接给新页；不在（比如在侧栏上）→ 别动焦点，
-    // 否则"聚焦即切页"的侧栏会被新页抢走焦点，上下移动就失效了。
-    // 焦点为空时也**不**交接：那是"还没人给过焦点"（App::setRootView 之前），
-    // 交给上层按自己的默认焦点规则决定（否则会把焦点从侧栏抢进页面）。
+    // 焦点原本在不在这一页里？在 → 切页时把焦点交接给新页；不在（比如在侧栏上）→ 别动焦点，
+    // 否则"聚焦即切页"的侧栏会被新页抢走焦点。焦点为空时不交接，交给上层的默认焦点规则。
     View* focus         = getInputManager().getCurrentFocus();
     bool focusWasInPage = false;
     for (View* v = focus; v != nullptr; v = v->getParent())
@@ -145,118 +156,68 @@ void Pager::show(const std::string& id)
         }
     }
 
-    // ---- 顺序不能反（附录 D1）----
-    // ① 先挂新页（setContentView 只摘旧页、不销毁）
-    if (this->slot != nullptr)
-        this->slot->setContentView(page);
-    else
-        BKLV_LOG_WARNING("Pager::show: 没有槽（setSlot），页面 %s 挂不上去", id.c_str());
-
     this->currentView   = page;
     this->currentPageId = id;
 
-    // ② 再给新页焦点。注意：交接失败时**必须**把焦点从旧页上挪开 ——
-    // 下面就要 delete 旧页了，焦点还指着里面某个控件就是悬空指针。
-    if (focusWasInPage)
+    const float width = this->slot != nullptr ? this->slot->getWidth() : 0.0f;
+
+    // 首屏：没有旧页可让位 —— 直接挂上（也不做入场：刚起界面就滑一下很怪）
+    if (outgoing == nullptr)
     {
-        if (View* first = page->getDefaultFocus())
-            getInputManager().giveFocus(first);
-        else
-            getInputManager().giveFocus(nullptr);
+        this->mountPage(page, focusWasInPage);
+        this->loadPageStateInternal(id, focusWasInPage);
+        if (this->onPageChanged)
+            this->onPageChanged(id);
+
+        this->showing = false;
+        return;
     }
 
-    // ③ 最后才删旧页：此时旧页已经脱离槽，焦点也不在它身上了。
-    //    删之前先把正在跑的"上一次切页转场"收掉（它记着旧页的指针，不能再碰）。
-    const bool wasTransitioning = this->isPageTransitioning();
-    this->pageAnim.stop();
-    this->transitionProgress = 1.0f;
-    this->transitionPage     = nullptr;
+    // 两段式：旧页先**出场**（它还挂在槽里，所以看得到），出场播完再挂新页、删旧页、新页**入场**
+    this->transition.playExit(outgoing, width,
+        [this, outgoing, page, id, focusWasInPage, width] {
+            // ① 先挂新页 + 交接焦点（setContentView 会把旧页从槽里摘下来，但**不删**）
+            this->mountPage(page, focusWasInPage);
 
-    if (outgoing != nullptr && outgoing != page)
-        delete outgoing;
+            // ② 焦点已经不在旧页上了，这时删它才安全
+            delete outgoing;
 
-    // ④ 新页滑入/淡入。两种情况不做转场：
-    //    · 首屏（没有旧页可让位）
-    //    · **上一次转场还没播完**（快速连按切页）：这时再起一次会让每一页都停在
-    //      "刚起步"的位置（内容大半在屏幕外），越快按越看不到内容 —— 直接落位更实用。
-    if (outgoing != nullptr && !wasTransitioning)
-        this->beginPageTransition(page);
+            // ③ 新页入场，再恢复这一页的记忆
+            this->transition.playEnter(page, width);
+            this->loadPageStateInternal(id, focusWasInPage);
 
-    // 回到这一页：恢复上次的焦点（路径）与滚动位置
-    this->loadPageStateInternal(id, focusWasInPage);
-
-    if (this->onPageChanged)
-        this->onPageChanged(id);
+            if (this->onPageChanged)
+                this->onPageChanged(id);
+        });
 
     this->showing = false;
+}
+
+// 把页挂到槽上 + 焦点交接。调用顺序要紧（附录 D1）：先挂新页 → 给新页焦点 → 再删旧页；
+// 反过来的话焦点会短暂落在已销毁的旧页上（use-after-free）。
+void Pager::mountPage(View* page, bool handOverFocus)
+{
+    if (this->slot != nullptr)
+        this->slot->setContentView(page);
+    else
+        BKLV_LOG_WARNING("Pager::show: 没有槽（setSlot），页面挂不上去");
+
+    if (!handOverFocus)
+        return;
+
+    if (View* first = page->getDefaultFocus())
+        getInputManager().giveFocus(first);
+    else
+        getInputManager().giveFocus(nullptr); // 焦点绝不能留在马上要被删的旧页里
 }
 
 // ---------------------------------------------------------------------------
 // 同级换页的转场（只画，不参与布局）
 // ---------------------------------------------------------------------------
 
-void Pager::beginPageTransition(View* page)
-{
-    if (page == nullptr || this->pageTransition == ContentTransition::NONE
-        || this->pageTransitionDuration <= 0.0f)
-    {
-        this->pageAnim.stop();
-        this->transitionProgress = 1.0f;
-        this->transitionPage     = nullptr;
-
-        if (page != nullptr)
-        {
-            page->resetTransform();
-            page->setAlpha(1.0f);
-        }
-        return;
-    }
-
-    this->transitionWidth    = this->slot != nullptr ? this->slot->getWidth() : 0.0f;
-    this->transitionPage     = page;
-    this->transitionProgress = 0.0f;
-
-    this->pageAnim.stop();
-    this->pageAnim.reset(0.0f);
-    this->pageAnim.addStep(1.0f, this->pageTransitionDuration, EasingFunction::CUBIC_OUT);
-    this->pageAnim.start();
-
-    this->applyPageTransition(0.0f);
-}
-
-void Pager::applyPageTransition(float progress)
-{
-    if (this->transitionPage == nullptr)
-        return;
-
-    const bool slide = this->pageTransition == ContentTransition::SLIDE
-        || this->pageTransition == ContentTransition::SLIDE_FADE;
-    const bool fade = this->pageTransition == ContentTransition::FADE
-        || this->pageTransition == ContentTransition::SLIDE_FADE;
-
-    // 新页从右边滑进来（旧页已经不在了，这块区域先是背景色，再被新页盖住）
-    this->transitionPage->setTranslateX(slide ? (1.0f - progress) * this->transitionWidth : 0.0f);
-    this->transitionPage->setAlpha(fade ? progress : 1.0f);
-}
-
 void Pager::stepPageTransition(float deltaSeconds)
 {
-    if (this->transitionProgress >= 1.0f || this->transitionPage == nullptr)
-        return;
-
-    this->pageAnim.update(deltaSeconds);
-
-    const float progress     = (float)this->pageAnim;
-    this->transitionProgress = progress;
-    this->applyPageTransition(progress);
-
-    if (progress >= 1.0f)
-    {
-        // 落位：清掉绘制期变换，回到正常状态
-        this->transitionPage->resetTransform();
-        this->transitionPage->setAlpha(1.0f);
-        this->transitionPage = nullptr;
-    }
+    this->transition.step(deltaSeconds);
 }
 
 // ---------------------------------------------------------------------------
@@ -365,7 +326,7 @@ bool Pager::loadPageStateInternal(const std::string& id, bool restoreFocus)
 void Pager::update()
 {
     // ① 同级换页的滑入/淡入（绘制期变换，零重排）
-    this->stepPageTransition(getFrameDeltaSeconds());
+    this->transition.step(getFrameDeltaSeconds());
 
     // ② 页面记忆的滚动位置：布局是延迟的，等算完（滚动范围 > 0）才落得下去
     this->applyPendingScrollOffset();

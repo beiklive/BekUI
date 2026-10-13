@@ -122,10 +122,26 @@ int main()
         check(view->getRowText(0) != withTime, "关掉时间后行文本变了");
         check(view->getRowText(0).find("第四条") == std::string::npos, "关掉时间不影响别的行");
 
+        // 显示约定：半透明底色 + 主题最小字号 + 一行一条不换行
+        checkFloat(view->getFontSize(), getTheme().number("metric.font.size.xs"),
+            "字号取主题里最小的那个");
+        check(view->getPanelColor() != 0, "面板底色取到了");
+        const unsigned alpha = (view->getPanelColor() >> IM_COL32_A_SHIFT) & 0xFFu;
+        check(alpha > 0 && alpha < 255, "面板底色是半透明的（0 < alpha < 255）");
+
+        const size_t rowsBefore = view->getCachedRowCount();
+        Logger::info("一条特别特别长的日志，用来确认面板不换行："
+                     "它应该仍然只占一行，超出的部分被面板宽度裁掉，而不是折成好几行。");
+        view->update();
+        checkEqualSize(view->getCachedRowCount(), rowsBefore + 1, "超长日志也只占一行（不换行）");
+        checkFloat(view->getContentHeight(),
+            (float)view->getCachedRowCount() * view->getRowHeightPx(),
+            "总高 = 行数 × 固定行高（一行一条）");
+
         // 新日志到达 → 行数跟上
         Logger::info("第五条");
         view->update();
-        checkEqualSize(view->getCachedRowCount(), 5, "新日志到达后行数跟上");
+        checkEqualSize(view->getCachedRowCount(), 6, "新日志到达后行数跟上");
 
         // 清空
         view->clearLogs();

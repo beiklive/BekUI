@@ -58,12 +58,16 @@ void DebugLogView::applyTheme()
 {
     const ThemeData& theme = getTheme();
 
-    this->fontSize     = theme.number("metric.font.size.sm", 15.0f);
+    // 字号取主题里**最小**的那个（日志面板要尽量小、尽量多放几行）
+    this->fontSize     = theme.hasNumber("metric.font.size.xs")
+        ? theme.number("metric.font.size.xs")
+        : theme.number("metric.font.size.sm", 15.0f);
     this->lineHeight   = theme.number("metric.font.lineHeight", 1.4f);
     this->padding      = theme.number("metric.spacing.md", 12.0f);
     this->cornerRadius = theme.number("metric.radius.md", 5.0f);
 
-    this->panelColor  = theme.color("color.surface.card");
+    // 半透明：压着内容也看得见日志，同时还能看到底下的界面
+    this->panelColor  = colorWithAlpha(theme.color("color.surface.card"), 0.78f);
     this->borderColor = theme.color("color.common.divider");
     this->headColor   = theme.color("color.text.dim");
     this->debugColor  = theme.color("color.text.dim");
@@ -109,13 +113,7 @@ void DebugLogView::setEnabled(bool enabled)
 float DebugLogView::getRowsHeight() const
 {
     // 头部状态行 + 一条分隔线的占位（和 draw 里的算法保持一致）
-    return this->lineHeight * this->fontSize + 8.0f;
-}
-
-float DebugLogView::getContentWidth() const
-{
-    const float width = this->getWidth() - this->padding * 2.0f;
-    return width > 0.0f ? width : 0.0f;
+    return this->getRowHeight() + 8.0f;
 }
 
 float DebugLogView::getMaxScroll() const
@@ -188,43 +186,18 @@ ImU32 DebugLogView::colorForLevel(LogLevel level) const
     return this->infoColor;
 }
 
-// 一行文本按 wrapWidth 会折成几行。没有可用字体（无窗口测试）时按 1 行算。
-int DebugLogView::measureLineCount(const std::string& text, float wrapWidth) const
-{
-    if (wrapWidth <= 1.0f || ImGui::GetCurrentContext() == nullptr)
-        return 1;
-
-    ImFont* font = getDefaultFont();
-    if (font == nullptr)
-        return 1;
-
-    const float single = font->CalcTextSizeA(this->fontSize, FLT_MAX, 0.0f, "Ag").y;
-    if (single <= 0.0f)
-        return 1;
-
-    const ImVec2 wrapped =
-        font->CalcTextSizeA(this->fontSize, FLT_MAX, wrapWidth, text.c_str(), nullptr);
-    const int lines = static_cast<int>(std::ceil(wrapped.y / single));
-    return std::max(1, lines);
-}
-
 void DebugLogView::rebuildRowsIfNeeded()
 {
-    const float wrapWidth = this->getContentWidth();
-
     const uint64_t version = Logger::getVersion();
     if (!this->rowsDirty && version == this->cachedVersion && this->cachedFilter == this->levelMask
-        && this->cachedWidth == wrapWidth && this->cachedFontSize == this->fontSize)
+        && this->cachedFontSize == this->fontSize)
         return;
 
     this->cachedVersion  = version;
     this->cachedFilter   = this->levelMask;
-    this->cachedWidth    = wrapWidth;
     this->cachedFontSize = this->fontSize;
     this->rowsDirty      = false;
     this->rebuildCount++;
-
-    const float rowHeight = this->lineHeight * this->fontSize;
 
     this->rows.clear();
     for (const LogEntry& entry : Logger::getLogs())
@@ -233,16 +206,13 @@ void DebugLogView::rebuildRowsIfNeeded()
             continue;
 
         Row row;
-        row.text      = this->buildRowText(entry);
-        row.color     = this->colorForLevel(entry.level);
-        row.lineCount = this->measureLineCount(row.text, wrapWidth);
-        row.height    = rowHeight * static_cast<float>(row.lineCount);
+        row.text  = this->buildRowText(entry);
+        row.color = this->colorForLevel(entry.level);
         this->rows.push_back(std::move(row));
     }
 
-    this->totalHeight = 0.0f;
-    for (const Row& row : this->rows)
-        this->totalHeight += row.height;
+    // 一行一条、不换行 → 每行等高，总量就是"行数 × 行高"
+    this->totalHeight = this->getRowHeight() * static_cast<float>(this->rows.size());
 
     // 新日志到达时贴着底部；关掉自动跟随就保持用户的位置（只做边界裁剪）
     if (this->autoScroll)
@@ -299,7 +269,7 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
 
     ImFont* font  = getDefaultFont();
     const float fontSize = this->fontSize;
-    const float rowHeight = this->lineHeight * fontSize;
+    const float rowHeight = this->getRowHeight();
 
     // ---- 状态行 ----
     const InputManager& input = getInputManager();
@@ -333,15 +303,15 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
     if (rowsBottom <= rowsTop)
         return;
 
-    const float wrapWidth = std::max(1.0f, width - this->padding * 2.0f);
+    // 不换行：超出面板宽度的部分直接裁掉（PushClipRect 管住左右）
     drawList->PushClipRect(ImVec2(x + this->padding, rowsTop), ImVec2(max.x - this->padding, rowsBottom), true);
 
     float rowY = rowsTop - this->scrollOffset;
     for (const Row& row : this->rows)
     {
-        if (rowY + row.height < rowsTop)
+        if (rowY + rowHeight < rowsTop)
         {
-            rowY += row.height;
+            rowY += rowHeight;
             continue;
         }
         if (rowY > rowsBottom)
@@ -349,9 +319,9 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
 
         if (font != nullptr)
             drawList->AddText(font, fontSize, ImVec2(x + this->padding, rowY), row.color,
-                row.text.c_str(), nullptr, wrapWidth);
+                row.text.c_str());
 
-        rowY += row.height;
+        rowY += rowHeight;
     }
 
     drawList->PopClipRect();

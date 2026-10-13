@@ -14,6 +14,7 @@
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/dialog.hpp"
 #include "bklv/widgets/dropdown.hpp"
+#include "bklv/widgets/shell.hpp"
 #include "test_util.hpp"
 
 using namespace bklv;
@@ -176,6 +177,67 @@ int main()
         check(!getInputManager().hasModal(), "关掉后模态退掉");
         check(third->isSelected(), "被选中的选项进入 selected 状态");
         checkEqual(dropdown->getSelectedText(), "高", "选中项没变");
+
+        // ---- 鼠标路径：点触发器要能展开（指针只认命中视图自己的动作）----
+        getInputManager().setRoot(root);
+        View* trigger = dropdown->getChildren()[0];
+        const Rect triggerFrame = trigger->getFrame();
+        getInputManager().dispatchPointerClick(
+            Point(triggerFrame.getCenterX(), triggerFrame.getCenterY()));
+        check(dropdown->isOpen(), "鼠标点触发器能展开（不是死代码）");
+        check(getInputManager().hasModal(), "展开后进入模态");
+
+        // 点弹层外面（列表之外）→ 关掉
+        getInputManager().dispatchPointerClick(Point(4.0f, 596.0f));
+        check(!dropdown->isOpen(), "鼠标点列表外面关掉");
+        check(!getInputManager().hasModal(), "关掉后模态退掉（鼠标路径）");
+
+        // ---- 鼠标点选项：选中 + 自动关 ----
+        dropdown->open();
+        YGNodeCalculateLayout(root->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        DropdownOption* first = dropdown->getPopupForTest()->getOptions()[0];
+        const Rect optionFrame   = first->getFrame();
+        getInputManager().dispatchPointerClick(
+            Point(optionFrame.getCenterX(), optionFrame.getCenterY()));
+        checkEqual(dropdown->getSelectedText(), "低", "鼠标点第一项选中了它");
+        check(!dropdown->isOpen(), "鼠标选完自动关掉");
+
+        // ---- Shell 版：demo 的真实结构（Shell 根 + 内容层里的下拉 + 覆盖层弹窗）----
+        // 弹层是 pushOverlay 挂到根（= Shell）上的，这里把整条链走一遍
+        Shell* shell = new Shell();
+        shell->setDimensions(800.0f, 600.0f);
+        Box* page = new Box(Axis::COLUMN);
+        page->setWidthPercentage(100.0f);
+        page->setHeightPercentage(100.0f);
+        Dropdown* shellDropdown = new Dropdown();
+        shellDropdown->setOptions({ "甲", "乙", "丙" });
+        page->addView(shellDropdown);
+        shell->pushContentView(page);
+
+        app.setRootView(shell); // 换根（旧根连同旧下拉一起回收）
+        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        shell->notifyLayout();
+        getInputManager().setRoot(shell);
+
+        View* shellTrigger = shellDropdown->getChildren()[0];
+        const Rect shellTriggerFrame = shellTrigger->getFrame();
+        getInputManager().dispatchPointerClick(
+            Point(shellTriggerFrame.getCenterX(), shellTriggerFrame.getCenterY()));
+        check(shellDropdown->isOpen(), "Shell 里鼠标点下拉也能展开");
+        check(getInputManager().getTopModal() == shellDropdown->getPopupForTest(),
+            "弹层挂在 Shell 根上并成为最上层模态");
+
+        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        shell->notifyLayout();
+        DropdownOption* second = shellDropdown->getPopupForTest()->getOptions()[1];
+        const Rect secondFrame  = second->getFrame();
+        getInputManager().dispatchPointerClick(Point(secondFrame.getCenterX(), secondFrame.getCenterY()));
+        checkEqual(shellDropdown->getSelectedText(), "乙", "Shell 里鼠标点第二项选中了它");
+        check(!shellDropdown->isOpen(), "Shell 里选完自动关掉");
+        check(!getInputManager().hasModal(), "Shell 里关掉后模态退掉");
+
+        getInputManager().setRoot(nullptr);
+        getInputManager().resetFocusState();
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

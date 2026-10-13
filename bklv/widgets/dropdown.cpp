@@ -26,6 +26,14 @@ class DropdownTrigger : public AppearanceView
         this->onPointerAction = true;
         this->enableContentMeasurement();
         this->applyTheme();
+
+        // **必须自己注册 A 动作**：指针点击只认命中视图自己的动作（不沿父链冒泡），
+        // 只把 A 动作挂在 Dropdown 上时鼠标点触发器什么都不做（键盘 A 靠冒泡能开）。
+        // 之前 onActivate 是个"设了但没人调"的死成员，鼠标点下拉因此完全没反应。
+        this->registerAction(ControllerButton::A, "展开", [this](View*) {
+            if (this->onActivate)
+                this->onActivate();
+        });
     }
 
     void setTitle(const std::string& value) { this->title = value; }
@@ -242,6 +250,13 @@ void Dropdown::open()
 
     if (!app->pushOverlay(this->popup))
         return;
+
+    // 点到列表外面（弹层自己的非可聚焦区域）就关掉。弹层是**非可聚焦**容器，
+    // hitTest 返回 nullptr 时走的是模态的"空白点击"回调 —— 正是这个场景。
+    getInputManager().setModalEmptyClickHandler([this](const Point&) {
+        if (this->popup != nullptr)
+            this->popup->dismiss();
+    });
 
     this->opened = true;
 }

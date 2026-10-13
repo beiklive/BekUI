@@ -8,8 +8,12 @@
 //      永远最后绘制），所以它跟着视图树一起画，不再依赖 `App::onDrawWindows`。
 //   2. **不为每条日志建视图**：borealis 的 DebugLayer 每条日志 new 一个 Box + Label，
 //      日志一多就不停触发 Yoga 重排。这里直接用 ImDrawList 画文本 → **零重排**。
-//   3. 行只在「日志版本 / 级别过滤 / 面板内容宽度 / 字号」变化时重建缓存，
-//      其余帧只按缓存画可见区间。
+//   3. 行只在「日志版本 / 级别过滤 / 字号」变化时重建缓存，其余帧只按缓存画可见区间。
+//
+// 三条显示约定（用户要求）：
+//   · 面板**半透明**（底色是 surface.card 压了 alpha），压着内容也能看清字
+//   · 一行一条日志，**不换行**（超宽直接被裁剪；要看全就把面板拉宽）
+//   · 字号取主题里**最小**的字号（`metric.font.size.xs`，没有就退到 sm）
 //
 // 面板默认贴在右上角（宽 48%、高 42%），**默认关闭**；`setEnabled(true)` 打开。
 // 它不可聚焦、也不接受点击（父链上的调试层不是可聚焦容器，`hitTest` 到不了它），
@@ -68,6 +72,11 @@ class DebugLogView : public View
     }
     // 行缓存重建过几次（诊断用：日志再多，版本次数决定它，面板本身不触发重排）
     uint64_t getRebuildCount() const { return this->rebuildCount; }
+    // 当前用的字号（主题里最小的那个）与固定行高
+    float getFontSize() const { return this->fontSize; }
+    float getRowHeightPx() const { return this->getRowHeight(); }
+    // 面板底色（半透明，压着内容也看得见字）
+    ImU32 getPanelColor() const { return this->panelColor; }
     // 缓冲里一共多少条（不过滤）
     size_t getLogCount() const { return Logger::getLogs().size(); }
     void clearLogs() { Logger::clear(); }
@@ -88,29 +97,27 @@ class DebugLogView : public View
     struct Row
     {
         std::string text;
-        ImU32 color     = 0;
-        float height    = 0.0f;
-        int lineCount   = 1;
+        ImU32 color = 0;
     };
 
     // 缓存失效 + 重建（只在需要时做，绝大多数帧是空转）
     void invalidateRows() { this->rowsDirty = true; }
     void rebuildRowsIfNeeded();
+    // 头部状态行 + 分隔线占的高度
     float getRowsHeight() const;
-    float getContentWidth() const;
+    // 一行的行高（固定：不换行，所以每行一样高）
+    float getRowHeight() const { return this->lineHeight * this->fontSize; }
     std::string buildRowText(const LogEntry& entry) const;
     ImU32 colorForLevel(LogLevel level) const;
-    int measureLineCount(const std::string& text, float wrapWidth) const;
 
     std::vector<Row> rows;
     bool rowsDirty = true;
     uint64_t rebuildCount = 0;
 
     // 缓存条件
-    uint64_t cachedVersion   = 0;
-    unsigned cachedFilter    = 0;
-    float cachedWidth        = -1.0f;
-    float cachedFontSize     = -1.0f;
+    uint64_t cachedVersion = 0;
+    unsigned cachedFilter  = 0;
+    float cachedFontSize   = -1.0f;
 
     // 过滤（按 LogLevel 的下标存一位）
     unsigned levelMask = 0x0Fu;

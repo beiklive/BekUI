@@ -78,16 +78,23 @@ int main()
 
         YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
 
-        // 下钻：旧层只脱离树（不删、不画），所以内容层的孩子数仍然只有 1
+        // 下钻 = 两段式：旧层先**出场**（还挂在内容层，所以看得到），出场播完才换层、新层入场
         Box* pageB = makePage("第二层");
         shell->pushContentView(pageB);
         check(shell->getContentStackSize() == 2, "下钻后两层");
         check(shell->getContentView() == pageB, "当前内容是第二层");
-        check(shell->getContentLayer()->getChildrenCount() == 1, "内容层仍然只挂一层");
-        check(pageA->getParent() == nullptr, "旧层已脱离树（但没被删）");
-        check(pageB->getParent() == shell->getContentLayer(), "内容层挂的是新层");
+        check(shell->isExiting(), "旧层先出场");
+        check(shell->getContentLayer()->getChildrenCount() == 1, "内容层始终只挂一层");
+        check(pageA->getParent() == shell->getContentLayer(), "出场期间旧层还在内容层里");
+        check(pageB->getParent() == nullptr, "新层等出场播完才挂");
 
-        // 落位（转场跑完）
+        // 出场落位 → 换层 + 新层入场
+        shell->stepContentTransition(1.0f);
+        check(pageA->getParent() == nullptr, "出场播完旧层才脱离树（但没被删）");
+        check(pageB->getParent() == shell->getContentLayer(), "内容层挂的是新层");
+        check(shell->isEntering(), "接着新层入场");
+
+        // 入场落位
         shell->stepContentTransition(1.0f);
         checkFloat(pageB->getAlpha(), 1.0f, "落位后新层不透明");
         checkFloat(pageB->getTransform().translateX, 0.0f, "落位后新层位移归零");
@@ -99,10 +106,14 @@ int main()
         check(!called, "转场期间回调还没跑");
         check(shell->getContentStackSize() == 1, "弹出后栈回到一层");
         check(shell->getContentView() == pageA, "逻辑上已经回到第一层");
-        check(pageA->getParent() == shell->getContentLayer(), "回来的层重新挂回内容层");
+        check(shell->isExiting(), "被弹出的页先出场");
 
         shell->stepContentTransition(1.0f);
-        check(called, "转场结束后回调执行");
+        check(called, "出场播完后回调执行");
+        check(pageA->getParent() == shell->getContentLayer(), "回来的层挂回内容层");
+        check(shell->isEntering(), "回来的层入场中");
+
+        shell->stepContentTransition(1.0f);
         check(shell->getOutgoingContentView() == nullptr, "转场结束后 out 视图清空");
 
         // 最外层再返回：什么都不做，只跑回调
@@ -137,7 +148,7 @@ int main()
         Box* tall = new Box(Axis::COLUMN);
         tall->setHeight(2000.0f);
         shell->pushContentView(tall);
-        shell->stepContentTransition(1.0f);
+        shell->finishContentTransition();
         YGNodeCalculateLayout(outside->getYGNode(), 1280.0f, 720.0f, YGDirectionLTR);
         checkFloat(shell->getContentLayer()->getHeight(), layerHeight,
             "内容比内容层高时，内容层高度不变");
@@ -185,11 +196,11 @@ int main()
         Box* deep = makePage("第二层");
         Button* innerButton = static_cast<Button*>(deep->getChildren()[0]);
         shell->pushContentView(deep);
-        shell->stepContentTransition(1.0f);
+        shell->finishContentTransition();
         check(shell->getContentStackSize() == 2, "又下钻一层，准备测冒泡");
 
         innerButton->triggerAction(ControllerButton::B, false);
-        shell->stepContentTransition(1.0f);
+        shell->finishContentTransition();
         check(!dismissed, "栈深 >1 时 B 是返回上一层，不触发外壳默认动作");
         check(shell->getContentStackSize() == 1, "B 冒泡到外壳并弹掉了一层");
         check(shell->getContentView() == pageA, "回到第一层内容");

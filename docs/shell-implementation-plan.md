@@ -1079,3 +1079,53 @@ demo 逐页截图 14/14 exit=0（首屏不转场，所以每页截图与之前�
 BKLV_DEMO_SWEEP=30 + BKLV_SCREENSHOT_FRAMES=31 → 切页中间帧：新页确实从右侧滑入（内容右移约 313px 并被滚动器裁掉）
 BKLV_DEMO_SWEEP=2（快速连按）→ 转场被跳过、内容立刻可见，不再有"每页都停在屏幕外"的画面
 ```
+
+---
+
+## v23 三项用户反馈（日志面板观感 / 转场入场出场接口 / 下拉菜单不可用）
+
+### 1. 日志面板：半透明 + 不换行 + 最小字号
+
+- 底色 `color.surface.card` 压到 **alpha 0.78**（半透明：压着内容也看得见日志）。
+- **一行一条、不换行**：超宽直接被面板宽度裁掉（`PushClipRect`），行高固定
+  （= `lineHeight × fontSize`）→ 内容总高 = 行数 × 行高，滚动/命中都变简单。
+- 字号取主题里**最小**的那个：新增 `metric.font.size.xs = 12`（三套主题都加），
+  `DebugLogView` 优先用它、没有则退到 `metric.font.size.sm`。
+  实测一行能放下 21 行（原来约 7 行）。
+
+### 2. 转场：入场 / 出场分开的接口
+
+- 新增 `bklv/core/transition.hpp`：`ContentTransition` 枚举 + **`ViewTransition`** 播放器
+  （`playEnter(view, width)` / `playExit(view, width, onFinished)` / `step(dt)` /
+  `finishNow()` / `isEntering()` / `isExiting()` / `isActive()`）。
+  只做绘制期变换、不碰视图树生命周期；出场回调在**清完状态之后**才调，所以回调里可以接着入场。
+- `Shell`（内容栈）与 `Pager`（同级换页）都改成**两段式**：
+  旧层/旧页先**出场**（它还挂在树上，所以看得到）→ 出场播完才摘/删它 → 挂新的 → 新的**入场**。
+  两边都提供 `setEnterTransition/setExitTransition/setTransitionDuration`、
+  `isEntering/isExiting`、`finishContentTransition()/finishPageTransition()`；
+  旧的"一个开关"写法（`setContentTransition` / `setPageTransition` / `stepContentTransition`
+  / `stepPageTransition`）保留为薄封装，已有调用方不用改。
+- 顺带修一个生命周期漏洞：**Pager 在出场转场没播完时析构**，正在出场的旧页既不在槽里
+  也不是 `currentView` → 原来没人删它（`pager_test` 的计数抓到的），现在 `~Pager` 一并释放。
+
+### 3. demo 下拉菜单不可用（真因 + 修复）
+
+- 真因：**指针点击只派发"命中视图自己"的动作**（不沿父链冒泡），而
+  `DropdownTrigger` 从来没注册过 A 动作 —— `onActivate` 是个"设了但没人调"的死成员，
+  真正注册 A 动作的是父 `Dropdown`（键盘 A 靠冒泡能开，鼠标点却什么都不做）。
+- 修复：`DropdownTrigger` 自己注册 A 动作并转调 `onActivate`；同时补上"点列表外面关闭"
+  （弹层是非可聚焦容器，`hitTest` 返回 nullptr 时走**模态空白点击回调** → `dismiss()`）。
+- `overlay_test` 补了完整鼠标路径：点触发器展开 / 点外面关闭 / 点选项选中并自动关，
+  并且**在 Shell 根**（demo 的真实结构：弹层挂在 Shell 上、成为最上层模态）上再走一遍。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2299 项）   # v22 为 2230，+69；gl/vk 均零警告
+python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约定
+tests/transition_test.cpp  → 65 项（重写成两段式 + 接口语义）
+tests/shell_content_test   → 65 项；tests/pager_test → 90 项；tests/overlay_test → 53 项
+tests/log_view_test        → 43 项（半透明 / 最小字号 / 一行一条不换行）
+demo 逐页截图 14/14 exit=0；BKLV_DEMO_LOG=1 截图：面板半透明、一行一条、21 行
+BKLV_DEMO_SWEEP=40 + FRAMES=43 的中间帧：旧页正在向左滑出并淡出（出场段）
+```
