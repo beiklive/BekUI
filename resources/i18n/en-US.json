@@ -147,7 +147,7 @@
     "scroll_sub": "Nested scroller + scroll-to-focus",
     "pokedex_sub": "Sectioned recycler + detail navigation",
     "shadow_sub": "shadow layers and blur quality",
-    "icons_sub": "Built-in icon library: glyph / name / meaning / codepoint"
+    "icons_sub": "All glyphs of both icon fonts: 10 per row, code below"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -273,7 +273,10 @@
   "icons": {
     "title": "Icons",
     "loaded": "Icon library loaded, {} icons",
-    "missing": "Icon font not found, glyphs will show as boxes"
+    "missing": "Icon font not found, glyphs will show as boxes",
+    "switch": "Switch Icons",
+    "material": "Material Icons",
+    "count": "{} glyphs"
   },
   "pager": {
     "loading": "Loading…",

@@ -463,6 +463,26 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   Yoga 会按比例把**同一列里的兄弟节点一起压缩**（按钮行 48 → 28），滚动器自己的高度
   也随内容变 → 每次切页内容区高度都变，看着像底栏在上下闪。
   `grow` 配 `basis 0` 才是"只占剩余空间"。
+- **图标有两套，"全部字形"要扫字体而不是列手写表**（`core/font.*` + `core/icon_font.*`）：
+  `resources/font/switch_icons.ttf`（按键/系统图标）与 `MaterialIcons-Regular.ttf` 都是按
+  **整个私有区**（`PUA_RANGES = U+E000~U+F8FF`）装进图集的，字体里实际有的字形远多于手写表：
+  ```
+  bklv::scanFontCodepoints(font)      // 扫一个字体在私有区里实际有的码位（升序）
+  bklv::getIconFontCodepoints()       // switch_icons.ttf 的全部码位（带缓存）
+  bklv::icon::allGlyphs()             // Material 的全部码位 + UTF-8（手写表 all() 只是子集）
+  bklv::icon::utf8Glyph(codepoint)    // 码位 -> UTF-8 字形
+  ```
+  判断"字体里有没有"用 `ImFont::IsGlyphInFont`（走 stbtt，不是查范围），再配
+  `GetFontBaked(大小)->FindGlyphNoFallback()` 滤掉 cmap 里映射到空槽的码位。
+  **注意 `ImFont::FindGlyphNoFallback` 在 1.92 里搬到了 `ImFontBaked` 上**，ImFont 上没有。
+- **页面里不要再套 `ScrollingFrame`**（demo 约定）：非自滚动页（`selfScrolling=false`）由
+  宿主的外层滚动器负责滚动，页面的外层框是 `height: auto` —— 里面再放一个
+  `grow/shrink` 的滚动器拿不到确定高度，高度会算成 0，**整页内容都看不见**（图标总览页踩过）。
+  要页面自己滚就把 `addPage(..., selfScrolling=true)`，宿主会按滚动器实测高度补外层框高度。
+- **页面在 `App::run()` 之前建 = 字体还没装**：`App::run()` 里才建图集并 `loadFonts()`，
+  而视图树（`setRootView`）在那之前就建好了。所以任何"构建页面时就去查字体/图标表"的代码
+  在首次构建时都会拿到空表（图标总览页曾经整页空白）—— demo 因此把**起始页推迟到第一帧**再选
+  （`pendingStartPage` 在 `update()` 里消费）。
 - **`AppearanceView` 是容器，`update()` 必须先 `Box::update()` 递归子树**：
   底栏里的提示栏/状态区、页头里的标题、弹窗面板里的按钮行都靠这条，
   漏了的话子树永远不会 update（踩过：提示栏一直不刷新、看着像空的）。

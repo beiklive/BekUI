@@ -147,7 +147,7 @@
     "scroll_sub": "独立滚动容器 + 焦点跟随滚动",
     "pokedex_sub": "分段回收列表 + 详情页导航",
     "shadow_sub": "外观 JSON 的 shadow 层与模糊档位",
-    "icons_sub": "库自带图标库：字形 / 名字 / 中文 / 码位"
+    "icons_sub": "两套图标字体的全部字形：一排 10 个，格子下面是码位"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -273,7 +273,10 @@
   "icons": {
     "title": "图标总览",
     "loaded": "已加载图标库，共 {} 个图标",
-    "missing": "没找到图标字体，字形会显示成方块"
+    "missing": "没找到图标字体，字形会显示成方块",
+    "switch": "Switch 图标",
+    "material": "Material 图标",
+    "count": "共 {} 个字形"
   },
   "pager": {
     "loading": "正在载入…",

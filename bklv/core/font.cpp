@@ -27,6 +27,10 @@ namespace
 // Switch 图标字体用的私有区（borealis 的字形都在 U+E000~U+F8FF 里）
 static const ImWchar PUA_RANGES[] = { 0xE000, 0xF8FF, 0 };
 
+// 扫描私有区时用的范围（和 PUA_RANGES 一致）
+constexpr unsigned int PUA_FIRST = 0xE000;
+constexpr unsigned int PUA_LAST  = 0xF8FF;
+
 // 图标字体：hint 栏的按键字形（A/B/X/Y、方向键…）从这里取。
 // Switch 上系统共享字体的 NintendoExt 就带这些字形，桌面则随包带 switch_icons.ttf。
 ImFont* g_iconFont = nullptr;
@@ -127,6 +131,53 @@ bool loadSwitchFonts(ImFontAtlas* atlas)
 ImFont* getDefaultFont()
 {
     return g_defaultFont;
+}
+
+std::vector<unsigned int> scanFontCodepoints(ImFont* font)
+{
+    std::vector<unsigned int> result;
+    if (font == nullptr)
+        return result;
+
+    // 两道判断缺一不可：
+    //   ① IsGlyphInFont：字体文件里**有没有这个码位**（内部走 stbtt_FindGlyphIndex，
+    //      不是"码位在不在请求的范围里"）；
+    //   ② 图集里**真的取得到字形**：有些字体给一堆码位留了空槽（cmap 有映射、轮廓是空的），
+    //      只查 ① 会把这些画出来是"缺字方块"的码位也算成图标。
+    ImFontBaked* baked = font->GetFontBaked(ICON_FONT_SIZE);
+    if (baked == nullptr)
+        return result;
+
+    result.reserve(256);
+    for (unsigned int cp = PUA_FIRST; cp <= PUA_LAST; cp++)
+    {
+        if (!font->IsGlyphInFont(static_cast<ImWchar>(cp)))
+            continue;
+
+        const ImFontGlyph* glyph = baked->FindGlyphNoFallback(static_cast<ImWchar>(cp));
+        if (glyph == nullptr || !glyph->Visible || glyph->PackId < 0)
+            continue;
+
+        result.push_back(cp);
+    }
+    return result;
+}
+
+const std::vector<unsigned int>& getIconFontCodepoints()
+{
+    // 缓存：字体或字体版本变了才重扫（扫一遍是 6400 次查表，不值得每帧做）
+    static std::vector<unsigned int> cached;
+    static ImFont* cachedFont      = nullptr;
+    static unsigned int cachedGen  = 0;
+
+    if (cachedFont != g_iconFont || cachedGen != g_fontGeneration)
+    {
+        cached      = scanFontCodepoints(g_iconFont);
+        cachedFont  = g_iconFont;
+        cachedGen   = g_fontGeneration;
+    }
+
+    return cached;
 }
 
 ImFont* getIconFont()

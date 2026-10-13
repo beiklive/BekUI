@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 // 字体加载，对应 borealis 的 core/font.hpp。
 //
 // 各平台拿字体的方式不同：
@@ -25,6 +27,14 @@ ImFont* getDefaultFont();
 
 // 图标字体（hint 栏的按键字形）。没加载时退回默认字体；用 hasIconFont() 判断。
 ImFont* getIconFont();
+
+// 扫描一个字体在私有区（U+E000~U+F8FF）里**实际存在**的码位（升序）。
+// 图标总览这类"把字体里的字形全列出来"的页面用它 —— 手写的图标表只是常用子集，
+// 字体里其实有一整套（Material 上千个）。font 为空时返回空表。
+std::vector<unsigned int> scanFontCodepoints(ImFont* font);
+
+// 图标字体（switch_icons.ttf）里实际存在的全部码位（升序，随主题字体装载变化自动失效）。
+const std::vector<unsigned int>& getIconFontCodepoints();
 bool hasIconFont();
 void setDefaultFont(ImFont* font);
 

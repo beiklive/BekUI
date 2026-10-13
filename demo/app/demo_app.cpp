@@ -159,8 +159,10 @@ DemoApp::DemoApp()
             BKLV_LOG_WARNING("BKLV_DEMO_PAGE=%s 越界（共 %d 页），用第一页", requested,
                 (int)this->pages.size());
     }
-    this->selectPage(startPage, false);
-    this->pendingStartPage = startPage != 0 ? (int)startPage : -1;
+    // 起始页**推迟到第一帧**再选：视图树是在 App::run() 之前建的，而字体（含两套图标字体）
+    // 要等 App::run() 建好图集才装载。页面若在这之前构建，取到的是"字体还没有"的空表
+    // （图标总览页会整页空白），所以统一等第一帧（update 里）再选页。
+    this->pendingStartPage = (int)startPage;
 
     // 日志窗口（调试/验收用）：BKLV_DEMO_LOG=1 打开；BKLV_DEMO_LOG_SPAM=<每帧条数> 压测。
     // 压测时盯面板头部的"布局"计数：日志再多也不该让它涨（DebugLogView 零重排）。

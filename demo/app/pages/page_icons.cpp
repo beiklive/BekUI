@@ -1,7 +1,13 @@
-// 图标总览页：罗列 bklv 自带图标库（core/icon_font）里的全部 Material Icons。
+// 图标总览页：把两套图标字体里**实际存在**的字形全列出来。
 //
-// 一行一个：字形 + Material 名字 + 中文说明 + 私有区码位。
-// 想确认"某个图标长什么样 / 码位是多少"时看这一页，不用去翻字体文件。
+// 结构（按用户要求）：
+//   [Header "Switch Icon"]   → 网格（一排 10 个）
+//   [Header "Material Icon"] → 网格（一排 10 个）
+//   每个格子 = Box(column) = [图标字形, 该图标的码位（U+XXXX）]
+//
+// 数据来源：`bklv::getIconFontCodepoints()`（switch_icons.ttf）与 `bklv::icon::allGlyphs()`
+// （MaterialIcons-Regular.ttf）—— 都是扫字体得到的"字体里真有的字形"，
+// 不是 core/icon_font 里那张手写的常用表（那张只有几十个）。
 
 #include "app/pages.hpp"
 
@@ -10,6 +16,8 @@
 #include "bklv/core/icon_font.hpp"
 
 #include <cstdio>
+#include <string>
+#include <vector>
 
 using namespace bklv;
 
@@ -19,89 +27,117 @@ namespace demo
 namespace
 {
 
-// 一个图标条目：左边字形（用图标字体），右边名字 / 中文 / 码位
-Box* makeIconRow(const icon::Info& info)
+// 一排几个
+constexpr size_t kIconsPerRow = 10;
+
+// 一个格子：Box(column) = [字形, U+XXXX]
+Box* makeIconCell(unsigned int codepoint, ImFont* font)
 {
-    Box* row = new Box();
-    row->setAxis(Axis::ROW);
-    row->setAlignItems(AlignItems::CENTER);
-    row->setGap(getTheme().number("metric.spacing.sm", 8.0f));
-    row->setPadding(0.0f, getTheme().number("metric.spacing.md", 16.0f), 0.0f,
-        getTheme().number("metric.spacing.md", 16.0f));
-    row->setPaddingTop(6.0f);
-    row->setPaddingBottom(6.0f);
+    const ThemeData& theme = getTheme();
 
-    // 字形：Label 换成图标字体
+    // 一排 10 个 → 每个格子占 10%，格子很窄（约 60px），所以：
+    //   · 子节点按 STRETCH 撑满格子宽度，文字各自居中（用 alignItems:CENTER 时
+    //     Label 会按自己的测量宽度排版，"U+E000" 会被折成两行）
+    //   · 码位文字必须 setSingleLine：窄格子里宁可裁掉也不能换行，否则行高会跳
+    Box* cell = new Box(Axis::COLUMN);
+    cell->setWidthPercentage(100.0f / static_cast<float>(kIconsPerRow));
+    cell->setAlignItems(AlignItems::STRETCH);
+    cell->setJustifyContent(JustifyContent::CENTER);
+    cell->setGap(theme.number("metric.spacing.xs", 4.0f));
+    cell->setPadding(theme.number("metric.spacing.xs", 4.0f));
+    cell->setMinHeight(theme.number("metric.list.itemHeight", 64.0f));
+
+    // 图标字形：显式指定字体（Material 与 Switch 两套各用自己那份）
     Label* glyph = new Label();
-    glyph->setText(icon::glyph(info.id));
-    glyph->setIconFontEnabled(true);
-    glyph->setFontSize(getTheme().number("metric.font.size.lg", 26.0f));
-    glyph->setTextColor(getTheme().color("color.text.primary"));
-    glyph->setWidth(40.0f);
-    row->addView(glyph);
+    glyph->setText(icon::utf8Glyph(codepoint));
+    glyph->setFont(font);
+    glyph->setFontSize(theme.number("metric.font.size.lg", 26.0f));
+    glyph->setTextColor(theme.color("color.text.primary"));
+    glyph->setHorizontalAlign(HorizontalAlign::CENTER);
+    cell->addView(glyph);
 
-    char line[128];
-    std::snprintf(line, sizeof(line), "%s", info.name);
-    Label* name = new Label();
-    name->setText(line);
-    name->setFontSize(getTheme().number("metric.font.size.md", 18.0f));
-    name->setTextColor(getTheme().color("color.text.primary"));
-    name->setGrow(1.0f);
-    row->addView(name);
+    // 码位
+    char code[16];
+    std::snprintf(code, sizeof(code), "U+%04X", codepoint);
 
-    std::snprintf(line, sizeof(line), "%s", info.chineseName);
-    Label* chinese = new Label();
-    chinese->setText(line);
-    chinese->setFontSize(getTheme().number("metric.font.size.md", 18.0f));
-    chinese->setTextColor(getTheme().color("color.text.dim"));
-    chinese->setWidth(120.0f);
-    row->addView(chinese);
+    Label* codeLabel = new Label();
+    codeLabel->setText(code);
+    codeLabel->setFontSize(theme.number("metric.font.size.xs", 12.0f));
+    codeLabel->setTextColor(theme.color("color.text.dim"));
+    codeLabel->setHorizontalAlign(HorizontalAlign::CENTER);
+    codeLabel->setSingleLine(true);
+    cell->addView(codeLabel);
 
-    std::snprintf(line, sizeof(line), "U+%04X", info.codepoint);
-    Label* code = new Label();
-    code->setText(line);
-    code->setFontSize(getTheme().number("metric.font.size.sm", 16.0f));
-    code->setTextColor(getTheme().color("color.text.disabled"));
-    code->setWidth(90.0f);
-    row->addView(code);
+    return cell;
+}
 
-    return row;
+// 一个 header：标题 + 数量
+Box* makeSectionHeader(const std::string& title, size_t count)
+{
+    const ThemeData& theme = getTheme();
+
+    Box* header = new Box(Axis::COLUMN);
+    header->setAlignItems(AlignItems::FLEX_START);
+    header->setPadding(theme.number("metric.spacing.sm", 8.0f),
+        theme.number("metric.spacing.md", 16.0f), theme.number("metric.spacing.sm", 8.0f),
+        theme.number("metric.spacing.md", 16.0f));
+
+    header->addView(makeText(title, theme.number("metric.font.size.lg", 20.0f),
+        theme.color("color.text.primary")));
+    header->addView(makeHint(getStr("icons/count", static_cast<int>(count))));
+
+    return header;
+}
+
+// 网格：一排 10 个，格子等宽（10 × 10% = 100%，间距靠格子自己的 padding）
+Box* makeIconGrid(const std::vector<unsigned int>& codepoints, ImFont* font)
+{
+    Box* grid = new Box(Axis::COLUMN);
+    grid->setWidthPercentage(100.0f);
+
+    Box* row = nullptr;
+    for (size_t i = 0; i < codepoints.size(); i++)
+    {
+        if (i % kIconsPerRow == 0)
+        {
+            row = new Box(Axis::ROW);
+            row->setWidthPercentage(100.0f);
+            row->setAlignItems(AlignItems::STRETCH);
+            grid->addView(row);
+        }
+
+        row->addView(makeIconCell(codepoints[i], font));
+    }
+
+    return grid;
 }
 
 } // namespace
 
 Box* buildIconsPage()
 {
-    Box* page = new Box();
-    page->setAxis(Axis::COLUMN);
+    // 注意：**不要**在页面里再套一层 ScrollingFrame。这个页面在 demo 里是"普通长页"
+    // （selfScrolling=false），外层已经有滚动器；页面的外层框是 auto 高，内层滚动器
+    // 拿不到确定高度 → 高度算成 0，整页内容都看不见（旧版正是这样：只看得见页头）。
+    Box* page = new Box(Axis::COLUMN);
     page->setGrow(1.0f);
+    page->setWidthPercentage(100.0f);
 
-    Box* header = new Box();
-    header->setAxis(Axis::COLUMN);
-    header->setPadding(getTheme().number("metric.spacing.md", 16.0f));
-    header->setPaddingTop(8.0f);
-    header->setPaddingBottom(8.0f);
-    header->addView(makeText(getStr("icons/title"),
-        getTheme().number("metric.font.size.lg", 20.0f),
-        getTheme().color("color.text.primary")));
-    header->addView(makeHint(getStr("icons/loaded", (int)icon::all().size())));
-    page->addView(header);
+    // ---- Switch Icon ----
+    const std::vector<unsigned int>& switchIcons = getIconFontCodepoints();
+    page->addView(makeSectionHeader(getStr("icons/switch"), switchIcons.size()));
+    page->addView(makeIconGrid(switchIcons, getIconFont()));
 
-    // 图标数量不多，直接全部铺出来，外面套滚动容器
-    ScrollingFrame* scroller = new ScrollingFrame();
-    scroller->setGrow(1.0f);
-    scroller->setShrink(1.0f);
+    // ---- Material Icon ----
+    const std::vector<icon::Glyph>& materialGlyphs = icon::allGlyphs();
 
-    Box* list = new Box();
-    list->setAxis(Axis::COLUMN);
-    for (const icon::Info& info : icon::all())
-    {
-        if (info.id == icon::Id::NONE)
-            continue;
-        list->addView(makeIconRow(info));
-    }
-    scroller->setContentView(list);
-    page->addView(scroller);
+    std::vector<unsigned int> materialIcons;
+    materialIcons.reserve(materialGlyphs.size());
+    for (const icon::Glyph& glyph : materialGlyphs)
+        materialIcons.push_back(glyph.codepoint);
+
+    page->addView(makeSectionHeader(getStr("icons/material"), materialIcons.size()));
+    page->addView(makeIconGrid(materialIcons, icon::font()));
 
     return page;
 }

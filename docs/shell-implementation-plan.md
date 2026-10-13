@@ -1220,3 +1220,54 @@ log_view_test 50 · log_view_draw_test 33 · overlay_test 72，全 0 失败
 log_view_draw_test 数据：30 条 162 顶点/3 命令、1000 条 162 顶点/3 命令、平均 1.8 微秒/帧
 demo 截图：日志面板显示最新 #230~#244（不滚动）；下拉弹窗（遮罩 + 面板 + 已选项聚焦）
 ```
+
+---
+
+## v26 demo 图标总览页重做（两套图标字体 × 全部字形）
+
+**要求**：两个 header（Switch Icon / Material Icon），每个 header 下面是网格，一排 10 个，
+每个 item = `Box(column)[图标字形, 该图标的码位]`；并且要展示**全部**图标（原来只有 60 个）。
+
+### 数据来源：扫字体，不列手写表
+
+- 手写表 `bklv::icon::all()` 只有 **60** 个常用图标；两份字体都是按整个私有区
+  （`U+E000~U+F8FF`）装进图集的，字体里其实有：
+  **switch_icons.ttf 1022 个**、**MaterialIcons-Regular.ttf 2188 个**。
+- 新增（`core/font.*` + `core/icon_font.*`）：
+  ```
+  bklv::scanFontCodepoints(ImFont*)   // 扫一个字体在私有区里实际存在的码位（升序）
+  bklv::getIconFontCodepoints()       // switch_icons.ttf 的全部码位（带缓存）
+  bklv::icon::allGlyphs()             // Material 的 {码位, UTF-8} 全表（带缓存）
+  bklv::icon::utf8Glyph(codepoint)    // 码位 -> UTF-8 字形
+  ```
+  实现要点：`ImFont::IsGlyphInFont()`（走 `stbtt_FindGlyphIndex`，是"字体里有没有"而不是
+  "在不在请求范围里"）+ `GetFontBaked(ICON_FONT_SIZE)->FindGlyphNoFallback()` 滤掉空槽。
+  踩点：**1.92 起 `FindGlyphNoFallback` 在 `ImFontBaked` 上**，`ImFont` 上已经没有了。
+
+### 页面结构
+
+```
+[Header] Switch 图标   共 1022 个字形
+[Grid]   103 行 × 10 格，每格 Box(column)[字形(switch 字体), U+XXXX]
+[Header] Material 图标 共 2188 个字形
+[Grid]   219 行 × 10 格，每格 Box(column)[字形(Material 字体), U+XXXX]
+```
+- 格子 `width = 10%`（10 个正好一行），字形用 `Label::setFont(对应字体)` 显式指定，
+  码位用 `Label::setSingleLine(true)` + `setHorizontalAlign(CENTER)`（窄格子里宁可裁也不能换行）。
+- **两个踩过的坑**：
+  1. 页面里原本又套了一层 `ScrollingFrame`（旧版就是这样）——非自滚动页的外层框是 auto 高，
+     内层滚动器拿不到确定高度 → 高度算成 0，**整页都看不见**（旧版只有页头露出来，图标行一直没显示）。
+     现在直接用宿主的页面滚动器，页面里不再放滚动器。
+  2. demo 原先在构造时就选起始页，而字体要等 `App::run()` 建好图集才装载 → 首次构建时
+     图标表是空的（整页空白）。现在**起始页推迟到第一帧**（`pendingStartPage` 在 `update()` 里消费）。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2374 项）   # v25 为 2358；gl/vk 均"零警告"
+python3 scripts/check_naming.py → 命名检查：137 个文件全部符合约定
+tests/icon_font_test → 434 项 0 失败（新增：扫字体、码位升序/唯一、UTF-8 编解码、
+                        手写表是字体子集、allGlyphs 缓存、switch 字体扫出 >100 个）
+demo 截图：page_13 顶部（Switch 图标 1022 + 网格 10/行）、滚动到 Material 图标 2188 的 header 与网格
+demo 逐页 14/14 exit=0；BKLV_DEMO_SWEEP=2 正常
+```

@@ -1,5 +1,7 @@
 #include "bklv/core/icon_font.hpp"
 
+#include "bklv/core/font.hpp"
+
 #include <map>
 
 namespace bklv
@@ -113,6 +115,64 @@ const std::string kEmpty;
 const std::vector<Info>& all()
 {
     return g_all;
+}
+
+// 码位 -> UTF-8（图标都在私有区，3 字节；写成通用的以防以后加更大的码位）
+std::string utf8Glyph(unsigned int cp)
+{
+    std::string out;
+    if (cp < 0x80)
+    {
+        out += static_cast<char>(cp);
+    }
+    else if (cp < 0x800)
+    {
+        out += static_cast<char>(0xC0 | (cp >> 6));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
+    }
+    else if (cp < 0x10000)
+    {
+        out += static_cast<char>(0xE0 | (cp >> 12));
+        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
+    }
+    else
+    {
+        out += static_cast<char>(0xF0 | (cp >> 18));
+        out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
+    }
+    return out;
+}
+
+const std::vector<Glyph>& allGlyphs()
+{
+    // 缓存：字体或字体版本变了才重扫（扫一遍是几千次字体查询，不值得每帧做）
+    static std::vector<Glyph> cached;
+    static ImFont* cachedFont     = nullptr;
+    static unsigned int cachedGen = 0;
+
+    const unsigned int generation = getFontGeneration();
+    ImFont* current               = font();
+
+    if (cachedFont != current || cachedGen != generation)
+    {
+        cached.clear();
+        // 手写表里的图标也在字体里，不去重 —— 这里就是"字体有的全列出来"
+        for (unsigned int cp : scanFontCodepoints(current))
+        {
+            Glyph glyph;
+            glyph.codepoint = cp;
+            glyph.utf8      = utf8Glyph(cp);
+            cached.push_back(std::move(glyph));
+        }
+
+        cachedFont = current;
+        cachedGen  = generation;
+    }
+
+    return cached;
 }
 
 const char* glyph(Id id)

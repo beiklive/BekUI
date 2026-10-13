@@ -51,11 +51,26 @@ struct Info
     unsigned int codepoint;   // 私有区码位
 };
 
-// 全部图标（demo 的图标总览页用它罗列）
+// 全部图标（**手写的常用子集**，几十个；按名字/中文说明索引）
 const std::vector<Info>& all();
+
+// 字体里**实际存在**的一个字形：码位 + UTF-8 编码
+struct Glyph
+{
+    unsigned int codepoint;
+    std::string utf8;
+};
+
+// Material Icons 字体里实际存在的**全部**码位（按码位升序）。
+// 上面那张表只是常用子集，字体里其实有一整套（上千个）—— "图标总览"这类页面要用这个。
+// 需要字体已装载（`hasFont()`）；没装载返回空表。结果缓存，字体换了自动失效。
+const std::vector<Glyph>& allGlyphs();
 
 // 取 UTF-8 字形；id 不存在返回空串
 const char* glyph(Id id);
+
+// 码位 -> UTF-8 字形（Switch 图标那套只给码位，字形要自己拼）
+std::string utf8Glyph(unsigned int codepoint);
 
 // 按 Material 名字取字形（找不到返回空串）
 const char* glyphByName(const char* name);
