@@ -3,8 +3,11 @@
 #include "bklv/core/box.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/time.hpp"
 
 #include <functional>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace bklv
@@ -114,6 +117,29 @@ class Shell : public Box
     void setOnBackRequested(std::function<bool()> handler);
     bool hasBackRequestedHandler() const { return this->onBackRequested != nullptr; }
 
+    // ---- 按页背景（切页时淡入，见方案第 6 步）----
+    //
+    // 每个页面 id 一份背景视图，全部挂在背景层里，只有当前那份是 VISIBLE。
+    // 切页时新的从 0 淡入、旧的垫在下面，补间结束才把旧的 GONE 掉。
+    void setBackdropFor(const std::string& pageId, View* backdrop);
+    void showBackdropFor(const std::string& pageId);
+    View* getBackdropFor(const std::string& pageId) const;
+    View* getCurrentBackdrop() const { return this->currentBackdrop; }
+    const std::string& getCurrentBackdropId() const { return this->currentBackdropId; }
+    void setBackdropTransitionDuration(float seconds) { this->backdropDuration = seconds; }
+    float getBackdropTransitionDuration() const { return this->backdropDuration; }
+
+    // ---- 过渡层（**仅动画期间存在**）----
+    //
+    // 跨层飞行元素挂这里，**不要**挂 HudLayer：Hud 是常驻浮层（toast/指示），
+    // 飞行元素混进去会污染它，而且动画结束没人负责清理。
+    // 第一次调 getTransitionHost() 时创建（挂在最上层 = 最后绘制），
+    // 一旦层内没有子节点，下一次 update() 就把它从树上摘掉并释放。
+    Box* getTransitionHost();
+    bool hasTransitionHost() const { return this->transitionHost != nullptr; }
+    // 立刻清空并释放过渡层（动画被打断/切页时用）
+    void clearTransitionHost();
+
     // 角落 / 边缘定位（内部即绝对定位 + 边偏移；居中类会用一层铺满的包装盒）
     void addToCorner(View* view, Corner corner, float insetX, float insetY);
     void addToEdge(View* view, Edge edge, float inset);
@@ -134,12 +160,21 @@ class Shell : public Box
     }
     size_t getContentStackSize() const { return this->contentStack.size(); }
 
+    void update() override;
+
+    // 背景淡入的确定性步进（正常由 update() 按帧间隔调；测试直接喂固定 dt，
+    // 和 AppletFrame::stepContentTransition 同一套路）
+    void stepBackdropTransition(float deltaSeconds);
+
   protected:
     void applySafeAreaToLayers();
 
   private:
     // 模态子树里没人消费按键时的兜底：目前只处理 closeOnBack（按 B 关掉最上层弹窗）。
     bool handleModalUnhandled(ControllerButton button);
+
+    // 过渡层空了就摘掉释放（仅动画期存在）
+    void releaseTransitionHostIfEmpty();
 
     Box* backdropLayer = nullptr;
     Box* contentLayer  = nullptr;
@@ -168,6 +203,17 @@ class Shell : public Box
     float safeRight  = 0.0f;
     float safeBottom = 0.0f;
     float safeLeft   = 0.0f;
+
+    // 按页背景：id → 视图；只有 currentBackdrop 是 VISIBLE
+    std::map<std::string, View*> backdrops;
+    View* currentBackdrop    = nullptr;
+    View* previousBackdrop   = nullptr; // 淡入期间垫在下面的旧背景
+    std::string currentBackdropId;
+    float backdropDuration   = 0.22f;    // 秒
+    Animatable backdropAnim{ 1.0f };
+
+    // 过渡层（懒创建；空了就释放）
+    Box* transitionHost = nullptr;
 };
 
 } // namespace bklv

@@ -2,6 +2,8 @@
 
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/logger.hpp"
+#include "bklv/core/time.hpp"
 #include "bklv/views/padding.hpp"
 
 namespace bklv
@@ -384,6 +386,147 @@ void Shell::popDialog(View* dialog, bool free)
         if (dim != nullptr && dim->getParent() == this->overlayLayer)
             this->overlayLayer->removeView(dim, true);
     }
+}
+
+// ---- 按页背景（切页淡入）----
+
+void Shell::setBackdropFor(const std::string& pageId, View* backdrop)
+{
+    if (backdrop == nullptr)
+        return;
+
+    this->backdrops[pageId] = backdrop;
+    this->backdropLayer->addView(backdrop);
+    backdrop->setVisibility(Visibility::GONE);
+
+    // 第一份背景直接当当前背景（否则"切页前"什么都没有）
+    if (this->currentBackdrop == nullptr)
+    {
+        this->currentBackdrop   = backdrop;
+        this->currentBackdropId = pageId;
+        backdrop->setVisibility(Visibility::VISIBLE);
+        backdrop->setAlpha(1.0f);
+    }
+}
+
+View* Shell::getBackdropFor(const std::string& pageId) const
+{
+    auto it = this->backdrops.find(pageId);
+    return it == this->backdrops.end() ? nullptr : it->second;
+}
+
+void Shell::showBackdropFor(const std::string& pageId)
+{
+    if (pageId == this->currentBackdropId)
+        return;
+
+    auto it = this->backdrops.find(pageId);
+    if (it == this->backdrops.end() || it->second == nullptr)
+    {
+        BKLV_LOG_WARNING("Shell::showBackdropFor: 页面 %s 没有注册背景", pageId.c_str());
+        return;
+    }
+
+    View* next = it->second;
+
+    // 新的移到背景层末尾：子节点顺序 = 绘制顺序，淡入的那份要画在旧背景之上
+    if (next->getParent() == this->backdropLayer)
+        this->backdropLayer->removeView(next, false);
+    this->backdropLayer->addView(next);
+
+    // 旧的先留着垫在下面，补间结束再 GONE（否则淡入期间会露出画布底色）
+    this->previousBackdrop = this->currentBackdrop;
+    if (this->previousBackdrop != nullptr)
+        this->previousBackdrop->setAlpha(1.0f);
+
+    next->setVisibility(Visibility::VISIBLE);
+    next->setAlpha(0.0f);
+
+    this->currentBackdrop   = next;
+    this->currentBackdropId = pageId;
+
+    if (this->backdropDuration <= 0.0f)
+    {
+        next->setAlpha(1.0f);
+        if (this->previousBackdrop != nullptr)
+            this->previousBackdrop->setVisibility(Visibility::GONE);
+        this->previousBackdrop = nullptr;
+        return;
+    }
+
+    this->backdropAnim.stop();
+    this->backdropAnim.reset(0.0f);
+    this->backdropAnim.addStep(1.0f, this->backdropDuration, EasingFunction::CUBIC_OUT);
+    this->backdropAnim.start();
+}
+
+void Shell::stepBackdropTransition(float deltaSeconds)
+{
+    if (this->backdropAnim.isStopped())
+        return;
+
+    this->backdropAnim.update(deltaSeconds);
+
+    const float alpha = (float)this->backdropAnim;
+    if (this->currentBackdrop != nullptr)
+        this->currentBackdrop->setAlpha(alpha);
+
+    if (alpha >= 1.0f)
+    {
+        if (this->previousBackdrop != nullptr)
+        {
+            this->previousBackdrop->setVisibility(Visibility::GONE);
+            this->previousBackdrop = nullptr;
+        }
+    }
+}
+
+// ---- 过渡层（仅动画期间存在）----
+
+Box* Shell::getTransitionHost()
+{
+    if (this->transitionHost != nullptr)
+        return this->transitionHost;
+
+    // 铺满、绝对定位、不吃输入（Box 默认不可聚焦），挂在**最后一个**子节点位置 = 最后绘制
+    Box* host = new Box(Axis::COLUMN);
+    host->setVisibility(Visibility::GONE); // 默认不可见；有飞行元素时由调用方设 VISIBLE
+    this->addView(host);
+    this->transitionHost = host;
+    return host;
+}
+
+void Shell::clearTransitionHost()
+{
+    if (this->transitionHost == nullptr)
+        return;
+
+    this->transitionHost->removeAllViews(); // 只摘不删：飞行元素的所有权在调用方
+    this->releaseTransitionHostIfEmpty();
+}
+
+void Shell::releaseTransitionHostIfEmpty()
+{
+    if (this->transitionHost == nullptr)
+        return;
+
+    if (!this->transitionHost->getChildren().empty())
+        return;
+
+    if (this->transitionHost->getParent() == this)
+        this->removeView(this->transitionHost, true);
+    else
+        delete this->transitionHost;
+
+    this->transitionHost = nullptr;
+}
+
+void Shell::update()
+{
+    Box::update();
+
+    this->stepBackdropTransition(getFrameDeltaSeconds());
+    this->releaseTransitionHostIfEmpty();
 }
 
 } // namespace bklv

@@ -904,3 +904,38 @@ BKLV_DEMO_SWEEP=2 跑 300s（ASAN 构建）：0 处 AddressSanitizer 报错，14
   （方案 §3.1 的 `setHeaderVisible` + insets 目标值语义）。
 - `page_overlay` 的两个静态弹窗在每次建页时"没打开就丢旧的"：否则旧弹窗里捕获的
   页面 Label 会在切页后悬空。
+
+---
+
+## v19 第 6 步完成（按页背景淡入 + 过渡层）
+
+### 交付
+
+- `Shell::setBackdropFor(pageId, View*)` / `showBackdropFor(pageId)`：每页一份背景、全部在背景层里，
+  切页时新的从 0 淡入（`EasingFunction::CUBIC_OUT`，默认 0.22s，`setBackdropTransitionDuration` 可调），
+  旧的**垫在下面**直到补间结束才 GONE（否则淡入期间会露出画布底色）；
+  新的会被移到背景层末尾（子节点顺序 = 绘制顺序，保证画在旧背景之上）。
+- `Shell::stepBackdropTransition(dt)`：确定性步进（正常由 `Shell::update()` 按帧间隔调），
+  和 `AppletFrame::stepContentTransition` 同一套路，测试可直接喂固定 dt。
+- `Shell::getTransitionHost()` / `hasTransitionHost()` / `clearTransitionHost()`：
+  **仅动画期间存在**的过渡层。第一次取用时创建（作为 shell 最后一个子节点 = 最后绘制，
+  压在覆盖层/浮层之上）；层里没有子节点时下一次 `update()` 就把它摘掉并释放（不残留）。
+  `clearTransitionHost()` 只摘不删 —— 飞行元素的所有权在调用方。
+
+### 测试
+
+新增 `tests/backdrop_test.cpp`（**32 项**）：背景注册表 / 只有当前那份 VISIBLE /
+淡入过程 alpha 与"旧的垫在下面" / 没注册的 id 不崩不改当前背景 / 时长 0 立刻落位 /
+过渡层懒创建 + 位次最上 + 空了释放 + clearTransitionHost 只摘不删。
+
+### 验收原文
+
+```
+全部检查通过（2145 项）     # v18 是 2113（+32 backdrop_test）；GL/VK 均"构建通过，零警告"
+```
+
+### demo 未接背景图（有意）
+
+demo 的 `resources/` 里没有可用的背景素材（只有 testcard.png），接进去只会白白改变
+已经逐页复核过的页面观感，所以这一块只落库能力 + 测试。宿主接法：
+`pager->setOnPageChanged([&](const std::string& id){ shell->showBackdropFor(id); })`。
