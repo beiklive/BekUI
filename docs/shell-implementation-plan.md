@@ -394,3 +394,22 @@ focusManager->setEdgeHitMinInterval(0.12f);
 `available[1] == "my-skin"` —— 其它测试也会往 `dist/resources/theme/` 写文件，
 `check.sh` 顺序执行时残留会让总数变化（我清空 `dist/` 后暴露：单独跑 292 项 0 失败，
 合跑时报"期望 2 实际 1"）。已改成"default 还在 + 新名能查到"，**不依赖残留状态**。
+
+### v9 第 3 步进行中（并发状态与可信基线）
+
+**可信基线 = `9c45cfe`**（全绿 1912 项），它已经包含第 1、2 步。
+先前那个夹带子代理半成品的提交 `132ea86` **已被 reset 掉**（HEAD 单独构建 20 错，不可作为基线）。
+
+**我的改动暂存在 stash**：`lead-edges-2`（= `EdgeInsets` 接到 `Shell::setSafeAreaInsets` + 2 项
+`shell_test` 断言，验证后 shell_test 应为 29 项）与 `step3-subagent-partial`（子代理早期半成品保留待查）。
+
+**子代理当前在写的文件**（本轮快照，属于第 3 步范围）：
+`views/h_scrolling_frame.{cpp,hpp}`、`views/scrolling_frame.cpp`、`widgets/appearance_view.cpp`、
+`widgets/button.hpp`、`widgets/cell.hpp` —— 正在按 borealis 的 `getParentNavigationDecision`
+导航链与 `shakeHighlight` 抖动铺开；构建错误数 115 → 20 → 11，在收敛。
+
+**工作纪律（新增，血泪）**：
+1. **并发写者在场时绝不用 `git add -A`** —— 只 `git add` 自己明确改过的文件（我因此造出坏提交 `132ea86`）
+2. **不要在写者活跃时做 `git reset`/`git stash` 它的文件** —— 会丢掉它正在写的编辑；
+   要动先确认它停摆，且把它的文件存进 stash 保留
+3. 回退到绿基线时，用**已验证过的提交号**（这里是 `9c45cfe`），不要用"看起来对"的提交
