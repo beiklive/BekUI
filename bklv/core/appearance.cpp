@@ -261,6 +261,8 @@ tweeny::tween<float> makeTween(float from, float to, uint32_t frames, const std:
 {
     using namespace tweeny::easing;
 
+    if (enumMatches(easing, "linear"))
+        return tweeny::from(from).to(to).via(linear).during(frames).build();
     if (enumMatches(easing, "quadraticIn"))
         return tweeny::from(from).to(to).via(quadraticIn).during(frames).build();
     if (enumMatches(easing, "quadraticOut"))

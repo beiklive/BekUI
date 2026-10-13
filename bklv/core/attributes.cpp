@@ -1,5 +1,7 @@
 #include "bklv/core/attributes.hpp"
 
+#include <set>
+
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -53,6 +55,12 @@ bool enumMatches(const std::string& text, const char* name)
 
 bool warnUnknownEnumValue(const char* field, const std::string& text, const char* options)
 {
+    // 同一个「字段=值」只报一次：以前每次构造补间都刷一条，一屏日志全被它淹没
+    // （实测：默认的 easing="linear" 曾因为匹配链漏了 linear 而狂刷几百条）
+    static std::set<std::string> warned;
+    if (!warned.insert(std::string(field) + "=" + text).second)
+        return false;
+
     BKLV_LOG_WARNING("%s 不认识 \"%s\"（可用：%s；大小写与 _ 都不敏感，flexEnd == flex_end）",
         field, text.c_str(), options);
     return false;

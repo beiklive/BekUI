@@ -25,9 +25,9 @@ Box* makeIconRow(const icon::Info& info)
     Box* row = new Box();
     row->setAxis(Axis::ROW);
     row->setAlignItems(AlignItems::CENTER);
-    row->setGap(getTheme().number("metric.gap.sm", 8.0f));
-    row->setPadding(0.0f, getTheme().number("metric.padding.md", 16.0f), 0.0f,
-        getTheme().number("metric.padding.md", 16.0f));
+    row->setGap(getTheme().number("metric.spacing.sm", 8.0f));
+    row->setPadding(0.0f, getTheme().number("metric.spacing.md", 16.0f), 0.0f,
+        getTheme().number("metric.spacing.md", 16.0f));
     row->setPaddingTop(6.0f);
     row->setPaddingBottom(6.0f);
 
@@ -78,7 +78,7 @@ Box* buildIconsPage()
 
     Box* header = new Box();
     header->setAxis(Axis::COLUMN);
-    header->setPadding(getTheme().number("metric.padding.md", 16.0f));
+    header->setPadding(getTheme().number("metric.spacing.md", 16.0f));
     header->setPaddingTop(8.0f);
     header->setPaddingBottom(8.0f);
     header->addView(makeText(getStr("icons/title"),
