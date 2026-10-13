@@ -2028,13 +2028,13 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
     ImGui::SameLine();
 
     // 文本占中间；右边要给"取色"和"主题 key"两个控件留位置（以前留 96 不够，被裁）
-    ImGui::SetNextItemWidth(-152.0f);
+    ImGui::SetNextItemWidth(-176.0f);
     changed |= inputString((std::string("##") + label).c_str(), value);
 
     changed |= this->colorPickerPopup(label, value);
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(88);
+    ImGui::SetNextItemWidth(76);
     if (ImGui::BeginCombo((std::string("##key") + label).c_str(), "主题 key…"))
     {
         static const char* common[] = { "accent.base", "common.transparent", "common.red",
