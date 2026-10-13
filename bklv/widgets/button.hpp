@@ -25,6 +25,9 @@ class Button : public AppearanceView
     void setEnabled(bool enabled);
     bool isEnabled() const { return this->enabled; }
 
+    // 禁用的按钮也不参与焦点（InputManager::canFocus 会查这条）
+    bool isDisabled() const override { return !this->enabled; }
+
     // 程序化触发（等同于用户按下）
     void trigger();
 

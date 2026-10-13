@@ -10,6 +10,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/gamepad.hpp"
+#include "bklv/core/logger.hpp"
 #include "bklv/core/view.hpp"
 
 namespace bklv
@@ -169,28 +170,175 @@ void InputManager::handleNavigation()
         this->navigate(FocusDirection::RIGHT);
 }
 
+void InputManager::markNavigationBlockedByPolicy()
+{
+    // 供 Box 的跨 box 策略调用：本次导航是被策略主动拦下的（静默，不触发撞边反馈）
+    this->navigationBlockedByPolicy = true;
+}
+
+View* InputManager::navigationScope() const
+{
+    View* top = this->getTopModal();
+    return top != nullptr ? top : this->root;
+}
+
+View* InputManager::scopeRootForLayer(int layer) const
+{
+    if (layer <= 0)
+        return this->root;
+
+    const size_t index = (size_t)layer - 1;
+    if (index < this->modals.size())
+        return this->modals[index].modal;
+
+    return nullptr; // 那一层已经没了
+}
+
 void InputManager::navigate(FocusDirection direction)
 {
-    if (this->root == nullptr)
+    if (direction == FocusDirection::NONE)
         return;
 
-    // 还没有焦点：先选一个默认焦点。
+    this->navigationBlockedByPolicy = false;
+
+    // 还没有焦点：先取**当前范围**（模态优先）的默认焦点。
+    // 焦点为空不触发撞边反馈（没有"当前焦点"可以反馈）。
     if (this->currentFocus == nullptr)
     {
-        this->giveFocus(this->root->getDefaultFocus());
+        View* scope = this->navigationScope();
+        if (View* defaultFocus = scope != nullptr ? scope->getDefaultFocus() : nullptr)
+            this->giveFocus(defaultFocus);
         return;
     }
 
-    View* next = this->currentFocus->getNextFocus(direction, this->currentFocus);
-    if (next == nullptr)
-        next = this->root->getNextFocus(direction, this->currentFocus);
+    // 焦点是根自己（没有父容器）就没有兄弟层可导航，和 borealis 一样直接算撞边
+    View* next = nullptr;
+    if (this->currentFocus->hasParent())
+    {
+        next = this->currentFocus->getNextFocus(direction, this->currentFocus);
 
-    // 有模态层时不许把焦点移到模态外面去
-    if (this->hasModal() && next != nullptr && !isInsideModal(next))
-        next = nullptr;
+        // 有模态层时不许把焦点移到模态外面去
+        if (next != nullptr && !this->isInsideModal(next))
+            next = nullptr;
+    }
 
     if (next != nullptr && next != this->currentFocus)
-        this->giveFocus(next);
+    {
+        // 容器"返回 this"表示焦点留在原地、由它自己把焦点滚进视野（滚动容器）
+        if (!next->isFocusable() && next->isScrollable())
+        {
+            this->ensureFocusVisible();
+            return;
+        }
+
+        if (this->canFocus(next))
+        {
+            this->giveFocus(next);
+            return;
+        }
+        // 目标不可聚焦（被禁用 / 隐藏 / 模态挡住）→ 落到下面的"走不动"分支
+    }
+
+    // 确实无法移动：被 CrossBoxPolicy 主动拦住时静默，否则给一次撞边反馈
+    if (this->navigationBlockedByPolicy)
+        return;
+
+    this->triggerFocusEdgeHit(direction);
+}
+
+void InputManager::triggerFocusEdgeHit(FocusDirection direction)
+{
+    if (this->currentFocus == nullptr)
+        return;
+
+    // 节流：长按方向键会连续导航，不节流就会狂响 / 狂抖
+    if (this->lastEdgeHitTime >= 0.0
+        && this->clock - this->lastEdgeHitTime < (double)this->edgeHitMinInterval)
+        return;
+
+    this->lastEdgeHitTime = this->clock;
+
+    // 库自己的反馈只有"焦点框抖一下"（照附录 B3 的 shakeHighlight）；
+    // 音效之类的额外反馈由上层在 onFocusEdgeHit 回调里挂。
+    this->shakeHighlightOnEdge(direction);
+
+    if (this->onFocusEdgeHit != nullptr)
+        this->onFocusEdgeHit(direction, this->currentFocus);
+}
+
+void InputManager::shakeHighlightOnEdge(FocusDirection direction)
+{
+    if (this->currentFocus == nullptr)
+        return;
+
+    this->currentFocus->shakeHighlight(direction);
+}
+
+bool InputManager::canFocus(View* view) const
+{
+    if (view == nullptr)
+        return false;
+
+    if (!view->isFocusable())
+        return false;
+    if (view->isDisabled())
+        return false;
+
+    // 有意偏离 borealis 的两条（见 docs/shell-implementation-plan.md 附录 B）：
+    // ① 沿父链可见：隐藏容器（GONE）里的子节点不该被选中
+    if (!view->isVisibleInTree())
+        return false;
+
+    // ② 未被模态遮挡：bklv 的模态是标记而不是活动栈，必须显式判
+    if (!this->isInsideModal(view))
+        return false;
+
+    return true;
+}
+
+void InputManager::ensureFocusVisible()
+{
+    if (this->currentFocus == nullptr)
+        return;
+
+    // 沿父链找到最近的滚动容器，让它把焦点滚进可视区
+    for (View* v = this->currentFocus->getParent(); v != nullptr; v = v->getParent())
+    {
+        if (v->isScrollable())
+        {
+            v->scrollToView(this->currentFocus, true);
+            return;
+        }
+    }
+}
+
+void InputManager::setNavigationWrap(View* box, bool wrap)
+{
+    if (box == nullptr || box->asBox() == nullptr)
+    {
+        BKLV_LOG_WARNING("setNavigationWrap: %s 不是容器，导航循环开关没生效",
+            box != nullptr ? box->getClassString().c_str() : "nullptr");
+        return;
+    }
+
+    box->asBox()->setNavigationWrap(wrap);
+}
+
+void InputManager::setCrossBoxPolicy(View* box, CrossBoxPolicy policy)
+{
+    if (box == nullptr || box->asBox() == nullptr)
+    {
+        BKLV_LOG_WARNING("setCrossBoxPolicy: %s 不是容器，跨 box 策略没生效",
+            box != nullptr ? box->getClassString().c_str() : "nullptr");
+        return;
+    }
+
+    box->asBox()->setCrossBoxPolicy(policy);
+}
+
+void InputManager::advanceClock(float seconds)
+{
+    this->clock += (double)seconds;
 }
 
 void InputManager::resetFocusState()
@@ -198,6 +346,10 @@ void InputManager::resetFocusState()
     this->modals.clear();
     this->currentFocus = nullptr;
     this->gestureTarget = nullptr; // 同上：根视图一换就是野指针
+
+    // 撞边节流也一起复位：换根/重建视图后第一次撞边应该照常反馈，
+    // 不能因为上一次的残留时间戳被静默吞掉。
+    this->lastEdgeHitTime = -1.0;
 }
 
 bool InputManager::isInsideModal(View* view) const
@@ -292,8 +444,197 @@ void InputManager::giveFocus(View* view)
         for (View* v = this->currentFocus; v != nullptr; v = v->getParent())
             stack.push_back(v);
         for (auto it = stack.rbegin(); it != stack.rend(); ++it)
+        {
             (*it)->onFocusGained();
+
+            // 顺着焦点路径把"这一层的哪个直接子节点被聚焦"记下来，
+            // Box 靠它做"上次焦点记忆"（默认焦点第 ② 级）。
+            if (Box* parent = (*it)->getParent())
+                parent->onChildFocusGained(*it, this->currentFocus);
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// 焦点记忆（跨层 / 同层换页）
+//
+// 只存"怎么找到它"：层号 + 从该层根出发的子节点下标路径，绝不存裸 View*。
+// 恢复时重新解析并校验，所以原控件销毁后不会悬空。
+// ---------------------------------------------------------------------------
+
+namespace
+{
+
+// 从 scope 到 view 的子节点下标路径（"0/2"）。view 必须挂在 scope 内。
+bool buildFocusPath(View* scope, View* view, std::string& out)
+{
+    if (scope == nullptr || view == nullptr || view == scope)
+        return false;
+
+    std::vector<size_t> indices;
+    for (View* v = view; v != scope; v = v->getParent())
+    {
+        Box* parent = v->getParent();
+        if (parent == nullptr)
+            return false; // 不在同一范围内
+
+        const std::vector<View*>& children = parent->getChildren();
+        size_t index = children.size();
+        for (size_t i = 0; i < children.size(); i++)
+        {
+            if (children[i] == v)
+            {
+                index = i;
+                break;
+            }
+        }
+        if (index == children.size())
+            return false;
+
+        indices.push_back(index);
+    }
+
+    for (auto it = indices.rbegin(); it != indices.rend(); ++it)
+    {
+        if (!out.empty())
+            out += '/';
+        out += std::to_string(*it);
+    }
+    return true;
+}
+
+// 按路径解析回视图；任何一段越界 / 对不上都返回 nullptr。
+View* resolveFocusPath(View* scope, const std::string& path)
+{
+    if (scope == nullptr || path.empty())
+        return nullptr;
+
+    View* current = scope;
+    size_t start  = 0;
+
+    while (start <= path.size())
+    {
+        const size_t slash = path.find('/', start);
+        const std::string token =
+            path.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
+        if (token.empty())
+            return nullptr;
+
+        Box* box = current->asBox();
+        if (box == nullptr)
+            return nullptr;
+
+        size_t index = 0;
+        for (char c : token)
+        {
+            if (c < '0' || c > '9')
+                return nullptr;
+            index = index * 10 + (size_t)(c - '0');
+        }
+
+        const std::vector<View*>& children = box->getChildren();
+        if (index >= children.size())
+            return nullptr;
+
+        current = children[index];
+
+        if (slash == std::string::npos)
+            break;
+        start = slash + 1;
+    }
+
+    return current;
+}
+
+} // namespace
+
+FocusRecord InputManager::captureFocusRecord(const std::string& key) const
+{
+    FocusRecord record;
+    record.layer = (int)this->modals.size();
+    record.key   = key;
+
+    if (this->currentFocus == nullptr)
+        return record;
+
+    buildFocusPath(this->navigationScope(), this->currentFocus, record.viewPath);
+
+    // 上次下标 = 该控件在自己父容器里的下标
+    if (Box* parent = this->currentFocus->getParent())
+    {
+        const std::vector<View*>& children = parent->getChildren();
+        for (size_t i = 0; i < children.size(); i++)
+        {
+            if (children[i] == this->currentFocus)
+            {
+                record.hint = (int)i;
+                break;
+            }
+        }
+    }
+
+    return record;
+}
+
+bool InputManager::applyFocusRecord(const FocusRecord& record)
+{
+    if (record.viewPath.empty())
+        return false;
+
+    View* scope = this->scopeRootForLayer(record.layer);
+    if (scope == nullptr)
+        scope = this->navigationScope(); // 那一层没了就退回当前范围
+    if (scope == nullptr)
+        return false;
+
+    View* target = resolveFocusPath(scope, record.viewPath);
+
+    // 路径可能落在不可聚焦的容器上；往下取它的默认焦点
+    if (target != nullptr && !target->isFocusable())
+        target = target->getDefaultFocus();
+
+    if (target != nullptr && this->canFocus(target))
+    {
+        this->giveFocus(target);
+        return true;
+    }
+
+    // 恢复失败 → 退**该范围**的默认焦点；连默认焦点都没有就保持当前焦点不动
+    if (View* fallback = scope->getDefaultFocus())
+    {
+        if (this->canFocus(fallback))
+            this->giveFocus(fallback);
+    }
+
+    return false;
+}
+
+void InputManager::remember()
+{
+    this->rememberedFocus    = this->captureFocusRecord("");
+    this->hasRememberedFocus = true;
+}
+
+bool InputManager::loadFocus()
+{
+    if (!this->hasRememberedFocus)
+        return false;
+
+    return this->applyFocusRecord(this->rememberedFocus);
+}
+
+void InputManager::rememberFor(const std::string& key)
+{
+    this->keyedFocusRecords[key] = this->captureFocusRecord(key);
+}
+
+bool InputManager::loadFocusFor(const std::string& key)
+{
+    auto it = this->keyedFocusRecords.find(key);
+    if (it == this->keyedFocusRecords.end())
+        return false;
+
+    return this->applyFocusRecord(it->second);
 }
 
 void InputManager::focusFromPointer(View* hit)

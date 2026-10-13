@@ -12,6 +12,7 @@
 //   - 去掉 XML 反序列化与主题文件叠加
 
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -255,11 +256,20 @@ class View
 
     // ---- 焦点 ----
 
-    // 这个 View 能否成为焦点（可点、可操作）。
+    // 这个 View 能否成为焦点（可点、可操作）。只看控件自己（不看 visibility）。
     virtual bool isFocusable() const { return false; }
 
+    // 这个 View 是否被禁用（禁用控件不参与焦点与动作）。
+    // 库里有"禁用"概念的控件（Button / Cell）重写它；canFocus() 会查这一条。
+    virtual bool isDisabled() const { return false; }
+
+    // 自己与所有祖先是否都是 VISIBLE（canFocus 的条件之一）。
+    bool isVisibleInTree() const;
+
     // 进入这个容器时默认选中的子视图。
-    virtual View* getDefaultFocus() { return nullptr; }
+    // 叶子默认实现：可聚焦且沿父链可见就是自己（和 borealis 的 View::getDefaultFocus 同义）；
+    // Box 重写成三级查找（自身 → 上次焦点记忆 → 指定索引 → 顺序第一个）。
+    virtual View* getDefaultFocus();
 
     // 按方向找下一个焦点；默认实现交给父节点处理。
     virtual View* getNextFocus(FocusDirection direction, View* currentView);
@@ -267,9 +277,35 @@ class View
     // 命中测试（屏幕坐标）。
     virtual View* hitTest(Point point);
 
+    // 把 view 滚进自己的可视区（滚动容器重写；默认什么都不做，供 ensureFocusVisible 调）。
+    virtual void scrollToView(View*, bool = true) { }
+
+    // 自己是不是滚动容器（ensureFocusVisible 靠它找最近的滚动祖先）。
+    virtual bool isScrollable() const { return false; }
+
     virtual void onFocusGained() { }
     virtual void onFocusLost() { }
+
+    // 焦点落到自己的**直接子节点** directChild 上时，由 InputManager 沿焦点路径逐级调用。
+    // Box 用它维护"上次焦点记忆"。
+    virtual void onChildFocusGained(View* directChild, View* focusedView)
+    {
+        (void)directChild;
+        (void)focusedView;
+    }
+
     bool isFocused() const { return this->focused; }
+
+    // ---- 焦点框抖动（撞边视觉反馈，照 borealis 的 View::shakeHighlight）----
+
+    // 播放一次高亮抖动：阻尼正弦位移、幅值 rand()%15+10，**绘制期**生效。
+    // 不进布局，也不改命中矩形（和核心库其它"绘制期变换"同一约定）。
+    void shakeHighlight(FocusDirection direction);
+
+    bool isHighlightShaking() const { return this->highlightShaking; }
+
+    // 这一帧的高亮抖动位移（px）；没在抖时是 (0,0)。
+    Point getHighlightShakeOffset();
 
     // ---- 动作 ----
 
@@ -405,6 +441,12 @@ class View
     bool focused = false;
     std::vector<InputAction> actions;
     ActionIdentifier nextActionIdentifier = 1;
+
+    // 高亮抖动（撞边反馈）：起止时刻用 core/time.hpp 的时间源，绘制期算位移
+    bool highlightShaking                   = false;
+    uint64_t highlightShakeStartUs          = 0;
+    FocusDirection highlightShakeDirection  = FocusDirection::NONE;
+    float highlightShakeAmplitude           = 0.0f;
 
   protected:
     // 子类做剔除时要知道自己是否裁剪。

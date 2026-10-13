@@ -62,6 +62,9 @@ class Cell : public AppearanceView
     void setEnabled(bool enabled);
     bool isEnabled() const { return this->enabled; }
 
+    // 禁用的单元格也不参与焦点（InputManager::canFocus 会查这条）
+    bool isDisabled() const override { return !this->enabled; }
+
     void applyTheme() override;
 
     std::string getClassString() const override { return "bklv::Cell"; }

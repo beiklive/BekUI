@@ -291,6 +291,20 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         this->layerRect(layer, x, y, width, height, rect);
 
+        // 撞边抖动只作用在高亮层（hlBg / hlGlow / hlBorder，和 borealis 的
+        // drawHighlight 一致）：纯绘制期位移，不进布局、不改命中矩形。
+        if (layer.id.compare(0, 2, "hl") == 0)
+        {
+            const Point shake = this->getHighlightShakeOffset();
+            if (shake.x != 0.0f || shake.y != 0.0f)
+            {
+                rect[0] += shake.x;
+                rect[1] += shake.y;
+                rect[2] += shake.x;
+                rect[3] += shake.y;
+            }
+        }
+
         // 逐层透明度：和控件自身的 alpha 相乘
         const float alphaScale = std::max(0.0f, std::min(1.0f, opacity)) * this->getAlpha();
         auto scaleAlpha        = [alphaScale](ImU32 color) {

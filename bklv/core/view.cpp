@@ -4,11 +4,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 
 #include "bklv/core/app.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/time.hpp"
 
 namespace bklv
 {
@@ -725,12 +727,79 @@ void View::setTranslation(float x, float y)
 // 焦点与动作
 // ---------------------------------------------------------------------------
 
+bool View::isVisibleInTree() const
+{
+    for (const View* v = this; v != nullptr; v = v->getParent())
+    {
+        if (v->getVisibility() != Visibility::VISIBLE)
+            return false;
+    }
+    return true;
+}
+
+View* View::getDefaultFocus()
+{
+    // 叶子的默认行为：自己可聚焦（且沿父链可见）就是自己。
+    // 和 borealis 的 View::getDefaultFocus 同义；Box 重写成三级查找。
+    // 这里不查"是否被模态遮挡"：那是 canFocus() 的事（它要读 InputManager 的模态栈），
+    // 由导航 / 焦点恢复的调用方把关。
+    return (this->isFocusable() && this->isVisibleInTree()) ? this : nullptr;
+}
+
 View* View::getNextFocus(FocusDirection direction, View* currentView)
 {
     // 叶子节点的默认行为：往上交给父容器。
     if (this->hasParent())
         return this->parent->getNextFocus(direction, currentView);
     return nullptr;
+}
+
+// 阻尼正弦：borealis 的 shakeAnimation（周期 0.8、阻尼 0.35），时间单位改成秒。
+static float shakeAmplitudeAt(float seconds, float amplitude)
+{
+    const float period = 0.8f;
+    const float damp   = 0.35f;
+    return std::round(amplitude * std::exp(-(damp * seconds)) * std::sin(period * seconds));
+}
+
+// 高亮抖动时长（秒）。borealis 从主题取 brls/animations/highlight_shake；
+// bklv 不做这个主题项，按同一量级写死（纯视觉反馈）。
+static constexpr float HIGHLIGHT_SHAKE_DURATION = 0.4f;
+
+void View::shakeHighlight(FocusDirection direction)
+{
+    this->highlightShaking         = true;
+    this->highlightShakeStartUs    = getCPUTimeUsec();
+    this->highlightShakeDirection  = direction;
+    this->highlightShakeAmplitude  = (float)(std::rand() % 15 + 10);
+}
+
+Point View::getHighlightShakeOffset()
+{
+    if (!this->highlightShaking)
+        return Point();
+
+    const float elapsed =
+        (float)(getCPUTimeUsec() - this->highlightShakeStartUs) / 1000000.0f;
+
+    // 时间倒流（测试里换时间源之类）当成没在抖，别画出乱位移
+    if (elapsed < 0.0f || elapsed >= HIGHLIGHT_SHAKE_DURATION)
+    {
+        this->highlightShaking = false;
+        return Point();
+    }
+
+    const float offset = shakeAmplitudeAt(elapsed, this->highlightShakeAmplitude);
+
+    switch (this->highlightShakeDirection)
+    {
+        case FocusDirection::RIGHT: return Point(offset, 0.0f);
+        case FocusDirection::LEFT:  return Point(-offset, 0.0f);
+        case FocusDirection::DOWN:  return Point(0.0f, offset);
+        case FocusDirection::UP:    return Point(0.0f, -offset);
+        case FocusDirection::NONE:  break;
+    }
+    return Point();
 }
 
 View* View::hitTest(Point point)

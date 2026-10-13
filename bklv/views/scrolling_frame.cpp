@@ -337,6 +337,33 @@ void ScrollingFrame::scrollToView(View* view, bool animated)
     this->setContentOffsetY(target, animated);
 }
 
+View* ScrollingFrame::getParentNavigationDecision(View* from, View* newFocus,
+    FocusDirection direction)
+{
+    // borealis 的"自然滚动"：上下都走不动了，但焦点还没完全露出来 —— 别把
+    // 这次按方向键当成撞边，而是返回 this 表示"焦点留在原地，我来滚"。
+    // 上一层（InputManager::navigate）看到返回的是不可聚焦的滚动容器，
+    // 就会调 ensureFocusVisible() 把它滚进视野，也不触发撞边反馈。
+    if (newFocus == nullptr && from == this->contentView
+        && this->behavior == ScrollingBehavior::FOCUS
+        && (direction == FocusDirection::UP || direction == FocusDirection::DOWN)
+        && this->getScrollRange() > 0.0f)
+    {
+        View* focus = getInputManager().getCurrentFocus();
+        if (focus != nullptr)
+        {
+            const Rect frame  = this->getFrame();
+            const Rect target = focus->getFrame();
+            const bool fullyVisible =
+                target.y >= frame.y && target.getMaxY() <= frame.getMaxY();
+            if (!fullyVisible)
+                return this;
+        }
+    }
+
+    return Box::getParentNavigationDecision(from, newFocus, direction);
+}
+
 // ---------------------------------------------------------------------------
 // 绘制
 // ---------------------------------------------------------------------------

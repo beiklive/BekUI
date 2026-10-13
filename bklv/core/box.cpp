@@ -14,6 +14,23 @@ static YGFlexDirection getYGFlexDirection(Axis axis)
     return axis == Axis::ROW ? YGFlexDirectionRow : YGFlexDirectionColumn;
 }
 
+namespace
+{
+
+// node 是否在 root 这棵子树里（含 root 自己）。
+// 自定义的 getDefaultFocus() 可能返回任意视图，用它把"绕回出发的子树"挡掉。
+bool isInSubtree(const View* node, const View* root)
+{
+    for (const View* v = node; v != nullptr; v = v->getParent())
+    {
+        if (v == root)
+            return true;
+    }
+    return false;
+}
+
+} // namespace
+
 Box::Box(Axis axis)
     : axis(axis)
 {
@@ -94,6 +111,11 @@ void Box::removeView(View* view, bool free)
 
     view->setParent(nullptr);
 
+    // 上次焦点记忆指向被摘掉的子节点就清掉，否则"删掉聚焦项再进来"
+    // 会拿到悬空指针（borealis 这里没清，是它的一个隐患）。
+    if (this->lastFocusedView == view)
+        this->lastFocusedView = nullptr;
+
     this->invalidate();
 
     if (free)
@@ -134,18 +156,164 @@ View* Box::getView(const std::string& id)
 
 View* Box::getDefaultFocus()
 {
-    // 深度优先，返回第一个可聚焦的后代。
+    // ① 自己可聚焦（borealis 的第一级）
+    if (getInputManager().canFocus(this))
+        return this;
+
+    // ② 上次焦点记忆：上次在子树里被聚焦过哪一支就回到哪一支
+    //    （lastFocusedView 一直是自己的直接子节点，摘除子节点时会清掉）
+    if (this->lastFocusedView != nullptr && this->lastFocusedView->getParent() == this)
+    {
+        if (View* remembered = this->lastFocusedView->getDefaultFocus())
+        {
+            if (getInputManager().canFocus(remembered))
+                return remembered;
+        }
+    }
+
+    // ③ 指定索引
+    if (this->defaultFocusedIndex >= 0
+        && (size_t)this->defaultFocusedIndex < this->children.size())
+    {
+        if (View* indexed = this->children[(size_t)this->defaultFocusedIndex]->getDefaultFocus())
+        {
+            if (getInputManager().canFocus(indexed))
+                return indexed;
+        }
+    }
+
+    // ④ 顺序扫第一个能聚焦的子节点
     for (View* child : this->children)
     {
-        if (child->getVisibility() != Visibility::VISIBLE)
-            continue;
-
-        if (child->isFocusable())
-            return child;
-
-        if (View* nested = child->getDefaultFocus())
-            return nested;
+        if (View* first = child->getDefaultFocus())
+        {
+            if (getInputManager().canFocus(first))
+                return first;
+        }
     }
+
+    return nullptr;
+}
+
+void Box::onChildFocusGained(View* directChild, View* focusedView)
+{
+    // 只记"哪一支"：恢复这个 box 的默认焦点时就从这一支往下找。
+    // 不再往上冒泡——InputManager::giveFocus 已经沿整条焦点路径逐级调用过了
+    // （两边都冒泡会重复记同一支，也不利于 ScrollingFrame 之类的重写）。
+    (void)focusedView;
+    this->lastFocusedView = directChild;
+}
+
+View* Box::getParentNavigationDecision(View* /*from*/, View* newFocus,
+    FocusDirection /*direction*/)
+{
+    // 默认没意见：谁找到的候选就是谁。
+    // 滚动容器重写成"返回 this"表示焦点不动、自己滚动。
+    return newFocus;
+}
+
+View* Box::focusCandidateAt(size_t index, View* from)
+{
+    if (index >= this->children.size())
+        return nullptr;
+
+    View* child = this->children[index];
+    if (child == nullptr || child->getVisibility() != Visibility::VISIBLE)
+        return nullptr;
+
+    View* candidate = child->getDefaultFocus();
+
+    // 不能绕回出发的那棵子树（步进器那种自定义 getDefaultFocus 可能指回自己）
+    if (candidate == nullptr || isInSubtree(candidate, from))
+        return nullptr;
+
+    // 可聚焦 + 未禁用 + 沿父链可见 + 未被模态遮挡。
+    // 被模态挡住的候选直接跳过、继续往后扫，而不是把整个导航判成"撞边"。
+    if (!getInputManager().canFocus(candidate))
+        return nullptr;
+
+    return candidate;
+}
+
+View* Box::scanChildrenForFocus(FocusDirection direction, View* from)
+{
+    const ptrdiff_t count = (ptrdiff_t)this->children.size();
+    if (count <= 0)
+        return nullptr;
+
+    // from 必须是自己的直接子节点；不是就说明调用姿势不对，本层不处理。
+    ptrdiff_t index = -1;
+    for (ptrdiff_t i = 0; i < count; i++)
+    {
+        if (this->children[(size_t)i] == from)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index < 0)
+        return nullptr;
+
+    const ptrdiff_t offset =
+        (direction == FocusDirection::LEFT || direction == FocusDirection::UP) ? -1 : 1;
+
+    if (!this->isNavigationWrap())
+    {
+        // 不循环：±1 顺序扫到越界为止（越界 = 交给父容器冒泡）
+        for (ptrdiff_t i = index + offset; i >= 0 && i < count; i += offset)
+        {
+            if (View* candidate = this->focusCandidateAt((size_t)i, from))
+                return candidate;
+        }
+        return nullptr;
+    }
+
+    // 循环：绕一圈回到 from 之前（只在**本 box 内**绕，不碰跨 box 策略）
+    for (ptrdiff_t step = 1; step < count; step++)
+    {
+        const ptrdiff_t i = ((index + offset * step) % count + count) % count;
+        if (View* candidate = this->focusCandidateAt((size_t)i, from))
+            return candidate;
+    }
+    return nullptr;
+}
+
+View* Box::leaveThisBox(FocusDirection direction)
+{
+    switch (this->crossBoxPolicy)
+    {
+        case CrossBoxPolicy::NONE:
+            // 主动拦住：静默，不算"撞边"（不触发反馈）
+            getInputManager().markNavigationBlockedByPolicy();
+            return nullptr;
+
+        case CrossBoxPolicy::SAME_PARENT_ONLY:
+        {
+            Box* parent = this->parent;
+            const bool horizontal =
+                (direction == FocusDirection::LEFT || direction == FocusDirection::RIGHT);
+            if (parent == nullptr || (parent->axis == Axis::ROW) != horizontal)
+            {
+                getInputManager().markNavigationBlockedByPolicy();
+                return nullptr;
+            }
+
+            // 只让父容器在自己这一层里扫兄弟，不再往上冒
+            if (View* sibling = parent->scanChildrenForFocus(direction, this))
+                return sibling;
+
+            getInputManager().markNavigationBlockedByPolicy();
+            return nullptr;
+        }
+
+        case CrossBoxPolicy::ALLOW:
+            break;
+    }
+
+    // 越界：交给父容器继续找（真冒泡）
+    if (this->hasParent())
+        return this->parent->getNextFocus(direction, this);
+
     return nullptr;
 }
 
@@ -154,95 +322,39 @@ View* Box::getNextFocus(FocusDirection direction, View* currentView)
     if (direction == FocusDirection::NONE)
         return nullptr;
 
-    // 注意：这里不能因为自己没有子节点就直接返回。
-    // 叶子 Box（比如列表里的一行）要交给父容器去找同层的下一个目标。
+    // 轴向不符（row 按 UP/DOWN、column 按 LEFT/RIGHT）→ 立刻上交父容器，
+    // 不在本层做跨轴扫描（borealis 同义：这种按法不属于这个容器管）。
+    const bool horizontal  = (direction == FocusDirection::LEFT || direction == FocusDirection::RIGHT);
+    const bool axisMatches = (this->axis == Axis::ROW) == horizontal;
 
-    const Point origin = currentView != nullptr ? Point(currentView->getFrame().getCenterX(),
-                                              currentView->getFrame().getCenterY())
-                                                : Point(this->getFrame().getCenterX(),
-                                                      this->getFrame().getCenterY());
+    View* candidate = axisMatches ? this->scanChildrenForFocus(direction, currentView) : nullptr;
 
-    View* best      = nullptr;
-    float bestScore = 0.0f;
+    // 容器的最后决定权：滚动容器在这里返回 this（焦点不动、我来把它滚进视野）
+    if (View* decision = this->getParentNavigationDecision(currentView, candidate, direction))
+        return decision;
 
-    for (View* child : this->children)
-    {
-        if (child == currentView || child->getVisibility() != Visibility::VISIBLE)
-            continue;
+    if (candidate != nullptr)
+        return candidate;
 
-        // 先看这一层有没有可聚焦的子节点；没有就进子树找。
-        View* candidate = child->isFocusable() ? child : child->getDefaultFocus();
-        if (candidate == nullptr)
-            continue;
+    return this->leaveThisBox(direction);
+}
 
-        // 解析回来的就是当前焦点自己时要跳过：否则一个不可聚焦的容器（比如 SliderCell）
-        // 会把"子树里的默认焦点"当成候选，用最低分短路掉整个搜索，
-        // 于是永远不往父容器冒泡——跨卡片的下移就卡在原地了（踩过）。
-        if (candidate == currentView)
-            continue;
+void Box::setNavigationWrap(bool wrap)
+{
+    this->navigationWrap    = wrap;
+    this->navigationWrapSet = true;
+}
 
-        const Point target(candidate->getFrame().getCenterX(), candidate->getFrame().getCenterY());
-        const float dx = target.x - origin.x;
-        const float dy = target.y - origin.y;
+bool Box::isNavigationWrap() const
+{
+    if (this->navigationWrapSet)
+        return this->navigationWrap;
 
-        // 只考虑确实位于该方向上的候选：主轴偏移要够大，交叉轴偏差不能太大。
-        float primary   = 0.0f;
-        float secondary = 0.0f;
-        switch (direction)
-        {
-            case FocusDirection::RIGHT:
-                primary = dx;
-                secondary = std::fabs(dy);
-                break;
-            case FocusDirection::LEFT:
-                primary = -dx;
-                secondary = std::fabs(dy);
-                break;
-            case FocusDirection::DOWN:
-                primary = dy;
-                secondary = std::fabs(dx);
-                break;
-            case FocusDirection::UP:
-                primary = -dy;
-                secondary = std::fabs(dx);
-                break;
-            default:
-                return nullptr;
-        }
+    // 没设过就跟着最近的祖先（"作用域是单个 box，影响其子树、内层可覆盖"）
+    if (this->parent != nullptr)
+        return this->parent->isNavigationWrap();
 
-        const bool sameRow = this->axis == Axis::ROW ? std::fabs(dy) < 2.0f : true;
-        const bool sameCol = this->axis == Axis::COLUMN ? std::fabs(dx) < 2.0f : true;
-
-        // 主轴方向上必须真的前进；主轴上对齐时优先选交叉轴最近的那个。
-        if (primary < 1.0f)
-        {
-            if (!(primary > -1.0f && (sameRow || sameCol)))
-                continue;
-            // 主轴几乎对齐：允许纯交叉轴方向移动（比如在列表行内左右切换）。
-            if (!sameRow && !sameCol)
-                continue;
-        }
-
-        // 打分：交叉轴偏差权重远高于主轴距离，
-        // 这样"下一行同一列"优先于"当前行右边的下一行"，不会走成阶梯。
-        const float score = secondary * 1000.0f + primary;
-
-        if (best == nullptr || score < bestScore)
-        {
-            best      = candidate;
-            bestScore = score;
-        }
-
-        // 交叉轴完全对齐时不可能再有更优解（除非距离是负的），可以提前结束。
-        if (secondary < 0.5f)
-            break;
-    }
-
-    // 本层没找到就交给父容器继续找。
-    if (best == nullptr && this->hasParent())
-        return this->parent->getNextFocus(direction, currentView);
-
-    return best;
+    return false;
 }
 
 View* Box::hitTest(Point point)

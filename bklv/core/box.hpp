@@ -49,11 +49,48 @@ class Box : public View
     // 按 id 在整棵子树里查找。
     View* getView(const std::string& id) override;
 
-    // 按顺序找到第一个"可聚焦"的后代。
+    // ---- 焦点（默认焦点三级 + 顺序导航）----
+
+    // 默认焦点（照 borealis B2 的 Box::getDefaultFocus）：
+    //   ① 自己可聚焦 → 自己
+    //   ② 上次焦点记忆（lastFocusedView，焦点变化时由 InputManager 沿父链写入）
+    //   ③ setDefaultFocusedIndex 指定的索引
+    //   ④ 顺序扫第一个能聚焦的子节点
     View* getDefaultFocus() override;
 
-    // 方向导航：在当前正在导航的容器里选择几何上最合适的目标。
+    // 方向导航（照 borealis B3）：**顺序索引扫描 ±1 + 父链冒泡**，不是几何最近邻。
+    // 轴向不符（row 按 UP/DOWN、column 按 LEFT/RIGHT）立刻上交父容器；
+    // 越界返回 nullptr 继续冒泡。顺序扫描可预期、和子节点顺序一致，实现与测试都简单。
     View* getNextFocus(FocusDirection direction, View* currentView) override;
+
+    // 焦点落到自己的直接子节点上时，由 InputManager 沿焦点路径逐级调用。
+    // Box 用它维护"上次焦点记忆"。
+    void onChildFocusGained(View* directChild, View* focusedView) override;
+
+    // 本层扫不到候选、准备上交父容器之前的最后决定机会。
+    // 默认返回 newFocus（没意见）；返回其他视图 = 改写这次移动；
+    // 返回 this = 焦点留在原地，容器自己负责把它滚进视野（滚动容器用）。
+    virtual View* getParentNavigationDecision(View* from, View* newFocus, FocusDirection direction);
+
+    // 上次焦点记忆。摘除子节点时会自动清掉，不会悬空。
+    View* getLastFocusedView() const { return this->lastFocusedView; }
+    void setLastFocusedView(View* view) { this->lastFocusedView = view; }
+
+    // 默认焦点索引；-1 表示"没指定"。
+    // 注意 borealis 这一项默认是 0，那会让第 ③ 级和"顺序扫第一个"完全等价
+    // （都是 children[0]），所以这里用 -1 把"没指定"和"指定了第 0 个"分开。
+    void setDefaultFocusedIndex(int index) { this->defaultFocusedIndex = index; }
+    int getDefaultFocusedIndex() const { return this->defaultFocusedIndex; }
+
+    // 这个 box（含其子树，内层可覆盖）内导航是否**循环**。默认不循环。
+    // wrap 优先于跨 box 策略：能绕回本 box 内的候选时就不算"要出去"。
+    void setNavigationWrap(bool wrap);
+    bool isNavigationWrap() const;
+
+    // 这个 box 的跨 box 策略，只在本 box 的边界上生效（默认 ALLOW）。
+    // 不做继承：外层设了 NONE 不会把子树的内部导航也冻住。
+    void setCrossBoxPolicy(CrossBoxPolicy policy) { this->crossBoxPolicy = policy; }
+    CrossBoxPolicy getCrossBoxPolicy() const { return this->crossBoxPolicy; }
 
     // 命中测试：从最上层（最后添加）的子节点开始。
     View* hitTest(Point point) override;
@@ -117,11 +154,27 @@ class Box : public View
     void draw(ImDrawList*, float, float, float, float, FrameContext*) override { }
 
   private:
+    // 在本层子节点里按顺序 ±1 找候选（不冒泡、不看跨 box 策略）。
+    // from 必须是自己的直接子节点；找不到返回 nullptr。
+    View* scanChildrenForFocus(FocusDirection direction, View* from);
+    // 第 index 个子节点里的焦点候选（不可见/不可聚焦/被模态挡住/落在 from 子树里都不算）。
+    View* focusCandidateAt(size_t index, View* from);
+    // 本层扫完之后的去向：按跨 box 策略决定"拦下"还是"交给父容器"。
+    View* leaveThisBox(FocusDirection direction);
+
     Axis axis = Axis::COLUMN;
     // 记一份，getter / 诊断要用（Yoga 那边也设了，这里是镜像）
     JustifyContent justifyContent = JustifyContent::FLEX_START;
     AlignItems alignItems        = AlignItems::STRETCH;
     std::vector<View*> children;
+
+    View* lastFocusedView   = nullptr;
+    int defaultFocusedIndex = -1;
+
+    bool navigationWrap    = false; // 显式设过的值
+    bool navigationWrapSet = false; // 是否显式设过（没设过就跟着祖先）
+
+    CrossBoxPolicy crossBoxPolicy = CrossBoxPolicy::ALLOW;
 };
 
 } // namespace bklv

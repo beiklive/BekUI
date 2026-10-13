@@ -211,6 +211,29 @@ void HScrollingFrame::scrollToView(View* view, bool animated)
     this->setContentOffsetX(target, animated);
 }
 
+View* HScrollingFrame::getParentNavigationDecision(View* from, View* newFocus,
+    FocusDirection direction)
+{
+    // 同 ScrollingFrame：左右都走不动但焦点还没露全时接管，返回 this 让上层滚。
+    if (newFocus == nullptr && from == this->contentView
+        && (direction == FocusDirection::LEFT || direction == FocusDirection::RIGHT)
+        && this->getScrollRange() > 0.0f)
+    {
+        View* focus = getInputManager().getCurrentFocus();
+        if (focus != nullptr)
+        {
+            const Rect frame  = this->getFrame();
+            const Rect target = focus->getFrame();
+            const bool fullyVisible =
+                target.x >= frame.x && target.getMaxX() <= frame.getMaxX();
+            if (!fullyVisible)
+                return this;
+        }
+    }
+
+    return Box::getParentNavigationDecision(from, newFocus, direction);
+}
+
 void HScrollingFrame::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (!this->showIndicator || this->contentView == nullptr)

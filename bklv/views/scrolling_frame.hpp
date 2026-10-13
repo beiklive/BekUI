@@ -68,7 +68,14 @@ class ScrollingFrame : public Box
     void onLayout() override;
 
     // 滚到指定视图可见；animated 为 true 时用缓动。
-    void scrollToView(View* view, bool animated = true);
+    void scrollToView(View* view, bool animated = true) override;
+
+    // ensureFocusVisible() 靠它认出"最近的滚动容器"。
+    bool isScrollable() const override { return true; }
+
+    // 上下都走不动、但焦点还没完全露出来时接管：返回 this 表示焦点不动、
+    // 由 ensureFocusVisible() 把它滚进视野（borealis 的自然滚动）。
+    View* getParentNavigationDecision(View* from, View* newFocus, FocusDirection direction) override;
 
     std::string getClassString() const override { return "bklv::ScrollingFrame"; }
 
