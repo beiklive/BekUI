@@ -306,6 +306,7 @@ set(BKLV_CORE_SOURCES
     widgets/dialog.cpp
     widgets/dropdown.cpp
     widgets/applet_frame.cpp
+    widgets/shell.cpp
     widgets/edit_text_dialog.cpp
     widgets/hints_bar.cpp
     platforms/sdl3_platform.cpp

@@ -1042,11 +1042,18 @@ const AttributeTable& commonAttributes()
         { "grow", AttributeKind::NUMBER, setGrowAttr, nullptr },
         { "shrink", AttributeKind::NUMBER, setShrinkAttr, nullptr },
         { "alignSelf", AttributeKind::ENUM, setAlignSelfAttr, "auto|flexStart|center|flexEnd|stretch|baseline" },
+        // positionType 与 position 是同义键（C++ 侧方法名叫 setPositionType）；
+        // 四边偏移同理：positionTop 与 top 等价。两套写法都登记，别只留一套。
         { "position", AttributeKind::ENUM, setPositionTypeAttr, "relative|absolute" },
+        { "positionType", AttributeKind::ENUM, setPositionTypeAttr, "relative|absolute" },
         { "top", AttributeKind::SIZE, setPositionTopAttr, nullptr },
         { "left", AttributeKind::SIZE, setPositionLeftAttr, nullptr },
         { "right", AttributeKind::SIZE, setPositionRightAttr, nullptr },
         { "bottom", AttributeKind::SIZE, setPositionBottomAttr, nullptr },
+        { "positionTop", AttributeKind::SIZE, setPositionTopAttr, nullptr },
+        { "positionRight", AttributeKind::SIZE, setPositionRightAttr, nullptr },
+        { "positionBottom", AttributeKind::SIZE, setPositionBottomAttr, nullptr },
+        { "positionLeft", AttributeKind::SIZE, setPositionLeftAttr, nullptr },
         { "visibility", AttributeKind::ENUM, setVisibilityAttr, "visible|invisible|gone" },
         { "backgroundColor", AttributeKind::COLOR, setBackgroundColorAttr, nullptr },
         { "borderColor", AttributeKind::COLOR, setBorderColorAttr, nullptr },

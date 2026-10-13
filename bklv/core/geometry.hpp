@@ -39,6 +39,28 @@ struct Size
     }
 };
 
+// 四边内缩，对应 borealis 的 EdgeInsets。安全区、页头/底栏避让都用它。
+// 字段顺序固定 top / right / bottom / left，与构造函数一致。
+struct EdgeInsets
+{
+    float top    = 0.0f;
+    float right  = 0.0f;
+    float bottom = 0.0f;
+    float left   = 0.0f;
+
+    EdgeInsets() = default;
+    EdgeInsets(float top, float right, float bottom, float left)
+        : top(top)
+        , right(right)
+        , bottom(bottom)
+        , left(left)
+    {
+    }
+
+    // 四边同值，用于"整体内缩一圈"。
+    static EdgeInsets all(float value) { return EdgeInsets(value, value, value, value); }
+};
+
 // 矩形，对应 borealis 的 Rect。坐标原点是左上角，y 轴向下。
 struct Rect
 {
