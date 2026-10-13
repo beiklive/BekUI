@@ -3,6 +3,7 @@
 #include "app/pages.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 
 #include "app/ui.hpp"
@@ -170,6 +171,20 @@ DemoApp::DemoApp()
     }
     if (const char* spam = std::getenv("BKLV_DEMO_LOG_SPAM"))
         this->logSpam = std::atoi(spam);
+
+    // 鼠标路径验收：滚到指定位置 + 注入一次点击（长页面上的控件只有滚下去才点得到）
+    if (const char* scroll = std::getenv("BKLV_DEMO_SCROLL"))
+        this->demoScroll = (float)std::atof(scroll);
+    if (const char* click = std::getenv("BKLV_DEMO_CLICK"))
+    {
+        float x = 0.0f;
+        float y = 0.0f;
+        if (std::sscanf(click, "%f,%f", &x, &y) == 2)
+        {
+            this->demoClickX = x;
+            this->demoClickY = y;
+        }
+    }
 
     // F1 开关日志窗口：面板在**所有层之上**，视觉上会盖住右上角那排按钮
     // （但调试层不吃输入，按钮照样点得到），所以给一个随时能按的快捷键。
@@ -467,6 +482,22 @@ bool DemoApp::handleBackRequest()
 
 void DemoApp::update()
 {
+    // 验收开关：第 2 帧滚到指定位置，第 3 帧注入一次点击（见头文件注释）
+    this->frameTick++;
+    if (this->demoScroll >= 0.0f && this->frameTick == 5)
+    {
+        // 布局是延迟的：等几帧滚动范围才算出来，否则会被钳成 0
+        this->scroller->setContentOffsetY(this->demoScroll, false);
+        BKLV_LOG_INFO("验收开关：滚动到 %.0f（可滚范围 %.0f）", (double)this->demoScroll,
+            (double)this->scroller->getScrollRange());
+    }
+    if (this->demoClickX >= 0.0f && this->frameTick == 8)
+    {
+        BKLV_LOG_INFO("验收开关：在 (%.0f, %.0f) 注入一次点击", (double)this->demoClickX,
+            (double)this->demoClickY);
+        getInputManager().dispatchPointerClick(Point(this->demoClickX, this->demoClickY));
+    }
+
     // 日志压测：每帧写几条（含 文件:行号 与级别，覆盖日志面板的两种列）
     for (int i = 0; i < this->logSpam; i++)
     {

@@ -202,6 +202,27 @@ int main()
         checkEqual(dropdown->getSelectedText(), "低", "鼠标点第一项选中了它");
         check(!dropdown->isOpen(), "鼠标选完自动关掉");
 
+        // ---- 弹窗本身：要有"一块板"（外观 dropdown_popup 的底/圆角/边框），不是悬空文字 ----
+        {
+            DropdownPopup* popup = dropdown->getPopupForTest();
+            const Appearance& panelAppearance = popup->getPanel()->getActiveAppearance();
+
+            // 面板底是 layers 里那个 rect（本项目的写法：底色走层而不是 box.backgroundColor）
+            bool hasPanelFill = false;
+            bool hasShadow    = false;
+            for (const AppearanceLayer& layer : panelAppearance.getLayers())
+            {
+                if (layer.op == AppearanceLayer::Op::RECT && layer.id == "bg")
+                    hasPanelFill = layer.fill != 0;
+                if (layer.op == AppearanceLayer::Op::SHADOW)
+                    hasShadow = true;
+            }
+            check(hasPanelFill, "弹窗面板有底色（主题里的 dropdown_popup 真被用上了）");
+            check(hasShadow, "弹窗面板有投影层");
+            check(!popup->isFocusable(), "全屏点击层不可聚焦（不吃焦点只吃空白点击）");
+            check(!popup->getPanel()->isFocusable(), "那块板也不可聚焦");
+        }
+
         // ---- Shell 版：demo 的真实结构（Shell 根 + 内容层里的下拉 + 覆盖层弹窗）----
         // 弹层是 pushOverlay 挂到根（= Shell）上的，这里把整条链走一遍
         Shell* shell = new Shell();
@@ -233,8 +254,37 @@ int main()
         const Rect secondFrame  = second->getFrame();
         getInputManager().dispatchPointerClick(Point(secondFrame.getCenterX(), secondFrame.getCenterY()));
         checkEqual(shellDropdown->getSelectedText(), "乙", "Shell 里鼠标点第二项选中了它");
+        check(!shellDropdown->isOpen(), "Shell 里选完自动关掉（上一句已断言）");
         check(!shellDropdown->isOpen(), "Shell 里选完自动关掉");
         check(!getInputManager().hasModal(), "Shell 里关掉后模态退掉");
+
+        // ---- 贴底时弹窗要翻到触发器上方（否则列表跑出屏幕）----
+        {
+            // 把触发器挪到窗口底部：内容层里给它一个很大的 top 偏移
+            page->setJustifyContent(JustifyContent::FLEX_END);
+            Box* spacer = new Box(Axis::COLUMN);
+            spacer->setHeight(540.0f);
+            page->addView(spacer, 0); // 插到最前面，把下拉顶到下面
+            YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+            shell->notifyLayout();
+
+            const Rect lowTrigger = shellTrigger->getFrame();
+            check(lowTrigger.getMaxY() > 540.0f, "触发器已经在窗口下半部分");
+
+            shellDropdown->setOptions({ "一", "二", "三", "四", "五", "六", "七", "八" });
+            shellDropdown->open();
+            YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+            shell->notifyLayout();
+
+            DropdownPopup* popup = shellDropdown->getPopupForTest();
+            const float listTop = popup->getList()->getFrame().y;
+            check(listTop < lowTrigger.y, "下方放不下时列表翻到触发器上方");
+            check(popup->getList()->getHeight() <= lowTrigger.y,
+                "列表高度被压到上方可用空间之内（列表内部滚动）");
+            // 收尾：让弹层自己关掉（选一项 → dismiss → popOverlay）
+            popup->getOptions()[0]->trigger();
+            check(!shellDropdown->isOpen(), "翻到上方后选一项也能正常关掉");
+        }
 
         getInputManager().setRoot(nullptr);
         getInputManager().resetFocusState();

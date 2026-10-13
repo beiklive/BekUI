@@ -44,6 +44,21 @@ class DropdownOption : public AppearanceView
 };
 
 // 弹出层：全屏（接点击）+ 锚定在触发器下方的列表
+// 弹层里那块"板"：锚在触发器上/下方，外观（底/圆角/边框/阴影）来自
+// widgets/dropdown_popup.json。单独一个类是因为**全屏点击层**不能带底色
+// （否则整屏被面板色盖住，底下界面全看不见——踩过）。
+class DropdownPanel : public AppearanceView
+{
+  public:
+    DropdownPanel()
+        : AppearanceView("dropdown_popup", false)
+    {
+    }
+
+    std::string getClassString() const override { return "bklv::DropdownPanel"; }
+};
+
+// 弹层：**全屏、透明**的一层（接住"点外面"），里面放锚定好的那块板
 class DropdownPopup : public Box
 {
   public:
@@ -57,10 +72,15 @@ class DropdownPopup : public Box
         std::function<void(size_t)> onSelect);
 
     void setAnchor(float x, float y, float width);
+    // 按可用空间定列表高度：优先下方、放不下且上方更宽裕就翻到上方，两边都不够就压缩高度
+    void fitToSpace(float triggerTop, float triggerBottom, float gap, float canvasHeight,
+        size_t optionCount);
 
     // 自己关掉时通知 Dropdown（否则 isOpen() 要等下一帧 update 才同步）
     void setOnClosed(std::function<void()> handler) { this->onClosed = std::move(handler); }
 
+    // 那块板（测试要断它的外观）
+    AppearanceView* getPanel() const { return this->anchorBox; }
     ScrollingFrame* getList() const { return this->list; }
     Box* getListContent() const { return this->listContent; }
     std::vector<DropdownOption*>& getOptions() { return this->options; }
@@ -68,7 +88,7 @@ class DropdownPopup : public Box
     std::string getClassString() const override { return "bklv::DropdownPopup"; }
 
   private:
-    Box* anchorBox            = nullptr;
+    DropdownPanel* anchorBox  = nullptr;
     ScrollingFrame* list      = nullptr;
     Box* listContent          = nullptr;
     std::vector<DropdownOption*> options;

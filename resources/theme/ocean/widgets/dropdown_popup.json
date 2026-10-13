@@ -1,6 +1,8 @@
 {
   "box": {
-    "width": "@theme/metric.dropdown.popupWidth"
+    "width": "@theme/metric.dropdown.popupWidth",
+    "padding": "@theme/metric.spacing.xs",
+    "cornerRadius": "@theme/metric.radius.md"
   },
   "layers": [
     {
@@ -14,6 +16,14 @@
         "@theme/metric.shadow.offsetY"
       ],
       "spread": "@theme/metric.shadow.spread"
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.common.divider",
+      "strokeWidth": 1,
+      "radius": "@theme/metric.radius.md"
     }
   ]
 }

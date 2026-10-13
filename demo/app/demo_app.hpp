@@ -121,6 +121,14 @@ class DemoApp
     int logSpam        = 0;
     int logSpamCounter = 0;
 
+    // 鼠标路径验收开关（长页面上的控件要滚下去才点得到）：
+    //   BKLV_DEMO_SCROLL=<像素>   第 2 帧把内容区滚到这个位置
+    //   BKLV_DEMO_CLICK=<x>,<y>   第 3 帧注入一次指针点击（画布坐标）
+    int frameTick     = 0;
+    float demoScroll  = -1.0f;
+    float demoClickX  = -1.0f;
+    float demoClickY  = -1.0f;
+
     bklv::DebugLogView* logView = nullptr;
 };
 

@@ -150,28 +150,31 @@ void DebugLogView::setScrollOffset(float offset)
 // 行缓存
 // ---------------------------------------------------------------------------
 
-std::string DebugLogView::buildRowText(const LogEntry& entry) const
+// 前缀（时间 + 级别 + 位置）。写进调用方给的缓冲（复用，不重新分配）
+void DebugLogView::buildRowPrefix(std::string& out, const LogEntry& entry) const
 {
-    std::string text;
-    text.reserve(entry.time.size() + entry.location.size() + entry.message.size() + 16);
+    out.clear();
 
     if (this->showTime)
     {
-        text += entry.time;
-        text += "  ";
+        out += entry.time;
+        out += "  ";
     }
 
-    text += levelTag(entry.level);
-    text += "  ";
+    out += levelTag(entry.level);
+    out += "  ";
 
     if (this->showLocation && !entry.location.empty())
     {
-        text += entry.location;
-        text += "  ";
+        out += entry.location;
+        out += "  ";
     }
+}
 
-    text += entry.message;
-    return text;
+void DebugLogView::buildRowText(std::string& out, const LogEntry& entry) const
+{
+    this->buildRowPrefix(out, entry);
+    out += entry.message;
 }
 
 ImU32 DebugLogView::colorForLevel(LogLevel level) const
@@ -189,26 +192,43 @@ ImU32 DebugLogView::colorForLevel(LogLevel level) const
 void DebugLogView::rebuildRowsIfNeeded()
 {
     const uint64_t version = Logger::getVersion();
+    ImFont* font = ImGui::GetCurrentContext() != nullptr ? getDefaultFont() : nullptr;
+
     if (!this->rowsDirty && version == this->cachedVersion && this->cachedFilter == this->levelMask
-        && this->cachedFontSize == this->fontSize)
+        && this->cachedFontSize == this->fontSize && this->cachedFont == font)
         return;
 
     this->cachedVersion  = version;
     this->cachedFilter   = this->levelMask;
     this->cachedFontSize = this->fontSize;
+    this->cachedFont     = font; // 字体换了前缀宽度要重新量
     this->rowsDirty      = false;
     this->rebuildCount++;
 
+    // 只存**指针**（不复制日志正文：环形缓冲里的元素在 push/pop 两端都不会失效），
+    // 换个说法：这一步是 O(条数) 的指针拷贝，不是 O(条数 × 字符串长度) 的字符串拷贝。
+
     this->rows.clear();
+    this->rows.reserve(Logger::getLogs().size());
+
     for (const LogEntry& entry : Logger::getLogs())
     {
         if (!this->isLevelVisible(entry.level))
             continue;
 
         Row row;
-        row.text  = this->buildRowText(entry);
-        row.color = this->colorForLevel(entry.level);
-        this->rows.push_back(std::move(row));
+        row.entry  = &entry;
+        row.color  = this->colorForLevel(entry.level);
+        row.prefixWidth = 0.0f;
+
+        if (font != nullptr)
+        {
+            this->buildRowPrefix(this->scratchPrefix, entry);
+            row.prefixWidth = font->CalcTextSizeA(this->fontSize, FLT_MAX, 0.0f,
+                this->scratchPrefix.c_str()).x;
+        }
+
+        this->rows.push_back(row);
     }
 
     // 一行一条、不换行 → 每行等高，总量就是"行数 × 行高"
@@ -228,6 +248,10 @@ void DebugLogView::rebuildRowsIfNeeded()
 void DebugLogView::update()
 {
     View::update();
+
+    // 面板不可见时什么都不用做（View::frame 也直接返回，一帧零 draw call）
+    if (!this->isEnabled())
+        return;
 
     this->rebuildRowsIfNeeded();
 
@@ -256,9 +280,10 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
     FrameContext* ctx)
 {
     (void)ctx;
-    if (drawList == nullptr)
+    if (drawList == nullptr || !this->isEnabled())
         return;
 
+    // update() 每帧都会重建（版本没变就是一次比较），这里只兜底"宿主没调 update"的情况
     this->rebuildRowsIfNeeded();
 
     const ImVec2 min(x, y);
@@ -267,35 +292,54 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
     drawList->AddRectFilled(min, max, this->panelColor, this->cornerRadius);
     drawList->AddRect(min, max, this->borderColor, this->cornerRadius);
 
-    ImFont* font  = getDefaultFont();
-    const float fontSize = this->fontSize;
+    ImFont* font          = getDefaultFont();
+    const float fontSize  = this->fontSize;
     const float rowHeight = this->getRowHeight();
 
-    // ---- 状态行 ----
+    // ---- 状态行：内容没变就复用上一帧的字符串（fps 取整，变化才重拼）----
     const InputManager& input = getInputManager();
     View* focus               = input.getCurrentFocus();
+    const int fps             = ImGui::GetCurrentContext() != nullptr
+        ? static_cast<int>(ImGui::GetIO().Framerate + 0.5f)
+        : 0;
+    const unsigned layouts    = App::getLayoutCount();
+    const size_t logCount     = this->getLogCount();
 
-    std::string focusName = "(none)";
-    if (focus != nullptr)
+    if (this->headerText.empty() || this->headerVersion != this->cachedVersion
+        || this->headerFilter != this->levelMask || this->headerLogCount != logCount
+        || this->headerFps != fps || this->headerLayouts != layouts
+        || this->headerFocus != focus)
     {
-        focusName = focus->getClassString();
-        const size_t pos = focusName.find("::");
-        if (pos != std::string::npos)
-            focusName = focusName.substr(pos + 2);
-    }
+        std::string focusName = "(none)";
+        if (focus != nullptr)
+        {
+            focusName = focus->getClassString();
+            const size_t pos = focusName.find("::");
+            if (pos != std::string::npos)
+                focusName = focusName.substr(pos + 2);
+        }
 
-    char header[256];
-    const float fps = ImGui::GetCurrentContext() != nullptr ? ImGui::GetIO().Framerate : 0.0f;
-    std::snprintf(header, sizeof(header), "fps %.0f   布局 %u   日志 %zu/%zu   %s%s%s%s   焦点 %s",
-        (double)fps, App::getLayoutCount(), this->rows.size(), this->getLogCount(),
-        this->isLevelVisible(LogLevel::DEBUG) ? "D" : "-",
-        this->isLevelVisible(LogLevel::INFO) ? "I" : "-",
-        this->isLevelVisible(LogLevel::WARNING) ? "W" : "-",
-        this->isLevelVisible(LogLevel::ERROR) ? "E" : "-", focusName.c_str());
+        char header[256];
+        std::snprintf(header, sizeof(header),
+            "fps %d   布局 %u   日志 %zu/%zu   %s%s%s%s   焦点 %s", fps, layouts,
+            this->rows.size(), logCount, this->isLevelVisible(LogLevel::DEBUG) ? "D" : "-",
+            this->isLevelVisible(LogLevel::INFO) ? "I" : "-",
+            this->isLevelVisible(LogLevel::WARNING) ? "W" : "-",
+            this->isLevelVisible(LogLevel::ERROR) ? "E" : "-", focusName.c_str());
+
+        this->headerText     = header;
+        this->headerVersion  = this->cachedVersion;
+        this->headerFilter   = this->levelMask;
+        this->headerLogCount = logCount;
+        this->headerFps      = fps;
+        this->headerLayouts  = layouts;
+        this->headerFocus    = focus;
+    }
 
     const float headY = y + this->padding;
     if (font != nullptr)
-        drawList->AddText(font, fontSize, ImVec2(x + this->padding, headY), this->headColor, header);
+        drawList->AddText(font, fontSize, ImVec2(x + this->padding, headY), this->headColor,
+            this->headerText.c_str());
 
     // ---- 行区 ----
     const float rowsTop    = headY + rowHeight + 6.0f;
@@ -303,35 +347,53 @@ void DebugLogView::draw(ImDrawList* drawList, float x, float y, float width, flo
     if (rowsBottom <= rowsTop)
         return;
 
-    // 不换行：超出面板宽度的部分直接裁掉（PushClipRect 管住左右）
-    drawList->PushClipRect(ImVec2(x + this->padding, rowsTop), ImVec2(max.x - this->padding, rowsBottom), true);
-
-    float rowY = rowsTop - this->scrollOffset;
-    for (const Row& row : this->rows)
+    if (this->rows.empty())
     {
-        if (rowY + rowHeight < rowsTop)
-        {
-            rowY += rowHeight;
-            continue;
-        }
+        if (font != nullptr)
+            drawList->AddText(font, fontSize, ImVec2(x + this->padding, rowsTop),
+                this->headColor, "(暂无日志)");
+        return;
+    }
+
+    // 行高固定 → 第一行可见行号一次除法就能算出来（不用从头遍历）
+    const float scrolled = std::max(0.0f, this->scrollOffset);
+    size_t first         = static_cast<size_t>(scrolled / rowHeight);
+    if (first >= this->rows.size())
+        first = this->rows.size() - 1;
+
+    const float textX       = x + this->padding;
+    const float clipRight   = max.x - this->padding;
+    const float firstOffset = static_cast<float>(first) * rowHeight - scrolled;
+
+    // 不换行：超出面板宽度的部分直接裁掉（PushClipRect 管住左右）
+    drawList->PushClipRect(ImVec2(textX, rowsTop), ImVec2(clipRight, rowsBottom), true);
+
+    float rowY = rowsTop + firstOffset;
+    for (size_t i = first; i < this->rows.size(); i++)
+    {
         if (rowY > rowsBottom)
             break;
 
-        if (font != nullptr)
-            drawList->AddText(font, fontSize, ImVec2(x + this->padding, rowY), row.color,
-                row.text.c_str());
+        const Row& row = this->rows[i];
+        if (row.entry != nullptr && font != nullptr)
+        {
+            // 前缀（暗色）+ 正文（级别色）：只拼进复用缓冲，稳态零分配
+            this->buildRowPrefix(this->scratchPrefix, *row.entry);
+
+            if (row.prefixWidth > 0.0f)
+                drawList->AddText(font, fontSize, ImVec2(textX, rowY), this->headColor,
+                    this->scratchPrefix.c_str());
+
+            this->scratchText.clear();
+            this->scratchText += row.entry->message;
+            drawList->AddText(font, fontSize, ImVec2(textX + row.prefixWidth, rowY), row.color,
+                this->scratchText.c_str());
+        }
 
         rowY += rowHeight;
     }
 
     drawList->PopClipRect();
-
-    // 没有日志时给一句提示，免得看着像坏了
-    if (this->rows.empty() && font != nullptr)
-    {
-        drawList->AddText(font, fontSize, ImVec2(x + this->padding, rowsTop), this->headColor,
-            "(暂无日志)");
-    }
 }
 
 } // namespace bklv

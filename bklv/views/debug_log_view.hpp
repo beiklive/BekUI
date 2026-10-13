@@ -15,6 +15,14 @@
 //   · 一行一条日志，**不换行**（超宽直接被裁剪；要看全就把面板拉宽）
 //   · 字号取主题里**最小**的字号（`metric.font.size.xs`，没有就退到 sm）
 //
+// **绘制开销（这是硬要求：日志再多也不能拖慢主循环）**
+//   · 缓存里只存 `const LogEntry*`（**不复制字符串**），只在「日志版本 / 过滤 / 字号 / 字体」
+//     变化时重建一次；同一帧里来 1000 条也只重建一次。
+//   · 行高固定 → 可见区间用**一次除法**算出来（不是从头遍历），只画屏幕里那十几行。
+//   · 每行只调一次 `AddText`（前缀 + 正文先进一个**复用缓冲**，容量只增不减 → 稳态零分配）。
+//   · 头部状态行同理：内容没变就复用上一帧的字符串。
+//   · 面板不可见时 `View::frame` 直接返回，一帧一个 draw call 都不产生。
+//
 // 面板默认贴在右上角（宽 48%、高 42%），**默认关闭**；`setEnabled(true)` 打开。
 // 它不可聚焦、也不接受点击（父链上的调试层不是可聚焦容器，`hitTest` 到不了它），
 // 所以不会影响焦点导航；鼠标滚轮在面板范围内可以直接滚动日志。
@@ -65,10 +73,16 @@ class DebugLogView : public View
     // ---- 读取/清理 ----
     // 缓存里有多少行（= 通过过滤的日志条数）
     size_t getCachedRowCount() const { return this->rows.size(); }
-    // 第 index 行画出来的文本（越界返回空串；排查/测试用）
+    // 第 index 行的文本（越界返回空串）。**按需拼**：绘制路径不调它，
+    // 所以缓存里不用为每条日志存一份字符串。
     std::string getRowText(size_t index) const
     {
-        return index < this->rows.size() ? this->rows[index].text : std::string();
+        if (index >= this->rows.size() || this->rows[index].entry == nullptr)
+            return std::string();
+
+        std::string text;
+        this->buildRowText(text, *this->rows[index].entry);
+        return text;
     }
     // 行缓存重建过几次（诊断用：日志再多，版本次数决定它，面板本身不触发重排）
     uint64_t getRebuildCount() const { return this->rebuildCount; }
@@ -94,20 +108,25 @@ class DebugLogView : public View
         FrameContext* ctx) override;
 
   private:
+    // 一行 = 一条日志的指针 + 前缀宽度（前缀 = 时间/级别/位置，正文接在它后面画）
     struct Row
     {
-        std::string text;
-        ImU32 color = 0;
+        const LogEntry* entry = nullptr;
+        ImU32 color           = 0;
+        float prefixWidth     = 0.0f;
     };
 
     // 缓存失效 + 重建（只在需要时做，绝大多数帧是空转）
     void invalidateRows() { this->rowsDirty = true; }
     void rebuildRowsIfNeeded();
+    // 复用缓冲：前缀 + 正文拼进去（clear() 不释放容量 → 稳态不分配）
+    void buildRowText(std::string& out, const LogEntry& entry) const;
+    // 前缀（时间 + 级别 + 位置）单独拼一次，用来量宽度
+    void buildRowPrefix(std::string& out, const LogEntry& entry) const;
     // 头部状态行 + 分隔线占的高度
     float getRowsHeight() const;
     // 一行的行高（固定：不换行，所以每行一样高）
     float getRowHeight() const { return this->lineHeight * this->fontSize; }
-    std::string buildRowText(const LogEntry& entry) const;
     ImU32 colorForLevel(LogLevel level) const;
 
     std::vector<Row> rows;
@@ -118,6 +137,20 @@ class DebugLogView : public View
     uint64_t cachedVersion = 0;
     unsigned cachedFilter  = 0;
     float cachedFontSize   = -1.0f;
+    const ImFont* cachedFont = nullptr; // 字体换了要重新量前缀宽度
+
+    // 头部状态行的缓存（内容没变就不重新拼）
+    std::string headerText;
+    uint64_t headerVersion = 0;
+    unsigned headerFilter  = 0;
+    size_t headerLogCount  = 0;
+    int headerFps          = -1;
+    unsigned headerLayouts = 0;
+    const View* headerFocus = nullptr;
+
+    // 拼行的复用缓冲（稳态零分配）
+    mutable std::string scratchPrefix;
+    mutable std::string scratchText;
 
     // 过滤（按 LogLevel 的下标存一位）
     unsigned levelMask = 0x0Fu;

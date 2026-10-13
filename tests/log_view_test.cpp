@@ -152,6 +152,36 @@ int main()
         delete view;
     }
 
+    std::printf("\n== 1b. 缓存只存指针：环形缓冲挤掉旧条目也不会读到野指针 ==\n");
+    {
+        Logger::clear();
+        Logger::setMaxEntries(64); // 故意把环形缓冲压小，逼它反复挤掉旧条目
+
+        DebugLogView* view = new DebugLogView();
+        layoutPanel(view);
+        view->update();
+
+        for (int i = 0; i < 200; i++)
+            Logger::info("挤掉的日志 " + std::to_string(i));
+
+        view->update();
+        checkEqualSize(view->getLogCount(), 64, "环形缓冲只留 64 条");
+        checkEqualSize(view->getCachedRowCount(), 64, "缓存行数与缓冲一致（旧条目已被挤掉）");
+        check(view->getRowText(63).find("挤掉的日志 199") != std::string::npos,
+            "最新一条在最后（指针重新取过，不是野指针）");
+        check(view->getRowText(0).find("挤掉的日志 136") != std::string::npos,
+            "第一条是最早还留着的那条");
+
+        // 只滚动不该重建缓存（重建由"日志版本/过滤/字号/字体"决定）
+        const uint64_t before = view->getRebuildCount();
+        view->scrollBy(-5);
+        view->update();
+        check(view->getRebuildCount() == before, "只滚动不重建缓存");
+
+        delete view;
+        Logger::setMaxEntries(1000); // 还原，别影响后面的小节
+    }
+
     std::printf("\n== 2. 行缓存只在必要时重建（日志再多也不重排）==\n");
     {
         Logger::clear();

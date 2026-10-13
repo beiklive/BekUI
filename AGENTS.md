@@ -383,7 +383,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染。
   它**是视图树里的 View**（挂在外壳的调试层 `Shell::getDebugLayer()` 上，在 HudLayer 之上、
   永远最后绘制），直接用 `ImDrawList` 画文本、**不为每条日志建视图**，所以日志再多也不重排。
-  **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
+  **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排。
+  它的绘制开销是**硬要求**，四条约束（`tests/log_view_draw_test.cpp` 钉住）：
+  ① 缓存里只存 `const LogEntry*`（不复制日志正文），只在「版本/过滤/字号/字体」变化时重建；
+  ② 行高固定 → 可见区间用**一次除法**算，不从头遍历；③ 每行只一次 `AddText`，拼接走复用缓冲
+  （稳态零分配）；④ 面板不可见时 `View::frame` 直接返回，一帧零 draw call。
+  实测：30 条与 1000 条日志的顶点数/命令数**完全相同**（162/3），一帧 5.5 微秒。
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）。
   现在只有设计器还在用这条路（它自己的界面就是 ImGui）；demo 的日志窗口已经是视图了。
 - **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
@@ -433,6 +438,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **圆角不要靠"四条带子"拼**：`AddRectFilled` 会把圆角**钳到边长的一半**，带子又矮又窄时
   圆角直接被钳成直角（用户报过"cutout 之后圆角变直角"）。要圆角就沿中线描一圈
   （`PathRect` + `PathStroke`），描边没有这个钳制，而且内缘正好贴合控件的圆角形状。
+- **下拉弹窗（`widgets/dropdown.*`）**：点触发器 → `App::pushOverlay(DropdownPopup)`，
+  弹层本身是**全屏透明**的点击层，里面那块**板**（`DropdownPanel : AppearanceView`，
+  外观 `widgets/dropdown_popup.json`）才是带底/圆角/边框/阴影的面板。
+  两条踩过的：
+  ① **外观只能套在那块板上**，套到全屏弹层上会把整屏刷成面板色（底下界面全看不见）；
+  ② 弹出位置要按可用空间算（`fitToSpace`）：下方放不下且上方更宽裕就**翻到触发器上方**，
+  两边都不够就把列表高度压到放得下的部分（列表自己滚动）。
+  关掉的三个入口：选一项 / 点板外面（非可聚焦容器 → `hitTest` 返回 nullptr →
+  模态**空白点击回调**）/ 按 B（模态 `closeOnBack`）。
 - **底栏顺序：提示在左、状态在右**（borealis 的 `bottomBarXML` 是 `Hints` 在前，
   外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
