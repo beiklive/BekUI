@@ -7,10 +7,86 @@
 namespace designer
 {
 
+namespace
+{
+
+ImFont* g_iconFont = nullptr;
+
+// Material Icons 码位表（Unicode 私有区）
+unsigned int codepointFor(Icon icon)
+{
+    switch (icon)
+    {
+        case Icon::WIDGET:      return 0xE1BD; // widgets
+        case Icon::PAGE:        return 0xE873; // description
+        case Icon::TABLE:       return 0xE896; // list
+        case Icon::LAYER:       return 0xE53B; // layers
+        case Icon::STATE:       return 0xE429; // tune
+        case Icon::FIELD:       return 0xE145; // add
+        case Icon::EYE:         return 0xE8F4; // visibility
+        case Icon::LAYERS_ONLY: return 0xE5D7; // unfold_more
+        case Icon::EXPAND:      return 0xE5D7; // unfold_more
+        case Icon::COLLAPSE:    return 0xE5CF; // expand_more
+        case Icon::GRID:        return 0xE3EC; // grid_on
+        case Icon::ALIGN:       return 0xE236; // format_align_left
+        case Icon::STRIP:       return 0xE8FE; // reorder
+        case Icon::FIT:         return 0xE5DB; // hmm 先用全屏
+        case Icon::RESET:       return 0xE5D5; // refresh
+        case Icon::COPY:        return 0xE14D; // content_copy
+        case Icon::PASTE:       return 0xE14F; // content_paste
+        case Icon::PLUS:        return 0xE145; // add
+        case Icon::TRASH:       return 0xE872; // delete
+        case Icon::CHEVRON_RIGHT: return 0xE5CC; // chevron_right
+        case Icon::CHEVRON_DOWN:  return 0xE5CF; // expand_more
+        default: return 0;
+    }
+}
+
+} // namespace
+
+bool setIconFontPath(const std::string& ttfPath, float pixelSize)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.Fonts == nullptr)
+        return false;
+
+    ImFontConfig config;
+    config.MergeMode = false;
+    ImFont* font     = io.Fonts->AddFontFromFileTTF(ttfPath.c_str(), pixelSize, &config);
+    if (font == nullptr)
+        return false;
+    g_iconFont = font;
+    return true;
+}
+
+bool hasIconFont() { return g_iconFont != nullptr; }
+
 void drawIcon(ImDrawList* list, Icon icon, ImVec2 c, float size, ImU32 color)
 {
     if (list == nullptr || icon == Icon::NONE)
         return;
+
+    // 装了 Material Icons 就用字形（形状更正规），否则走下面的矢量画法
+    if (g_iconFont != nullptr)
+    {
+        const unsigned int cp = codepointFor(icon);
+        if (cp != 0)
+        {
+            ImFont* font     = ImGui::GetFont();
+            const float base = ImGui::GetFontSize();
+            ImGui::PushFont(g_iconFont, size);
+            const ImVec2 glyphSize = g_iconFont->CalcTextSizeA(size, FLT_MAX, 0.0f,
+                (const char*)u8"\uE000"); // 用一个占位字形量高度
+            const char text[5] = { (char)(0xE0 | (cp >> 12)), (char)(0x80 | ((cp >> 6) & 0x3F)),
+                (char)(0x80 | (cp & 0x3F)), 0, 0 };
+            const ImVec2 textSize = ImGui::CalcTextSize(text);
+            list->AddText(g_iconFont, size, ImVec2(c.x - textSize.x * 0.5f, c.y - size * 0.5f),
+                color, text);
+            ImGui::PopFont();
+            (void)font; (void)base; (void)glyphSize;
+            return;
+        }
+    }
 
     const float r = size * 0.5f;
     const float t = 1.3f; // 线宽

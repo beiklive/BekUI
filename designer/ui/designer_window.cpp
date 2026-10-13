@@ -86,6 +86,16 @@ void propLabel(const char* label)
 }
 
 // 不要 +/- 按钮：窄栏里那对按钮会把后面的内容顶出可视区
+const char* layerOpLabel(const std::string& op)
+{
+    if (op == "rect") return "矩形";
+    if (op == "text") return "文字";
+    if (op == "image") return "图片";
+    if (op == "shadow") return "阴影";
+    if (op == "custom") return "自定义";
+    return op.c_str();
+}
+
 bool inputNumberFloat(const char* label, double& value)
 {
     propLabel(label);
@@ -141,6 +151,10 @@ std::string valueKind(const AppearanceDoc::Json& value)
 void DesignerWindow::attach(App* application)
 {
     this->app = application;
+    // 图标字体：**暂时不用**。图集是库在 App 构造时建好的，这里再 AddFontFromFileTTF
+    // 会直接踩崩（实测 segfault）。要么改库的字体装载（超出"只动 designer/"的边界），
+    // 要么就用手写的矢量图标（icon_draw.cpp，已经和文字对齐）。
+    // 用户的 MaterialIcons-Regular.ttf 已放进 resources/font/，接进来只需在库那侧加一行。
     this->loadUiState();
     applyDesignerStyle(this->uiScale);
 
@@ -1532,6 +1546,7 @@ void DesignerWindow::drawTree()
                 // 绘制类型徽标（rect/text/image/shadow/custom 各一色，取 VS Code 语法色）
                 {
                     const std::string op = this->doc.layerOp(i);
+                    const std::string opLabel = layerOpLabel(op);
                     unsigned int rgb     = 0x4EC9B0; // 默认：青（type）
                     if (op == "text")
                         rgb = 0xCE9178; // 字符串橙
@@ -1550,7 +1565,7 @@ void DesignerWindow::drawTree()
                         + ImGui::GetTreeNodeToLabelSpacing();
                     const ImVec2 textEnd(textStart + ImGui::CalcTextSize(label).x + 10.0f,
                         ImGui::GetItemRectMin().y + 3.0f);
-                    const ImVec2 badgeSize(ImGui::CalcTextSize(op.c_str()).x + 8.0f,
+                    const ImVec2 badgeSize(ImGui::CalcTextSize(opLabel.c_str()).x + 8.0f,
                         ImGui::GetTextLineHeight() - 2.0f);
                     ImDrawList* list = ImGui::GetWindowDrawList();
                     list->AddRectFilled(textEnd,
@@ -1559,7 +1574,7 @@ void DesignerWindow::drawTree()
                             badgeColor.z, 0.22f)),
                         2.0f);
                     list->AddText(ImVec2(textEnd.x + 4.0f, textEnd.y),
-                        ImGui::ColorConvertFloat4ToU32(badgeColor), op.c_str());
+                        ImGui::ColorConvertFloat4ToU32(badgeColor), opLabel.c_str());
 
                     const int fieldCount = this->doc.layer(i) != nullptr
                         ? (int)this->doc.layer(i)->size()
@@ -1576,49 +1591,89 @@ void DesignerWindow::drawTree()
                     }
                 }
 
-                // 每层一行直接给操作按钮：不用"先选中、再去属性表点"
+                // 行内**不再放按钮**：操作走右键菜单，排序靠直接拖动（用户要求）
                 {
-                    ImGui::SameLine(ImGui::GetWindowWidth() - 96.0f);
-                    ImGui::PushID(i);
-                    if (ImGui::SmallButton("↑"))
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover))
                     {
-                        if (this->doc.moveLayer(i, -1) && this->selection.index == i)
-                            this->selection.index -= 1;
-                        this->markEdited();
-                        this->previewDirty = true;
+                        ImGui::SetDragDropPayload("LAYER_INDEX", &i, sizeof(int));
+                        ImGui::Text("移动「%s」", layerName.c_str());
+                        ImGui::EndDragDropSource();
                     }
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("↓"))
+                    if (ImGui::BeginDragDropTarget())
                     {
-                        if (this->doc.moveLayer(i, 1) && this->selection.index == i)
-                            this->selection.index += 1;
-                        this->markEdited();
-                        this->previewDirty = true;
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("LAYER_INDEX"))
+                        {
+                            const int from = *(const int*)payload->Data;
+                            if (from != i && from >= 0 && from < this->doc.layerCount())
+                            {
+                                const int target = (i > from) ? i - 1 : i;
+                                this->doc.moveLayer(from, target - from);
+                                this->pushUndoSnapshot();
+                                this->markEdited();
+                                this->previewDirty    = true;
+                                this->selection       = Selection{};
+                                this->selection.kind  = SelKind::LAYER;
+                                this->selection.index = target;
+                                this->statusMessage   = "已拖动排序";
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
                     }
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("⧉"))
+
+                    if (ImGui::BeginPopupContextItem("##layerctx"))
                     {
-                        const int created = this->doc.duplicateLayer(i);
-                        this->selection = Selection{};
+                        this->selection       = Selection{};
                         this->selection.kind  = SelKind::LAYER;
-                        this->selection.index = created;
-                        this->markEdited();
-                        this->previewDirty = true;
+                        this->selection.index = i;
+
+                        if (ImGui::MenuItem("复制层"))
+                        {
+                            this->layerClipboard    = *this->doc.layer(i);
+                            this->hasLayerClipboard = true;
+                            this->statusMessage     = "已复制该层";
+                        }
+                        if (ImGui::MenuItem("粘贴层", nullptr, false, this->hasLayerClipboard))
+                        {
+                            const int created = this->doc.appendLayer(this->layerClipboard);
+                            if (created >= 0)
+                            {
+                                this->pushUndoSnapshot();
+                                this->markEdited();
+                                this->previewDirty    = true;
+                                this->selection.index = created;
+                            }
+                        }
+                        ImGui::Separator();
+                        if (ImGui::BeginMenu("增加层"))
+                        {
+                            for (const char* leftOp : { "rect", "text", "image", "shadow", "custom" })
+                            {
+                                if (ImGui::MenuItem(layerOpLabel(leftOp)))
+                                {
+                                    const int created = this->doc.addLayer(leftOp);
+                                    this->pushUndoSnapshot();
+                                    this->markEdited();
+                                    this->previewDirty    = true;
+                                    this->selection.index = created;
+                                }
+                            }
+                            ImGui::EndMenu();
+                        }
+                        if (ImGui::MenuItem("增加字段…"))
+                            this->showAddFieldForLayer = true;
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("删除层"))
+                        {
+                            this->doc.removeLayer(i);
+                            this->pushUndoSnapshot();
+                            this->markEdited();
+                            this->previewDirty    = true;
+                            this->selection       = Selection{};
+                            this->selection.kind  = SelKind::FILE;
+                        }
+                        ImGui::EndPopup();
                     }
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("✕"))
-                    {
-                        this->doc.removeLayer(i);
-                        this->selection = Selection{};
-                        this->selection.kind = SelKind::FILE;
-                        this->markEdited();
-                        this->previewDirty = true;
-                    }
-                    ImGui::PopID();
                 }
-                // "只看层"时**不能**进这个子块：Leaf|NoTreePushOnOpen 下 open 恒为 true，
-                // 子块会照跑并调 TreePop() —— 那相当于多调一次 PopID（ImGui 会报
-                // "Calling PopID() too many times!"，每层报一次）。而且字段也根本没被隐藏。
                 if (open && !this->onlyLayers)
                 {
                     if (ImGui::IsItemClicked())
@@ -4608,6 +4663,44 @@ void DesignerWindow::drawModals()
         ImGui::EndPopup();
     }
 
+    // 「增加字段…」（从节点树右键进来）：列出常用字段，点一下加进去
+    if (this->showAddFieldForLayer)
+    {
+        ImGui::OpenPopup("增加字段");
+        this->showAddFieldForLayer = false;
+    }
+    if (ImGui::BeginPopupModal("增加字段", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextColored(mutedColor(), "加到第 %d 层", this->selection.index + 1);
+        ImGui::Separator();
+        struct FieldSpec { const char* key; const char* value; };
+        static const FieldSpec specs[] = {
+            { "fill", "@theme/color.common.transparent" },
+            { "color", "@theme/color.text.primary" },
+            { "radius", "6" }, { "width", "0" }, { "height", "0" },
+            { "inset", "0" }, { "align", "center" }, { "valign", "center" },
+            { "opacity", "1" }, { "fontSize", "20" }, { "source", "" }, { "bind", "" },
+        };
+        for (const FieldSpec& spec : specs)
+        {
+            if (ImGui::Selectable(spec.key))
+            {
+                AppearanceDoc::Json value = AppearanceDoc::Json::parse(spec.value, nullptr, false);
+                if (value.is_discarded())
+                    value = AppearanceDoc::Json(std::string(spec.value));
+                this->doc.setLayerValue(this->selection.index, spec.key, value);
+                this->pushUndoSnapshot();
+                this->markEdited();
+                this->previewDirty = true;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::Separator();
+        if (ImGui::Button("取消", ImVec2(100, 0)))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     this->drawOpenProjectModal();
 
     if (this->showSaveAsVariant)
@@ -5175,19 +5268,23 @@ void DesignerWindow::draw()
             ImGui::GetContentRegionAvail().y - 160.0f, (float)kFileListDefault);
         ImGui::Separator();
         panelHeader("节点树", "点哪层渲染哪层");
-        if (ImGui::SmallButton("全展开"))
+        // 开关收在标题**右侧**、用图标（不要一排文字按钮）
+        ImGui::SameLine(ImGui::GetContentRegionMax().x - 74.0f);
+        if (iconButton("##treeExpand", Icon::EXPAND, 15.0f, false, "展开全部"))
             this->treeOpenRequest = 1;
-        ImGui::SameLine();
-        if (ImGui::SmallButton("只到层"))
+        ImGui::SameLine(0.0f, 2.0f);
+        if (iconButton("##treeCollapse", Icon::COLLAPSE, 15.0f, false, "收起字段（只到层）"))
             this->treeOpenRequest = 2;
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("把下面的字段收起来，只留层（和「只看层」同一件事，但只生效一次）");
-        ImGui::SameLine();
-        ImGui::Checkbox("只看层", &this->onlyLayers);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("把每层下面的字段行收起来，只留层本身 —— 找控件、调顺序时更快");
-        ImGui::SameLine();
-        ImGui::TextColored(mutedColor(), "%d 层", this->doc.layerCount());
+        ImGui::SameLine(0.0f, 2.0f);
+        if (iconButton("##treeOnlyLayers", Icon::LAYERS_ONLY, 15.0f, this->onlyLayers,
+                "只看层：字段收进右侧属性"))
+            this->onlyLayers = !this->onlyLayers;
+        ImGui::SameLine(0.0f, 14.0f);
+        iconText(Icon::LAYER, std::to_string(this->doc.layerCount()).c_str(),
+            ImGui::ColorConvertFloat4ToU32(mutedColor()), mutedColor());
+        ImGui::SameLine(0.0f, 10.0f);
+        iconText(Icon::STATE, std::to_string((int)this->doc.stateNames().size()).c_str(),
+            ImGui::ColorConvertFloat4ToU32(mutedColor()), mutedColor());
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
             sizeof(this->treeFilter));

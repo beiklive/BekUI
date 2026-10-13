@@ -377,6 +377,7 @@ class DesignerWindow
     bool showNewAppearance = false;
     bool showNewView       = false;
     bool showSaveAsVariant = false;
+    bool showAddFieldForLayer = false;   // 从树右键「增加字段…」打开
     char variantName[64]   = "my_variant";
     char newViewName[64]   = "my_page";
     int newViewTemplate    = 1; // 0=空页面 1=整页（页头+内容+底栏）2=卡片

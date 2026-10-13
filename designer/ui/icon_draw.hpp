@@ -6,6 +6,8 @@
 // 而且这几个图标形状简单，画出来更清晰、也不受字体缺字形影响。
 // **对齐规则**：纵向按行高取中（见 core/icon_align.hpp），不要把图标贴到文字顶上。
 
+#include <string>
+
 #include "bklv/3rd/imgui/imgui.h"
 
 namespace designer
@@ -36,6 +38,12 @@ enum class Icon
     CHEVRON_RIGHT,
     CHEVRON_DOWN,
 };
+
+// 用 Material Icons 字体（resources/font/MaterialIcons-Regular.ttf）。
+// 字体没装上时自动退回下面的矢量画法，所以永远不会"没图标"。
+// 返回 false 表示没装字体（调用方可以退回矢量）。
+bool setIconFontPath(const std::string& ttfPath, float pixelSize);
+bool hasIconFont();
 
 // 在 center 画一个 size 大小的图标（size 通常取字号或 14~16）
 void drawIcon(ImDrawList* list, Icon icon, ImVec2 center, float size, ImU32 color);
