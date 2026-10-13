@@ -986,6 +986,16 @@ void DesignerWindow::drawMenuBar()
             this->showOpenProject = true;
             this->openBrowseAt(this->hasProject ? this->project.themeRoot : homeDirectory());
         }
+        if (ImGui::BeginMenu("切换主题"))
+        {
+            for (const std::string& name : this->themeNames)
+            {
+                const bool selected = (name == this->project.name);
+                if (ImGui::MenuItem(name.c_str(), nullptr, selected))
+                    this->switchTheme(name);
+            }
+            ImGui::EndMenu();
+        }
         ImGui::Separator();
         ImGui::BeginDisabled(!hasFile);
         if (ImGui::MenuItem("保存", "Ctrl+S"))
@@ -1157,99 +1167,47 @@ void DesignerWindow::drawMenuBar()
 
 void DesignerWindow::drawTopBar()
 {
-    // 常用操作栏：**只放高频动作**（打开项目 / 主题 / 保存 / 撤销 / 重做）。
-    // 其余（重载、还原、另存、校验、日志、焦点顺序…）都收进上面那排菜单 ——
-    // 评审意见：它们和"保存"原本是同一个视觉权重，主次分不出来。
-    if (ImGui::Button("打开项目"))
-    {
-        this->showOpenProject = true;
-        this->openBrowseAt(this->hasProject ? this->project.themeRoot : homeDirectory());
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("用文件浏览器选一个 theme.json：可以直接编辑它，也可以拿它当模板建新主题");
+    // 顶栏**只有菜单栏**（在 drawMenuBar 里）。这里是它下面那条细状态行：
+    // 只报"我在哪个工程 / 哪个文件 / 有没有未保存"，不放任何按钮 ——
+    // 所有动作都在菜单里（评审 + 用户口述都要求不要再堆一行按钮）。
+    const DesignerPalette palette = currentDesignerPalette();
 
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(160.0f * this->uiScale);
-    if (ImGui::BeginCombo("##theme", this->project.name.c_str()))
-    {
-        for (const std::string& name : this->themeNames)
-        {
-            const bool selected = (name == this->project.name);
-            if (ImGui::Selectable(name.c_str(), selected))
-                this->switchTheme(name);
-            if (selected)
-                ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("切换要编辑 / 预览的主题");
-
-    ImGui::SameLine();
-    ImGui::BeginDisabled(this->readOnly);
-    if (ImGui::Button("设为默认"))
-    {
-        std::string error;
-        std::string currentDefault;
-        std::vector<std::string> available;
-        if (readThemesFile(this->project.themeRoot, available, currentDefault, error)
-            && writeThemesFile(this->project.themeRoot, available, this->project.name, error))
-        {
-            this->defaultThemeName = this->project.name;
-            this->statusMessage    = "已把 " + this->project.name + " 设为默认主题";
-        }
-        else
-            this->errorMessage = error;
-    }
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("把当前主题写进 themes.json 的默认项%s",
-            this->readOnly ? "（基准主题只读，先新建主题）" : "");
-
-    // 主操作：保存（用 VS Code 的 button.background，一眼能看出是主要动作）
-    ImGui::SameLine(0.0f, 24.0f * this->uiScale);
-    ImGui::BeginDisabled((this->readOnly && this->currentViewFile.empty())
-        || this->currentFilePath.empty());
-    if (ImGui::Button("保存", ImVec2(88.0f * this->uiScale, 0.0f)))
-        this->requestSave();
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ctrl+S：先看 diff，再编译校验，通过才写盘（留一份 .bak）");
-    if (this->dirty)
-    {
-        ImGui::SameLine(0.0f, 6.0f);
-        ImGui::TextColored(unsavedColor(), "● 未保存");
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("有未保存改动：Ctrl+S 保存，Ctrl+Z 撤销");
-    }
-
-    ImGui::SameLine(0.0f, 24.0f * this->uiScale);
-    ImGui::BeginDisabled(this->currentFilePath.empty());
-    if (ImGui::Button("撤销"))
-        this->undo();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ctrl+Z%s", this->historySummary.empty()
-                ? ""
-                : ("\n上一步动过：" + this->historySummary).c_str());
-    ImGui::SameLine();
-    if (ImGui::Button("重做"))
-        this->redo();
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Ctrl+Y");
-    ImGui::EndDisabled();
-
-    // 右侧：项目与模式（只读提醒用警告色，不再和按钮抢注意力）
     const char* mode = this->project.mode == ProjectMode::FORK ? "模板新建" : "直接编辑";
-    const std::string right = this->hasProject
-        ? (this->project.name + " · " + mode + (this->readOnly ? " · 只读" : ""))
-        : std::string("未打开项目");
-    const float rightWidth = ImGui::CalcTextSize(right.c_str()).x;
-    ImGui::SameLine(ImGui::GetWindowWidth() - rightWidth - 18.0f * this->uiScale);
-    ImGui::TextColored(this->readOnly ? warningColor() : mutedColor(), "%s", right.c_str());
+    const std::string current = !this->currentWidget.empty()
+        ? this->currentWidget
+        : (!this->currentTable.empty() ? this->currentTable : this->currentViewFile);
+
+    if (!this->hasProject)
+        ImGui::TextColored(palette.textDim, "还没有打开工程 —— 菜单「文件 → 打开项目」");
+    else
+    {
+        ImGui::TextColored(palette.textDim, "%s · %s", this->project.name.c_str(), mode);
+        if (!current.empty())
+        {
+            ImGui::SameLine(0.0f, 8.0f);
+            ImGui::TextColored(palette.textDim, "·");
+            ImGui::SameLine(0.0f, 8.0f);
+            ImGui::TextColored(palette.textPrimary, "%s", current.c_str());
+        }
+        if (this->dirty)
+        {
+            ImGui::SameLine(0.0f, 8.0f);
+            ImGui::TextColored(unsavedColor(), "● 未保存");
+        }
+        if (this->readOnly)
+        {
+            ImGui::SameLine(0.0f, 12.0f);
+            ImGui::TextColored(warningColor(), "基准主题只读");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("default / ocean 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
+        }
+    }
+
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("主题根目录：%s%s", this->project.themeRoot.c_str(),
-            this->readOnly ? "\n（基准主题只读：改样式请用「文件 → 打开项目」新建一个主题）" : "");
+        ImGui::SetTooltip("主题根目录：%s", this->project.themeRoot.c_str());
+    ImGui::Separator();
 }
+
 
 
 // ---------------------------------------------------------------- 文件列表

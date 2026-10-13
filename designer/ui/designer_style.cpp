@@ -74,14 +74,14 @@ void applyDesignerStyle(float uiScale)
     // 尺寸：先按"100%"写死，再乘缩放 —— 每次调用都幂等，不用维护"原始尺寸"副本
     const float s = uiScale;
 
-    // VS Code 的控件是**方角**、行高紧凑，这里照它的观感来
+    // 扁平：**一律直角**（没有圆角、没有抬起感），靠纯色块 + 1px 细线分区
     style.WindowRounding    = 0.0f;
-    style.ChildRounding     = 2.0f * s;
-    style.FrameRounding     = 2.0f * s;
-    style.PopupRounding     = 4.0f * s;
-    style.ScrollbarRounding = 6.0f * s;
-    style.GrabRounding      = 2.0f * s;
-    style.TabRounding       = 2.0f * s;
+    style.ChildRounding     = 0.0f;
+    style.FrameRounding     = 0.0f;
+    style.PopupRounding     = 0.0f;
+    style.ScrollbarRounding = 0.0f;
+    style.GrabRounding      = 0.0f;
+    style.TabRounding       = 0.0f;
     style.WindowBorderSize  = 0.0f;
     style.ChildBorderSize   = 1.0f;
     style.FrameBorderSize   = 1.0f;
@@ -167,27 +167,14 @@ void applyDesignerStyle(float uiScale)
 void panelHeader(const char* title, const char* hint)
 {
     const DesignerPalette palette = currentDesignerPalette();
-    ImDrawList* drawList          = ImGui::GetWindowDrawList();
 
-    const ImVec2 start = ImGui::GetCursorScreenPos();
-    const float width  = ImGui::GetContentRegionAvail().x;
-    const float height = ImGui::GetFrameHeight();
-
-    // 一条"抬起来"的标题条 + 左侧强调色小竖条
-    drawList->AddRectFilled(start, ImVec2(start.x + width, start.y + height),
-        ImGui::ColorConvertFloat4ToU32(palette.raised), 6.0f);
-    drawList->AddRectFilled(ImVec2(start.x + 6.0f, start.y + 5.0f),
-        ImVec2(start.x + 9.0f, start.y + height - 5.0f),
-        ImGui::ColorConvertFloat4ToU32(palette.accent), 2.0f);
-
-    ImGui::SetCursorScreenPos(ImVec2(start.x + 16.0f, start.y + 4.0f));
-    ImGui::TextColored(palette.accent, "%s", title);
-    if (hint != nullptr)
+    ImGui::TextColored(palette.textPrimary, "%s", title);
+    if (hint != nullptr && hint[0] != 0)
     {
         ImGui::SameLine();
         ImGui::TextColored(palette.textDim, "%s", hint);
     }
-    ImGui::SetCursorScreenPos(ImVec2(start.x, start.y + height + 4.0f));
+    ImGui::Separator(); // 扁平：只用一条细线分区，不画抬起的条
 }
 
 } // namespace designer
