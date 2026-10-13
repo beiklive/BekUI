@@ -848,6 +848,23 @@ void InputManager::notifyViewDeleted(View* view)
     if (view == nullptr)
         return;
 
+    // 手势目标也要清：它是"按下时命中的那个视图"，按住不放期间**切页会把它删掉**
+    // （Pager 删旧页 / 下钻返回释放详情页），下一帧 handlePointer 再拿它
+    // dispatchGesture 就是 use-after-free —— ASAN 实测踩过。
+    // 被删的视图是手势目标的祖先时也要清（因为事件是沿父链往上派的）。
+    if (this->gestureTarget != nullptr)
+    {
+        for (View* v = this->gestureTarget; v != nullptr; v = v->getParent())
+        {
+            if (v == view)
+            {
+                this->gestureTarget = nullptr;
+                this->pointerDown   = false; // 这个按下永远等不到 END 了
+                break;
+            }
+        }
+    }
+
     // 只处理"被删除的视图是当前焦点的祖先或自己"这一种情况。
     bool inPath = false;
     for (View* v = this->currentFocus; v != nullptr; v = v->getParent())

@@ -11,7 +11,7 @@ namespace demo
 namespace
 {
 
-bklv::AppletFrame* g_settingsShell = nullptr;
+PageDeps g_pageDeps;
 
 std::string backendName()
 {
@@ -20,9 +20,14 @@ std::string backendName()
 
 } // namespace
 
-void setSettingsShell(bklv::AppletFrame* shell)
+void setPageDeps(const PageDeps& deps)
 {
-    g_settingsShell = shell;
+    g_pageDeps = deps;
+}
+
+const PageDeps& getPageDeps()
+{
+    return g_pageDeps;
 }
 
 // 设置页：对标 borealis demo 的 Settings tab——整页由列表型 Cell 组成。
@@ -32,7 +37,8 @@ Box* buildSettingsPage()
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
     page->addView(makeHint(getStr("settings/hint")));
 
-    AppletFrame* shell = g_settingsShell;
+    // 捕获一份副本：页面会被切页逻辑 delete，但 PageDeps 里的 std::function 指向宿主，宿主活得久
+    const PageDeps deps = g_pageDeps;
 
     // ---- 说明信息（DetailCell）----
     Rectangle* about = makeCard();
@@ -60,23 +66,23 @@ Box* buildSettingsPage()
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
     BooleanCell* headerCell = new BooleanCell(getStr("settings/show_header"), true);
-    headerCell->setOnChange([shell](bool value) {
-        if (shell != nullptr)
-            shell->setHeaderVisible(value);
+    headerCell->setOnChange([deps](bool value) {
+        if (deps.setHeaderVisible)
+            deps.setHeaderVisible(value);
     });
     switches->addView(headerCell);
 
     BooleanCell* barCell = new BooleanCell(getStr("settings/show_bottom_bar"), true);
-    barCell->setOnChange([shell](bool value) {
-        if (shell != nullptr)
-            shell->setBottomBarVisible(value);
+    barCell->setOnChange([deps](bool value) {
+        if (deps.setFooterVisible)
+            deps.setFooterVisible(value);
     });
     switches->addView(barCell);
 
     BooleanCell* animCell = new BooleanCell(getStr("settings/animate_bars"), true);
-    animCell->setOnChange([shell](bool value) {
-        if (shell != nullptr)
-            shell->setBarsAnimated(value);
+    animCell->setOnChange([deps](bool value) {
+        if (deps.setBarsAnimated)
+            deps.setBarsAnimated(value);
     });
     switches->addView(animCell);
 
@@ -146,9 +152,9 @@ Box* buildSettingsPage()
     SliderCell* duration = new SliderCell(getStr("settings/bar_duration"));
     duration->setRange(0.05f, 0.60f);
     duration->setValue(0.18f);
-    duration->setOnChange([shell](float value) {
-        if (shell != nullptr)
-            shell->setBarAnimationDuration(value);
+    duration->setOnChange([deps](float value) {
+        if (deps.setBarAnimationDuration)
+            deps.setBarAnimationDuration(value);
     });
     selectors->addView(duration);
     page->addView(selectors);

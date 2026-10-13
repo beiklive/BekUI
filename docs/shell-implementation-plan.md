@@ -855,3 +855,52 @@ closeOnBack（读取点生效、焦点回原控件、遮罩同摘）、B 限定�
 
 按附录 D 做 `Pager` + 迁移 demo 14 页；第 6 步按页背景 + `TransitionHost`；第 7 步删旧
 `AppletFrame`（保留 JSON 类型名 `"AppletFrame"`）+ 设计器回归 + 文档收尾。
+
+---
+
+## v18 第 5 步完成（Pager + 迁移 demo 14 页）
+
+### 交付
+
+1. **`bklv/widgets/pager.{hpp,cpp}`**（前一提交）：工厂式页面、可取消预加载、失败/loading 占位、
+   页面级记忆（焦点 + 滚动位置）。`Pager::update()` 负责把记忆的滚动位置延后到布局算完之后落位
+   （布局是延迟的：`show()` 里刚挂上的内容高度还是 0，`getScrollRange()` 为 0，当场
+   `setContentOffsetY` 会被钳成 0）。
+2. **`Shell` 补内容层下钻**：`pushContentView/popContentView/getContentStackSize`。
+   同级换页归 `Pager`，层级下钻（图鉴 → 详情，B 逐层返回）归 Shell 的内容栈：
+   非栈顶层走 GONE（不占位、不进焦点链），弹出时释放临时详情页。
+3. **迁移 demo 14 页**：
+   - `demo/app/demo_app.*` 重写：`AppletFrame` → `Shell`（header/footer 挂覆盖层，
+     中间用 `Padding` 顶开）+ `Pager`；页面变成 14 个工厂，切页现建现删。
+   - 内容避让**显式**：留白加在 `contentLayer` 的 padding 上（top/bottom = 页头/底栏 insets），
+     所以下钻出来的详情页（同层兄弟）也自动避让；页头/底栏折叠动画期间 insets 用**目标值**。
+   - `wrapPage()` 承担原来 `pageSlot` 的内容内边距（左右 60 / 上下 42）。
+   - `demo/app/pages.hpp` 新增 `PageDeps`（宿主下发的最小接口）+ `setPageDeps/getPageDeps`；
+     `setSettingsShell` / `setDetailShell` 两个按外壳类型的全局换成它。
+   - 新增调试开关 `BKLV_DEMO_SWEEP=<每页停留帧数>`：逐页自动切换，一次跑遍 14 页的"建 → 删"。
+
+### 迁移中踩到并修掉的三个坑（都是"切页真的会 delete 旧页"才暴露的）
+
+| # | 现象 | 根因与对策 |
+|---|---|---|
+| 1 | **栈溢出**（demo 有 5 页崩在 `getTheme()` 里） | `Pager::rememberPageState()` 把**焦点在页面之外**（侧栏 TabCell）时的焦点也记进了页面记忆；还原时 `giveFocus(侧栏 cell)` → `TabCell::onFocusGained`（侧栏"聚焦即切页"）→ `selectPage` → `show` → `loadPageState` → `giveFocus(侧栏)` … 无限递归。对策：只在**焦点确实在本页内**时才记/还原焦点，并给 `show()` 加重入保护 |
+| 2 | **UAF**（page_nav） | `static Subscription` 活到进程结束，回调里改的是页面内 Label；页面被删后广播焦点事件 → 悬空。对策：订阅句柄 + `AliveFlag` + `DelayHandle` 挂到页面根节点（`NavPage`）上，页面析构即退订；延迟回调先查 `AliveFlag` |
+| 3 | **UAF**（输入层，ASAN 抓的） | `InputManager::gestureTarget` 指向"按下时命中的视图"，按住鼠标时切页会把它删掉，下一帧 `dispatchGesture` 就是野指针。对策：`notifyViewDeleted()` 里把 `gestureTarget`（或它的祖先被删）一并清掉并复位 `pointerDown` |
+
+### 验收原文（本会话实测）
+
+```
+全部检查通过（2113 项）        # v17 是 2062（+51 pager_test），GL/VK 均"构建通过，零警告"
+python3 scripts/check_naming.py → 命名检查：138 个文件全部符合约定
+demo 逐页截图：14/14 页 exit=0，/tmp/demo_after/page_{0..13}.png 与迁移前逐页比对一致
+  （页头标题/副标题、侧栏、内容位置、底栏提示与状态都对得上；只有时钟不同）
+BKLV_DEMO_SWEEP=2 跑 300s（ASAN 构建）：0 处 AddressSanitizer 报错，14 页反复建删不崩
+```
+
+### 有意保留的差异
+
+- 演示里页头/底栏的折叠动画（`startBarAnimation/updateBars/finishBarAnimation`）从
+  `AppletFrame` 搬到了 `DemoApp`：Shell 只管结构与层，栏的显隐/动画是**宿主**的事
+  （方案 §3.1 的 `setHeaderVisible` + insets 目标值语义）。
+- `page_overlay` 的两个静态弹窗在每次建页时"没打开就丢旧的"：否则旧弹窗里捕获的
+  页面 Label 会在切页后悬空。

@@ -68,6 +68,7 @@
 #include "bklv/widgets/pager.hpp"
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/widgets/sidebar.hpp"
+#include "bklv/widgets/shell.hpp"
 #include "bklv/widgets/slider.hpp"
 #include "bklv/widgets/status_area.hpp"
 #include "bklv/widgets/tab_frame.hpp"

@@ -233,6 +233,48 @@ void Shell::fillLayer(View* view)
     view->setPositionLeft(0.0f);
 }
 
+// ---- 内容层的层级下钻（同级换页是 Pager 的事）----
+
+void Shell::pushContentView(View* view)
+{
+    if (view == nullptr)
+        return;
+
+    // 旧的那层收起来：GONE 既不占位也不进焦点链（canFocus 的"沿父链可见"会挡住它）
+    if (View* current = this->getContentView())
+        current->setVisibility(Visibility::GONE);
+
+    this->contentLayer->addView(view);
+    this->contentStack.push_back(view);
+}
+
+void Shell::popContentView(std::function<void()> callback)
+{
+    if (this->contentStack.size() <= 1)
+    {
+        if (callback)
+            callback();
+        return;
+    }
+
+    View* outgoing = this->contentStack.back();
+    this->contentStack.pop_back();
+
+    View* incoming = this->contentStack.back();
+    incoming->setVisibility(Visibility::VISIBLE);
+
+    // 详情页是下钻时临时建出来的，退回时释放它
+    if (outgoing != nullptr && outgoing->getParent() == this->contentLayer)
+        this->contentLayer->removeView(outgoing, true);
+
+    // 焦点交给退回来的那一层的默认控件
+    if (View* inner = incoming->getDefaultFocus())
+        getInputManager().giveFocus(inner);
+
+    if (callback)
+        callback();
+}
+
 
 // 弹窗：挂覆盖层顶部 + 切模态（模态栈会保存当前焦点，关闭时自动恢复；
 // 指针命中与方向导航也被限制在弹窗子树内）。

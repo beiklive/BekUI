@@ -2,17 +2,42 @@
 
 // demo 的页面清单：每个页面一个构建函数，返回页面根视图。
 // 页面只负责"把自己的内容搭出来"，怎么显示、什么时候显示由 demo_app 决定。
+//
+// 外壳从 `AppletFrame` 换成 `Shell` + `Pager` 之后，页面变成**工厂**：
+// demo_app 用 `Pager::setPageFactory(id, ...)` 注册，切页时现建、旧页现删。
+// 因此页面**不能**跨切页保存指向页面内部视图的指针 / 静态下标（旧页会被 delete）。
 
 #include "bklv/bklv.hpp"
+
+#include <functional>
 
 namespace bklv
 {
 class App;
-class AppletFrame;
+class Shell;
+class Pager;
+class View;
 }
 
 namespace demo
 {
+
+// 页面构建时能拿到的最小宿主接口。
+// 只有需要操作外壳的页面才用它（设置页要切页头/底栏；图鉴详情要下钻）。
+// 由 demo_app 在建页之前 `setPageDeps()` 一次；页面内部不要长期保存它以外的东西。
+struct PageDeps
+{
+    bklv::Shell* shell = nullptr;
+
+    // 页头 / 底栏显隐（宿主负责折叠动画与内容避让）
+    std::function<void(bool)> setHeaderVisible;
+    std::function<void(bool)> setFooterVisible;
+    std::function<void(bool)> setBarsAnimated;
+    std::function<void(float)> setBarAnimationDuration;
+};
+
+void setPageDeps(const PageDeps& deps);
+const PageDeps& getPageDeps();
 
 // 主题页要能切主题，需要 App 实例；main.cpp 在建 DemoApp 之前调用
 void setThemeSwitchApp(bklv::App* app);
@@ -55,10 +80,6 @@ bklv::Box* buildPokedexPage();
 // 详情页（段号 + 段内下标）；填到内容栈的上一层
 bklv::View* buildPokedexDetail(size_t section, size_t index);
 
-// 详情页目标外壳：图鉴把详情推到它的内容栈上（B 返回）
-void setDetailShell(bklv::AppletFrame* shell);
-bklv::AppletFrame* getDetailShell();
-
 // 11. 滚动：独立滚动容器 + 焦点跟随滚动（对标 borealis 的 Scroll test）
 bklv::Box* buildScrollPage();
 
@@ -66,8 +87,7 @@ bklv::Box* buildScrollPage();
 bklv::Box* buildTransformPage();
 
 // 9. 设置：列表型 Cell 全家桶（detail / bool / radio / selector / slider / input）
-//    页里的开关要能操作外壳的页头/底栏，所以把外壳传进来
-void setSettingsShell(bklv::AppletFrame* shell);
+//    页里的开关要能操作外壳的页头/底栏，读 getPageDeps()
 bklv::Box* buildSettingsPage();
 
 } // namespace demo

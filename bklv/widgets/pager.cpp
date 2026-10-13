@@ -102,6 +102,17 @@ void Pager::show(const std::string& id)
     if (this->isShowing(id) && this->currentView != nullptr)
         return;
 
+    // 重入保护：show() 会交接焦点，而焦点变化可能触发容器回调（例如侧栏的
+    // "聚焦即切页" onFocusGained → selectPage → 又一次 show）。重入会让外层 show
+    // 继续往下跑、把内层刚建好的页面再删掉 —— 这里直接忽略内层那次（带日志）。
+    if (this->showing)
+    {
+        BKLV_LOG_WARNING("Pager::show(%s) 重入被忽略（当前正在切到 %s）", id.c_str(),
+            this->currentPageId.c_str());
+        return;
+    }
+    this->showing = true;
+
     // 快速连按：切页会把"别的页正在飞的预加载"取消掉（它再来回调必须被丢弃）
     if (!this->pendingPreloadId.empty() && this->pendingPreloadId != id)
         this->cancelPreload(this->pendingPreloadId);
@@ -118,6 +129,22 @@ void Pager::show(const std::string& id)
 
     View* outgoing = this->currentView;
 
+    // 焦点原本在不在这一页里？（要在 setContentView 之前算：挂上新页后旧页就脱离树了）
+    // 在 → 切页时把焦点交接给新页；不在（比如在侧栏上）→ 别动焦点，
+    // 否则"聚焦即切页"的侧栏会被新页抢走焦点，上下移动就失效了。
+    // 焦点为空时也**不**交接：那是"还没人给过焦点"（App::setRootView 之前），
+    // 交给上层按自己的默认焦点规则决定（否则会把焦点从侧栏抢进页面）。
+    View* focus         = getInputManager().getCurrentFocus();
+    bool focusWasInPage = false;
+    for (View* v = focus; v != nullptr; v = v->getParent())
+    {
+        if (v == outgoing)
+        {
+            focusWasInPage = true;
+            break;
+        }
+    }
+
     // ---- 顺序不能反（附录 D1）----
     // ① 先挂新页（setContentView 只摘旧页、不销毁）
     if (this->slot != nullptr)
@@ -128,19 +155,27 @@ void Pager::show(const std::string& id)
     this->currentView   = page;
     this->currentPageId = id;
 
-    // ② 再给新页焦点（没有默认可聚焦子节点时保持当前焦点不动 —— 比如 loading 占位）
-    if (View* first = page->getDefaultFocus())
-        getInputManager().giveFocus(first);
+    // ② 再给新页焦点。注意：交接失败时**必须**把焦点从旧页上挪开 ——
+    // 下面就要 delete 旧页了，焦点还指着里面某个控件就是悬空指针。
+    if (focusWasInPage)
+    {
+        if (View* first = page->getDefaultFocus())
+            getInputManager().giveFocus(first);
+        else
+            getInputManager().giveFocus(nullptr);
+    }
 
     // ③ 最后才删旧页：此时旧页已经脱离槽，焦点也不在它身上了
     if (outgoing != nullptr && outgoing != page)
         delete outgoing;
 
     // 回到这一页：恢复上次的焦点（路径）与滚动位置
-    this->loadPageState(id);
+    this->loadPageStateInternal(id, focusWasInPage);
 
     if (this->onPageChanged)
         this->onPageChanged(id);
+
+    this->showing = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,12 +221,32 @@ bool Pager::applyPreload(const std::string& id)
 // 页面级记忆
 // ---------------------------------------------------------------------------
 
+// 焦点现在是不是在"当前页"里？
+bool Pager::isFocusInsidePage() const
+{
+    View* focus = getInputManager().getCurrentFocus();
+    if (focus == nullptr || this->currentView == nullptr)
+        return false;
+
+    for (View* v = focus; v != nullptr; v = v->getParent())
+        if (v == this->currentView)
+            return true;
+
+    return false;
+}
+
 void Pager::rememberPageState()
 {
     if (this->currentPageId.empty())
         return;
 
-    getInputManager().rememberFor(this->currentPageId);
+    // **只有焦点确实在这一页里才记焦点**。
+    // 焦点在页面之外（侧栏 / 页头这类）时记下来，还原时会把焦点抢回侧栏；
+    // 而侧栏是"聚焦即切页"（TabCell::onFocusGained → 宿主 selectPage → show），
+    // 于是形成 show → loadPageState → giveFocus(侧栏) → selectPage → show 的无限递归
+    // —— 实测踩过（demo 14 页里有 5 页栈溢出崩在这里）。
+    if (this->isFocusInsidePage())
+        getInputManager().rememberFor(this->currentPageId);
 
     if (this->slot != nullptr)
         this->pageScrollOffsets[this->currentPageId] = this->slot->getContentOffsetY();
@@ -199,7 +254,15 @@ void Pager::rememberPageState()
 
 bool Pager::loadPageState(const std::string& id)
 {
-    const bool restoredFocus = getInputManager().loadFocusFor(id);
+    return this->loadPageStateInternal(id, this->isFocusInsidePage());
+}
+
+bool Pager::loadPageStateInternal(const std::string& id, bool restoreFocus)
+{
+    // 焦点只在"焦点本来就在这一页里"时还原：否则会把焦点从侧栏抢走（同 rememberPageState 的坑）
+    bool restoredFocus = false;
+    if (restoreFocus)
+        restoredFocus = getInputManager().loadFocusFor(id);
 
     auto it = this->pageScrollOffsets.find(id);
     if (it == this->pageScrollOffsets.end() || this->slot == nullptr)

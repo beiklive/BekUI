@@ -4,7 +4,7 @@
 // 没有任何 ImGui 窗口调用，也没有任何图形 API 调用——全部走 View 树。
 //
 // 读写入口：
-//   app/demo_app.*       应用外壳：AppletFrame（页头 + 提示栏）+ 左侧栏 + 右侧子页面
+//   app/demo_app.*       应用外壳：Shell（四层）+ Pager（页面懒加载）+ 左侧栏导航
 //   app/tab_bar.*        tab 栏与单个 tab 格子
 //   app/pages/*          五个页面，各自独立
 //   app/widgets.*        自定义控件（开关、环形/横向进度）

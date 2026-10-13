@@ -8,6 +8,28 @@ using namespace bklv;
 namespace demo
 {
 
+namespace
+{
+
+// 弹窗是复用的（每次点按钮不重建），但页面会被 Pager 在切页时 delete ——
+// 弹窗里捕获的页面内视图（比如下面那个回显 Label）会因此悬空。
+// 所以每次重建页面时把**没开着**的旧弹窗丢掉，下面重新建一份带新捕获的。
+void dropStaleDialogs(Dialog*& dialog, EditTextDialog*& textDialog)
+{
+    if (dialog != nullptr && !dialog->isOpen())
+    {
+        delete dialog;
+        dialog = nullptr;
+    }
+    if (textDialog != nullptr && !textDialog->isOpen())
+    {
+        delete textDialog;
+        textDialog = nullptr;
+    }
+}
+
+} // namespace
+
 Box* buildOverlayPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
@@ -20,7 +42,10 @@ Box* buildOverlayPage()
     dialogCard->addView(makeHint(getStr("theme/dialog_desc")));
 
     static Dialog* dialog = nullptr;
-    Button* openDialog    = new Button(getStr("theme/open_dialog"));
+    static EditTextDialog* textDialog = nullptr;
+    dropStaleDialogs(dialog, textDialog);
+
+    Button* openDialog = new Button(getStr("theme/open_dialog"));
     openDialog->setOnClick([] {
         if (dialog == nullptr)
         {
@@ -43,8 +68,7 @@ Box* buildOverlayPage()
 
     Label* entered = makeHint(getStr("theme/input_echo", getStr("theme/input_empty")));
 
-    static EditTextDialog* textDialog = nullptr;
-    Button* openInput                 = new Button(getStr("theme/open_input"));
+    Button* openInput = new Button(getStr("theme/open_input"));
     openInput->setOnClick([entered] {
         if (textDialog == nullptr)
         {

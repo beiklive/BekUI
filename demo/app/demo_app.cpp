@@ -2,33 +2,52 @@
 
 #include "app/pages.hpp"
 
+#include <algorithm>
 #include <cstdlib>
+
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
 
 using namespace bklv;
-
-
-namespace
-{
-
-} // namespace
 
 namespace demo
 {
 
 DemoApp::DemoApp()
 {
-    // ---- 外壳：AppletFrame（页头 + 提示栏底栏）----
-    this->root = new AppletFrame();
-    this->root->setTitle(getStr("app/title"));
-    this->root->setSubtitle(getStr("app/subtitle"));
+    // ---- 外壳：Shell 四层 ----
+    this->shell = new Shell();
+
+    this->header = new Header();
+    // 应用外壳的页头比独立页头高（88，borealis 的 applet_frame/header_height）：
+    // 走 header 的 "applet" 变体（另一份 JSON），而不是在代码里改高度
+    this->header->setAppearanceVariant("applet");
+    this->header->setTitle(getStr("app/title"));
+    this->header->setSubtitle(getStr("app/subtitle"));
+
+    this->footer = new BottomBar();
+    // 桌面没有电池/无线硬件，状态区默认只显示时钟。这里注入一份"演示数据"，
+    // 让底栏右侧的电量/网络图标在桌面上也看得见（Switch 上取的是 psm/nifm 真数据）。
+    this->footer->getStatus()->setProvider([] {
+        StatusSnapshot snapshot;
+        snapshot.batteryPercent = 78;
+        snapshot.wifiLevel      = 3;
+        return snapshot;
+    });
+
+    // 覆盖层是铺满的绝对层：页头在上、底栏在下，中间用 Padding 顶开。
+    // 页头/底栏是**纯显示控件**，永不参与焦点（方案 §3.2 的焦点契约）。
+    this->shell->setHeaderView(this->header);
+    this->shell->getOverlayLayer()->addView(new Padding());
+    this->shell->setFooterView(this->footer);
 
     // ---- 内容：左 侧栏 + 右 子页面 ----
+    this->contentRoot = new Box(Axis::COLUMN);
+    this->contentRoot->setWidthPercentage(100.0f);
+    this->contentRoot->setHeightPercentage(100.0f);
+    this->contentRoot->setAlignItems(AlignItems::STRETCH);
+
     Box* body = makeRow(getTheme().number("metric.spacing.xl", 24.0f), AlignItems::STRETCH);
-    // 内容列吃满内容区：父（AppletFrame 的 contentBox）高度是确定的，
-    // 用 grow 拿剩余高度，再靠交叉轴 stretch 让左右两列都填满。
-    // 之前 body 高度是 auto，百分比/百分比高度全都无效 → 整个内容区高度跟着页面内容变
     body->setHeight(AUTO);
     body->setGrow(1.0f);
     body->setWidth(AUTO); // 有左右 margin 时不能写 100%：会多出边距那一段
@@ -48,16 +67,16 @@ DemoApp::DemoApp()
 
     Button* headerButton = new Button(getStr("app/hide_header"));
     headerButton->setOnClick([this, headerButton] {
-        const bool next = !this->root->isHeaderVisible();
-        this->root->setHeaderVisible(next);
+        const bool next = !this->isHeaderVisible();
+        this->setHeaderVisible(next);
         headerButton->setText(next ? getStr("app/hide_header") : getStr("app/show_header"));
     });
     topRow->addView(headerButton);
 
     Button* footerButton = new Button(getStr("app/hide_footer"));
     footerButton->setOnClick([this, footerButton] {
-        const bool next = !this->root->isBottomBarVisible();
-        this->root->setBottomBarVisible(next);
+        const bool next = !this->isFooterVisible();
+        this->setFooterVisible(next);
         footerButton->setText(next ? getStr("app/hide_footer") : getStr("app/show_footer"));
     });
     topRow->addView(footerButton);
@@ -71,63 +90,56 @@ DemoApp::DemoApp()
     topRow->addView(logButton);
     right->addView(topRow);
 
+    // 滚动槽：Pager 的页面都挂在这里（页面工厂负责现建现删）
     this->scroller = new ScrollingFrame();
     this->scroller->setWidthPercentage(100.0f);
     this->scroller->setGrow(1.0f);
     this->scroller->setShowScrollingIndicator(true);
-
-    this->pageSlot = new Box(Axis::COLUMN);
-    this->pageSlot->setWidthPercentage(100.0f);
-    this->pageSlot->setGrow(1.0f);
-    // 内容内边距：borealis 的 tab_frame/content_padding_*（左右 60、上下 42）
-    this->pageSlot->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 42.0f));
-    this->pageSlot->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
-    this->pageSlot->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
-
-    // 滚动器直接装"当前页"：它负责裁剪 + 滚动。
-    // 页面比内容区高时会被裁掉而不是画到底栏上（以前 scroller 建了没挂进树，
-    // 页面就直接画到栏上，看着像底栏在闪）。
     right->addView(this->scroller);
+
     body->addView(right);
     // 内容区左右留白：和页头/底栏的 margin 用同一个主题值，四边看起来才是一套
     const float sideMargin = getTheme().number("metric.appletFrame.paddingSides", 30.0f);
     body->setMargins(0.0f, sideMargin, 0.0f, sideMargin);
 
-    this->root->pushContentView(body);
+    this->contentRoot->addView(body);
+    // 基础内容进下钻栈的栈底；详情页往上叠（Shell::pushContentView）
+    this->shell->pushContentView(this->contentRoot);
 
-    // 桌面没有电池/无线硬件，状态区默认只显示时钟。这里注入一份"演示数据"，
-    // 让底栏右侧的电量/网络图标在桌面上也看得见（Switch 上取的是 psm/nifm 真数据）。
-    if (this->root->getFooter() != nullptr)
-    {
-        this->root->getFooter()->getStatus()->setProvider([] {
-            StatusSnapshot snapshot;
-            snapshot.batteryPercent = 78;
-            snapshot.wifiLevel      = 3;
-            return snapshot;
-        });
-    }
+    // 内容避让是**显式**的：内容层按页头/底栏高度留白
+    this->applyContentInsets();
+
+    // ---- Pager：括号里的页面懒加载 + 同级换页 ----
+    this->pager = new Pager();
+    this->pager->setSlot(this->scroller);
+
+    // 页面构建时要能操作外壳（设置页切页头/底栏；图鉴下钻）
+    PageDeps deps;
+    deps.shell                  = this->shell;
+    deps.setHeaderVisible       = [this](bool visible) { this->setHeaderVisible(visible); };
+    deps.setFooterVisible       = [this](bool visible) { this->setFooterVisible(visible); };
+    deps.setBarsAnimated        = [this](bool animated) { this->setBarsAnimated(animated); };
+    deps.setBarAnimationDuration = [this](float seconds) { this->setBarAnimationDuration(seconds); };
+    setPageDeps(deps);
+
+    // B 键路由的第 3 级：内容层还有下钻的层 → 退回上一层
+    this->shell->setOnBackRequested([this] { return this->handleBackRequest(); });
 
     // ---- 页面（顺序就是侧栏顺序）----
-    this->addPage(getStr("tab/theme"), getStr("page/theme_sub"), buildThemePage(), false);
-    this->addPage(getStr("tab/widgets"), getStr("page/widgets_sub"), buildWidgetsPage(), false);
-    this->addPage(getStr("tab/text"), getStr("page/text_sub"), buildTextPage(), false);
-    this->addPage(getStr("tab/layout"), getStr("page/layout_sub"), buildLayoutPage(), false);
-
-    ListPageResult listPage = buildListPage();
-    this->addPage(getStr("tab/list"), getStr("page/list_sub"), listPage.view, true);
-    this->mainList = listPage.list;
-
-    this->addPage(getStr("tab/pokedex"), getStr("page/pokedex_sub"), buildPokedexPage(), true);
-    this->addPage(getStr("tab/json"), getStr("page/json_sub"), buildJsonPage(), false);
-    this->addPage(getStr("tab/nav"), getStr("page/nav_sub"), buildNavPage(), false);
-    this->addPage(getStr("tab/overlay"), getStr("page/overlay_sub"), buildOverlayPage(), false);
-    this->addPage(getStr("tab/scroll"), getStr("page/scroll_sub"), buildScrollPage(), false);
-    this->addPage(getStr("tab/transform"), getStr("page/transform_sub"), buildTransformPage(), false);
-    setDetailShell(this->root);
-    setSettingsShell(this->root);
-    this->addPage(getStr("tab/settings"), getStr("page/settings_sub"), buildSettingsPage(), false);
-    this->addPage(getStr("tab/shadow"), getStr("page/shadow_sub"), buildShadowPage(), false);
-    this->addPage(getStr("tab/icons"), getStr("page/icons_sub"), buildIconsPage(), false);
+    this->addPage("theme", getStr("tab/theme"), getStr("page/theme_sub"), false);
+    this->addPage("widgets", getStr("tab/widgets"), getStr("page/widgets_sub"), false);
+    this->addPage("text", getStr("tab/text"), getStr("page/text_sub"), false);
+    this->addPage("layout", getStr("tab/layout"), getStr("page/layout_sub"), false);
+    this->addPage("list", getStr("tab/list"), getStr("page/list_sub"), true);
+    this->addPage("pokedex", getStr("tab/pokedex"), getStr("page/pokedex_sub"), true);
+    this->addPage("json", getStr("tab/json"), getStr("page/json_sub"), false);
+    this->addPage("nav", getStr("tab/nav"), getStr("page/nav_sub"), false);
+    this->addPage("overlay", getStr("tab/overlay"), getStr("page/overlay_sub"), false);
+    this->addPage("scroll", getStr("tab/scroll"), getStr("page/scroll_sub"), false);
+    this->addPage("transform", getStr("tab/transform"), getStr("page/transform_sub"), false);
+    this->addPage("settings", getStr("tab/settings"), getStr("page/settings_sub"), false);
+    this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false);
+    this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false);
 
     // 起始页：默认第一页；截图/调试时用 BKLV_DEMO_PAGE=<下标> 直接开某一页
     size_t startPage = 0;
@@ -140,8 +152,18 @@ DemoApp::DemoApp()
             BKLV_LOG_WARNING("BKLV_DEMO_PAGE=%s 越界（共 %d 页），用第一页", requested,
                 (int)this->pages.size());
     }
-    this->selectPage(startPage);
+    this->selectPage(startPage, false);
     this->pendingStartPage = startPage != 0 ? (int)startPage : -1;
+
+    // 逐页自动切换（调试/验收用）：BKLV_DEMO_SWEEP=<每页停留帧数>。
+    // 切页会 delete 旧页，这个开关能一次跑遍 14 页的"建 → 删"，把
+    // "旧页被删之后才暴露"的问题（悬空订阅 / 异步回调 / 静态指针）当场抓出来。
+    if (const char* sweep = std::getenv("BKLV_DEMO_SWEEP"))
+    {
+        const int frames = std::atoi(sweep);
+        if (frames > 0)
+            this->sweepFrames = frames;
+    }
 
     // 离屏截图（截图/CI 用）：BKLV_SCREENSHOT=<png 路径>，可选 BKLV_SCREENSHOT_FRAMES=<等几帧>
     if (const char* shotPath = std::getenv("BKLV_SCREENSHOT"))
@@ -153,22 +175,28 @@ DemoApp::DemoApp()
             app->requestScreenshot(shotPath, frames);
     }
 
-    BKLV_LOG_INFO("界面已就绪：%d 个页面（左侧栏导航），起始页 %d",
+    BKLV_LOG_INFO("界面已就绪：%d 个页面（Shell + Pager，左侧栏导航），起始页 %d",
         (int)this->pages.size(), (int)startPage);
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_INFO("UI 缩放：%.3f（主题尺寸按 1280x720 写）", (double)getUiScale());
-
 }
 
-void DemoApp::addPage(const std::string& name, const std::string& subtitle, Box* view,
+DemoApp::~DemoApp()
+{
+    // Pager 拥有"当前页"，必须先于视图树析构（页面是 scroller 的孩子）
+    delete this->pager;
+    this->pager = nullptr;
+}
+
+void DemoApp::addPage(const std::string& id, const std::string& name, const std::string& subtitle,
     bool selfScrolling)
 {
     const size_t index = this->pages.size();
 
     Page page;
+    page.id            = id;
     page.name          = name;
     page.subtitle      = subtitle;
-    page.view          = view;
     page.selfScrolling = selfScrolling;
     this->pages.push_back(page);
 
@@ -176,13 +204,68 @@ void DemoApp::addPage(const std::string& name, const std::string& subtitle, Box*
     // 聚焦 = 切页（不带内容焦点）；A = 切页并把焦点交给子页面的默认控件
     this->sidebar->addItem(name, [this, index] { this->selectPage(index, false); },
         [this, index] { this->selectPage(index, true); });
+
+    // 工厂：切到这一页时现建（旧页由 Pager 删）
+    this->pager->setPageFactory(id, [this, index](PageContext&) -> View* {
+        Box* content = this->buildPage(index);
+        if (content == nullptr)
+            return nullptr;
+        return this->wrapPage(content, this->pages[index].selfScrolling);
+    });
 }
 
-void DemoApp::sizeSlotToContent()
+Box* DemoApp::buildPage(size_t index)
 {
-    const float height = this->scroller->getHeight();
-    if (height > 0.0f)
-        this->pageSlot->setHeight(height);
+    switch (index)
+    {
+        case 0:  return buildThemePage();
+        case 1:  return buildWidgetsPage();
+        case 2:  return buildTextPage();
+        case 3:  return buildLayoutPage();
+        case 4:
+        {
+            ListPageResult listPage = buildListPage();
+            this->mainList          = listPage.list;
+            return listPage.view;
+        }
+        case 5:  return buildPokedexPage();
+        case 6:  return buildJsonPage();
+        case 7:  return buildNavPage();
+        case 8:  return buildOverlayPage();
+        case 9:  return buildScrollPage();
+        case 10: return buildTransformPage();
+        case 11: return buildSettingsPage();
+        case 12: return buildShadowPage();
+        case 13: return buildIconsPage();
+        default: return nullptr;
+    }
+}
+
+// 内容内边距：borealis 的 tab_frame/content_padding_*（左右 60、上下 42）。
+// 以前这层是 AppletFrame 内容区里的 pageSlot，现在由 Pager 的页面外层框承担。
+View* DemoApp::wrapPage(Box* page, bool selfScrolling)
+{
+    Box* frame = new Box(Axis::COLUMN);
+    frame->setWidthPercentage(100.0f);
+    frame->setAlignItems(AlignItems::STRETCH);
+    frame->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 42.0f));
+    frame->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
+    frame->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
+
+    if (selfScrolling)
+    {
+        // 页面自己滚动（内部有列表）：外层框和滚动器等高，列表才会在框里滚。
+        // 实际高度由 update() 按滚动器实测高度补上（百分比在两段链上不一定解析出来）。
+        frame->setHeight(AUTO);
+    }
+    else
+    {
+        // 普通长页：框高 auto，内容多高它就多高 —— 超出的部分由滚动器滚
+        frame->setHeight(AUTO);
+    }
+
+    frame->addView(page);
+    return frame;
 }
 
 void DemoApp::selectPage(size_t index, bool focusContent)
@@ -197,48 +280,171 @@ void DemoApp::selectPage(size_t index, bool focusContent)
     this->sidebar->setSelectedIndex(index);
 
     // 页头显示当前页
-    this->root->setTitle(this->pages[index].name);
-    this->root->setSubtitle(this->pages[index].subtitle);
+    this->header->setTitle(this->pages[index].name);
+    this->header->setSubtitle(this->pages[index].subtitle);
 
-    View* target = this->pages[index].view;
+    // 同级换页：Pager 负责 建新页 → 挂上槽 → 交接焦点 → 删旧页
+    this->pager->show(this->pages[index].id);
 
-    // 先把当前页从滚动器上摘下来（不销毁：页面归 this->pages 持有，切回来复用），
-    // 再把新页挂上去。setContentView 会自己接管挂载，别再手动 addView（会变成
-    // "该视图已有父节点"，并且留下一棵没挂在树上的孤儿）。
-    this->scroller->evictContentView();
-
-    for (Page& page : this->pages)
-        if (page.view->getParent() == this->pageSlot)
-            this->pageSlot->removeView(page.view, false);
-
-    // 所有页面都包一层槽：槽负责内容内边距（borealis 的 tab_frame/content_padding_*：
-    // 左右 60、上下 42）。以前不包槽的页面直接贴着滚动器边缘，看着像"内容跑到屏幕外"。
-    this->pageSlot->addView(target);
-
-    if (this->pages[index].selfScrolling)
-    {
-        // 页面自己滚动（内部有列表）：槽要和内容区等高，列表才会在槽里滚
-        this->sizeSlotToContent();
-        this->pageSlot->setHeight(this->scroller->getHeight());
-    }
-    else
-    {
-        this->pageSlot->setHeight(AUTO);
-    }
-
-    this->scroller->setContentView(this->pageSlot);
-
-    this->scroller->setContentOffsetY(0.0f, false);
-
-    // borealis 的语义：**聚焦到侧栏哪一项就切到哪个子页面**（上面已经切了），
-    // 只有按 A 确认时才去找子页面的默认控件并聚焦。
+    // 按 A 确认时把焦点交给子页面的默认控件（borealis 的语义）。
+    // 侧栏聚焦过来（focusContent=false）时不动焦点 —— 否则侧栏就没法上下移动了，
+    // 这条由 Pager 自己判（焦点原本不在页面里就不抢）。
     if (focusContent)
-        if (View* first = target->getDefaultFocus())
+    {
+        if (View* first = this->pager->getCurrentView() != nullptr
+                ? this->pager->getCurrentView()->getDefaultFocus()
+                : nullptr)
             getInputManager().giveFocus(first);
+    }
+}
+
+// 内容避让：insets 用**目标值**（方案 5.4：动画期间返回目标值，内容只重排一次），
+// 真正的"高度平滑变化"发生在页头/底栏自己的折叠补间里。
+void DemoApp::applyContentInsets()
+{
+    if (this->shell == nullptr)
+        return;
+
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    this->shell->setHeaderInset(this->headerVisible ? headerFull : 0.0f);
+    this->shell->setFooterInset(this->footerVisible ? footerFull : 0.0f);
+
+    // 留白加在**内容层**上：这样下钻出来的详情页（同层的兄弟）也自动避让
+    Box* content = this->shell->getContentLayer();
+    content->setPaddingTop(this->shell->getHeaderInset());
+    content->setPaddingBottom(this->shell->getFooterInset());
+}
+
+void DemoApp::setHeaderVisible(bool visible)
+{
+    if (this->headerVisible == visible)
+        return;
+
+    this->headerVisible = visible;
+
+    if (this->barsAnimated)
+    {
+        this->startBarAnimation();
+        return;
+    }
+
+    this->header->setVisibility(visible ? Visibility::VISIBLE : Visibility::GONE);
+    this->applyContentInsets();
+    App::requestLayout();
+}
+
+void DemoApp::setFooterVisible(bool visible)
+{
+    if (this->footerVisible == visible)
+        return;
+
+    this->footerVisible = visible;
+
+    if (this->barsAnimated)
+    {
+        this->startBarAnimation();
+        return;
+    }
+
+    this->footer->setVisibility(visible ? Visibility::VISIBLE : Visibility::GONE);
+    this->applyContentInsets();
+    App::requestLayout();
+}
+
+// 折叠补间：把栏高从整高补到 0（或反过来）。
+// 动画期间每帧写一次高度并请求重排——布局是"一帧最多一次"的，所以不会白算。
+void DemoApp::startBarAnimation()
+{
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    this->headerAnim.reset(this->headerVisible ? 0.0f : 1.0f);
+    this->headerAnim.addStep(this->headerVisible ? 1.0f : 0.0f, this->barDuration);
+
+    this->footerAnim.reset(this->footerVisible ? 0.0f : 1.0f);
+    this->footerAnim.addStep(this->footerVisible ? 1.0f : 0.0f, this->barDuration);
+
+    // 动画期间必须是可见的（不然 GONE 了就没有高度可补）
+    this->header->setVisibility(Visibility::VISIBLE);
+    this->footer->setVisibility(Visibility::VISIBLE);
+    this->header->setHeight(std::max(1.0f, headerFull * this->headerAnim.getValue()));
+    this->footer->setHeight(std::max(1.0f, footerFull * this->footerAnim.getValue()));
+
+    this->headerAnim.setEndCallback([this](bool) { this->finishBarAnimation(); });
+    this->footerAnim.setEndCallback([this](bool) { this->finishBarAnimation(); });
+
+    this->animating = true;
+    this->headerAnim.start();
+    this->footerAnim.start();
+
+    // 内容避让立刻用目标值（不跟着逐帧改 padding）
+    this->applyContentInsets();
+    App::requestLayout();
+}
+
+void DemoApp::updateBars()
+{
+    if (!this->animating)
+        return;
+
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    this->header->setHeight(std::max(1.0f, headerFull * (float)this->headerAnim));
+    this->footer->setHeight(std::max(1.0f, footerFull * (float)this->footerAnim));
+
+    App::requestLayout(); // 补间期间每帧都要重排（布局是延迟的，一帧最多一次）
+}
+
+// 两段补间都跑完：把该藏的栏真正 GONE 掉
+void DemoApp::finishBarAnimation()
+{
+    if (!this->headerAnim.isStopped() || !this->footerAnim.isStopped())
+        return;
+
+    this->animating = false;
+
+    const float headerFull = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    const float footerFull = getTheme().number("metric.appletFrame.footerHeight", 73.0f);
+
+    this->header->setHeight(headerFull);
+    this->footer->setHeight(footerFull);
+    this->header->setVisibility(this->headerVisible ? Visibility::VISIBLE : Visibility::GONE);
+    this->footer->setVisibility(this->footerVisible ? Visibility::VISIBLE : Visibility::GONE);
+
+    this->applyContentInsets();
+    App::requestLayout();
+}
+
+bool DemoApp::handleBackRequest()
+{
+    // 内容层里还有下钻出来的层 → 退回上一层（详情页是临时页，退回时释放）
+    if (this->shell != nullptr && this->shell->getContentStackSize() > 1)
+    {
+        this->shell->popContentView();
+        return true;
+    }
+
+    return false;
 }
 
 void DemoApp::update()
 {
+    // 逐页自动切换（BKLV_DEMO_SWEEP）：走和用户一样的路径（侧栏聚焦 → 切页）
+    if (this->sweepFrames > 0 && !this->pages.empty())
+    {
+        if (++this->sweepTick >= this->sweepFrames)
+        {
+            this->sweepTick    = 0;
+            const size_t next  = (this->currentPage + 1) % this->pages.size();
+            if (View* item = this->sidebar->getItemView(next))
+                getInputManager().giveFocus(item); // 侧栏"聚焦即切页"
+            this->selectPage(next, false);
+        }
+    }
+
     if (this->pendingStartPage >= 0)
     {
         const size_t page = (size_t)this->pendingStartPage;
@@ -250,8 +456,18 @@ void DemoApp::update()
         this->selectPage(page, false);
     }
 
+    // 自管滚动的页（内部有列表）：外层框要和滚动器等高，列表才会在框里滚
     if (this->currentPage < this->pages.size() && this->pages[this->currentPage].selfScrolling)
-        this->sizeSlotToContent();
+    {
+        const float height = this->scroller->getHeight();
+        if (height > 0.0f && this->pager->getCurrentView() != nullptr)
+            this->pager->getCurrentView()->setHeight(height);
+    }
+
+    // 页面记忆里的滚动位置要等布局算完才落得下去
+    this->pager->update();
+
+    this->updateBars();
 }
 
 } // namespace demo

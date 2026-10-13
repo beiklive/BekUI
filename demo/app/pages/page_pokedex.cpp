@@ -301,17 +301,11 @@ View* buildPokedexDetail(size_t section, size_t index)
     return page;
 }
 
-// 详情页目标外壳：demo 里就是那个 AppletFrame（页头 + 底栏 + 内容栈）
-static AppletFrame* g_detailShell = nullptr;
-
-void setDetailShell(AppletFrame* shell)
+// 详情页目标外壳：demo 里就是那个 Shell（页头 + 底栏 + 内容层的下钻栈），
+// 从宿主下发的 PageDeps 里取（页面本身不持有外壳类型）。
+static Shell* detailShell()
 {
-    g_detailShell = shell;
-}
-
-AppletFrame* getDetailShell()
-{
-    return g_detailShell;
+    return getPageDeps().shell;
 }
 
 Box* buildPokedexPage()
@@ -337,7 +331,7 @@ Box* buildPokedexPage()
     list->setSectionHeaderIdentifier("section_header");
     list->setDataSource(&source);
 
-    // 选中条目 → 推到内容栈的上一层（B 返回由 AppletFrame 负责）
+    // 选中条目 → 下钻一层（B 返回：Shell 的 onBackRequested → popContentView）
     list->registerAction(ControllerButton::A, getStr("pokedex/open"), [](View* focused) {
         auto* cell = static_cast<DexCell*>(focused); // 命中的就是 cell 自己
         if (cell == nullptr)
@@ -348,7 +342,7 @@ Box* buildPokedexPage()
         if (detail == nullptr)
             return false;
 
-        if (AppletFrame* shell = getDetailShell())
+        if (Shell* shell = detailShell())
             shell->pushContentView(detail);
         else
             delete detail;

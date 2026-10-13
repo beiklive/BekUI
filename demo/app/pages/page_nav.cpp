@@ -20,11 +20,51 @@ Box* makeTabContent(const std::string& title, const std::string& body)
     return content;
 }
 
+// 导航页的根节点：事件订阅句柄 + 延迟任务句柄都挂在它身上。
+//
+// 为什么必须这样：切页会 `delete` 旧页（Pager 现建现删）。订阅与延迟回调用的是
+// 页面内部的 Label，页面一删它们就是野指针 —— 实测踩过（`static Subscription`
+// 活到进程结束，切页回来时 Label 已析构，ASAN 直接报 heap-use-after-free）。
+//
+// 成员析构顺序（派生类成员 → 基类）正好帮上忙：订阅先 RAII 退订、AliveFlag 先失效，
+// 之后 `Box::~Box` 删子节点时触发的焦点事件就不会再打回半死的页面。
+class NavPage : public Box
+{
+  public:
+    NavPage()
+        : Box(Axis::COLUMN)
+    {
+    }
+
+    // 事件行 3 秒后自动复位；每次来事件都取消上一个延迟再重排（delay + cancel 的真实用法）
+    void scheduleReset()
+    {
+        this->pendingReset.cancel();
+
+        auto guard = this->alive.handle();
+        this->pendingReset = task::delay(3000, [this, guard] {
+            if (guard.expired() || !guard.lock()->isAlive())
+                return; // 页面已经被删了：延迟回调什么都不能碰
+            if (this->lastEvent != nullptr)
+                this->lastEvent->setText(getStr("nav/event_none"));
+        });
+    }
+
+    Subscription focusSub;
+    Subscription actionSub;
+    task::DelayHandle pendingReset;
+    AliveFlag alive;
+    Label* lastEvent = nullptr;
+};
+
 } // namespace
 
 Box* buildNavPage()
 {
-    Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
+    NavPage* page = new NavPage();
+    page->setWidthPercentage(100.0f);
+    page->setHeight(AUTO);
+    page->setGap(getTheme().number("metric.spacing.md", 12.0f));
     page->addView(makeHint(getStr("nav/hint")));
 
     // TabFrame 自己撑满一块区域：切页时旧页面只脱离不销毁
@@ -40,40 +80,31 @@ Box* buildNavPage()
     host->addView(tabs);
     page->addView(host);
 
-    // ---- 事件总线：焦点/动作事件实时显示（进程级总线，RAII 句柄活到进程结束）----
+    // ---- 事件总线：焦点/动作事件实时显示 ----
     Rectangle* eventCard = makeCard();
     eventCard->addView(makeText(getStr("nav/event_title"),
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
-    Label* lastEvent = makeHint(getStr("nav/event_none"));
+    Label* lastEvent   = makeHint(getStr("nav/event_none"));
+    page->lastEvent    = lastEvent;
     eventCard->addView(lastEvent);
 
-    // 事件行 3 秒后自动复位；每次来事件都取消上一个延迟再重排（delay + cancel 的真实用法）
-    static task::DelayHandle pendingReset;
-    auto scheduleReset = [lastEvent] {
-        pendingReset.cancel();
-        pendingReset = task::delay(3000, [lastEvent] {
-            if (lastEvent != nullptr)
-                lastEvent->setText(getStr("nav/event_none"));
-        });
-    };
-
-    // static：订阅句柄要活过页面构建函数；进程结束自动退订
-    static Subscription focusSub = getEventBus().subscribe<FocusChangedEvent>(
-        [lastEvent, scheduleReset](const FocusChangedEvent& event) {
-            if (lastEvent == nullptr || event.current == nullptr)
+    // 订阅句柄是页面成员：页面被 delete 时自动退订（见 NavPage 的注释）
+    page->focusSub = getEventBus().subscribe<FocusChangedEvent>(
+        [page](const FocusChangedEvent& event) {
+            if (page->lastEvent == nullptr || event.current == nullptr)
                 return;
-            lastEvent->setText(getStr("nav/event_focus", event.current->getClassString()));
-            scheduleReset();
+            page->lastEvent->setText(getStr("nav/event_focus", event.current->getClassString()));
+            page->scheduleReset();
         });
 
-    static Subscription actionSub = getEventBus().subscribe<ActionTriggeredEvent>(
-        [lastEvent, scheduleReset](const ActionTriggeredEvent& event) {
-            if (lastEvent == nullptr || event.view == nullptr)
+    page->actionSub = getEventBus().subscribe<ActionTriggeredEvent>(
+        [page](const ActionTriggeredEvent& event) {
+            if (page->lastEvent == nullptr || event.view == nullptr)
                 return;
-            lastEvent->setText(getStr("nav/event_action", event.view->getClassString(),
+            page->lastEvent->setText(getStr("nav/event_action", event.view->getClassString(),
                 event.pointer ? getStr("nav/event_pointer") : getStr("nav/event_key")));
-            scheduleReset();
+            page->scheduleReset();
         });
 
     eventCard->addView(makeHint(getStr("nav/event_hint")));

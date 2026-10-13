@@ -119,6 +119,21 @@ class Shell : public Box
     void addToEdge(View* view, Edge edge, float inset);
     void fillLayer(View* view); // 四边 0，铺满该层（全屏遮罩/loading）
 
+    // ---- 内容层的层级下钻 ----
+    //
+    // **同级换页**是 `Pager::show(id)` 的事（同一个槽里换内容）；
+    // 这里只管"往上叠一层 / 退回上一层"这种层级导航（列表 → 详情，B 逐层返回）。
+    // 栈里非栈顶的那几层是 GONE（不参与布局，也不参与焦点）。
+    void pushContentView(View* view);
+    // 弹出栈顶并**释放**它（下钻出来的详情页是临时页）。
+    // 已经在最外层时什么都不做，只执行回调。
+    void popContentView(std::function<void()> callback = nullptr);
+    View* getContentView() const
+    {
+        return this->contentStack.empty() ? nullptr : this->contentStack.back();
+    }
+    size_t getContentStackSize() const { return this->contentStack.size(); }
+
   protected:
     void applySafeAreaToLayers();
 
@@ -133,6 +148,8 @@ class Shell : public Box
 
     std::vector<View*> dialogStack;
     std::vector<View*> dimStack;
+    // 内容层的下钻栈（栈底是基础内容，栈顶是当前显示的层）
+    std::vector<View*> contentStack;
     // 与 dialogStack 一一对应的选项（closeOnBack 的读取点在这里）
     std::vector<DialogOptions> dialogOptionStack;
 

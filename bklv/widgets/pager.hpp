@@ -130,6 +130,9 @@ class Pager
   private:
     View* buildPage(const std::string& id, PageBuildResult& resultOut);
     View* makePlaceholder(const std::string& id, PageBuildResult result);
+    // 焦点是否在"当前页"里（页面级记忆的还原条件，见 .cpp 里的无限递归注释）
+    bool isFocusInsidePage() const;
+    bool loadPageStateInternal(const std::string& id, bool restoreFocus);
 
     ScrollingFrame* slot = nullptr;
 
@@ -146,6 +149,8 @@ class Pager
     View* currentView = nullptr;
     std::string currentPageId;
     bool placeholderShown = false;
+    // show() 重入保护（焦点交接可能触发容器回调 → 又一次 show）
+    bool showing = false;
     // 待落位的滚动位置（< 0 表示没有）。见 update() 的注释。
     float pendingScrollOffset = -1.0f;
 
