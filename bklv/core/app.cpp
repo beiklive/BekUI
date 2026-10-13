@@ -299,7 +299,7 @@ void App::popOverlay(View* overlay, bool free)
 
 App::App()
 {
-    // 让页面 JSON 也能用外观驱动的控件（Button / Rectangle / AppletFrame …）
+    // 让页面 JSON 也能用外观驱动的控件（Button / Rectangle / Shell …）
     registerWidgetViewTypes();
 
     g_currentApp = this;

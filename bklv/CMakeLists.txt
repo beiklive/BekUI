@@ -305,7 +305,6 @@ set(BKLV_CORE_SOURCES
     widgets/widget_types.cpp
     widgets/dialog.cpp
     widgets/dropdown.cpp
-    widgets/applet_frame.cpp
     widgets/shell.cpp
     widgets/pager.cpp
     widgets/edit_text_dialog.cpp

@@ -566,7 +566,8 @@ tests/designer_core_test.cpp   逻辑层的无窗口测试（62 项）
 - **新建页面视图**：空页面 / 整页（页头+内容+底栏）/ 卡片，写盘前先试着实例化
 - **`bind` / `include` 看得见**：树里节点带 `⟲ bind` / `⤵ include` 角标；页面有绑定时
   预览栏提醒"预览里没有数据源，绑定出来的内容是空的"
-- **JSON 页面能用控件类型**（见 `docs/json-syntax.md`）：`Button` / `Rectangle` / `AppletFrame`
+- **JSON 页面能用控件类型**（见 `docs/json-syntax.md`）：`Button` / `Rectangle` / `Shell`
+  （旧的类型名 `AppletFrame` 仍然可用 —— 内部构造的就是 `Shell`）
   / `Header` / `BottomBar` / Cell 家族等已注册，App 启动时自动注册
 
 ## 写在明面上的"没做到位"

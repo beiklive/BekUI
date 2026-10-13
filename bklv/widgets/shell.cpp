@@ -1,5 +1,6 @@
 #include "bklv/widgets/shell.hpp"
 
+#include "bklv/core/appearance.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
@@ -237,17 +238,40 @@ void Shell::fillLayer(View* view)
 
 // ---- 内容层的层级下钻（同级换页是 Pager 的事）----
 
+Shell::~Shell()
+{
+    // 内容栈里"脱离树"的那几层归 Shell 所有（挂在树里的那个会随 Box 析构回收）
+    for (View* view : this->contentStack)
+        if (view != nullptr && view != this->contentView && view->getParent() == nullptr)
+            delete view;
+}
+
+// 把 view 挂到内容层里，并把上一任从树上摘下来（**不删**：它还在栈里）
+void Shell::attachContentView(View* view)
+{
+    if (view == nullptr)
+        return;
+
+    if (this->contentView != nullptr && this->contentView->getParent() == this->contentLayer)
+        this->contentLayer->removeView(this->contentView, false);
+
+    this->contentView = view;
+    this->contentLayer->addView(view);
+}
+
 void Shell::pushContentView(View* view)
 {
     if (view == nullptr)
         return;
 
-    // 旧的那层收起来：GONE 既不占位也不进焦点链（canFocus 的"沿父链可见"会挡住它）
-    if (View* current = this->getContentView())
-        current->setVisibility(Visibility::GONE);
+    View* outgoing = this->contentView;
 
-    this->contentLayer->addView(view);
     this->contentStack.push_back(view);
+    this->attachContentView(view);
+
+    // 转场：旧层已经脱离树，只让新层滑进来/淡入
+    if (outgoing != nullptr && outgoing != view)
+        this->beginContentTransition(view, outgoing, true);
 }
 
 void Shell::popContentView(std::function<void()> callback)
@@ -263,18 +287,127 @@ void Shell::popContentView(std::function<void()> callback)
     this->contentStack.pop_back();
 
     View* incoming = this->contentStack.back();
-    incoming->setVisibility(Visibility::VISIBLE);
+    this->attachContentView(incoming);
 
-    // 详情页是下钻时临时建出来的，退回时释放它
-    if (outgoing != nullptr && outgoing->getParent() == this->contentLayer)
-        this->contentLayer->removeView(outgoing, true);
-
-    // 焦点交给退回来的那一层的默认控件
-    if (View* inner = incoming->getDefaultFocus())
+    // 退回上一层时把焦点放到新内容里的第一个可聚焦项上
+    if (View* inner = this->contentLayer->getDefaultFocus())
         getInputManager().giveFocus(inner);
 
-    if (callback)
+    this->pendingPopCallback = callback;
+
+    // 转场：被弹出的页面滑出去之后**释放**（它是下钻时临时建的详情页）
+    if (outgoing != nullptr && outgoing != this->contentView)
+        this->beginContentTransition(this->contentView, outgoing, false);
+    else if (callback)
+    {
+        this->pendingPopCallback = nullptr;
         callback();
+    }
+}
+
+void Shell::beginContentTransition(View* incoming, View* outgoing, bool pushing)
+{
+    if (this->contentTransition == ContentTransition::NONE || this->contentTransitionDuration <= 0.0f)
+    {
+        // 不做转场：直接落位
+        this->incomingView        = incoming;
+        this->outgoingView        = outgoing;
+        this->transitionPushing   = pushing;
+        this->pendingFreeOutgoing = !pushing; // 返回时旧层要删，下钻时旧层留在栈里
+        this->finalizeTransition();
+        return;
+    }
+
+    this->incomingView        = incoming;
+    this->outgoingView        = outgoing;
+    this->transitionPushing   = pushing;
+    this->pendingFreeOutgoing = !pushing;
+
+    this->contentAnim.stop();
+    this->contentAnim.reset(0.0f);
+    this->contentAnim.addStep(1.0f, this->contentTransitionDuration, EasingFunction::CUBIC_OUT);
+    this->contentAnim.start();
+
+    this->transitionProgress = 0.0f;
+    this->applyContentTransition(0.0f);
+}
+
+void Shell::applyContentTransition(float progress)
+{
+    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
+    const bool slide  = this->contentTransition == ContentTransition::SLIDE
+        || this->contentTransition == ContentTransition::SLIDE_FADE;
+    const bool fade = this->contentTransition == ContentTransition::FADE
+        || this->contentTransition == ContentTransition::SLIDE_FADE;
+
+    if (this->incomingView != nullptr)
+    {
+        // 新层：从右边滑进来（返回时是从左边一点的位置回来）
+        const float from = slide ? (this->transitionPushing ? 1.0f : -0.25f) : 0.0f;
+        this->incomingView->setTranslateX((1.0f - progress) * from * width);
+        this->incomingView->setAlpha(fade ? progress : 1.0f);
+    }
+
+    // 旧层已经脱离树（不参与绘制），这里同步它的状态只是为了"落位后一切归零"，
+    // 免得回栈里再用时残留一个半透明的旧值。
+    if (this->outgoingView != nullptr)
+    {
+        const float to = slide ? (this->transitionPushing ? -0.25f : 1.0f) : 0.0f;
+        this->outgoingView->setTranslateX(progress * to * width);
+        this->outgoingView->setAlpha(fade ? 1.0f - progress : 1.0f);
+    }
+}
+
+void Shell::stepContentTransition(float deltaSeconds)
+{
+    if (this->transitionProgress >= 1.0f)
+        return;
+
+    this->contentAnim.update(deltaSeconds);
+
+    const float progress = (float)this->contentAnim;
+    this->transitionProgress = progress;
+    this->applyContentTransition(progress);
+
+    if (progress >= 1.0f)
+        this->finalizeTransition();
+}
+
+void Shell::finalizeTransition()
+{
+    this->transitionProgress = 1.0f;
+
+    if (this->incomingView != nullptr)
+    {
+        // 落位：清掉绘制期变换，回到正常状态
+        this->incomingView->resetTransform();
+        this->incomingView->setAlpha(1.0f);
+        this->incomingView = nullptr;
+    }
+
+    if (this->outgoingView != nullptr)
+    {
+        View* outgoing      = this->outgoingView;
+        this->outgoingView  = nullptr;
+
+        outgoing->resetTransform();
+        outgoing->setAlpha(1.0f);
+
+        // 下钻时旧层只脱离、留在栈里；返回时连视图一起释放
+        if (outgoing->getParent() == this->contentLayer)
+            this->contentLayer->removeView(outgoing, this->pendingFreeOutgoing);
+        else if (this->pendingFreeOutgoing)
+            delete outgoing;
+    }
+
+    this->pendingFreeOutgoing = false;
+
+    if (this->pendingPopCallback)
+    {
+        std::function<void()> callback = this->pendingPopCallback;
+        this->pendingPopCallback       = nullptr;
+        callback();
+    }
 }
 
 
@@ -521,11 +654,19 @@ void Shell::releaseTransitionHostIfEmpty()
     this->transitionHost = nullptr;
 }
 
+void Shell::applyTheme()
+{
+    // 尺寸（铺满）与页面底色来自 themes/<主题>/widgets/applet_frame.json ——
+    // 这份外观原来是旧 AppletFrame 的，现在归外壳用（名字保持不动，用户主题不用改）。
+    applyWidgetBox(this, "applet_frame");
+}
+
 void Shell::update()
 {
     Box::update();
 
     this->stepBackdropTransition(getFrameDeltaSeconds());
+    this->stepContentTransition(getFrameDeltaSeconds());
     this->releaseTransitionHostIfEmpty();
 }
 

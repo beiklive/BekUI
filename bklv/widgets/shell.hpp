@@ -37,6 +37,19 @@ enum class Edge
     LEFT,
 };
 
+// 内容栈下钻/返回的转场方式（对标 borealis 的 Activity 转场，但用的是绘制期变换，
+// 不参与布局，所以过渡期间不会触发重排）。
+//
+// 从旧 AppletFrame 搬过来的 —— 层级下钻（列表 → 详情）的转场归内容栈的持有者，
+// 也就是 Shell；**同级换页**的转场归 Pager（见方案 5.5）。
+enum class ContentTransition
+{
+    NONE,       // 直接切
+    SLIDE,      // 新页从右边滑入
+    FADE,       // 交叉淡入
+    SLIDE_FADE, // 滑动 + 淡入淡出（默认）
+};
+
 // 弹窗选项。放在类外：C++ 不允许把"带默认成员初值的嵌套类型"用作同类内的默认实参。
 struct DialogOptions
 {
@@ -63,6 +76,7 @@ class Shell : public Box
 {
   public:
     Shell();
+    ~Shell() override;
 
     Box* getBackdropLayer() const { return this->backdropLayer; }
     Box* getContentLayer() const { return this->contentLayer; }
@@ -149,9 +163,11 @@ class Shell : public Box
     //
     // **同级换页**是 `Pager::show(id)` 的事（同一个槽里换内容）；
     // 这里只管"往上叠一层 / 退回上一层"这种层级导航（列表 → 详情，B 逐层返回）。
-    // 栈里非栈顶的那几层是 GONE（不参与布局，也不参与焦点）。
+    // 栈顶那一层挂在内容层里；下面几层**只脱离树**（不删、不画、不进焦点链），
+    // 所以"完全放弃旧 AppletFrame 的三段式"之后，`getContentLayer()->getChildrenCount()`
+    // 仍然只反映当前那一层。
     void pushContentView(View* view);
-    // 弹出栈顶并**释放**它（下钻出来的详情页是临时页）。
+    // 弹出栈顶并**释放**它（下钻出来的详情页是临时页）。转场播完才真正摘/删。
     // 已经在最外层时什么都不做，只执行回调。
     void popContentView(std::function<void()> callback = nullptr);
     View* getContentView() const
@@ -160,7 +176,25 @@ class Shell : public Box
     }
     size_t getContentStackSize() const { return this->contentStack.size(); }
 
+    // 内容栈的转场（时间单位是秒）
+    void setContentTransition(ContentTransition value) { this->contentTransition = value; }
+    ContentTransition getContentTransition() const { return this->contentTransition; }
+    void setContentTransitionDuration(float seconds) { this->contentTransitionDuration = seconds; }
+    float getContentTransitionDuration() const { return this->contentTransitionDuration; }
+
+    // 正在转场？（转场期间焦点先不挪，等落位再给新页）
+    bool isContentTransitioning() const { return this->transitionProgress < 1.0f; }
+
+    // 推进转场：update() 内部按帧间隔调；测试可以直接喂固定 dt（确定性）
+    void stepContentTransition(float deltaSeconds);
+
+    // 转场中的旧视图（调试/测试用）
+    View* getOutgoingContentView() const { return this->outgoingView; }
+
     void update() override;
+
+    // 外壳自己的尺寸（铺满）与页面底色来自 widgets/applet_frame.json（原 AppletFrame 的外观）
+    void applyTheme() override;
 
     // 背景淡入的确定性步进（正常由 update() 按帧间隔调；测试直接喂固定 dt，
     // 和 AppletFrame::stepContentTransition 同一套路）
@@ -176,6 +210,12 @@ class Shell : public Box
     // 过渡层空了就摘掉释放（仅动画期存在）
     void releaseTransitionHostIfEmpty();
 
+    // 内容栈转场内部：挂载当前层 / 开始 / 应用进度 / 落位
+    void attachContentView(View* view);
+    void beginContentTransition(View* incoming, View* outgoing, bool pushing);
+    void applyContentTransition(float progress);
+    void finalizeTransition();
+
     Box* backdropLayer = nullptr;
     Box* contentLayer  = nullptr;
     Box* overlayLayer  = nullptr;
@@ -185,6 +225,19 @@ class Shell : public Box
     std::vector<View*> dimStack;
     // 内容层的下钻栈（栈底是基础内容，栈顶是当前显示的层）
     std::vector<View*> contentStack;
+    // 当前**挂在树里**的那一层（== contentStack.back()；转场期间旧层已脱离）
+    View* contentView = nullptr;
+
+    // 内容栈转场状态
+    ContentTransition contentTransition = ContentTransition::SLIDE_FADE;
+    float contentTransitionDuration     = 0.22f; // 秒
+    View* outgoingView                  = nullptr; // 转场中被弹掉/让位的那一层
+    View* incomingView                  = nullptr;
+    bool transitionPushing              = true;
+    float transitionProgress            = 1.0f;    // 1 = 没有转场
+    Animatable contentAnim{ 1.0f };
+    std::function<void()> pendingPopCallback;
+    bool pendingFreeOutgoing = false;
     // 与 dialogStack 一一对应的选项（closeOnBack 的读取点在这里）
     std::vector<DialogOptions> dialogOptionStack;
 

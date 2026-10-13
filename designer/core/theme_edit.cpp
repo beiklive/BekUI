@@ -162,7 +162,9 @@ bool createViewFile(const std::string& viewsDir, const std::string& name,
     Json doc = Json::object();
     if (templateName == "page")
     {
-        // AppletFrame[ 页头 / 内容(grow) / 底栏 ]
+        // 整页模板：页头 / 内容(grow) / 底栏。
+        // 类型名沿用 "AppletFrame"（旧 AppletFrame 已删除，这个名字现在构造的就是
+        // Shell；子节点按普通列布局排下来，和旧的三段式排布一致 —— 已有 JSON 不会失效）。
         doc["type"] = "AppletFrame";
         Json header = Json::object();
         header["type"]    = "Header";

@@ -432,7 +432,7 @@ class InputManager
 InputManager& getInputManager();
 
 // 绘制底部提示栏（由 App 每帧调用）
-// 提示栏不再由这里画：改用 widgets/hints_bar 控件（AppletFrame 的底栏）。
+// 提示栏不再由这里画：改用 widgets/hints_bar 控件（挂在外壳覆盖层的底栏里）。
 // 输入层只负责提供"当前焦点有哪些动作"（getHints()）。
 
 } // namespace bklv

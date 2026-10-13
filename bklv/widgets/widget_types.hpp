@@ -1,7 +1,7 @@
 #pragma once
 
 // 把**外观驱动的控件**注册成 JSON 视图类型，这样页面 JSON（resources/views/*.json）
-// 也能直接写 Button / Rectangle / AppletFrame 这些控件。
+// 也能直接写 Button / Rectangle / Shell 这些控件（旧名 AppletFrame 仍在）。
 //
 // 为什么单独一个文件：注册表在 core（`registerViewType`），而这些类型在 widgets ——
 // 放在 core 里注册就是 core → widgets 的反向依赖。所以由上层（App）调一次。

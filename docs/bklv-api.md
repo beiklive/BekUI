@@ -31,7 +31,9 @@
 | `core/ime.hpp/.cpp` | 文本输入：平台接管（Switch swkbd）或控件自己读键盘 |
 | `widgets/appearance_view.*` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量 |
 | `widgets/rectangle.*` `widgets/button.*` `widgets/header.*` `widgets/bottom_bar.*` `widgets/slider.*` `widgets/tab_frame.*` `widgets/sidebar.*` | 外观驱动的控件（绘制结构在主题 JSON 里） |
-| `widgets/applet_frame.*` | 应用外壳：全局页头 + 内容区（吃剩余高度）+ 底栏，显隐与补间折叠 |
+| `widgets/shell.*` | 应用外壳：四层结构（背景 / 内容 / 覆盖 / 浮层）+ 弹窗模态 + 内容栈下钻 + 按页背景 + 过渡层 |
+| `widgets/pager.*` | 页面控制器：工厂式懒加载、可取消预加载、失败/loading 占位、页面级记忆（焦点 + 滚动） |
+| `widgets/header.*` `widgets/bottom_bar.*` | 页头 / 底栏（宿主自己建好交给 `Shell::setHeaderView/setFooterView`） |
 | `widgets/dialog.*` `widgets/dropdown.*` `widgets/edit_text_dialog.*` | 弹窗、下拉、文本输入弹窗 |
 | `widgets/hints_bar.*` `widgets/status_area.*` | 底栏的两块内容：左侧提示、右侧状态（时钟 / Switch 电量） |
 | `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |

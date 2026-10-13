@@ -939,3 +939,57 @@ BKLV_DEMO_SWEEP=2 跑 300s（ASAN 构建）：0 处 AddressSanitizer 报错，14
 demo 的 `resources/` 里没有可用的背景素材（只有 testcard.png），接进去只会白白改变
 已经逐页复核过的页面观感，所以这一块只落库能力 + 测试。宿主接法：
 `pager->setOnPageChanged([&](const std::string& id){ shell->showBackdropFor(id); })`。
+
+---
+
+## v20 第 7 步完成（删旧 AppletFrame + 测试迁移 + 设计器回归 + 文档收尾）
+
+### 交付
+
+1. **内容栈的转场搬进 `Shell`**（从旧 `AppletFrame` 移植，API 名不变）：
+   `ContentTransition{NONE,SLIDE,FADE,SLIDE_FADE}`、`setContentTransition`/`Duration`、
+   `isContentTransitioning()`、`stepContentTransition(dt)`、`getOutgoingContentView()`。
+   语义照旧：用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，过渡期间零重排；
+   下钻时旧层**只脱离树、留在栈里**，返回时旧的被释放；pop 的回调等转场播完才执行。
+   方案 5.5 里"页面转场归 Pager"说的是**同层换页**；这里是**层级下钻**，归内容栈的持有者。
+2. **删掉 `bklv/widgets/applet_frame.{hpp,cpp}`**（CMake 清单与 `bklv.hpp` 伞头文件同步移除），
+   `View` 的 `Box::getChildrenCount()` 语义不变：内容层里始终只挂当前那一层。
+3. **JSON 类型名保留**（方案 5.3）：`registerWidgetViewTypes()` 里
+   `"AppletFrame"` 现在构造 `Shell`，并新增 `"Shell"`。已有 JSON 不失效。
+4. **`Shell::applyTheme()`**：套用 `widgets/applet_frame.json`（铺满 + `color.surface.page` 底色）——
+   这份外观原来是旧 AppletFrame 的，现在归外壳用，**文件名保持不变**（用户主题不用改，
+   `theme_test` 里"applet_frame 声明了底色"那条断言也继续有意义）。
+5. 测试迁移：
+   - `tests/transition_test.cpp`（33 项）→ 改用 `Shell`（含 `getContentLayer()`），断言一条不改。
+   - `widget_test.cpp` 的 "== 9. AppletFrame：内容栈 ==" 整段（36 项）删除，换成新文件
+     **`tests/shell_content_test.cpp`（59 项）**：内容栈下钻/返回、内容层只挂当前层、
+     B 路由（`setOnBackRequested` + 冒泡）、页头/底栏挂覆盖层与布局（宽度扣边距、贴底、
+     覆盖层画在内容层之后）、页头/底栏不参与焦点、显隐走 GONE、insets 是**显式**的
+     （显隐不会自动改它）。
+   - 旧的"栏折叠补间"断言随实现搬到宿主（`demo/app/demo_app.cpp`）而删除；库侧只保留
+     "insets 显式给出"的语义，改由上面第 5 条的 insets 小节盯住。
+6. 设计器回归：`designer_core_test` 292 项全过；`theme_edit.cpp` 的"整页模板"仍用
+   `"type": "AppletFrame"`（现在构造 Shell，子节点按普通列布局，和旧的三段式排布一致），
+   注释里写明原因；`./dist/designer` 离屏截图正常（1024x640 → 2048x1280 png）。
+7. 文档收尾：`docs/bklv-api.md`（文件职责表换成 Shell/Pager/Header/BottomBar）、
+   `docs/designer.md`、以及 `core/{appearance,input,app,view}.cpp`、`widgets/{header,widget_types}`、
+   `demo/app/pages/pages.hpp` 里的注释。
+
+### 验收原文
+
+```
+./scripts/check.sh            → 全部检查通过（2168 项）   # v19 为 2145：widget_test −36、新增 shell_content_test +59
+python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约定
+桌面 demo 逐页截图 14/14 exit=0；BKLV_DEMO_SWEEP=2 跑满不崩
+设计器离屏截图 exit=0（/tmp/designer_step7.png）
+```
+
+### 已知遗留（写在这里，不在本轮做）
+
+1. **`Pager` 的同层换页还没有转场**：`ContentTransition` 现在在 `Shell` 的内容栈上，
+   Pager 的槽（`ScrollingFrame`）换内容仍是瞬间切换。方案 5.5 要求这一层也走
+   SLIDE_FADE，属于后续增量。
+2. **栏折叠补间现在在 demo 里**（`DemoApp::startBarAnimation/updateBars/finishBarAnimation`），
+   没有库级测试；若要给别的宿主复用，应抽成一个独立小控件。
+3. `FocusRecord.hint` 仍只写不读；撞边回调仍不支持 box 级覆盖。
+4. 旧讨论稿 `docs/layers-and-focus.md` / `docs/shell-refactor-plan.md` 保留原样（历史记录）。

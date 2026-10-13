@@ -181,7 +181,7 @@ class Appearance
 std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget);
 
 // 把外观里的盒模型段套到一个 Box 上（AppearanceView 在 applyTheme 里自动调；
-// 容器类控件——Sidebar / AppletFrame 这种不是 AppearanceView 的——也能自己调）。
+// 容器类控件——Sidebar / Shell 这种不是 AppearanceView 的——也能自己调）。
 void applyAppearanceBox(Box* view, const AppearanceBox& box);
 
 // 取 widgets/<name>.json 并套用它的 box 段；variant 非空时取 <name>.<variant>.json。

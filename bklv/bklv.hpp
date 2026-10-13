@@ -4,7 +4,7 @@
 //
 //     #include "bklv/bklv.hpp"
 //     auto* app = new bklv::App();
-//     app->setRootView(new bklv::AppletFrame());
+//     app->setRootView(new bklv::Shell());
 //
 // 只收"写界面会用到"的公开头：core 的接口层、views 的语义控件、widgets 的外观控件。
 // backends / platforms 是按平台与图形 API 选一份编的，不属于使用者的接口，
@@ -55,7 +55,6 @@
 // ---- widgets：外观驱动的控件 ----
 #include "bklv/widgets/account.hpp"
 #include "bklv/widgets/appearance_view.hpp"
-#include "bklv/widgets/applet_frame.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/cell.hpp"

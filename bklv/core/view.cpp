@@ -881,7 +881,7 @@ bool View::triggerAction(ControllerButton button, bool pointer)
 
     // 手柄/键盘：自己没注册就**沿父链往上找**。
     // 容器级的动作必须能在焦点位于其子节点时生效（borealis 也是这么做的）：
-    //   · AppletFrame 的 "B 返回上一层"
+    //   · Shell 的 "B 返回上一层"（内容栈下钻）
     //   · Dialog 的 "B 关闭"
     // 不冒泡的话，焦点在内容里的按钮上时按 B 完全没反应。
     for (View* owner = this; owner != nullptr; owner = owner->getParent())

@@ -41,7 +41,7 @@ bklv::Box* buildThemePage();
 // 页 7：导航（库级 TabFrame + Sidebar）
 bklv::Box* buildNavPage();
 
-// 页 8：AppletFrame（页头 + 内容栈 + 底栏，B 逐层返回）
+// 页 8：TabFrame 导航 + 事件总线实时显示
 bklv::Box* buildAppletPage();
 
 // 主题页要能切主题，所以需要 App；main.cpp 在建 PageHost 之前调用。

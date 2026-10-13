@@ -1,6 +1,7 @@
 #pragma once
 
-// 页头（对应 borealis 的 views/header，以及 AppletFrame 里那个 88 高的应用页头）。
+// 页头（对应 borealis 的 views/header，以及旧 AppletFrame 里那个 88 高的应用页头）。
+// 现在由宿主建好交给 `Shell::setHeaderView()`（外壳只负责挂到覆盖层）。
 //
 // 结构（和 borealis 的 header XML 一致：一行里放 图标 / 标题 / 右侧区）：
 //

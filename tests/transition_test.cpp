@@ -1,4 +1,4 @@
-// 无窗口测试：AppletFrame 内容栈的转场动画。
+// 无窗口测试：Shell 内容栈（层级下钻）的转场动画。
 //
 // 转场靠绘制期变换（setTranslateX/setAlpha），不参与布局，所以能按固定 dt 步进、
 // 断言中间态与落位后的状态。
@@ -11,7 +11,7 @@
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
-#include "bklv/widgets/applet_frame.hpp"
+#include "bklv/widgets/shell.hpp"
 #include "bklv/widgets/button.hpp"
 
 using namespace bklv;
@@ -42,7 +42,8 @@ int main()
     std::printf("== 1. 转场：滑动 + 淡入，落位后清干净 ==\n");
     {
         Box* first = makePage("第一页");
-        AppletFrame* frame = new AppletFrame(first);
+        Shell* frame = new Shell();
+        frame->pushContentView(first);
         frame->setWidth(800.0f);
         frame->setHeight(600.0f);
         frame->setContentTransition(ContentTransition::SLIDE_FADE);
@@ -77,7 +78,7 @@ int main()
         checkFloat(detail->getAlpha(), 1.0f, "新页完全不透明");
         checkFloat(first->getAlpha(), 1.0f, "旧页透明度已复位");
         check(frame->getOutgoingContentView() == nullptr, "out 视图已清空");
-        check(first->getParent() != frame->getContentBox(), "旧页已从内容区摘掉（但仍在栈里）");
+        check(first->getParent() != frame->getContentLayer(), "旧页已从内容区摘掉（但仍在栈里）");
         checkEqualSize(frame->getContentStackSize(), 2, "旧页留在栈里，返回时状态还在");
 
         std::printf("\n== 2. 返回：旧页滑出并被释放 ==\n");
@@ -103,7 +104,8 @@ int main()
     std::printf("\n== 3. 关掉转场：直接落位 ==\n");
     {
         Box* first = makePage("A");
-        AppletFrame* frame = new AppletFrame(first);
+        Shell* frame = new Shell();
+        frame->pushContentView(first);
         frame->setWidth(800.0f);
         frame->setHeight(600.0f);
         frame->setContentTransition(ContentTransition::NONE);
@@ -114,7 +116,7 @@ int main()
         check(!frame->isContentTransitioning(), "NONE 不产生转场");
         check(frame->getContentView() == second, "新页直接生效");
         checkFloat(second->getAlpha(), 1.0f, "不透明");
-        check(first->getParent() != frame->getContentBox(), "旧页已经摘掉");
+        check(first->getParent() != frame->getContentLayer(), "旧页已经摘掉");
 
         bool ran = false;
         frame->popContentView([&] { ran = true; });
@@ -126,7 +128,8 @@ int main()
     std::printf("\n== 4. 只有淡入淡出（不滑动）==\n");
     {
         Box* first = makePage("A");
-        AppletFrame* frame = new AppletFrame(first);
+        Shell* frame = new Shell();
+        frame->pushContentView(first);
         frame->setWidth(800.0f);
         frame->setHeight(600.0f);
         frame->setContentTransition(ContentTransition::FADE);
