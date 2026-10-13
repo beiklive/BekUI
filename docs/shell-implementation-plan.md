@@ -572,3 +572,32 @@ SAME_PARENT_ONLY 只到同父兄弟再往上停 / **NONE 停边界且静默（�
 **仍缺两件**（Lead 收尾要盯）：
 1. `tests/focus_test.cpp`（10 节）—— 本裁决已派人写
 2. `./scripts/check.sh`（基线 1914，只增不减、GL/VK 零警告）+ `python3 scripts/check_naming.py` 的**实测原文**
+
+---
+
+## v12 第 3 步完成（两个裁决点已定）
+
+**收下 `b0d57e0a` 的交付**：13 个库文件 + 新增 `tests/focus_test.cpp`（82 项）。
+Lead 独立复跑验收：`focus_test` 82/82、`check.sh` **1996 项全绿零警告**、命名 136 文件合规。
+
+### 裁决点 1：`tests/focus_test.cpp` 撞车
+v11 把它划给 `013c1519`，但它在**读到 v11 之前**就已写完并跑通；`013c1519` 已**零改动退出**。
+-> **保留 `b0d57e0a` 的版本**（对方已退出，不存在互写）。
+
+### 裁决点 2：`widgets/**` 归属
+v10 说 `widgets/**` 归 Lead，但它按原任务书改了 3 个文件：
+`appearance_view.cpp`（hl* 层叠加抖动位移）、`button.hpp` / `cell.hpp`（`isDisabled` override）。
+**收下** —— 没有它们，抖动与"禁用不聚焦"就是死代码；三个改动都在第 3 步语义范围内。
+
+### 它的 6 处有意偏离（已确认，写在这里备查）
+1. `canFocus` 多两条（沿父链可见 + 未被模态遮挡）—— bklv 模态是标记，不是活动栈
+2. 默认焦点索引默认 **-1** 而非 borealis 的 0（0 会让第 3 级失效）
+3. `lastFocusedView` 在摘除子节点时清空（borealis 不清 -> 删掉聚焦项后踩悬空）
+4. 撞边只做**抖动**、不自动播音效（音效留给上层 `setOnFocusEdgeHit`）
+5. 跨 box 策略**按边界生效、不做继承**（继承会让外层 NONE 冻结子树内部导航）；wrap 才继承
+6. 抖动时长写死 0.4s（borealis 从主题取，bklv 暂无该主题项）
+
+### 第 3 步已知未做（归后续）
+- `enterLayer/leaveLayer`（跨层进入/退出，归第 4 步）
+- `FocusRecord.hint` 只写不读
+- `setOnFocusEdgeHit` 只支持全局一处（box 级覆盖未做）
