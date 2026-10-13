@@ -355,3 +355,25 @@ focusManager->setEdgeHitMinInterval(0.12f);
   bklv 的模态是 `isInsideModal()` 标记，必须显式判；父链可见性则防止隐藏容器里的子节点被选中
 - 焦点为空时的行为：borealis `navigate()` 直接 return；bklv 按 v2 方案"保持焦点不动、
   输入归模态"，并在无默认焦点时给出明确分支
+
+### v6 修正（第 1 步实施中发现，前提有误）
+
+1. **JSON 属性表本来就登记了定位原语**（不是"没登记"）：`view.cpp:1045-1049` 自 4034b93 起就有
+   `{ "position", ENUM, ..., "relative|absolute" }` 与 `{ "top"|"left"|"right"|"bottom", SIZE, ... }`；
+   `docs/json-syntax.md:96-97` 也已记录。**键名以既有为准**（对齐 Yoga/borealis），
+   不新增 `positionType` / `positionTop…` 同义键 —— 同一件事只留一套名字。
+   → 第 1 步因此缩水为：只补 `EdgeInsets` 类型 + 测试 + 文档核对。
+2. **视图 JSON 的 SIZE 取值用 `@style/metric.a.b`**（不是 `@theme/metric.a.b`）：
+   只有 COLOR 分支认 `@theme/`。本方案 3.1 写的 `@theme/metric.a.b` 要按此修正。
+   给 SIZE 补 `@theme/metric.` 会影响 width/height/min*/padding 等**所有** SIZE 属性，回归风险大，
+   **本轮不做**（列入"已知问题"）。
+3. **已记录的文档/实现不一致（本轮不改）**：`docs/json-syntax.md:21` 说视图 JSON 里的数字会乘 uiScale，
+   实际代码里**视图 JSON 完全不缩放**（只有 appearance JSON 与 `metric.*` 缩放）。
+
+### 已知问题清单（不阻塞本轮，但记在明面上）
+
+| # | 现象 | 位置 |
+|---|---|---|
+| 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `core/attributes.cpp` SIZE 分支 |
+| 2 | 文档称视图 JSON 数字按 uiScale 缩放，实现不缩放 | `docs/json-syntax.md:21` |
+| 3 | 定位原语此前只有 JSON 键（`position`/`top`…），无 `addToCorner` 之类的语义封装 | 第 2 步已补（Shell 上） |
