@@ -36,7 +36,7 @@ Shell（取代旧 AppletFrame；保留 JSON 类型名 "AppletFrame" 作为别名
 |---|---|
 | 绘制顺序 | 背景 → 内容 → 覆盖 → 浮层 → 过渡 |
 | 重排 | **表述修正**：绝对定位节点**仍在 Yoga 树里**。真实含义是"内容变化不触发 layout，只有尺寸变化才 layout" |
-| 焦点 | 只在**内容层与覆盖层**之间切换；页头/底栏默认**不可聚焦**（需显式 `setFocusable(true)`） |
+| 焦点 | 焦点只在 **① 内容层内部导航 ② 弹窗打开时的弹窗内部**；**页头/底栏是纯显示控件，永不参与焦点**（构造即 `setFocusable(false)`，不进焦点链、不处理动作） |
 | 模态 | 用**标记**（`pushModal` / `modalityRoot`），不靠层号 |
 | 内容避让 | **不自动**：页面显式 `getHeaderInsets()/getFooterInsets()`；**动画期间返回目标值** |
 | 安全区 | `setSafeAreaInsets(EdgeInsets)`：所有层按安全区内缩（Switch 前置需求） |
@@ -107,7 +107,8 @@ public:
 
     bool  move(FocusDirection);                    // 几何最近邻 + 冒泡 + 出口策略
     void  setCrossBoxPolicy(View*, CrossBoxPolicy);
-    void  setLayerSwitchOnEdge(bool);              // v2：到边界是否跨层，**默认 false**
+    void  setNavigationWrap(View* box, bool wrap); // v3：该 box 内导航是否**循环**，默认 false（不循环）
+    void  setOnFocusEdgeHit(std::function<void(FocusDirection)>); // 撞边反馈（可选：音效/微动画）
     bool  canFocus(View*) const;                   // 四条件
     void  ensureFocusVisible();                    // v2：把焦点元素滚进视野（回收列表必需）
 };
@@ -159,7 +160,7 @@ struct PageState {            // v2：页面级记忆
 6. 弹窗套弹窗 → 焦点栈逐级还原
 7. **同层换页**：主页 → 游戏库 → 返回主页，焦点回到原卡片（`rememberFor`）
 8. **回收列表**：滚动后焦点元素不可见时 `ensureFocusVisible()` 把它滚回来
-9. **边界策略**：`setLayerSwitchOnEdge(false)` 时在内容层顶部按 UP 停在边界，不去页头
+9. **边界与循环**：默认不循环 → 列表首项按 UP / 末项按 DOWN **停住**（并可触发撞边反馈）；`setNavigationWrap(true)` 时首尾相接；wrap 的作用域是**单个 box**（不是整层）
 10. **快速连按**：A→B→C 连续切页，取消的预加载不得再改 UI
 
 ## 5. v1 审查的 5 个必修项（已并入）
@@ -205,7 +206,7 @@ Shell 不做页面转场，只做层间淡入（背景/遮罩）。
 | 主页 → 游戏库 → 返回主页，希望回到原卡片 | 同层换页也需要焦点记忆，`enterLayer` 只管跨层 | `rememberFor/restoreFor`（能力 3.2） |
 | 游戏库 → 详情 → 返回，希望回到原列表项与位置 | 焦点记了，**滚动位置没记** | `PageState{scrollOffset}` + `ScrollingFrame::get/setScrollOffset` |
 | 回收列表滚动后，焦点元素被移出屏幕 | 焦点"存在但看不见" | `ensureFocusVisible()`（测试 8） |
-| 内容层顶部按 UP 是否跳到页头 | 需要策略，不能写死 | `setLayerSwitchOnEdge(bool)`，**默认 false**（测试 9） |
+| 内容层顶部按 UP 的方向键行为 | 页头不聚焦（v3 澄清），所以只剩"到边界要不要循环" | `setNavigationWrap(Box*, bool)`，**默认不循环**（测试 9） |
 | 截图/Home/退出键在弹窗打开时还要生效 | 系统键不能被模态吞 | `setSystemAction()` 优先级高于模态（第 4 步） |
 
 ### 第 2 轮 · 场景推演：层与定位
@@ -230,3 +231,15 @@ Shell 不做页面转场，只做层间淡入（背景/遮罩）。
 | `App` 与新 `FocusManager` 状态重叠 | 两套真相必打架 | 5.1 合一（App 只转发） |
 | 删旧类会让用户 JSON 失效 | 类型名兼容 | 5.3 保留 `"AppletFrame"` |
 | 验收基数会随测试增加而变 | 表述不严谨 | 改为"以 1832 项为下限，只增不减" |
+
+### 第 4 轮 · 用户澄清（v3）
+
+| 澄清 | 影响 |
+|---|---|
+| **页头/底栏是纯显示控件，不参与焦点** | 焦点链里不再有它们；`enterLayer` 只管"内容层 ↔ 弹窗"；动作路由只保留"弹窗 → 内容页 → shell 默认"；删掉 `setLayerSwitchOnEdge` |
+| 真正要决定的是**导航是否循环** | 新增 `setNavigationWrap(Box*, bool)`，**默认不循环**；作用域为单个 box；与跨 box 策略的优先级：**wrap 先于跨 box**（在 box 内能绕回去就不出去） |
+| 撞边是否需要反馈 | 预留 `setOnFocusEdgeHit(cb)`：默认无反馈，游戏前端可挂音效/微动效 |
+
+**为什么默认不循环**：主机 UI 惯例是到边界停住（可预期，"从顶部按上直接跳到底部"通常被视为意外）；
+需要循环的容器（如小圆盘选择器）单独打开即可。**本机没有 borealis 源码，无法逐行核对它的实际行为**，
+若要求与 borealis 完全一致，需要我拿到它的源码后再确认。
