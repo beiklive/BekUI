@@ -333,8 +333,20 @@ int main()
         std::vector<std::string> available;
         std::string defaultName;
         designer::readThemesFile(themeRoot, available, defaultName, error);
-        checkEqualInt((int)available.size(), 2, "登记后数量");
-        check(available[1] == "my-skin", "登记了新名");
+        // 不写死总数、也不按下标取：其它测试也会往主题目录里写文件，
+        // check.sh 顺序执行时的残留会让总数变化（清空 dist/ 后暴露过这个脆弱点）。
+        // 这里只断言"default 还在 + 新名能查到"。
+        bool hasDefault = false;
+        bool hasNew     = false;
+        for (const std::string& name : available)
+        {
+            if (name == "default")
+                hasDefault = true;
+            if (name == "my-skin")
+                hasNew = true;
+        }
+        check(hasDefault, "default 仍在主题登记表里");
+        check(hasNew, "登记了新名 my-skin");
 
         // theme.json 里的 name 要跟着改
         std::string themeText;

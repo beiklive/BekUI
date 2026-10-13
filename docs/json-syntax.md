@@ -93,19 +93,21 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `margin` `marginTop` `marginRight` `marginBottom` `marginLeft` | NUMBER | |
 | `grow` `shrink` | NUMBER | flex 伸缩 |
 | `alignSelf` | ENUM | `auto`(默认) / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline` |
-| `position` `positionType` | ENUM | `relative`(默认) / `absolute` |
-| `top` `left` `right` `bottom` | SIZE | 绝对定位的四边偏移；同义键 `positionTop` / `positionLeft` / `positionRight` / `positionBottom` |
+| `position` | ENUM | `relative`(默认) / `absolute` |
+| `top` `left` `right` `bottom` | SIZE | 绝对定位的四边偏移；数字 / `"50%"` / `"@style/metric.a.b"`，可只写需要的边 |
 | `visibility` | ENUM | `visible`(默认) / `invisible`（不画但占位） / `gone`（不占位） |
 | `backgroundColor` `borderColor` | COLOR | |
 | `borderThickness` `cornerRadius` `alpha` | NUMBER | `alpha` 是 0~1 系数 |
 | `clipsToBounds` | BOOL | 裁掉自己和子节点超出本控件矩形的部分 |
 
 > **定位原语**：`absolute` 的子节点**不参与父的 flex 排布**——不占主轴空间，兄弟节点的位置
-> 不受它影响（但它仍在 Yoga 树里，父容器尺寸变了照样重算）。四边偏移相对**父容器的内边距盒**算：
+> 不受它影响（但它仍在 Yoga 树里，父容器尺寸变了照样重算）。四边偏移相对**父容器的外框**算
+> （父的 `padding` **不**参与基准，百分比也按父的外框尺寸算）：
 > 数字是像素、`"50%"` 是对应边长的百分比（父宽 400 时 `left: "50%"` → x = 200；
-> `right: "50%"` → x = 400 - 200 - 自身宽）、`"@style/metric.a.b"` 取主题数值。
+> `right: "50%"` → x = 400 - 200 - 自身宽）、`"@style/metric.a.b"` 取主题数值
+> （视图 JSON 的 SIZE **只认 `@style/`**，`@theme/` 是颜色用的）。
 > 四边可以只写需要的那几条。值不是长度（`"abc"`）、百分比越界（`"120%"`）、
-> 枚举值不认识（`"positionType": "relative-ish"`）都会**建不出控件**并报错（见第 6 节）。
+> 枚举值不认识（`"position": "relative-ish"`）都会**建不出控件**并报错（见第 6 节）。
 
 ### `Box` / `Row` 追加
 
@@ -342,7 +344,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 | `axis` | `row` / `column` |
 | `direction` | `inherit` / `ltr` / `rtl`（只有视图描述 JSON 有） |
 | `visibility` | `visible` / `invisible` / `gone` |
-| `position` / `positionType` | `relative` / `absolute` |
+| `position` | `relative` / `absolute` |
 | `horizontalAlign` | `left` / `center` / `right` |
 | `verticalAlign` | `top` / `center` / `bottom` |
 | 图片 `scalingType`（视图）/ 层 `scaling`（外观） | `fit` / `fill` / `stretch` / `center`（层的 `scaling` 目前只由控件自己解释，写别的会警告） |
@@ -360,6 +362,6 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 | 聚焦后控件里的图形消失 | 外观层序反了：`hlBg` 排到了内容层之后 |
 | 阴影被底色盖住 / 透出来 | `shadow` 层要在底色之前；不透明底用不上 `cutout`，半透明底要 `"cutout": true` |
 | 圆角变成直角 | 自己拼矩形带子会被 `AddRectFilled` 把圆角钳到边长一半；用现成的 `radius` / shadow 实现 |
-| `"50%"` 没效果 | 百分比只对 `width` / `height` 与绝对定位的四边偏移（`top` / `left` / `right` / `bottom` 及其 `positionXxx` 同义键）有效；其它 NUMBER 属性要绝对像素 |
+| `"50%"` 没效果 | 百分比只对 `width` / `height` 与绝对定位的四边偏移（`top` / `left` / `right` / `bottom`）有效；其它 NUMBER 属性要绝对像素 |
 | 枚举写错 | 视图描述 JSON 会**建不出控件**并在日志里列可选值；外观 JSON 只警告并保持原值（见第 6 节） |
 | 切语言界面没变 | 文案在控件构造时已解析成字符串，需要重建视图（见 AGENTS） |

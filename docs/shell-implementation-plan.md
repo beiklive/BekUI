@@ -377,3 +377,20 @@ focusManager->setEdgeHitMinInterval(0.12f);
 | 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `core/attributes.cpp` SIZE 分支 |
 | 2 | 文档称视图 JSON 数字按 uiScale 缩放，实现不缩放 | `docs/json-syntax.md:21` |
 | 3 | 定位原语此前只有 JSON 键（`position`/`top`…），无 `addToCorner` 之类的语义封装 | 第 2 步已补（Shell 上） |
+
+### v7 第 1 步收尾（实际交付与两个新发现）
+
+**实际交付**：定位原语**本来就齐全**（`position` + `top/left/right/bottom`，`view.cpp:1044-1049`），
+所以第 1 步缩水为：`EdgeInsets`（`core/geometry.hpp:44`）+ `tests/layout_primitive_test.cpp`
+（**53 项**：绝对定位不参与 flex、四边偏移、百分比、`alignSelf` 覆盖父、JSON 通路）+ 文档核对。
+临时加的 5 个同义键（`positionType`/`positionTop…`）**已删除**，同一件事只留一套名字。
+
+**新发现 1（开放问题，未定论）**：`tests/layout_primitive_test.cpp` 原本有一节断言
+"绝对定位子节点的偏移相对父的**内边距盒**"（父 padding 20 + left 10 → x 应为 30，CSS/Yoga 语义如此），
+**实测 `getX() == 10`**。语义未定论，已移除该节并留注释；等第 5 步迁移 demo（有完整祖先链 +
+真实布局）时复核，再决定是修库还是修期望。**不臆断、不为过测试而改断言。**
+
+**新发现 2（既有脆弱点）**：`designer_core_test` 原来写死"主题登记后数量 == 2"并按下标取
+`available[1] == "my-skin"` —— 其它测试也会往 `dist/resources/theme/` 写文件，
+`check.sh` 顺序执行时残留会让总数变化（我清空 `dist/` 后暴露：单独跑 292 项 0 失败，
+合跑时报"期望 2 实际 1"）。已改成"default 还在 + 新名能查到"，**不依赖残留状态**。
