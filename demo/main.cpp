@@ -37,9 +37,6 @@ int main(int argc, char** argv)
     // 每帧回调：刷新调试页上的统计信息
     app.onUpdate = [&host]() { host.update(); };
 
-    // ImGui 窗口（日志窗口）必须在视图树画完后、ImGui::Render() 之前下发
-    app.onDrawWindows = [&host]() { host.drawWindows(); };
-
     (void)argc;
     (void)argv;
 

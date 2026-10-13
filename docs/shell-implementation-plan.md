@@ -993,3 +993,52 @@ python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约�
    没有库级测试；若要给别的宿主复用，应抽成一个独立小控件。
 3. `FocusRecord.hint` 仍只写不读；撞边回调仍不支持 box 级覆盖。
 4. 旧讨论稿 `docs/layers-and-focus.md` / `docs/shell-refactor-plan.md` 保留原样（历史记录）。
+
+---
+
+## v21 日志窗口重做（用户要求：在 HudLayer 之上、显示全部日志、旧的删掉重做）
+
+### 交付
+
+1. **删掉旧的 `bklv/views/debug_window.{hpp,cpp}`**（ImGui 窗口版，靠 `App::onDrawWindows` 下发）。
+2. **新增 `bklv/views/debug_log_view.{hpp,cpp}`（`DebugLogView`）**：
+   - 它是**视图树里的 View**，不是 ImGui 窗口；`App::frame` 的 `drawChildren` 就会画它。
+   - 读 `Logger` 的环形缓冲，**缓冲里有多少条就显示多少条**（默认上限 1000），
+     级别过滤（D/I/W/E 四位掩码）只影响行集合。
+   - **零重排**：不为每条日志建视图（borealis 的 DebugLayer 每条日志建 Box+Label，
+     日志一多就不停触发 Yoga 重排），直接用 `ImDrawList::AddText`（带 `wrap_width` 自动换行）。
+     行缓存只在「日志版本 / 过滤 / 面板宽度 / 字号」变化时重建 —— 压测实测：
+     每帧写 2 条日志、90 帧后 `布局` 计数仍是 **2**（`getRebuildCount()` 可断言）。
+   - 自动跟随：新日志到达贴底；鼠标滚轮往上滚就暂停跟随（`setScrollOffset` 到底会自动恢复）。
+   - `update()` 里读鼠标状态前用 `ImGui::GetCurrentContext() != nullptr` 判（无窗口测试没有上下文）。
+   - 不吃输入、不进焦点链（`isFocusable() == false`）；`hitTest` 对非可聚焦返回 nullptr，
+     所以**点面板覆盖的位置照样命中下面的控件**（`log_view_test` 有断言）。
+3. **`Shell` 新增调试层 `getDebugLayer()`**：排在 HudLayer **之后**（子节点顺序 = 绘制顺序），
+   所以日志窗口永远画在所有层之上；安全区内缩一并覆盖它。默认空层，不占位。
+4. demo：日志面板挂调试层，「显示日志」按钮 / 设置页的「显示日志」/ **F1** 三处开关；
+   `BKLV_DEMO_LOG=1` 启动即打开、`BKLV_DEMO_LOG_SPAM=<每帧条数>` 压测。
+   `App::onDrawWindows` 在 demo 里不再使用（设计器还在用，它本身是 ImGui 程序）。
+5. 设计器：它有自己的一块 ImGui 日志面板（原来是复用库里的 `DebugWindow`），
+   现在改成 `DesignerWindow::drawLogPanel()`（读同一个 `Logger` 环形缓冲）。
+
+### 测试
+
+新增 `tests/log_view_test.cpp`（**38 项**）：全部日志成行 / 级别过滤 / 列开关 /
+行缓存重建次数（无变化不重建、来 50 条只重建一次）/ 滚动跟随与暂停 / 边界裁剪 /
+调试层排在 HudLayer 之后 / 面板不吃输入（点它那里命中下面的控件）/ 不可聚焦。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2206 项）    # v20 为 2168，+38；gl/vk 均零警告
+python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约定
+GL：BKLV_DEMO_LOG=1 BKLV_DEMO_LOG_SPAM=2 截图 → exit=0，面板显示 201/201 条、布局计数 2（零重排）
+VK：同样参数启动跑完 80 帧 → exit=0（VK 后端不支持帧读回，截不了图，这是既有约定）
+设计器：BKLV_DESIGNER_SHOT 离屏截图 → exit=0
+```
+
+### 已知取舍
+
+- 面板贴在右上角，**视觉上会盖住 demo 右上角那排按钮**（"在最上层"的必然结果），
+  但调试层不吃输入 → 按钮仍然点得到；另给了 **F1** 随时开关。
+- 库侧不再提供"通用的 ImGui 日志窗口"：要 ImGui 版就照设计器那份自己写（几十行）。

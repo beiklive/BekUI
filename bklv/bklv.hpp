@@ -42,7 +42,7 @@
 
 // ---- views：语义控件 ----
 #include "bklv/views/debug_layer.hpp"
-#include "bklv/views/debug_window.hpp"
+#include "bklv/views/debug_log_view.hpp"
 #include "bklv/views/h_scrolling_frame.hpp"
 #include "bklv/views/image.hpp"
 #include "bklv/views/json_cell.hpp"

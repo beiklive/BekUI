@@ -58,7 +58,7 @@
 | i18n | `core/i18n.hpp` | ✅ |
 | ime | `core/ime.hpp` | ✅（Switch swkbd / 控件自绘） |
 | input | `core/input.hpp` + `core/gamepad.hpp` | ✅ |
-| logger | `core/logger.hpp` + `views/debug_window` | ✅ |
+| logger | `core/logger.hpp` + `views/debug_log_view`（挂外壳调试层）+ `views/debug_layer`（线框） | ✅ |
 | platform / assets | `core/platform.hpp` / `core/resource.hpp` | ✅ |
 | view / box / frame_context | `core/view.hpp` / `core/box.hpp` | ✅ |
 | activity（Activity 栈 + 转场动画） | `AppletFrame` 内容栈 + `ContentTransition` | ✅ 改良 | 内容栈等价于 Activity 栈；转场用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，不参与布局所以过渡期间零重排。borealis 的转场捆在 Activity/XML 上，我们做成 `setContentTransition(NONE/SLIDE/FADE/SLIDE_FADE)` + 时长，push/pop 对称；**pop 的回调等转场播完再执行**（和 Dialog"播完再摘"同一约定），popped 视图在转场结束时释放 |

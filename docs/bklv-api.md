@@ -59,7 +59,7 @@
 | `views/image.hpp/.cpp` | 图片：四种缩放模式、圆角 |
 | `views/progress_spinner.hpp/.cpp` | 加载转圈 |
 | `widgets/hints_bar.hpp/.cpp` | 提示栏（底栏左侧内容）：按当前焦点的动作生成条目 |
-| `views/debug_window.hpp/.cpp` | 调试窗口：ImGui 窗口显示日志流与运行状态 |
+| `views/debug_log_view.hpp/.cpp` | 调试日志视图：读 `Logger` 环形缓冲、`ImDrawList` 直接画（零重排），挂在 `Shell::getDebugLayer()` 上 |
 
 ## 布局（Box）
 
@@ -350,10 +350,11 @@ app.setIniPersistenceEnabled(true);
 ## 日志与调试窗口
 
 日志用 `BKLV_LOG_INFO(...)` 等宏，输出带 `文件:行号`。日志同时进控制台与
-`Logger` 的环形缓冲，界面上的调试窗口（`views/debug_window.hpp`）读缓冲渲染。
+`Logger` 的环形缓冲，界面上的调试日志视图（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染；
+它挂在外壳的调试层上（`Shell::getDebugLayer()`，在 HudLayer 之上），不吃输入。
 
 **不要为每条日志创建 View** —— borealis 那样做会不断触发 Yoga 重排。
-`demo` 界面上右上角的「显示日志」按钮开关日志窗口。
+`demo` 界面上右上角的「显示日志」按钮（或 F1）开关日志窗口。
 
 ## 已知的坑（都已处理）
 

@@ -334,7 +334,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **裸 `AppearanceView` 也会在构造时 `applyTheme()`**：不这么做的话，
   直接 `new AppearanceView("xxx")` 的地方会拿到空外观，一笔都画不出来
   （EditTextDialog 的遮罩/面板踩过：结构对、颜色对，就是什么都不显示）。
-- **内容栈转场**（`widgets/applet_frame.*`）：`pushContentView`/`popContentView` 默认走
+- **内容栈转场**（`widgets/shell.*` 的 `Shell::pushContentView`/`popContentView`）：默认走
   `ContentTransition::SLIDE_FADE`（0.22s），用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，
   所以过渡期间零重排；`setContentTransition(NONE)` 直接落位。
   两条语义要记住：① **pop 的回调等转场播完才执行**（和 Dialog"播完再摘"同一约定）；
@@ -373,9 +373,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   旧补间会被漏掉、继续往旧目标跑（弹窗面板整块补到透明就是这么来的）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
-  `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_window.hpp`）读缓冲渲染。
+  `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染。
+  它**是视图树里的 View**（挂在外壳的调试层 `Shell::getDebugLayer()` 上，在 HudLayer 之上、
+  永远最后绘制），直接用 `ImDrawList` 画文本、**不为每条日志建视图**，所以日志再多也不重排。
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排
-- ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）
+- ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）。
+  现在只有设计器还在用这条路（它自己的界面就是 ImGui）；demo 的日志窗口已经是视图了。
 - **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
   按住则等 `repeatDelay`（默认 250ms）后每 `repeatInterval`（默认 100ms）一次，
   和 borealis 的 `BUTTOM_REPEAT_TRIGGER` / `BUTTON_REPEAT_DELAY` 一致。
@@ -383,16 +386,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   A/B 也走同一套（borealis 的 A/B 会重复）。
   **一个物理键一个重复状态**：以前两个键（方向键 + WASD）共用一个"边沿状态"，
   互相把对方清掉 → 按住方向键每帧都判成"刚按下"，导航飙到帧率。
-- **页头与底部栏是外壳级的（全局），内容区吃剩余高度**（`widgets/applet_frame.*`）：
-  结构按 borealis：`AppletFrame[ Header / content(grow) / BottomBar ]`，
+- **页头与底部栏是外壳级的（全局），内容避让是显式的**（`widgets/shell.*` + `widgets/pager.*`）：
+  宿主自己建 `Header` / `BottomBar` 交给 `Shell::setHeaderView/setFooterView`（挂覆盖层，
+  中间用 `Padding` 顶开），页面再按 `getHeaderInset()/getFooterInset()` 自己留白。
   其中 `Header = [图标][标题][右侧区]`（widgets/header*.json + header_icon.json），
   `BottomBar = [提示(左) | 状态区(右)]`（widgets/bottom_bar.json），
   Header 的左右外边距用 `appletFrame.paddingSides`、底栏用 `hints.footerMarginSides`。
-  显隐用**实例方法** `setHeaderVisible(bool)` / `setBottomBarVisible(bool)`：隐藏时看 `GONE`（不占位），
-  所以内容区自动吃掉那部分高度；**栏里不能留固定外边距**（页头下边的留白写在页头自己的
-  padding 里），否则隐藏后会留下空隙。
-  `setBarsAnimated(true)`（默认）时用 `core/time.hpp` 的 `Animatable` 补间折叠：
-  动画期间两栏保持 VISIBLE 并逐帧改高度 + `App::requestLayout()`，补间结束才真正 GONE。
+  显隐用**实例方法** `Shell::setHeaderVisible(bool)` / `setFooterVisible(bool)`：隐藏时看 `GONE`
+  （不占位）；**栏里不能留固定外边距**（页头下边的留白写在页头自己的 padding 里），
+  否则隐藏后会留下空隙。
+  **content 避让不自动**：`Shell::setHeaderInset/setFooterInset` 由宿主给（动画期间给**目标值**，
+  这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（demo 就是这么做的）。
+  栏的"折叠补间"是**宿主**的事：`Animatable` 逐帧改两栏高度 + `App::requestLayout()`，
+  补间结束才真正 GONE（demo/app/demo_app.cpp 里有一份，库侧不再提供）。
 - **占位挤压用 `Padding`**（`views/padding.*`，对标 borealis 的 `brls:Padding`）：
   空视图、auto 尺寸、`grow=1`，把后面的兄弟挤到另一端；页头就是
   `[图标][标题][Padding][右侧区]`。JSON 里写 `{ "type": "Padding" }` 也能用。
@@ -424,7 +430,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
   内容的右上按钮被推出边界，都踩过）。要"填满父容器再留边距"就用 **auto 宽 + margin**，
-  父容器负责 stretch（`AppletFrame` 的内容区已经 `alignItems: stretch`）。
+  父容器负责 stretch（Shell 的内容层／宿主容器自己 `alignItems: stretch`）。
 - **滚动容器用 `flex-basis: 0` + `flex-shrink: 1`**（`views/scrolling_frame.*`）：
   Yoga 的 flexShrink 默认是 **0**，而 basis 默认是内容尺寸。两者不改的话，内容一高，
   Yoga 会按比例把**同一列里的兄弟节点一起压缩**（按钮行 48 → 28），滚动器自己的高度
@@ -443,7 +449,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   不是底栏（压了连图标都放不下，踩过：22px 被压成 14px）。
 - **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。
   容器级的动作必须能在焦点位于其子节点时生效，否则形同虚设：
-  `AppletFrame` 的 "B 返回上一层"、`Dialog` 的 "B 关闭" 都靠这条
+  `Shell` 的 "B 返回上一层"（`setOnBackRequested`）、`Dialog` 的 "B 关闭" 都靠这条
   （不冒泡时焦点在内容里的按钮上按 B 完全没反应）。
   指针不冒泡是因为 `hitTest` 只返回可聚焦视图，命中的本来就是控件本身。
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
@@ -537,10 +543,10 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   bklv.hpp          伞头文件：常用类型一次引入（demo 只用它）
   core/             接口层：view / box / app / platform / graphics / input / ...
   core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
-  views/            语义控件：label / image / scrolling_frame / recycler / ...
-  widgets/          外观驱动的控件：appearance_view / rectangle / button / header / bottom_bar
-                    / slider / tab_frame / sidebar / dialog / dropdown / applet_frame
-                    / edit_text_dialog / hints_bar
+  views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
+  widgets/          外壳与外观驱动的控件：shell（四层外壳）/ pager（页面懒加载）/ appearance_view
+                    / rectangle / button / header / bottom_bar / slider / tab_frame / sidebar
+                    / dialog / dropdown / edit_text_dialog / hints_bar
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb

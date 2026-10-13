@@ -66,9 +66,10 @@ struct DialogOptions
 //   ContentLayer   内容层   正式布局在这层（页面栈）
 //   OverlayLayer   覆盖层   页头 / 底栏 / 弹窗
 //   HudLayer       浮层     不吃输入；toast、常驻指示
+//   DebugLayer     调试层   **在 HudLayer 之上**，永远最后绘制；日志窗口等调试 UI
 //
 // 契约：
-//  - 只有内容层与覆盖层参与重排；背景层与浮层绝对定位，跟随视口尺寸
+//  - 只有内容层与覆盖层参与重排；背景层、浮层、调试层绝对定位，跟随视口尺寸
 //  - 页头 / 底栏是**纯显示控件，永不参与焦点**
 //  - 内容避让**不自动**：页面自己调 getHeaderInset()/getFooterInset()
 //  - 页头显隐动画期间 insets 返回**目标值**，避免逐帧重排
@@ -82,6 +83,11 @@ class Shell : public Box
     Box* getContentLayer() const { return this->contentLayer; }
     Box* getOverlayLayer() const { return this->overlayLayer; }
     Box* getHudLayer() const { return this->hudLayer; }
+    // 调试层：**在 HudLayer 之上**（子节点顺序里排在最后 = 最后绘制），
+    // 专门给调试 UI 用（日志窗口挂这里）。与 HudLayer 的区别：Hud 是业务浮层
+    // （toast / 常驻指示，后加的东西会盖住前面的），调试层保证永远在最上面。
+    // 它是个普通 Box：不可聚焦、不参与焦点链，所以挂进去的视图也不会吃到输入。
+    Box* getDebugLayer() const { return this->debugLayer; }
 
     // 页头 / 底栏视图（由上层建好交给外壳）；显隐时走 GONE（不占位）
     void setHeaderView(View* view);
@@ -220,6 +226,7 @@ class Shell : public Box
     Box* contentLayer  = nullptr;
     Box* overlayLayer  = nullptr;
     Box* hudLayer      = nullptr;
+    Box* debugLayer    = nullptr;
 
     std::vector<View*> dialogStack;
     std::vector<View*> dimStack;

@@ -110,7 +110,7 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 
 | 能力 | 说明 | 评价 |
 |---|---|---|
-| `DebugLayer`（`views/debug_layer.cpp`） | 显示日志流、当前焦点、帧耗时 | **已做**（`views/debug_window.cpp`），改用 ImGui 窗口 + 日志环形缓冲，不再为每条日志建视图 |
+| `DebugLayer`（`views/debug_layer.cpp`） | 显示日志流、当前焦点、帧耗时 | **已做**：日志面板是视图树里的 `views/debug_log_view.*`（读环形缓冲、ImDrawList 直接画，不为每条日志建视图）；线框层是 `views/debug_layer.cpp` |
 | `setFlexWrap` | Yoga 的 flex-wrap，做网格流式布局 | 已有 setter，如需网格可打开 |
 | `collapse/expand`（`Animatable` 驱动高度） | 折叠动画 | 成本低，按需 |
 | `Padding` 视图 | 纯占位 | 可有可无 |
@@ -141,6 +141,6 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 2. **RecyclerFrame** —— 数据量大了必须要有，依赖第 1 步
 3. **输入与焦点** —— 决定应用能不能真正操作，也是第 1 步"焦点自动滚动"的前提
 4. **Image** —— 内容展示的刚需
-5. ~~**DebugLayer**~~ —— 已实现为 ImGui 日志窗口（`views/debug_window.hpp`）
+5. ~~**DebugLayer**~~ —— 已实现为视图树里的日志面板（`views/debug_log_view.hpp`，挂外壳调试层）
 
 前四项做完，`bklv` 就从"能摆布局"变成"能写内容型应用"了。

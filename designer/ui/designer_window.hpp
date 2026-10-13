@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "bklv/bklv.hpp"
-#include "bklv/views/debug_window.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/file_browser.hpp"
 #include "designer/core/json_cache.hpp"
@@ -202,10 +201,13 @@ class DesignerWindow
     void loadUiState();
     void saveUiState();
 
+    // 设计器自己的日志面板（右上角，可拖可缩放；读 bklv::Logger 的环形缓冲）
+    void drawLogPanel();
+
     void setDebugPanelsForTest(bool log, bool focusOrder)
     {
         if (log)
-            this->debugWindow.toggle();
+            this->showLogPanel = !this->showLogPanel;
         this->highlightFocusOrder = focusOrder;
     }
     bool hasUnsavedChanges() const { return this->dirty; }
@@ -412,8 +414,14 @@ class DesignerWindow
     // 对比度检查：文字层颜色 vs 它下面的底色
     std::vector<std::string> contrastWarnings;
 
-    // 日志面板（复用库里的调试窗口，它读日志环形缓冲）
-    bklv::DebugWindow debugWindow;
+    // 日志面板：设计器自己是 ImGui 程序，这个面板就读库里的日志环形缓冲。
+    // （库侧不再提供 ImGui 版日志窗口了：app 里的日志界面是视图树里的
+    //  bklv::DebugLogView，挂在外壳的调试层上。）
+    bool showLogPanel    = false;
+    bool logAutoScroll   = true;
+    bool logShowLocation = true;
+    bool logMask[4]      = { true, true, true, true }; // DEBUG / INFO / WARNING / ERROR
+    uint64_t logLastVersion = 0;
 
     // 面板开关
     bool showHelp      = false;

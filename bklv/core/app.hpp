@@ -104,7 +104,7 @@ class App
     bool setTheme(const std::string& name);
 
     // 每次真正执行 YGNodeCalculateLayout 后由内部调用。用来验证"静态页面不再每帧
-    // 白算一次布局"（见 tests 与 DebugWindow 的统计）。
+    // 白算一次布局"（见 tests 与调试日志面板头上的统计）。
     static void noteLayoutPerformed();
     static unsigned int getLayoutCount();
 

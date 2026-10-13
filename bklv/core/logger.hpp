@@ -10,7 +10,7 @@
 // 与 borealis 的差别：**不**在每条日志里创建视图。
 // borealis 的 DebugLayer 每条日志 new 一个 Box + 3 个 Label 挂到 View 树上，
 // 日志量大时会不断触发 Yoga 重排。这里只往环形缓冲里写一条记录，
-// 界面用 ImGui 窗口按需读取（见 views/debug_window.hpp）。
+// 界面用视图树里的 DebugLogView 按需读取（见 views/debug_log_view.hpp）。
 
 #include <cstdint>
 #include <cstdio>

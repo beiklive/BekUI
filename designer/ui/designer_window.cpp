@@ -821,6 +821,126 @@ void DesignerWindow::saveUiState()
     designer::saveUiState(resourcePath("designer_state.json"), state, error);
 }
 
+// 设计器自己的日志面板（ImGui）。
+//
+// 库侧不再提供 ImGui 版日志窗口了：app 里的日志界面是视图树里的 bklv::DebugLogView
+// （挂在外壳的调试层上，在 HudLayer 之上）。设计器本身是 ImGui 程序，所以这块留在
+// 设计器里：读同一个 Logger 环形缓冲，工具栏 + ListClipper 裁剪。
+namespace
+{
+
+ImVec4 logLevelColor(bklv::LogLevel level)
+{
+    switch (level)
+    {
+        case bklv::LogLevel::DEBUG: return ImVec4(0.55f, 0.72f, 0.45f, 1.0f);
+        case bklv::LogLevel::INFO: return ImVec4(0.45f, 0.68f, 0.92f, 1.0f);
+        case bklv::LogLevel::WARNING: return ImVec4(0.90f, 0.76f, 0.30f, 1.0f);
+        case bklv::LogLevel::ERROR: return ImVec4(0.92f, 0.42f, 0.38f, 1.0f);
+    }
+    return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
+}
+
+const char* logLevelTag(bklv::LogLevel level)
+{
+    switch (level)
+    {
+        case bklv::LogLevel::DEBUG: return "DEBUG";
+        case bklv::LogLevel::INFO: return "INFO ";
+        case bklv::LogLevel::WARNING: return "WARN ";
+        case bklv::LogLevel::ERROR: return "ERROR";
+    }
+    return "INFO ";
+}
+
+} // namespace
+
+void DesignerWindow::drawLogPanel()
+{
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(
+        ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 20.0f, viewport->WorkPos.y + 20.0f),
+        ImGuiCond_FirstUseEver, ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(620.0f, 360.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 180.0f), ImVec2(FLT_MAX, FLT_MAX));
+
+    bool open = true;
+    if (!ImGui::Begin("bklv 日志", &open, ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::End();
+        if (!open)
+            this->showLogPanel = false;
+        return;
+    }
+    if (!open)
+        this->showLogPanel = false;
+
+    const std::deque<bklv::LogEntry>& logs = bklv::Logger::getLogs();
+    ImGui::Text("日志 %zu 条", logs.size());
+    if (ImGui::SmallButton("清空"))
+        bklv::Logger::clear();
+    ImGui::SameLine();
+    ImGui::Checkbox("自动滚动", &this->logAutoScroll);
+    ImGui::SameLine();
+    ImGui::Checkbox("位置", &this->logShowLocation);
+    ImGui::SameLine();
+    ImGui::TextUnformatted("|");
+    ImGui::SameLine();
+    ImGui::Checkbox("D", &this->logMask[0]);
+    ImGui::SameLine();
+    ImGui::Checkbox("I", &this->logMask[1]);
+    ImGui::SameLine();
+    ImGui::Checkbox("W", &this->logMask[2]);
+    ImGui::SameLine();
+    ImGui::Checkbox("E", &this->logMask[3]);
+    ImGui::Separator();
+
+    const float footer = ImGui::GetFrameHeightWithSpacing();
+    ImGui::BeginChild("##bklv_logs", ImVec2(0.0f, -footer), ImGuiChildFlags_Borders,
+        ImGuiWindowFlags_HorizontalScrollbar);
+
+    std::vector<size_t> visible;
+    visible.reserve(logs.size());
+    for (size_t i = 0; i < logs.size(); ++i)
+    {
+        const size_t level = static_cast<size_t>(logs[i].level);
+        if (level < 4 && !this->logMask[level])
+            continue;
+        visible.push_back(i);
+    }
+
+    ImGuiListClipper clipper;
+    clipper.Begin(static_cast<int>(visible.size()));
+    while (clipper.Step())
+    {
+        for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+        {
+            const bklv::LogEntry& entry = logs[visible[static_cast<size_t>(row)]];
+
+            ImGui::TextDisabled("%s", entry.time.c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(logLevelColor(entry.level), "%s", logLevelTag(entry.level));
+            ImGui::SameLine();
+            if (this->logShowLocation && !entry.location.empty())
+            {
+                ImGui::TextDisabled("%s", entry.location.c_str());
+                ImGui::SameLine();
+            }
+            ImGui::TextUnformatted(entry.message.c_str());
+        }
+    }
+
+    const uint64_t version = bklv::Logger::getVersion();
+    if (this->logAutoScroll && version != this->logLastVersion)
+    {
+        ImGui::SetScrollHereY(1.0f);
+        this->logLastVersion = version;
+    }
+
+    ImGui::EndChild();
+    ImGui::End();
+}
+
 bool DesignerWindow::restoreLastFileIfAny()
 {
     if (!this->startupViewFile.empty())
@@ -1185,7 +1305,7 @@ void DesignerWindow::drawMenuBar()
     {
         ImGui::MenuItem("校验面板", "F1", &this->showWarnings);
         if (ImGui::MenuItem("日志"))
-            this->debugWindow.toggle();
+            this->showLogPanel = !this->showLogPanel;
         ImGui::MenuItem("焦点顺序", nullptr, &this->showFocusOrder);
         ImGui::MenuItem("改动总览", nullptr, &this->showOverview);
         ImGui::Separator();
@@ -5285,9 +5405,9 @@ void DesignerWindow::draw()
     this->drawModals();
     ImGui::End();
 
-    // 日志窗口（复用库里的调试窗口，读的是日志环形缓冲）
-    if (this->debugWindow.isEnabled())
-        this->debugWindow.draw();
+    // 日志窗口（设计器自己的 ImGui 面板，读的是库里的日志环形缓冲）
+    if (this->showLogPanel)
+        this->drawLogPanel();
 
     // 帧级自动入栈：这一帧结束时发现文档和上一帧不同，就把上一帧的状态压进撤销栈。
     // 输入框是"改完才返回 true"，所以只能在帧边界比较，粒度 = 一次改动。

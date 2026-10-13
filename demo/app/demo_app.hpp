@@ -38,9 +38,9 @@ class DemoApp
 
     void update();
 
-    void drawWindows() { this->debugWindow.draw(); }
-    void setLogWindowEnabled(bool enabled) { this->debugWindow.setEnabled(enabled); }
-    bool isLogWindowEnabled() const { return this->debugWindow.isEnabled(); }
+    // 日志窗口：视图树里的 bklv::DebugLogView，挂在 Shell 的**调试层**（HudLayer 之上）
+    void setLogWindowEnabled(bool enabled);
+    bool isLogWindowEnabled() const;
 
     // 供外部统计展示（列表页没建过时为 nullptr —— 页面是懒加载的）
     bklv::View* getMainList() const { return this->mainList; }
@@ -116,7 +116,12 @@ class DemoApp
     int sweepFrames = 0;
     int sweepTick   = 0;
 
-    bklv::DebugWindow debugWindow;
+    // BKLV_DEMO_LOG=1：启动就打开日志窗口（截图/验收用）
+    // BKLV_DEMO_LOG_SPAM=<每帧条数>：每帧写几条日志，压测日志面板
+    int logSpam        = 0;
+    int logSpamCounter = 0;
+
+    bklv::DebugLogView* logView = nullptr;
 };
 
 } // namespace demo

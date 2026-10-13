@@ -27,7 +27,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 | 目录 | 内容 |
 |---|---|
 | `core/` | `View` / `Box`（Flexbox 与节点管理）/ `Style`·`Theme` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / `Logger` |
-| `views/` | `Label`（换行·省略号·对齐）、`Image`、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`、`DebugWindow` |
+| `views/` | `Label`（换行·省略号·对齐）、`Image`、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`、`DebugLogView`（日志面板） |
 | `backends/` | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
 | `platforms/` | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现 |
 

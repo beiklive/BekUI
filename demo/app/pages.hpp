@@ -34,6 +34,8 @@ struct PageDeps
     std::function<void(bool)> setFooterVisible;
     std::function<void(bool)> setBarsAnimated;
     std::function<void(float)> setBarAnimationDuration;
+    // 日志窗口（视图树里的调试面板，挂在外壳调试层上）
+    std::function<void(bool)> setLogWindowVisible;
 };
 
 void setPageDeps(const PageDeps& deps);

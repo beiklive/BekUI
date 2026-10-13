@@ -87,6 +87,10 @@ Box* buildSettingsPage()
     switches->addView(animCell);
 
     BooleanCell* logCell = new BooleanCell(getStr("settings/show_log"), false);
+    logCell->setOnChange([deps](bool value) {
+        if (deps.setLogWindowVisible)
+            deps.setLogWindowVisible(value);
+    });
     switches->addView(logCell);
 
     // 调试层（对应 borealis Settings 页的 "Debug Layer" 与 XML 的 wireframe）

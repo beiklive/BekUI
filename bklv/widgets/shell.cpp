@@ -45,12 +45,15 @@ Shell::Shell()
     this->contentLayer  = makeLayer();
     this->overlayLayer  = makeLayer();
     this->hudLayer      = makeLayer();
+    this->debugLayer    = makeLayer();
 
-    // 绘制顺序 = 子节点顺序：背景 → 内容 → 覆盖 → 浮层
+    // 绘制顺序 = 子节点顺序：背景 → 内容 → 覆盖 → 浮层 → 调试层
+    // （调试层最后：日志窗口必须在所有层之上）
     this->addView(this->backdropLayer);
     this->addView(this->contentLayer);
     this->addView(this->overlayLayer);
     this->addView(this->hudLayer);
+    this->addView(this->debugLayer);
 }
 
 void Shell::setHeaderView(View* view)
@@ -101,10 +104,11 @@ void Shell::setSafeAreaInsets(float top, float right, float bottom, float left)
     this->applySafeAreaToLayers();
 }
 
-// 四层统一按安全区内缩；内容层与覆盖层参与布局，背景层与浮层跟随视口
+// 各层统一按安全区内缩；内容层与覆盖层参与布局，背景层/浮层/调试层跟随视口
 void Shell::applySafeAreaToLayers()
 {
-    Box* layers[] = { this->backdropLayer, this->contentLayer, this->overlayLayer, this->hudLayer };
+    Box* layers[] = { this->backdropLayer, this->contentLayer, this->overlayLayer, this->hudLayer,
+        this->debugLayer };
     for (Box* layer : layers)
     {
         if (layer == nullptr)

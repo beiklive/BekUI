@@ -41,6 +41,11 @@ DemoApp::DemoApp()
     this->shell->getOverlayLayer()->addView(new Padding());
     this->shell->setFooterView(this->footer);
 
+    // ---- 日志窗口：挂在**调试层**上（在 HudLayer 之上，永远最后绘制）----
+    // 它读的是 Logger 的环形缓冲（显示全部日志），不是 ImGui 窗口，也不吃输入。
+    this->logView = new DebugLogView();
+    this->shell->getDebugLayer()->addView(this->logView);
+
     // ---- 内容：左 侧栏 + 右 子页面 ----
     this->contentRoot = new Box(Axis::COLUMN);
     this->contentRoot->setWidthPercentage(100.0f);
@@ -83,9 +88,9 @@ DemoApp::DemoApp()
 
     Button* logButton = new Button(getStr("app/show_log"));
     logButton->setOnClick([this, logButton] {
-        this->debugWindow.toggle();
-        logButton->setText(this->debugWindow.isEnabled() ? getStr("app/hide_log")
-                                                        : getStr("app/show_log"));
+        this->setLogWindowEnabled(!this->isLogWindowEnabled());
+        logButton->setText(this->isLogWindowEnabled() ? getStr("app/hide_log")
+                                                     : getStr("app/show_log"));
     });
     topRow->addView(logButton);
     right->addView(topRow);
@@ -120,6 +125,7 @@ DemoApp::DemoApp()
     deps.setFooterVisible       = [this](bool visible) { this->setFooterVisible(visible); };
     deps.setBarsAnimated        = [this](bool animated) { this->setBarsAnimated(animated); };
     deps.setBarAnimationDuration = [this](float seconds) { this->setBarAnimationDuration(seconds); };
+    deps.setLogWindowVisible     = [this](bool visible) { this->setLogWindowEnabled(visible); };
     setPageDeps(deps);
 
     // B 键路由的第 3 级：内容层还有下钻的层 → 退回上一层
@@ -155,6 +161,22 @@ DemoApp::DemoApp()
     this->selectPage(startPage, false);
     this->pendingStartPage = startPage != 0 ? (int)startPage : -1;
 
+    // 日志窗口（调试/验收用）：BKLV_DEMO_LOG=1 打开；BKLV_DEMO_LOG_SPAM=<每帧条数> 压测。
+    // 压测时盯面板头部的"布局"计数：日志再多也不该让它涨（DebugLogView 零重排）。
+    if (const char* openLog = std::getenv("BKLV_DEMO_LOG"))
+    {
+        if (std::atoi(openLog) != 0)
+            this->setLogWindowEnabled(true);
+    }
+    if (const char* spam = std::getenv("BKLV_DEMO_LOG_SPAM"))
+        this->logSpam = std::atoi(spam);
+
+    // F1 开关日志窗口：面板在**所有层之上**，视觉上会盖住右上角那排按钮
+    // （但调试层不吃输入，按钮照样点得到），所以给一个随时能按的快捷键。
+    getInputManager().setSystemAction(ImGuiKey_F1, [this] {
+        this->setLogWindowEnabled(!this->isLogWindowEnabled());
+    });
+
     // 逐页自动切换（调试/验收用）：BKLV_DEMO_SWEEP=<每页停留帧数>。
     // 切页会 delete 旧页，这个开关能一次跑遍 14 页的"建 → 删"，把
     // "旧页被删之后才暴露"的问题（悬空订阅 / 异步回调 / 静态指针）当场抓出来。
@@ -179,6 +201,19 @@ DemoApp::DemoApp()
         (int)this->pages.size(), (int)startPage);
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_INFO("UI 缩放：%.3f（主题尺寸按 1280x720 写）", (double)getUiScale());
+}
+
+void DemoApp::setLogWindowEnabled(bool enabled)
+{
+    if (this->logView == nullptr)
+        return;
+
+    this->logView->setEnabled(enabled);
+}
+
+bool DemoApp::isLogWindowEnabled() const
+{
+    return this->logView != nullptr && this->logView->isEnabled();
 }
 
 DemoApp::~DemoApp()
@@ -432,6 +467,17 @@ bool DemoApp::handleBackRequest()
 
 void DemoApp::update()
 {
+    // 日志压测：每帧写几条（含 文件:行号 与级别，覆盖日志面板的两种列）
+    for (int i = 0; i < this->logSpam; i++)
+    {
+        this->logSpamCounter++;
+        if (this->logSpamCounter % 3 == 0)
+            BKLV_LOG_WARNING("日志压测 #%d（WARNING 级别，验证颜色与过滤）", this->logSpamCounter);
+        else
+            BKLV_LOG_INFO("日志压测 #%d：这一条比较长，用来验证自动换行与滚动跟随是否正常",
+                this->logSpamCounter);
+    }
+
     // 逐页自动切换（BKLV_DEMO_SWEEP）：走和用户一样的路径（侧栏聚焦 → 切页）
     if (this->sweepFrames > 0 && !this->pages.empty())
     {

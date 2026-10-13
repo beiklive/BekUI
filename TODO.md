@@ -29,7 +29,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 |---|---|
 | 视图核心 | `View`（一视图一 `YGNode`）、`Box`（Flexbox 全套 + 节点管理）、`Style`/`Theme`、焦点与导航、`Animatable`/`Ticking`/缓动 |
 | 控件 | `Label`（换行 / 省略号 / 对齐 / 缓存）、`Image`（缩放模式 / 圆角）、`ScrollingFrame`（惯性 + 滚动条 + 焦点跟随）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`（底部按键提示） |
-| 调试 | `DebugWindow`（ImGui 日志窗口，级别过滤 + 环形缓冲）、`Logger`（带文件行号 / 时间戳） |
+| 调试 | `DebugLogView`（视图树里的日志面板：级别过滤 + 环形缓冲 + 换行/滚动，挂外壳调试层）、`DebugLayer`（线框）、`Logger`（带文件行号 / 时间戳） |
 | 平台 | `Platform` 抽象 + `PlatformSDL3` / `PlatformSwitch`；手柄抽象 `GamepadSource`；电池 / 网络 / 亮度 / 剪贴板 / 语言等系统能力接口 |
 | 后端 | 四个 `RenderBackend` 实现 + Windows 的 GL 运行时加载（imgl3w） |
 | 图片 | `image_decoder` 抽象：macOS 走 ImageIO，其余走 stb_image |
@@ -274,7 +274,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | recycler | `views/recycler` | 已有 |
 | progress_spinner | `views/progress_spinner` | 已有 |
 | hint | `views/hints` | 已有（等价） |
-| debug_layer | `views/debug_window` | 已有（等价，用 ImGui 窗口） |
+| debug_layer | `views/debug_log_view` + `views/debug_layer` | 已有（日志面板是视图、零重排；线框层也是视图） |
 | rectangle | `widgets/rectangle` | 新增（外观驱动，零绘制代码） |
 | button | `widgets/button` | 新增（外观驱动 + ghost 变体） |
 | header | `widgets/header` | 新增 |
@@ -401,7 +401,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 | 绘制 | NanoVG | ImGui `ImDrawList` |
 | 布局 | Yoga，但界面用 XML 描述 | Yoga，界面用 C++ 直接写 |
 | 主题 / 样式 | `Style` + 主题文件 | 同样是字符串 key 的 `Style`/`Theme`（同名设计） |
-| 日志界面 | `DebugLayer` 是 View，每条日志建 3 个 Label | `DebugWindow` 是 ImGui 窗口，读环形缓冲（不为每条日志建视图） |
+| 日志界面 | `DebugLayer` 是 View，每条日志建 3 个 Label | `DebugLogView` 是 View + 读环形缓冲 + `ImDrawList` 直接画（不为每条日志建视图、不重排） |
 | 页面 | `Activity` 栈 | 暂无（P1） |
 
 **明确不做**
