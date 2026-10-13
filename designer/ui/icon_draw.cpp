@@ -1,5 +1,6 @@
 #include "designer/ui/icon_draw.hpp"
 
+#include "bklv/core/icon_font.hpp"
 #include "designer/core/icon_align.hpp"
 
 #include <cmath>
@@ -11,6 +12,36 @@ namespace
 {
 
 ImFont* g_iconFont = nullptr;
+
+// designer 的 Icon → 库里的图标 id（库自带 Material Icons）
+bklv::icon::Id libraryIcon(Icon icon)
+{
+    switch (icon)
+    {
+        case Icon::WIDGET: return bklv::icon::Id::WIDGETS;
+        case Icon::PAGE: return bklv::icon::Id::DESCRIPTION;
+        case Icon::TABLE: return bklv::icon::Id::TABLE_CHART;
+        case Icon::LAYER: return bklv::icon::Id::LAYERS;
+        case Icon::STATE: return bklv::icon::Id::TUNE;
+        case Icon::FIELD: return bklv::icon::Id::ADD;
+        case Icon::EYE: return bklv::icon::Id::VISIBILITY;
+        case Icon::LAYERS_ONLY: return bklv::icon::Id::LAYERS_CLEAR;
+        case Icon::EXPAND: return bklv::icon::Id::UNFOLD_MORE;
+        case Icon::COLLAPSE: return bklv::icon::Id::UNFOLD_LESS;
+        case Icon::GRID: return bklv::icon::Id::GRID_ON;
+        case Icon::ALIGN: return bklv::icon::Id::FORMAT_ALIGN_LEFT;
+        case Icon::STRIP: return bklv::icon::Id::REORDER;
+        case Icon::FIT: return bklv::icon::Id::FULLSCREEN;
+        case Icon::RESET: return bklv::icon::Id::REFRESH;
+        case Icon::COPY: return bklv::icon::Id::CONTENT_COPY;
+        case Icon::PASTE: return bklv::icon::Id::CONTENT_PASTE;
+        case Icon::PLUS: return bklv::icon::Id::ADD;
+        case Icon::TRASH: return bklv::icon::Id::DELETE;
+        case Icon::CHEVRON_RIGHT: return bklv::icon::Id::CHEVRON_RIGHT;
+        case Icon::CHEVRON_DOWN: return bklv::icon::Id::EXPAND_MORE;
+        default: return bklv::icon::Id::NONE;
+    }
+}
 
 // Material Icons 码位表（Unicode 私有区）
 unsigned int codepointFor(Icon icon)
@@ -66,7 +97,21 @@ void drawIcon(ImDrawList* list, Icon icon, ImVec2 c, float size, ImU32 color)
     if (list == nullptr || icon == Icon::NONE)
         return;
 
-    // 装了 Material Icons 就用字形（形状更正规），否则走下面的矢量画法
+    // 优先用**库自带**的 Material Icons 字形（用户要求必须用这个字体）
+    if (bklv::icon::hasFont())
+    {
+        const char* glyph = bklv::icon::glyph(libraryIcon(icon));
+        if (glyph != nullptr && glyph[0] != 0)
+        {
+            ImFont* font           = bklv::icon::font();
+            const ImVec2 textSize  = font->CalcTextSizeA(size, FLT_MAX, 0.0f, glyph);
+            // 纵向按"行高取中"落位（和矢量图标同一条规则，不许偏高）
+            list->AddText(font, size, ImVec2(c.x - textSize.x * 0.5f, c.y - size * 0.5f), color,
+                glyph);
+            return;
+        }
+    }
+
     if (g_iconFont != nullptr)
     {
         const unsigned int cp = codepointFor(icon);
