@@ -475,6 +475,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   判断"字体里有没有"用 `ImFont::IsGlyphInFont`（走 stbtt，不是查范围），再配
   `GetFontBaked(大小)->FindGlyphNoFallback()` 滤掉 cmap 里映射到空槽的码位。
   **注意 `ImFont::FindGlyphNoFallback` 在 1.92 里搬到了 `ImFontBaked` 上**，ImFont 上没有。
+  `switch_icons.ttf` 里 **U+E154 起全是占位字形**（空框/缺字方块），所以
+  `getIconFontCodepoints()` 裁到 U+E153 为止（`SWITCH_ICON_LAST_USABLE`）；
+  `scanFontCodepoints()` 保持"原样扫"，要什么范围自己裁。
+  另外 `setIconFont(ImFont*)` 可以手动指定图标字体（默认由 `loadFonts()` 装好后设）。
 - **页面里不要再套 `ScrollingFrame`**（demo 约定）：非自滚动页（`selfScrolling=false`）由
   宿主的外层滚动器负责滚动，页面的外层框是 `height: auto` —— 里面再放一个
   `grow/shrink` 的滚动器拿不到确定高度，高度会算成 0，**整页内容都看不见**（图标总览页踩过）。

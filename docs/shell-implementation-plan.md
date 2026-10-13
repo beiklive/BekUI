@@ -1271,3 +1271,28 @@ tests/icon_font_test → 434 项 0 失败（新增：扫字体、码位升序/�
 demo 截图：page_13 顶部（Switch 图标 1022 + 网格 10/行）、滚动到 Material 图标 2188 的 header 与网格
 demo 逐页 14/14 exit=0；BKLV_DEMO_SWEEP=2 正常
 ```
+
+---
+
+## v27 图标总览页：裁掉 switch 字体的占位字形（U+E154 起）
+
+用户反馈：`switch_icons.ttf` 从 **U+E154** 开始全是占位字形（空框/缺字方块），不用展示。
+
+- `bklv::getIconFontCodepoints()` 现在只到 **U+E153**（常量 `SWITCH_ICON_LAST_USABLE`）：
+  扫出来的码位是升序的，占位都在尾部，直接切尾（不额外过滤）。
+  `scanFontCodepoints()`（通用扫描）保持原样，要什么范围由调用方裁。
+- 同时补了 `bklv::setIconFont(ImFont*)`：默认由 `loadFonts()` 装好后设，
+  自己管字体装载的宿主/测试可以直接指定。
+- 效果：Switch 段从 **1022 个**变成 **340 个**，段落末尾正好停在 U+E153（真图标），
+  紧接着就是 Material 段的 header；页面总字形数 340 + 2188 = 2528。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2378 项）
+python3 scripts/check_naming.py → 命名检查：137 个文件全部符合约定
+tests/icon_font_test 438 项 0 失败（新增：设了图标字体后列可用码位、末位 <= U+E153、
+                        裁掉占位后比字体里的码位少、结果被缓存）
+demo 截图：page_13 顶部 Switch 图标「共 340 个字形」；滚到段落末尾，最后一个码位是 U+E153，
+           下面是 Material 图标「共 2188 个字形」
+```

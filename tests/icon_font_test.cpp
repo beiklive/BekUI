@@ -128,11 +128,18 @@ int main()
         check(&icon::allGlyphs() == &materialGlyphs, "allGlyphs() 结果被缓存");
 
         // Switch 图标字体：同一个扫描器（总览页的另一个 header 用它）
-        const std::vector<unsigned int> switchCodepoints = getIconFontCodepoints();
-        check(switchCodepoints.empty(), "没设图标字体时 getIconFontCodepoints() 是空表");
+        check(getIconFontCodepoints().empty(), "没设图标字体时 getIconFontCodepoints() 是空表");
         const std::vector<unsigned int> scanned = scanFontCodepoints(switchIcons);
         check(scanned.size() > 100, "Switch 图标字体里有一百多个字形");
         check(scanned.front() >= 0xE000 && scanned.back() <= 0xF8FF, "扫出来的都在私有区");
+
+        // U+E154 起是这份字体自带的占位字形（空框）→ "可用图标"列表要裁掉
+        setIconFont(switchIcons);
+        const std::vector<unsigned int>& usable = getIconFontCodepoints();
+        check(!usable.empty(), "设了图标字体后能列出可用图标");
+        check(usable.back() <= 0xE153, "U+E154 起的占位字形被裁掉（最后一个不超过 E153）");
+        check(usable.size() < scanned.size(), "裁掉占位后比字体里的码位少");
+        check(&getIconFontCodepoints() == &usable, "结果被缓存（重复取是同一个对象）");
     }
 
     check(std::string(icon::glyphByName("widgets")) != "", "按名字也能取字形");

@@ -31,6 +31,10 @@ static const ImWchar PUA_RANGES[] = { 0xE000, 0xF8FF, 0 };
 constexpr unsigned int PUA_FIRST = 0xE000;
 constexpr unsigned int PUA_LAST  = 0xF8FF;
 
+// switch_icons.ttf 里 U+E154 起全是占位字形（空框/缺字方块），不是真图标 ——
+// "列出所有可用图标"的接口裁到这里为止（验收时逐屏看过确认的边界）。
+constexpr unsigned int SWITCH_ICON_LAST_USABLE = 0xE153;
+
 // 图标字体：hint 栏的按键字形（A/B/X/Y、方向键…）从这里取。
 // Switch 上系统共享字体的 NintendoExt 就带这些字形，桌面则随包带 switch_icons.ttf。
 ImFont* g_iconFont = nullptr;
@@ -163,6 +167,11 @@ std::vector<unsigned int> scanFontCodepoints(ImFont* font)
     return result;
 }
 
+void setIconFont(ImFont* font)
+{
+    g_iconFont = font;
+}
+
 const std::vector<unsigned int>& getIconFontCodepoints()
 {
     // 缓存：字体或字体版本变了才重扫（扫一遍是 6400 次查表，不值得每帧做）
@@ -172,9 +181,14 @@ const std::vector<unsigned int>& getIconFontCodepoints()
 
     if (cachedFont != g_iconFont || cachedGen != g_fontGeneration)
     {
-        cached      = scanFontCodepoints(g_iconFont);
-        cachedFont  = g_iconFont;
-        cachedGen   = g_fontGeneration;
+        cached = scanFontCodepoints(g_iconFont);
+
+        // 扫出来的码位是升序的，占位字形都在尾部 → 直接切尾
+        while (!cached.empty() && cached.back() > SWITCH_ICON_LAST_USABLE)
+            cached.pop_back();
+
+        cachedFont = g_iconFont;
+        cachedGen  = g_fontGeneration;
     }
 
     return cached;
@@ -266,7 +280,7 @@ void loadFonts()
                 PUA_RANGES);
             if (icon != nullptr)
             {
-                g_iconFont = icon;
+                setIconFont(icon);
                 Logger::info("已加载图标字体：resources/font/switch_icons.ttf");
             }
             else
