@@ -106,6 +106,8 @@ int main()
     check(!getInputManager().hasModal(), "popDialog 后退出模态");
     check(shell->getTopDialog() == nullptr, "栈空后栈顶为空");
     check(!shell->hasDialog(), "弹出后 hasDialog 为假");
+    check(!isInside(dialog, shell->getOverlayLayer()), "弹窗已从覆盖层摘掉（不留残影）");
+    check(dialog->getParent() == nullptr, "摘掉后没有父节点");
 
     // 7c) 系统键注册表（无窗口下只能测注册/查询/注销；按键触发由有窗口的运行验证）
     getInputManager().setSystemAction(ImGuiKey_F12, [] {});

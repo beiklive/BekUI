@@ -255,8 +255,16 @@ void Shell::popDialog(View* dialog)
     if (dialog != nullptr && this->dialogStack.back() != dialog)
         return;
 
+    View* top = this->dialogStack.back();
     this->dialogStack.pop_back();
+
+    // 顺序要紧（F3）：先在**仍在树里**时 popModal —— 模态栈用它保存的原焦点恢复，
+    // 而它只校验 savedFocus->getParent()；若先摘视图，恢复出来的焦点会落到已脱离树的面板上。
     getInputManager().popModal();
+
+    // 再从树上摘掉：不摘的话弹窗会永久留在覆盖层里（既泄漏又继续被绘制）
+    if (top != nullptr && top->getParent() == this->overlayLayer)
+        this->overlayLayer->removeView(top);
 }
 
 } // namespace bklv
