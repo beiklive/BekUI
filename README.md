@@ -76,11 +76,27 @@ git submodule update --init --recursive
 
 **需要 CMake ≥ 3.24**（SDL3 用 `$<LINK_LIBRARY:FRAMEWORK,...>` 链接 macOS 系统框架、
 tweeny 要 ≥ 3.23）。版本不够时配置阶段会直接告诉你缺什么、怎么升级。
-除此之外只需要 `cmake`，SDL3 作为子目录一起编，**不需要 `brew install sdl3`**：
+除此之外只需要 `cmake`，SDL3 作为子目录一起编，**不需要 `brew install sdl3`**。
+
+推荐用仓库里的 `CMakePresets.json`（CLI 与 VS Code / CLion 共用同一份配置）：
+
+```bash
+cmake --preset gl && cmake --build --preset gl     # 产物在 dist/
+ctest --preset gl                                  # 无窗口测试（37 个）
+cmake --preset vk && cmake --build --preset vk     # 产物在 dist/vk/
+```
+
+不想用 preset 就手写，效果一样：
 
 ```bash
 cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 ```
+
+> **别配到 `<仓库>/build` 本身。** 本项目的约定是"一个后端一个构建目录"（`build/gl`、`build/vk`），
+> `build/` 只是它们的父目录、从来没有 CMakeCache。VS Code 的 CMake Tools 默认会去构建
+> `build/`，于是报 `not a CMake build directory (missing CMakeCache.txt)` ——
+> 仓库里的 `.vscode/settings.json` 已经把它指到 `gl` preset；
+> 手动改的话是 `F1` → `CMake: Select Configure Preset` → 选 `gl`。
 
 产物在 `dist/`。想编 Vulkan 版就换一个构建目录，两版可以并存：
 

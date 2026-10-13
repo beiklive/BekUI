@@ -11,13 +11,19 @@
 ### 构建
 
 构建入口只有一个：根目录的 `CMakeLists.txt`。后端是编译期决定的，所以
-「每个 demo 都能编 GL 和 Vulkan 两版」靠**两个构建目录**实现：
+「每个 demo 都能编 GL 和 Vulkan 两版」靠**两个构建目录**实现。
+仓库根有 `CMakePresets.json`，CLI 与 IDE 都用它（**不要再手写 `-B build`**）：
 
 ```bash
 # GL
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
+cmake --preset gl && cmake --build --preset gl      # 等价 -B build/gl -DBKLV_GRAPHICS=gl
+ctest --preset gl
 
 # Vulkan
+cmake --preset vk && cmake --build --preset vk      # 等价 -B build/vk -DBKLV_GRAPHICS=vk
+
+# 不想用 preset 时手写也行（效果一样）
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
 
 # 只编某个目标（BKLV_TARGETS 按完整名字匹配，可逗号分隔多个）；
@@ -67,6 +73,11 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 ### 改构建时注意
 
+- **`<仓库>/build` 本身不是构建目录**：我们的构建目录是 `build/gl` / `build/vk`，
+  `build/` 只是父目录。VS Code 的 CMake Tools 默认去构建 `build/`，会报
+  `not a CMake build directory (missing CMakeCache.txt)` —— 仓库里的
+  `.vscode/settings.json` 已经把它指向 `gl` preset（`cmake.useCMakePresets: always`），
+  手动选的话是 `F1` → `CMake: Select Configure Preset` → `gl`。
 - **多个构建目录共用同一个 `dist/`**：CMake 的输出目录固定是 `${CMAKE_SOURCE_DIR}/dist`
   （VK 是 `dist/vk/`），所以任何额外构建目录（`build/asan`、`build/dbg`、`/tmp/xxx`）
   都会把可执行文件写进同一个 `dist/`。它们的产物时间戳比 `build/gl` 的目标文件新，

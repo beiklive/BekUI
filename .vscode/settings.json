@@ -1,0 +1,11 @@
+{
+  // CMake Tools：本项目用 CMakePresets.json 管理配置（build/gl、build/vk）。
+  // 不设这几项的话，VS Code 默认会去构建 <仓库>/build —— 那个目录从来没配置过，
+  // 于是报 "not a CMake build directory (missing CMakeCache.txt)"。
+  "cmake.useCMakePresets": "always",
+  "cmake.configurePreset": "gl",
+  "cmake.buildPreset": "gl",
+  "cmake.testPreset": "gl",
+  "cmake.configureOnOpen": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+}

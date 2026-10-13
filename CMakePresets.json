@@ -1,0 +1,62 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "BKLV_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "gl",
+      "displayName": "OpenGL（产物到 dist/）",
+      "description": "桌面默认后端。构建目录 build/gl",
+      "inherits": "base",
+      "cacheVariables": {
+        "BKLV_GRAPHICS": "gl"
+      }
+    },
+    {
+      "name": "vk",
+      "displayName": "Vulkan（产物到 dist/vk/）",
+      "description": "需要 Vulkan SDK。构建目录 build/vk",
+      "inherits": "base",
+      "cacheVariables": {
+        "BKLV_GRAPHICS": "vk"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "gl",
+      "displayName": "构建 GL 版（demo + designer + 测试）",
+      "configurePreset": "gl"
+    },
+    {
+      "name": "vk",
+      "displayName": "构建 Vulkan 版",
+      "configurePreset": "vk"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "gl",
+      "displayName": "跑 GL 版无窗口测试（ctest）",
+      "configurePreset": "gl",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "vk",
+      "displayName": "跑 Vulkan 版无窗口测试（ctest）",
+      "configurePreset": "vk",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
