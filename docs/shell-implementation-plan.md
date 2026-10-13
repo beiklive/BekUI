@@ -693,3 +693,45 @@ python3 scripts/check_naming.py
   -> 附录 D1-5 的"需要先补"是错的，第 5 步直接复用（已在正文改正）。
 - 第 4 步执行者 `dc63fa04` 连续两轮零文件改动（`git status` 干净、无 `tests/shell_dialog_test.cpp`）。
   按既定策略：**不再派人**，第 4 步由 Lead 自己一小块一小块做（每轮一个可验证的增量）。
+
+---
+
+## v14 第 4 步剩余部分的落点（已定位，下一轮直接用）
+
+查证结果：**输入是逐帧泵** —— `InputManager::handleNavigation()`（`bklv/core/input.cpp:142`）里
+先累加 `clock += getFrameDeltaSeconds()`，再按"按住 + 边缘状态"处理方向键/手柄，
+长按重复走 `KeyRepeater`（`setRepeatDelay/setRepeatInterval`）。方法清单（grep）：
+`update`(:97)、`isKeyDownAny`(:111)、`setRepeatDelay`(:120)、`setRepeatInterval`(:131)、
+`handleNavigation`(:142)、`markNavigationBlockedByPolicy`(:173)、`navigate`(:197)、
+`triggerFocusEdgeHit`(:249)、`shakeHighlightOnEdge`(:269)、`canFocus`(:277)、
+`ensureFocusVisible`(:299)、`setNavigationWrap`(:315)。
+
+### 三件事怎么接（下一轮照此实现）
+
+1. **`setSystemAction(int key, std::function<void()>)`**
+   - 落点：`handleNavigation()` **最顶部**（模态过滤之前）—— 这就是"优先级高于模态"的实现方式：
+     模态只挡导航/指针命中，不挡系统键
+   - 触发**必须是边缘**（按下那一下），不能按"按住"判定，否则每帧触发；
+     仓库里已有的 `KeyRepeater` 可以复用（`keyPressed(key)` 风格），或记录上一帧的按下集合做边缘比较
+   - 建议 API：`void setSystemAction(int key, std::function<void()> handler);` +
+     `void clearSystemAction(int key);`；回调在**主线程**执行（与 `task::delay` 同约定）
+   - 测试：弹窗打开时系统键仍触发；松手后再按再触发（边缘语义）；未注册的键不触发
+
+2. **B 键路由优先级**：弹窗 → 内容页 → shell 默认
+   - 现有 `View::triggerAction` 是**沿父链冒泡**；分层后页头/内容/底栏不再是父子，
+     所以要在 Shell 上显式转发：先问 `getTopDialog()` 子树，再问内容层，最后走 Shell 默认
+   - `setOnBackRequested(std::function<bool()>)`：返回 true 表示已处理（Shell 默认动作）
+   - 页头/底栏**不参与**（纯显示控件，用户明确要求）
+
+3. **`enterLayer(Box*)` / `leaveLayer()`**（第 3 步遗留）
+   - 进层：`remember()` → 取该层默认焦点；出层：`loadFocus()` → 失败退该范围默认焦点 →
+     都没有则**保持当前焦点不动**
+   - 时序：层**显示完成后**才切焦点（与既有"转场期间焦点先不挪"一致）；
+     关闭**开始**时就恢复，视图等动效播完再摘
+
+### dim 遮罩（还差的一小块）
+
+遮罩色**必须来自主题**（`color.common.overlay`，各主题 `colors.json` 第一组已有），
+不要在代码里硬编码 rgba；遮罩是 `Box`，四边 0 铺满覆盖层，插在弹窗**之前**入树（绘制在下）；
+`closeOnDimClick` 时给它挂点击关闭（点击只聚焦不执行动作的约定要注意：遮罩要显式
+`onPointerAction = true` 才会"点一下就关"）。
