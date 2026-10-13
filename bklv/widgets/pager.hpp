@@ -27,7 +27,9 @@
 #include <map>
 #include <string>
 
+#include "bklv/core/time.hpp"
 #include "bklv/core/view.hpp"
+#include "bklv/widgets/shell.hpp" // ContentTransition（页面/内容栈转场共用一套枚举）
 
 namespace bklv
 {
@@ -90,6 +92,19 @@ class Pager
     void show(const std::string& id);
 
     View* getCurrentView() const { return this->currentView; }
+
+    // ---- 同级换页的转场（方案 5.5：转场归 Pager，用**绘制期变换**，零重排）----
+    //
+    // 只做"新页滑入/淡入"：旧页在切页时就删了（附录 D1 的删除顺序不能反），
+    // 所以没有旧页滑出的那一段 —— 要双向滑动得在过渡期把两页都留在树上，
+    // 属于后续增量（见方案 v22 的已知遗留）。
+    void setPageTransition(ContentTransition value) { this->pageTransition = value; }
+    ContentTransition getPageTransition() const { return this->pageTransition; }
+    void setPageTransitionDuration(float seconds) { this->pageTransitionDuration = seconds; }
+    float getPageTransitionDuration() const { return this->pageTransitionDuration; }
+    bool isPageTransitioning() const { return this->transitionProgress < 1.0f; }
+    // 确定性步进（update() 内部按帧间隔调；测试直接喂固定 dt）
+    void stepPageTransition(float deltaSeconds);
     const std::string& getCurrentPageId() const { return this->currentPageId; }
     bool isShowing(const std::string& id) const
     {
@@ -129,6 +144,12 @@ class Pager
 
   private:
     View* buildPage(const std::string& id, PageBuildResult& resultOut);
+    // 新页的滑入/淡入（不负责旧页：旧页此刻已经被 delete）
+    void beginPageTransition(View* page);
+    // 把记忆的滚动位置落到槽上（update() 与 loadPageStateInternal 共用）
+    void applyPendingScrollOffset();
+    void applyPageTransition(float progress);
+
     View* makePlaceholder(const std::string& id, PageBuildResult result);
     // 焦点是否在"当前页"里（页面级记忆的还原条件，见 .cpp 里的无限递归注释）
     bool isFocusInsidePage() const;
@@ -151,6 +172,14 @@ class Pager
     bool placeholderShown = false;
     // show() 重入保护（焦点交接可能触发容器回调 → 又一次 show）
     bool showing = false;
+
+    // 同级换页转场
+    ContentTransition pageTransition = ContentTransition::SLIDE_FADE;
+    float pageTransitionDuration     = 0.22f; // 秒
+    Animatable pageAnim{ 1.0f };
+    View* transitionPage             = nullptr;
+    float transitionProgress         = 1.0f;  // 1 = 没有转场
+    float transitionWidth            = 0.0f;
     // 待落位的滚动位置（< 0 表示没有）。见 update() 的注释。
     float pendingScrollOffset = -1.0f;
 

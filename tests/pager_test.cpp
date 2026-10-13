@@ -338,6 +338,84 @@ int main()
         delete root;
     }
 
+    std::printf("\n== 5. 同级换页的转场（绘制期变换，零重排）==\n");
+    {
+        resetInput();
+
+        Box* root = new Box(Axis::COLUMN);
+        root->setDimensions(400.0f, 300.0f);
+        ScrollingFrame* slot = new ScrollingFrame();
+        slot->setDimensions(400.0f, 200.0f);
+        root->addView(slot);
+        layoutTree(root, 400.0f, 300.0f);
+        input.setRoot(root);
+
+        Pager* pager = new Pager();
+        pager->setSlot(slot);
+        pager->setPageFactory("a", [](PageContext&) -> View* { return makePage(); });
+        pager->setPageFactory("b", [](PageContext&) -> View* { return makePage(); });
+        pager->setPageTransitionDuration(0.2f);
+
+        check(!pager->isPageTransitioning(), "初始没有转场");
+        checkEqualInt((int)pager->getPageTransition(), (int)ContentTransition::SLIDE_FADE,
+            "默认是 SLIDE_FADE");
+
+        // 首屏：没有旧页可让位 → 不做转场
+        pager->show("a");
+        check(!pager->isPageTransitioning(), "首屏不产生转场（没有旧页）");
+        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "首屏不透明");
+
+        layoutTree(root, 400.0f, 300.0f);
+
+        // 切页：新页从右边滑入 + 淡入
+        pager->show("b");
+        View* pageB = pager->getCurrentView();
+        check(pager->isPageTransitioning(), "切页进入转场");
+        check(pageB->getTransform().translateX > 0.0f, "新页从右侧开始（位移为正）");
+        check(pageB->getAlpha() < 0.2f, "新页起始接近透明");
+
+        const float startX = pageB->getTransform().translateX;
+        pager->stepPageTransition(0.1f);
+        check(pager->isPageTransitioning(), "半程仍在转场");
+        check(pageB->getTransform().translateX < startX, "新页在向左走");
+        check(pageB->getAlpha() > 0.0f, "新页在变清晰");
+
+        pager->stepPageTransition(0.5f);
+        check(!pager->isPageTransitioning(), "转场结束");
+        checkFloat(pageB->getTransform().translateX, 0.0f, "落位：位移归零");
+        checkFloat(pageB->getAlpha(), 1.0f, "落位：完全不透明");
+
+        // 快速连按：上一段转场还没播完就再切 → 直接落位
+        // （不这么做的话每页都停在"刚起步"的位置，内容大半在屏幕外，越快按越看不到内容）
+        pager->show("a");
+        check(pager->isPageTransitioning(), "上一段播完后切页会起新转场");
+        pager->show("b"); // 这一段还在跑
+        check(!pager->isPageTransitioning(), "转场没播完就再切：不再起新转场");
+        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "快速连按时新页直接落位（不透明）");
+        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f,
+            "快速连按时新页不位移（内容立刻可见）");
+        checkEqualSize(g_livePages, 1, "快速连按切页仍然只活 1 个页面");
+
+        // FADE：只淡入不位移（上一段已经落位，注意要切到**另一页**才真的换页）
+        pager->setPageTransition(ContentTransition::FADE);
+        pager->show("a");
+        check(pager->isShowing("a"), "切到 a 页");
+        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f, "FADE 不位移");
+        check(pager->getCurrentView()->getAlpha() < 0.2f, "FADE 仍然淡入");
+
+        // NONE：直接落位
+        pager->setPageTransition(ContentTransition::NONE);
+        pager->show("b");
+        check(!pager->isPageTransitioning(), "NONE 不产生转场");
+        checkFloat(pager->getCurrentView()->getAlpha(), 1.0f, "NONE 直接不透明");
+        checkFloat(pager->getCurrentView()->getTransform().translateX, 0.0f, "NONE 不位移");
+
+        delete pager;
+        input.setRoot(nullptr);
+        resetInput();
+        delete root;
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;
 }

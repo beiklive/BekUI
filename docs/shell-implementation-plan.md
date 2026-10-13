@@ -986,9 +986,7 @@ python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约�
 
 ### 已知遗留（写在这里，不在本轮做）
 
-1. **`Pager` 的同层换页还没有转场**：`ContentTransition` 现在在 `Shell` 的内容栈上，
-   Pager 的槽（`ScrollingFrame`）换内容仍是瞬间切换。方案 5.5 要求这一层也走
-   SLIDE_FADE，属于后续增量。
+1. ~~`Pager` 的同层换页还没有转场~~ —— **v22 已补上**（见下）。
 2. **栏折叠补间现在在 demo 里**（`DemoApp::startBarAnimation/updateBars/finishBarAnimation`），
    没有库级测试；若要给别的宿主复用，应抽成一个独立小控件。
 3. `FocusRecord.hint` 仍只写不读；撞边回调仍不支持 box 级覆盖。
@@ -1042,3 +1040,42 @@ VK：同样参数启动跑完 80 帧 → exit=0（VK 后端不支持帧读回，
 - 面板贴在右上角，**视觉上会盖住 demo 右上角那排按钮**（"在最上层"的必然结果），
   但调试层不吃输入 → 按钮仍然点得到；另给了 **F1** 随时开关。
 - 库侧不再提供"通用的 ImGui 日志窗口"：要 ImGui 版就照设计器那份自己写（几十行）。
+
+---
+
+## v22 收尾：Pager 的同层换页转场（方案 5.5 的最后一条）
+
+### 交付
+
+- `Pager` 新增转场 API：`setPageTransition(ContentTransition)` / `getPageTransition()` /
+  `setPageTransitionDuration(float)` / `getPageTransitionDuration()` / `isPageTransitioning()` /
+  `stepPageTransition(float dt)`（确定性步进；`update()` 内部按帧间隔调）。
+  同 `ContentTransition` 枚举（`NONE` / `SLIDE` / `FADE` / `SLIDE_FADE`，默认 SLIDE_FADE / 0.22s）。
+- 实现仍是**绘制期变换**（`setTranslateX` + `setAlpha`，`View::frame` 会把整棵子树一起变），
+  所以过渡期间**零重排**；新页从右侧滑入 + 淡入，落到 0 位移、alpha 1 时清干净。
+- **不做**旧页滑出：旧页在切页那一刻就 `delete` 了（附录 D1 的删除顺序不能反），
+  所以看不到"旧页让位"的那一段。要双向滑动得在过渡期把两页都留在树上（多一层舞台容器），
+  属后续增量。
+- 两条**不做转场**的规则：
+  1. 首屏（没有旧页可让位）；
+  2. **上一次转场还没播完就再切**（快速连按）—— 否则每一页都停在"刚起步"的位置，
+     内容大半在屏幕外，越快按越看不到内容。直接落位更实用。
+- 顺手修一处耦合：`loadPageStateInternal()` 原来调 `Pager::update()` 落滚动位置，
+  加了转场之后那一下会把刚起步的转场推进一帧（实测 FADE 的起始 alpha 变成 0.23）。
+  抽出 `applyPendingScrollOffset()`，两处各调各的。
+
+### 测试
+
+`tests/pager_test.cpp` 第 5 节（+24 项，共 **75 项**）：首屏不转场、SLIDE_FADE 的位移/透明度
+三步推进、转场途中再切页不再起新转场且新页直接落位、FADE 只淡不位移、NONE 直接落位、
+转场途中切页仍然只活 1 个页面。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2230 项）  # v21 为 2206，+24；gl/vk 均零警告
+python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约定
+demo 逐页截图 14/14 exit=0（首屏不转场，所以每页截图与之前一致）
+BKLV_DEMO_SWEEP=30 + BKLV_SCREENSHOT_FRAMES=31 → 切页中间帧：新页确实从右侧滑入（内容右移约 313px 并被滚动器裁掉）
+BKLV_DEMO_SWEEP=2（快速连按）→ 转场被跳过、内容立刻可见，不再有"每页都停在屏幕外"的画面
+```

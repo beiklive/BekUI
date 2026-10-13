@@ -165,9 +165,22 @@ void Pager::show(const std::string& id)
             getInputManager().giveFocus(nullptr);
     }
 
-    // ③ 最后才删旧页：此时旧页已经脱离槽，焦点也不在它身上了
+    // ③ 最后才删旧页：此时旧页已经脱离槽，焦点也不在它身上了。
+    //    删之前先把正在跑的"上一次切页转场"收掉（它记着旧页的指针，不能再碰）。
+    const bool wasTransitioning = this->isPageTransitioning();
+    this->pageAnim.stop();
+    this->transitionProgress = 1.0f;
+    this->transitionPage     = nullptr;
+
     if (outgoing != nullptr && outgoing != page)
         delete outgoing;
+
+    // ④ 新页滑入/淡入。两种情况不做转场：
+    //    · 首屏（没有旧页可让位）
+    //    · **上一次转场还没播完**（快速连按切页）：这时再起一次会让每一页都停在
+    //      "刚起步"的位置（内容大半在屏幕外），越快按越看不到内容 —— 直接落位更实用。
+    if (outgoing != nullptr && !wasTransitioning)
+        this->beginPageTransition(page);
 
     // 回到这一页：恢复上次的焦点（路径）与滚动位置
     this->loadPageStateInternal(id, focusWasInPage);
@@ -176,6 +189,74 @@ void Pager::show(const std::string& id)
         this->onPageChanged(id);
 
     this->showing = false;
+}
+
+// ---------------------------------------------------------------------------
+// 同级换页的转场（只画，不参与布局）
+// ---------------------------------------------------------------------------
+
+void Pager::beginPageTransition(View* page)
+{
+    if (page == nullptr || this->pageTransition == ContentTransition::NONE
+        || this->pageTransitionDuration <= 0.0f)
+    {
+        this->pageAnim.stop();
+        this->transitionProgress = 1.0f;
+        this->transitionPage     = nullptr;
+
+        if (page != nullptr)
+        {
+            page->resetTransform();
+            page->setAlpha(1.0f);
+        }
+        return;
+    }
+
+    this->transitionWidth    = this->slot != nullptr ? this->slot->getWidth() : 0.0f;
+    this->transitionPage     = page;
+    this->transitionProgress = 0.0f;
+
+    this->pageAnim.stop();
+    this->pageAnim.reset(0.0f);
+    this->pageAnim.addStep(1.0f, this->pageTransitionDuration, EasingFunction::CUBIC_OUT);
+    this->pageAnim.start();
+
+    this->applyPageTransition(0.0f);
+}
+
+void Pager::applyPageTransition(float progress)
+{
+    if (this->transitionPage == nullptr)
+        return;
+
+    const bool slide = this->pageTransition == ContentTransition::SLIDE
+        || this->pageTransition == ContentTransition::SLIDE_FADE;
+    const bool fade = this->pageTransition == ContentTransition::FADE
+        || this->pageTransition == ContentTransition::SLIDE_FADE;
+
+    // 新页从右边滑进来（旧页已经不在了，这块区域先是背景色，再被新页盖住）
+    this->transitionPage->setTranslateX(slide ? (1.0f - progress) * this->transitionWidth : 0.0f);
+    this->transitionPage->setAlpha(fade ? progress : 1.0f);
+}
+
+void Pager::stepPageTransition(float deltaSeconds)
+{
+    if (this->transitionProgress >= 1.0f || this->transitionPage == nullptr)
+        return;
+
+    this->pageAnim.update(deltaSeconds);
+
+    const float progress     = (float)this->pageAnim;
+    this->transitionProgress = progress;
+    this->applyPageTransition(progress);
+
+    if (progress >= 1.0f)
+    {
+        // 落位：清掉绘制期变换，回到正常状态
+        this->transitionPage->resetTransform();
+        this->transitionPage->setAlpha(1.0f);
+        this->transitionPage = nullptr;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -276,19 +357,29 @@ bool Pager::loadPageStateInternal(const std::string& id, bool restoreFocus)
     // 当场 setContentOffsetY 会被钳成 0。所以"有范围"时立刻落位，否则挂成 pending
     // 交给 update()（它由宿主每帧调用）。
     this->pendingScrollOffset = it->second;
-    this->update();
+    this->applyPendingScrollOffset();
 
     return restoredFocus;
 }
 
 void Pager::update()
 {
+    // ① 同级换页的滑入/淡入（绘制期变换，零重排）
+    this->stepPageTransition(getFrameDeltaSeconds());
+
+    // ② 页面记忆的滚动位置：布局是延迟的，等算完（滚动范围 > 0）才落得下去
+    this->applyPendingScrollOffset();
+}
+
+// 只做"把记忆的滚动位置落到槽上"。单独抽出来是因为 loadPageStateInternal 也要用它，
+// 而**不能**在那里调整条 update()：那会顺手把刚起步的换页转场推进一帧。
+void Pager::applyPendingScrollOffset()
+{
     if (this->pendingScrollOffset < 0.0f || this->slot == nullptr)
         return;
 
-    // 布局还没算完（滚动范围是 0）就等下一帧
     if (this->slot->getScrollRange() <= 0.0f)
-        return;
+        return; // 还没算完，等下一帧
 
     this->slot->setContentOffsetY(this->pendingScrollOffset, false);
     this->pendingScrollOffset = -1.0f;
