@@ -3723,20 +3723,8 @@ void DesignerWindow::drawProps()
     if (ImGui::CollapsingHeader("layers（顺序 = 绘制顺序）", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::Indent(2.0f);
-    const char* ops[] = { "rect", "text", "image", "shadow", "custom" };
-    for (int i = 0; i < 5; i++)
-    {
-        if (i > 0)
-            ImGui::SameLine();
-        if (ImGui::SmallButton((std::string("+ ") + ops[i]).c_str()))
-        {
-            const int created = this->doc.addLayer(ops[i]);
-            this->selection = Selection{};
-            this->selection.kind  = SelKind::LAYER;
-            this->selection.index = created;
-            edited();
-        }
-    }
+        // layers 的增删都在左树右键菜单里（右键 → 增加层 / 删除层），这里不再放按钮排
+        ImGui::TextColored(mutedColor(), "增删层请在左侧节点树右键");
         ImGui::Unindent(2.0f);
     }
 }
@@ -5250,7 +5238,8 @@ void DesignerWindow::draw()
         ImGui::Separator();
         panelHeader("节点树", "点哪层渲染哪层");
         // 开关收在标题**右侧**、用图标（不要一排文字按钮）
-        ImGui::SameLine(ImGui::GetContentRegionMax().x - 74.0f);
+        // 偏移必须夹到 >= 0：窄栏 / 大缩放下这个值会变成负数（疑似"树上切换闪红框"的来源之一）
+        ImGui::SameLine(std::max(0.0f, ImGui::GetContentRegionMax().x - 74.0f));
         if (iconButton("##treeExpand", Icon::EXPAND, 15.0f, false, "展开全部"))
             this->treeOpenRequest = 1;
         ImGui::SameLine(0.0f, 2.0f);
