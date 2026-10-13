@@ -301,22 +301,38 @@ void DesignerWindow::refreshFileList()
     this->viewFiles.clear();
 
     std::string error;
-    readWidgetFileList(this->project.themeDir(), this->widgetFiles, error);
+    std::vector<std::string> allFiles;
+    readWidgetFileList(this->project.themeDir(), allFiles, error);
 
-    // 最近修改：外观 + 页面视图各取前几个（文件列表顶部的快捷入口）
+    // 清单里是主题的全部文件（tokens/ + base/ + widget/ + view/），按目录分流：
+    //   外观 = base/ 与 widget/（老布局的 widgets/ 也算），页面视图 = view/
+    for (const std::string& relative : allFiles)
+    {
+        if (relative.rfind("base/", 0) == 0 || relative.rfind("widget/", 0) == 0
+            || relative.rfind("widgets/", 0) == 0)
+            this->widgetFiles.push_back(relative);
+        else if (relative.rfind("view/", 0) == 0)
+            this->viewFiles.push_back(relative);
+    }
+
+    // 最近修改：外观（base/ + widget/）与页面视图各取前几个
     this->recentFiles.clear();
     {
         std::vector<DirEntry> recent;
-        std::string error;
-        if (listFilesByMtime(this->project.themeDir() + "/widgets", 4, recent, error))
-            this->recentFiles.insert(this->recentFiles.end(), recent.begin(), recent.end());
+        std::string recentError;
+        for (const char* dir : { "base", "widget" })
+        {
+            recent.clear();
+            if (listFilesByMtime(this->project.themeDir() + "/" + dir, 4, recent, recentError))
+                this->recentFiles.insert(this->recentFiles.end(), recent.begin(), recent.end());
+        }
         recent.clear();
-        if (listFilesByMtime(this->project.resourcesDir() + "/views", 2, recent, error))
+        if (listFilesByMtime(this->project.themeDir() + "/view", 2, recent, recentError))
             this->recentFiles.insert(this->recentFiles.end(), recent.begin(), recent.end());
     }
 
     // 页面视图：扫 resources/views（桌面工具，这里扫目录没问题）
-    const std::string viewsDir = this->project.resourcesDir() + "/views";
+    const std::string viewsDir = this->project.themeDir() + "/view";
     std::error_code code;
     if (fs::is_directory(viewsDir, code))
     {
@@ -326,7 +342,12 @@ void DesignerWindow::refreshFileList()
                 continue;
             if (entry.path().extension() != ".json")
                 continue;
-            this->viewFiles.push_back(entry.path().filename().string());
+            const std::string fileName = entry.path().filename().string();
+            // 清单里的视图（"view/x.json"）用名字表示；目录扫描补上还没登记的
+            const std::string listed = "view/" + fileName;
+            if (std::find(this->viewFiles.begin(), this->viewFiles.end(), listed)
+                == this->viewFiles.end())
+                this->viewFiles.push_back(fileName);
         }
         std::sort(this->viewFiles.begin(), this->viewFiles.end());
     }
@@ -1447,11 +1468,8 @@ void DesignerWindow::drawFileList()
         ImGui::Spacing();
         for (const std::string& relative : this->widgetFiles)
         {
-            const std::string name
-                = relative.size() > 5 && relative.rfind(".json") == relative.size() - 5
-                ? relative.substr(relative.find_last_of('/') + 1, relative.size()
-                        - relative.find_last_of('/') - 6)
-                : relative;
+            // 显示名 = 外观名 = 路径去扩展名（base/button、widget/dialog）
+            const std::string name = widgetNameFromPath(relative);
             if (this->fileFilter[0] != 0 && name.find(this->fileFilter) == std::string::npos)
                 continue;
             const bool current = (name == this->currentWidget);
@@ -4650,7 +4668,7 @@ void DesignerWindow::drawModals()
         ImGui::BulletText("尺寸/字号按 720p 写，运行时按窗口宽等比缩放；opacity/duration 不缩放");
         ImGui::BulletText("层序：shadow 在底色前；hlBg 在内容层前；hlGlow / hlBorder 最后");
         ImGui::BulletText("主题引用 @theme/color.a.b 或 @theme/metric.a.b，key 不存在会编译失败");
-        ImGui::BulletText("外观必须在 theme.json 的 widgets[] 里登记（设计器里「新建外观」会自动登记）");
+        ImGui::BulletText("外观必须在 theme.json 的 files[] 里登记（设计器里「新建外观」会自动登记）");
         ImGui::BulletText("写盘 = 临时文件 + rename 原子替换，并留一份 .bak");
         ImGui::Separator();
         if (ImGui::Button("关闭", ImVec2(100, 0)))
@@ -4797,7 +4815,7 @@ void DesignerWindow::drawModals()
         if (ImGui::Button("创建", ImVec2(120, 0)))
         {
             std::string error;
-            if (createViewFile(this->project.resourcesDir() + "/views", this->newViewName,
+            if (createViewFile(this->project.themeDir() + "/view", this->newViewName,
                     viewTemplates[this->newViewTemplate], error))
             {
                 this->refreshFileList();
@@ -4820,7 +4838,7 @@ void DesignerWindow::drawModals()
     }
     if (ImGui::BeginPopupModal("新建外观文件", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextColored(mutedColor(), "会在 %s/widgets/ 下建文件，并登记进 theme.json", this->project.themeDir().c_str());
+        ImGui::TextColored(mutedColor(), "会在 %s/base|widget/ 下建文件，并登记进 theme.json 的 files[]", this->project.themeDir().c_str());
         ImGui::SetNextItemWidth(320);
         ImGui::InputText("外观名", this->newAppearanceName, sizeof(this->newAppearanceName));
         ImGui::SetNextItemWidth(320);

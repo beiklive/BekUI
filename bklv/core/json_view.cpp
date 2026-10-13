@@ -13,6 +13,7 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/core/theme_data.hpp"
 #include "bklv/core/view.hpp"
 #include "bklv/views/h_scrolling_frame.hpp"
 #include "bklv/views/image.hpp"
@@ -546,6 +547,31 @@ View* ViewTemplate::instantiate(std::vector<Binding>* bindings) const
 View* createFromJSONFile(const std::string& path)
 {
     const std::shared_ptr<const ViewTemplate> tmpl = ViewTemplate::load(path);
+    if (tmpl == nullptr)
+        return nullptr;
+    return tmpl->instantiate();
+}
+
+std::shared_ptr<const ViewTemplate> loadViewTemplateFromTheme(const std::string& name)
+{
+    // name 可以写 "page_json"，也可以写全 "view/page_json"
+    const std::string key = name.rfind("view/", 0) == 0 ? name : "view/" + name;
+
+    const std::string* json = getTheme().viewJson(key);
+    if (json == nullptr)
+    {
+        BKLV_LOG_WARNING("主题 %s 里没有视图描述 \"%s\"（%s.json）", getTheme().getName().c_str(),
+            key.c_str(), key.c_str());
+        return nullptr;
+    }
+
+    // 不带路径缓存：视图描述随主题走，主题一换内容就不同，缓存键得带上主题名
+    return ViewTemplate::fromString(*json, getTheme().getName() + ":" + key);
+}
+
+View* createViewFromTheme(const std::string& name)
+{
+    const std::shared_ptr<const ViewTemplate> tmpl = loadViewTemplateFromTheme(name);
     if (tmpl == nullptr)
         return nullptr;
     return tmpl->instantiate();

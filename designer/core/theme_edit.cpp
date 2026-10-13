@@ -18,7 +18,7 @@ namespace designer
 namespace
 {
 
-// theme.json 的 widgets[] 加/减一项；文件其他内容原样保留
+// theme.json 的 files[] 加/减一项；文件其他内容原样保留
 bool updateWidgetList(const std::string& themeDir, const std::string& relative, bool add,
     std::string& error)
 {
@@ -35,8 +35,8 @@ bool updateWidgetList(const std::string& themeDir, const std::string& relative, 
     }
 
     std::vector<std::string> widgets;
-    if (doc.contains("widgets") && doc["widgets"].is_array())
-        for (const Json& entry : doc["widgets"])
+    if (doc.contains("files") && doc["files"].is_array())
+        for (const Json& entry : doc["files"])
             if (entry.is_string())
                 widgets.push_back(entry.get<std::string>());
 
@@ -48,9 +48,9 @@ bool updateWidgetList(const std::string& themeDir, const std::string& relative, 
     else
         widgets.erase(std::remove(widgets.begin(), widgets.end(), relative), widgets.end());
 
-    doc["widgets"] = Json::array();
+    doc["files"] = Json::array();
     for (const std::string& entry : widgets)
-        doc["widgets"].push_back(entry);
+        doc["files"].push_back(entry);
 
     return writeTextFileAtomic(themePath, doc.dump(2) + "\n", true, error);
 }
@@ -65,10 +65,27 @@ bool createWidgetAppearance(const std::string& themeDir, const std::string& name
         error = "名字不能为空";
         return false;
     }
-    if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+    // 允许一层目录前缀：base/…（基础控件）或 widget/…（二级控件）。
+    // 只写裸名字时按 widget/ 处理（二级控件是常态）。
+    if (name.find('\\') != std::string::npos)
     {
-        error = "名字里不能带路径分隔符";
+        error = "名字里不能带反斜杠";
         return false;
+    }
+    const size_t slash = name.find('/');
+    if (slash != std::string::npos)
+    {
+        const std::string prefix = name.substr(0, slash);
+        if (prefix != "base" && prefix != "widget")
+        {
+            error = "目录只能是 base/（基础控件）或 widget/（二级控件）";
+            return false;
+        }
+        if (name.find('/', slash + 1) != std::string::npos)
+        {
+            error = "只支持一层目录（base/ 或 widget/）";
+            return false;
+        }
     }
 
     const std::string relative = widgetPathFromName(name);
@@ -80,6 +97,15 @@ bool createWidgetAppearance(const std::string& themeDir, const std::string& name
         // 不覆盖已有外观：这是用户的东西
         error = "已经存在同名的外观文件：" + relative + "（换一个名字，或直接打开它改）";
         return false;
+    }
+
+    // 名字带目录（base/ 或 widget/）时，目录可能还不存在：先建出来，
+    // 否则 writeTextFileAtomic 会因为父目录缺失而失败
+    {
+        std::error_code code;
+        const std::string subDir = themeDir + "/" + relative.substr(0, relative.find_last_of('/'));
+        if (relative.find('/') != std::string::npos)
+            fs::create_directories(subDir, code);
     }
 
     // 先登记、再落文件：登记失败时不会留下一个没登记的孤儿文件
@@ -133,10 +159,27 @@ bool createViewFile(const std::string& viewsDir, const std::string& name,
         error = "名字不能为空";
         return false;
     }
-    if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+    // 允许一层目录前缀：base/…（基础控件）或 widget/…（二级控件）。
+    // 只写裸名字时按 widget/ 处理（二级控件是常态）。
+    if (name.find('\\') != std::string::npos)
     {
-        error = "名字里不能带路径分隔符";
+        error = "名字里不能带反斜杠";
         return false;
+    }
+    const size_t slash = name.find('/');
+    if (slash != std::string::npos)
+    {
+        const std::string prefix = name.substr(0, slash);
+        if (prefix != "base" && prefix != "widget")
+        {
+            error = "目录只能是 base/（基础控件）或 widget/（二级控件）";
+            return false;
+        }
+        if (name.find('/', slash + 1) != std::string::npos)
+        {
+            error = "只支持一层目录（base/ 或 widget/）";
+            return false;
+        }
     }
 
     const std::string relative = name + ".json";

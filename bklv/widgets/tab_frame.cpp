@@ -8,7 +8,7 @@ namespace bklv
 {
 
 TabCell::TabCell()
-    : AppearanceView("tab_cell", true)
+    : AppearanceView("base/tab_cell", true)
 {
     // 高度/不压缩/内边距全在 widgets/tab_cell.json 的 box 段里
 

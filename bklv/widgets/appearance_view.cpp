@@ -133,7 +133,7 @@ void AppearanceView::applyTheme()
     // 纯 box 的外观（如 status_area：只要布局不要装饰）层数本来就是 0，
     // 用层数判断会把它误报成"主题里没有这个外观"。
     if (loaded == nullptr)
-        BKLV_LOG_WARNING("主题里没有控件外观 \"%s\"（%s/widgets/%s.json）", name.c_str(),
+        BKLV_LOG_WARNING("主题里没有控件外观 \"%s\"（%s/%s.json）", name.c_str(),
             getTheme().getName().c_str(), name.c_str());
 
     // 状态在换肤后重新打开，让新外观按当前状态补到位

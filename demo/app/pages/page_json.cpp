@@ -48,7 +48,8 @@ Box* buildJsonPage()
     page->setGap(getTheme().number("metric.spacing.sm", 8.0f));
 
     // 整块界面（标题 + 说明 + 卡片）都来自这一个 JSON 文件
-    View* fromJson = createFromJSONFile("resources/views/page_json.json");
+    // 视图描述现在放主题里（view/ 目录）：结构随主题走，缺了会回退 default 主题
+    View* fromJson = createViewFromTheme("page_json");
     if (fromJson != nullptr)
         page->addView(fromJson);
     else
@@ -62,7 +63,7 @@ Box* buildJsonPage()
     list->setShowScrollingIndicator(true);
 
     std::shared_ptr<const ViewTemplate> itemTemplate =
-        ViewTemplate::load("resources/views/list_item.json");
+        loadViewTemplateFromTheme("list_item");
     if (itemTemplate != nullptr)
     {
         list->registerCell(RecyclerDataSource::DEFAULT_CELL_ID,

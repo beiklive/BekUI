@@ -75,6 +75,21 @@ bool readText(const std::string& relativePath, std::string& out)
     return true;
 }
 
+// 解析一段已经在内存里的 JSON 文本（origin 只用于日志定位）
+bool parseJsonText(const std::string& text, const std::string& origin, Json& out)
+{
+    try
+    {
+        out = Json::parse(text);
+        return true;
+    }
+    catch (const Json::parse_error& e)
+    {
+        BKLV_LOG_ERROR("主题文件解析失败：%s（第 %zu 字节）", origin.c_str(), (size_t)e.byte);
+        return false;
+    }
+}
+
 // 解析 JSON；失败时给出文件 + 行号（和 i18n / json_view 一样的定位方式）。
 bool parseFile(const std::string& relativePath, Json& out)
 {
@@ -181,58 +196,119 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
     if (!parseFile(dir + "theme.json", meta))
         return false;
 
-    // theme.json 里列出本主题包含哪些文件——**不扫目录**
-    std::vector<std::string> widgetFiles;
-    if (meta.contains("widgets") && meta["widgets"].is_array())
+    // 元信息：设计器"打开项目"读它
+    if (!isDefault)
+    {
+        auto readString = [&meta](const char* key) {
+            return meta.contains(key) && meta[key].is_string() ? meta[key].get<std::string>()
+                                                               : std::string();
+        };
+        this->author         = readString("author");
+        this->description    = readString("description");
+        this->descriptionKey = readString("descriptionKey");
+    }
+
+    // theme.json 里列出本主题包含哪些文件——**不扫目录**（romfs 上目录迭代未验证）
+    std::vector<std::string> listed;
+    if (meta.contains("files") && meta["files"].is_array())
+    {
+        for (const Json& entry : meta["files"])
+            if (entry.is_string())
+                listed.push_back(entry.get<std::string>());
+    }
+    else if (meta.contains("widgets") && meta["widgets"].is_array())
+    {
+        // 兼容旧布局（widgets/ 目录 + widgets[] 清单）：能读，但要明确让人去迁
+        BKLV_LOG_WARNING("主题 %s 用的是旧布局 widgets[]：请改成 files[]，"
+                         "并把外观挪进 base/ 或 widget/、色板数值挪进 tokens/",
+            themeName.c_str());
         for (const Json& entry : meta["widgets"])
             if (entry.is_string())
-                widgetFiles.push_back(entry.get<std::string>());
+                listed.push_back("widgets/" + entry.get<std::string>());
+    }
 
     auto& targetColors = isDefault ? this->defaultColors : this->colors;
     auto& targetNumbers = isDefault ? this->defaultNumbers : this->numbers;
     auto& targetWidgets = isDefault ? this->defaultWidgetJson : this->widgetJson;
+    auto& targetViews   = isDefault ? this->defaultViewJson : this->viewJsonMap;
 
     targetColors.clear();
     targetNumbers.clear();
     targetWidgets.clear();
+    targetViews.clear();
 
-    for (const char* file : { "colors.json", "metrics.json" })
-    {
-        Json doc;
-        const std::string path = dir + file;
-        if (!parseFile(path, doc))
-        {
-            if (!isDefault)
-                BKLV_LOG_WARNING("主题 %s 缺少 %s，将回退到 default", themeName.c_str(), file);
-            continue;
-        }
-        const std::string prefix = (std::string(file) == "colors.json") ? "color" : "metric";
-        flatten(doc, prefix, targetColors, targetNumbers);
-    }
+    // 名字 = 相对主题根的路径去掉扩展名（base/button.json -> "base/button"）
+    auto nameFromPath = [](const std::string& relative) {
+        std::string name = relative;
+        const size_t dot = name.find_last_of('.');
+        if (dot != std::string::npos)
+            name = name.substr(0, dot);
+        return name;
+    };
 
-    for (const std::string& relative : widgetFiles)
+    bool colorsLoaded  = false;
+    bool metricsLoaded = false;
+
+    for (const std::string& relative : listed)
     {
         std::string text;
-        const std::string path = dir + relative;
-        if (!readText(path, text))
+        if (!readText(dir + relative, text))
         {
             if (!isDefault)
-                BKLV_LOG_WARNING("主题 %s 缺少 %s，该控件外观将回退到 default", themeName.c_str(),
+                BKLV_LOG_WARNING("主题 %s 缺少清单里的 %s，该项回退到 default", themeName.c_str(),
                     relative.c_str());
             continue;
         }
 
-        // 记成 "button" 这样的短名（文件名去掉目录与扩展名）
-        std::string name = relative;
-        const size_t slash = name.find_last_of('/');
-        if (slash != std::string::npos)
-            name = name.substr(slash + 1);
-        const size_t dot = name.find_last_of('.');
-        if (dot != std::string::npos)
-            name = name.substr(0, dot);
+        // tokens/*.json：色板与数值（老主题写在主题根下，两个名字都认）
+        const bool isColors  = relative == "tokens/colors.json" || relative == "colors.json";
+        const bool isMetrics = relative == "tokens/metrics.json" || relative == "metrics.json";
+        if (isColors || isMetrics)
+        {
+            Json doc;
+            if (!parseJsonText(text, relative, doc))
+                continue;
+            flatten(doc, isColors ? "color" : "metric", targetColors, targetNumbers);
+            (isColors ? colorsLoaded : metricsLoaded) = true;
+            continue;
+        }
 
-        targetWidgets[name] = std::move(text);
+        // view/*.json：页面/视图描述（结构 + 外观），交给 core/json_view.* 实例化
+        if (relative.rfind("view/", 0) == 0)
+        {
+            targetViews[nameFromPath(relative)] = std::move(text);
+            continue;
+        }
+
+        // 其余（base/*、widget/*、以及自定义目录）都是控件外观
+        targetWidgets[nameFromPath(relative)] = std::move(text);
     }
+
+    // 清单里没写 tokens 的主题：按标准路径兜底读一次，尽量不让人白写一个主题
+    for (const char* fallback : { "tokens/colors.json", "colors.json" })
+    {
+        if (colorsLoaded)
+            break;
+        Json doc;
+        if (!parseFile(dir + fallback, doc))
+            continue;
+        flatten(doc, "color", targetColors, targetNumbers);
+        colorsLoaded = true;
+    }
+    for (const char* fallback : { "tokens/metrics.json", "metrics.json" })
+    {
+        if (metricsLoaded)
+            break;
+        Json doc;
+        if (!parseFile(dir + fallback, doc))
+            continue;
+        flatten(doc, "metric", targetColors, targetNumbers);
+        metricsLoaded = true;
+    }
+
+    if (!isDefault && (!colorsLoaded || !metricsLoaded))
+        BKLV_LOG_WARNING("主题 %s 缺少 %s，将回退到 default", themeName.c_str(),
+            !colorsLoaded ? "colors.json" : "metrics.json");
 
     return true;
 }
@@ -383,6 +459,29 @@ std::vector<std::string> ThemeData::getWidgetNames() const
     std::vector<std::string> names;
     names.reserve(this->widgetJson.size());
     for (const auto& entry : this->widgetJson)
+        names.push_back(entry.first);
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+const std::string* ThemeData::viewJson(const std::string& name) const
+{
+    const auto it = this->viewJsonMap.find(name);
+    if (it != this->viewJsonMap.end())
+        return &it->second;
+
+    const auto fallbackIt = this->defaultViewJson.find(name);
+    if (fallbackIt != this->defaultViewJson.end())
+        return &fallbackIt->second;
+
+    return nullptr;
+}
+
+std::vector<std::string> ThemeData::getViewNames() const
+{
+    std::vector<std::string> names;
+    names.reserve(this->viewJsonMap.size());
+    for (const auto& entry : this->viewJsonMap)
         names.push_back(entry.first);
     std::sort(names.begin(), names.end());
     return names;

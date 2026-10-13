@@ -69,7 +69,7 @@ StatusSnapshot queryPlatformStatus()
 // ---------------------------------------------------------------- 电池图标
 
 BatteryIcon::BatteryIcon()
-    : AppearanceView("status_battery", false)
+    : AppearanceView("base/status_battery", false)
 {
     this->enableContentMeasurement();
     this->applyTheme();
@@ -154,7 +154,7 @@ void BatteryIcon::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, 
 // ---------------------------------------------------------------- 无线图标
 
 WirelessIcon::WirelessIcon()
-    : AppearanceView("status_wireless", false)
+    : AppearanceView("base/status_wireless", false)
 {
     this->enableContentMeasurement();
     this->applyTheme();
@@ -231,7 +231,7 @@ void WirelessIcon::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&,
 // ---------------------------------------------------------------- 状态区
 
 StatusArea::StatusArea()
-    : AppearanceView("status_area", false)
+    : AppearanceView("base/status_area", false)
 {
     this->provider = [] { return queryPlatformStatus(); };
 

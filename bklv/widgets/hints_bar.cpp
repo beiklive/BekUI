@@ -11,7 +11,7 @@ namespace bklv
 {
 
 HintItemView::HintItemView()
-    : AppearanceView("hint_item", false)
+    : AppearanceView("base/hint_item", false)
 {
     // 内边距/高度来自 widgets/hint_item.json 的 box 段（borealis 的 4/16）
     this->enableContentMeasurement();

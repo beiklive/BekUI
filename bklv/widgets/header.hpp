@@ -6,7 +6,7 @@
 // 结构（和 borealis 的 header XML 一致：一行里放 图标 / 标题 / 右侧区）：
 //
 //   Header（装饰层在 widgets/header.json：下边线 + 可选底色）
-//     ├─ icon        图标（AppearanceView("header_icon")，image 层；默认隐藏）
+//     ├─ icon        图标（AppearanceView("base/header_icon")，image 层；默认隐藏）
 //     ├─ titleLabel  标题（Label）
 //     ├─ padding     顶开标题与右侧区（Padding，grow 1）
 //     └─ hintBox     右侧区（Box，右对齐；外部可以往里塞自己的东西）

@@ -28,7 +28,7 @@ void setSliderVariantAttr(View* v, const ResolvedValue& r)
 } // namespace
 
 Slider::Slider(const std::string& variant)
-    : AppearanceView(variant.empty() ? "slider" : "slider." + variant, true)
+    : AppearanceView(variant.empty() ? "base/slider" : "base/slider." + variant, true)
 {
     // 宽高在 widgets/slider.json 的 box 段里
     this->onPointerAction = true;

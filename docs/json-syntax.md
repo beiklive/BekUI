@@ -6,7 +6,8 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | 类别 | 位置 | 用途 | 解析处 |
 |---|---|---|---|
 | 视图描述 | `resources/views/*.json`，或 `createFromJSONString()` | 用 JSON 搭视图树（类型 + 属性 + 子节点） | `core/json_view.cpp` `core/attributes.cpp` |
-| 控件外观 | `resources/theme/<主题>/widgets/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `core/appearance.cpp` |
+| 控件外观 | `resources/theme/<主题>/base|widget/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `core/appearance.cpp` |
+| 页面视图 | `resources/theme/<主题>/view/<名字>.json` | 页面/列表项的结构与外观（`createViewFromTheme`） | `core/json_view.cpp` |
 | 主题 | `resources/theme/themes.json` + `<主题>/{theme,colors,metrics}.json` | 主题清单、颜色表、数值表 | `core/theme_data.cpp` |
 | 文案 | `resources/i18n/<locale>.json` | i18n 文本 | `core/i18n.cpp` |
 
@@ -157,8 +158,12 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 
 ## 三、控件外观 JSON
 
-文件放在 `resources/theme/<主题>/widgets/`，**必须**在该主题 `theme.json` 的 `widgets[]`
-里登记（**不扫目录**，没登记 = 不生效 + 一条 warn）。
+文件放在 `resources/theme/<主题>/base/`（基础控件：单个容器/元素）或 `widget/`
+（二级控件：引用 base 组合出来的），**必须**在该主题 `theme.json` 的 `files[]` 里登记
+（**不扫目录**，没登记 = 不生效 + 一条 warn）。
+
+**外观名 = 相对主题根的路径去掉扩展名**：`base/button.json` → `"base/button"`；
+变体是后缀：`base/button.json` + 变体 `primary` → 文件 `base/button.primary.json`。
 
 一份外观 = 三段，`layers` 必填（纯布局控件写 `"layers": []`）：
 
@@ -274,11 +279,14 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 ```json
 { "name": "default", "version": 1, "colorScheme": "dark",
-  "widgets": ["widgets/button.json", "widgets/card.json", "…"] }
+  "author": "beiklive", "description": "默认深色主题",
+  "files": ["tokens/colors.json", "tokens/metrics.json",
+            "base/button.json", "widget/sidebar.json", "view/page_json.json"] }
 ```
 
-`widgets[]` 就是这个主题的全部外观文件清单（**不扫目录**：romfs 上目录迭代真机未验证，
-所以加外观文件一定要登记）。
+`files[]` 就是这个主题的全部文件清单（**不扫目录**：romfs 上目录迭代真机未验证，
+所以加/删文件一定要登记）。`author` / `description` 给设计器"打开项目"用；
+老主题的 `widgets[]` 仍然能读，但会打一条"请迁移"的警告。
 
 ### `<主题>/colors.json`
 
@@ -356,7 +364,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 | 现象 | 原因 |
 |---|---|
-| 外观改了没反应 | 文件没登记进 `theme.json` 的 `widgets[]`（日志有 `主题里没有控件外观 "x"`） |
+| 外观改了没反应 | 文件没登记进 `theme.json` 的 `files[]`（日志有 `主题里没有控件外观 "x"`） |
 | 日志 `控件外观编译失败：… 缺少 layers 数组` | `layers` 是必填，纯 box 的外观写 `"layers": []` |
 | 日志 `引用了主题里不存在的颜色/数值` | key 拼错；写法是 `@theme/color.a.b`，不是 `@theme/color/a.b`（后者会被容错成点分并警告） |
 | 聚焦后控件里的图形消失 | 外观层序反了：`hlBg` 排到了内容层之后 |

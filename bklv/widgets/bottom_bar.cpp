@@ -7,7 +7,7 @@ namespace bklv
 {
 
 BottomBar::BottomBar(const std::string& variant)
-    : AppearanceView(variant.empty() ? "bottom_bar" : "bottom_bar." + variant, false)
+    : AppearanceView(variant.empty() ? "widget/bottom_bar" : "widget/bottom_bar." + variant, false)
 {
     // 高度/外边距/内边距/上边线都在 bottom_bar.json 的 box 段与 layers 里
     this->setAxis(Axis::ROW);

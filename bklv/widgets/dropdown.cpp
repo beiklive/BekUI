@@ -20,7 +20,7 @@ class DropdownTrigger : public AppearanceView
 {
   public:
     DropdownTrigger()
-        : AppearanceView("dropdown", true)
+        : AppearanceView("widget/dropdown", true)
     {
         // 宽高/内边距来自 widgets/dropdown.json 的 box 段
         this->onPointerAction = true;
@@ -64,7 +64,7 @@ class DropdownTrigger : public AppearanceView
 // ---------------------------------------------------------------------------
 
 DropdownOption::DropdownOption()
-    : AppearanceView("dropdown_item", true)
+    : AppearanceView("base/dropdown_item", true)
 {
     // 宽高/内边距来自 widgets/dropdown_item.json 的 box 段
     this->onPointerAction = true;

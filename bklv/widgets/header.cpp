@@ -34,7 +34,7 @@ void setHeaderVariantAttr(View* v, const ResolvedValue& r)
 } // namespace
 
 HeaderIcon::HeaderIcon()
-    : AppearanceView("header_icon", false)
+    : AppearanceView("base/header_icon", false)
 {
     // 图标尺寸来自 header_icon.json 的 box；固有尺寸由 image 层的纹理决定
     this->enableContentMeasurement();
@@ -47,7 +47,7 @@ TextureRef HeaderIcon::getLayerImage(const std::string&)
 }
 
 Header::Header(const std::string& variant)
-    : AppearanceView(variant.empty() ? "header" : "header." + variant, false)
+    : AppearanceView(variant.empty() ? "widget/header" : "widget/header." + variant, false)
 {
     // 页头是"一行三格"：图标 / 标题 / 右侧区，尺寸留白都在主题里
     this->icon = new HeaderIcon();

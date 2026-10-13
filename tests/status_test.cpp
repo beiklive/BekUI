@@ -108,13 +108,13 @@ int main()
     {
         // 状态区是 AppearanceView("status_area")，box 段给出 axis/对齐；
         // 这个文件曾因为没登记进 theme.json 而完全不生效（外观不扫目录）
-        check(getWidgetAppearance("status_area") != nullptr,
-            "主题里能装载到 status_area 外观（必须在 theme.json 的 widgets[] 里登记）");
+        check(getWidgetAppearance("base/status_area") != nullptr,
+            "主题里能装载到 status_area 外观（必须在 theme.json 的 files[] 里登记）");
         // 断言的是"外观确实生效"这件事本身：外观不扫目录，没登记进
         // theme.json 的 widgets[] 时它根本不会被读，box 段自然一点不生效
         // （这个文件曾因此完全失效）。axis 默认是 COLUMN，变成 ROW 只可能来自 JSON。
-        check(getWidgetAppearance("status_area") != nullptr,
-            "主题里能装载到 status_area 外观（必须在 theme.json 的 widgets[] 里登记）");
+        check(getWidgetAppearance("base/status_area") != nullptr,
+            "主题里能装载到 status_area 外观（必须在 theme.json 的 files[] 里登记）");
         StatusArea* area = new StatusArea();
         check(area->getAxis() == Axis::ROW, "box.axis = row 生效（默认是 COLUMN）");
         delete area;

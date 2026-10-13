@@ -111,7 +111,7 @@ const AttributeTable& Cell::attributes() const
 // ---------------------------------------------------------------- DetailCell
 
 DetailCell::DetailCell(const std::string& title, const std::string& detail)
-    : Cell("cell_detail", title)
+    : Cell("base/cell_detail", title)
 {
     this->setDetail(detail);
     this->applyTheme(); // 基类构造期不会派发到子类，这里补一次
@@ -120,7 +120,7 @@ DetailCell::DetailCell(const std::string& title, const std::string& detail)
 // ---------------------------------------------------------------- BooleanCell
 
 BooleanCell::BooleanCell(const std::string& title, bool value)
-    : Cell("cell_bool", title)
+    : Cell("base/cell_bool", title)
 {
     // 注意：Cell 的构造里调的 applyTheme 是基类那份（构造期不派发虚函数），
     // 所以开关的配色要在这里自己再取一次，否则颜色一直是 0（画不出来）。
@@ -242,7 +242,7 @@ void BooleanCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, 
 // ---------------------------------------------------------------- RadioCell
 
 RadioCell::RadioCell(const std::string& title, bool selected)
-    : Cell("cell_radio", title)
+    : Cell("base/cell_radio", title)
 {
     this->applyTheme(); // 同上：构造期虚函数不派发
 
@@ -314,7 +314,7 @@ void RadioCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, fl
 // ---------------------------------------------------------------- SelectorCell
 
 SelectorCell::SelectorCell(const std::string& title)
-    : Cell("cell_selector", title)
+    : Cell("base/cell_selector", title)
 {
     this->applyTheme();
     // 左右键 / LB / RB 换值：和 borealis 的 SelectorCell 一致
@@ -414,7 +414,7 @@ void SelectorCell::refreshDetail()
 // ---------------------------------------------------------------- SliderCell
 
 SliderCell::SliderCell(const std::string& title)
-    : Cell("cell_slider", title)
+    : Cell("base/cell_slider", title)
 {
     this->applyTheme();
     this->slider = new Slider();
@@ -461,7 +461,7 @@ View* SliderCell::getDefaultFocus()
 // ---------------------------------------------------------------- InputCell
 
 InputCell::InputCell(const std::string& title)
-    : Cell("cell_input", title)
+    : Cell("base/cell_input", title)
 {
     this->applyTheme();
     this->setOnClick([this] { this->openInput(); });

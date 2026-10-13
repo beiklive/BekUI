@@ -616,7 +616,7 @@ void Shell::applyTheme()
 {
     // 尺寸（铺满）与页面底色来自 themes/<主题>/widgets/applet_frame.json ——
     // 这份外观原来是旧 AppletFrame 的，现在归外壳用（名字保持不动，用户主题不用改）。
-    applyWidgetBox(this, "applet_frame");
+    applyWidgetBox(this, "widget/applet_frame");
 }
 
 void Shell::update()

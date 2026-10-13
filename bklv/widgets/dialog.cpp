@@ -11,7 +11,7 @@ namespace bklv
 {
 
 DialogBackdrop::DialogBackdrop()
-    : AppearanceView("dialog_backdrop", false)
+    : AppearanceView("base/dialog_backdrop", false)
 {
     this->setPositionType(PositionType::ABSOLUTE);
     this->setPositionTop(0.0f);
@@ -22,7 +22,7 @@ DialogBackdrop::DialogBackdrop()
 }
 
 DialogPanel::DialogPanel()
-    : AppearanceView("dialog", false)
+    : AppearanceView("widget/dialog", false)
 {
     this->setWidth(getTheme().number("metric.dialog.width", 520.0f));
     this->setHeight(getTheme().number("metric.dialog.height", 220.0f));

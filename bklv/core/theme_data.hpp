@@ -2,15 +2,21 @@
 
 // 主题数据：把 resources/theme/<name>/ 下的 JSON 编译成内存里的查表结构。
 //
-// 目录与分类（两级）：
-//   resources/theme/themes.json            主题清单（**不扫目录**：romfs 上的目录迭代真机未验证）
-//   resources/theme/default/theme.json     元信息 + 本主题包含哪些文件
-//   resources/theme/default/colors.json    全局色板   -> key 前缀 "color."
-//   resources/theme/default/metrics.json   全局数值   -> key 前缀 "metric."
-//   resources/theme/default/widgets/*.json 各控件外观 -> 由 core/appearance.* 编译
+// 目录与分类（**不扫目录**：romfs 上的目录迭代真机未验证，清单必须提前写）：
+//   resources/theme/themes.json          主题清单（有哪些主题、默认是哪个）
+//   resources/theme/default/theme.json   元信息（作者/描述）+ 本主题的文件清单 files[]
+//   .../tokens/colors.json               全局色板   -> key 前缀 "color."
+//   .../tokens/metrics.json              全局数值   -> key 前缀 "metric."
+//   .../base/*.json                      基础控件外观（单个容器/元素）
+//   .../widget/*.json                    二级控件外观（引用 base 组合出来的）
+//   .../view/*.json                      页面/视图描述（结构 + 外观）
+//
+// **名字 = 相对主题根的路径去掉扩展名**：`base/button.json` -> "base/button"、
+// `widget/sidebar.json` -> "widget/sidebar"。所以挪文件 = 改名字，C++ 里的引用要一起改。
+// 变体仍是后缀：`base/button.json` + variant "primary" -> "base/button.primary"。
 //
 // 换肤 = 复制 default 改名 + 改 JSON + 在 themes.json 里登记。
-// 缺 key 的回退链：当前主题 -> default 主题 -> 调用方给的兜底值（只警告，不崩）。
+// 缺项的回退链：当前主题 -> default 主题 -> 调用方给的兜底值（只警告，不崩）。
 
 #include <string>
 #include <unordered_map>
@@ -42,10 +48,20 @@ class ThemeData
     bool hasColor(const std::string& key) const;
     bool hasNumber(const std::string& key) const;
 
-    // 控件外观描述的**原始 JSON 文本**（未编译）。
+    // 控件外观描述的**原始 JSON 文本**（未编译）。名字是"相对主题根的路径去掉扩展名"。
     // 当前主题没有这个文件时回退到 default 主题的；两边都没有返回 nullptr。
     // 编译交给 core/appearance.*（这样 theme 不依赖 appearance，避免循环依赖）。
     const std::string* widgetAppearanceJson(const std::string& widget) const;
+
+    // 页面/视图描述的原始 JSON 文本（view/ 目录，结构 + 外观）。
+    // 同样带 default 主题回退；找不到返回 nullptr。实例化交给 core/json_view.*。
+    const std::string* viewJson(const std::string& name) const;
+
+    // 元信息（设计器"打开项目"用）
+    const std::string& getAuthor() const { return this->author; }
+    const std::string& getDescription() const { return this->description; }
+    // 描述文案的 i18n key（可空；有就走 getStr，没有就直接用 description）
+    const std::string& getDescriptionKey() const { return this->descriptionKey; }
 
     // 可用的主题名（来自 themes.json，按清单顺序）。
     const std::vector<std::string>& getAvailableThemes() const { return this->available; }
@@ -58,8 +74,10 @@ class ThemeData
     std::vector<std::string> getColorKeys() const;
     std::vector<std::string> getNumberKeys() const;
 
-    // 该主题登记的外观名（短名，如 "button.primary"），顺序与 theme.json 的 widgets[] 一致
+    // 该主题登记的外观名（路径名，如 "base/button.primary"），顺序与 theme.json 的 files[] 一致
     std::vector<std::string> getWidgetNames() const;
+    // 该主题登记的视图名（"view/page_json"）
+    std::vector<std::string> getViewNames() const;
     int getNumberCount() const { return (int)this->numbers.size(); }
 
   private:
@@ -72,11 +90,17 @@ class ThemeData
     std::unordered_map<std::string, ImU32> colors;
     std::unordered_map<std::string, float> numbers;
     std::unordered_map<std::string, std::string> widgetJson;
+    std::unordered_map<std::string, std::string> viewJsonMap;
+
+    std::string author;
+    std::string description;
+    std::string descriptionKey;
 
     // default 主题的回退表
     std::unordered_map<std::string, ImU32> defaultColors;
     std::unordered_map<std::string, float> defaultNumbers;
     std::unordered_map<std::string, std::string> defaultWidgetJson;
+    std::unordered_map<std::string, std::string> defaultViewJson;
 
     std::vector<std::string> available;
 };

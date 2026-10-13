@@ -212,7 +212,7 @@ class EditPanel : public AppearanceView
 {
   public:
     EditPanel()
-        : AppearanceView("edit_text_dialog", true)
+        : AppearanceView("widget/edit_text_dialog", true)
     {
     }
 
@@ -236,7 +236,7 @@ class TextField : public AppearanceView
 {
   public:
     TextField()
-        : AppearanceView("text_field", false)
+        : AppearanceView("base/text_field", false)
     {
         // 宽高来自 widgets/text_field.json 的 box 段
         this->enableContentMeasurement();
@@ -311,7 +311,7 @@ EditTextDialog::EditTextDialog()
     this->setJustifyContent(JustifyContent::CENTER);
     this->setAlignItems(AlignItems::CENTER);
 
-    this->backdrop = new AppearanceView("dialog_backdrop", false);
+    this->backdrop = new AppearanceView("base/dialog_backdrop", false);
     this->backdrop->setPositionType(PositionType::ABSOLUTE);
     this->backdrop->setPositionTop(0.0f);
     this->backdrop->setPositionLeft(0.0f);

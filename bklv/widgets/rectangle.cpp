@@ -19,7 +19,7 @@ void setVariantAttr(View* v, const ResolvedValue& r)
 } // namespace
 
 Rectangle::Rectangle(const std::string& variant)
-    : AppearanceView(variant.empty() ? "rectangle" : "rectangle." + variant, false)
+    : AppearanceView(variant.empty() ? "base/rectangle" : "base/rectangle." + variant, false)
 {
     this->applyTheme();
 }

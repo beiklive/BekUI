@@ -52,20 +52,22 @@ void writeFile(const std::string& path, const std::string& text)
     file << text;
 }
 
-// 造一份最小的主题目录：theme.json / colors.json / metrics.json / 两个外观
+// 造一份最小的主题目录：theme.json（files[] 清单）/ tokens/ 两张表 / base/ 两个外观
 std::string makeTheme(const std::string& root, const std::string& name)
 {
     const std::string dir = root + "/" + name;
     fs::create_directories(dir + "/widgets");
 
     writeFile(dir + "/theme.json",
-        R"({"name": ")" + name + R"(", "widgets": ["widgets/rectangle.json", "widgets/button.json"]})");
-    writeFile(dir + "/colors.json", R"({"color": {"accent": {"base": "#00ffcc"}, "text": {"primary": "#ffffff"}}})");
-    writeFile(dir + "/metrics.json", R"({"metric": {"font": {"size": {"md": 18}}}})");
+        R"({"name": ")" + name + R"(", "author": "测试", "description": "设计器单测用主题",
+            "files": ["tokens/colors.json", "tokens/metrics.json", "base/rectangle.json",
+                      "base/button.json"]})");
+    writeFile(dir + "/tokens/colors.json", R"({"color": {"accent": {"base": "#00ffcc"}, "text": {"primary": "#ffffff"}}})");
+    writeFile(dir + "/tokens/metrics.json", R"({"metric": {"font": {"size": {"md": 18}}}})");
     // 故意用 @theme 引用（反向引用那节测试要用；也顺便是真实用法）
-    writeFile(dir + "/widgets/rectangle.json",
+    writeFile(dir + "/base/rectangle.json",
         R"({"box": {"height": "auto"}, "layers": [{"op": "rect", "id": "bg", "fill": "@theme/color.accent.base", "radius": "@theme/metric.radius.md"}], "states": {}})");
-    writeFile(dir + "/widgets/button.json",
+    writeFile(dir + "/base/button.json",
         R"({"box": {"height": 48}, "layers": [{"op": "text", "id": "title", "color": "#ffffff"}], "states": {"focused": {"title.color": {"to": "#00ffcc", "duration": 120, "easing": "linear"}}}})");
     return dir;
 }
@@ -315,9 +317,12 @@ int main()
 
         std::vector<std::string> widgets;
         check(designer::readWidgetFileList(themeRoot + "/default", widgets, error), "读 theme.json 的 widgets");
-        checkEqualInt((int)widgets.size(), 2, "外观文件数");
-        checkEqual(designer::widgetNameFromPath(widgets[1]), "button", "外观短名");
-        checkEqual(designer::widgetPathFromName("button"), "widgets/button.json", "短名转路径");
+        // 清单里是主题的全部文件（tokens/ + base/ + widget/ + view/），不只是外观
+        checkEqualInt((int)widgets.size(), 4, "清单条目数（2 张表 + 2 个外观）");
+        checkEqual(designer::widgetNameFromPath(widgets[3]), "base/button", "名字 = 路径去扩展名");
+        checkEqual(designer::widgetPathFromName("base/button"), "base/button.json", "名字转路径");
+        checkEqual(designer::widgetPathFromName("裸名字"), "widget/裸名字.json",
+            "不带目录前缀时默认落到 widget/");
     }
 
     // ---------------------------------------------------------------- 模板新建 / 直接编辑
@@ -369,7 +374,7 @@ int main()
 
     // ---------------------------------------------------------------- 原子写盘 + .bak + 校验拦截
     {
-        const std::string file = themeRoot + "/my-skin/widgets/rectangle.json";
+        const std::string file = themeRoot + "/my-skin/base/rectangle.json";
         std::string error;
 
         std::string before;
@@ -411,11 +416,11 @@ int main()
         // 新建：文件 + theme.json 登记都要有
         check(designer::createWidgetAppearance(themeRoot + "/my-skin", "my_widget",
                                 R"({"box": {}, "layers": [], "states": {}})", error), "新建外观");
-        check(fs::exists(themeRoot + "/my-skin/widgets/my_widget.json"), "文件已建");
+        check(fs::exists(themeRoot + "/my-skin/widget/my_widget.json"), "文件已建（裸名字默认落 widget/）");
         std::vector<std::string> widgets;
         designer::readWidgetFileList(themeRoot + "/my-skin", widgets, error);
-        check(std::find(widgets.begin(), widgets.end(), std::string("widgets/my_widget.json"))
-                != widgets.end(), "已登记进 theme.json");
+        check(std::find(widgets.begin(), widgets.end(), std::string("widget/my_widget.json"))
+                != widgets.end(), "已登记进 theme.json 的 files[]");
 
         // 同名必须被拒绝（不能覆盖用户已有的外观）
         check(!designer::createWidgetAppearance(themeRoot + "/my-skin", "my_widget", "{}", error), "同名新建被拒");
@@ -425,14 +430,14 @@ int main()
         // 删除：登记摘掉，文件改名成 .deleted（不是直接删）
         check(designer::deleteWidgetAppearance(themeRoot + "/my-skin", "my_widget", error), "删除外观");
         designer::readWidgetFileList(themeRoot + "/my-skin", widgets, error);
-        check(std::find(widgets.begin(), widgets.end(), std::string("widgets/my_widget.json"))
+        check(std::find(widgets.begin(), widgets.end(), std::string("widget/my_widget.json"))
                 == widgets.end(), "登记已摘掉");
-        check(fs::exists(themeRoot + "/my-skin/widgets/my_widget.json.deleted"), "文件进了 .deleted");
+        check(fs::exists(themeRoot + "/my-skin/widget/my_widget.json.deleted"), "文件进了 .deleted");
     }
 
     // ---------------------------------------------------------------- 指纹与带冲突检测的写
     {
-        const std::string path = themeRoot + "/my-skin/widgets/rectangle.json";
+        const std::string path = themeRoot + "/my-skin/base/rectangle.json";
         std::string text;
         std::string error;
         designer::readTextFile(path, text, error);
@@ -661,7 +666,7 @@ int main()
         if (rectangleUses != usage.end())
         {
             check(rectangleUses->second.size() >= 1, "至少一个外观用它");
-            check(std::find(rectangleUses->second.begin(), rectangleUses->second.end(), "rectangle")
+            check(std::find(rectangleUses->second.begin(), rectangleUses->second.end(), "base/rectangle")
                     != rectangleUses->second.end(),
                 "rectangle 在里面");
         }
@@ -687,7 +692,7 @@ int main()
         state.canvasZoom       = 0;
         state.showGrid         = true;
         state.previewCompare   = true;
-        state.lastAppearance   = "button.primary";
+        state.lastAppearance   = "base/button.primary";
         state.lastViewFile     = "page_json.json";
 
         std::string error;
@@ -704,7 +709,7 @@ int main()
         checkEqualInt(loaded.canvasZoom, 0, "缩放回来了");
         check(loaded.showGrid, "对齐网格开关回来了");
         check(loaded.previewCompare, "并排对比开关回来了");
-        checkEqual(loaded.lastAppearance, "button.primary", "上次看的外观回来了");
+        checkEqual(loaded.lastAppearance, "base/button.primary", "上次看的外观回来了");
         checkEqual(loaded.lastViewFile, "page_json.json", "上次看的页面回来了");
 
         // 坏 JSON 不能崩，也不该覆盖已有值
@@ -843,15 +848,25 @@ int main()
         const std::string themeDir = themeRoot + "/default";
         const std::string resDir   = themeRoot.substr(0, themeRoot.find_last_of('/'));
 
+        check(designer::classifyThemeFile(themeDir + "/base/button.json", themeDir, resDir)
+                == designer::FileKind::APPEARANCE,
+            "base/*.json 是外观");
+        check(designer::classifyThemeFile(themeDir + "/widget/dialog.json", themeDir, resDir)
+                == designer::FileKind::APPEARANCE,
+            "widget/*.json 是外观");
+        check(designer::classifyThemeFile(themeDir + "/view/page.json", themeDir, resDir)
+                == designer::FileKind::VIEW,
+            "view/*.json 是页面视图");
+        check(designer::classifyThemeFile(themeDir + "/tokens/colors.json", themeDir, resDir)
+                == designer::FileKind::TABLE,
+            "tokens/colors.json 是主题表");
+        check(designer::classifyThemeFile(themeDir + "/tokens/metrics.json", themeDir, resDir)
+                == designer::FileKind::TABLE,
+            "tokens/metrics.json 是主题表");
+        // 老布局还认（迁移期）
         check(designer::classifyThemeFile(themeDir + "/widgets/button.json", themeDir, resDir)
                 == designer::FileKind::APPEARANCE,
-            "widgets/*.json 是外观");
-        check(designer::classifyThemeFile(themeDir + "/colors.json", themeDir, resDir)
-                == designer::FileKind::TABLE,
-            "colors.json 是主题表");
-        check(designer::classifyThemeFile(themeDir + "/metrics.json", themeDir, resDir)
-                == designer::FileKind::TABLE,
-            "metrics.json 是主题表");
+            "老的 widgets/*.json 仍然认作外观");
         check(designer::classifyThemeFile(resDir + "/views/page.json", themeDir, resDir)
                 == designer::FileKind::VIEW,
             "views/*.json 是页面视图");

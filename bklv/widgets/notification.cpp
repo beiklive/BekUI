@@ -7,7 +7,7 @@ namespace bklv
 {
 
 Notification::Notification(const std::string& text, float duration)
-    : AppearanceView("notification", false)
+    : AppearanceView("widget/notification", false)
 {
     this->setText(text);
     this->duration  = duration > 0.0f ? duration : 0.0f;

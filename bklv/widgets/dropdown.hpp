@@ -51,7 +51,7 @@ class DropdownPanel : public AppearanceView
 {
   public:
     DropdownPanel()
-        : AppearanceView("dropdown_popup", false)
+        : AppearanceView("base/dropdown_popup", false)
     {
     }
 

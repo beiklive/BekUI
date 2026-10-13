@@ -387,15 +387,14 @@ int main()
     {
         // 手写 JSON 里写错属性名只会产生"未知属性"警告，不中断构建，
         // 所以这里把 error 数当断言：0 才说明资源是干净的。
-        View* page = createFromJSONFile("resources/views/page_json.json");
-        check(page != nullptr, "resources/views/page_json.json 能建出视图");
+        View* page = createViewFromTheme("page_json");
+        check(page != nullptr, "主题里的 view/page_json 能建出视图");
         checkEqual(std::to_string(getLastLoadErrorCount()), "0",
             "page_json.json 没有未知属性/结构问题");
         delete page;
 
-        std::shared_ptr<const ViewTemplate> item =
-            ViewTemplate::load("resources/views/list_item.json");
-        check(item != nullptr, "resources/views/list_item.json 能装载");
+        std::shared_ptr<const ViewTemplate> item = loadViewTemplateFromTheme("list_item");
+        check(item != nullptr, "主题里的 view/list_item 能装载");
 
         std::vector<Binding> bindings;
         View* itemTree = item != nullptr ? item->instantiate(&bindings) : nullptr;

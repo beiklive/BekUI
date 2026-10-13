@@ -182,8 +182,8 @@ int main()
     std::printf("\n== 7. 外观 JSON 覆盖率 ==\n");
     {
         // 7 份 cell 外观都要能取到（写错 key 在 theme_test 的编译守卫里会失败）
-        for (const char* name : { "cell", "cell_detail", "cell_bool", "cell_radio",
-                 "cell_selector", "cell_slider", "cell_input" })
+        for (const char* name : { "base/cell", "base/cell_detail", "base/cell_bool", "base/cell_radio",
+                 "base/cell_selector", "base/cell_slider", "base/cell_input" })
         {
             std::shared_ptr<const Appearance> appearance = getWidgetAppearance(name);
             check(appearance != nullptr && !appearance->getLayers().empty(),

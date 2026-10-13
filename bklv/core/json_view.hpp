@@ -88,6 +88,12 @@ class ViewTemplate
 View* createFromJSONFile(const std::string& path);
 View* createFromJSONString(const std::string& json);
 
+// 按**主题内的视图描述**装载：name 是主题 view/ 目录下的名字（"page_json" 或 "view/page_json"）。
+// 当前主题没有就回退 default 主题，和外观的回退是同一条链。
+// 视图描述放在主题里 = 结构随主题走；不写主题名时用当前主题。
+View* createViewFromTheme(const std::string& name);
+std::shared_ptr<const ViewTemplate> loadViewTemplateFromTheme(const std::string& name);
+
 // 实例化时"哪个视图是 JSON 里的哪个节点"。
 // pointer 是 JSON Pointer（"" = 根，"/children/0" = 第一个子节点）。
 // 编辑器要靠它做"选中节点 → 在预览里框出来"和"点在预览上 → 反选节点"。

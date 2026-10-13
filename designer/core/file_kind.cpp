@@ -26,12 +26,19 @@ FileKind classifyThemeFile(const std::string& path, const std::string& themeDir,
     const std::string theme = withoutTrailingSlash(themeDir) + "/";
     const std::string res   = withoutTrailingSlash(resourcesDir) + "/";
 
-    if (startsWith(path, res + "views/"))
-        return FileKind::VIEW;
-    if (path == theme + "colors.json" || path == theme + "metrics.json")
+    // 新布局：主题内 tokens/ + base/ + widget/ + view/
+    if (path == theme + "tokens/colors.json" || path == theme + "tokens/metrics.json"
+        || path == theme + "colors.json" || path == theme + "metrics.json")
         return FileKind::TABLE;
+    if (startsWith(path, theme + "base/") || startsWith(path, theme + "widget/"))
+        return FileKind::APPEARANCE;
+    if (startsWith(path, theme + "view/"))
+        return FileKind::VIEW;
+    // 老布局（迁移期还认）：主题内 widgets/、资源根下的 views/
     if (startsWith(path, theme + "widgets/"))
         return FileKind::APPEARANCE;
+    if (startsWith(path, res + "views/"))
+        return FileKind::VIEW;
     return FileKind::UNKNOWN;
 }
 

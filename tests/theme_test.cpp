@@ -81,7 +81,7 @@ int main()
 
     std::printf("\n== 4. 控件外观编译（JSON 描述绘制结构）==\n");
     {
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("button");
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button");
         check(button != nullptr, "button 外观能取到");
         if (button != nullptr)
         {
@@ -116,17 +116,17 @@ int main()
             check(box.hasMinWidth, "button 的 box 声明了 minWidth");
 
             // 百分比 / auto / 四边内边距
-            std::shared_ptr<const Appearance> card = getWidgetAppearance("rectangle.card");
+            std::shared_ptr<const Appearance> card = getWidgetAppearance("base/rectangle.card");
             check(card != nullptr && card->getBox().hasWidth && card->getBox().widthPercent,
                 "card 的宽度是百分比");
             checkFloat(card->getBox().width, 100.0f, "card 宽度 100%");
             check(card->getBox().hasPadding, "card 声明了 padding");
 
             // 提示行本身只是"左侧内容"；高度与左右留白归底栏（borealis 的 hints/* 在 footer 上）
-            std::shared_ptr<const Appearance> hints = getWidgetAppearance("hints_bar");
+            std::shared_ptr<const Appearance> hints = getWidgetAppearance("widget/hints_bar");
             check(hints != nullptr && hints->getBox().hasGap, "hints_bar 声明了条目间距");
 
-            std::shared_ptr<const Appearance> bar = getWidgetAppearance("bottom_bar");
+            std::shared_ptr<const Appearance> bar = getWidgetAppearance("widget/bottom_bar");
             check(bar != nullptr && bar->getBox().hasPadding, "bottom_bar 声明了 padding");
             if (bar != nullptr)
             {
@@ -138,7 +138,7 @@ int main()
                 check(bar->getBox().hasMargin, "底栏声明了左右外边距（footer_margin_sides）");
             }
 
-            std::shared_ptr<const Appearance> shell = getWidgetAppearance("applet_frame");
+            std::shared_ptr<const Appearance> shell = getWidgetAppearance("widget/applet_frame");
             check(shell != nullptr && shell->getBox().hasBackground, "applet_frame 声明了底色");
             if (shell != nullptr)
                 checkColor(shell->getBox().background, getTheme().color("color.surface.page"),
@@ -149,7 +149,7 @@ int main()
             // 只有 bordered/borderless 才出。所以这里断言的条数不一样，不是漏了。
             check(button->getTransitions("focused").size() == 4,
                 "default 按钮 focused 有四条（辉光 + 描边，无高亮底）");
-            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("button.bordered");
+            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("base/button.bordered");
             check(bordered != nullptr && bordered->getTransitions("focused").size() == 5,
                 "bordered 按钮 focused 有五条（含高亮底）");
         }
@@ -158,7 +158,7 @@ int main()
     std::printf("\n== 5. 状态动效（tweeny 逐属性插值）==\n");
     {
         // 用 bordered：它聚焦时才有高亮底补间（default 是 hideHighlightBackground）
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("button.bordered");
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button.bordered");
         check(button != nullptr, "取到外观");
 
         AppearanceInstance instance;
@@ -234,12 +234,14 @@ int main()
     std::printf("\n== 7. 换肤：复制 default 改名改 JSON ==\n");
     {
         // 造一个皮肤：只覆盖一部分 key，其余应当回退 default
+        // 新布局：tokens/ 放色板与数值、base/ 放基础控件外观，清单写在 files[]
         writeFile("resources/theme/test-skin/theme.json",
-            R"({"name":"test-skin","version":1,"widgets":["widgets/button.json"]})");
-        writeFile("resources/theme/test-skin/colors.json",
+            R"({"name":"test-skin","version":1,"author":"测试","description":"覆盖测试用皮肤",
+                "files":["tokens/colors.json","tokens/metrics.json","base/button.json"]})");
+        writeFile("resources/theme/test-skin/tokens/colors.json",
             R"({"accent":{"base":"#ff8800"},"surface":{"raised":"#101010"}})");
-        writeFile("resources/theme/test-skin/metrics.json", R"({"radius":{"md":2}})");
-        writeFile("resources/theme/test-skin/widgets/button.json",
+        writeFile("resources/theme/test-skin/tokens/metrics.json", R"({"radius":{"md":2}})");
+        writeFile("resources/theme/test-skin/base/button.json",
             R"({"layers":[{"op":"rect","id":"bg","fill":"@theme/color.surface.raised",
                 "radius":"@theme/metric.radius.md"}]})");
 
@@ -255,7 +257,7 @@ int main()
         checkFloat(getTheme().number("metric.font.size.md"), 18.0f, "皮肤没写的数值回退 default");
 
         // 外观缓存必须跟着换（否则控件还在用旧外观）
-        std::shared_ptr<const Appearance> skinned = getWidgetAppearance("button");
+        std::shared_ptr<const Appearance> skinned = getWidgetAppearance("base/button");
         check(skinned != nullptr, "换肤后能取到该皮肤的外观");
         if (skinned != nullptr)
         {
@@ -264,7 +266,7 @@ int main()
         }
 
         // 皮肤里没登记的控件外观：回退 default
-        check(getWidgetAppearance("rectangle") != nullptr, "皮肤没写的控件回退 default 外观");
+        check(getWidgetAppearance("base/rectangle") != nullptr, "皮肤没写的控件回退 default 外观");
 
         check(setTheme("default"), "切回 default 成功");
     }
@@ -274,18 +276,16 @@ int main()
         // 这条是给"@theme/ 引用写错"兜底的：写错 key 会被 Appearance::compile 拒绝
         // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
         // 选中态整块变成洋红，就是这个错误。
-        const char* widgets[] = { "rectangle", "button", "button.ghost", "button.primary",
-            "button.highlight", "button.bordered", "button.borderless", "header", "bottom_bar",
-            "slider", "tab_cell", "dialog", "dialog_backdrop",
-            "dropdown", "dropdown_item", "header.popup",
-            "text_field", "edit_text_dialog", "hint_item", "hints_bar",
-            "cell", "cell_detail", "cell_bool", "cell_radio", "cell_selector", "cell_slider",
-            "cell_input" };
-
+        // 名单直接用主题清单（files[]），不再手抄：加/删外观文件时这条测试自动跟上
         for (const char* themeName : { "default", "ocean" })
         {
             check(setTheme(themeName), std::string("切到主题 ") + themeName);
-            for (const char* widget : widgets)
+
+            // 外观名清单来自主题自己登记的 files[]（base/ 与 widget/ 两类）
+            const std::vector<std::string>& names = getTheme().getWidgetNames();
+            check(names.size() >= 40, std::string("  ") + themeName + " 登记的外观够多");
+
+            for (const std::string& widget : names)
             {
                 std::shared_ptr<const Appearance> appearance = getWidgetAppearance(widget);
                 // 非空 = 至少声明了 layers 或 box（纯布局控件可以只写 box）

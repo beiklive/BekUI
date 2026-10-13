@@ -52,7 +52,7 @@ Sidebar::Sidebar(const std::string& title)
 void Sidebar::applyPanelLook()
 {
     // 换肤/改缩放时重新套用（值都在 widgets/sidebar.json 的 box 段里）
-    applyWidgetBox(this, "sidebar");
+    applyWidgetBox(this, "widget/sidebar");
 }
 
 void Sidebar::setPanelWidth(float width)

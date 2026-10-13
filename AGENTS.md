@@ -307,7 +307,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   加新枚举字段时用 `enumMatches` + `warnUnknownEnumValue`，别写 `== "flexEnd"` 这种精确比较。
 - **JSON 语法细节查 `docs/json-syntax.md`**（四类 JSON 的完整键表 / 取值 / 枚举拼写 / 报错行为）；
   下面几条是**约定**，别改错了。
-- **控件的样式全在 JSON 里**（`resources/theme/<主题>/widgets/<控件>.json`）：
+- **控件的样式全在 JSON 里**（`resources/theme/<主题>/base|widget/<控件>[.<变体>].json`）：
   一份外观由三段组成——
   ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/
      justifyContent/alignItems/backgroundColor/cornerRadius/borderThickness/borderColor）。
@@ -333,8 +333,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **主题与外观**（`core/theme_data.*` + `core/appearance.*` + `widgets/`）：
   换肤 = 复制 `resources/theme/default/` 改名 + 改 JSON，**不改 C++**。
   四条约定：
-  ① **不扫目录**：`themes.json` 列主题，各主题的 `theme.json` 列自己的外观文件。
-     romfs 上目录迭代真机未验证，加外观文件要记得登记。
+  ① **不扫目录，清单提前写**：`themes.json` 列主题；各主题 `theme.json` 的 `files[]` 列
+     本主题的全部文件。目录分层与名字规则：
+     ```
+     <主题>/theme.json        元信息（name/author/description）+ files[] 清单
+     <主题>/tokens/           colors.json / metrics.json（色板与数值）
+     <主题>/base/             基础控件外观（单个容器/元素）
+     <主题>/widget/           二级控件外观（引用 base 组合出来的）
+     <主题>/view/             页面与视图描述（结构 + 外观）
+     ```
+     **名字 = 相对主题根的路径去掉扩展名**（`base/button.json` → `"base/button"`），
+     变体继续用后缀拼（`base/button` + variant `"primary"` → `base/button.primary`）。
+     挪文件 = 改名字，C++ 里的引用（`AppearanceView("base/button")`、
+     `applyWidgetBox(this,"widget/sidebar")`）要一起改。
+     视图描述用 `createViewFromTheme("page_json")` / `loadViewTemplateFromTheme(...)` 装载
+     （主题内 `view/`，缺了回退 default 主题）。
   ② **装饰层走 JSON，语义绘制留 C++**：底/边框/文字/图片/状态动效由 `layers` 描述；
      Label 的换行、Image 的缩放、进度弧、滑块轨道走 `custom` 层
      （`AppearanceView::drawCustomLayer`）。把语义绘制也塞进 JSON 等于写解释器，别做。
@@ -423,8 +436,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **页头与底部栏是外壳级的（全局），内容避让是显式的**（`widgets/shell.*` + `widgets/pager.*`）：
   宿主自己建 `Header` / `BottomBar` 交给 `Shell::setHeaderView/setFooterView`（挂覆盖层，
   中间用 `Padding` 顶开），页面再按 `getHeaderInset()/getFooterInset()` 自己留白。
-  其中 `Header = [图标][标题][右侧区]`（widgets/header*.json + header_icon.json），
-  `BottomBar = [提示(左) | 状态区(右)]`（widgets/bottom_bar.json），
+  其中 `Header = [图标][标题][右侧区]`（widget/header*.json + base/header_icon.json），
+  `BottomBar = [提示(左) | 状态区(右)]`（widget/bottom_bar.json），
   Header 的左右外边距用 `appletFrame.paddingSides`、底栏用 `hints.footerMarginSides`。
   显隐用**实例方法** `Shell::setHeaderVisible(bool)` / `setFooterVisible(bool)`：隐藏时看 `GONE`
   （不占位）；**栏里不能留固定外边距**（页头下边的留白写在页头自己的 padding 里），
@@ -463,7 +476,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **下拉弹窗（`widgets/dropdown.*`）**：点触发器 → `App::pushOverlay(DropdownPopup)`，
   弹层 = **遮罩层 + 弹窗面板**：
   · 遮罩铺满全屏、取 `color.common.overlay`（把底下界面压暗，和 Dialog 的遮罩同一个键）；
-  · 面板（`DropdownPanel : AppearanceView`，外观 `widgets/dropdown_popup.json`）画在遮罩**之上**，
+  · 面板（`DropdownPanel : AppearanceView`，外观 `base/dropdown_popup.json`）画在遮罩**之上**，
     里面是选项列表（可滚），锚在触发器附近。
   要点：
   ① **外观只能套在那块面板上**，套到全屏弹层上会把整屏刷成面板色（底下界面全看不见，踩过）；
@@ -651,6 +664,8 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
                     / webp（可选）/ lunasvg + plutovg（可选，SVG）
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
+resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, widget/, view/}
+                    （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
 demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
 scripts/            构建脚本（只剩 Switch 的）

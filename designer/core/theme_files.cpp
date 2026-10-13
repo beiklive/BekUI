@@ -64,25 +64,33 @@ bool readWidgetFileList(const std::string& themeDir, std::vector<std::string>& f
         return false;
 
     const Json doc = Json::parse(text, nullptr, false);
-    if (doc.is_discarded() || !doc.is_object() || !doc.contains("widgets")
-        || !doc["widgets"].is_array())
+    if (doc.is_discarded() || !doc.is_object())
     {
-        error = "theme.json 里没有 widgets 清单";
+        error = "theme.json 不是合法对象";
         return false;
     }
 
-    for (const auto& item : doc["widgets"])
-        if (item.is_string())
-            files.push_back(item.get<std::string>());
-    return true;
+    // 新布局用 files[]（tokens/、base/、widget/、view/ 的显式清单）；
+    // 老主题可能还是 widgets[]，一起认，迁移期不至于打不开。
+    const char* keys[] = { "files", "widgets" };
+    for (const char* key : keys)
+    {
+        if (!doc.contains(key) || !doc[key].is_array())
+            continue;
+        for (const auto& item : doc[key])
+            if (item.is_string())
+                files.push_back(item.get<std::string>());
+        return true;
+    }
+
+    error = "theme.json 里没有 files 清单";
+    return false;
 }
 
+// 名字 = 相对主题根的路径去掉扩展名（"base/button.json" -> "base/button"）
 std::string widgetNameFromPath(const std::string& relativePath)
 {
     std::string name = relativePath;
-    const size_t slash = name.find_last_of('/');
-    if (slash != std::string::npos)
-        name = name.substr(slash + 1);
     const size_t dot = name.find_last_of('.');
     if (dot != std::string::npos)
         name = name.substr(0, dot);
@@ -91,7 +99,11 @@ std::string widgetNameFromPath(const std::string& relativePath)
 
 std::string widgetPathFromName(const std::string& widgetName)
 {
-    return "widgets/" + widgetName + ".json";
+    // 带目录前缀（base/… 、widget/…）就用原样；只写裸名字时默认落到 widget/
+    if (widgetName.rfind("base/", 0) == 0 || widgetName.rfind("widget/", 0) == 0
+        || widgetName.rfind("view/", 0) == 0)
+        return widgetName + ".json";
+    return "widget/" + widgetName + ".json";
 }
 
 bool readTextFile(const std::string& path, std::string& out, std::string& error)
