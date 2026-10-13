@@ -1,0 +1,62 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.slider.height"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "track",
+      "fill": "@theme/color.slider.lineEmpty",
+      "radius": 3,
+      "height": 6,
+      "valign": "center"
+    },
+    {
+      "op": "rect",
+      "id": "fill",
+      "fill": "@theme/color.slider.lineFilled",
+      "radius": 3,
+      "height": 6,
+      "valign": "center"
+    },
+    {
+      "op": "rect",
+      "id": "knob",
+      "fill": "@theme/color.slider.pointer",
+      "stroke": "@theme/color.slider.pointerBorder",
+      "strokeWidth": 2,
+      "radius": 10,
+      "width": 20,
+      "height": 20,
+      "valign": "center"
+    },
+    {
+      "op": "custom",
+      "id": "geometry"
+    }
+  ],
+  "states": {
+    "focused": {
+      "knob.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "knob.stroke": {
+        "to": "@theme/color.text.primary",
+        "duration": 120
+      }
+    },
+    "disabled": {
+      "fill.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      },
+      "knob.fill": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
+    }
+  }
+}

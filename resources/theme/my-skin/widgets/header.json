@@ -1,0 +1,29 @@
+{
+  "box": {
+    "height": "@theme/metric.header.height",
+    "shrink": 0,
+    "margin": [
+      0,
+      "@theme/metric.appletFrame.paddingSides",
+      0,
+      "@theme/metric.appletFrame.paddingSides"
+    ],
+    "padding": [
+      "@theme/metric.header.paddingTopBottom",
+      "@theme/metric.header.paddingSides",
+      "@theme/metric.header.paddingTopBottom",
+      "@theme/metric.header.paddingSides"
+    ],
+    "alignItems": "center",
+    "axis": "row"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "line",
+      "fill": "@theme/color.border.subtle",
+      "height": 1,
+      "valign": "bottom"
+    }
+  ]
+}

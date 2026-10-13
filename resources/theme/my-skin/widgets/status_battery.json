@@ -1,0 +1,14 @@
+{
+  "box": {
+    "width": 42,
+    "height": 20,
+    "axis": "row"
+  },
+  "layers": [
+    {
+      "op": "custom",
+      "id": "battery",
+      "source": "battery"
+    }
+  ]
+}

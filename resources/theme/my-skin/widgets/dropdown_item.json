@@ -1,0 +1,49 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.dropdown.itemHeight",
+    "padding": [
+      "@theme/metric.spacing.sm",
+      "@theme/metric.spacing.md",
+      "@theme/metric.spacing.sm",
+      "@theme/metric.spacing.md"
+    ]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": 0
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "source": "text",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.dropdown.itemTextSize",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        20,
+        0,
+        20
+      ]
+    }
+  ],
+  "states": {
+    "focused": {
+      "bg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 100
+      }
+    },
+    "selected": {
+      "bg.fill": {
+        "to": "@theme/color.state.focus",
+        "duration": 140
+      }
+    }
+  }
+}

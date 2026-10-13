@@ -1,0 +1,30 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.card.padding",
+    "gap": "@theme/metric.spacing.sm"
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.common.shadow",
+      "feather": "@theme/metric.shadow.feather",
+      "radius": "@theme/metric.shadow.radius",
+      "offset": [
+        "@theme/metric.shadow.offsetX",
+        "@theme/metric.shadow.offsetY"
+      ],
+      "spread": "@theme/metric.shadow.spread"
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1,
+      "radius": "@theme/metric.radius.lg"
+    }
+  ]
+}

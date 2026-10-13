@@ -1,0 +1,28 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "100%"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "dim",
+      "fill": "@theme/color.common.transparent"
+    }
+  ],
+  "states": {
+    "open": {
+      "dim.fill": {
+        "to": "@theme/color.backdrop.fill",
+        "duration": 160,
+        "easing": "quadraticOut"
+      }
+    },
+    "closed": {
+      "dim.fill": {
+        "to": "@theme/color.common.transparent",
+        "duration": 140
+      }
+    }
+  }
+}

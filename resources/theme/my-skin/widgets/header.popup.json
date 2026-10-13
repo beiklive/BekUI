@@ -1,0 +1,23 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.spacing.md",
+    "alignItems": "center",
+    "axis": "row"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.raised"
+    },
+    {
+      "op": "rect",
+      "id": "line",
+      "fill": "@theme/color.border.subtle",
+      "height": 1,
+      "valign": "bottom"
+    }
+  ]
+}

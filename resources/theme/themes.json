@@ -2,6 +2,7 @@
   "default": "default",
   "available": [
     "default",
-    "ocean"
+    "ocean",
+    "my-skin"
   ]
 }

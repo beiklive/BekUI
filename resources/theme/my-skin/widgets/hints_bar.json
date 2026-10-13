@@ -1,0 +1,10 @@
+{
+  "box": {
+    "height": "auto",
+    "width": "auto",
+    "alignItems": "center",
+    "gap": "@theme/metric.spacing.lg",
+    "axis": "row"
+  },
+  "layers": []
+}

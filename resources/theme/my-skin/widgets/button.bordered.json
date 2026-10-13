@@ -1,0 +1,108 @@
+{
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": "@theme/metric.control.minWidth"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.radius.md",
+      "stroke": "@theme/color.button.defaultBorder",
+      "strokeWidth": "@theme/metric.button.borderThickness"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "source": "text",
+      "color": "@theme/color.button.defaultText",
+      "fontSize": "@theme/metric.button.textSize",
+      "align": "center",
+      "valign": "center",
+      "inset": [
+        0,
+        25,
+        0,
+        25
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -6.5,
+        -6.5,
+        -6.5,
+        -6.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    }
+  ],
+  "states": {
+    "focused": {
+      "hlGlow.stroke": {
+        "to": "@theme/color.highlight.glow",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlGlow.strokeWidth": {
+        "to": 11,
+        "duration": 120
+      },
+      "hlBorder.stroke": {
+        "to": "@theme/color.highlight.border",
+        "duration": 120,
+        "easing": "quadraticOut"
+      },
+      "hlBorder.strokeWidth": {
+        "to": "@theme/metric.highlight.strokeWidth",
+        "duration": 120
+      },
+      "hlBg.fill": {
+        "to": "@theme/color.highlight.background",
+        "duration": 120,
+        "easing": "quadraticOut"
+      }
+    },
+    "disabled": {
+      "bg.fill": {
+        "to": "@theme/color.state.disabled",
+        "duration": 150
+      },
+      "title.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      },
+      "bg.stroke": {
+        "to": "@theme/color.button.disabledBorder",
+        "duration": 150
+      }
+    }
+  }
+}

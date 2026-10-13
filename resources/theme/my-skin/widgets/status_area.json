@@ -1,0 +1,40 @@
+{
+  "box": {
+    "height": "auto",
+    "axis": "row",
+    "alignItems": "center",
+    "justifyContent": "center"
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "sh",
+      "fill": "#00000080",
+      "opacity" : 22,
+      "feather": 10,
+      "radius": 40,
+      "inset": [
+        3,
+        -15,
+        3,
+        -15
+      ],
+      "offset": [1, 1], "cutout": true
+    },
+    {
+      "op": "rect",
+      "id": "border",
+      "strokeWidth": 2,
+      "stroke": "@theme/color.common.grey",
+      "radius": 40,
+      "inset": [
+        3,
+        -15,
+        3,
+        -15
+      ],
+      "align": "center",
+      "valign": "center"
+    }
+  ]
+}

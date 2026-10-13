@@ -1,0 +1,38 @@
+{
+  "box": {
+    "height": "auto",
+    "padding": [
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX",
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX"
+    ],
+    "axis": "row"
+  },
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "source": "icon",
+      "color": "@theme/color.text.primary",
+      "fontSize": 25.5,
+      "align": "left",
+      "valign": "center"
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "source": "label",
+      "color": "@theme/color.text.dim",
+      "fontSize": 21.5,
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        34
+      ]
+    }
+  ]
+}

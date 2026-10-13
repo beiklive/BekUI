@@ -1,0 +1,13 @@
+{
+  "box": {
+    "height": "auto"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.accent.base",
+      "radius": "@theme/metric.radius.md"
+    }
+  ]
+}

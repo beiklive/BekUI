@@ -1,896 +1,309 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>bklv 外观/页面设计器 · 界面样板房</title>
+<title>bklv 设计器 · 样板房（扁平 / 菜单栏 / 图标化）</title>
 <style>
-  /* 配色直接取自程序里的 default 主题，看起来就是真程序的样子 */
+  /* ============================================================
+     样板房：只表达布局与信息层级，不代表最终像素
+     - 扁平：无渐变、无阴影、无圆角，只有纯色块 + 1px 细线
+     - 配色：VS Code Dark+
+     - 图标：内联 SVG，统一 flex 垂直居中 —— 保证图标与文字中线对齐
+     ============================================================ */
   :root{
-    --page:#2d2d2d; --panel:#1f2227; --raised:#2b2f36; --sunken:#171a1e;
-    --line:#3a3f47; --text:#e9ecef; --muted:#8b929b; --accent:#00ffcc;
-    --accent-dim:#0b8f77; --warn:#ffb74d; --danger:#f06292;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --editor:#1e1e1e; --side:#252526; --panel:#333333; --input:#3c3c3c;
+    --line:#3c3c3c; --line2:#2b2b2b; --sel:#094771;
+    --accent:#0e639c; --text:#cccccc; --dim:#9d9d9d; --off:#6a6a6a;
+    --warn:#cca700; --unsaved:#e2c08d;
+    --icon:#4ec9b0; --icon2:#ce9178; --icon3:#569cd6; --icon4:#6a9955;
   }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
+  *{box-sizing:border-box;margin:0;padding:0}
   body{
-    background:var(--page); color:var(--text); font:13px/1.45 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-    display:flex; flex-direction:column; overflow:hidden;
+    background:#161617; color:var(--text);
+    font:13px/1.45 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:14px;
   }
+  .app{width:1440px; height:872px; background:var(--editor); border:1px solid #101010;
+       display:flex; flex-direction:column; overflow:hidden; position:relative}
 
-  /* ---------------- 顶栏 ---------------- */
-  header{
-    display:flex; align-items:center; gap:16px; padding:8px 14px;
-    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
-  }
-  header .title{font-size:15px; font-weight:600}
-  header .meta{color:var(--muted); font-family:var(--mono); font-size:12px}
-  header .spacer{flex:1}
-  .btn{
-    background:var(--raised); color:var(--text); border:1px solid var(--line);
-    border-radius:6px; padding:5px 11px; font-size:12px; cursor:pointer;
-  }
-  .btn:hover{border-color:var(--accent-dim)}
-  .btn.primary{background:var(--accent); color:#08201c; border-color:var(--accent); font-weight:600}
-  .canvas-ctl{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px}
-  select,input[type=text],input[type=number]{
-    background:var(--sunken); color:var(--text); border:1px solid var(--line);
-    border-radius:5px; padding:4px 6px; font-size:12px; font-family:var(--mono);
-  }
+  /* ---------- 顶栏：只有菜单栏 ---------- */
+  .menubar{height:30px; flex:none; background:var(--panel); border-bottom:1px solid var(--line2);
+           display:flex; align-items:center; padding:0 4px; gap:2px; font-size:12.5px}
+  .menubar .item{padding:3px 10px}
+  .menubar .item.on{background:var(--sel); color:#fff}
+  .menubar .right{margin-left:auto; display:flex; align-items:center; gap:7px; padding-right:8px;
+                  color:var(--dim); font-size:12px}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--unsaved); flex:none}
+  .dot.blue{background:#7fd4ff}
 
-  /* ---------------- 四块布局 ---------------- */
-  main{flex:1; display:grid; grid-template-columns:290px 1fr 348px; min-height:0}
-  .col-left{display:grid; grid-template-rows:auto 1fr auto; min-height:0; border-right:1px solid var(--line)}
-  .panel{display:flex; flex-direction:column; min-height:0}
-  .panel + .panel{border-top:1px solid var(--line)}
-  .panel-head{
-    display:flex; align-items:center; gap:8px; padding:7px 12px;
-    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
-  }
-  .panel-head h2{margin:0; font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--accent)}
-  .panel-head .hint{color:var(--muted); font-size:11px}
-  .panel-body{overflow:auto; padding:8px 10px; min-height:0}
+  /* 展开的「文件」菜单（示意入口）*/
+  .menu{position:absolute; left:4px; top:30px; width:236px; z-index:30;
+        background:var(--side); border:1px solid var(--line); padding:4px 0}
+  .mi{display:flex; align-items:center; gap:8px; padding:4px 12px; font-size:12.5px}
+  .mi.hi{background:var(--accent); color:#fff}
+  .mi .sc{margin-left:auto; color:var(--off); font-size:11.5px}
+  .sep{height:1px; background:var(--line); margin:4px 0}
 
-  /* ---------------- 左上：文件列表 ---------------- */
-  .group{margin-bottom:10px}
-  .group > .g-title{color:var(--muted); font-size:11px; margin:4px 0 5px}
-  .file{
-    display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px;
-    cursor:pointer; border:1px solid transparent;
-  }
-  .file:hover{background:var(--raised)}
-  .file.active{background:#1b3a35; border-color:var(--accent-dim)}
-  .file .dot{width:7px; height:7px; border-radius:50%; background:transparent; flex:0 0 auto}
-  .file.dirty .dot{background:var(--warn)}
-  .file .fname{flex:1; font-family:var(--mono); font-size:12px}
-  .file .tag{color:var(--muted); font-size:10px; border:1px solid var(--line); border-radius:4px; padding:0 4px}
+  /* ---------- 三栏 ---------- */
+  .body{flex:1; display:flex; min-height:0}
+  .pane{display:flex; flex-direction:column; min-height:0}
+  .left{width:300px; flex:none; background:var(--side); border-right:1px solid var(--line2)}
+  .right{width:332px; flex:none; background:var(--side); border-left:1px solid var(--line2)}
+  .center{flex:1; min-width:0; position:relative; background:var(--editor)}
 
-  /* ---------------- 左：节点树 ---------------- */
-  .tree{font-family:var(--mono); font-size:12px}
-  .node{
-    display:flex; align-items:center; gap:6px; padding:3px 6px; border-radius:5px; cursor:pointer;
-    border:1px solid transparent; white-space:nowrap;
-  }
-  .node:hover{background:var(--raised)}
-  .node.sel{background:#1b3a35; border-color:var(--accent)}
-  .node .idx{color:var(--muted); font-size:11px; min-width:26px}
-  .node .caret{width:10px; color:var(--muted)}
-  .node .kind{color:var(--accent-dim); font-size:11px}
-  .node .name{color:var(--text)}
-  .node .op{color:var(--muted); font-size:11px}
-  .children{margin-left:14px}
+  /* 左栏：类型 Tab */
+  .tabs{display:flex; flex:none; border-bottom:1px solid var(--line2)}
+  .tab{flex:1; height:30px; display:flex; align-items:center; justify-content:center; gap:5px;
+       font-size:12.5px; color:var(--dim)}
+  .tab.on{color:#fff; background:var(--editor); border-bottom:1px solid var(--accent)}
+  .cnt{color:var(--off); font-size:11.5px}
 
-  /* ---------------- 左下：节点数 / 路径 ---------------- */
-  .status{padding:8px 12px; background:var(--panel); border-top:1px solid var(--line); font-size:12px}
-  .status .nums{font-family:var(--mono); color:var(--muted)}
-  .status .nums b{color:var(--accent); font-weight:600}
-  .status .path{margin-top:4px; font-family:var(--mono); font-size:11px; color:var(--muted); word-break:break-all}
-  .status .path b{color:var(--text); font-weight:600}
+  /* 列表：每项带图标 */
+  .list{height:238px; flex:none; padding:4px 0; overflow:hidden}
+  .row{height:23px; display:flex; align-items:center; gap:7px; padding:0 10px 0 12px; font-size:12.5px}
+  .row .nm{flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+  .row.on{background:var(--sel); color:#fff}
+  .tag{color:var(--off); font-size:11px}
 
-  /* ---------------- 中：预览区 ---------------- */
-  .preview-wrap{flex:1; min-height:0; display:flex; flex-direction:column; background:var(--sunken)}
-  .preview-bar{
-    display:flex; align-items:center; gap:10px; padding:6px 12px;
-    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
-    color:var(--muted); font-size:12px;
-  }
-  .preview-stage{flex:1; min-height:0; overflow:auto; display:flex; align-items:center; justify-content:center; padding:22px}
-  .canvas{
-    position:relative; background:var(--page); outline:1px solid var(--line);
-    transform-origin:center center;
-  }
-  .canvas.checker{
-    background-image:
-      linear-gradient(45deg,#2a2a2a 25%,transparent 25%,transparent 75%,#2a2a2a 75%),
-      linear-gradient(45deg,#2a2a2a 25%,transparent 25%,transparent 75%,#2a2a2a 75%);
-    background-size:16px 16px; background-position:0 0,8px 8px;
-  }
-  .canvas .label-corner{
-    position:absolute; left:6px; top:4px; font-family:var(--mono); font-size:10px; color:var(--muted);
-  }
-  .preview-note{
-    position:absolute; right:8px; bottom:6px; font-family:var(--mono); font-size:10px; color:var(--muted);
-  }
+  /* 可拖分隔条 */
+  .split{height:6px; flex:none; position:relative}
+  .split::after{content:""; position:absolute; left:0; right:0; top:2px; height:1px; background:var(--line2)}
 
-  /* 预览里的"真实控件" */
-  .ctl{
-    position:absolute; display:flex; align-items:center; justify-content:center;
-    font-size:15px; color:#08201c; font-weight:600;
-  }
-  .ctl.cell{ background:transparent; color:var(--text); font-weight:400; justify-content:flex-start; padding:0 16px; gap:12px }
-  .ctl.cell .title{flex:1; text-align:left}
-  .ctl .tick{width:28px; height:28px; border-radius:50%; background:var(--accent); position:relative; flex:0 0 auto }
-  .ctl .tick::after{
-    content:""; position:absolute; left:7px; top:12px; width:14px; height:5px;
-    border-left:3px solid #1a1c21; border-bottom:3px solid #1a1c21; transform:rotate(-45deg);
-  }
-  .ctl .track{position:absolute; left:0; right:0; height:6px; border-radius:3px; background:#4a4e55}
-  .ctl .fill{position:absolute; left:0; height:6px; border-radius:3px; background:var(--accent)}
-  .ctl .knob{position:absolute; width:18px; height:18px; border-radius:50%; background:var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.6)}
+  /* 节点树：开关收在标题右侧，用图标 */
+  .treehead{height:28px; flex:none; display:flex; align-items:center; gap:6px; padding:0 8px 0 10px;
+            border-bottom:1px solid var(--line2)}
+  .treehead .ttl{display:flex; align-items:center; gap:6px; font-size:12.5px}
+  .treehead .tools{margin-left:auto; display:flex; align-items:center; gap:2px}
+  .ib{width:22px; height:20px; display:flex; align-items:center; justify-content:center; color:var(--dim)}
+  .ib.on{color:#fff; background:var(--input)}
+  .counts{flex:none; display:flex; align-items:center; gap:13px; padding:3px 10px; font-size:11.5px;
+          color:var(--dim); border-bottom:1px solid var(--line2)}
+  .counts span{display:flex; align-items:center; gap:4px}
+  .counts b{color:var(--text); font-weight:500}
 
-  /* 预览里的"整页视图" */
-  .page{position:absolute; inset:0; display:flex; flex-direction:column; background:var(--page)}
-  .page .hd{height:55px; display:flex; align-items:center; gap:10px; padding:0 30px; border-bottom:1px solid var(--line)}
-  .page .hd .bar{width:5px; height:26px; background:var(--accent); border-radius:2px}
-  .page .hd .t{font-size:15px} .page .hd .sub{margin-left:auto; color:var(--muted); font-size:13px}
-  .page .bd{flex:1; display:flex; min-height:0}
-  .page .side{width:210px; background:#323232; padding:18px 16px; display:flex; flex-direction:column; gap:10px}
-  .page .side .it{display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px}
-  .page .side .it.on{color:var(--accent)}
-  .page .side .it .acc{width:4px; height:18px; border-radius:2px; background:transparent}
-  .page .side .it.on .acc{background:var(--accent)}
-  .page .content{flex:1; padding:22px 24px; display:flex; flex-direction:column; gap:12px; overflow:hidden}
-  .page .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px}
-  .page .card h4{margin:0 0 8px; font-size:14px; font-weight:600}
-  .page .card p{margin:0; color:var(--muted); font-size:12px}
-  .page .ft{height:52px; border-top:1px solid var(--line); display:flex; align-items:center; padding:0 24px; color:var(--muted); font-size:12px}
-  .hl{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+  .tree{flex:1; padding:4px 0; overflow:hidden}
+  .tn{height:22px; display:flex; align-items:center; gap:6px; padding-left:14px; font-size:12.5px}
+  .tn.l2{padding-left:30px} .tn.l3{padding-left:46px}
+  .tn.on{background:var(--sel); color:#fff}
+  .tn .nm{overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+  .badge{display:flex; align-items:center; height:16px; padding:0 5px; font-size:11px;
+         background:rgba(78,201,176,.18); color:var(--icon)}
+  .badge.t{background:rgba(206,145,120,.18); color:var(--icon2)}
+  .badge.i{background:rgba(86,156,214,.18); color:var(--icon3)}
+  .badge.s{background:rgba(106,153,85,.18); color:var(--icon4)}
+  .fields{color:var(--off); font-size:11px}
 
-  /* ---------------- 右：属性表 ---------------- */
-  table.props{width:100%; border-collapse:collapse}
-  table.props td{padding:3px 0; vertical-align:middle}
-  table.props td.k{color:var(--muted); font-family:var(--mono); font-size:11px; width:44%; padding-right:8px}
-  table.props td.v{width:56%}
-  table.props input,table.props select{width:100%; min-width:72px}
-  table.props .v > span{width:100%}
-  table.props .swatch{width:26px; height:20px; border-radius:4px; border:1px solid var(--line); display:inline-block; vertical-align:middle; margin-right:6px}
-  .sec{margin:10px 0 4px; color:var(--accent); font-size:11px; letter-spacing:.04em}
-  .sec:first-child{margin-top:0}
-  .row-actions{display:flex; gap:6px; margin:6px 0}
-  .mini{font-size:11px; padding:3px 7px}
-  .warnbox{
-    margin:8px 0; padding:8px 10px; border:1px solid var(--danger); border-radius:6px;
-    background:#3a1f28; color:#ffd7e3; font-size:11px; font-family:var(--mono); display:none;
-  }
-  .warnbox.show{display:block}
-  .readonly{color:var(--muted); font-style:italic}
+  /* ---------- 中间：整块就是画布 ---------- */
+  .canvas{position:absolute; inset:0; overflow:hidden}
+  .checker{position:absolute; inset:0; opacity:.5;
+    background-image:linear-gradient(45deg,#232323 25%,transparent 25%),
+      linear-gradient(-45deg,#232323 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#232323 75%),
+      linear-gradient(-45deg,transparent 75%,#232323 75%);
+    background-size:16px 16px; background-position:0 0,0 8px,8px -8px,-8px 0}
+  .stage{position:absolute; inset:0; display:flex; align-items:center; justify-content:center}
+  .widget{width:420px; height:120px; background:#01ffc9; color:#0b3a30;
+          display:flex; align-items:center; justify-content:center; font-size:16px}
 
-  /* ---------------- 弹层 ---------------- */
-  .modal{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:20}
-  .modal.show{display:flex}
-  .modal .box{background:var(--panel); border:1px solid var(--line); border-radius:10px; width:660px; max-height:78vh; overflow:auto}
-  .modal .box h3{margin:0; padding:12px 16px; border-bottom:1px solid var(--line); font-size:14px}
-  .modal .box .body{padding:14px 16px}
-  .modal .box .foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end}
-  table.diff{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px}
-  table.diff th,table.diff td{border-bottom:1px solid var(--line); padding:5px 8px; text-align:left}
-  table.diff th{color:var(--muted); font-weight:500}
-  table.diff .old{color:var(--danger)} table.diff .new{color:var(--accent)}
-  .radio-row{display:flex; gap:16px; margin:6px 0 14px}
-  .radio-row label{display:flex; gap:6px; align-items:center; cursor:pointer}
-  .field-row{display:flex; gap:10px; align-items:center; margin:8px 0}
-  .field-row .lbl{width:96px; color:var(--muted); font-size:12px}
-  .toast{
-    position:fixed; right:16px; bottom:16px; background:var(--panel); border:1px solid var(--accent-dim);
-    border-radius:8px; padding:10px 14px; font-size:12px; opacity:0; transition:opacity .2s; z-index:30;
-  }
-  .toast.show{opacity:1}
-  .legend{padding:6px 12px; background:var(--panel); border-top:1px solid var(--line); color:var(--muted); font-size:11px}
-  .legend b{color:var(--accent)}
+  /* 画布左右两条竖排浮层：钉在面板边缘（画布平移缩放不影响）*/
+  .side{position:absolute; top:10px; background:rgba(37,37,38,.94); border:1px solid var(--line);
+        display:flex; flex-direction:column; padding:4px 0}
+  .side.states{left:10px; width:76px}
+  .side.icons{right:10px; width:34px; align-items:center}
+  .st{height:26px; display:flex; align-items:center; gap:6px; padding:0 9px; font-size:12px; color:var(--dim)}
+  .st .d{width:6px; height:6px; border-radius:50%; background:var(--off); flex:none}
+  .st.on{background:var(--sel); color:#fff}
+  .st.on .d{background:#7fd4ff}
+  .side.icons .ib{width:28px; height:26px}
+  .vsep{width:18px; height:1px; background:var(--line); margin:3px 0}
+
+  /* 画布底部一行：分辨率 / 倍率 / 路径 */
+  .cfoot{position:absolute; left:0; right:0; bottom:0; height:24px; background:var(--panel);
+         border-top:1px solid var(--line2); display:flex; align-items:center; gap:16px; padding:0 10px;
+         font-size:11.5px; color:var(--dim)}
+  .cfoot b{color:var(--text); font-weight:500}
+  .grow{flex:1}
+
+  /* ---------- 右栏：属性 ---------- */
+  .ihead{height:30px; flex:none; display:flex; align-items:center; gap:7px; padding:0 10px;
+         border-bottom:1px solid var(--line2); font-size:12.5px}
+  .ihead .p{margin-left:auto; color:var(--off); font-size:11px}
+  .insp{flex:1; padding:4px 0; overflow:hidden}
+  .grp{height:26px; display:flex; align-items:center; gap:6px; padding:0 10px; font-size:12.5px;
+       background:rgba(255,255,255,.02); border-top:1px solid var(--line2); border-bottom:1px solid var(--line2)}
+  .props{padding:4px 10px 7px}
+  .prow{display:flex; gap:8px; margin-bottom:4px}
+  .cell{display:flex; align-items:center; gap:6px; flex:1; min-width:0}
+  .lb{width:50px; flex:none; color:var(--dim); font-size:12px; text-align:right}
+  .in{flex:1; min-width:0; height:22px; background:var(--input); border:1px solid var(--line);
+      display:flex; align-items:center; padding:0 6px; font-size:12px}
+  .in.hint{color:var(--off)}
+  .in.ref{color:var(--icon2)}
+  .sw{width:16px; height:16px; border:1px solid var(--line); flex:none}
+  .mini{width:22px; height:22px; flex:none; display:flex; align-items:center; justify-content:center;
+        color:var(--dim); border:1px solid var(--line)}
+  .note{flex:none; border-top:1px solid var(--line2); padding:8px 10px; font-size:11.5px;
+        color:var(--off); display:flex; flex-direction:column; gap:5px}
+  .note b{color:var(--dim); font-weight:500}
+
+  /* 右键菜单示意 */
+  .ctx{position:absolute; width:190px; background:var(--side); border:1px solid var(--line);
+       padding:4px 0; z-index:40}
+  .draghint{position:absolute; height:2px; background:#007fd4; z-index:35}
 </style>
 </head>
 <body>
+<div class="app">
 
-<header>
-  <span class="title">bklv 设计器</span>
-  <span class="meta" id="hdr-project">项目 my-skin（模板新建，来自 default）· /Users/you/MyApp/resources/theme/my-skin</span>
-  <span class="spacer"></span>
-  <span class="canvas-ctl">
-    画布
-    <select id="canvas-size">
-      <option value="auto" selected>自适应（按文件类型）</option>
-      <option value="1280x720">1280×720</option>
-      <option value="720x480">720×480</option>
-      <option value="420x320">420×320</option>
-    </select>
-    背景
-    <select id="canvas-bg">
-      <option value="solid">纯色</option>
-      <option value="checker">透明网格</option>
-    </select>
-    缩放
-    <select id="canvas-zoom">
-      <option value="1">100%</option>
-      <option value="0.75">75%</option>
-      <option value="1.5">150%</option>
-    </select>
-  </span>
-  <button class="btn" id="btn-new">新建项目</button>
-  <button class="btn" id="btn-revert">还原</button>
-  <button class="btn" id="btn-save-as">另存</button>
-  <button class="btn primary" id="btn-save">保存（看 diff）</button>
-</header>
-
-<main>
-  <!-- ============ 左列：文件列表 / 节点树 / 节点数 ============ -->
-  <div class="col-left">
-    <!-- 左上：文件列表 -->
-    <section class="panel">
-      <div class="panel-head"><h2>文件</h2><span class="hint">● 未保存</span></div>
-      <div class="panel-body" id="filelist"></div>
-    </section>
-
-    <!-- 左：节点树 -->
-    <section class="panel">
-      <div class="panel-head"><h2>节点树</h2><span class="hint">点哪层渲染哪层</span></div>
-      <div class="panel-body tree" id="tree"></div>
-    </section>
-
-    <!-- 左下：节点数 / 路径 -->
-    <section class="status">
-      <div class="nums" id="stat-nums"></div>
-      <div class="path" id="stat-path"></div>
-    </section>
+  <!-- 顶栏：只有菜单栏 -->
+  <div class="menubar">
+    <div class="item on">文件</div><div class="item">编辑</div><div class="item">视图</div>
+    <div class="item">工具</div><div class="item">帮助</div>
+    <div class="right"><span>my-skin</span><span>·</span><span>button.primary</span>
+      <span class="dot"></span><span>未保存</span></div>
   </div>
 
-  <!-- ============ 中：预览区 ============ -->
-  <section class="preview-wrap">
-    <div class="preview-bar">
-      <b style="color:var(--accent)">预览</b>
-      <span id="preview-mode">选中「文件」→ 渲染整个控件外观</span>
-      <span class="spacer" style="flex:1"></span>
-      <span id="preview-ctx" class="meta"></span>
-    </div>
-    <div class="preview-stage">
-      <div class="canvas" id="canvas">
-        <span class="label-corner" id="canvas-corner"></span>
-        <span class="preview-note">真实控件 / 真实绘制，非示意图</span>
+  <!-- 「打开项目」在「文件」菜单里，不再有第二行按钮 -->
+
+  <div class="body">
+
+    <!-- 左栏 -->
+    <div class="pane left">
+      <div class="tabs">
+        <div class="tab on"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11"/></svg>控件 <span class="cnt">43</span></div>
+        <div class="tab"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>页面 <span class="cnt">9</span></div>
+        <div class="tab"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h7"/></svg>主题表 <span class="cnt">2</span></div>
+      </div>
+
+      <div class="list">
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11"/></svg><span class="nm">rectangle</span></div>
+        <div class="row on"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M2.5 6.5h11"/></svg><span class="nm">button.primary</span><span class="dot"></span></div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M2.5 6.5h11"/></svg><span class="nm">button.ghost</span></div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="4.5" width="11" height="7"/></svg><span class="nm">header</span></div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="4.5" width="11" height="7"/></svg><span class="nm">bottom_bar</span></div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="2.5" width="11" height="11" rx="5.5"/></svg><span class="nm">cell_radio</span></div>
+        <div class="row"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="3.5" width="11" height="9"/><path d="M5.5 3.5v9"/></svg><span class="nm">sidebar</span><span class="tag">最近</span></div>
+      </div>
+
+      <div class="split"></div>
+
+      <div class="treehead">
+        <div class="ttl"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4.5h5M2.5 8h11M2.5 11.5h7"/></svg>节点树</div>
+        <div class="tools">
+          <div class="ib" title="展开全部"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 6.5l4-4 4 4M4 9.5l4 4 4-4"/></svg></div>
+          <div class="ib" title="只到层"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2l6 3-6 3-6-3z"/><path d="M2 8l6 3 6-3"/></svg></div>
+          <div class="ib on" title="只看层"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 8s2.5-4 6.5-4 6.5 4 6.5 4-2.5 4-6.5 4S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="1.8"/></svg></div>
+        </div>
+      </div>
+      <div class="counts">
+        <span><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2l6 3-6 3-6-3z"/></svg>层 <b>5</b></span>
+        <span><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5"/></svg>状态 <b>3</b></span>
+        <span><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8h10M8 3v10"/></svg>字段 <b>26</b></span>
+      </div>
+
+      <div class="tree">
+        <div class="tn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg><span class="nm">button.primary</span></div>
+        <div class="tn l2"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg><span class="nm">盒模型</span></div>
+        <div class="tn l2"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg><span class="nm">层（绘制顺序）</span></div>
+        <div class="tn l3 on"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10"/></svg><span class="nm">bg</span><span class="badge">矩形</span><span class="fields">4 字段</span></div>
+        <div class="tn l3"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10"/></svg><span class="nm">hlBg</span><span class="badge">矩形</span><span class="fields">5 字段</span></div>
+        <div class="tn l3"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h10M8 4v8"/></svg><span class="nm">title</span><span class="badge t">文字</span><span class="fields">8 字段</span></div>
+        <div class="tn l3"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="4.5"/></svg><span class="nm">hlGlow</span><span class="badge">矩形</span><span class="fields">5 字段</span></div>
+        <div class="tn l2"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg><span class="nm">状态</span></div>
       </div>
     </div>
-  </section>
 
-  <!-- ============ 右：属性表 ============ -->
-  <section class="panel" style="border-left:1px solid var(--line)">
-    <div class="panel-head"><h2>属性</h2><span class="hint" id="props-for">—</span></div>
-    <div class="panel-body" id="props"></div>
-  </section>
-</main>
+    <!-- 中间：整块画布 -->
+    <div class="pane center">
+      <div class="canvas">
+        <div class="checker"></div>
+        <div class="stage"><div class="widget">主要按钮</div></div>
 
-<div class="legend">
-  样板房说明：<b>左上</b> 可编辑文件（● 未保存）· <b>左</b> 节点树（逐层展开，点哪层就渲染哪层）·
-  <b>中</b> 预览区（选中即渲染真实样式）· <b>右</b> 属性表（改完立刻反映到预览）·
-  <b>左下</b> 节点数与当前路径 · 顶栏还放了保存／还原／另存／diff 与画布控制。
-</div>
+        <div class="side states">
+          <div class="st on"><span class="d"></span>默认</div>
+          <div class="st"><span class="d"></span>聚焦</div>
+          <div class="st"><span class="d"></span>按下</div>
+          <div class="st"><span class="d"></span>禁用</div>
+          <div class="st"><span class="d"></span>选中</div>
+        </div>
 
-<!-- ============ 新建项目弹层 ============ -->
-<div class="modal" id="modal-new">
-  <div class="box">
-    <h3>新建项目</h3>
-    <div class="body">
-      <div class="radio-row">
-        <label><input type="radio" name="mode" value="fork" checked> 用模板新建主题（原主题不动）</label>
-        <label><input type="radio" name="mode" value="inplace"> 直接编辑现有主题</label>
-      </div>
-      <div class="field-row"><span class="lbl">模板 / 主题</span>
-        <select id="new-template">
-          <option>default</option><option>ocean</option><option>my-skin</option>
-        </select>
-      </div>
-      <div class="field-row"><span class="lbl">新主题名</span>
-        <input type="text" id="new-name" value="my-skin-2">
-      </div>
-      <div class="field-row"><span class="lbl">主题目录</span>
-        <input type="text" style="flex:1" value="/Users/you/MyApp/resources/theme" id="new-root">
-      </div>
-      <p class="readonly" style="font-size:12px">
-        模板新建 = 复制成 <span style="font-family:var(--mono)">theme/&lt;新名&gt;/</span> 并在目标仓库的
-        <span style="font-family:var(--mono)">themes.json</span> 登记；直接编辑只对自建主题开放
-        （default / ocean 会被拒绝并提示用模板新建）。
-      </p>
-    </div>
-    <div class="foot"><button class="btn" data-close>取消</button><button class="btn primary" data-close>创建</button></div>
-  </div>
-</div>
+        <div class="side icons">
+          <div class="ib on" title="网格底"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h12M2 10h12M6 2v12M10 2v12"/></svg></div>
+          <div class="ib" title="对齐网格"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 3v10M8 3v10M13 3v10"/></svg></div>
+          <div class="ib" title="绘制顺序条"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2.5" y="3" width="11" height="3"/><rect x="2.5" y="7" width="11" height="3"/><path d="M2.5 12.5h11"/></svg></div>
+          <div class="vsep"></div>
+          <div class="ib" title="适应窗宽"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 8h12M4 6L2 8l2 2M12 6l2 2-2 2"/></svg></div>
+          <div class="ib" title="重置视图"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2v3h-3"/></svg></div>
+        </div>
 
-<!-- ============ diff 弹层 ============ -->
-<div class="modal" id="modal-diff">
-  <div class="box">
-    <h3>保存前确认改动（连文件一起写，写盘前整主题编译校验）</h3>
-    <div class="body">
-      <table class="diff" id="diff-table"></table>
-      <p class="readonly" style="font-size:12px; margin:10px 0 0">
-        校验不通过就不写盘：错误会按字段标在属性表上（例如 layers[2].fill 引用了不存在的主题 key）。
-        写盘方式：临时文件 + rename 原子替换，并留一份 <span style="font-family:var(--mono)">.bak</span>。
-      </p>
-    </div>
-    <div class="foot"><button class="btn" data-close>取消</button><button class="btn primary" id="btn-diff-ok">写入</button></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ============================================================
-// 这是界面样板房：数据是假的，但交互是真的（点树 → 换预览／换属性表；
-// 改属性 → 预览立刻变；改过的文件打 ●；保存前给 diff）。
-// ============================================================
-
-const FILES = {
-  appearance: [
-    { id:'button.primary', name:'button.primary.json', kind:'appearance', control:'button',
-      box:{ height:48, minWidth:160, radius:8, paddingTop:15, paddingSides:25, gap:8,
-            axis:'row', justifyContent:'center', alignItems:'center',
-            background:'#00ffcc', borderColor:'#00000000', borderThickness:0, opacity:1 },
-      layers:[
-        {id:'bg',   op:'rect',   fill:'#00ffcc', radius:8, inset:'0,0,0,0', opacity:1},
-        {id:'hlBg', op:'rect',   fill:'#00000000', radius:6, inset:'-2.5,-2.5,-2.5,-2.5', opacity:1},
-        {id:'title',op:'text',   color:'#08201c', fontSize:16, align:'center', valign:'center', source:'text'},
-        {id:'hlGlow',op:'rect',  fill:'#00000000', radius:6, inset:'-6.5,-6.5,-6.5,-6.5', opacity:1},
-      ],
-      states:{ focused:[{ch:'hlBg.fill', to:'#1f2227', duration:120, easing:'quadraticOut'},
-                        {ch:'bg.fill',   to:'#00d9ae', duration:120, easing:'quadraticOut'}],
-               pressed:[{ch:'bg.fill', to:'#00b894', duration:80, easing:'linear'}] }
-    },
-    { id:'cell_radio', name:'cell_radio.json', kind:'appearance', control:'cell',
-      box:{ height:70, radius:0, paddingTop:12.5, paddingSides:16, gap:12, axis:'row',
-            justifyContent:'flex_start', alignItems:'center',
-            background:'#00000000', borderColor:'#00000000', borderThickness:0, opacity:1 },
-      layers:[
-        {id:'bg',     op:'rect', fill:'#00000000', radius:0, inset:'0,0,0,0', opacity:1},
-        {id:'hlBg',   op:'rect', fill:'#00000000', radius:6, inset:'-2.5,-2.5,-2.5,-2.5', opacity:1},
-        {id:'title',  op:'text', color:'#ffffff', fontSize:22, align:'left', valign:'center', source:'title'},
-        {id:'radio',  op:'custom', fill:'#58c3a9', radius:15, inset:'0,0,0,0', opacity:1},
-      ],
-      states:{ selected:[{ch:'radio.opacity', to:1, duration:120, easing:'linear'},
-                         {ch:'title.color', to:'#58c3a9', duration:120, easing:'linear'}] }
-    },
-    { id:'cell_slider', name:'cell_slider.json', kind:'appearance', control:'slider',
-      box:{ height:70, radius:0, paddingTop:12.5, paddingSides:16, gap:12, axis:'row',
-            justifyContent:'flex_start', alignItems:'center',
-            background:'#00000000', borderColor:'#00000000', borderThickness:0, opacity:1 },
-      layers:[
-        {id:'track', op:'custom', fill:'#4a4e55', radius:3, inset:'0,0,0,0', opacity:1},
-        {id:'fill',  op:'custom', fill:'#00ffcc', radius:3, inset:'0,0,0,0', opacity:1},
-        {id:'knob',  op:'custom', fill:'#00ffcc', radius:9, inset:'0,0,0,0', opacity:1},
-      ],
-      states:{ focused:[{ch:'knob.fill', to:'#7dffe6', duration:100, easing:'quadraticOut'}] }
-    },
-    { id:'dialog', name:'dialog.json', kind:'appearance', control:'dialog',
-      box:{ height:220, minWidth:420, radius:14, paddingTop:20, paddingSides:24, gap:12, axis:'column',
-            justifyContent:'flex_start', alignItems:'stretch',
-            background:'#1f2227', borderColor:'#3a3f47', borderThickness:1, opacity:1 },
-      layers:[
-        {id:'shadow', op:'shadow', fill:'#00000073', radius:14, inset:'0,0,0,0', opacity:1,
-         feather:12, spread:0, offset:'0,4', cutout:true},
-        {id:'bg',     op:'rect',   fill:'#1f2227', radius:14, inset:'0,0,0,0', opacity:1},
-        {id:'border', op:'rect',   fill:'#00000000', radius:14, inset:'0,0,0,0', opacity:1},
-      ],
-      states:{ opened:[{ch:'shadow.opacity', to:1, duration:160, easing:'quadraticOut'}] }
-    },
-  ],
-  views: [
-    { id:'page_home', name:'page_home.json', kind:'view', page:'home' },
-    { id:'page_settings', name:'page_settings.json', kind:'view', page:'settings' },
-  ],
-  tables: [
-    { id:'colors.json', name:'colors.json', kind:'table', readonly:true },
-    { id:'metrics.json', name:'metrics.json', kind:'table', readonly:true },
-  ]
-};
-
-// 页面视图的节点树（示例：对应 resources/views/*.json 的 type + 属性 + children）
-const VIEW_TREE = {
-  id:'root', type:'AppletFrame', props:{ id:'bklv/root', clipsToBounds:false },
-  children:[
-    { id:'header', type:'Header', props:{ variant:'applet', title:'设置', subtitle:'外观与页面都能在这儿改' } },
-    { id:'body', type:'Row', props:{ gap:24, alignItems:'stretch', grow:1 },
-      children:[
-        { id:'sidebar', type:'Sidebar', props:{ width:410, paddingLeft:80, title:'页面' },
-          children:[
-            { id:'tab1', type:'TabCell', props:{ title:'主题', variant:'sidebar', selected:true } },
-            { id:'tab2', type:'TabCell', props:{ title:'控件', variant:'sidebar', selected:false } },
-          ]},
-        { id:'content', type:'ScrollingFrame', props:{ grow:1, showScrollingIndicator:true, clipsToBounds:true },
-          children:[
-            { id:'card1', type:'Rectangle', props:{ variant:'card', padding:[42,60,42,60], cornerRadius:12 },
-              children:[ { id:'lbl1', type:'Label', props:{ text:'@i18n/page/theme_sub', fontSize:18, textColor:'@theme/color.text.primary' } } ]},
-            { id:'row1', type:'Row', props:{ gap:12, justifyContent:'flex_start', alignItems:'center' },
-              children:[
-                { id:'btn1', type:'Button', props:{ title:'确定', appearanceVariant:'primary' } },
-                { id:'btn2', type:'Button', props:{ title:'取消', appearanceVariant:'bordered' } },
-                { id:'pad1', type:'Padding', props:{} },
-              ]},
-          ]},
-      ]},
-    { id:'footer', type:'BottomBar', props:{ variant:'', hints:['A 确定','B 返回'] } },
-  ]
-};
-
-let current = { file:null, nodePath:[], node:null, dirty:new Set(), changes:[] };
-// 默认把 box 的字段折起来：层与 states 才是这一屏的主角
-const collapsed = new Set(['box']);
-
-// ---------------- 工具 ----------------
-const $ = s => document.querySelector(s);
-const el = (tag, cls, text) => { const n=document.createElement(tag); if(cls) n.className=cls; if(text!==undefined) n.textContent=text; return n; };
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
-
-// ---------------- 文件列表 ----------------
-function renderFiles(){
-  const box = $('#filelist'); box.innerHTML='';
-  const groups = [ ['主题外观（widgets/*.json）','appearance'], ['页面视图（views/*.json）','views'], ['主题表','tables'] ];
-  for (const [title,key] of groups){
-    const g = el('div','group'); g.appendChild(el('div','g-title',title));
-    for (const f of FILES[key]){
-      const row = el('div','file'); if(current.file && current.file.id===f.id) row.classList.add('active');
-      if(current.dirty.has(f.id)) row.classList.add('dirty');
-      row.appendChild(el('span','dot'));
-      row.appendChild(el('span','fname',f.name));
-      if(f.kind==='table') row.appendChild(el('span','tag','只读'));
-      if(f.kind==='view')  row.appendChild(el('span','tag','页面'));
-      row.onclick = ()=>openFile(f);
-      g.appendChild(row);
-    }
-    box.appendChild(g);
-  }
-}
-
-// ---------------- 节点树 ----------------
-function buildAppearanceTree(f){
-  const nodes = [];
-  nodes.push({ id:'file:'+f.id, label:f.name, kind:'file', children:[
-    { id:'box', label:'box', kind:'box', children: Object.keys(f.box).map(k=>({ id:'box.'+k, label:k, kind:'field', get:()=>f.box[k] })) },
-    ...f.layers.map((l,i)=>({ id:'layer:'+i, label:'#'+(i+1)+' '+l.id, kind:l.op, idx:'#'+(i+1),
-        children: Object.keys(l).filter(k=>k!=='id'&&k!=='op').map(k=>({ id:'layer:'+i+'.'+k, label:k, kind:'field', get:()=>l[k] })) })),
-    { id:'states', label:'states', kind:'states', children: Object.keys(f.states).map(sn=>({
-        id:'state:'+sn, label:sn, kind:'state', children: f.states[sn].map((c,i)=>({
-          id:'state:'+sn+':'+i, label:c.ch, kind:'channel', get:()=>c
-        })) })) },
-  ]});
-  return nodes;
-}
-function buildViewTree(n, prefix){
-  const id = prefix + '/' + n.id;
-  return { id:'vnode:'+id, label:n.type+' '+n.id, kind:'view', node:n,
-           children:(n.children||[]).map(c=>buildViewTree(c, id)).concat(
-             Object.keys(n.props||{}).map(k=>({ id:'vprop:'+id+'.'+k, label:k, kind:'field', get:()=>n.props[k] }))) };
-}
-
-function renderTree(){
-  const box = $('#tree'); box.innerHTML='';
-  if(!current.file){ box.appendChild(el('div','hint','先从上面挑一个文件')); return; }
-
-  const roots = current.file.kind==='view' ? [buildViewTree(VIEW_TREE,'')] : buildAppearanceTree(current.file);
-  let count = 0;
-  const walk = (nodes, depth, parentEl) => {
-    for (const n of nodes){
-      count++;
-      const row = el('div','node'); if(current.node && current.node.id===n.id) row.classList.add('sel');
-      const hasKids = n.children && n.children.length;
-      const folded = hasKids && collapsed.has(n.id);
-      const caret = el('span','caret', hasKids ? (folded ? '▸' : '▾') : ' ');
-      if(hasKids) caret.onclick = (e)=>{ e.stopPropagation(); folded ? collapsed.delete(n.id) : collapsed.add(n.id); renderTree(); };
-      row.appendChild(caret);
-      if(n.idx) row.appendChild(el('span','idx', n.idx));
-      row.appendChild(el('span','kind', n.kind));
-      row.appendChild(el('span','name', ' '+n.label));
-      row.onclick = (e)=>{ e.stopPropagation(); selectNode(n); };
-      parentEl.appendChild(row);
-      if(hasKids && !folded){
-        const kids = el('div','children'); parentEl.appendChild(kids);
-        walk(n.children, depth+1, kids);
-      }
-    }
-  };
-  const host = el('div'); walk(roots,0,host); box.appendChild(host);
-  current.nodeCount = count;
-}
-
-// ---------------- 选中节点 ----------------
-function selectNode(n){
-  current.node = n;
-  const segs = [];
-  const collect = (nodes, target, path) => {
-    for (const x of nodes){
-      const p = path.concat([x.label]);
-      if (x.id===target.id){ segs.push(...p); return true; }
-      if (x.children && collect(x.children, target, p)) return true;
-    }
-    return false;
-  };
-  const roots = current.file.kind==='view' ? [buildViewTree(VIEW_TREE,'')] : buildAppearanceTree(current.file);
-  collect(roots, n, [current.file.name]);
-  current.nodePath = segs;
-  renderTree(); renderPreview(); renderProps(); renderStatus();
-}
-
-// ---------------- 预览 ----------------
-function canvasSize(){
-  const v = $('#canvas-size').value;
-  if (v === 'auto'){
-    if (current.file && current.file.kind === 'view') return [960, 600];
-    if (current.file && current.file.control === 'dialog') return [520, 300];
-    if (current.file && current.file.control === 'cell') return [420, 140];
-    return [420, 220];
-  }
-  const [w,h] = v.split('x').map(Number);
-  return [w,h];
-}
-function applyCanvas(){
-  const [w,h] = canvasSize();
-  const c = $('#canvas');
-  c.style.width = w+'px'; c.style.height = h+'px';
-  c.style.transform = 'scale('+$('#canvas-zoom').value+')';
-  c.classList.toggle('checker', $('#canvas-bg').value==='checker');
-  $('#canvas-corner').textContent = w+'×'+h;
-}
-function clearCanvas(){ const c=$('#canvas'); [...c.children].forEach(n=>{ if(!n.classList.contains('label-corner') && !n.classList.contains('preview-note')) n.remove(); }); }
-
-function renderPreview(){
-  applyCanvas(); clearCanvas();
-  const c = $('#canvas');
-  const f = current.file, n = current.node;
-  $('#preview-ctx').textContent = f ? f.name + (n ? ' · ' + n.label : '') : '';
-
-  if(!f){ $('#preview-mode').textContent='选一个文件'; return; }
-
-  if(f.kind==='view'){
-    $('#preview-mode').textContent = n && n.kind==='view'
-      ? '整页视图（点树里任意节点，整页照常显示 + 该节点高亮框出）'
-      : '整页视图：真实实例化那棵视图树';
-    const page = renderPage(f.page);
-    c.appendChild(page);
-    // 高亮选中节点对应的区域
-    if(n){
-      const key = n.node ? n.node.id : (n.id.split(':')[1]||'').split('/').pop();
-      const t = page.querySelector('[data-node="'+key+'"]');
-      if(t) t.classList.add('hl');
-    }
-    return;
-  }
-
-  if(!n){ $('#preview-mode').textContent='渲染整个控件外观'; c.appendChild(renderControl(f, null, null)); return; }
-
-  if(n.kind==='file'){ $('#preview-mode').textContent='渲染整个控件外观'; c.appendChild(renderControl(f,null,null)); }
-  else if(n.kind==='box'){ $('#preview-mode').textContent='box 段：盒模型/间距/对齐（占位块标出边界）'; c.appendChild(renderBox(f)); }
-  else if(['rect','text','image','shadow','custom'].includes(n.kind)){
-    const idx = Number(n.label.match(/#(\d+)/)[1]) - 1;
-    $('#preview-mode').textContent='只渲染这一层：'+f.layers[idx].id+'（'+f.layers[idx].op+'）';
-    c.appendChild(renderSingleLayer(f.layers[idx]));
-  }
-  else if(n.kind==='state'){
-    const sn = n.label;
-    $('#preview-mode').textContent='状态「'+sn+'」生效时的样子（把目标值当当前值来画）';
-    c.appendChild(renderControl(f, sn, null));
-  }
-  else if(n.kind==='states'){ $('#preview-mode').textContent='选一个具体状态看效果'; c.appendChild(renderControl(f,null,null)); }
-  else { $('#preview-mode').textContent='字段：'+n.label+'（预览仍显示所属控件）'; c.appendChild(renderControl(f,null,n)); }
-}
-
-// 真实控件外观（外观 JSON 预览）
-function renderControl(f, stateName, fieldNode){
-  const wrap = el('div'); wrap.style.cssText='position:absolute; inset:0; display:flex; align-items:center; justify-content:center';
-  const box = f.box;
-  const bg = (stateName==='focused' && f.states.focused) ? f.states.focused[0].to : box.background;
-  const el2 = el('div','ctl');
-  const h = fieldNode && fieldNode.label==='height' ? Number(fieldNode.get()) : box.height;
-  const r = fieldNode && fieldNode.label==='radius' ? Number(fieldNode.get()) : box.radius;
-
-  if(f.control==='button'){
-    el2.style.cssText = `position:relative; height:${h}px; min-width:${box.minWidth}px; padding:${box.paddingTop}px ${box.paddingSides}px;
-      background:${bg}; border-radius:${r}px; box-shadow:${stateName==='focused'?'0 0 0 5px rgba(0,255,204,.35), 0 6px 18px rgba(0,0,0,.5)':'0 4px 14px rgba(0,0,0,.45)'};
-      border:${box.borderThickness}px solid ${box.borderColor}; color:#08201c;`;
-    el2.textContent = '主要按钮';
-  } else if(f.control==='cell'){
-    el2.classList.add('cell');
-    el2.style.cssText += `position:relative; height:${h}px; width:340px; background:${stateName==='selected'?'#00000000':box.background};
-      border-radius:${r}px; ${stateName==='focused'?'box-shadow:0 0 0 2px rgba(0,255,204,.5) inset;':''}`;
-    const t = el('span','title','使用自定义主题'); if(stateName==='selected') t.style.color='#58c3a9';
-    const tick = el('span','tick');
-    el2.appendChild(t); el2.appendChild(tick);
-  } else if(f.control==='slider'){
-    el2.style.position='relative'; el2.style.width='360px'; el2.style.height=h+'px';
-    const track=el('div','track'); track.style.top=(h/2-3)+'px';
-    const fill=el('div','fill'); fill.style.top=(h/2-3)+'px'; fill.style.width='42%';
-    const knob=el('div','knob'); knob.style.top=(h/2-9)+'px'; knob.style.left='calc(42% - 9px)';
-    el2.appendChild(track); el2.appendChild(fill); el2.appendChild(knob);
-  } else if(f.control==='dialog'){
-    el2.style.cssText=`position:relative; height:${h}px; width:${box.minWidth}px; padding:${box.paddingTop}px ${box.paddingSides}px;
-      background:${box.background}; border:${box.borderThickness}px solid ${box.borderColor}; border-radius:${r}px;
-      box-shadow:0 ${Math.max(4,box.radius/1.5)}px 24px rgba(0,0,0,.6); display:block; color:var(--text);`;
-    el2.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:8px">对话框</div>'
-      + '<div style="color:var(--muted);font-size:13px">shadow 层 + bg 层 + border 层；shadow 开了 cutout，内圈不留阴影。</div>'
-      + '<div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">'
-      + '<span style="background:#00ffcc;color:#08201c;border-radius:6px;padding:6px 14px;font-weight:600">确定</span>'
-      + '<span style="border:1px solid #8b929b;border-radius:6px;padding:6px 14px">取消</span></div>';
-  }
-  wrap.appendChild(el2);
-  return wrap;
-}
-
-// box 段预览：画盒模型
-function renderBox(f){
-  const wrap = el('div'); wrap.style.cssText='position:absolute; inset:0; display:flex; align-items:center; justify-content:center';
-  const b = f.box;
-  const outer = el('div'); outer.style.cssText=`position:relative; height:${b.height}px; width:${Math.max(300,b.minWidth||300)}px;
-    background:repeating-linear-gradient(45deg,#3b2d17,#3b2d17 6px,#453521 6px,#453521 12px); border:1px dashed #ffb74d; border-radius:${b.radius}px;`;
-  const inner = el('div'); inner.style.cssText=`position:absolute; inset:${b.paddingTop}px ${b.paddingSides}px; background:#1f2227;
-    border:1px dashed #00ffcc; border-radius:${Math.max(0,b.radius-2)}px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px;`;
-  inner.textContent = `内容区 · padding ${b.paddingTop}/${b.paddingSides} · gap ${b.gap}`;
-  outer.appendChild(inner);
-  const tags = el('div'); tags.style.cssText='position:absolute; left:0; top:-22px; font-family:var(--mono); font-size:11px; color:var(--muted)';
-  tags.textContent = `盒模型预览：height ${b.height} · radius ${b.radius} · ${b.axis} · justify ${b.justifyContent} · align ${b.alignItems}`;
-  outer.appendChild(tags);
-  wrap.appendChild(outer);
-  return wrap;
-}
-
-// 单层预览
-function renderSingleLayer(layer){
-  const wrap = el('div'); wrap.style.cssText='position:absolute; inset:0; display:flex; align-items:center; justify-content:center';
-  const stage = el('div'); stage.style.cssText='position:relative; width:300px; height:140px; background:#1f2227; border:1px dashed #3a3f47';
-  const solid = el('div');
-  const insetNum = String(layer.inset||'0,0,0,0').split(',').map(s=>Number(s)||0);
-  const inset = insetNum.map(v=>v+'px').join(' ');
-  const base = `position:absolute; inset:${inset}; border-radius:${layer.radius||0}px;`;
-  if(layer.op==='rect'){ solid.style.cssText = base + `background:${layer.fill}; border:${(layer.strokeWidth||0)}px solid ${layer.stroke||'transparent'};`; }
-  else if(layer.op==='shadow'){ solid.style.cssText = base + `background:#1f2227; box-shadow:0 ${(layer.offset||'0,4').split(',')[1]}px ${(layer.feather||12)}px ${layer.fill};`; }
-  else if(layer.op==='text'){ solid.style.cssText = base + `color:${layer.color}; font-size:${layer.fontSize}px; display:flex; align-items:center; justify-content:${layer.align==='center'?'center':layer.align==='right'?'flex-end':'flex-start'};`; solid.textContent='文本层：'+(layer.source||''); }
-  else { solid.style.cssText = base + 'background:linear-gradient(135deg,#0b8f77,#00ffcc); display:flex; align-items:center; justify-content:center; color:#08201c; font-size:12px;'; solid.textContent='custom 层（C++ 绘制）'; }
-  stage.appendChild(solid);
-  const t = el('div'); t.style.cssText='position:absolute; left:6px; bottom:4px; font-family:var(--mono); font-size:10px; color:var(--muted)';
-  t.textContent = `${layer.id} · op=${layer.op} · inset ${layer.inset} · opacity ${layer.opacity}`;
-  stage.appendChild(t);
-  wrap.appendChild(stage);
-  return wrap;
-}
-
-// 整页视图预览
-function renderPage(kind){
-  const p = el('div','page');
-  p.innerHTML = `
-    <div class="hd" data-node="header"><span class="bar"></span><span class="t">${kind==='home'?'主题':'设置'}</span>
-      <span class="sub">外观与页面都能在这儿改</span></div>
-    <div class="bd">
-      <div class="side" data-node="sidebar">
-        <div class="it on" data-node="tab1"><span class="acc"></span>主题</div>
-        <div class="it" data-node="tab2"><span class="acc"></span>控件</div>
-        <div class="it"><span class="acc"></span>布局</div>
-        <div class="it"><span class="acc"></span>列表</div>
-      </div>
-      <div class="content" data-node="content">
-        <div class="card" data-node="card1"><h4>页面视图 JSON 也在这里改</h4>
-          <p>打开 views/*.json 时，预览区直接渲染整页；点树里任意节点，整页照常显示并把这个节点框出来。</p></div>
-        <div style="display:flex;gap:12px;align-items:center" data-node="row1">
-          <span data-node="btn1" style="background:#00ffcc;color:#08201c;border-radius:8px;padding:10px 20px;font-weight:600">确定</span>
-          <span data-node="btn2" style="border:1px solid #8b929b;border-radius:8px;padding:10px 20px">取消</span>
+        <div class="cfoot">
+          <span>画布 <b>1280×720</b></span><span><b>100%</b></span>
+          <span class="grow"></span><span>resources/theme/default</span>
         </div>
       </div>
     </div>
-    <div class="ft" data-node="footer">A 确定 · B 返回</div>`;
-  return p;
-}
 
-// ---------------- 属性表 ----------------
-function renderProps(){
-  const box = $('#props'); box.innerHTML='';
-  const f = current.file, n = current.node;
-  if(!f){ box.appendChild(el('div','hint','选一个文件')); $('#props-for').textContent='—'; return; }
+    <!-- 右栏：属性 -->
+    <div class="pane right">
+      <div class="ihead">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10"/></svg>
+        <span>bg</span><span class="p">矩形层</span>
+      </div>
+      <div class="insp">
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg>尺寸</div>
+        <div class="props"><div class="prow">
+          <div class="cell"><span class="lb">宽度</span><div class="in hint">自动</div></div>
+          <div class="cell"><span class="lb">高度</span><div class="in hint">自动</div></div>
+        </div></div>
 
-  if(f.kind==='table'){
-    $('#props-for').textContent = f.name + '（P4 才可编辑）';
-    const t = el('table','props');
-    t.innerHTML = `<tr><td class="k">说明</td><td class="v readonly">颜色/数值表本轮先只读；表单里的颜色与数字可以从这里挑 key</td></tr>
-      <tr><td class="k">键数</td><td class="v readonly">111 色 / 125 数值</td></tr>`;
-    box.appendChild(t); return;
-  }
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg>外观</div>
+        <div class="props">
+          <div class="prow">
+            <div class="cell"><span class="lb">圆角</span><div class="in">6</div></div>
+            <div class="cell"><span class="lb">不透明度</span><div class="in hint">未设置</div></div>
+          </div>
+          <div class="prow">
+            <div class="cell"><span class="lb">填充</span><div class="sw" style="background:#01ffc9"></div>
+              <div class="in ref">主题色 · 按钮底色</div>
+              <div class="mini" title="取色"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2l6 6-6 6-6-6z"/></svg></div>
+            </div>
+          </div>
+          <div class="prow">
+            <div class="cell"><span class="lb">内缩</span><div class="in">-2.5</div><div class="in">-2.5</div><div class="in">-2.5</div><div class="in">-2.5</div></div>
+          </div>
+        </div>
 
-  if(f.kind==='view'){
-    const node = n && n.node ? n.node : VIEW_TREE;
-    $('#props-for').textContent = n ? (n.kind==='view' ? node.type : '字段 ' + n.label) : '页面根节点';
-    box.appendChild(viewForm(node)); return;
-  }
+        <div class="grp"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 4l4 4-4 4"/></svg>布局</div>
+        <div class="props">
+          <div class="prow">
+            <div class="cell"><span class="lb">主轴</span><div class="in">纵向</div></div>
+            <div class="cell"><span class="lb">主轴对齐</span><div class="in">居中</div></div>
+          </div>
+        </div>
+      </div>
 
-  // 外观：按节点类型给不同表单
-  if(!n || n.kind==='file'){ $('#props-for').textContent = '控件外观 ' + f.name; box.appendChild(boxForm(f)); box.appendChild(layerListForm(f)); }
-  else if(n.kind==='box'){ $('#props-for').textContent='box 段'; box.appendChild(boxForm(f)); }
-  else if(['rect','text','image','shadow','custom'].includes(n.kind)){
-    const i = Number(n.label.match(/#(\d+)/)[1])-1;
-    $('#props-for').textContent = '层 #'+(i+1)+' '+f.layers[i].id;
-    box.appendChild(layerForm(f, i));
-  }
-  else if(n.kind==='state'){
-    $('#props-for').textContent = '状态 '+n.label;
-    box.appendChild(stateForm(f, n.label));
-  }
-  else if(n.kind==='states'){ $('#props-for').textContent='states'; box.appendChild(el('div','hint','展开选一个状态')); }
-  else if(n.kind==='field' && n.id.startsWith('layer:')){
-    const parts = n.id.split(':'); const i = Number(parts[1].split('.')[0]); const key = parts[1].split('.')[1];
-    $('#props-for').textContent='层 #'+(i+1)+' 的字段 '+key;
-    box.appendChild(fieldForm(f.layers[i], key, ()=>refreshFromEdit(f)));
-  }
-  else { $('#props-for').textContent='字段 '+n.label; box.appendChild(el('div','hint','在上层节点里改')); }
-}
+      <div class="note">
+        <div><b>字段名与取值一律中文</b>：矩形 / 文字 / 图片 / 阴影；主轴 / 交叉轴 / 居中 / 两端对齐…</div>
+        <div><b>层的操作都在右键菜单</b>：复制、删除、增加层、增加字段</div>
+        <div><b>上下移 = 直接拖动</b>，行内不再有箭头按钮</div>
+        <div><b>属性面板不再放「改动 N 处」</b>与一堆增删按钮</div>
+      </div>
+    </div>
+  </div>
 
-function markDirty(msg){
-  current.dirty.add(current.file.id);
-  current.changes.push(msg);
-  renderFiles();
-  const w=$('#warn'); if(w) w.classList.remove('show');
-}
+  <!-- 右键菜单（层）示意 -->
+  <div class="ctx" style="left:326px; top:516px">
+    <div class="mi hi"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="7" height="7"/><rect x="6" y="6" width="7" height="7"/></svg>复制层</div>
+    <div class="mi"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3h7v7H3z"/><path d="M10 10h3v3h-3"/></svg>粘贴层</div>
+    <div class="sep"></div>
+    <div class="mi"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8h10M8 3v10"/></svg>增加层…</div>
+    <div class="mi"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8h9M8 4l4 4-4 4"/></svg>增加字段…</div>
+    <div class="sep"></div>
+    <div class="mi"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 4l8 8M12 4l-8 8"/></svg>删除层</div>
+  </div>
 
-// 外观的 box 表单
-function boxForm(f){
-  const t = el('table','props'); const b = f.box; let idx=0;
-  const num = (k,label,step=1) => row(t,label, input('number', b[k], step, v=>{ b[k]=v; markDirty(`box.${k}: ${v}`); renderPreview(); }));
-  const sel = (k,label,opts) => row(t,label, select(opts, b[k], v=>{ b[k]=v; markDirty(`box.${k}: ${v}`); renderPreview(); }));
-  row(t,'外观名', readOnly(f.name));
-  t.appendChild(el('tr')).appendChild(el('td','sec','盒模型')); 
-  num('height','height'); num('minWidth','minWidth'); num('radius','radius');
-  num('paddingTop','padding 上下'); num('paddingSides','padding 左右'); num('gap','gap');
-  t.appendChild(el('tr')).appendChild(el('td','sec','布局'));
-  sel('axis','axis',['row','column']);
-  sel('justifyContent','justifyContent',['flexStart','center','flexEnd','spaceBetween','spaceAround','spaceEvenly']);
-  sel('alignItems','alignItems',['flexStart','center','flexEnd','stretch','baseline']);
-  t.appendChild(el('tr')).appendChild(el('td','sec','颜色（可从主题 key 挑）'));
-  row(t,'backgroundColor', colorInput(b.background, v=>{ b.background=v; markDirty('box.backgroundColor'); renderPreview(); }));
-  row(t,'borderColor', colorInput(b.borderColor, v=>{ b.borderColor=v; markDirty('box.borderColor'); renderPreview(); }));
-  num('borderThickness','borderThickness');
-  return t;
-}
-// 外观的层列表表单
-function layerListForm(f){
-  const box = el('div');
-  box.appendChild(el('div','sec','layers（顺序就是绘制顺序：hlBg 在内容前，hlGlow 最后）'));
-  f.layers.forEach((l,i)=>{
-    const row = el('div','node'); row.style.cursor='default';
-    row.appendChild(el('span','idx','#'+(i+1))); row.appendChild(el('span','kind',l.op)); row.appendChild(el('span','name',' '+l.id));
-    const acts = el('span'); acts.style.cssText='margin-left:auto;display:flex;gap:4px';
-    ['↑','↓','⧉','✕'].forEach(a=>{ const btn=el('button','btn mini',a); btn.onclick=()=>toast('样板房里这步未接线：'+(a==='↑'?'上移':a==='↓'?'下移':a==='⧉'?'复制':'删除')+' 第 '+(i+1)+' 层'); acts.appendChild(btn); });
-    row.appendChild(acts); box.appendChild(row);
-  });
-  const add = el('div','row-actions');
-  ['rect','text','image','shadow','custom'].forEach(op=>{ const b=el('button','btn mini','+ '+op); b.onclick=()=>toast('样板房里这步未接线：新增 '+op+' 层'); add.appendChild(b); });
-  box.appendChild(add);
-  return box;
-}
-// 单层表单
-function layerForm(f,i){
-  const l = f.layers[i]; const t=el('table','props');
-  row(t,'id', input('text', l.id, null, v=>{ l.id=v; markDirty('layer.id'); renderTree(); }));
-  row(t,'op', readOnly(l.op));
-  row(t,'fill', colorInput(l.fill, v=>{ l.fill=v; markDirty('layer.fill'); renderPreview(); }));
-  row(t,'radius', input('number', l.radius||0, 1, v=>{ l.radius=v; markDirty('layer.radius'); renderPreview(); }));
-  row(t,'inset', input('text', l.inset, null, v=>{ l.inset=v; markDirty('layer.inset'); renderPreview(); }));
-  row(t,'opacity', input('number', l.opacity, 0.05, v=>{ l.opacity=v; markDirty('layer.opacity'); }));
-  if(l.op==='text'){ row(t,'color', colorInput(l.color, v=>{ l.color=v; renderPreview(); })); row(t,'fontSize', input('number', l.fontSize, 1, v=>{ l.fontSize=v; renderPreview(); })); }
-  if(l.op==='shadow'){ row(t,'feather', input('number', l.feather, 1, v=>{ l.feather=v; renderPreview(); }));
-                       row(t,'offset', input('text', l.offset, null, v=>{ l.offset=v; renderPreview(); }));
-                       row(t,'cutout', checkbox(l.cutout, v=>{ l.cutout=v; markDirty('shadow.cutout'); renderPreview(); })); }
-  return t;
-}
-// 状态表单
-function stateForm(f,name){
-  const t=el('table','props');
-  f.states[name].forEach((c,i)=>{
-    row(t, c.ch, el('span'));
-    row(t, '  to', input('text', String(c.to), null, v=>{ c.to=v; markDirty(name+'.'+c.ch); renderPreview(); }));
-    row(t, '  duration', input('number', c.duration, 10, v=>{ c.duration=v; markDirty(name+'.'+c.ch+'.duration'); }));
-    const sel = select(['linear','quadraticIn','quadraticOut','quadraticInOut','cubicOut','backOut','bounceOut','elasticOut'], c.easing, v=>{ c.easing=v; markDirty(name+'.'+c.ch+'.easing'); });
-    row(t, '  easing', sel);
-  });
-  return t;
-}
-// 视图节点表单
-function viewForm(node){
-  const t=el('table','props');
-  row(t,'type', readOnly(node.type));
-  row(t,'id', input('text', node.id, null, v=>{ node.id=v; toast('节点 id 改了：'+v); }));
-  t.appendChild(el('tr')).appendChild(el('td','sec','属性（表单按库里该类型的属性表自动生成）'));
-  for(const k of Object.keys(node.props||{})){
-    const v = node.props[k];
-    if(typeof v === 'boolean') row(t,k, checkbox(v, nv=>{ node.props[k]=nv; markDirty('view.'+k); renderPreview(); }));
-    else if(/^#|^\@theme/.test(String(v))) row(t,k, colorInput(String(v), nv=>{ node.props[k]=nv; markDirty('view.'+k); renderPreview(); }));
-    else if(typeof v === 'number') row(t,k, input('number', v, 1, nv=>{ node.props[k]=nv; markDirty('view.'+k); renderPreview(); }));
-    else row(t,k, input('text', String(v), null, nv=>{ node.props[k]=nv; markDirty('view.'+k); renderPreview(); }));
-  }
-  const add = el('div','row-actions');
-  ['属性','子节点','include'].forEach(x=>{ const b=el('button','btn mini','+ '+x); b.onclick=()=>toast('样板房里这步未接线：给该视图节点加 '+x); add.appendChild(b); });
-  t.appendChild(el('tr')).appendChild(el('td','sec','children 增删与排序'));
-  t.appendChild(el('tr')).appendChild((()=>{ const td=el('td'); td.colSpan=2; td.appendChild(add); return td; })());
-  return t;
-}
-
-// 表单小工具
-function row(table, key, valueEl){ const tr=el('tr'); const k=el('td','k',key); const v=el('td','v'); v.appendChild(valueEl); tr.appendChild(k); tr.appendChild(v); table.appendChild(tr); return tr; }
-function readOnly(text){ const s=el('span','readonly',text); return s; }
-function input(type, value, step, onChange){
-  const i=el('input'); i.type=type; i.value=value; if(step) i.step=step;
-  i.oninput=()=>onChange(type==='number'? Number(i.value): i.value);
-  return i;
-}
-function select(opts, value, onChange){
-  const s=el('select');
-  opts.forEach(o=>{ const op=el('option',null,o); op.value=o; if(String(value)===String(o)) op.selected=true; s.appendChild(op); });
-  s.onchange=()=>onChange(s.value); return s;
-}
-function checkbox(value, onChange){ const i=el('input'); i.type='checkbox'; i.checked=!!value; i.onchange=()=>onChange(i.checked); return i; }
-function colorInput(value, onChange){
-  const wrap=el('span'); wrap.style.cssText='display:flex;align-items:center;gap:6px';
-  const sw=el('span','swatch'); sw.style.background=String(value).replace(/([0-9a-f]{6})[0-9a-f]{2}$/i,'#$1');
-  const i=el('input'); i.type='text'; i.value=value; i.style.flex='1';
-  i.oninput=()=>{ sw.style.background=String(i.value).replace(/([0-9a-f]{6})[0-9a-f]{2}$/i,'#$1'); onChange(i.value); };
-  const key=el('select');
-  ['主题 key…','accent.base','common.blue','common.red','text.primary','surface.card','自定义'].forEach(o=>{
-    const op=el('option',null,o); op.value=o; key.appendChild(op);
-  });
-  key.style.width='96px';
-  key.onchange=()=>{
-    if(key.value==='自定义' || key.value==='主题 key…') return;
-    i.value='@theme/color.'+key.value; onChange(i.value);
-  };
-  wrap.appendChild(sw); wrap.appendChild(i); wrap.appendChild(key);
-  return wrap;
-}
-function refreshFromEdit(f){ renderPreview(); }
-
-// ---------------- 左下状态 ----------------
-function countViewNodes(n){ return 1 + (n.children||[]).reduce((a,c)=>a+countViewNodes(c),0); }
-function renderStatus(){
-  const f=current.file, n=current.node;
-  let extra = '';
-  if(f && f.kind==='appearance') extra = ` · 层 <b>${f.layers.length}</b> · 状态 <b>${Object.keys(f.states).length}</b>`;
-  else if(f && f.kind==='view')  extra = ` · 视图节点 <b>${countViewNodes(VIEW_TREE)}</b> · 字段 <b>${current.nodeCount-countViewNodes(VIEW_TREE)}</b>`;
-  else if(f && f.kind==='table') extra = ' · 只读';
-  $('#stat-nums').innerHTML = `节点 <b>${current.nodeCount||0}</b>${extra}`
-    + (n && n.idx ? ` · 当前 <b>${n.idx}</b>` : '');
-  $('#stat-path').innerHTML = current.nodePath.length ? current.nodePath.map((p,i)=>i===current.nodePath.length-1?`<b>${p}</b>`:p).join(' / ') : '—';
-}
-
-// ---------------- 打开文件 ----------------
-function openFile(f){
-  current.file = f; current.node=null; current.nodePath=[]; current.changes=[];
-  renderFiles(); renderTree(); renderPreview(); renderProps(); renderStatus();
-  toast('打开 '+f.name);
-}
-
-// ---------------- 弹层与顶栏动作 ----------------
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('show'));
-$('#btn-new').onclick = ()=>$('#modal-new').classList.add('show');
-$('#btn-save-as').onclick = ()=>toast('另存：导出一份 JSON 到指定路径（样板房未接线）');
-$('#btn-revert').onclick = ()=>{ current.dirty.delete(current.file.id); current.changes=[]; renderFiles(); toast('已还原到上次保存（样板房未真正回滚数据）'); };
-$('#btn-save').onclick = ()=>{
-  const rows = current.changes.length ? current.changes : ['（没有改动）'];
-  $('#diff-table').innerHTML = '<tr><th>键</th><th>改动</th></tr>' + rows.map(x=>{
-    const [k,v]=String(x).split(': ');
-    return `<tr><td>${k||x}</td><td class="new">${v||'—'}</td></tr>`;
-  }).join('');
-  $('#modal-diff').classList.add('show');
-};
-$('#btn-diff-ok').onclick = ()=>{
-  $('#modal-diff').classList.remove('show');
-  current.dirty.delete(current.file.id); current.changes=[]; renderFiles();
-  toast('已写入（样板房未真写盘）：整主题校验通过 → 原子替换 + .bak → 热重载');
-};
-['#canvas-size','#canvas-bg','#canvas-zoom'].forEach(s=>$(s).onchange=()=>{ applyCanvas(); renderPreview(); });
-
-// ---------------- 启动：默认打开 button.primary ----------------
-// ?file=page_home 可以直接打开某个文件（方便对比两种文件的界面）
-const wanted = new URLSearchParams(location.search).get('file');
-const start = [...FILES.appearance, ...FILES.views, ...FILES.tables].find(f=>f.id===wanted) || FILES.appearance[0];
-openFile(start);
-// 默认选中"文件"这一层：预览渲染整个控件外观，属性表给 box 表单 + 层列表
-setTimeout(()=>{ const first=document.querySelector('#tree .node'); if(first) first.click(); },0);
-</script>
+  <!-- 拖动排序的插入位置指示 -->
+  <div class="draghint" style="left:318px; top:566px; width:266px"></div>
+</div>
 </body>
 </html>
