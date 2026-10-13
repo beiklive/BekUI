@@ -8,6 +8,8 @@
 
 #include "bklv/3rd/imgui/imgui.h"
 #include "designer/ui/designer_style.hpp"
+#include "designer/ui/icon_draw.hpp"
+#include "designer/core/icon_align.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
 #include "designer/core/file_kind.hpp"
@@ -1214,130 +1216,117 @@ void DesignerWindow::drawTopBar()
 
 void DesignerWindow::drawFileList()
 {
-    static int rowIndex = 0;
-    auto fileRow = [](const std::string& label, bool selected, bool isDirty, const char* tag) {
+    // 用户要求：文件列表**按类型分 Tab**（控件 / 页面 / 主题表），不要全混在一页里上下滑。
+    // 每个条目前面带图标，图标按行高取中（见 core/icon_align.hpp）。
+    const DesignerPalette palette = currentDesignerPalette();
+    const float lineHeight        = ImGui::GetTextLineHeight();
+    const float iconSize          = 14.0f;
+    const float gutter            = 20.0f; // 左侧给图标留的槽
+
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##filter", "过滤…", this->fileFilter, sizeof(this->fileFilter));
+
+    // 一行：图标在左槽里，文字用 Selectable（整行可点、可选中）
+    auto row = [&](Icon icon, const std::string& text, bool selected, bool isDirty,
+                   const char* tag, const char* idSuffix) {
         const ImVec2 start = ImGui::GetCursorScreenPos();
-        std::string text   = std::string(isDirty ? "● " : "  ") + label;
+        std::string label  = "##row" + std::string(idSuffix);
+        const bool clicked = ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_None,
+            ImVec2(0.0f, lineHeight + 4.0f));
+
+        drawIcon(ImGui::GetWindowDrawList(), icon,
+            ImVec2(start.x + gutter * 0.5f,
+                iconTopForTextLine(start.y + 2.0f, lineHeight, iconSize) + iconSize * 0.5f),
+            iconSize,
+            ImGui::ColorConvertFloat4ToU32(selected ? ImVec4(0.85f, 0.92f, 1.0f, 1.0f)
+                                                    : palette.textDim));
+        ImGui::GetWindowDrawList()->AddText(ImVec2(start.x + gutter, start.y + 2.0f),
+            ImGui::ColorConvertFloat4ToU32(selected ? ImVec4(1, 1, 1, 1) : palette.textPrimary),
+            text.c_str());
         if (tag != nullptr)
-            text += std::string("   [") + tag + "]";
-
-        // 斑马纹：隔行一层极淡的底，长列表更容易跟行
-        if (rowIndex++ % 2 == 1 && !selected)
-        {
-            const float width = ImGui::GetContentRegionAvail().x;
-            ImGui::GetWindowDrawList()->AddRectFilled(start,
-                ImVec2(start.x + width, start.y + ImGui::GetTextLineHeight() + 2.0f),
-                IM_COL32(255, 255, 255, 8), 4.0f);
-        }
-
-        const bool clicked = ImGui::Selectable(text.c_str(), selected);
-        if (selected)
-        {
-            // 选中项左侧一条强调色（样板房里就是这么标"当前在看哪个文件"的）
-            ImGui::GetWindowDrawList()->AddRectFilled(
-                ImVec2(start.x - 4.0f, start.y + 1.0f),
-                ImVec2(start.x - 1.0f, start.y + ImGui::GetTextLineHeight()),
-                ImGui::ColorConvertFloat4ToU32(accentColor()), 2.0f);
-        }
+            ImGui::GetWindowDrawList()->AddText(
+                ImVec2(start.x + gutter + ImGui::CalcTextSize(text.c_str()).x + 8.0f,
+                    start.y + 2.0f),
+                ImGui::ColorConvertFloat4ToU32(palette.textDisabled), tag);
+        if (isDirty)
+            ImGui::GetWindowDrawList()->AddCircleFilled(
+                ImVec2(start.x + ImGui::GetContentRegionMax().x - 8.0f,
+                    start.y + 2.0f + lineHeight * 0.5f),
+                3.4f, ImGui::ColorConvertFloat4ToU32(unsavedColor()));
         return clicked;
     };
 
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint("##filter", "过滤外观名…", this->fileFilter, sizeof(this->fileFilter));
-
-    // 最近修改：改样式时反复打开的就那几个，放最上面省得每次翻列表
-    if (!this->recentFiles.empty() && this->fileFilter[0] == 0)
-    {
-        ImGui::TextColored(accentColor(), "最近修改");
+    auto isRecent = [&](const std::string& file) {
         for (const DirEntry& entry : this->recentFiles)
+            if (entry.name == file)
+                return true;
+        return false;
+    };
+
+    if (!ImGui::BeginTabBar("##fileTabs", ImGuiTabBarFlags_FittingPolicyScroll))
+        return;
+
+    // ---- 控件 ----
+    if (ImGui::BeginTabItem("控件"))
+    {
+        ImGui::Spacing();
+        for (const std::string& relative : this->widgetFiles)
         {
-            const std::string name = entry.name.size() > 5
-                ? entry.name.substr(0, entry.name.size() - 5)
-                : entry.name; // 去掉 .json
-            const bool isCurrent = (name == this->currentWidget);
-            if (fileRow(name, isCurrent, isCurrent && this->dirty, "最近"))
+            const std::string name
+                = relative.size() > 5 && relative.rfind(".json") == relative.size() - 5
+                ? relative.substr(relative.find_last_of('/') + 1, relative.size()
+                        - relative.find_last_of('/') - 6)
+                : relative;
+            if (this->fileFilter[0] != 0 && name.find(this->fileFilter) == std::string::npos)
+                continue;
+            const bool current = (name == this->currentWidget);
+            const bool dirty   = current && this->dirty;
+            if (row(Icon::WIDGET, name, current, dirty, isRecent(relative) ? "最近" : nullptr,
+                    name.c_str()))
             {
                 std::string error;
                 if (!this->openAppearance(name, error))
                     this->errorMessage = error;
             }
         }
+        ImGui::EndTabItem();
+    }
+
+    // ---- 页面 ----
+    if (ImGui::BeginTabItem("页面"))
+    {
         ImGui::Spacing();
-    }
-
-    ImGui::TextColored(mutedColor(), "主题外观 · %d 个（%s）", (int)this->widgetFiles.size(),
-        this->project.name.c_str());
-    for (const std::string& relative : this->widgetFiles)
-    {
-        const std::string name = widgetNameFromPath(relative);
-        const std::string path = this->project.themeDir() + "/" + relative;
-        if (this->fileFilter[0] != 0 && name.find(this->fileFilter) == std::string::npos)
-            continue;
-
-        const bool isCurrent = (name == this->currentWidget);
-        const auto found     = this->drafts.find(path);
-        const bool isDirty   = (found != this->drafts.end() && found->second.dirty) || (isCurrent && this->dirty);
-        if (fileRow(name, isCurrent, isDirty, nullptr))
-            this->switchTo(path, name, std::string());
-    }
-
-    ImGui::Separator();
-    ImGui::TextColored(mutedColor(), "页面视图 · %d 个（views/）", (int)this->viewFiles.size());
-    if (!this->readOnly)
-    {
-        if (ImGui::SmallButton("新建页面…"))
-            this->showNewView = true;
-    }
-    if (this->viewFiles.empty())
-        ImGui::TextColored(mutedColor(), "  （这个项目里没有）");
-    for (const std::string& file : this->viewFiles)
-    {
-        const std::string path = this->project.resourcesDir() + "/views/" + file;
-        if (this->fileFilter[0] != 0 && file.find(this->fileFilter) == std::string::npos)
-            continue;
-        const bool isCurrent = (file == this->currentViewFile);
-        const auto found     = this->drafts.find(path);
-        const bool isDirty   = (found != this->drafts.end() && found->second.dirty) || (isCurrent && this->dirty);
-        if (fileRow(file, isCurrent, isDirty, "页面"))
-            this->switchTo(path, std::string(), file);
-    }
-
-    ImGui::Separator();
-    if (!this->readOnly)
-    {
-        if (ImGui::Button("新建外观…"))
+        if (this->viewFiles.empty())
+            ImGui::TextColored(palette.textDim, "  （这个工程里还没有页面）");
+        for (const std::string& file : this->viewFiles)
         {
-            std::snprintf(this->newAppearanceName, sizeof(this->newAppearanceName), "my_widget");
-            this->showNewAppearance = true;
+            if (this->fileFilter[0] != 0 && file.find(this->fileFilter) == std::string::npos)
+                continue;
+            const bool current = (file == this->currentViewFile);
+            const bool dirty   = current && this->dirty;
+            if (row(Icon::PAGE, file, current, dirty, nullptr, file.c_str()))
+                this->openViewFile(file);
         }
-    }
-    if (!this->currentWidget.empty() && !this->readOnly)
-    {
-        ImGui::SameLine();
-        if (ImGui::Button("另存为变体…"))
-        {
-            std::snprintf(this->variantName, sizeof(this->variantName), "%s_v2",
-                this->currentWidget.c_str());
-            this->showSaveAsVariant = true;
-        }
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("把当前外观（含未保存改动）复制成一个新外观并登记 —— 做变体用");
-        ImGui::SameLine();
-        if (ImGui::Button("删除当前外观"))
-            this->showDeleteAppearance = true;
+        ImGui::EndTabItem();
     }
 
-    ImGui::Separator();
-    ImGui::TextColored(mutedColor(), "主题表（可编辑）");
-    for (const char* table : { "colors.json", "metrics.json" })
+    // ---- 主题表 ----
+    if (ImGui::BeginTabItem("主题表"))
     {
-        const std::string path = this->project.themeDir() + "/" + table;
-        const auto found       = this->drafts.find(path);
-        const bool isDirty     = found != this->drafts.end() && found->second.dirty;
-        if (fileRow(table, table == this->currentTable, isDirty, nullptr))
-            this->openTableFile(table);
+        ImGui::Spacing();
+        for (const char* table : { "colors.json", "metrics.json" })
+        {
+            const bool current = (table == this->currentTable);
+            const bool dirty   = current && this->dirty;
+            if (row(Icon::TABLE, table, current, dirty, nullptr, table))
+                this->openTableFile(table);
+        }
+        ImGui::EndTabItem();
     }
+
+    ImGui::EndTabBar();
 }
+
 
 // ---------------------------------------------------------------- 节点树
 

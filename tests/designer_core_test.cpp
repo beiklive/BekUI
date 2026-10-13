@@ -22,6 +22,7 @@
 #include "designer/core/theme_edit.hpp"
 #include "designer/core/theme_usage.hpp"
 #include "designer/core/file_browser.hpp"
+#include "designer/core/icon_align.hpp"
 #include "designer/core/file_kind.hpp"
 #include "designer/core/json_cache.hpp"
 #include "designer/core/theme_key.hpp"
@@ -776,6 +777,16 @@ int main()
         designer::UiState clamped;
         check(designer::loadUiState(path, clamped), "越界值也能读");
         checkFloat(clamped.uiScale, 1.6f, "读回来时钳到上限");
+    }
+
+    // ---------------------------------------------------------------- 图标与文字对齐
+    {
+        // 用户反馈：图标总是比文字高一点。规则是按行高取中。
+        checkFloat(designer::iconTopForTextLine(100.0f, 20.0f, 14.0f), 103.0f,
+            "行高 20、图标 14 → 往下挪 3（取中）");
+        checkFloat(designer::iconTopForTextLine(0.0f, 18.0f, 18.0f), 0.0f, "一样高时不偏");
+        checkFloat(designer::iconTopForTextLine(10.0f, 12.0f, 20.0f), 10.0f,
+            "图标比行还高时不把图标推到上面去");
     }
 
     // ---------------------------------------------------------------- 撤销栈

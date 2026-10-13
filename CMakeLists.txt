@@ -196,6 +196,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/file_kind.cpp
     core/json_cache.cpp
     core/file_browser.cpp
+    core/icon_align.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")
@@ -208,6 +209,7 @@ target_link_libraries(designer_core PUBLIC bklv::bklv)
 target_include_directories(designer_core PUBLIC "${CMAKE_SOURCE_DIR}/designer")
 
 set(BKLV_DESIGNER_UI_SOURCES
+    ui/icon_draw.cpp
     ui/designer_style.cpp
     ui/designer_window.cpp
 )
