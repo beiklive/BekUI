@@ -158,7 +158,9 @@ TextureRef loadTexture(const std::string& path)
     const DecodedImage decoded = decodeImageFile(path.c_str());
     if (!decoded.isValid())
     {
-        Logger::error("图片加载失败：" + path);
+        // 解码器一定会给原因（格式不支持 / 尺寸超限 / 文件读不到…），别只报个路径
+        Logger::error("图片加载失败：" + path
+            + (decoded.getError().empty() ? std::string() : "（" + decoded.getError() + "）"));
         g_pathCache[path] = TEXTURE_CACHE_FAILED;
         return TextureRef();
     }

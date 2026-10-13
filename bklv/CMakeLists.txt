@@ -264,6 +264,7 @@ set(BKLV_CORE_SOURCES
     core/gesture.cpp
     core/graphics.cpp
     core/image_decoder.cpp
+    core/image_decoder_gif.cpp
     core/image_writer.cpp
     core/resource.cpp
     core/i18n.cpp
