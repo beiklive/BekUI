@@ -601,3 +601,85 @@ v10 说 `widgets/**` 归 Lead，但它按原任务书改了 3 个文件：
 - `enterLayer/leaveLayer`（跨层进入/退出，归第 4 步）
 - `FocusRecord.hint` 只写不读
 - `setOnFocusEdgeHit` 只支持全局一处（box 级覆盖未做）
+
+---
+
+## 附录 D：第 5 步实施清单（Pager 懒加载 + 迁移 demo 14 页）
+
+前置：第 4 步完成（动作路由 / `pushDialog` / `enterLayer-leaveLayer`）。
+
+### D1 新增 `bklv/widgets/pager.{hpp,cpp}`（登记进 `bklv/CMakeLists.txt`）
+
+```cpp
+using PageFactory = std::function<View*(PageContext&)>;
+
+struct PageContext {
+    // 页面按需从这里取数据；不要直接摸全局
+    // 具体成员由 demo 侧填充（游戏库/设置/主页各自的数据源）
+    void* userData = nullptr;
+};
+
+class Pager {
+public:
+    void setSlot(ScrollingFrame* slot);                       // 内容槽
+    void setPageFactory(const std::string& id, PageFactory);   // 工厂式，不强推继承
+    void setOnPageChanged(std::function<void(const std::string&)>);
+
+    void show(const std::string& id);        // 构建 -> 挂载 -> 给焦点 -> 删旧页
+    View* getCurrentView() const;
+    bool isShowing(const std::string& id) const;
+
+    // 预加载：只拉**数据**（不建视图），可取消
+    void setPreloader(const std::string& id, std::function<void(PageContext&)> preload);
+    void preload(const std::string& id);
+    void cancelPreload(const std::string& id);
+
+    // 每页记忆：焦点 + 滚动位置
+    void rememberPageState();                 // 离开前调（内部用 FocusManager::rememberFor）
+    void restorePageState(const std::string& id);
+};
+```
+
+**关键行为**（都来自 v2/v4 的场景推演）：
+1. **切页顺序**：`setContentView(新页)` → `focusDefaultOf(新页)` → `delete 旧页`
+   （`ScrollingFrame::setContentView` **只摘不删**，所有权在 Pager）
+2. **快速连按**：`cancelPreload` 后到达的回调必须丢弃（用 `AliveFlag` 或"当前 pending id"校验）
+3. **失败与 loading**：`PageFactory` 返回 `nullptr` 或数据未就绪时显示统一 loading；失败要有错误视图，不能白屏
+4. **预加载预算**：约定只拉"首屏 + n"，缩略图走 `Image::setImageFromFileAsync` + 预算淘汰
+5. **页面级记忆**：`FocusManager::rememberFor(pageId)` + `ScrollingFrame::getScrollOffset/setScrollOffset`
+   （**需要先给 ScrollingFrame 补这两个存取口**，第 3 步没做）
+
+### D2 迁移 demo（14 页）
+
+- `demo/app/demo_app.{hpp,cpp}`：`AppletFrame` → `Shell` + `Pager`；页头/底栏用 `Shell::setHeaderView/setFooterView`（挂覆盖层）
+- 内容避让改为**显式**：每页自己按 `shell->getHeaderInset()/getFooterInset()` 留白（不再自动）
+- 换页：`pager->show(pageId)`（同级替换）；页面内部下钻仍走 `pushContentView/popContentView`（层级导航）
+- 触及文件（按第 3 步快照）：`demo/app/demo_app.*`、`demo/app/pages.hpp`、`demo/app/pages/page_settings.cpp`、
+  `demo/app/pages/page_pokedex.cpp`、`demo/main.cpp`
+- 迁移后**必须**跑 demo 截图对比：`BKLV_DEMO_PAGE=<n> BKLV_SCREENSHOT=/tmp/x.png ./dist/demo`（14 页逐页）
+
+### D3 测试（`tests/pager_test.cpp`）
+
+1. 切页只活一个页面视图（旧页被 delete：用一个计数 `PageFactory` 验证构造/析构次数）
+2. 预加载只拉数据、不建视图；取消后回调不改 UI
+3. 失败/loading 路径：工厂失败时不崩、显示错误视图
+4. 页面记忆：焦点 + 滚动位置离开再回来能还原
+
+### D4 验收
+
+```bash
+cmake --build build/gl -j 8 && ./dist/pager_test
+./scripts/check.sh          # 只增不减、GL/VK 零警告
+python3 scripts/check_naming.py
+# demo 逐页截图（14 页）与迁移前对比
+```
+
+### D5 已知坑（迁移时优先看）
+
+| 坑 | 说明 |
+|---|---|
+| 页面视图生命周期 | 切页会 `delete` 旧页；异步回调必须带 `AliveFlag`（`core/alive.hpp`），否则 use-after-free |
+| 页头/底栏不再自动避让 | 忘了显式留白 → 内容被页头盖住或底部留空白 |
+| 焦点交接顺序 | 必须先挂新页、给焦点，再删旧页（顺序反了会留下悬空焦点） |
+| `AppletFrame` 尚未删除 | 第 7 步才删；第 5 步先并存，`AppletFrame` 继续可用（`widget_test`/`transition_test` 还在用） |
+| 视图 JSON 数字不缩放 | 与第 1 步的已知问题一致，别再踩 |
