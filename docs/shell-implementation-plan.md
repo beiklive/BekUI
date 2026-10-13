@@ -735,3 +735,29 @@ python3 scripts/check_naming.py
 不要在代码里硬编码 rgba；遮罩是 `Box`，四边 0 铺满覆盖层，插在弹窗**之前**入树（绘制在下）；
 `closeOnDimClick` 时给它挂点击关闭（点击只聚焦不执行动作的约定要注意：遮罩要显式
 `onPointerAction = true` 才会"点一下就关"）。
+
+---
+
+## v15 第 4 步静态审计（执行者交付，行号已核实，实施前必看）
+
+### 已入库的部分仍有 4 个缺口
+1. `pushDialog` 是骨架：**没用** `options.dim/closeOnDimClick`，没建遮罩
+2. `popDialog` 只 `popModal()`，**没有 `removeView`** -> 弹窗永久留在覆盖层（泄漏 + 继续画）
+3. `closeOnBack` 是**死代码**：`input.cpp:384` 只写进 `ModalEntry`，**无读取点**；
+   `handleActions()` 只做 `currentFocus->triggerAction(B)` -> 目前"B 关闭弹窗"**不成立**
+4. `enterLayer/leaveLayer` 全仓库不存在；`tests/shell_dialog_test.cpp` 未创建
+
+### 五个坑（实施前必须处理）
+
+| # | 坑 | 依据与对策 |
+|---|---|---|
+| F1 | **遮罩点不动** | `View::hitTest`（`view.cpp:818`）对 `!isFocusable()` 直接返回 nullptr。v14 说的"设 `onPointerAction=true`"**不够**，遮罩还得 `isFocusable()==true`；但那样 `focusFromPointer`（`input.cpp:642` 只查 `isFocusable`）会把焦点挪到遮罩、`canFocus` 也会收它当导航候选。两条路：(a) 遮罩 `isFocusable()=true` + `isDisabled()=true`（hitTest 放行、canFocus 拒绝），并把 `focusFromPointer` 改查 `canFocus`；(b) 给 `ModalEntry` 加"模态内空点回调"（`hit==nullptr` 时触发），Shell 判"点不在弹窗 `getFrame()` 内"再关 —— **不碰焦点语义**（推荐 b） |
+| F2 | **模态 B 会冒泡到 shell 默认** | `triggerAction` 沿父链走到根（`view.cpp:887`），`getTopDialog()->triggerAction(B)` 在弹窗不处理时会打到 Shell 默认动作，违反"弹窗优先"。`view.hpp` 不在允许改动范围 -> 在 Shell 里用公开的 `getActions()/getParent()` 做**限定子树派发**（从焦点往上走到 modal 根为止） |
+| F3 | **`popModal()` 会覆盖刚恢复的焦点** | `input.cpp:394-398` 用**裸指针** `savedFocus` 恢复、只校验 `savedFocus->getParent()`；弹窗 `removeView` 后其 panel 的 `getParent()` 仍非空 -> 焦点落到已脱离树的面板。顺序：关闭开始时 `leaveLayer()` -> **仍在树里时** `popModal()`（此时 savedFocus==原焦点，`giveFocus` 同值直接返回），或把 `popModal` 推到动效播完摘视图那一刻 |
+| F4 | **`leaveLayer()` 不能返回 bool** | `check_naming.py` 的 `ACTION_PREFIXES` 里**没有 `leave`**（与 v10 的 `restore` 同类）-> 用 `void leaveLayer()`；脚本不许改 |
+| F5 | **焦点记忆是单槽** | `input.hpp:325` `rememberedFocus` 只有一个：弹窗套弹窗会互相覆盖（计划 3.2 建议做成栈，测试 6 覆盖了嵌套但实现还没改）|
+
+### 另两条
+- 注册在 A/B 上的系统键**不会阻止同帧 `handleActions` 再吃一次**（双响应）；要互斥需记录"本帧已消费的键"
+- 无窗口测试**驱动不了** `handleActions/handlePointer`（读 `ImGui::GetIO()`，`input.cpp:682/777`）-> 「B 路由 / 点遮罩关闭 / 系统键穿过模态」要可测，得留**设备无关入口**（如 `bool dispatchAction(ControllerButton)` + 指针按下入口），否则只能像 `shell_test` 7c 那样只断言注册表
+- Switch 后端只映射 Plus/Minus/L/R/X/Y（`imgui_impl_libvk.cpp:105-118`），HOME/CAPTURE 到不了应用，将来要平台级触发入口
