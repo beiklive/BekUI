@@ -2949,6 +2949,38 @@ void DesignerWindow::drawPreview()
             ImGui::SetTooltip("画布坐标 (%.0f, %.0f)", localX, localY);
     }
 
+    // 底部一行：分辨率 · 倍率 · 路径（钉在画布底边上，不在画布上堆控件）
+    {
+        const float barHeight = 24.0f;
+        ImGui::SetCursorPos(ImVec2(0.0f, ImGui::GetWindowHeight() - barHeight));
+        ImGui::BeginChild("##canvasFoot", ImVec2(0.0f, barHeight), false);
+        ImGui::SetNextItemWidth(126.0f);
+        ImGui::Combo("##size2", &this->canvasPreset,
+            "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
+        ImGui::SameLine();
+        ImGui::TextColored(mutedColor(), "%d×%d", this->canvasWidth, this->canvasHeight);
+        ImGui::SameLine();
+        const char* zoomText = this->canvasZoom == 0 ? "50%"
+            : this->canvasZoom == 1                    ? "75%"
+            : this->canvasZoom == 2                    ? "100%"
+                                                       : "150%";
+        ImGui::TextColored(mutedColor(), "· %s", zoomText);
+        ImGui::SameLine();
+        // 路径只显示最后两段，免得把信息条撑爆
+        std::string shortDir = this->project.themeDir();
+        {
+            const size_t last = shortDir.find_last_of('/');
+            const size_t prev = last == std::string::npos ? std::string::npos
+                                                          : shortDir.find_last_of('/', last - 1);
+            if (prev != std::string::npos && prev + 1 < shortDir.size())
+                shortDir = "…" + shortDir.substr(prev);
+        }
+        ImGui::TextColored(mutedColor(), "· %s", shortDir.c_str());
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", this->project.themeDir().c_str());
+        ImGui::EndChild();
+    }
+
     ImGui::EndChild();
 
     if (!this->previewError.empty())
