@@ -646,8 +646,9 @@ public:
 2. **快速连按**：`cancelPreload` 后到达的回调必须丢弃（用 `AliveFlag` 或"当前 pending id"校验）
 3. **失败与 loading**：`PageFactory` 返回 `nullptr` 或数据未就绪时显示统一 loading；失败要有错误视图，不能白屏
 4. **预加载预算**：约定只拉"首屏 + n"，缩略图走 `Image::setImageFromFileAsync` + 预算淘汰
-5. **页面级记忆**：`FocusManager::rememberFor(pageId)` + `ScrollingFrame::getScrollOffset/setScrollOffset`
-   （**需要先给 ScrollingFrame 补这两个存取口**，第 3 步没做）
+5. **页面级记忆**：`FocusManager::rememberFor(pageId)` + 滚动位置
+   —— `ScrollingFrame` **已有** `setContentOffsetY(float, bool animated)` 与 `getContentOffsetY()`
+   （v13 核实；附录 D 初稿误写成"需要补"，实为已有，直接复用即可）
 
 ### D2 迁移 demo（14 页）
 
@@ -683,3 +684,12 @@ python3 scripts/check_naming.py
 | 焦点交接顺序 | 必须先挂新页、给焦点，再删旧页（顺序反了会留下悬空焦点） |
 | `AppletFrame` 尚未删除 | 第 7 步才删；第 5 步先并存，`AppletFrame` 继续可用（`widget_test`/`transition_test` 还在用） |
 | 视图 JSON 数字不缩放 | 与第 1 步的已知问题一致，别再踩 |
+
+---
+
+## v13 核实（第 4 步执行者两轮零改动 + 一处清单纠错）
+
+- `ScrollingFrame` **已有** `setContentOffsetY(float, bool animated)` / `getContentOffsetY()`
+  -> 附录 D1-5 的"需要先补"是错的，第 5 步直接复用（已在正文改正）。
+- 第 4 步执行者 `dc63fa04` 连续两轮零文件改动（`git status` 干净、无 `tests/shell_dialog_test.cpp`）。
+  按既定策略：**不再派人**，第 4 步由 Lead 自己一小块一小块做（每轮一个可验证的增量）。
