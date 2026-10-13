@@ -274,3 +274,84 @@ focusManager->setEdgeHitMinInterval(0.12f);
   首次立刻触发，之后按间隔）；
 - **不触发的情况**：当前焦点为空（刚进页面）、输入被模态接管、方向在该 box 被
   `CrossBoxPolicy::NONE` 主动拦住 —— 后两种属于"有意的边界"，不算撞边。
+
+---
+
+## 附录 B：borealis 焦点规格（已核对源码，v5 据此修正两处）
+
+源码：`/Users/beiklive/Code/C++/example/wiliwili/library/borealis`
+
+### B1 焦点状态（**没有 FocusManager 类**）
+
+焦点是 `Application` 的静态量：`currentFocus`（`View*`）+ `focusStack`（`std::vector<View*>`）
+（`core/application.hpp:375-378`）。入口只有 `getCurrentFocus()` / `giveFocus(View*)` / `navigate()`。
+
+- `giveFocus`（`application.cpp:882-905`）：入参先过 `view->getDefaultFocus()`，
+  然后 `oldFocus->onFocusLost()` → 换 `currentFocus` → 发 `globalFocusChangeEvent` → `onFocusGained()`
+- 压栈/出栈由**活动栈**驱动（`pushActivity` 压、`popActivity` 恢复，
+  `application.cpp:975-1005 / 928-945`），没有公开的 pushFocus/popFocus
+- 恢复时**校验归属**：目标若不属于要恢复的活动 → 退回该活动的 `getContentView()` 默认焦点
+- 视图析构时若自己是当前焦点 → `giveFocus(nullptr)`（`view.cpp:1531`）
+
+**borealis 的坑，不要照抄**：`giveFocus(nullptr)` 因为 `newFocus != nullptr` 这个条件
+**不会清空** `currentFocus` → 被聚焦视图 delete 后指针悬空。bklv 已有 `resetFocusState()`，更正确。
+
+### B2 默认焦点（三级）
+
+`Box::getDefaultFocus()`（`box.cpp:351-380`）顺序：
+① 自己可聚焦 → 自己；② **上次焦点记忆** `lastFocusedView`；③ `defaultFocusedIndex`；
+④ 顺序扫第一个 `getDefaultFocus()` 非空的子节点。
+`View::isFocusable()` = `focusable && visibility == VISIBLE`（`view.cpp:2459`）；
+`getDefaultFocus()` 返回 nullptr 即"整棵子树不可聚焦"。
+记忆写入在 `Box::onChildFocusGained`（`box.cpp:685-690`，向上冒泡）。
+
+### B3 方向导航（**顺序扫描 + 父链冒泡，不是几何最近邻**）
+
+- `Box::getNextFocus`（`box.cpp:409-443`）：用父节点给的**子索引**做 ±1 线性扫描，
+  跳过 `getDefaultFocus()` 为空的兄弟；**越界返回 nullptr** → 交给父容器（真冒泡）
+- 轴向不符（如 row 里按 UP）→ **立刻上交**给父容器
+- 索引由 `Box::addView` 分配维护（`box.cpp:170-190`）
+- **不循环**（wrap 无实现）✓ 与用户决定一致
+- **撞边反馈**（`application.cpp:563-582`）：找不到候选 →
+  `play(SOUND_FOCUS_ERROR)` + `currentFocus->shakeHighlight(direction)`
+  （`view.cpp:91-97`：`amplitude = rand()%15+10`，绘制期阻尼正弦位移）
+  → **正是用户要的"撞边反馈 + 带回按键方向"**
+- 焦点不动只滚动的表达：容器 `getNextFocus` **返回 this**（`ScrollingFrame` 上下还有内容时）
+- `getParentNavigationDecision`（`box.cpp:445-451`）默认一路上交，
+  `ScrollingFrame`/`Dropdown` 重写
+
+### B4 焦点高亮（两遍绘制）
+
+- **高亮底在内容之前**：`View::frame` 里 background → shadow → border →
+  `drawHighlight(background=true)` → 内容（`view.cpp:183-215`）
+- **描边/发光在所有视图画完之后、只画当前焦点一次**：
+  `Application::frame` → `currentFocus->frameHighlight()`（`application.cpp:788-791`）；
+  触摸输入时整块不画
+- 命中矩形 = 控件矩形**外扩 strokeWidth/2 = 2.5px**（`view.cpp:533-551`），
+  `cornerRadius` 取 `brls/highlight/corner_radius`（6）、`stroke_width`（5）
+- 底色 alpha 用自己的 focus 补间值（`onFocusGained` 200ms quadraticOut → 1）
+- 开关：`setHideHighlightBackground` / `setHideHighlightBorder` / `setHideHighlight`
+
+### B5 输入与焦点
+
+- 动作 handler 沿 **parent 链自下而上**查找并消费按键（`application.cpp:697-743`）；
+  方向键只在动作没被消费时才走导航
+- 指针点击 = **聚焦 + 执行该视图的 A 动作**（`tap_gesture.cpp:25-57`）；
+  命中根是**栈顶活动的内容视图**（模态天然终止冒泡链）
+- 模态靠"顶层活动作为 hitTest/绘制根 + `blockInputs()` 输入 token"实现，
+  **不是**每个视图判 `isInsideModal`
+
+### v5 据此修正的两处
+
+1. **导航算法**：改为 borealis 的**顺序索引扫描 + 父链冒泡**（不是几何最近邻）；
+   轴向不符立刻上交；容器可用"返回 this"表达"焦点不动、我来滚动"。
+   （顺序扫描可预期、与 XML/JSON 子节点顺序一致，且实现与测试都简单得多。）
+2. **撞边反馈**：与 borealis 对齐为 **音效 + `shakeHighlight(direction)` 抖动**；
+   bklv 侧保留节流（borealis 靠 `KeyRepeater` 但也逐次触发，我们加最小间隔防狂响）。
+
+### 保留的（有意偏离 borealis）
+
+- `canFocus` 仍保留"**沿父链可见性**"与"**未被模态遮挡**"两条：borealis 靠活动栈天然隔离，
+  bklv 的模态是 `isInsideModal()` 标记，必须显式判；父链可见性则防止隐藏容器里的子节点被选中
+- 焦点为空时的行为：borealis `navigate()` 直接 return；bklv 按 v2 方案"保持焦点不动、
+  输入归模态"，并在无默认焦点时给出明确分支
