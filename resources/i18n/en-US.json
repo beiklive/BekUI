@@ -274,5 +274,9 @@
     "title": "Icons",
     "loaded": "Icon library loaded, {} icons",
     "missing": "Icon font not found, glyphs will show as boxes"
+  },
+  "pager": {
+    "loading": "Loading…",
+    "load_failed": "Failed to load"
   }
 }
