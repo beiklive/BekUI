@@ -22,7 +22,8 @@
     "transform": "Transform",
     "scroll": "Scroll",
     "pokedex": "Pokédex",
-    "shadow": "Shadow"
+    "shadow": "Shadow",
+    "icons": "Icons"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -145,7 +146,8 @@
     "transform_sub": "Draw-time scale / rotate / skew / translate + eased tweens",
     "scroll_sub": "Nested scroller + scroll-to-focus",
     "pokedex_sub": "Sectioned recycler + detail navigation",
-    "shadow_sub": "shadow layers and blur quality"
+    "shadow_sub": "shadow layers and blur quality",
+    "icons_sub": "Built-in icon library: glyph / name / meaning / codepoint"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -267,5 +269,10 @@
     "card_glass": "No cutout: shadow bleeds through",
     "card_glasscut": "Cutout: clean inside",
     "cutout_hint": "With \"cutout\": true on a shadow layer, only the outer ring is drawn (the widget rect is punched out), so a translucent background will not reveal the shadow. The two cards share the same translucent fill."
+  },
+  "icons": {
+    "title": "Icons",
+    "loaded": "Icon library loaded, {} icons",
+    "missing": "Icon font not found, glyphs will show as boxes"
   }
 }

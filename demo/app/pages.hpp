@@ -21,6 +21,9 @@ void setThemeSwitchApp(bklv::App* app);
 bklv::Box* buildThemePage();
 bklv::Box* buildShadowPage();
 
+// 图标总览页：罗列库自带图标库里的全部 Material Icons
+bklv::Box* buildIconsPage();
+
 // 2. 基础控件：Button / Slider / Dropdown / ProgressSpinner / Image
 bklv::Box* buildWidgetsPage();
 

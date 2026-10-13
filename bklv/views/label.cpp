@@ -1,5 +1,7 @@
 #include "bklv/views/label.hpp"
 
+#include "bklv/core/icon_font.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -16,6 +18,13 @@ namespace bklv
 // 视图树通常先于 App::run() 构建，那时默认字体还没加载。
 ImFont* Label::resolveFont() const
 {
+    // 图标字体：绘制时再取（页面可能在字体装载之前就建好了，构造时取会是空）
+    if (this->iconFontEnabled)
+    {
+        if (ImFont* iconFont = bklv::icon::font(); iconFont != nullptr)
+            return iconFont;
+    }
+
     if (this->font != nullptr)
         return this->font;
 

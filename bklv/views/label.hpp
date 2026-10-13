@@ -40,6 +40,10 @@ class Label : public View
     const std::string& getText() const { return this->text; }
 
     void setFont(ImFont* font);
+    // 用**图标字体**（库自带 Material Icons，core/icon_font）渲染这段文字。
+    // 注意：是**绘制时**解析字体，不是构造时 —— 页面可能在建字体之前就搭好了。
+    void setIconFontEnabled(bool enabled) { this->iconFontEnabled = enabled; }
+    bool isIconFontEnabled() const { return this->iconFontEnabled; }
     ImFont* getFont() const { return this->font; }
 
     // 解析实际使用的字体：显式设置的优先，否则用全局默认字体。
@@ -123,6 +127,7 @@ class Label : public View
     size_t textVersion = 0;
 
     ImFont* font    = nullptr;
+    bool iconFontEnabled = false;
     // applyTheme() 只覆盖**没被显式设置过**的值：
     // 用户代码 setFontSize(18) 之后，换肤不该把它冲掉。
     float fontSize        = 20.0f;
