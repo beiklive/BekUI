@@ -1979,7 +1979,7 @@ bool DesignerWindow::drawEnumCombo(const char* id, const std::string& key, std::
                 index = (int)i;
 
         const std::string current = value.empty() ? entry.second[0] : value;
-        propLabel(key.c_str());
+        propLabel(fieldLabel(key.c_str()));
         ImGui::PushID(id);
         if (ImGui::BeginCombo("##enum", current.c_str()))
         {
@@ -3392,8 +3392,8 @@ void DesignerWindow::drawProps()
                 for (int i = 0; i < 5; i++)
                     if (current == ops[i])
                         opIndex = i;
-                propLabel("op");
-                if (ImGui::Combo("##op", &opIndex, "rect\0text\0image\0shadow\0custom\0"))
+                propLabel(fieldLabel("op"));
+                if (ImGui::Combo("##op", &opIndex, "矩形\0文字\0图片\0阴影\0自定义\0"))
                 {
                     (*layer)["op"] = ops[opIndex];
                     edited();
@@ -3460,7 +3460,7 @@ void DesignerWindow::drawProps()
                     std::string value;
                     if (it.value().size() > 0)
                         value = compactValue(it.value());
-                    propLabel(key.c_str());
+                    propLabel(fieldLabel(key.c_str()));
                     if (inputString((std::string("##") + key).c_str(), value) && !value.empty())
                     {
                         // 允许 [1,2] / 数字 两种写法，解析失败就原样留着
@@ -3491,7 +3491,7 @@ void DesignerWindow::drawProps()
                     {
                         std::string value = kind == "string" ? it.value().get<std::string>()
                                                             : compactValue(it.value());
-                        propLabel(key.c_str());
+                        propLabel(fieldLabel(key.c_str()));
                         changed = inputString((std::string("##") + key).c_str(), value);
                         if (changed)
                             it.value() = value;
@@ -3629,7 +3629,7 @@ void DesignerWindow::drawProps()
                         AppearanceDoc::Json& transition = it.value();
 
                         std::string to = compactValue(transition.value("to", AppearanceDoc::Json()));
-                        propLabel("to");
+                        propLabel("目标值");
                         if (inputString("##to", to))
                         {
                             AppearanceDoc::Json parsed
