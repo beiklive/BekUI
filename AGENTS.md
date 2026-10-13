@@ -479,6 +479,27 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `getIconFontCodepoints()` 裁到 U+E153 为止（`SWITCH_ICON_LAST_USABLE`）；
   `scanFontCodepoints()` 保持"原样扫"，要什么范围自己裁。
   另外 `setIconFont(ImFont*)` 可以手动指定图标字体（默认由 `loadFonts()` 装好后设）。
+- **图片解码的统一契约**（`core/image_decoder.*`）：对外只有 `decodeImageFile/Memory`
+  与 `decodeAnimationFile/Memory`，内部**按文件内容**分发（`detectImageFormat` /
+  `probeImageSize` / `isImageSizeAllowed`）。三条硬约定：
+  ① 输出**非预乘（straight）RGBA8** —— ImGui 的混合方程是 `SRC_ALPHA/ONE_MINUS_SRC_ALPHA`
+  （GL 与 Vulkan 都是），预乘图会整体偏暗；macOS 的 `CGBitmapContext` 只支持预乘 alpha，
+  所以 ImageIO 那条路解码后要**反预乘**（`image_decoder.cpp` 里那段注释就是钉这个）。
+  ② 失败必须带 `DecodedImage::error`（人话），不要只返回空图。
+  ③ 解码前先按头部卡尺寸/像素上限，畸形文件不能"解完再说"。
+  GIF **全平台同一条实现**：`image_decoder_gif.cpp` 单独实例化一份 stb（`STB_IMAGE_STATIC`
+  + `STBI_ONLY_GIF`，两份 stb 靠 static 避免符号冲突，第三方警告在该 TU 里局部压掉）。
+  `stbi_load_gif_from_memory()` 直接给**合成好的整幅帧** + 每帧延迟（毫秒），
+  帧内的局部矩形/透明/disposal 都由它处理 —— 所以 GIF 播放只剩"按时换帧"。
+- **动图播放挂在既有帧时钟上**（`views/image.*`）：`update()` 里 `stepAnimation(getFrameDeltaSeconds())`
+  → `frameIndexAt(animation, elapsed)`（对一轮总时长**取模**，不漂移、暂停回来不补播）
+  → 帧变了才 `updateTexture()` **就地换内容**（不重建纹理、不参与布局）。
+  只在**可见**时推进（离屏不占上传带宽）。纹理是视图自己上传的（`ownsTexture`），
+  析构/换图时必须 `releaseTexture()`，别漏。
+- **`RenderBackend::updateTexture()`**：动图换帧用的"就地更新"接口（GL/GLES 走
+  `glTexSubImage2D`，Vulkan 走 staging + 屏障 + `vkCmdCopyBufferToImage`）。
+  没有它的后端返回 false（默认实现），上层当作"这次换帧失败"处理。
+  Vulkan 那段和 `createTexture` 的上传步骤同构但**故意不共用** —— 那条路径是验证过的，动它风险更大。
 - **页面里不要再套 `ScrollingFrame`**（demo 约定）：非自滚动页（`selfScrolling=false`）由
   宿主的外层滚动器负责滚动，页面的外层框是 `height: auto` —— 里面再放一个
   `grow/shrink` 的滚动器拿不到确定高度，高度会算成 0，**整页内容都看不见**（图标总览页踩过）。

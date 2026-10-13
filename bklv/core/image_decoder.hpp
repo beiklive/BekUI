@@ -92,6 +92,10 @@ struct DecodedAnimation
     const std::string& getError() const { return this->error; }
 };
 
+// 按"已经播了多久"算该显示第几帧：内部对一轮总时长**取模**，所以不会累积漂移，
+// 卡帧/切页回来也不会补播一堆帧。elapsed 为负按 0 处理；空动画返回 0。
+size_t frameIndexAt(const DecodedAnimation& animation, float elapsedSeconds);
+
 // 从文件解码（内部读文件 → 走 decodeImageMemory）。失败返回的 isValid() 为 false。
 DecodedImage decodeImageFile(const char* path);
 

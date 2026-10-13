@@ -4,8 +4,10 @@
 #include <cmath>
 
 #include "bklv/core/image_decoder.hpp"
+#include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/task.hpp"
+#include "bklv/core/time.hpp"
 
 namespace bklv
 {
@@ -17,7 +19,115 @@ Image::Image()
     YGNodeStyleSetHeightAuto(this->ygNode);
 }
 
-Image::~Image() = default;
+Image::~Image()
+{
+    // 动图纹理会占用一张真纹理，必须自己释放（静态图是路径缓存持有的，不能动）
+    this->releaseOwnedTexture();
+}
+
+void Image::releaseOwnedTexture()
+{
+    if (!this->ownsTexture)
+        return;
+
+    if (this->texture.isValid())
+        releaseTexture(this->texture);
+
+    this->texture = TextureRef();
+    this->ownsTexture = false;
+}
+
+bool Image::setAnimationFromFile(const std::string& path)
+{
+    DecodedAnimation loaded = decodeAnimationFile(resourcePath(path).c_str());
+    if (!loaded.isValid())
+    {
+        Logger::warning("动图加载失败：" + path
+            + (loaded.getError().empty() ? std::string() : "（" + loaded.getError() + "）"));
+        return false;
+    }
+
+    return this->applyAnimation(std::move(loaded));
+}
+
+bool Image::setAnimationFromMemory(const void* data, size_t size)
+{
+    DecodedAnimation loaded = decodeAnimationMemory(data, size);
+    if (!loaded.isValid())
+    {
+        Logger::warning("动图解码失败："
+            + (loaded.getError().empty() ? std::string("未知原因") : loaded.getError()));
+        return false;
+    }
+
+    return this->applyAnimation(std::move(loaded));
+}
+
+bool Image::applyAnimation(DecodedAnimation loaded)
+{
+    this->releaseOwnedTexture();
+
+    this->animation        = std::move(loaded);
+    this->animationElapsed = 0.0f;
+    this->animationFrame   = 0;
+    this->animationPlaying = true;
+    // 后端的纹理仓库可能还没就绪（视图树常常早于 App::run()）：留给 update() 补上传
+    this->animationPendingUpload = true;
+
+    // 没有显式尺寸时用动图画布尺寸
+    if (this->getWidth() <= 0.0f)
+        this->setWidth((float)this->animation.width);
+    if (this->getHeight() <= 0.0f)
+        this->setHeight((float)this->animation.height);
+
+    this->pendingPath.clear();
+    this->invalidate();
+    return true;
+}
+
+void Image::uploadAnimationFrame()
+{
+    if (this->animation.frames.empty() || !isTextureStoreReady())
+        return;
+
+    const size_t index = std::min(this->animationFrame, this->animation.frames.size() - 1);
+    const std::vector<unsigned char>& frame = this->animation.frames[index];
+
+    if (this->animationPendingUpload || !this->texture.isValid())
+    {
+        const TextureRef created =
+            loadTextureFromPixels(frame.data(), this->animation.width, this->animation.height);
+        if (!created.isValid())
+            return;
+
+        this->releaseOwnedTexture();
+        this->texture                = created;
+        this->ownsTexture            = true;
+        this->animationPendingUpload = false;
+        return;
+    }
+
+    // 换帧：就地更新，不重建纹理
+    updateTexture(this->texture, frame.data(), this->animation.width, this->animation.height);
+}
+
+void Image::stepAnimation(float deltaSeconds)
+{
+    if (this->animation.frames.empty())
+        return;
+
+    if (deltaSeconds > 0.0f)
+        this->animationElapsed += deltaSeconds;
+
+    this->uploadAnimationFrame();
+
+    const size_t index = frameIndexAt(this->animation, this->animationElapsed);
+    if (index == this->animationFrame)
+        return;
+
+    this->animationFrame = index;
+    this->uploadAnimationFrame();
+}
 
 void Image::setImageFromFileAsync(const std::string& path)
 {
@@ -89,6 +199,15 @@ bool Image::setImageFromFile(const std::string& path)
 
 void Image::update()
 {
+    // 动图：只在**可见**时推进帧时钟（离屏时不占上传带宽），回来按绝对时间对齐
+    if (this->hasAnimation())
+    {
+        this->uploadAnimationFrame();
+
+        if (this->animationPlaying && this->getAnimationFrameCount() > 1 && this->isVisibleInTree())
+            this->stepAnimation(getFrameDeltaSeconds());
+    }
+
     // 视图树通常在 App::run() 之前就建好了，那时图形后端还没创建、纹理传不上去。
     // 这里在仓库就绪后补加载一次；成功后不再重试。
     if (this->texture.isValid() || this->pendingPath.empty() || !isTextureStoreReady())

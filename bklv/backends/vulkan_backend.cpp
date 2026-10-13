@@ -1566,6 +1566,190 @@ TextureHandle VulkanBackend::createTexture(const unsigned char* pixels, int widt
     return handle;
 }
 
+// 就地更新纹理像素（动图播放用）。
+//
+// 步骤和 createTexture 里的上传段同构（staging → 屏障 → 拷贝 → 屏障），但**故意不共用**：
+// 那段是已经在真机上跑通的路径，为了这次需求去拆它会带来无谓的风险。这里只做"更新"，
+// 不碰图像/视图/描述符集的生命周期。
+bool VulkanBackend::updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+    int height)
+{
+    if (!this->ready || pixels == nullptr || width <= 0 || height <= 0)
+        return false;
+
+    if (handle.userData == nullptr || handle.width != width || handle.height != height)
+        return false;
+
+    TextureRecord* record = static_cast<TextureRecord*>(handle.userData);
+
+    const VkDeviceSize byteSize = (VkDeviceSize)width * (VkDeviceSize)height * 4;
+
+    // 1) 暂存缓冲
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size        = byteSize;
+    bufferInfo.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    if (vkCreateBuffer(this->device, &bufferInfo, nullptr, &stagingBuffer) != VK_SUCCESS)
+    {
+        Logger::error("更新纹理：创建暂存缓冲失败");
+        return false;
+    }
+
+    VkMemoryRequirements bufferRequirements = {};
+    vkGetBufferMemoryRequirements(this->device, stagingBuffer, &bufferRequirements);
+
+    VkPhysicalDeviceMemoryProperties memoryProperties = {};
+    vkGetPhysicalDeviceMemoryProperties(this->physical, &memoryProperties);
+
+    uint32_t bufferType = UINT32_MAX;
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+    {
+        const bool hasType = (bufferRequirements.memoryTypeBits & (1u << i)) != 0;
+        const bool hostVisible =
+            (memoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+        if (hasType && hostVisible)
+        {
+            bufferType = i;
+            break;
+        }
+    }
+    if (bufferType == UINT32_MAX)
+    {
+        Logger::error("更新纹理：找不到主机可见内存");
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        return false;
+    }
+
+    VkMemoryAllocateInfo bufferAllocate = {};
+    bufferAllocate.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    bufferAllocate.allocationSize  = bufferRequirements.size;
+    bufferAllocate.memoryTypeIndex = bufferType;
+
+    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+    if (vkAllocateMemory(this->device, &bufferAllocate, nullptr, &stagingMemory) != VK_SUCCESS)
+    {
+        Logger::error("更新纹理：分配暂存内存失败");
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        return false;
+    }
+    vkBindBufferMemory(this->device, stagingBuffer, stagingMemory, 0);
+
+    void* mapped = nullptr;
+    if (vkMapMemory(this->device, stagingMemory, 0, byteSize, 0, &mapped) != VK_SUCCESS)
+    {
+        Logger::error("更新纹理：映射暂存内存失败");
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        vkFreeMemory(this->device, stagingMemory, nullptr);
+        return false;
+    }
+    std::memcpy(mapped, pixels, (size_t)byteSize);
+    vkUnmapMemory(this->device, stagingMemory);
+
+    // 2) 一次性命令缓冲：SHADER_READ_ONLY -> TRANSFER_DST -> 拷贝 -> SHADER_READ_ONLY
+    VkCommandPoolCreateInfo poolInfo = {};
+    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+    poolInfo.queueFamilyIndex = this->queueFamily;
+
+    VkCommandPool commandPool     = VK_NULL_HANDLE;
+    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+    VkFence fence                 = VK_NULL_HANDLE;
+
+    bool ok = vkCreateCommandPool(this->device, &poolInfo, nullptr, &commandPool) == VK_SUCCESS;
+    if (ok)
+    {
+        VkCommandBufferAllocateInfo allocateInfo = {};
+        allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.commandPool        = commandPool;
+        allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.commandBufferCount = 1;
+        ok = vkAllocateCommandBuffers(this->device, &allocateInfo, &commandBuffer) == VK_SUCCESS;
+    }
+    if (ok)
+    {
+        VkFenceCreateInfo fenceInfo = {};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        ok = vkCreateFence(this->device, &fenceInfo, nullptr, &fence) == VK_SUCCESS;
+    }
+    if (ok)
+    {
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        ok = vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS;
+    }
+
+    if (ok)
+    {
+        VkImageMemoryBarrier toTransfer = {};
+        toTransfer.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toTransfer.srcAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+        toTransfer.dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toTransfer.oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toTransfer.newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.image               = record->image;
+        toTransfer.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        toTransfer.subresourceRange.baseMipLevel   = 0;
+        toTransfer.subresourceRange.levelCount     = 1;
+        toTransfer.subresourceRange.baseArrayLayer = 0;
+        toTransfer.subresourceRange.layerCount     = 1;
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toTransfer);
+
+        VkBufferImageCopy copyRegion = {};
+        copyRegion.bufferOffset                    = 0;
+        copyRegion.bufferRowLength                 = 0;
+        copyRegion.bufferImageHeight               = 0;
+        copyRegion.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyRegion.imageSubresource.mipLevel       = 0;
+        copyRegion.imageSubresource.baseArrayLayer = 0;
+        copyRegion.imageSubresource.layerCount     = 1;
+        copyRegion.imageExtent.width               = (uint32_t)width;
+        copyRegion.imageExtent.height              = (uint32_t)height;
+        copyRegion.imageExtent.depth               = 1;
+        vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, record->image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+        VkImageMemoryBarrier toShader = toTransfer;
+        toShader.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toShader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShader.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toShader.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toShader);
+
+        ok = vkEndCommandBuffer(commandBuffer) == VK_SUCCESS;
+    }
+
+    if (ok)
+    {
+        VkSubmitInfo submitInfo = {};
+        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &commandBuffer;
+        ok = vkQueueSubmit(this->queue, 1, &submitInfo, fence) == VK_SUCCESS;
+    }
+    if (ok)
+        ok = vkWaitForFences(this->device, 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS;
+
+    if (fence != VK_NULL_HANDLE)
+        vkDestroyFence(this->device, fence, nullptr);
+    if (commandPool != VK_NULL_HANDLE)
+        vkDestroyCommandPool(this->device, commandPool, nullptr);
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingMemory, nullptr);
+
+    if (!ok)
+        Logger::error("纹理就地更新失败（Vulkan）");
+
+    return ok;
+}
+
 void VulkanBackend::destroyTexture(TextureHandle& handle)
 {
     if (handle.texture == ImTextureID_Invalid || handle.userData == nullptr || this->device == VK_NULL_HANDLE)

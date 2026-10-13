@@ -225,6 +225,26 @@ Box* buildWidgetsPage()
         imageRow->addView(column);
     }
     imageCard->addView(imageRow);
+
+    // 动图（GIF）：播放走 Image 内部的帧时钟（getFrameDeltaSeconds），帧变了才就地更新纹理。
+    // 这一列同时是"动图链路"的手动验收点：方块应该在慢慢移动。
+    Box* animatedRow = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    animatedRow->setAlignItems(AlignItems::CENTER);
+
+    Box* animatedColumn = new Box(Axis::COLUMN);
+    animatedColumn->setAlignItems(AlignItems::CENTER);
+    animatedColumn->setGap(4.0f);
+
+    Image* animated = new Image();
+    animated->setWidth(96.0f);
+    animated->setHeight(96.0f);
+    animated->setCornerRadius(getTheme().number("metric.radius.sm", 4.0f));
+    animated->setAnimationFromFile("resources/anim_demo.gif");
+    animatedColumn->addView(animated);
+    animatedColumn->addView(makeHint(getStr("widgets/image_animated")));
+
+    animatedRow->addView(animatedColumn);
+    imageCard->addView(animatedRow);
     page->addView(imageCard);
 
     return page;

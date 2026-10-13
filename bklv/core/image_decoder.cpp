@@ -260,6 +260,33 @@ float DecodedAnimation::getDuration() const
     return total;
 }
 
+size_t frameIndexAt(const DecodedAnimation& animation, float elapsedSeconds)
+{
+    const size_t count = animation.frames.size();
+    if (count == 0)
+        return 0;
+    if (count == 1 || elapsedSeconds <= 0.0f)
+        return 0;
+
+    float total = animation.getDuration();
+    if (total <= 0.0f)
+        return 0;
+
+    float time = std::fmod(elapsedSeconds, total);
+    if (time < 0.0f)
+        time += total;
+
+    for (size_t i = 0; i < count; i++)
+    {
+        const float delay = animation.delays[i];
+        if (time < delay)
+            return i;
+        time -= delay;
+    }
+
+    return count - 1;
+}
+
 // ---------------------------------------------------------------------------
 // 平台解码器：只解 PNG / JPEG / BMP（GIF 走自带 GIF 解码器）
 // ---------------------------------------------------------------------------

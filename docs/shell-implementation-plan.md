@@ -1331,3 +1331,60 @@ demo 启动冒烟：正常起来跑若干帧后被外部结束，无崩溃
 
 > 说明：本文档上文里出现的 `BKLV_DEMO_*` / `BKLV_SCREENSHOT` 都是**当时的验收记录**，
 > 那些开关现已删除，命令不再可执行。
+
+---
+
+## v29 图片解码契约 + GIF 动画（无新依赖）
+
+### 一、先修契约，再谈新格式
+
+| 项 | 之前 | 现在 |
+|---|---|---|
+| alpha 语义 | macOS 用 `kCGImageAlphaPremultipliedLast`（预乘），stb 直通 → **同一张半透明图两平台明暗不同** | 统一**非预乘 RGBA8**：ImageIO 那条路解码后反预乘（`CGBitmapContext` 只支持预乘，只能解完再转） |
+| 格式路由 | 平台 `#if` 一把梭 | 统一入口按**内容**分发：`detectImageFormat`（PNG/JPEG/BMP/GIF/WebP/TIFF/HEIC/ICO）+ `probeImageSize`（PNG/JPEG/BMP/GIF 头部读宽高） |
+| 失败信息 | 只有"图片加载失败：\<路径\>" | `DecodedImage::error` 带人话：格式不支持 / 尺寸超限 / 读不到文件 / 解码器报的原因 |
+| 畸形文件 | 解完才发现 | 解码**前**卡上限：单边 8192、单帧 4K 像素、动画 16000000 像素 / 512 帧 |
+
+### 二、GIF：零新依赖（stb 自带 GIF 解码器）
+
+- 评审里我建议"GIF 动图用 gifdec"；实际翻 stb 后发现 **`stbi_load_gif_from_memory()` 已经
+  返回合成好的整幅帧 + 每帧延迟（毫秒）**，帧内局部矩形/透明/disposal 全在 stb 里处理完 ——
+  于是 GIF 播放里最重的一块（帧合成）不用自己写，也就**不需要引入任何新库**。
+- 实现：新增 `core/image_decoder_gif.cpp`，单独实例化一份 stb（`STB_IMAGE_STATIC` +
+  `STBI_ONLY_GIF` + `STBI_NO_STDIO`），和 `image_decoder.cpp` 里那份 stb 靠 static 避免符号冲突；
+  第三方警告只在这两个 TU 里局部压掉（沿用 `image_writer.cpp` 的约定）。
+- 延迟 0/1（很多老图）按 100ms 兜底；循环次数 stb 没暴露，统一按循环处理。
+- **结论修正**：原评审结论里的 "GIF → giflib/gifdec" 改为 **"GIF → stb（已在仓库里）"**。
+  libwebp / LunaSVG 的建议不变（都不在第一轮）。
+
+### 三、播放：挂在既有帧时钟上
+
+```
+Image::update()  →  stepAnimation(getFrameDeltaSeconds())
+                 →  frameIndexAt(animation, elapsed)      // 对一轮总时长取模，不漂移
+                 →  帧变了才 updateTexture()               // 就地换内容，不重建纹理、不重排
+```
+- 只在**可见**时推进（离屏不占上传带宽）；暂停回来按绝对时间对齐，不补播。
+- 新增后端接口 `RenderBackend::updateTexture()`：GL/GLES 用 `glTexSubImage2D`，
+  Vulkan 用 staging + 屏障 + `vkCmdCopyBufferToImage`（与 createTexture 同构但故意不共用，
+  那条路径是验证过的）。默认实现返回 false，没实现的后端不影响静态图。
+- 动图纹理是视图自己上传的（`Image::ownsTexture`），析构/换图时释放。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2478 项）   # 上轮 2378；gl/vk 均"构建通过，零警告"
+tests/image_format_test → 100 项 0 失败
+  格式识别（含 TIFF/HEIC/AVIF/WebP/ICO 的内存样本）
+  四种格式解码出 RGBA8（stride = 宽 × 4）
+  半透明 PNG：alpha=128 的像素 RGB 解出来是 255（**非预乘**，这条钉住契约）
+  20000x20000 的头部声明被拒：错误信息写明"尺寸超限"
+  截断 PNG / 文本文件 / 不存在的文件 / 空数据：各有"人话"错误
+  GIF：2 帧、延迟 0.1s/0.2s、总时长 0.3s、两帧内容不同、静态入口给第一帧
+  frameIndexAt：0/0.05/0.1/0.29/0.3/0.45/10.45 秒的帧号 + 相差整一轮同相位（不漂移）
+  Image 视图：装入 GIF、确定性 stepAnimation 换帧、暂停、非动图/空数据装不上
+运行时验证（临时改起始页到"控件"页 + 打换帧日志，验证完已回滚）：
+  GL：6 次换帧日志，帧序 1→2→3→0→1（4 帧循环），**无纹理相关 warning/error**
+  VK：同上 → createTexture 与 updateTexture 在 Vulkan 上也跑通
+demo：`resources/anim_demo.gif`（64x64、4 帧、每帧 80ms）加在"控件"页的图片卡里作为手动验收点
+```

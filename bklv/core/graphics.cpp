@@ -217,6 +217,33 @@ TextureRef loadTextureFromPixels(const unsigned char* pixels, int width, int hei
     return makeRef(registerTexture(handle));
 }
 
+bool updateTexture(const TextureRef& ref, const unsigned char* pixels, int width, int height)
+{
+    if (g_backend == nullptr || pixels == nullptr || width <= 0 || height <= 0)
+        return false;
+
+    if (ref.index < 0 || ref.index >= static_cast<int>(g_textures.size())
+        || !g_textures[ref.index].alive)
+        return false;
+
+    TextureHandle& handle = g_textures[ref.index].handle;
+
+    // 就地更新要求尺寸一致：动图的画布尺寸是固定的，不一致说明调用方搞错了
+    if (handle.width != width || handle.height != height)
+    {
+        Logger::warning("更新纹理尺寸不一致：" + std::to_string(handle.width) + "x"
+            + std::to_string(handle.height) + " vs " + std::to_string(width) + "x"
+            + std::to_string(height));
+        return false;
+    }
+
+    if (!g_backend->updateTexture(handle, pixels, width, height))
+        return false;
+
+    // 引用里缓存了尺寸，句柄没变就不用动
+    return true;
+}
+
 void releaseTexture(TextureRef& ref)
 {
     if (ref.index < 0 || ref.index >= static_cast<int>(g_textures.size()))

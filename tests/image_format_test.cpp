@@ -10,6 +10,7 @@
 #include "bklv/core/image_decoder.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/views/image.hpp"
 
 using namespace bklv;
 
@@ -224,7 +225,65 @@ int main()
         check(!none.isValid() && !none.getError().empty(), "空动画数据失败并带原因");
     }
 
-    std::printf("\n== 8. 当前解码器信息 ==\n");
+    std::printf("\n== 8. 播放时钟：按时间算帧号（取模，不漂移）==\n");
+    {
+        const DecodedAnimation animation = decodeAnimationFile(fixture("anim.gif").c_str());
+        check(animation.isValid(), "动图 fixture 可用");
+
+        checkEqualSize(frameIndexAt(animation, 0.0f), 0, "0 秒 → 第 0 帧");
+        checkEqualSize(frameIndexAt(animation, -5.0f), 0, "负时间 → 第 0 帧");
+        checkEqualSize(frameIndexAt(animation, 0.05f), 0, "0.05s → 第 0 帧（第一帧要显示 0.1s）");
+        checkEqualSize(frameIndexAt(animation, 0.1f), 1, "0.1s → 第 1 帧");
+        checkEqualSize(frameIndexAt(animation, 0.29f), 1, "0.29s → 第 1 帧");
+        checkEqualSize(frameIndexAt(animation, 0.3f), 0, "0.3s（一轮结束）→ 回到第 0 帧");
+        // 0.35s = 一轮(0.3) + 0.05 → 回到第 0 帧；用"相位相同"来验证不漂移更稳
+        checkEqualSize(frameIndexAt(animation, 0.35f), 0, "0.35s → 一轮之后回到第 0 帧");
+        checkEqualSize(frameIndexAt(animation, 0.45f), 1, "0.45s（相位 0.15）→ 第 1 帧");
+        checkEqualSize(frameIndexAt(animation, 0.15f), frameIndexAt(animation, 0.45f),
+            "相差整一轮的相位给出同一帧（不漂移）");
+        checkEqualSize(frameIndexAt(animation, 10.45f), frameIndexAt(animation, 0.45f),
+            "10.45s 与 0.45s 同相位（取模不累积误差）");
+
+        DecodedAnimation empty;
+        checkEqualSize(frameIndexAt(empty, 1.0f), 0, "空动画安全返回 0");
+
+        DecodedAnimation single;
+        single.width  = 1;
+        single.height = 1;
+        single.frames.push_back(std::vector<unsigned char>(4, 0));
+        single.delays.push_back(0.1f);
+        checkEqualSize(frameIndexAt(single, 99.0f), 0, "单帧动画永远是第 0 帧");
+    }
+
+    std::printf("\n== 9. Image 视图：动图接入与确定性步进 ==\n");
+    {
+        Image* image = new Image();
+        check(!image->hasAnimation(), "新视图没有动画");
+
+        check(image->setAnimationFromFile(fixture("anim.gif")), "装得上 GIF 动图");
+        check(image->hasAnimation(), "hasAnimation() 为真");
+        checkEqualSize(image->getAnimationFrameCount(), 2, "两帧");
+        checkEqualSize(image->getAnimationFrameIndex(), 0, "起始是第 0 帧");
+        check(image->isAnimationPlaying(), "默认在播");
+
+        image->stepAnimation(0.05f);
+        checkEqualSize(image->getAnimationFrameIndex(), 0, "0.05s 还是第 0 帧");
+        image->stepAnimation(0.05f);
+        checkEqualSize(image->getAnimationFrameIndex(), 1, "累计 0.1s 换到第 1 帧");
+        image->stepAnimation(0.2f);
+        checkEqualSize(image->getAnimationFrameIndex(), 0, "累计 0.3s（一轮）回到第 0 帧");
+        checkFloat(image->getAnimationTime(), 0.3f, "累计时间正确");
+
+        image->setAnimationPlaying(false);
+        check(!image->isAnimationPlaying(), "能暂停");
+
+        check(!image->setAnimationFromFile(fixture("solid.png")), "非动图格式装不上");
+        check(image->setAnimationFromMemory(nullptr, 0) == false, "空数据装不上");
+
+        delete image;
+    }
+
+    std::printf("\n== 10. 当前解码器信息 ==\n");
     {
         check(getImageDecoderName() != nullptr && getImageDecoderName()[0] != 0, "解码器名非空");
         std::printf("  [数据] 平台解码器 = %s\n", getImageDecoderName());

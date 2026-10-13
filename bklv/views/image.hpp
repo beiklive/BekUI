@@ -8,6 +8,7 @@
 
 #include "bklv/core/alive.hpp"
 #include "bklv/core/graphics.hpp"
+#include "bklv/core/image_decoder.hpp"
 #include "bklv/core/view.hpp"
 
 namespace bklv
@@ -42,6 +43,24 @@ class Image : public View
     // 直接用一个外部纹理（比如自己上传的）。
     void setImage(const TextureRef& ref);
 
+    // ---- 动画（目前只有 GIF）----
+    //
+    // 播放用的就是**项目自带的帧时钟**（core/time.hpp 的 getFrameDeltaSeconds()）：
+    // update() 里累加时间 → frameIndexAt() 取模算帧号 → 帧变了才 updateTexture() 就地换内容
+    // （不重建纹理，也不参与布局）。不可见时不推进，切回来按绝对时间对齐，不会补播。
+    bool setAnimationFromFile(const std::string& path);
+    bool setAnimationFromMemory(const void* data, size_t size);
+
+    bool hasAnimation() const { return !this->animation.frames.empty(); }
+    size_t getAnimationFrameCount() const { return this->animation.frames.size(); }
+    size_t getAnimationFrameIndex() const { return this->animationFrame; }
+    float getAnimationTime() const { return this->animationElapsed; }
+    void setAnimationPlaying(bool playing) { this->animationPlaying = playing; }
+    bool isAnimationPlaying() const { return this->animationPlaying; }
+
+    // 确定性步进（测试用）：不依赖帧时钟，直接把时间往前推
+    void stepAnimation(float deltaSeconds);
+
     const TextureRef& getTexture() const { return this->texture; }
     bool hasImage() const { return this->texture.isValid(); }
 
@@ -72,6 +91,20 @@ class Image : public View
     // 异步解码回调的生命周期护栏：Image 先被销毁时回调直接放弃（否则是 use-after-free）
     AliveFlag alive;
     std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
+    // 动图：解好的帧 + 播放状态
+    DecodedAnimation animation;
+    float animationElapsed      = 0.0f;
+    size_t animationFrame       = 0;
+    bool animationPlaying       = true;
+    bool animationPendingUpload = false; // 后端还没就绪时留给 update() 补上传
+    // 纹理是不是本视图自己上传的动图纹理（是的话析构/换图时要释放，别漏）
+    bool ownsTexture = false;
+
+    // 释放自己上传的纹理（不动缓存里的静态图）
+    void releaseOwnedTexture();
+    bool applyAnimation(DecodedAnimation loaded);
+    void uploadAnimationFrame();
+
     ImageScalingType scalingType = ImageScalingType::FIT;
     float imageCornerRadius      = 0.0f;
     ImU32 placeholderColor       = IM_COL32(45, 49, 56, 255);

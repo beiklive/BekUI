@@ -131,7 +131,8 @@
     "image_centered": "居中裁切",
     "button_default": "默认",
     "button_primary": "主要",
-    "button_highlight": "高亮"
+    "button_highlight": "高亮",
+    "image_animated": "GIF 动图（按帧时钟播放）"
   },
   "page": {
     "theme_sub": "换肤与外观驱动的控件",

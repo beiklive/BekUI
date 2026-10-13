@@ -216,6 +216,30 @@ TextureHandle GLES3Backend::createTexture(const unsigned char* pixels, int width
     return handle;
 }
 
+bool GLES3Backend::updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+    int height)
+{
+    if (!this->ready || pixels == nullptr || width <= 0 || height <= 0)
+        return false;
+
+    if (handle.texture == ImTextureID_Invalid || handle.width != width || handle.height != height)
+        return false;
+
+    const GLuint texture = (GLuint)(intptr_t)handle.texture;
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (glGetError() != GL_NO_ERROR)
+    {
+        Logger::error("纹理就地更新失败");
+        return false;
+    }
+
+    return true;
+}
+
 void GLES3Backend::destroyTexture(TextureHandle& handle)
 {
     if (handle.texture == ImTextureID_Invalid)

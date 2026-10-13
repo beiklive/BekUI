@@ -131,7 +131,8 @@
     "image_centered": "Centered",
     "button_default": "Default",
     "button_primary": "Primary",
-    "button_highlight": "Highlight"
+    "button_highlight": "Highlight",
+    "image_animated": "Animated GIF (frame clock)"
   },
   "page": {
     "theme_sub": "Skinning and appearance-driven widgets",

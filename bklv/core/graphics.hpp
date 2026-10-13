@@ -105,6 +105,18 @@ class RenderBackend
     // 上传一段 RGBA8 像素。失败返回无效句柄。
     virtual TextureHandle createTexture(const unsigned char* pixels, int width, int height) = 0;
 
+    // 就地更新已有纹理的像素（尺寸必须与创建时一致）。
+    // 动图播放每帧只要换内容、不重建纹理，所以需要它；不实现的后端返回 false。
+    virtual bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+        int height)
+    {
+        (void)handle;
+        (void)pixels;
+        (void)width;
+        (void)height;
+        return false;
+    }
+
     // 释放纹理。必须由创建它的后端来释放。
     virtual void destroyTexture(TextureHandle& handle) = 0;
 
@@ -154,6 +166,8 @@ TextureRef loadTextureFromMemory(const void* data, size_t size);
 // 从**已经解码好的 RGBA8 像素**上传（不入缓存）。
 // 异步加载用这个：解码在后台线程做，这里只负责上传，必须在主线程调。
 TextureRef loadTextureFromPixels(const unsigned char* pixels, int width, int height);
+// 就地更新纹理像素（动图播放用；尺寸必须与创建时一致）。失败返回 false。
+bool updateTexture(const TextureRef& ref, const unsigned char* pixels, int width, int height);
 // 释放一张纹理。
 void releaseTexture(TextureRef& ref);
 // 兼容旧写法：释放句柄形态的纹理。

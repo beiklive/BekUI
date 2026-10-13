@@ -34,6 +34,8 @@ class GLES3Backend : public RenderBackend
     void present() override;
 
     TextureHandle createTexture(const unsigned char* pixels, int width, int height) override;
+    bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+        int height) override;
     void destroyTexture(TextureHandle& handle) override;
 
   private:
