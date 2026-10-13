@@ -413,3 +413,82 @@ focusManager->setEdgeHitMinInterval(0.12f);
 2. **不要在写者活跃时做 `git reset`/`git stash` 它的文件** —— 会丢掉它正在写的编辑；
    要动先确认它停摆，且把它的文件存进 stash 保留
 3. 回退到绿基线时，用**已验证过的提交号**（这里是 `9c45cfe`），不要用"看起来对"的提交
+
+---
+
+## 附录 C：第 3 步实施清单（照做即可，Lead 已拍板）
+
+### C0 已拍板的两件事
+
+1. **命名**：`scripts/check_naming.py` 不接受 `restore()` / `restoreFor()` →
+   **改名**为 `restoreFocus()` / `restoreFocusFor(const std::string& key)`
+   （`remember()` / `rememberFor()` 是动词，能过；或用 `saveFocus`/`loadFocus` 同理）。
+   **不要去改白名单脚本** —— 统一用动词式命名更省事。
+2. **不派子代理**：本步骤由执行者自己实现，**每改一处立刻 `cmake --build build/gl -j 8`**，
+   不攒着改完再编（前一个子代理攒改 7 个文件、连续 5 轮零交付的教训）。
+
+### C1 落点（都在 `bklv/core/input.*`，不要新建 FocusManager 类）
+
+焦点状态已在这里：`currentFocus`(:201)、`getCurrentFocus()`(:150)、`isInsideModal()`(:162)、
+`resetFocusState()`(:166)、`navigate()`(input.cpp:172)。**扩展它**，否则就是两套真相。
+配套改动只在 `bklv/core/box.*`（导航/默认焦点）、`bklv/core/view.*`（抖动 + 可聚焦查询）。
+
+### C2 要实现的 API（最终名）
+
+```cpp
+// 公开段（上一个浅版把 setter 落在 private 段，外部调不到 —— 这是坑）
+void  setNavigationWrap(View* box, bool wrap);          // 默认 false，按 box 局部生效、内层可覆盖
+void  setOnFocusEdgeHit(std::function<void(FocusDirection, View*)>);
+void  setEdgeHitMinInterval(float seconds);             // 默认 0.12s
+void  setCrossBoxPolicy(View* box, CrossBoxPolicy);     // ALLOW(默认) / SAME_PARENT_ONLY / NONE
+
+bool  canFocus(View* view) const;      // isFocusable && !disabled && 沿父链 VISIBLE && 模态内
+void  remember();  bool restoreFocus();
+void  rememberFor(const std::string& key);  bool restoreFocusFor(const std::string& key);
+void  ensureFocusVisible();
+void  shakeHighlightOnEdge(FocusDirection dir);          // 抖动：绘制期位移，不进布局
+```
+
+### C3 行为规格（附录 B 摘要，照它做）
+
+- **默认焦点三级**：自身可聚焦 → 上次焦点记忆（`lastFocusedView`，焦点变化时向上冒泡写入）
+  → 指定索引 → 顺序扫第一个可聚焦子节点
+- **顺序导航**：用**子索引 ±1 线性扫描**（不是几何最近邻）；轴向不符（row 按 UP/DOWN）**立刻上交父容器**；
+  越界返回 nullptr 继续冒泡；容器可"返回 this"表示焦点不动（滚动容器）
+- **不循环**（默认）；`setNavigationWrap(box, true)` 才在同级里绕回另一端
+- **撞边**：确实无法移动时触发一次回调（带方向）→ 上层挂 `SOUND_FOCUS_ERROR` + 抖动；节流 0.12s
+- **模态**：`isInsideModal` 为假的目标一律丢弃
+- **焦点变化**发**既有** `FocusChangedEvent`（`core/event.hpp`），不要新增并行事件
+
+### C4 测试清单（`tests/focus_test.cpp`，脚手架照 `tests/overlay_test.cpp`）
+
+`getInputManager()` + `app.setRootView(root)`；可聚焦视图用一个最小的
+`class FocusBox : public Box { bool isFocusable() const override { return true; } };`
+
+1. 记住 → 恢复：焦点回原控件
+2. **原控件已销毁** → 退本范围默认焦点（不崩、不悬空）
+3. 默认焦点三级（自身 / 上次记忆 / 指定索引 / 顺序第一个）
+4. 顺序导航 + 轴向不符上交 + 越界冒泡
+5. 默认不循环（首项 UP / 末项 DOWN 停住）；`setNavigationWrap(box, true)` 后首尾相接
+6. 撞边回调：方向正确、只触发一次；能移动时不触发；节流生效；焦点为空时不触发
+7. 跨 box 三档：ALLOW / SAME_PARENT_ONLY / NONE
+8. 模态遮挡：`isInsideModal` 为假时不越出模态
+9. 同层换页记忆：`rememberFor("pageA")` → 换页 → `restoreFocusFor("pageA")` 回到原控件
+10. `ensureFocusVisible()`：焦点在可视区外时被滚回来
+
+### C5 验收
+
+```bash
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=ON && cmake --build build/gl -j 8
+./dist/focus_test
+./scripts/check.sh              # 当前基线 1914 项，只增不减、GL/VK 零警告
+python3 scripts/check_naming.py
+```
+
+### C6 可复用的旧成果（都在 stash 里，别直接照抄）
+
+| stash | 内容 | 怎么用 |
+|---|---|---|
+| `step3-subagent-WIP-全部保留` | 子代理 7 个文件的全量 WIP | 只看思路（`git stash show -p`）；它缺 CrossBoxPolicy/FocusRecord/canFocus/ensureFocusVisible/默认焦点三级，wrap 无 box 参数，setter 在 private 段 |
+| `step3-subagent-partial` | 早期半成品（box.*） | 同上 |
+| `lead-edges` / `lead-edges-2` | 我的 EdgeInsets 接线 | **已入库（1f9ef04），可丢** |
