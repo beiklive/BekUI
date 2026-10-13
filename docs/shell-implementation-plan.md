@@ -1296,3 +1296,38 @@ tests/icon_font_test 438 项 0 失败（新增：设了图标字体后列可用�
 demo 截图：page_13 顶部 Switch 图标「共 340 个字形」；滚到段落末尾，最后一个码位是 U+E153，
            下面是 Material 图标「共 2188 个字形」
 ```
+
+---
+
+## v28 移除 demo 的调试开关（脚手架清理）
+
+用户要求：demo 里的环境变量调试开关**不应该存在**。已全部删除：
+
+| 删除的开关 | 原来的用途 |
+|---|---|
+| `BKLV_DEMO_PAGE` | 直接打开第 N 页（截图验收用） |
+| `BKLV_DEMO_LOG` / `BKLV_DEMO_LOG_SPAM` | 启动即开日志面板 / 每帧写 N 条日志压测 |
+| `BKLV_DEMO_SCROLL` | 某帧把内容区滚到指定位置 |
+| `BKLV_DEMO_CLICK` | 某帧注入一次指针点击 |
+| `BKLV_DEMO_SWEEP` | 逐页自动切换（跑 14 页的"建 → 删"） |
+| `BKLV_SCREENSHOT` / `BKLV_SCREENSHOT_FRAMES` | 离屏截图后退出 |
+
+保留：
+- **日志面板的 F1 开关**（正常功能，不是调试开关）
+- **库 API** `App::requestScreenshot()` / `App::saveScreenshot()`（设计器在用，不是 demo 脚手架）
+- demo 的**起始页推迟到首帧**这条逻辑（去掉 `BKLV_DEMO_PAGE` 后仍然需要：字体是
+  `App::run()` 里才装载的，构造期建页会拿到空图标表）
+
+以后怎么验收：写无窗口测试（`tests/`）；要截图就在自己的临时程序里调
+`App::requestScreenshot()`，产品程序里不留"只有调试时才走"的分支。
+
+### 验收原文
+
+```
+./scripts/check.sh → 全部检查通过（2378 项）；gl/vk 均"构建通过，零警告"
+grep -rn "getenv(\"BKLV_DEMO\|BKLV_SCREENSHOT" demo/ → 无匹配
+demo 启动冒烟：正常起来跑若干帧后被外部结束，无崩溃
+```
+
+> 说明：本文档上文里出现的 `BKLV_DEMO_*` / `BKLV_SCREENSHOT` 都是**当时的验收记录**，
+> 那些开关现已删除，命令不再可执行。

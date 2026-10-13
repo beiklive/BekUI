@@ -537,13 +537,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 存成 PNG，然后退出。**不要用 macOS 的 `screencapture` 做验证**：没给屏幕录制权限时它只能
 拍到壁纸（这个坑在验证 demo 页面时踩过，白折腾很久）。
 
-```bash
-BKLV_DEMO_PAGE=5 BKLV_SCREENSHOT=/tmp/dex.png ./dist/demo   # 直接开第 6 页并截图
-```
-
 实现：`RenderBackend::readPixels()`（OpenGL 后端已实现，读回时上下翻转）+ `core/image_writer.*`
 （stb_image_write，第三方头文件的警告在这一个编译单元里局部压掉）。
-`BKLV_DEMO_PAGE` / `BKLV_SCREENSHOT` 是 demo 的调试开关，给自己看效果或做 CI 基线都方便。
+
+**demo 里不要加环境变量调试开关**（曾经有 `BKLV_DEMO_PAGE` / `BKLV_DEMO_LOG(_SPAM)` /
+`BKLV_DEMO_SCROLL` / `BKLV_DEMO_CLICK` / `BKLV_DEMO_SWEEP` / `BKLV_SCREENSHOT(_FRAMES)`，
+已全部删除）。要验收就写 `tests/` 里的无窗口测试，要截图就在自己的临时程序里调
+`App::requestScreenshot()`（设计器就是这么用的）；产品程序里不留"只有调试时才走"的分支。
 
 ## 设计器（designer/）
 

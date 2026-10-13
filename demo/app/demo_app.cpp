@@ -3,8 +3,6 @@
 #include "app/pages.hpp"
 
 #include <algorithm>
-#include <cstdio>
-#include <cstdlib>
 
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
@@ -148,45 +146,10 @@ DemoApp::DemoApp()
     this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false);
     this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false);
 
-    // 起始页：默认第一页；截图/调试时用 BKLV_DEMO_PAGE=<下标> 直接开某一页
-    size_t startPage = 0;
-    if (const char* requested = std::getenv("BKLV_DEMO_PAGE"))
-    {
-        const int parsed = std::atoi(requested);
-        if (parsed >= 0 && (size_t)parsed < this->pages.size())
-            startPage = (size_t)parsed;
-        else
-            BKLV_LOG_WARNING("BKLV_DEMO_PAGE=%s 越界（共 %d 页），用第一页", requested,
-                (int)this->pages.size());
-    }
-    // 起始页**推迟到第一帧**再选：视图树是在 App::run() 之前建的，而字体（含两套图标字体）
-    // 要等 App::run() 建好图集才装载。页面若在这之前构建，取到的是"字体还没有"的空表
-    // （图标总览页会整页空白），所以统一等第一帧（update 里）再选页。
-    this->pendingStartPage = (int)startPage;
-
-    // 日志窗口（调试/验收用）：BKLV_DEMO_LOG=1 打开；BKLV_DEMO_LOG_SPAM=<每帧条数> 压测。
-    // 压测时盯面板头部的"布局"计数：日志再多也不该让它涨（DebugLogView 零重排）。
-    if (const char* openLog = std::getenv("BKLV_DEMO_LOG"))
-    {
-        if (std::atoi(openLog) != 0)
-            this->setLogWindowEnabled(true);
-    }
-    if (const char* spam = std::getenv("BKLV_DEMO_LOG_SPAM"))
-        this->logSpam = std::atoi(spam);
-
-    // 鼠标路径验收：滚到指定位置 + 注入一次点击（长页面上的控件只有滚下去才点得到）
-    if (const char* scroll = std::getenv("BKLV_DEMO_SCROLL"))
-        this->demoScroll = (float)std::atof(scroll);
-    if (const char* click = std::getenv("BKLV_DEMO_CLICK"))
-    {
-        float x = 0.0f;
-        float y = 0.0f;
-        if (std::sscanf(click, "%f,%f", &x, &y) == 2)
-        {
-            this->demoClickX = x;
-            this->demoClickY = y;
-        }
-    }
+    // 起始页**推迟到第一帧**再选（见 update()）：视图树是在 App::run() 之前建的，
+    // 而字体（含两套图标字体）要等 App::run() 建好图集才装载。页面若在这之前构建，
+    // 取到的是"字体还没有"的空表（图标总览页会整页空白），所以统一等第一帧再选页。
+    this->pendingStartPage = 0;
 
     // F1 开关日志窗口：面板在**所有层之上**，视觉上会盖住右上角那排按钮
     // （但调试层不吃输入，按钮照样点得到），所以给一个随时能按的快捷键。
@@ -194,28 +157,7 @@ DemoApp::DemoApp()
         this->setLogWindowEnabled(!this->isLogWindowEnabled());
     });
 
-    // 逐页自动切换（调试/验收用）：BKLV_DEMO_SWEEP=<每页停留帧数>。
-    // 切页会 delete 旧页，这个开关能一次跑遍 14 页的"建 → 删"，把
-    // "旧页被删之后才暴露"的问题（悬空订阅 / 异步回调 / 静态指针）当场抓出来。
-    if (const char* sweep = std::getenv("BKLV_DEMO_SWEEP"))
-    {
-        const int frames = std::atoi(sweep);
-        if (frames > 0)
-            this->sweepFrames = frames;
-    }
-
-    // 离屏截图（截图/CI 用）：BKLV_SCREENSHOT=<png 路径>，可选 BKLV_SCREENSHOT_FRAMES=<等几帧>
-    if (const char* shotPath = std::getenv("BKLV_SCREENSHOT"))
-    {
-        int frames = 5;
-        if (const char* requested = std::getenv("BKLV_SCREENSHOT_FRAMES"))
-            frames = std::atoi(requested);
-        if (App* app = App::getCurrent())
-            app->requestScreenshot(shotPath, frames);
-    }
-
-    BKLV_LOG_INFO("界面已就绪：%d 个页面（Shell + Pager，左侧栏导航），起始页 %d",
-        (int)this->pages.size(), (int)startPage);
+    BKLV_LOG_INFO("界面已就绪：%d 个页面（Shell + Pager，左侧栏导航）", (int)this->pages.size());
     BKLV_LOG_INFO("图形后端：%s", getGraphicsBackendName());
     BKLV_LOG_INFO("UI 缩放：%.3f（主题尺寸按 1280x720 写）", (double)getUiScale());
 }
@@ -484,46 +426,7 @@ bool DemoApp::handleBackRequest()
 
 void DemoApp::update()
 {
-    // 验收开关：第 2 帧滚到指定位置，第 3 帧注入一次点击（见头文件注释）
-    this->frameTick++;
-    if (this->demoScroll >= 0.0f && this->frameTick == 5)
-    {
-        // 布局是延迟的：等几帧滚动范围才算出来，否则会被钳成 0
-        this->scroller->setContentOffsetY(this->demoScroll, false);
-        BKLV_LOG_INFO("验收开关：滚动到 %.0f（可滚范围 %.0f）", (double)this->demoScroll,
-            (double)this->scroller->getScrollRange());
-    }
-    if (this->demoClickX >= 0.0f && this->frameTick == 8)
-    {
-        BKLV_LOG_INFO("验收开关：在 (%.0f, %.0f) 注入一次点击", (double)this->demoClickX,
-            (double)this->demoClickY);
-        getInputManager().dispatchPointerClick(Point(this->demoClickX, this->demoClickY));
-    }
-
-    // 日志压测：每帧写几条（含 文件:行号 与级别，覆盖日志面板的两种列）
-    for (int i = 0; i < this->logSpam; i++)
-    {
-        this->logSpamCounter++;
-        if (this->logSpamCounter % 3 == 0)
-            BKLV_LOG_WARNING("日志压测 #%d（WARNING 级别，验证颜色与过滤）", this->logSpamCounter);
-        else
-            BKLV_LOG_INFO("日志压测 #%d：这一条比较长，用来验证自动换行与滚动跟随是否正常",
-                this->logSpamCounter);
-    }
-
-    // 逐页自动切换（BKLV_DEMO_SWEEP）：走和用户一样的路径（侧栏聚焦 → 切页）
-    if (this->sweepFrames > 0 && !this->pages.empty())
-    {
-        if (++this->sweepTick >= this->sweepFrames)
-        {
-            this->sweepTick    = 0;
-            const size_t next  = (this->currentPage + 1) % this->pages.size();
-            if (View* item = this->sidebar->getItemView(next))
-                getInputManager().giveFocus(item); // 侧栏"聚焦即切页"
-            this->selectPage(next, false);
-        }
-    }
-
+    // 首帧才选起始页（原因见构造函数里的注释）
     if (this->pendingStartPage >= 0)
     {
         const size_t page = (size_t)this->pendingStartPage;

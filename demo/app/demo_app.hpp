@@ -108,26 +108,9 @@ class DemoApp
     bklv::Animatable footerAnim{ 1.0f };
     bool animating = false;
 
-    // BKLV_DEMO_PAGE 指定的启动页，首帧再应用（App::setRootView 会把焦点给侧栏第 0 项，
-    // 而侧栏是"聚焦即切页"，构造期设的启动页会被它覆盖掉）
-    int pendingStartPage = -1;
-
-    // BKLV_DEMO_SWEEP=<每页停留帧数>：逐页自动切换，用来验收"切页会 delete 旧页"
-    int sweepFrames = 0;
-    int sweepTick   = 0;
-
-    // BKLV_DEMO_LOG=1：启动就打开日志窗口（截图/验收用）
-    // BKLV_DEMO_LOG_SPAM=<每帧条数>：每帧写几条日志，压测日志面板
-    int logSpam        = 0;
-    int logSpamCounter = 0;
-
-    // 鼠标路径验收开关（长页面上的控件要滚下去才点得到）：
-    //   BKLV_DEMO_SCROLL=<像素>   第 2 帧把内容区滚到这个位置
-    //   BKLV_DEMO_CLICK=<x>,<y>   第 3 帧注入一次指针点击（画布坐标）
-    int frameTick     = 0;
-    float demoScroll  = -1.0f;
-    float demoClickX  = -1.0f;
-    float demoClickY  = -1.0f;
+    // 起始页在**首帧**才选（构造期选页会拿到"字体还没装载"的空图标表；而且
+    // App::setRootView 会把焦点给侧栏第 0 项，侧栏又是"聚焦即切页"，构造期设的页会被它覆盖）
+    int pendingStartPage = 0;
 
     bklv::DebugLogView* logView = nullptr;
 };
