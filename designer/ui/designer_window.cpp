@@ -9,6 +9,8 @@
 #include "bklv/3rd/imgui/imgui.h"
 #include "designer/ui/designer_style.hpp"
 #include "designer/ui/icon_draw.hpp"
+// 自查要用到 ImGuiContext 的 ErrorCallback / ErrorCountCurrentFrame（公共头里是不完整类型）
+#include "bklv/3rd/imgui/imgui_internal.h"
 #include "designer/core/icon_align.hpp"
 #include "designer/core/diff.hpp"
 #include "designer/core/json_patch.hpp"
@@ -123,6 +125,13 @@ const char* fieldLabel(const char* key)
     return key;
 }
 
+// ImGui 的断言失败会画一个红框；装个回调把**断言原文**打进日志，
+// 用来定位"鼠标在树上切换时闪红框"到底断在哪一句。
+void imguiErrorCallback(ImGuiContext*, void*, const char* msg)
+{
+    BKLV_LOG_ERROR("[imgui 断言] %s", msg);
+}
+
 bool inputNumberFloat(const char* label, double& value)
 {
     propLabel(label);
@@ -178,6 +187,11 @@ std::string valueKind(const AppearanceDoc::Json& value)
 void DesignerWindow::attach(App* application)
 {
     this->app = application;
+
+    // 挂 ImGui 错误回调：断言失败时把原文打进日志（红框就是它画的）
+    if (ImGui::GetCurrentContext() != nullptr)
+        ImGui::GetCurrentContext()->ErrorCallback = imguiErrorCallback;
+
     // 图标字体：**暂时不用**。图集是库在 App 构造时建好的，这里再 AddFontFromFileTTF
     // 会直接踩崩（实测 segfault）。要么改库的字体装载（超出"只动 designer/"的边界），
     // 要么就用手写的矢量图标（icon_draw.cpp，已经和文字对齐）。
@@ -5088,6 +5102,37 @@ void DesignerWindow::draw()
             | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar
             | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
     this->drawMenuBar();
+
+    // 自查：BKLV_DESIGNER_INJECT_MOUSE=<帧数> —— 指针扫过左栏（列表/树）并点击，
+    // 用来复现"鼠标在树上切换时闪红框"。用 ImGui 官方事件队列接口。
+    if (const char* injectFrames = std::getenv("BKLV_DESIGNER_INJECT_MOUSE"))
+    {
+        static int injected = 0;
+        const int total     = std::atoi(injectFrames);
+        ImGuiIO& io         = ImGui::GetIO();
+
+        if (injected < total)
+        {
+            injected++;
+            const float x = 20.0f + (float)(injected % 7) * 40.0f;
+            const float y = 60.0f + (float)((injected / 7) % 20) * 30.0f;
+            io.AddMousePosEvent(x, y);
+            io.AddMouseButtonEvent(0, (injected % 5) == 0);
+            // 每帧都把当帧错误数打出来（>0 才打，免得刷屏）：复现时一眼看到哪一帧断
+            if (ImGui::GetCurrentContext() != nullptr
+                && ImGui::GetCurrentContext()->ErrorCountCurrentFrame > 0)
+                BKLV_LOG_WARNING("[自查] 注入第 %d 帧：ImGui 错误 %d 条", injected,
+                    ImGui::GetCurrentContext()->ErrorCountCurrentFrame);
+        }
+        else if (injected == total)
+        {
+            injected++;
+            const int errors = ImGui::GetCurrentContext() != nullptr
+                ? ImGui::GetCurrentContext()->ErrorCountCurrentFrame
+                : -1;
+            BKLV_LOG_INFO("[自查] 鼠标注入 %d 帧结束（当帧 ImGui 错误 %d 条）", total, errors);
+        }
+    }
 
     // 快捷键（ImGui 的键盘输入在 SDL3 后端默认开着，直接用 io.KeysDown 的封装）
     if (ImGui::GetCurrentContext() != nullptr && !ImGui::GetIO().WantTextInput)
