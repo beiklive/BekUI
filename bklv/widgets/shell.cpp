@@ -1,6 +1,7 @@
 #include "bklv/widgets/shell.hpp"
 
 #include "bklv/core/geometry.hpp"
+#include "bklv/core/input.hpp"
 #include "bklv/views/padding.hpp"
 
 namespace bklv
@@ -230,6 +231,32 @@ void Shell::fillLayer(View* view)
     view->setPositionRight(0.0f);
     view->setPositionBottom(0.0f);
     view->setPositionLeft(0.0f);
+}
+
+
+// 弹窗：挂覆盖层顶部 + 切模态（模态栈会保存当前焦点，关闭时自动恢复；
+// 指针命中与方向导航也被限制在弹窗子树内）。
+void Shell::pushDialog(View* dialog, const DialogOptions& options)
+{
+    if (dialog == nullptr)
+        return;
+
+    this->overlayLayer->addView(dialog);
+    this->dialogStack.push_back(dialog);
+    getInputManager().pushModal(dialog, options.closeOnBack);
+}
+
+void Shell::popDialog(View* dialog)
+{
+    if (this->dialogStack.empty())
+        return;
+
+    // 只允许按栈序弹出（弹窗套弹窗时，先关最上面那个）
+    if (dialog != nullptr && this->dialogStack.back() != dialog)
+        return;
+
+    this->dialogStack.pop_back();
+    getInputManager().popModal();
 }
 
 } // namespace bklv

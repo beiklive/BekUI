@@ -1,5 +1,7 @@
 #include "bklv/widgets/shell.hpp"
 
+#include "bklv/core/input.hpp"
+
 #include "test_util.hpp"
 
 using namespace bklv;
@@ -92,6 +94,18 @@ int main()
     View* fillView = new Box(Axis::COLUMN);
     shell->fillLayer(fillView);
     check(isInside(fillView, shell->getOverlayLayer()), "铺满挂到覆盖层");
+
+    // 7b) 弹窗：挂覆盖层 + 切模态 + 按栈序弹出
+    View* dialog = new Box(Axis::COLUMN);
+    shell->pushDialog(dialog);
+    check(getInputManager().hasModal(), "pushDialog 后进入模态");
+    check(shell->hasDialog(), "pushDialog 后 hasDialog 为真");
+    check(shell->getTopDialog() == dialog, "栈顶就是刚推入的弹窗");
+    check(isInside(dialog, shell->getOverlayLayer()), "弹窗挂在覆盖层里");
+    shell->popDialog(dialog);
+    check(!getInputManager().hasModal(), "popDialog 后退出模态");
+    check(shell->getTopDialog() == nullptr, "栈空后栈顶为空");
+    check(!shell->hasDialog(), "弹出后 hasDialog 为假");
 
     // 8) 空指针不崩
     shell->addToCorner(nullptr, Corner::CENTER, 0.0f, 0.0f);

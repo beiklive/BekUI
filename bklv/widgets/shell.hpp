@@ -4,6 +4,7 @@
 #include "bklv/core/geometry.hpp"
 
 #include <functional>
+#include <vector>
 
 namespace bklv
 {
@@ -30,6 +31,14 @@ enum class Edge
     RIGHT,
     BOTTOM,
     LEFT,
+};
+
+// 弹窗选项。放在类外：C++ 不允许把"带默认成员初值的嵌套类型"用作同类内的默认实参。
+struct DialogOptions
+{
+    bool dim             = true;   // 弹窗后加遮罩（待实现）
+    bool closeOnDimClick = true;   // 点遮罩关闭（待实现）
+    bool closeOnBack     = true;   // 按 B 关闭
 };
 
 // 应用外壳：四层结构（取代旧 AppletFrame 的三段式）。
@@ -82,6 +91,14 @@ class Shell : public Box
     float getSafeAreaBottom() const { return this->safeBottom; }
     float getSafeAreaLeft() const { return this->safeLeft; }
 
+    // 弹窗：挂到**覆盖层顶部**，并打**模态标记**（复用 InputManager 的模态栈，
+    // 它负责"指针命中与方向导航限制在模态子树内 + 关闭时恢复焦点"）。
+    // 遮罩（dim）与"点遮罩关闭"随后补；本版先落模态与焦点语义。
+    void pushDialog(View* dialog, const DialogOptions& options = DialogOptions());
+    void popDialog(View* dialog);
+    bool hasDialog() const { return !this->dialogStack.empty(); }
+    View* getTopDialog() const { return this->dialogStack.empty() ? nullptr : this->dialogStack.back(); }
+
     // 角落 / 边缘定位（内部即绝对定位 + 边偏移；居中类会用一层铺满的包装盒）
     void addToCorner(View* view, Corner corner, float insetX, float insetY);
     void addToEdge(View* view, Edge edge, float inset);
@@ -95,6 +112,8 @@ class Shell : public Box
     Box* contentLayer  = nullptr;
     Box* overlayLayer  = nullptr;
     Box* hudLayer      = nullptr;
+
+    std::vector<View*> dialogStack;
 
     View* headerView = nullptr;
     View* footerView = nullptr;
