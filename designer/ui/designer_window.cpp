@@ -3535,72 +3535,20 @@ void DesignerWindow::drawProps()
 
             ImGui::Spacing();
             ImGui::TextColored(accentColor(), "层操作");
-            if (ImGui::SmallButton("复制层"))
-            {
-                if (const AppearanceDoc::Json* layer = this->doc.layer(this->selection.index))
-                {
-                    this->layerClipboard    = *layer;
-                    this->hasLayerClipboard = true;
-                    this->statusMessage = "已复制第 " + std::to_string(this->selection.index + 1)
-                        + " 层（可粘到别的外观里）";
-                }
-            }
+            ImGui::TextColored(mutedColor(), "复制 / 删除 / 增加层都在左侧节点树右键菜单；上下移直接拖动");
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("复制整层到剪贴板，可以切到别的外观再粘");
             ImGui::SameLine();
             ImGui::BeginDisabled(!this->hasLayerClipboard);
-            if (ImGui::SmallButton("粘贴层"))
-            {
-                const int index = this->doc.appendLayer(this->layerClipboard);
-                if (index >= 0)
-                {
-                    this->pushUndoSnapshot();
-                    this->markEdited();
-                    this->previewDirty = true;
-                    this->selection    = Selection{};
-                    this->selection.kind  = SelKind::LAYER;
-                    this->selection.index = index;
-                    this->statusMessage = "已粘贴为第 " + std::to_string(index + 1) + " 层"
-                        + (this->doc.layerId(index).empty()
-                               ? ""
-                               : "（id " + this->doc.layerId(index) + "）");
-                }
-            }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", this->hasLayerClipboard
                         ? "追加到当前外观末尾（id 会自动改唯一）"
                         : "剪贴板里还没有层：先在某个外观里点「复制层」");
             ImGui::Separator();
-            if (ImGui::Button("上移"))
-            {
-                if (this->doc.moveLayer(this->selection.index, -1))
-                    this->selection.index -= 1;
-                edited();
-            }
             ImGui::SameLine();
-            if (ImGui::Button("下移"))
-            {
-                if (this->doc.moveLayer(this->selection.index, 1))
-                    this->selection.index += 1;
-                edited();
-            }
             ImGui::SameLine();
-            if (ImGui::Button("就地复制"))
-            {
-                const int created = this->doc.duplicateLayer(this->selection.index);
-                if (created >= 0)
-                    this->selection.index = created;
-                edited();
-            }
             ImGui::SameLine();
-            if (ImGui::Button("删除"))
-            {
-                this->doc.removeLayer(this->selection.index);
-                this->selection = Selection{};
-                this->selection.kind = SelKind::FILE;
-                edited();
-            }
             break;
         }
 
