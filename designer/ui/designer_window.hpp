@@ -278,7 +278,8 @@ class DesignerWindow
     float uiScale = 1.0f;             // 设计器界面整体缩放（0.7~1.6）
     int fileListHeightUi = 250;       // 左栏里"文件列表"的高度（可拖）
     bool showGrid = false;            // 预览画布的对齐网格 + 中线
-    bool onlyLayers = true;           // 树里只看层（字段归检查器）
+    bool onlyLayers = true;
+    bool showLayerStrip = true;   // 绘制顺序条           // 树里只看层（字段归检查器）
     char propFilter[64] = "";         // 属性表字段过滤
     std::vector<DirEntry> recentFiles;// 最近修改（文件列表顶部的快捷入口）
     // 相对"磁盘上那份"变了哪些字段（box.height / layers[0].fill …）

@@ -2631,16 +2631,9 @@ void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
 
 void DesignerWindow::drawPreview()
 {
-    // ---- 控制行 1：画布 ----
-    static bool showLayerStrip = true;
-    panelHeader("预览", this->dirty
-            ? ("未保存 · 改动 " + std::to_string(this->changedFieldPaths.size()) + " 处").c_str()
-            : "选中什么渲染什么");
-    ImGui::SetNextItemWidth(120);
-    ImGui::Combo("##size", &this->canvasPreset,
-        "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("画布尺寸。自适应按文件类型给：整页 960×560、单元格 420×160、单层 360×200");
+    // 这里原来是「预览」标题 + 画布尺寸下拉 + 一排复选框。
+    // 按用户要求：画布上不再堆控件 —— 尺寸下拉挪到底部信息条，其余做成画布右侧的竖排图标。
+    bool showLayerStrip = this->showLayerStrip;
 
     if (this->canvasPreset == 0)
     {
@@ -2692,23 +2685,8 @@ void DesignerWindow::drawPreview()
     this->canvasWidth  = std::max(40, std::min(this->canvasWidth, 4000));
     this->canvasHeight = std::max(30, std::min(this->canvasHeight, 4000));
 
-    ImGui::SameLine();
-    ImGui::Checkbox("网格底", &this->canvasChecker);
-    ImGui::SameLine();
-    ImGui::Checkbox("层序条", &showLayerStrip);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("画布左边的绘制顺序条；关掉它可以把地方让给画布");
-    ImGui::SameLine();
-    ImGui::Checkbox("对齐网格", &this->showGrid);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("10px 网格 + 中线：对间距、看居中最有用");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("重置视图"))
-    {
-        this->canvasZoom = 2;
-        this->canvasPanX = 0.0f;
-        this->canvasPanY = 0.0f;
-    }
+    // 这几个开关都做成**画布右侧的竖排图标**（见下面 ##stage 里的浮层），
+    // 顶上不再摆一排复选框（用户要求：不要堆控件）
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("滚轮缩放、中键（或按住空格）拖动平移");
 
@@ -2724,7 +2702,8 @@ void DesignerWindow::drawPreview()
         // 否则自适应会挑一个大一档的缩放、画布右侧被裁（踩过）
         const bool stripVisible = !this->currentWidget.empty() && this->doc.layerCount() > 0
             && !this->previewCompare;
-        const float stageW = stage.x - (stripVisible ? 148.0f : 0.0f);
+        // 左边绘制顺序条 + 右边图标条 + 左边状态条都要让出来，否则自适应当选大一档、画布被裁
+        const float stageW = stage.x - (stripVisible ? 132.0f : 0.0f) - 110.0f;
         const float needW  = (float)this->canvasWidth;
         const float needH  = (float)this->canvasHeight - 96.0f; // 上面的控制行
         const float fit    = std::min(stageW / std::max(1.0f, needW),
@@ -2735,97 +2714,12 @@ void DesignerWindow::drawPreview()
                 zoom = choice;
     }
 
-    // ---- 控制行 2：状态工具栏 + 上下文/子树/对比 ----
-    ImGui::TextColored(mutedColor(), "状态");
-    ImGui::SameLine();
-    static const char* stateLabels[] = { "默认", "focused", "pressed", "disabled", "selected" };
-    for (int i = 0; i < 5; i++)
-    {
-        if (i > 0)
-            ImGui::SameLine();
-        const bool active = (this->previewStateIndex == i);
-        if (active)
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.64f, 1.0f));
-        if (ImGui::SmallButton(stateLabels[i]))
-        {
-            this->previewStateIndex = i;
-            this->previewDirty      = true;
-        }
-        if (active)
-            ImGui::PopStyleColor();
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("按状态看效果动效（用真实时长，能看到过程）");
-
-    ImGui::SameLine();
-    if (ImGui::Checkbox("样例容器", &this->previewContext))
-        this->previewDirty = true;
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("把控件放进一个横向容器里看间距/父容器效果（不再是孤立的一块）");
-
-    if (!this->currentViewFile.empty())
-    {
-        ImGui::SameLine();
-        if (ImGui::Checkbox("只渲染选中子树", &this->previewSubtree))
-            this->previewDirty = true;
-    }
-    ImGui::SameLine();
-    if (ImGui::Checkbox("并排对比", &this->previewCompare))
-        this->previewDirty = true;
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("左边=正在编辑的，右边=磁盘上那份（改前改后一眼看出差别）");
-
-    // 外部仓库：预览里的 @res/ 仍按设计器自己的 resources 解析，得说明白
-    {
-        static bool warnedExternal = false;
-        const std::string ownResources = resourcePath("resources");
-        if (!warnedExternal && this->project.hasResourcesOutside(ownResources))
-        {
-            warnedExternal = true;
-            BKLV_LOG_WARNING("这个项目的 resources 不在设计器旁边（%s）：预览里图片的 @res/ 仍按"
-                             "设计器自己的 resources 解析，可能显示不出正确素材",
-                this->project.resourcesDir().c_str());
-        }
-    }
-
-    // ---- 差异标注：设计器与真机可能不一样的地方，写在明面上 ----
-    {
-        const float uiScale = (float)this->canvasWidth / 1280.0f;
-        std::string shortDir = this->project.themeDir();
-        {
-            // 只显示路径最后两段，标注一行放得下
-            const size_t last = shortDir.find_last_of('/');
-            const size_t prev = last == std::string::npos ? std::string::npos
-                                                          : shortDir.find_last_of('/', last - 1);
-            if (prev != std::string::npos && prev + 1 < shortDir.size())
-                shortDir = "…" + shortDir.substr(prev);
-        }
-        // 评审意见：画布上方信息行太多、和工具栏抢注意力。
-        // 现在合成**一行**：画布尺寸 + UI 缩放 + 主题目录（目录只给最后两段），
-        // 详细解释降级到悬停提示；"按真机 720p" 也变成这一行里的一个小按钮。
-        ImGui::TextColored(mutedColor(), "%d×%d · %.2f× · %s", this->canvasWidth,
-            this->canvasHeight, uiScale, shortDir.c_str());
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("画布 %d×%d，UI 缩放 ≈ %.2f×（真机 = 窗口宽 / 1280）\n主题目录：%s",
-                this->canvasWidth, this->canvasHeight, uiScale, this->project.themeDir().c_str());
-        if (this->canvasWidth != 1280)
-        {
-            ImGui::SameLine();
-            if (ImGui::SmallButton("720p"))
-            {
-                this->canvasPreset   = 1; // 1280×720
-                this->canvasChecker  = true;
-                this->previewDirty   = true;
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("切到 1280×720：主题尺寸都按它写，量间距、看对齐时最准");
-        }
-    }
-
+    // 状态那排按钮、以及"样例容器 / 只渲染选中子树 / 并排对比"这些看不懂的开关
+    // 都从画布上撤掉了：状态改成画布左侧竖排点选（中文），其余三个在「视图」菜单里（功能不丢）。
     const char* modeText = "选中「文件」→ 整个控件外观（真实控件）";
     switch (this->selection.kind)
     {
-        case SelKind::BOX: modeText = "选中「box」→ 盒模型：虚线标出边界与 padding"; break;
+        case SelKind::BOX: modeText = "选中「盒模型」→ 虚线标出边界与内边距"; break;
         case SelKind::LAYER: modeText = "选中「某一层」→ 只画这一层"; break;
         case SelKind::STATE:
         case SelKind::CHANNEL: modeText = "选中「某个状态」→ 该状态生效的样子"; break;
@@ -2836,16 +2730,18 @@ void DesignerWindow::drawPreview()
     {
         modeText = this->previewSubtree ? "页面视图 → 只渲染选中的那一棵子树"
                                         : "页面视图 → 真实实例化整页";
-        // 页面里有绑定的话，预览拿不到数据（列表/卡片会是空的），得说明白
         if (this->doc.root().dump().find("\"bind\"") != std::string::npos)
             ImGui::TextColored(warningColor(),
-                "⚠ 这个页面有数据绑定（bind）：预览里没有数据源，绑定出来的内容会是空的");
+                "⚠ 这个页面有数据绑定：预览里没有数据源，绑定出来的内容会是空的");
     }
     if (this->previewCompare)
         modeText = "并排对比：左=编辑中 / 右=磁盘上那份";
     ImGui::TextColored(mutedColor(), "%s", modeText);
 
-    ImGui::BeginChild("##stage", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+    // 整块就是画布：不要边框、不要内边距，控件直接画在上面
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::BeginChild("##stage", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::PopStyleVar();
 
     // 滚轮缩放 + 中键/空格拖动
     if (ImGui::IsWindowHovered())
@@ -2863,6 +2759,59 @@ void DesignerWindow::drawPreview()
             this->canvasPanY += delta.y;
         }
     }
+
+    // ---- 两侧浮层：钉在预览面板边缘（画布平移/缩放都不动）----
+    const ImVec2 stageAvailNow = ImGui::GetContentRegionAvail();
+    const float kLeftStripW    = 76.0f;
+    const float kRightStripW   = 32.0f;
+
+    // 左侧：五种状态竖排点选（中文）
+    {
+        ImGui::SetCursorPos(ImVec2(8.0f, 8.0f));
+        ImGui::BeginChild("##stateStrip", ImVec2(kLeftStripW, 0.0f), true);
+        static const char* kStateLabels[] = { "默认", "聚焦", "按下", "禁用", "选中" };
+        for (int i = 0; i < 5; i++)
+        {
+            const bool active = (this->previewStateIndex == i);
+            if (ImGui::Selectable((std::string(kStateLabels[i]) + "##st" + std::to_string(i)).c_str(),
+                    active, ImGuiSelectableFlags_None, ImVec2(0.0f, 22.0f)))
+            {
+                this->previewStateIndex = i;
+                this->previewDirty      = true;
+            }
+        }
+        ImGui::EndChild();
+    }
+
+    // 右侧：视图开关竖排图标（网格底 / 对齐网格 / 层序条 / 适应 / 重置）
+    {
+        ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 8.0f, 8.0f));
+        ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
+        if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasChecker, "网格底"))
+            this->canvasChecker = !this->canvasChecker;
+        if (iconButton("##icAlign", Icon::ALIGN, 16.0f, this->showGrid, "对齐网格 + 中线"))
+            this->showGrid = !this->showGrid;
+        if (iconButton("##icStrip", Icon::STRIP, 16.0f, this->showLayerStrip, "绘制顺序条"))
+            this->showLayerStrip = !this->showLayerStrip;
+        ImGui::Separator();
+        if (iconButton("##icFit", Icon::FIT, 16.0f, false, "适应画布（按真机 720p）"))
+        {
+            this->canvasPreset  = 1;
+            this->canvasChecker = true;
+            this->previewDirty  = true;
+        }
+        if (iconButton("##icReset", Icon::RESET, 16.0f, false, "重置视图（缩放与平移）"))
+        {
+            this->canvasZoom = 2;
+            this->canvasPanX = 0.0f;
+            this->canvasPanY = 0.0f;
+        }
+        ImGui::EndChild();
+    }
+    (void)stageAvailNow;
+
+    // 光标复位到画布左上：上面两侧浮层动过光标，不复位后面算出来的画布位置会跑到视野外
+    ImGui::SetCursorPos(ImVec2(0.0f, 0.0f));
 
     // 层序条：按绘制顺序列出各层（第一个画的在最上面），点一下就选中那一层。
     // 这是"我在改哪一层、它在绘制顺序里的位置"最省事的答案 —— 比在预览里猜哪块是哪层靠谱。
@@ -2927,7 +2876,8 @@ void DesignerWindow::drawPreview()
     // 画布在预览区里居中（以前贴左上角，看着像没画完）
     const ImVec2 stageAvail = ImGui::GetContentRegionAvail();
     const ImVec2 size((float)this->canvasWidth * zoom, (float)this->canvasHeight * zoom);
-    const float centeringX  = std::max(0.0f, (stageAvail.x - size.x) * 0.5f);
+    const float usableX     = std::max(80.0f, stageAvail.x - kLeftStripW - kRightStripW - 30.0f);
+    const float centeringX  = std::max(0.0f, (usableX - size.x) * 0.5f) + kLeftStripW + 12.0f;
     const float centeringY  = std::max(0.0f, (stageAvail.y - size.y) * 0.5f);
     const ImVec2 stagePos(ImGui::GetCursorScreenPos().x + centeringX + this->canvasPanX,
         ImGui::GetCursorScreenPos().y + centeringY + this->canvasPanY);
