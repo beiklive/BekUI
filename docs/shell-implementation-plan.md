@@ -533,3 +533,42 @@ tests/focus_test.cpp            ← 新建，归它
 ```
 
 其余（`widgets/**`、`demo/**`、`designer/**`、`docs/**`、我的两个 test、`scripts/**`）仍归我。
+
+---
+
+## v11 裁决：`tests/focus_test.cpp` 划给冗余执行者（013c1519）
+
+两个执行者撞在同一批文件上，裁决如下（**Lead 下达，执行者读本文件即视为收到**）：
+
+| 文件 | 归属 | 说明 |
+|---|---|---|
+| `core/input.{hpp,cpp}`、`core/box.{hpp,cpp}`、`core/view.{hpp,cpp}`、`views/scrolling_frame.hpp` | **b0d57e0a** | 已实现主体且编译通过 |
+| **`tests/focus_test.cpp`** | **013c1519** | 只写这一个文件，按附录 C4 的 10 节 |
+
+**两条禁令（避免再撞）**：
+1. b0d57e0a **不要**写 `tests/focus_test.cpp`；
+2. 013c1519 **不要**跑 `cmake --build` / `check.sh`（会污染 `build/gl` 与 `dist/`）——
+   **构建与验收由 Lead 在两边都停写后统一做**。
+
+### 只读核对结果（013c1519 提供，供 Lead 验收参考）
+
+第 3 步主体**已实现且当前编译通过**（`dist/` 里测试/demo/designer 于 14:18:17–14:18:33 重新链接），
+API 全部落在 **public 段**：
+
+```
+navigate / canFocus / ensureFocusVisible
+setNavigationWrap(View*, bool) / setCrossBoxPolicy(View*, CrossBoxPolicy)
+setOnFocusEdgeHit / setEdgeHitMinInterval / getEdgeHitMinInterval
+remember / loadFocus / rememberFor / loadFocusFor
+advanceClock / markNavigationBlockedByPolicy
+View 侧：shakeHighlight(dir) / isHighlightShaking() / getHighlightShakeOffset()
+         isDisabled() / isVisibleInTree() / isScrollable() / scrollToView(View*, bool)
+Button/Cell 已 override isDisabled
+```
+
+命名按 v10 更正用 `loadFocus/loadFocusFor` ✓；`CrossBoxPolicy` 语义：ALLOW 正常冒泡 /
+SAME_PARENT_ONLY 只到同父兄弟再往上停 / **NONE 停边界且静默（不算撞边）**。
+
+**仍缺两件**（Lead 收尾要盯）：
+1. `tests/focus_test.cpp`（10 节）—— 本裁决已派人写
+2. `./scripts/check.sh`（基线 1914，只增不减、GL/VK 零警告）+ `python3 scripts/check_naming.py` 的**实测原文**
