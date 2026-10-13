@@ -108,7 +108,10 @@ public:
     bool  move(FocusDirection);                    // 几何最近邻 + 冒泡 + 出口策略
     void  setCrossBoxPolicy(View*, CrossBoxPolicy);
     void  setNavigationWrap(View* box, bool wrap); // v3：该 box 内导航是否**循环**，默认 false（不循环）
-    void  setOnFocusEdgeHit(std::function<void(FocusDirection)>); // 撞边反馈（可选：音效/微动画）
+    // 撞边反馈：焦点**确实无法移动**时触发，回调带"用户按的方向"和"当前焦点"
+    // 默认无反馈（库不主动发声/动画）；FocusManager 级全局注册，Box 级可局部覆盖
+    void  setOnFocusEdgeHit(std::function<void(FocusDirection, View* current)>);
+    void  setEdgeHitMinInterval(float seconds);   // 节流，默认 0.12s（长按防狂响）
     bool  canFocus(View*) const;                   // 四条件
     void  ensureFocusVisible();                    // v2：把焦点元素滚进视野（回收列表必需）
 };
@@ -160,7 +163,10 @@ struct PageState {            // v2：页面级记忆
 6. 弹窗套弹窗 → 焦点栈逐级还原
 7. **同层换页**：主页 → 游戏库 → 返回主页，焦点回到原卡片（`rememberFor`）
 8. **回收列表**：滚动后焦点元素不可见时 `ensureFocusVisible()` 把它滚回来
-9. **边界与循环**：默认不循环 → 列表首项按 UP / 末项按 DOWN **停住**（并可触发撞边反馈）；`setNavigationWrap(true)` 时首尾相接；wrap 的作用域是**单个 box**（不是整层）
+9. **边界与循环**：默认不循环 → 列表首项按 UP / 末项按 DOWN **停住**；
+   `setNavigationWrap(true)` 时首尾相接，作用域为**单个 box**
+9b. **撞边回调**（3 条）：确实无法移动时触发**一次**，方向参数与按键一致；
+   长按到边界按节流间隔触发（不狂响）；能移动时不触发、焦点为空时不触发
 10. **快速连按**：A→B→C 连续切页，取消的预加载不得再改 UI
 
 ## 5. v1 审查的 5 个必修项（已并入）
@@ -238,8 +244,29 @@ Shell 不做页面转场，只做层间淡入（背景/遮罩）。
 |---|---|
 | **页头/底栏是纯显示控件，不参与焦点** | 焦点链里不再有它们；`enterLayer` 只管"内容层 ↔ 弹窗"；动作路由只保留"弹窗 → 内容页 → shell 默认"；删掉 `setLayerSwitchOnEdge` |
 | 真正要决定的是**导航是否循环** | 新增 `setNavigationWrap(Box*, bool)`，**默认不循环**；作用域为单个 box；与跨 box 策略的优先级：**wrap 先于跨 box**（在 box 内能绕回去就不出去） |
-| 撞边是否需要反馈 | 预留 `setOnFocusEdgeHit(cb)`：默认无反馈，游戏前端可挂音效/微动效 |
+| 撞边是否需要反馈 | **要**，且回调必须带**按键方向** → `setOnFocusEdgeHit(FocusDirection, View*)` |
 
 **为什么默认不循环**：主机 UI 惯例是到边界停住（可预期，"从顶部按上直接跳到底部"通常被视为意外）；
 需要循环的容器（如小圆盘选择器）单独打开即可。**本机没有 borealis 源码，无法逐行核对它的实际行为**，
 若要求与 borealis 完全一致，需要我拿到它的源码后再确认。
+
+### 第 5 轮 · 用户拍板（v4）
+
+1. **导航默认不循环** —— 定稿（`setNavigationWrap` 默认 false，作用域单个 box）。
+2. **要撞边反馈接口，且回调要带按下的方向** —— 定稿：
+
+```cpp
+// 注册（全局一份；Box 级可局部覆盖）
+focusManager->setOnFocusEdgeHit([](FocusDirection dir, View* current) {
+    audio::play(Sound::EDGE_HIT);
+    current->bump(dir);                 // 可选：撞边微动画
+});
+focusManager->setEdgeHitMinInterval(0.12f);
+```
+
+三个实现要点（场景推演得出）：
+- **只在"确实无法移动"时触发**（`move()` 返回 false），能移动时静默；
+- **长按节流**：`KeyRepeater` 会连续触发，不节流会狂响（默认最小间隔 0.12s，
+  首次立刻触发，之后按间隔）；
+- **不触发的情况**：当前焦点为空（刚进页面）、输入被模态接管、方向在该 box 被
+  `CrossBoxPolicy::NONE` 主动拦住 —— 后两种属于"有意的边界"，不算撞边。
