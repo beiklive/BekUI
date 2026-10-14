@@ -87,8 +87,12 @@ void applyDesignerStyle(float uiScale)
     const DesignerPalette palette = currentDesignerPalette();
     ImGuiStyle& style             = ImGui::GetStyle();
 
-    // 字体整体缩放（ImGui 1.92+ 的全局字体缩放）
-    style.FontScaleMain = uiScale;
+    // 字号与边距**分开**：
+    //  · 边距用 uiScale（上一轮已按"文字贴边"的反馈放宽了一档，保持）
+    //  · 字号再乘一个收紧系数 —— 基准字体是 20px，按 uiScale 直接缩会在面板里显得很大
+    //    （用户反馈过好几次"文字太大"）。0.86 → 0.85*0.86 ≈ 0.73，字高约 11~12px，接近工具类界面
+    constexpr float kFontTighten = 0.86f;
+    style.FontScaleMain = uiScale * kFontTighten;
 
     // 尺寸：先按"100%"写死，再乘缩放 —— 每次调用都幂等，不用维护"原始尺寸"副本
     const float s = uiScale;
@@ -114,14 +118,14 @@ void applyDesignerStyle(float uiScale)
     style.WindowPadding    = ImVec2(16.0f * s, 14.0f * s);
     style.FramePadding     = ImVec2(12.0f * s, 8.0f * s);
     style.CellPadding      = ImVec2(10.0f * s, 6.0f * s);
-    style.ItemSpacing      = ImVec2(10.0f * s, 9.0f * s);
+    style.ItemSpacing      = ImVec2(9.0f * s, 8.0f * s);
     style.ItemInnerSpacing = ImVec2(8.0f * s, 7.0f * s);
     style.IndentSpacing    = 20.0f * s;
     style.ScrollbarSize    = 13.0f * s;
     style.GrabMinSize      = 13.0f * s;
     style.SeparatorTextBorderSize = 1.0f;
     style.SeparatorTextAlign      = ImVec2(0.0f, 0.5f);
-    style.SeparatorTextPadding    = ImVec2(20.0f * s, 8.0f * s);
+    style.SeparatorTextPadding    = ImVec2(18.0f * s, 6.0f * s);
     style.ButtonTextAlign         = ImVec2(0.5f, 0.5f);
     style.SelectableTextAlign     = ImVec2(0.0f, 0.5f);
     style.TabBarBorderSize        = 0.0f;

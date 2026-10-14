@@ -20,8 +20,8 @@ struct UiState
     bool leftCollapsed = false;
 
     // 设计器界面的整体缩放（不是预览画布的缩放）：0.75 / 0.85 / 0.92 / 1.0 / 1.15 / 1.3
-    // 默认 0.92：0.85 时字与间距都偏挤（用户反馈"文字贴着边"），1.0 又偏大，取中间
-    float uiScale = 0.92f;
+    // 0.85：字号另有收紧系数（见 applyDesignerStyle），这里只决定整体疏密
+    float uiScale = 0.85f;
 
     int canvasPreset   = 0;  // 0=自适应 1=1280×720 2=720×480 3=640×360 4=自定义
     bool canvasChecker = true;

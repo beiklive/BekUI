@@ -3169,7 +3169,8 @@ int drawSegmentBar(const char* id, const ImVec2& pos, float width, float height,
 
         if (items[i].useIcon)
         {
-            const float size = std::min(18.0f, (segMax.y - segMin.y) - 4.0f);
+            // 图标至少 14px：条压矮之后按比例算会小到看不出形状（踩过）
+            const float size = std::max(14.0f, (segMax.y - segMin.y) - 5.0f);
             drawIcon(list, items[i].icon,
                 ImVec2((segMin.x + segMax.x) * 0.5f, (segMin.y + segMax.y) * 0.5f), size, color);
         }
@@ -3352,7 +3353,7 @@ void DesignerWindow::drawPreview()
     // 原来是一条竖排文字状态 + 一条竖排图标，用户要求都改成"功能条"并排放在顶部。
     float reservedLeft = 0.0f;
     {
-        const float kBarHeight = 30.0f * this->uiScale;
+        const float kBarHeight = 28.0f * this->uiScale;
         const ImVec2 barPos    = ImGui::GetCursorScreenPos();
         const float fullWidth  = ImGui::GetContentRegionAvail().x;
         const float gap        = 10.0f * this->uiScale;
@@ -3722,8 +3723,10 @@ void DesignerWindow::drawProps()
     }
 
     ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint("##propFilter", "过滤字段（比如 fill / radius）…",
+    ImGui::InputTextWithHint("##propFilter", "过滤字段…",
         this->propFilter, sizeof(this->propFilter));
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("按字段名过滤，比如 fill / radius / width");
     ImGui::Separator();
 
     auto edited = [this] {
@@ -5714,8 +5717,13 @@ void DesignerWindow::draw()
     this->glass.beginFrame((int)(io.DisplaySize.x * io.DisplayFramebufferScale.x),
         (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y), density);
 
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+    // 外壳整体内缩 8px：顶部（菜单栏上方）也要有边距 —— 之前窗口贴满视口，
+    // 菜单栏文字直接顶在最上沿（用户反馈"顶部也没留边距"）
+    constexpr float kShellMargin = 8.0f;
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + kShellMargin,
+        viewport->WorkPos.y + kShellMargin));
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - kShellMargin * 2.0f,
+        viewport->WorkSize.y - kShellMargin * 2.0f));
     // 窗口自己不铺底：底由壁纸 + 玻璃面板负责（否则玻璃采到的是一块纯色窗口底）
     ImGui::SetNextWindowBgAlpha(0.0f);
     // 顶层窗口不滚动：里面的四块自己滚（否则整窗一滚，顶栏与画布就跑到视野外了）
@@ -5756,7 +5764,7 @@ void DesignerWindow::draw()
     // 菜单栏的内边距：ImGui 默认让菜单项贴着窗口上沿和左边（用户反馈"文字贴边"），
     // 这里临时把 FramePadding 放大一档 —— 菜单栏高度和菜单项左右留白都跟着变
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-        ImVec2(14.0f * this->uiScale, 9.0f * this->uiScale));
+        ImVec2(12.0f * this->uiScale, 6.0f * this->uiScale));
     // 菜单栏玻璃：注入点取"画菜单栏之前"，矩形按菜单栏实际高度算 ——
     // 玻璃压在菜单栏内容下面，内容照常画在玻璃上
     {
