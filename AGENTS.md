@@ -707,7 +707,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      纸面（看浅色主题），存在 `ui_state.canvasBackdrop`（老文件按 `canvasChecker` 迁移）。
      ⚠️ **工作台必须画在 `##stage` 子窗里面**：面板/子窗的不透明底是 BeginChild 那一刻铺的，
      画在它之前会被整块盖掉（踩过一次：台面、点阵、内阴影全不见，看着还是纯色）。
-  10）**样式要全覆盖**（三轮自查的结论，别再漏）：
+  10）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
+     （清透 / 磨砂 / 厚重 / 极简），F4 面板上一排按钮一键切；当前参数能被 `matchGlassPreset`
+     认回哪一档（认不出显示"自定义"）。`designer_glass.json`（可执行文件目录）存/取当前参数，
+     方便调好一套留着或贴给别人。纯数据 + 纯函数 → 无窗口测试覆盖（往返、越界、非法输入）。
+  11）**样式要全覆盖**（三轮自查的结论，别再漏）：
      ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
         退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
         `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。

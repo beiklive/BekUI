@@ -27,6 +27,7 @@
 #include "designer/core/json_cache.hpp"
 #include "designer/core/theme_key.hpp"
 #include "designer/core/ui_state.hpp"
+#include "designer/glass/glass_presets.hpp"
 #include "designer/core/undo_stack.hpp"
 #include "designer/core/theme_files.hpp"
 #include "test_util.hpp"
@@ -81,6 +82,76 @@ int main()
 
     const std::string work = workRoot();
     std::error_code code;
+    // ---- 玻璃观感预设（纯数据，无窗口可测）----
+    {
+        using designer::glass::GlassTuning;
+        using designer::glass::glassPresets;
+
+        const std::vector<designer::glass::GlassPreset>& presets = glassPresets();
+        check(presets.size() >= 4, "至少有 4 套预设");
+        for (const designer::glass::GlassPreset& preset : presets)
+        {
+            check(preset.name != nullptr && preset.name[0] != 0, "预设要有名字");
+            check(preset.hint != nullptr && preset.hint[0] != 0, "预设要有一句话说明");
+
+            // 每套预设都必须是"合法且各不相同"的：不然一键切换看不出区别
+            GlassTuning applied = preset.tuning;
+            applied.clampToValidRange();
+            checkFloat(applied.blurRadius, preset.tuning.blurRadius, "预设的半径本来就在合法区间内");
+            check(applied.quality >= 0 && applied.quality <= 2, "质量档在 0~2");
+            check(applied.tintA >= 0.0f && applied.tintA <= 1.0f, "染色透明度合法");
+        }
+
+        // 套用某一档之后要能被"认回来"（界面靠这个把当前档高亮）
+        GlassTuning tuning;
+        for (int i = 0; i < (int)presets.size(); i++)
+        {
+            check(designer::glass::applyGlassPreset(tuning, i), "套用预设成功");
+            checkEqualInt(designer::glass::matchGlassPreset(tuning), i,
+                "套用之后能认回同一档");
+        }
+        check(!designer::glass::applyGlassPreset(tuning, -1), "越界索引要拒绝");
+        check(!designer::glass::applyGlassPreset(tuning, (int)presets.size()), "越界索引要拒绝");
+
+        // "面板开着没"不属于观感：换预设不能把 F4 面板关掉
+        tuning.showPanel = true;
+        check(designer::glass::applyGlassPreset(tuning, 0), "套用第一档");
+        check(tuning.showPanel, "换预设不动面板开关");
+
+        // 手调过之后不再是任何一档
+        tuning.panelRadius += 7.0f;
+        checkEqualInt(designer::glass::matchGlassPreset(tuning), -1, "手调后显示为自定义");
+
+        // json 往返：数值一致、非法输入给得出原因
+        const std::string text = designer::glass::glassTuningToJson(tuning);
+        GlassTuning parsed;
+        std::string error;
+        check(designer::glass::glassTuningFromJson(text, parsed, error), "json 能解析");
+        checkFloat(parsed.blurRadius, tuning.blurRadius, "半径往返一致");
+        checkFloat(parsed.panelRadius, tuning.panelRadius, "圆角往返一致");
+        checkFloat(parsed.tintA, tuning.tintA, "染色往返一致");
+        checkEqualInt(designer::glass::matchGlassPreset(parsed), -1, "往返后还是自定义");
+
+        check(!designer::glass::glassTuningFromJson("不是 json", parsed, error),
+            "非法文本要拒绝");
+        check(!error.empty(), "拒绝时给得出原因");
+        check(!designer::glass::glassTuningFromJson("[1,2,3]", parsed, error),
+            "不是对象也要拒绝");
+
+        // 落盘往返（写到测试临时目录，不污染仓库）。
+        // 注意先确保目录在：前面几段测试会各自清理自己的子目录，这里不能想当然
+        std::error_code dirCode;
+        fs::create_directories(work, dirCode);
+        const std::string glassFile = work + "/designer_glass.json";
+        check(designer::glass::saveGlassTuning(glassFile, tuning, error), "能存成文件");
+        GlassTuning reloaded;
+        check(designer::glass::loadGlassTuning(glassFile, reloaded, error), "能从文件读回");
+        checkFloat(reloaded.specular, tuning.specular, "高光往返一致");
+        checkFloat(reloaded.refractionAmount, tuning.refractionAmount, "折射往返一致");
+        check(!designer::glass::loadGlassTuning(work + "/没有这个文件.json", reloaded, error),
+            "文件不存在要报错");
+    }
+
     fs::remove_all(work, code);
     fs::create_directories(work + "/resources/theme");
 

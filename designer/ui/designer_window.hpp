@@ -21,6 +21,7 @@
 #include "designer/core/json_cache.hpp"
 #include "designer/core/undo_stack.hpp"
 #include "designer/core/project.hpp"
+#include "designer/glass/glass_presets.hpp"
 #include "designer/ui/designer_glass.hpp"
 
 namespace designer
@@ -206,6 +207,9 @@ class DesignerWindow
     void drawLogPanel();
     // 玻璃调参面板（F4 / 工具菜单）：滑块直接改 DesignerGlass 的 GlassTuning
     void drawGlassTuningPanel();
+    // 观感预设的存 / 取（designer_glass.json）
+    void saveGlassPresetToFile();
+    void loadGlassPresetFromFile();
     // 给所有浮窗（弹窗 / 下拉 / 浮动面板）统一补玻璃，风格一致
     void applyGlassToFloatingWindows();
 
@@ -435,6 +439,8 @@ class DesignerWindow
     // （库侧不再提供 ImGui 版日志窗口了：app 里的日志界面是视图树里的
     //  bklv::DebugLogView，挂在外壳的调试层上。）
     bool showLogPanel    = false;
+    // 预设存/取之后给用户的一句话（成功或失败原因）
+    std::string glassPresetNote;
     bool logAutoScroll   = true;
     bool logShowLocation = true;
     bool logMask[4]      = { true, true, true, true }; // DEBUG / INFO / WARNING / ERROR

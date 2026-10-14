@@ -143,10 +143,30 @@ designer/ui/designer_glass.{hpp,cpp}  设计器门面（开关、能力、注入
 
 ### 仍然待办（下一步）
 
-- **Vulkan 路径（下一步单独一轮）**：要动 bklv 的 VK 后端 —— ImGui 的 Vulkan 后端在
-  渲染通道里执行绘制回调，而抓帧缓冲/模糊必须**在通道外**，所以要加一个
-  "UI 通道之前"的宿主钩子（`VkCommandBuffer` + 目标图像/格式/尺寸），玻璃在那一趟里
-  完成捕获与模糊，合成仍按请求矩形；再补管线/描述符/屏障。现在 Vulkan 下整体降级（不崩）
+- **Vulkan 路径（下一步单独一轮）**：要动 bklv 的 VK 后端。做法已经勘明：
+
+  1）**钩子点**（`bklv/backends/vulkan_backend.cpp`，两处，都很小）
+     · `beginRendering()` 里、**`vkCmdBeginRendering` 之前**（此时命令缓冲已开、
+       交换链图像已 acquire 且已转到 `COLOR_ATTACHMENT_OPTIMAL`）→ 跑玻璃"前置画"：
+       模糊 + 合成。留下图像仍是 `COLOR_ATTACHMENT_OPTIMAL`，后端接着开通道。
+     · `endRendering()` 里、**`vkCmdEndRendering` 之后**（后端把它转成 present 之前）
+       → 把这一帧成品拷进常驻离屏图像，作为**下一帧**的背景来源
+       （GL 侧已有 `GlassBackdropSource::PREVIOUS_CONTENT` 这套枚举，语义直接复用）。
+     · 还有个前置条件：ImGui 那一趟的通道必须用 **LOAD_OP_LOAD**（不能 CLEAR），
+       否则会把前置画的结果擦掉 —— 给后端的 `clear()` 加一个"保留上一帧内容"的开关。
+     钩子类型放 `bklv/backends/vulkan_ui_pass.hpp`（只带 Vk 句柄，不往 core 塞 vulkan.h）；
+     没注册钩子时是纯 no-op，GL 构建完全不受影响。
+  2）**模糊不用写 shader**：`vkCmdBlitImage` 顺着 mip 链逐级下采样（硬件 box 滤波），
+     再线性放大采样 → 就是一层可用的"磨砂"。省掉一个 pass + 一张 ping/pong。
+  3）**合成要一个 shader**（圆角 + 染色 + 描边高光）：本机有 `glslangValidator`
+     （`brew install glslang`），**编译一次、把 SPIR-V 字节数组内嵌成头文件**提交，
+     构建期不需要任何着色器工具 —— 与"不引入构建期工具"的约定不冲突，
+     重新生成的办法写在头文件注释里。
+  4）**降级**：拿不到入口 / 管线建不起来 / 校验层报错 → 整体关掉，退回普通面板
+     （现在的行为就是不启用）。验证用 `BKLV_VULKAN_VALIDATION=1` 跑一遍干净日志 +
+     与 GL 截图对比（预览区逐像素不变的断言照跑）。
+
+  现在 Vulkan 下玻璃整体关闭（不崩、回退普通面板）
 - 面板逐个细调（滚动、重叠、拖拽时的表现）
 - 玻璃参数预设（几套命名观感，一键切）与"导出到主题 JSON"
 3. 玻璃调参面板（模糊档位/染色/折射/色散/高光）做成设计器自己的 ImGui 面板，方便迭代审美

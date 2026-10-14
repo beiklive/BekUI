@@ -968,6 +968,35 @@ void DesignerWindow::drawCanvasChips(ImVec2 origin, ImVec2 displaySize, ImVec2 l
         ImVec4(0.07f, 0.20f, 0.24f, 0.92f));
 }
 
+void DesignerWindow::saveGlassPresetToFile()
+{
+    // 存到可执行文件目录（和 designer_state.json 一起），方便调好一套留着或贴给别人
+    const std::string path = resourcePath("designer_glass.json");
+    std::string error;
+    if (glass::saveGlassTuning(path, this->glass.getTuning(), error))
+        this->glassPresetNote = "已保存：" + path;
+    else
+        this->glassPresetNote = "保存失败：" + error;
+    BKLV_LOG_INFO("[玻璃] %s", this->glassPresetNote.c_str());
+}
+
+void DesignerWindow::loadGlassPresetFromFile()
+{
+    const std::string path = resourcePath("designer_glass.json");
+    std::string error;
+    glass::GlassTuning loaded = this->glass.getTuning();
+    if (glass::loadGlassTuning(path, loaded, error))
+    {
+        const bool showPanel   = this->glass.getTuning().showPanel;
+        this->glass.getTuning() = loaded;
+        this->glass.getTuning().showPanel = showPanel;
+        this->glassPresetNote = "已载入：" + path;
+    }
+    else
+        this->glassPresetNote = "载入失败：" + error;
+    BKLV_LOG_INFO("[玻璃] %s", this->glassPresetNote.c_str());
+}
+
 void DesignerWindow::drawGlassTuningPanel()
 {
     glass::GlassTuning& tuning = this->glass.getTuning();
@@ -989,7 +1018,43 @@ void DesignerWindow::drawGlassTuningPanel()
     ImGui::Checkbox("启用玻璃", &tuning.enabled);
     ImGui::SameLine();
     if (ImGui::SmallButton("恢复默认"))
+    {
         tuning = glass::GlassTuning{};
+        tuning.showPanel = true;
+    }
+
+    ImGui::SeparatorText("观感预设");
+    {
+        const std::vector<glass::GlassPreset>& presets = glass::glassPresets();
+        const int matched = glass::matchGlassPreset(tuning);
+        for (int i = 0; i < (int)presets.size(); i++)
+        {
+            if (presets[i].name != presets[0].name)
+                ImGui::SameLine();
+            const bool selected = matched == i;
+            if (selected)
+                ImGui::PushStyleColor(ImGuiCol_Button, chipActiveColor());
+            if (ImGui::SmallButton(presets[i].name))
+                glass::applyGlassPreset(tuning, i);
+            if (selected)
+                ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", presets[i].hint);
+        }
+        if (matched < 0)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(mutedColor(), "（自定义）");
+        }
+
+        if (ImGui::SmallButton("存成文件"))
+            this->saveGlassPresetToFile();
+        ImGui::SameLine();
+        if (ImGui::SmallButton("从文件载入"))
+            this->loadGlassPresetFromFile();
+        if (!this->glassPresetNote.empty())
+            ImGui::TextColored(mutedColor(), "%s", this->glassPresetNote.c_str());
+    }
 
     ImGui::SeparatorText("背景模糊");
     ImGui::SliderFloat("半径", &tuning.blurRadius, 0.0f, 40.0f, "%.0f px");

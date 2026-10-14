@@ -217,6 +217,7 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/icon_align.cpp
     glass/glass_blur_plan.cpp
     glass/glass_queue.cpp
+    glass/glass_presets.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")
