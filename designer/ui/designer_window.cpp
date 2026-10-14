@@ -829,6 +829,7 @@ void DesignerWindow::loadUiState()
     this->leftCollapsed    = state.leftCollapsed;
     this->canvasPreset     = state.canvasPreset;
     this->canvasChecker    = state.canvasChecker;
+    this->canvasBackdrop   = state.canvasBackdrop;
     this->canvasZoom       = state.canvasZoom;
     this->showGrid         = state.showGrid;
     this->onlyLayers       = state.onlyLayers;
@@ -853,6 +854,7 @@ void DesignerWindow::saveUiState()
     state.leftCollapsed    = this->leftCollapsed;
     state.canvasPreset     = this->canvasPreset;
     state.canvasChecker    = this->canvasChecker;
+    state.canvasBackdrop   = this->canvasBackdrop;
     state.canvasZoom       = this->canvasZoom;
     state.showGrid         = this->showGrid;
     state.onlyLayers       = this->onlyLayers;
@@ -937,6 +939,33 @@ void DesignerWindow::applyGlassToFloatingWindows()
         this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
             window->DrawList, 0);
     }
+}
+
+void DesignerWindow::drawCanvasChips(ImVec2 origin, ImVec2 displaySize, ImVec2 logicalSize,
+    float zoom)
+{
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    auto chip = [&](const ImVec2& pos, const char* text, const ImVec4& tint) {
+        const ImVec2 textSize = ImGui::CalcTextSize(text);
+        const ImVec2 end(pos.x + textSize.x + 14.0f, pos.y + textSize.y + 6.0f);
+        drawList->AddRectFilled(pos, end, ImGui::ColorConvertFloat4ToU32(tint), 6.0f);
+        drawList->AddRect(pos, end, IM_COL32(255, 255, 255, 26), 6.0f);
+        drawList->AddText(ImVec2(pos.x + 7.0f, pos.y + 3.0f), IM_COL32(240, 244, 252, 255), text);
+    };
+
+    // 尺寸写**逻辑尺寸**（画布要求多少 px），缩放写**实际显示比例**
+    // （底部信息条那个是"设置值"，适应画布时两者会不一样，混在一起会误导）
+    const std::string sizeText = std::to_string((int)(logicalSize.x + 0.5f)) + " × "
+        + std::to_string((int)(logicalSize.y + 0.5f));
+    const float chipY = origin.y - ImGui::GetTextLineHeight() - 12.0f;
+    chip(ImVec2(origin.x, chipY), sizeText.c_str(), ImVec4(0.10f, 0.13f, 0.18f, 0.92f));
+
+    char zoomText[32];
+    std::snprintf(zoomText, sizeof(zoomText), "%.0f%%", (double)(zoom * 100.0f));
+    const ImVec2 zoomSize = ImGui::CalcTextSize(zoomText);
+    chip(ImVec2(origin.x + displaySize.x - zoomSize.x - 14.0f, chipY), zoomText,
+        ImVec4(0.07f, 0.20f, 0.24f, 0.92f));
 }
 
 void DesignerWindow::drawGlassTuningPanel()
@@ -1430,7 +1459,20 @@ void DesignerWindow::drawMenuBar()
         ImGui::Separator();
         ImGui::MenuItem("节点树只看层", nullptr, &this->onlyLayers);
         ImGui::MenuItem("预览对齐网格", nullptr, &this->showGrid);
-        ImGui::MenuItem("画布网格底", nullptr, &this->canvasChecker);
+        if (ImGui::BeginMenu("画布底"))
+        {
+            static const char* kBackdrops[] = { "细棋盘（看透明/阴影）", "暗面", "纸面（看浅色主题）" };
+            for (int i = 0; i < 3; i++)
+            {
+                if (ImGui::MenuItem(kBackdrops[i], nullptr, this->canvasBackdrop == i))
+                {
+                    this->canvasBackdrop = i;
+                    this->canvasChecker  = i == 0;
+                    this->previewDirty   = true;
+                }
+            }
+            ImGui::EndMenu();
+        }
         ImGui::Separator();
         if (ImGui::MenuItem("折叠左栏", nullptr, &this->leftCollapsed))
             this->previewDirty = true;
@@ -2799,36 +2841,98 @@ void DesignerWindow::ensurePreviewBuilt()
         this->compareView = this->buildPreviewView(this->savedText);
 }
 
+void DesignerWindow::drawWorkbench(ImVec2 pos, ImVec2 size)
+{
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec2 end(pos.x + size.x, pos.y + size.y);
+    // 台面：竖向渐变，比纯色多一点空间感（预览区不上玻璃，所以这里自己铺底）
+    drawList->AddRectFilledMultiColor(pos, end,
+        IM_COL32(30, 31, 36, 255), IM_COL32(30, 31, 36, 255), IM_COL32(22, 23, 27, 255),
+        IM_COL32(22, 23, 27, 255));
+
+    // 点阵网格：给"工作台"一个尺度参照（不随画布缩放/平移，是台面的纹理）
+    constexpr float kDotStep = 24.0f;
+    const ImU32 dot = IM_COL32(255, 255, 255, 18);
+    for (float y = pos.y + kDotStep; y < end.y; y += kDotStep)
+        for (float x = pos.x + kDotStep; x < end.x; x += kDotStep)
+            drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + 2.0f, y + 2.0f), dot);
+
+    // 四边内阴影：把视线收进中间那块画布
+    constexpr float kBand = 48.0f;
+    drawList->AddRectFilledMultiColor(pos, ImVec2(end.x, pos.y + kBand),
+        IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 0),
+        IM_COL32(0, 0, 0, 0));
+    drawList->AddRectFilledMultiColor(ImVec2(pos.x, end.y - kBand), end,
+        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 70),
+        IM_COL32(0, 0, 0, 70));
+    drawList->AddRectFilledMultiColor(pos, ImVec2(pos.x + kBand, end.y),
+        IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0),
+        IM_COL32(0, 0, 0, 70));
+    drawList->AddRectFilledMultiColor(ImVec2(end.x - kBand, pos.y), end,
+        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 70),
+        IM_COL32(0, 0, 0, 0));
+}
+
 void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, bool checker)
 {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const ImVec2 end(origin.x + size.x, origin.y + size.y);
 
-    // 底：棋盘格方便看 shadow / 半透明，否则用页面底色
-    const ImU32 dark = checker ? IM_COL32(38, 38, 38, 255) : IM_COL32(45, 45, 45, 255);
-    const ImU32 lite = checker ? IM_COL32(48, 48, 48, 255) : dark;
-    drawList->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), dark);
-    if (checker)
-        for (int y = 0; y < (int)size.y; y += 16)
-            for (int x = 0; x < (int)size.x; x += 16)
-                if (((x / 16) + (y / 16)) % 2 == 0)
+    // 投影：画布"浮"在台面上（几层递减的柔和矩形，比单层 AddRect 更像设计工具）
+    for (int step = 8; step >= 1; step--)
+    {
+        const float expand = (float)step * 2.0f;
+        const int alpha    = 8 + (9 - step) * 3;
+        drawList->AddRectFilled(ImVec2(origin.x - expand, origin.y - expand + 3.0f),
+            ImVec2(end.x + expand, end.y + expand + 3.0f), IM_COL32(0, 0, 0, alpha), 4.0f);
+    }
+
+    // 画布底：0=细棋盘（看半透明/阴影）1=暗面 2=纸面（看浅色主题与对比）
+    const int backdrop = this->canvasBackdrop;
+    if (backdrop == 2)
+    {
+        drawList->AddRectFilled(origin, end, IM_COL32(244, 245, 248, 255));
+        for (int y = 0; y < (int)size.y; y += 8)
+            for (int x = 0; x < (int)size.x; x += 8)
+                if (((x / 8) + (y / 8)) % 2 == 0)
                     drawList->AddRectFilled(ImVec2(origin.x + (float)x, origin.y + (float)y),
-                        ImVec2(std::min(origin.x + x + 16.0f, origin.x + size.x),
-                            std::min(origin.y + y + 16.0f, origin.y + size.y)), lite);
+                        ImVec2(std::min(origin.x + x + 8.0f, end.x),
+                            std::min(origin.y + y + 8.0f, end.y)), IM_COL32(232, 234, 240, 255));
+    }
+    else if (backdrop == 1)
+    {
+        drawList->AddRectFilledMultiColor(origin, end, IM_COL32(34, 35, 40, 255),
+            IM_COL32(34, 35, 40, 255), IM_COL32(26, 27, 31, 255), IM_COL32(26, 27, 31, 255));
+    }
+    else
+    {
+        drawList->AddRectFilled(origin, end, IM_COL32(34, 35, 39, 255));
+        for (int y = 0; y < (int)size.y; y += 8)
+            for (int x = 0; x < (int)size.x; x += 8)
+                if (((x / 8) + (y / 8)) % 2 == 0)
+                    drawList->AddRectFilled(ImVec2(origin.x + (float)x, origin.y + (float)y),
+                        ImVec2(std::min(origin.x + x + 8.0f, end.x),
+                            std::min(origin.y + y + 8.0f, end.y)), IM_COL32(41, 42, 47, 255));
+    }
+    (void)checker;
 
-    // 对齐参考：10px 网格 + 中线（看间距、看居中对不对得齐）
+    // 对齐参考：10px 网格 + 中线（虚线，别用荧光实线抢视线）
     if (this->showGrid)
     {
-        const ImU32 gridColor = IM_COL32(255, 255, 255, 18);
+        const ImU32 gridColor = IM_COL32(255, 255, 255, 16);
         for (float x = 0; x <= size.x; x += 10.0f)
-            drawList->AddLine(ImVec2(origin.x + x, origin.y), ImVec2(origin.x + x, origin.y + size.y),
-                gridColor);
+            drawList->AddLine(ImVec2(origin.x + x, origin.y),
+                ImVec2(origin.x + x, end.y), gridColor);
         for (float y = 0; y <= size.y; y += 10.0f)
-            drawList->AddLine(ImVec2(origin.x, origin.y + y), ImVec2(origin.x + size.x, origin.y + y),
+            drawList->AddLine(ImVec2(origin.x, origin.y + y), ImVec2(end.x, origin.y + y),
                 gridColor);
-        drawList->AddLine(ImVec2(origin.x + size.x * 0.5f, origin.y),
-            ImVec2(origin.x + size.x * 0.5f, origin.y + size.y), IM_COL32(0, 255, 204, 40));
-        drawList->AddLine(ImVec2(origin.x, origin.y + size.y * 0.5f),
-            ImVec2(origin.x + size.x, origin.y + size.y * 0.5f), IM_COL32(0, 255, 204, 40));
+        const ImU32 center = IM_COL32(0, 255, 204, 70);
+        for (float x = 0.0f; x < size.x; x += 8.0f)
+            drawList->AddLine(ImVec2(origin.x + x, origin.y + size.y * 0.5f),
+                ImVec2(origin.x + std::min(x + 4.0f, size.x), origin.y + size.y * 0.5f), center);
+        for (float y = 0.0f; y < size.y; y += 8.0f)
+            drawList->AddLine(ImVec2(origin.x + size.x * 0.5f, origin.y + y),
+                ImVec2(origin.x + size.x * 0.5f, origin.y + std::min(y + 4.0f, size.y)), center);
     }
 
     if (view != nullptr)
@@ -2842,13 +2946,22 @@ void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, b
         ctx.drawList   = drawList;
         ctx.pixelRatio = 1.0f;
 
-        drawList->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y), true);
+        drawList->PushClipRect(origin, end, true);
         view->frame(&ctx);
         drawList->PopClipRect();
     }
+    else
+    {
+        const char* hint = "选一个外观 / 页面开始预览";
+        const ImVec2 textSize = ImGui::CalcTextSize(hint);
+        drawList->AddText(ImVec2(origin.x + (size.x - textSize.x) * 0.5f,
+                                origin.y + (size.y - textSize.y) * 0.5f),
+            IM_COL32(150, 155, 165, 255), hint);
+    }
 
-    drawList->AddRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
-        IM_COL32(90, 95, 103, 255));
+    // 边：1px 细线 + 顶边一点高光（画布有"玻璃盖板"的感觉，但这不是外壳玻璃）
+    drawList->AddRect(origin, end, IM_COL32(120, 126, 138, 200));
+    drawList->AddLine(origin, ImVec2(end.x, origin.y), IM_COL32(255, 255, 255, 40));
 }
 
 int DesignerWindow::applyBindingSamples()
@@ -3056,6 +3169,9 @@ void DesignerWindow::drawPreview()
     // 整块就是画布：不要边框、不要内边距，控件直接画在上面
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::BeginChild("##stage", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    // 工作台面必须画在 stage 子窗**里面**：面板/子窗的不透明底是在 BeginChild 那一刻铺的，
+    // 画在它前面会被盖掉（踩过：整块工作台被面板底色盖成纯色，点阵与内阴影全不见）
+    this->drawWorkbench(ImGui::GetWindowPos(), ImGui::GetWindowSize());
     ImGui::PopStyleVar();
 
     // 滚轮缩放 + 中键/空格拖动
@@ -3105,8 +3221,13 @@ void DesignerWindow::drawPreview()
         ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 8.0f, 8.0f));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
-        if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasChecker, "网格底"))
-            this->canvasChecker = !this->canvasChecker;
+        if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasBackdrop != 1,
+                "画布底：棋盘 / 暗面 / 纸面"))
+        {
+            this->canvasBackdrop = (this->canvasBackdrop + 1) % 3;
+            this->canvasChecker  = this->canvasBackdrop == 0;
+            this->previewDirty   = true;
+        }
         if (iconButton("##icAlign", Icon::ALIGN, 16.0f, this->showGrid, "对齐网格 + 中线"))
             this->showGrid = !this->showGrid;
         if (iconButton("##icStrip", Icon::STRIP, 16.0f, this->showLayerStrip, "绘制顺序条"))
@@ -3114,8 +3235,8 @@ void DesignerWindow::drawPreview()
         ImGui::Separator();
         if (iconButton("##icFit", Icon::FIT, 16.0f, false, "适应画布（按真机 720p）"))
         {
-            this->canvasPreset  = 1;
-            this->canvasChecker = true;
+            this->canvasPreset   = 1;
+            this->canvasChecker  = this->canvasBackdrop == 0;
             this->previewDirty  = true;
         }
         if (iconButton("##icReset", Icon::RESET, 16.0f, false, "重置视图（缩放与平移）"))
@@ -3213,11 +3334,15 @@ void DesignerWindow::drawPreview()
         const float half = std::max(60.0f, size.x);
         this->drawPreviewCanvas(stagePos, ImVec2(half, size.y), this->previewView,
             this->canvasChecker);
+        this->drawCanvasChips(stagePos, ImVec2(half, size.y),
+            ImVec2((float)this->canvasWidth, (float)this->canvasHeight), zoom);
         ImGui::GetWindowDrawList()->AddText(ImVec2(stagePos.x + 6, stagePos.y + 4),
             IM_COL32(0, 255, 204, 255), "编辑中");
         const ImVec2 rightPos(stagePos.x + half + 24.0f, stagePos.y);
         this->drawPreviewCanvas(rightPos, ImVec2(half, size.y), this->compareView,
             this->canvasChecker);
+        this->drawCanvasChips(rightPos, ImVec2(half, size.y),
+            ImVec2((float)this->canvasWidth, (float)this->canvasHeight), zoom);
         ImGui::GetWindowDrawList()->AddText(ImVec2(rightPos.x + 6, rightPos.y + 4),
             IM_COL32(255, 183, 77, 255), "磁盘上那份");
         ImGui::Dummy(ImVec2(half * 2.0f + 32.0f, size.y + 8.0f));
@@ -3225,6 +3350,8 @@ void DesignerWindow::drawPreview()
     else
     {
         this->drawPreviewCanvas(stagePos, size, this->previewView, this->canvasChecker);
+        this->drawCanvasChips(stagePos, size,
+            ImVec2((float)this->canvasWidth, (float)this->canvasHeight), zoom);
         if (!this->currentViewFile.empty() && !this->previewSubtree)
         {
             this->drawViewHighlight(stagePos, zoom);

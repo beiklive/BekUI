@@ -254,6 +254,10 @@ class DesignerWindow
     void drawStatus();
     void drawPreview();
     void drawPreviewCanvas(ImVec2 origin, ImVec2 size, bklv::View* view, bool checker);
+    // 中间那块"设计工作台"：点阵网格 + 边缘内阴影（预览区自己铺底，不上玻璃）
+    void drawWorkbench(ImVec2 pos, ImVec2 size);
+    // 画布角标：尺寸 / 缩放（画在画布之上，随画布一起移动）
+    void drawCanvasChips(ImVec2 origin, ImVec2 displaySize, ImVec2 logicalSize, float zoom);
     bklv::View* buildPreviewView(const std::string& jsonOverride);
     void drawProps();
     void drawTableProps();
@@ -473,6 +477,8 @@ class DesignerWindow
     std::string previewError;
     int canvasPreset   = 0; // 0=自适应 1=1280x720 2=720x480 3=640x360 4=自定义
     bool canvasChecker = true;
+    // 画布底：0 = 细棋盘（看半透明/阴影）1 = 暗面 2 = 纸面（看浅色主题）
+    int canvasBackdrop = 0;
     int canvasWidth    = 420;
     int canvasHeight   = 160;
     int canvasZoom     = 2; // 0=50% 1=75% 2=100% 3=150%（默认 100%）

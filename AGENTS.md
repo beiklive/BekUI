@@ -701,7 +701,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
      所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
      遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
-  9）**样式要全覆盖**（三轮自查的结论，别再漏）：
+  9）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
+     台面 = 竖向渐变 + 点阵网格（24px，alpha 18）+ 四边内阴影；画布 = 柔化投影 + 1px 细线 +
+     顶边高光 + 尺寸/缩放角标；参考线用虚线。三档画布底：细棋盘（看透明/阴影）/ 暗面 /
+     纸面（看浅色主题），存在 `ui_state.canvasBackdrop`（老文件按 `canvasChecker` 迁移）。
+     ⚠️ **工作台必须画在 `##stage` 子窗里面**：面板/子窗的不透明底是 BeginChild 那一刻铺的，
+     画在它之前会被整块盖掉（踩过一次：台面、点阵、内阴影全不见，看着还是纯色）。
+  10）**样式要全覆盖**（三轮自查的结论，别再漏）：
      ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
         退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
         `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。

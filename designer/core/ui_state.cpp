@@ -55,6 +55,7 @@ bool loadUiState(const std::string& path, UiState& out)
     out.leftCollapsed    = doc.value("leftCollapsed", out.leftCollapsed);
     out.canvasPreset     = doc.value("canvasPreset", out.canvasPreset);
     out.canvasChecker    = doc.value("canvasChecker", out.canvasChecker);
+    out.canvasBackdrop   = doc.value("canvasBackdrop", out.canvasChecker ? 0 : 1);
     out.canvasZoom       = doc.value("canvasZoom", out.canvasZoom);
     out.showGrid         = doc.value("showGrid", out.showGrid);
     out.onlyLayers       = doc.value("onlyLayers", out.onlyLayers);
@@ -109,6 +110,7 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     doc["leftCollapsed"]    = state.leftCollapsed;
     doc["canvasPreset"]     = state.canvasPreset;
     doc["canvasChecker"]    = state.canvasChecker;
+    doc["canvasBackdrop"]   = state.canvasBackdrop;
     doc["canvasZoom"]       = state.canvasZoom;
     doc["showGrid"]         = state.showGrid;
     doc["onlyLayers"]       = state.onlyLayers;
