@@ -7,6 +7,8 @@
 
 #include <algorithm>
 
+#include "bklv/glass/glass_style.hpp"
+
 namespace bklv::glass
 {
 
@@ -70,5 +72,9 @@ struct GlassTuning
         this->panelRadius = std::min(std::max(this->panelRadius, 0.0f), 40.0f);
     }
 };
+
+// 把全局调参折成一块玻璃的观感（折射/色散/染色/光照）。
+// 与设计器"面板"那条映射一致；外观层将来可以在它之上覆盖单个字段。
+GlassStyle makeGlassStyle(const GlassTuning& tuning) noexcept;
 
 } // namespace bklv::glass

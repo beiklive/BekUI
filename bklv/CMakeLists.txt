@@ -317,6 +317,7 @@ set(BKLV_CORE_SOURCES
     glass/glass_blur_plan.cpp
     glass/glass_geometry.cpp
     glass/glass_queue.cpp
+    glass/glass_tuning.cpp
     glass/glass_service.cpp
     backends/gl_glass.cpp
     backends/gl_glass_procs.cpp

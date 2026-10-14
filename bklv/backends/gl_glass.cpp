@@ -2,13 +2,14 @@
 // 这样服务层不必到处写 #if。
 #include "bklv/backends/gl_glass.hpp"
 
+#include "bklv/core/logger.hpp"
+
 #if defined(BKLV_OPENGL)
 #include "bklv/glass/glass_blur_plan.hpp"
 #include "bklv/glass/glass_geometry.hpp"
 #include "bklv/glass/glass_request.hpp"
 #include "bklv/backends/gl_glass.hpp"
 
-#include "bklv/core/logger.hpp"
 
 #include "bklv/glass/glass_blur_plan.hpp"
 #include "bklv/backends/gl_glass_procs.hpp"

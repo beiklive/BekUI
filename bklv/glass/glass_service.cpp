@@ -61,6 +61,11 @@ void GlassService::submit(GlassRequest request)
     if (request.density <= 0.0f)
         request.density = this->density;
 
+    // 全局 tuning 是**默认值**：外观层（阶段 4 的 op）将来在它之上覆盖单个字段
+    if (request.style.tint.w <= 0.0f)
+        request.style = makeGlassStyle(this->tuning);
+    request.blurMix = 1.0f;
+
     // 没给裁剪矩形就按整帧：空的 clipRect 会让合成那步什么都不画
     //（设计器那边一直显式填整帧，库这边替调用方兜住默认值）
     if (request.clipRect.z <= request.clipRect.x || request.clipRect.w <= request.clipRect.y)
