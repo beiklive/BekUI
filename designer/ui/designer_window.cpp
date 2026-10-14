@@ -2182,14 +2182,19 @@ void DesignerWindow::drawStatus()
     for (const std::string& state : this->doc.stateNames())
         nodes += 1 + this->doc.channelCount(state);
 
-    // 页脚：一条比面板略"低"的底色，和上面内容区分开
+    // 页脚：一条比面板略"低"的底色，和上面内容区分开。
+    // 文字要离底色的边有距离（用户反馈"节点数没加边距"），所以底色往外扩、文字往里缩
+    constexpr float kChipPadX = 12.0f;
+    constexpr float kChipPadY = 8.0f;
     {
-        const ImVec2 pos = ImGui::GetCursorScreenPos();
-        const float width = ImGui::GetContentRegionAvail().x;
-        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x - 4.0f, pos.y),
-            ImVec2(pos.x + width + 4.0f, pos.y + 62.0f),
-            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().sunken), 6.0f);
+        const ImVec2 pos   = ImGui::GetCursorScreenPos();
+        const float width  = ImGui::GetContentRegionAvail().x;
+        const float height = ImGui::GetTextLineHeightWithSpacing() * 2.0f + kChipPadY * 2.0f + 6.0f;
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x - kChipPadX, pos.y - kChipPadY),
+            ImVec2(pos.x + width + 4.0f, pos.y + height),
+            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().sunken), 8.0f);
         ImGui::Dummy(ImVec2(0.0f, 2.0f));
+        ImGui::Indent(kChipPadX * 0.5f);
     }
     if (!this->currentViewFile.empty())
     {
@@ -2212,6 +2217,8 @@ void DesignerWindow::drawStatus()
         ImGui::TextColored(mutedColor(), "%s", this->statusMessage.c_str());
     if (!this->errorMessage.empty())
         ImGui::TextColored(errorColor(), "%s", this->errorMessage.c_str());
+
+    ImGui::Unindent(kChipPadX * 0.5f); // 和上面 Indent 配对
 }
 
 // ---------------------------------------------------------------- 预览
@@ -2456,7 +2463,9 @@ void DesignerWindow::drawTableProps()
         = this->currentTable.rfind("metrics", 0) == 0 ? "metric." : "color.";
 
     panelHeader("主题表", this->currentTable.c_str());
-    ImGui::TextColored(mutedColor(), "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
+    ImGui::TextColored(mutedColor(), "保存 = 写回文件 + 热重载");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("改完点「保存」即写回这个 JSON，并热重载主题（预览立刻变）");
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##tableFilter", "过滤 key…", this->tableFilter, sizeof(this->tableFilter));
     ImGui::TextColored(mutedColor(), "%s", shortenPath(this->currentFilePath, 3).c_str());
@@ -3100,6 +3109,87 @@ void DesignerWindow::handlePreviewClick(ImVec2 origin, float zoom)
     this->statusMessage  = "反选到 " + hit->pointer;
 }
 
+namespace
+{
+
+// 功能条上的一段：要么文字（状态），要么矢量图标（视图开关）
+struct SegmentItem
+{
+    const char* text = nullptr;   // text 与 icon 二选一
+    Icon icon        = Icon::GRID;
+    bool useIcon     = false;
+    bool selected    = false;
+    const char* tooltip = nullptr;
+};
+
+// 画一条分段功能条，返回被点的那一段（-1 = 没点）。
+// 样式和面板/横条一致：圆角、半透明底、选中段用强调色；悬停加亮 + 提示。
+int drawSegmentBar(const char* id, const ImVec2& pos, float width, float height,
+    const SegmentItem* items, int count)
+{
+    if (count <= 0 || width <= 8.0f)
+        return -1;
+
+    ImDrawList* list   = ImGui::GetWindowDrawList();
+    const float inset  = 3.0f;
+    const float radius = height * 0.5f;
+    const ImVec2 end(pos.x + width, pos.y + height);
+
+    list->AddRectFilled(pos, end, ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 0.10f)),
+        radius);
+    list->AddRect(pos, end, ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f, 0.16f)),
+        radius);
+
+    const float segmentWidth = (width - inset * 2.0f) / (float)count;
+    int picked = -1;
+
+    for (int i = 0; i < count; i++)
+    {
+        const ImVec2 segMin(pos.x + inset + segmentWidth * (float)i, pos.y + inset);
+        const ImVec2 segMax(segMin.x + segmentWidth, end.y - inset);
+
+        ImGui::PushID(i);
+        ImGui::SetCursorScreenPos(segMin);
+        ImGui::InvisibleButton("##seg", ImVec2(std::max(segmentWidth, 1.0f),
+            std::max(segMax.y - segMin.y, 1.0f)));
+        const bool hovered = ImGui::IsItemHovered();
+        if (ImGui::IsItemClicked())
+            picked = i;
+        ImGui::PopID();
+
+        if (items[i].selected)
+            list->AddRectFilled(segMin, segMax,
+                ImGui::ColorConvertFloat4ToU32(chipActiveColor()), radius * 0.7f);
+        else if (hovered)
+            list->AddRectFilled(segMin, segMax,
+                ImGui::ColorConvertFloat4ToU32(chipHoverColor()), radius * 0.7f);
+
+        const ImU32 color = ImGui::ColorConvertFloat4ToU32(
+            items[i].selected ? rowTextColor(true) : iconIdleColor());
+
+        if (items[i].useIcon)
+        {
+            const float size = std::min(18.0f, (segMax.y - segMin.y) - 4.0f);
+            drawIcon(list, items[i].icon,
+                ImVec2((segMin.x + segMax.x) * 0.5f, (segMin.y + segMax.y) * 0.5f), size, color);
+        }
+        else if (items[i].text != nullptr)
+        {
+            const ImVec2 textSize = ImGui::CalcTextSize(items[i].text);
+            list->AddText(ImVec2(segMin.x + (segMax.x - segMin.x - textSize.x) * 0.5f,
+                             segMin.y + (segMax.y - segMin.y - textSize.y) * 0.5f),
+                color, items[i].text);
+        }
+
+        if (hovered && items[i].tooltip != nullptr)
+            ImGui::SetTooltip("%s", items[i].tooltip);
+    }
+    (void)id;
+    return picked;
+}
+
+} // namespace
+
 void DesignerWindow::drawPreview()
 {
     // 这里原来是「预览」标题 + 画布尺寸下拉 + 一排复选框。
@@ -3187,27 +3277,47 @@ void DesignerWindow::drawPreview()
 
     // 状态那排按钮、以及"样例容器 / 只渲染选中子树 / 并排对比"这些看不懂的开关
     // 都从画布上撤掉了：状态改成画布左侧竖排点选（中文），其余三个在「视图」菜单里（功能不丢）。
-    const char* modeText = "选中「文件」→ 整个控件外观（真实控件）";
+    // 标题只留短语：长句会把这一行撑满、还挤掉预览高度（用户要求"标题文字少一点"），
+    // 具体含义放悬停提示
+    const char* modeText = "控件外观";
+    const char* modeHelp = "整份外观按真实控件渲染";
     switch (this->selection.kind)
     {
-        case SelKind::BOX: modeText = "选中「盒模型」→ 虚线标出边界与内边距"; break;
-        case SelKind::LAYER: modeText = "选中「某一层」→ 只画这一层"; break;
+        case SelKind::BOX:
+            modeText = "盒模型";
+            modeHelp = "虚线标出边界与内边距";
+            break;
+        case SelKind::LAYER:
+            modeText = "单层";
+            modeHelp = "只画选中的这一层";
+            break;
         case SelKind::STATE:
-        case SelKind::CHANNEL: modeText = "选中「某个状态」→ 该状态生效的样子"; break;
-        case SelKind::TABLE: modeText = "主题表没有预览（颜色/数值改完直接看控件页）"; break;
+        case SelKind::CHANNEL:
+            modeText = "状态";
+            modeHelp = "按该状态生效的样子渲染";
+            break;
+        case SelKind::TABLE:
+            modeText = "主题表";
+            modeHelp = "主题表没有预览：颜色/数值改完直接看控件页";
+            break;
         default: break;
     }
     if (!this->currentViewFile.empty())
     {
-        modeText = this->previewSubtree ? "页面视图 → 只渲染选中的那一棵子树"
-                                        : "页面视图 → 真实实例化整页";
+        modeText = this->previewSubtree ? "页面 · 子树" : "页面";
+        modeHelp = this->previewSubtree ? "只渲染选中的那一棵子树" : "真实实例化整页";
         if (this->doc.root().dump().find("\"bind\"") != std::string::npos)
             ImGui::TextColored(warningColor(),
                 "⚠ 这个页面有数据绑定：预览里没有数据源，绑定出来的内容会是空的");
     }
     if (this->previewCompare)
-        modeText = "并排对比：左=编辑中 / 右=磁盘上那份";
+    {
+        modeText = "对比";
+        modeHelp = "左=编辑中 / 右=磁盘上那份";
+    }
     ImGui::TextColored(mutedColor(), "%s", modeText);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", modeHelp);
 
     // 整块就是画布：不要边框、不要内边距，控件直接画在上面
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -3237,60 +3347,74 @@ void DesignerWindow::drawPreview()
     // ---- 两侧浮层：钉在预览面板边缘（画布平移/缩放都不动）----
     const ImVec2 stageAvailNow = ImGui::GetContentRegionAvail();
     const float kLeftStripW    = 76.0f;
-    const float kRightStripW   = 32.0f;
 
-    // 左侧：五种状态竖排点选（中文）
+    // 顶部两条功能条（各占一半宽，不整宽）：左半 = 预览状态，右半 = 视图开关。
+    // 原来是一条竖排文字状态 + 一条竖排图标，用户要求都改成"功能条"并排放在顶部。
+    float reservedLeft = 0.0f;
     {
-        ImGui::SetCursorPos(ImVec2(12.0f, 12.0f));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
-        ImGui::BeginChild("##stateStrip", ImVec2(kLeftStripW, 0.0f), true);
+        const float kBarHeight = 30.0f * this->uiScale;
+        const ImVec2 barPos    = ImGui::GetCursorScreenPos();
+        const float fullWidth  = ImGui::GetContentRegionAvail().x;
+        const float gap        = 10.0f * this->uiScale;
+        const float leftWidth  = std::floor((fullWidth - gap) * 0.5f);
+        const float rightWidth = std::max(80.0f, fullWidth - gap - leftWidth);
+
+        // 左：五种状态
         static const char* kStateLabels[] = { "默认", "聚焦", "按下", "禁用", "选中" };
+        SegmentItem stateItems[5];
         for (int i = 0; i < 5; i++)
         {
-            const bool active = (this->previewStateIndex == i);
-            if (ImGui::Selectable((std::string(kStateLabels[i]) + "##st" + std::to_string(i)).c_str(),
-                    active, ImGuiSelectableFlags_None, ImVec2(0.0f, 22.0f)))
-            {
-                this->previewStateIndex = i;
-                this->previewDirty      = true;
-            }
+            stateItems[i].text     = kStateLabels[i];
+            stateItems[i].selected = this->previewStateIndex == i;
+            stateItems[i].tooltip  = "预览按这个状态渲染";
         }
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
-    }
+        const int picked = drawSegmentBar("##stateBar", barPos, leftWidth, kBarHeight,
+            stateItems, 5);
+        if (picked >= 0)
+        {
+            this->previewStateIndex = picked;
+            this->previewDirty      = true;
+        }
 
-    // 右侧：视图开关竖排图标（网格底 / 对齐网格 / 层序条 / 适应 / 重置）
-    {
-        ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 12.0f, 12.0f));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
-        ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
-        if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasBackdrop != 1,
-                "画布底：棋盘 / 暗面 / 纸面 / 透明"))
+        // 右：视图开关（图标 + 选中态）—— 原来右侧那排竖着的图标按钮
+        SegmentItem viewItems[5];
+        viewItems[0] = SegmentItem{ nullptr, Icon::GRID, true, this->canvasBackdrop != 1,
+            "画布底：棋盘 / 暗面 / 纸面 / 透明" };
+        viewItems[1] = SegmentItem{ nullptr, Icon::ALIGN, true, this->showGrid, "对齐网格 + 中线" };
+        viewItems[2] = SegmentItem{ nullptr, Icon::STRIP, true, this->showLayerStrip,
+            "绘制顺序条" };
+        viewItems[3] = SegmentItem{ nullptr, Icon::FIT, true, false, "适应画布（按真机 720p）" };
+        viewItems[4] = SegmentItem{ nullptr, Icon::RESET, true, false, "重置视图（缩放与平移）" };
+
+        switch (drawSegmentBar("##viewBar", ImVec2(barPos.x + leftWidth + gap, barPos.y),
+            rightWidth, kBarHeight, viewItems, 5))
         {
-            this->canvasBackdrop = (this->canvasBackdrop + 1) % 4;
-            this->canvasChecker  = this->canvasBackdrop == 0;
-            this->previewDirty   = true;
+            case 0:
+                this->canvasBackdrop = (this->canvasBackdrop + 1) % 4;
+                this->canvasChecker  = this->canvasBackdrop == 0;
+                this->previewDirty   = true;
+                break;
+            case 1: this->showGrid = !this->showGrid; break;
+            case 2: this->showLayerStrip = !this->showLayerStrip; break;
+            case 3:
+                this->canvasPreset  = 1;
+                this->canvasChecker = this->canvasBackdrop == 0;
+                this->previewDirty  = true;
+                break;
+            case 4:
+                this->canvasZoom = 2;
+                this->canvasPanX = 0.0f;
+                this->canvasPanY = 0.0f;
+                break;
+            default: break;
         }
-        if (iconButton("##icAlign", Icon::ALIGN, 16.0f, this->showGrid, "对齐网格 + 中线"))
-            this->showGrid = !this->showGrid;
-        if (iconButton("##icStrip", Icon::STRIP, 16.0f, this->showLayerStrip, "绘制顺序条"))
-            this->showLayerStrip = !this->showLayerStrip;
-        ImGui::Separator();
-        if (iconButton("##icFit", Icon::FIT, 16.0f, false, "适应画布（按真机 720p）"))
-        {
-            this->canvasPreset   = 1;
-            this->canvasChecker  = this->canvasBackdrop == 0;
-            this->previewDirty  = true;
-        }
-        if (iconButton("##icReset", Icon::RESET, 16.0f, false, "重置视图（缩放与平移）"))
-        {
-            this->canvasZoom = 2;
-            this->canvasPanX = 0.0f;
-            this->canvasPanY = 0.0f;
-        }
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
+
+        // 让画布从功能条下面开始
+        ImGui::Dummy(ImVec2(0.0f, kBarHeight + 10.0f));
+        reservedLeft = kBarHeight + 10.0f;
     }
+    (void)reservedLeft;
+
     (void)stageAvailNow;
 
     // 光标复位到画布左上：上面两侧浮层动过光标，不复位后面算出来的画布位置会跑到视野外
@@ -3361,8 +3485,14 @@ void DesignerWindow::drawPreview()
     // 画布在预览区里居中（以前贴左上角，看着像没画完）
     const ImVec2 stageAvail = ImGui::GetContentRegionAvail();
     const ImVec2 size((float)this->canvasWidth * zoom, (float)this->canvasHeight * zoom);
-    const float usableX     = std::max(80.0f, stageAvail.x - kLeftStripW - kRightStripW - 30.0f);
-    const float centeringX  = std::max(0.0f, (usableX - size.x) * 0.5f) + kLeftStripW + 12.0f;
+    // 右侧那条竖排图标已经搬到顶部功能条了，画布不再扣它的宽度；
+    // 左侧只在层序条可见时扣掉它
+    const bool hasLayerStrip = this->showLayerStrip && !this->currentWidget.empty()
+        && this->doc.layerCount() > 0 && !this->previewCompare;
+    const float usableX = std::max(80.0f,
+        stageAvail.x - (hasLayerStrip ? kLeftStripW : 0.0f) - 24.0f);
+    const float centeringX = std::max(0.0f, (usableX - size.x) * 0.5f)
+        + (hasLayerStrip ? kLeftStripW : 0.0f) + 12.0f;
     const float centeringY  = std::max(0.0f, (stageAvail.y - size.y) * 0.5f);
     const ImVec2 stagePos(ImGui::GetCursorScreenPos().x + centeringX + this->canvasPanX,
         ImGui::GetCursorScreenPos().y + centeringY + this->canvasPanY);
@@ -3491,6 +3621,16 @@ void DesignerWindow::drawProps()
         ImGui::TextColored(mutedColor(), "选一个文件");
         return;
     }
+
+    // 属性列表整体左缩进：左栏的列表项文字有图标槽（约 35px），右栏字段名原来只有 15px，
+    // 视觉上就成了"右栏没有左边距"。这里按左栏的观感补上（用户反馈）
+    const float propIndent = 20.0f * this->uiScale;
+    ImGui::Indent(propIndent);
+    struct UnindentGuard
+    {
+        float value;
+        ~UnindentGuard() { ImGui::Unindent(value); }
+    } unindentGuard{ propIndent };
 
     if (!this->currentTable.empty())
     {
@@ -4154,7 +4294,9 @@ void DesignerWindow::drawProps()
     {
         ImGui::Indent(2.0f);
         // layers 的增删都在左树右键菜单里（右键 → 增加层 / 删除层），这里不再放按钮排
-        ImGui::TextColored(mutedColor(), "增删层请在左侧节点树右键");
+        ImGui::TextColored(mutedColor(), "层：在左侧节点树右键增删");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("在左侧「节点树」里右键某一层，可以增删层、调整顺序");
         ImGui::Unindent(2.0f);
     }
 }
