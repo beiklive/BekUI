@@ -56,6 +56,35 @@ bool loadUiState(const std::string& path, UiState& out)
     out.previewCompare   = doc.value("previewCompare", out.previewCompare);
     out.previewMaximized = doc.value("previewMaximized", out.previewMaximized);
     out.previewSubtree   = doc.value("previewSubtree", out.previewSubtree);
+    // 玻璃参数：老状态文件里没有这一节就保持默认
+    if (doc.contains("glass") && doc["glass"].is_object())
+    {
+        const Json& g = doc["glass"];
+        glass::GlassTuning& t = out.glass;
+        t.enabled             = g.value("enabled", t.enabled);
+        t.blurRadius          = g.value("blurRadius", t.blurRadius);
+        t.quality             = g.value("quality", t.quality);
+        t.tintR               = g.value("tintR", t.tintR);
+        t.tintG               = g.value("tintG", t.tintG);
+        t.tintB               = g.value("tintB", t.tintB);
+        t.tintA               = g.value("tintA", t.tintA);
+        t.refractionHeight    = g.value("refractionHeight", t.refractionHeight);
+        t.refractionAmount    = g.value("refractionAmount", t.refractionAmount);
+        t.depthEffect         = g.value("depthEffect", t.depthEffect);
+        t.chromaticAberration = g.value("chromaticAberration", t.chromaticAberration);
+        t.contrast            = g.value("contrast", t.contrast);
+        t.innerShadow         = g.value("innerShadow", t.innerShadow);
+        t.rimGlow             = g.value("rimGlow", t.rimGlow);
+        t.specular            = g.value("specular", t.specular);
+        t.outerShadow         = g.value("outerShadow", t.outerShadow);
+        t.shadowExtent        = g.value("shadowExtent", t.shadowExtent);
+        t.barRadius           = g.value("barRadius", t.barRadius);
+        t.panelRadius         = g.value("panelRadius", t.panelRadius);
+        t.barOuterShadow      = g.value("barOuterShadow", t.barOuterShadow);
+        t.showPanel           = g.value("showPanel", t.showPanel);
+        t.clampToValidRange();
+    }
+
     out.lastAppearance   = doc.value("lastAppearance", out.lastAppearance);
     out.lastViewFile     = doc.value("lastViewFile", out.lastViewFile);
     return true;
@@ -78,6 +107,33 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     doc["previewCompare"]   = state.previewCompare;
     doc["previewMaximized"] = state.previewMaximized;
     doc["previewSubtree"]   = state.previewSubtree;
+    {
+        const glass::GlassTuning& t = state.glass;
+        Json g                      = Json::object();
+        g["enabled"]             = t.enabled;
+        g["blurRadius"]          = t.blurRadius;
+        g["quality"]             = t.quality;
+        g["tintR"]               = t.tintR;
+        g["tintG"]               = t.tintG;
+        g["tintB"]               = t.tintB;
+        g["tintA"]               = t.tintA;
+        g["refractionHeight"]    = t.refractionHeight;
+        g["refractionAmount"]    = t.refractionAmount;
+        g["depthEffect"]         = t.depthEffect;
+        g["chromaticAberration"] = t.chromaticAberration;
+        g["contrast"]            = t.contrast;
+        g["innerShadow"]         = t.innerShadow;
+        g["rimGlow"]             = t.rimGlow;
+        g["specular"]            = t.specular;
+        g["outerShadow"]         = t.outerShadow;
+        g["shadowExtent"]        = t.shadowExtent;
+        g["barRadius"]           = t.barRadius;
+        g["panelRadius"]         = t.panelRadius;
+        g["barOuterShadow"]      = t.barOuterShadow;
+        g["showPanel"]           = t.showPanel;
+        doc["glass"]             = g;
+    }
+
     doc["lastAppearance"]   = state.lastAppearance;
     doc["lastViewFile"]     = state.lastViewFile;
     return writeTextFileAtomic(path, doc.dump(2) + "\n", false, error);

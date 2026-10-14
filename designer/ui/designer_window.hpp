@@ -204,6 +204,8 @@ class DesignerWindow
 
     // 设计器自己的日志面板（右上角，可拖可缩放；读 bklv::Logger 的环形缓冲）
     void drawLogPanel();
+    // 玻璃调参面板（F4 / 工具菜单）：滑块直接改 DesignerGlass 的 GlassTuning
+    void drawGlassTuningPanel();
 
     void setDebugPanelsForTest(bool log, bool focusOrder)
     {
@@ -236,10 +238,7 @@ class DesignerWindow
 
     // ---- 各块 ----
     void drawTopBar();
-    // 一块玻璃横条（顶栏 / 菜单栏共用）：rect 用逻辑坐标，注入点在画它的内容之前
-    void drawGlassBar(const ImVec4& rect, ImDrawList* list, int commandOffset);
-    // 一块玻璃面板（左栏 / 右栏）
-    void drawGlassPanel(const ImVec4& rect, ImDrawList* list, int commandOffset);
+
     void drawFileList();
     void drawTree();
     // 页面视图的节点树（type + id + 属性 + children 逐层展开）

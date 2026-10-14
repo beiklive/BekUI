@@ -681,6 +681,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不需要 glslc / SPIR-V 生成步骤。着色器改自 MIT 项目，版权声明留在文件头。
   6）库侧只加了一个通用钩子：`App::onPrepareDrawData`（ImGui::Render() 之后、
      renderDrawData() 之前），设计器用它注入玻璃命令；库里没有任何玻璃代码。
+  7）**参数可调且会存**：`designer/glass/glass_tuning.hpp` 里那份 `GlassTuning`
+     是唯一数据源 —— 工具菜单「玻璃调参」/ `F4` 打开滑块面板（面板自己也是玻璃），
+     参数随 `designer_state.json` 一起存（`ui_state.glass`）。
+     调参面板/日志这类**浮窗**底给 0.35 的 alpha 再叠玻璃：玻璃在预览区会被禁区裁掉，
+     那块得有底色才看得清字。
+     自查开关：`BKLV_DESIGNER_GLASS=0` 关玻璃、`BKLV_DESIGNER_GLASS_PANEL=1` 开局就展开调参面板
+     （**必须在 loadUiState() 之后生效**，否则被状态文件盖掉）。
 
 ## 测试
 

@@ -814,6 +814,10 @@ bool DesignerWindow::selectBySpec(const std::string& spec)
 void DesignerWindow::loadUiState()
 {
     UiState state;
+    // 玻璃参数跟着界面状态走（老状态文件没有这一节时保持默认）
+    this->glass.getTuning() = state.glass;
+    // 自查/自动化用的环境变量要在载入状态之后再生效，否则会被状态文件盖掉
+    this->glass.applyEnvOverrides();
     // 读失败（第一次跑）也要把默认值抄进成员：loadUiState 已经把 out 留在默认值上，
     // 提前 return 的话成员会停在头文件里那份默认值（曾经 uiScale 就这样不一致）
     designer::loadUiState(resourcePath("designer_state.json"), state);
@@ -841,6 +845,7 @@ void DesignerWindow::loadUiState()
 void DesignerWindow::saveUiState()
 {
     UiState state;
+    state.glass = this->glass.getTuning();
     state.leftWidth        = this->leftWidthUi;
     state.rightWidth       = this->rightWidthUi;
     state.fileListHeight   = this->fileListHeightUi;
@@ -897,6 +902,81 @@ const char* logLevelTag(bklv::LogLevel level)
 
 } // namespace
 
+void DesignerWindow::drawGlassTuningPanel()
+{
+    glass::GlassTuning& tuning = this->glass.getTuning();
+
+    ImDrawList* list = ImGui::GetForegroundDrawList();
+    const int offset = list->CmdBuffer.Size;
+
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
+    // 底给一薄层：玻璃在预览区会被裁掉（禁区），那时还得看得清字
+    ImGui::SetNextWindowBgAlpha(0.35f);
+    bool open = true;
+    if (!ImGui::Begin("玻璃调参（F4）", &open, ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::End();
+        if (!open)
+            tuning.showPanel = false;
+        return;
+    }
+    if (!open)
+        tuning.showPanel = false;
+
+    {
+        const ImVec2 pos  = ImGui::GetWindowPos();
+        const ImVec2 size = ImGui::GetWindowSize();
+        this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
+            ImGui::GetWindowDrawList(), offset);
+    }
+
+    ImGui::Checkbox("启用玻璃", &tuning.enabled);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("恢复默认"))
+        tuning = glass::GlassTuning{};
+
+    ImGui::SeparatorText("背景模糊");
+    ImGui::SliderFloat("半径", &tuning.blurRadius, 0.0f, 40.0f, "%.0f px");
+    ImGui::SliderInt("质量档", &tuning.quality, 0, 2);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("0 = 最小（5 对采样）/ 1 = 均衡（8 对）/ 2 = 完整（12 对）");
+
+    ImGui::SeparatorText("染色");
+    ImGui::ColorEdit4("玻璃色", &tuning.tintR, ImGuiColorEditFlags_AlphaBar
+            | ImGuiColorEditFlags_AlphaPreviewHalf);
+
+    ImGui::SeparatorText("折射 / 色散");
+    ImGui::SliderFloat("折射高度", &tuning.refractionHeight, 0.0f, 60.0f, "%.0f px");
+    ImGui::SliderFloat("折射强度", &tuning.refractionAmount, -240.0f, 0.0f, "%.0f");
+    ImGui::SliderFloat("深度效果", &tuning.depthEffect, 0.0f, 2.0f, "%.2f");
+    ImGui::SliderFloat("色散", &tuning.chromaticAberration, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("对比", &tuning.contrast, -1.0f, 1.0f, "%.2f");
+
+    ImGui::SeparatorText("光照");
+    ImGui::SliderFloat("内阴影", &tuning.innerShadow, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("边缘高光", &tuning.rimGlow, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("高光斑", &tuning.specular, 0.0f, 2.0f, "%.2f");
+    ImGui::SliderFloat("外阴影", &tuning.outerShadow, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderFloat("阴影范围", &tuning.shadowExtent, 0.0f, 24.0f, "%.0f px");
+
+    ImGui::SeparatorText("形状");
+    ImGui::SliderFloat("横条圆角", &tuning.barRadius, 0.0f, 30.0f, "%.0f px");
+    ImGui::SliderFloat("面板圆角", &tuning.panelRadius, 0.0f, 30.0f, "%.0f px");
+    ImGui::Checkbox("横条也画外阴影", &tuning.barOuterShadow);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("默认关：外阴影会把横条的绘制范围外扩几像素，渗进下面的预览面板");
+
+    ImGui::Separator();
+    ImGui::TextColored(mutedColor(), "后端：%s", this->glass.getStatus().c_str());
+    ImGui::TextColored(mutedColor(), "上限 %d 块/帧（预览区永不参与）",
+        (int)this->glass.getCapabilities().maxGlassRegions);
+    if (ImGui::SmallButton("保存到界面状态"))
+        this->saveUiState();
+
+    tuning.clampToValidRange();
+    ImGui::End();
+}
+
 void DesignerWindow::drawLogPanel()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -907,6 +987,11 @@ void DesignerWindow::drawLogPanel()
     ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 180.0f), ImVec2(FLT_MAX, FLT_MAX));
 
     bool open = true;
+    // 浮窗也走玻璃：先把底设透明（否则玻璃采到的是浮窗自己的纯色底），
+    // 再按窗口矩形交一块玻璃 —— 注入点在窗口内容之前
+    ImDrawList* logList = ImGui::GetForegroundDrawList();
+    const int logOffset = logList != nullptr ? logList->CmdBuffer.Size : 0;
+    ImGui::SetNextWindowBgAlpha(0.35f);
     if (!ImGui::Begin("bklv 日志", &open, ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::End();
@@ -916,6 +1001,13 @@ void DesignerWindow::drawLogPanel()
     }
     if (!open)
         this->showLogPanel = false;
+
+    {
+        const ImVec2 pos  = ImGui::GetWindowPos();
+        const ImVec2 size = ImGui::GetWindowSize();
+        this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
+            ImGui::GetWindowDrawList(), logOffset);
+    }
 
     const std::deque<bklv::LogEntry>& logs = bklv::Logger::getLogs();
     ImGui::Text("日志 %zu 条", logs.size());
@@ -1348,6 +1440,7 @@ void DesignerWindow::drawMenuBar()
         ImGui::MenuItem("校验面板", "F1", &this->showWarnings);
         if (ImGui::MenuItem("日志"))
             this->showLogPanel = !this->showLogPanel;
+        ImGui::MenuItem("玻璃调参", "F4", &this->glass.getTuning().showPanel);
         ImGui::MenuItem("焦点顺序", nullptr, &this->showFocusOrder);
         ImGui::MenuItem("改动总览", nullptr, &this->showOverview);
         ImGui::Separator();
@@ -1382,52 +1475,6 @@ void DesignerWindow::drawMenuBar()
     }
 
     ImGui::EndMenuBar();
-}
-
-void DesignerWindow::drawGlassPanel(const ImVec4& rect, ImDrawList* list, int commandOffset)
-{
-    if (!this->glass.isEnabled() || list == nullptr)
-        return;
-
-    glass::GlassStyle style;
-    style.refractionHeight    = 24.0f;
-    style.refractionAmount    = -110.0f;
-    style.depthEffect         = 0.75f;
-    style.chromaticAberration = 0.50f;
-    style.contrast            = -0.08f;
-    style.tint                = ImVec4(0.05f, 0.08f, 0.13f, 0.30f);
-    style.lighting.innerShadow   = 0.14f;
-    style.lighting.rimGlow       = 0.26f;
-    style.lighting.specular      = 0.32f;
-    style.lighting.outerShadow   = 0.10f;
-    style.lighting.shadowExtent  = 5.0f;
-
-    this->glass.addPanel(rect, glass::CornerRadii::all(12.0f), style, list, commandOffset);
-}
-
-void DesignerWindow::drawGlassBar(const ImVec4& rect, ImDrawList* list, int commandOffset)
-{
-    if (!this->glass.isEnabled() || list == nullptr)
-        return;
-
-    glass::GlassStyle style;
-    style.refractionHeight    = 18.0f;
-    style.refractionAmount    = -90.0f;
-    style.depthEffect         = 0.65f;
-    style.chromaticAberration = 0.45f;
-    style.contrast            = -0.06f;
-    style.tint                = ImVec4(0.06f, 0.09f, 0.14f, 0.30f);
-    style.lighting.innerShadow   = 0.10f;
-    style.lighting.rimGlow       = 0.24f;
-    style.lighting.specular      = 0.30f;
-    // 横条不画外阴影：阴影会把绘制范围外扩几像素、渗进下面的预览面板，
-    // 而"预览区逐像素不被影响"是硬要求（面板自己有内阴影/边缘高光，够看）
-    style.lighting.outerShadow  = 0.0f;
-    style.lighting.shadowExtent = 0.0f;
-
-    // 横条两端只留很小的圆角（贴着窗口边）
-    this->glass.addPanel(rect, glass::CornerRadii{ 6.0f, 6.0f, 6.0f, 6.0f }, style, list,
-        commandOffset);
 }
 
 void DesignerWindow::drawTopBar()
@@ -5367,8 +5414,8 @@ void DesignerWindow::draw()
         const int offset = list->CmdBuffer.Size;
         const ImVec2 windowPos = ImGui::GetWindowPos();
         const float barHeight  = ImGui::GetFrameHeight();
-        this->drawGlassBar(ImVec4(windowPos.x, windowPos.y, windowPos.x + ImGui::GetWindowWidth(),
-                              windowPos.y + barHeight),
+        this->glass.addBar(ImVec4(windowPos.x, windowPos.y,
+                                windowPos.x + ImGui::GetWindowWidth(), windowPos.y + barHeight),
             list, offset);
     }
     this->drawMenuBar();
@@ -5438,6 +5485,8 @@ void DesignerWindow::draw()
         }
         if (ImGui::IsKeyPressed(ImGuiKey_F1, false))
             this->showWarnings = !this->showWarnings;
+        if (ImGui::IsKeyPressed(ImGuiKey_F4, false))
+            this->glass.getTuning().showPanel = !this->glass.getTuning().showPanel;
         if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
             this->previewMaximized = !this->previewMaximized;
     }
@@ -5470,7 +5519,7 @@ void DesignerWindow::draw()
 
         const float bottom = ImGui::GetCursorScreenPos().y - ImGui::GetStyle().ItemSpacing.y;
         if (bottom > before.y)
-            this->drawGlassBar(ImVec4(before.x, before.y, before.x + width, bottom), list, offset);
+            this->glass.addBar(ImVec4(before.x, before.y, before.x + width, bottom), list, offset);
     }
 
     const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
@@ -5498,7 +5547,7 @@ void DesignerWindow::draw()
         ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
         const ImVec2 panelPos  = ImGui::GetWindowPos();
         const ImVec2 panelSize = ImGui::GetWindowSize();
-        this->drawGlassPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
+        this->glass.addPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
                                 panelPos.y + panelSize.y),
             parentList, leftOffset);
     }
@@ -5587,7 +5636,7 @@ void DesignerWindow::draw()
         ImGui::BeginChild("##props", ImVec2(rightWidth, 0), true);
         const ImVec2 panelPos  = ImGui::GetWindowPos();
         const ImVec2 panelSize = ImGui::GetWindowSize();
-        this->drawGlassPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
+        this->glass.addPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
                                 panelPos.y + panelSize.y),
             parentList, propsOffset);
     }
@@ -5600,6 +5649,10 @@ void DesignerWindow::draw()
     // 日志窗口（设计器自己的 ImGui 面板，读的是库里的日志环形缓冲）
     if (this->showLogPanel)
         this->drawLogPanel();
+
+    // 玻璃调参面板（F4 / 工具菜单）：改的就是 DesignerGlass 里那份 GlassTuning
+    if (this->glass.getTuning().showPanel)
+        this->drawGlassTuningPanel();
 
     // 帧级自动入栈：这一帧结束时发现文档和上一帧不同，就把上一帧的状态压进撤销栈。
     // 输入框是"改完才返回 true"，所以只能在帧边界比较，粒度 = 一次改动。
