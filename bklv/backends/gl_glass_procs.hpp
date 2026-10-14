@@ -82,6 +82,7 @@ namespace bklv::glass
     X(void, BindFramebuffer, (GLenum, GLuint))                                     \
     X(void, FramebufferTexture2D, (GLenum, GLenum, GLenum, GLuint, GLint))         \
     X(GLenum, CheckFramebufferStatus, (GLenum))                                    \
+    X(void, ReadPixels, (GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*))  \
     X(void, BlitFramebuffer, (GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum)) \
     X(void, ReadBuffer, (GLenum))                                                  \
     X(void, GenVertexArrays, (GLsizei, GLuint*))                                   \

@@ -49,6 +49,13 @@ class GlassService
     // 视图在自己的 draw 里调用：声明一块玻璃。请求坐标是**物理像素**。
     void submit(GlassRequest request);
 
+    // 简便入口（推荐）：**玻璃画在我下面、我自己的内容画在玻璃上面**。
+    // 内部会先在 drawList 上切一条新命令再入队 —— 直接手填 drawCommandOffset 会被
+    // ImGui 的"连续图元合并进同一条命令"吃掉，导致自己的文字被玻璃盖住（踩过）。
+    // pixelBounds：x,y=左上；z,w=右下（**物理像素**）。
+    bool submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBounds,
+        const CornerRadii& radii, GlassShapeKind shape, float density);
+
     // ImGui::Render() 之后、renderDrawData() 之前：把玻璃命令注入绘制数据
     void prepareDrawData(ImDrawData& drawData);
 

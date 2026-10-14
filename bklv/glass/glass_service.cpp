@@ -75,6 +75,34 @@ void GlassService::submit(GlassRequest request)
     this->queue.submit(request);
 }
 
+bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBounds,
+    const CornerRadii& radii, GlassShapeKind shape, float frameDensity)
+{
+    if (!this->isEnabled() || drawList == nullptr)
+        return false;
+    if (pixelBounds.z <= pixelBounds.x || pixelBounds.w <= pixelBounds.y)
+        return false;
+
+    // 关键：先切一条新命令。ImGui 会把连续图元合并进同一条命令，
+    // 直接记 CmdBuffer.Size 拿到的不是真边界 —— 自己的内容会被并进前一条命令，
+    // 于是玻璃插在它后面，把它盖住。
+    drawList->AddDrawCmd();
+
+    GlassRequest request;
+    request.minMax            = pixelBounds;
+    request.radii             = radii;
+    request.shape             = shape;
+    request.density           = frameDensity > 0.0f ? frameDensity : this->density;
+    request.drawList          = drawList;
+    request.drawCommandOffset = drawList->CmdBuffer.Size;
+
+    if (!this->isEnabled())
+        return false;
+
+    this->submit(request);
+    return true;
+}
+
 void GlassService::prepareDrawData(ImDrawData& drawData)
 {
     if (this->injected || !this->supported || this->queue.isEmpty())

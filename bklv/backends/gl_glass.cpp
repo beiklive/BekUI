@@ -419,6 +419,7 @@ bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue& queue)
 
     self.prepared = self.renderBlur(self.captureTexture, plan);
     self.activeSource = GlassBackdropSource::FRAME;
+
     return self.prepared;
 }
 

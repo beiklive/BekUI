@@ -99,16 +99,11 @@ class GlassCardView : public Box
             const ImVec2 scale = ImGui::GetIO().DisplayFramebufferScale;
             const float density = scale.x > 0.0f ? scale.x : 1.0f;
 
-            glass::GlassRequest request;
-            request.minMax            = ImVec4(x * density, y * density, (x + width) * density,
-                (y + height) * density);
-            request.radii             = glass::CornerRadii::all(this->radius * density);
-            request.shape             = glass::GlassShapeKind::ROUNDED_RECT;
-            request.density           = density;
-            request.drawList          = drawList;
-            // 注入点：玻璃画在"这张卡自己的内容"之前 —— 文字仍然压在最上面
-            request.drawCommandOffset = drawList->CmdBuffer.Size;
-            service.submit(request);
+            // 玻璃画在卡片内容下面、文字压在最上面（submitBackdrop 内部会先切一条命令）
+            service.submitBackdrop(drawList,
+                ImVec4(x * density, y * density, (x + width) * density, (y + height) * density),
+                glass::CornerRadii::all(this->radius * density),
+                glass::GlassShapeKind::ROUNDED_RECT, density);
         }
         else
         {
