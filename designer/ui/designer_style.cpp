@@ -245,6 +245,65 @@ void applyDesignerStyle(float uiScale)
     set(ImGuiCol_PlotHistogram, palette.focusBorder);
 }
 
+// ---------------------------------------------------------------- 小标签
+
+namespace
+{
+// chip 的内边距（乘 uiScale 由调用方通过 style 传入不合适，这里直接用 ImGui 风格缩放）
+constexpr float kChipPadX = 8.0f;
+constexpr float kChipPadY = 3.0f;
+} // namespace
+
+namespace
+{
+
+// 画一个圆角小标签，label 用次要色、value 用强调色；返回是否点了它
+bool chipImpl(const char* id, const char* label, const char* value, bool current,
+    const char* tooltip, bool clickable)
+{
+    const ImVec2 labelSize = ImGui::CalcTextSize(label != nullptr ? label : "");
+    const ImVec2 valueSize
+        = (value != nullptr && value[0] != 0) ? ImGui::CalcTextSize(value) : ImVec2(0.0f, 0.0f);
+    const float gap = (valueSize.x > 0.0f) ? 6.0f : 0.0f;
+
+    const ImVec2 size(labelSize.x + valueSize.x + gap + kChipPadX * 2.0f,
+        ImGui::GetTextLineHeight() + kChipPadY * 2.0f);
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+
+    ImGui::InvisibleButton(id, size);
+    const bool hovered = clickable && ImGui::IsItemHovered();
+    const bool clicked = clickable && ImGui::IsItemClicked();
+    if (hovered && tooltip != nullptr)
+    {
+        ImGui::SetTooltip("%s", tooltip);
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    }
+
+    ImDrawList* list = ImGui::GetWindowDrawList();
+    const ImVec2 chipMax(pos.x + size.x, pos.y + size.y);
+    const ImVec4 fill = current ? chipActiveColor() : (hovered ? chipHoverColor() : chipColor());
+    list->AddRectFilled(pos, chipMax, ImGui::ColorConvertFloat4ToU32(fill), size.y * 0.5f);
+
+    list->AddText(ImVec2(pos.x + kChipPadX, pos.y + kChipPadY),
+        ImGui::ColorConvertFloat4ToU32(current ? rowTextColor(true) : mutedColor()), label);
+    if (valueSize.x > 0.0f)
+        list->AddText(ImVec2(pos.x + kChipPadX + labelSize.x + gap, pos.y + kChipPadY),
+            ImGui::ColorConvertFloat4ToU32(accentColor()), value);
+    return clicked;
+}
+
+} // namespace
+
+bool statChip(const char* id, const char* label, const char* value, const char* tooltip)
+{
+    return chipImpl(id, label, value, false, tooltip, false);
+}
+
+bool crumbChip(const char* text, bool current, const char* tooltip)
+{
+    return chipImpl(text, text, nullptr, current, tooltip, true);
+}
+
 // ---------------------------------------------------------------- 面板标题栏
 
 namespace

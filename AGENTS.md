@@ -744,6 +744,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不受 WindowPadding 影响），这样它正好盖住玻璃面板顶部那条约 10px 的高光带 ——
      不盖住的话，量出来有 12px 留白、看着仍是"字贴着顶"（高光带把留白的视觉空间吃掉了，踩过）。
      左栏的折叠按钮、脏标记都放进栏内同一行；`panelHeader()` 留着给**分区标题**（如左栏的"节点树"）。
+  9b）**自绘"卡片式"区块要先用同尺寸 `Dummy` 占位**（左栏底部那块状态卡就是这么写的）：
+     用 `SetCursorPos/SetCursorScreenPos` 把光标挪到卡片里画小标签（`statChip`/`crumbChip`），
+     必须先在卡片矩形处 `Dummy(卡片尺寸)` 把范围报给 ImGui，并且**收尾不能再补一次
+     `SetCursorScreenPos`** —— 那会让 `window->DC.IsSetPos` 停在 true，`EndChild()` 时
+     ImGui 会判"越界扩展窗口边界"并弹出报错框（DEAR IMGUI MESSAGE，踩过，
+     日志里是 `[imgui-error] ... SetCursorPos() ... to extend window/parent boundaries`）。
   10）**界面控件也走同一套风格**：`applyDesignerStyle()` 里所有控件底一律用"磨砂白"
      （`ImGuiCol_FrameBg/Button/Tab/TableHeaderBg…` 都是半透明白，不再铺不透明灰块），
      圆角统一 8~12；因为面板背后有玻璃，控件看起来就是玻璃上的磨砂片。

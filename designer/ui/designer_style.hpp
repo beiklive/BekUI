@@ -75,4 +75,9 @@ float panelTitleBarStart(float uiScale, float cornerRadius);
 void  panelTitleBarTitle(const char* title, const char* hint);
 void  panelTitleBarEnd(float barHeight, float uiScale);
 
+// 小标签（chip）：左栏底部的"节点/层/状态"计数与选中路径用它，
+// 比一行裸文字 + 「·」分隔清楚得多。返回是否被点击。
+bool statChip(const char* id, const char* label, const char* value, const char* tooltip);
+bool crumbChip(const char* text, bool current, const char* tooltip);
+
 } // namespace designer

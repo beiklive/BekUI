@@ -2182,43 +2182,70 @@ void DesignerWindow::drawStatus()
     for (const std::string& state : this->doc.stateNames())
         nodes += 1 + this->doc.channelCount(state);
 
-    // 页脚：一条比面板略"低"的底色，和上面内容区分开。
-    // 文字要离底色的边有距离（用户反馈"节点数没加边距"），所以底色往外扩、文字往里缩
-    constexpr float kChipPadX = 12.0f;
-    constexpr float kChipPadY = 8.0f;
-    {
-        const ImVec2 pos   = ImGui::GetCursorScreenPos();
-        const float width  = ImGui::GetContentRegionAvail().x;
-        const float height = ImGui::GetTextLineHeightWithSpacing() * 2.0f + kChipPadY * 2.0f + 6.0f;
-        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(pos.x - kChipPadX, pos.y - kChipPadY),
-            ImVec2(pos.x + width + 4.0f, pos.y + height),
-            ImGui::ColorConvertFloat4ToU32(currentDesignerPalette().sunken), 8.0f);
-        ImGui::Dummy(ImVec2(0.0f, 2.0f));
-        ImGui::Indent(kChipPadX * 0.5f);
-    }
+    const DesignerPalette palette = currentDesignerPalette();
+    const float s      = this->uiScale > 0.0f ? this->uiScale : 1.0f;
+    const float padX   = 10.0f * s;
+    const float padY   = 8.0f * s;
+    const float gap    = 6.0f * s;
+    const float lineH  = ImGui::GetTextLineHeight() + 6.0f * s; // 标签高度
+    const float sideIn = 6.0f * s;                              // 卡片离面板左右
+    const bool  hasMsg = !this->statusMessage.empty() || !this->errorMessage.empty();
+
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const float avail   = ImGui::GetContentRegionAvail().x;
+    const float cardH   = padY * 2.0f + lineH * 2.0f + gap + (hasMsg ? lineH + gap : 0.0f);
+    const ImVec2 cardMin(origin.x - sideIn, origin.y - padY * 0.5f);
+    const ImVec2 cardMax(origin.x + avail + sideIn, cardMin.y + cardH);
+
+    // 卡片底：圆角、比面板内容低一档 —— 原来是一行裸文字用「·」分隔，块底还贴着面板下沿
+    ImGui::GetWindowDrawList()->AddRectFilled(cardMin, cardMax,
+        ImGui::ColorConvertFloat4ToU32(palette.sunken), 8.0f * s);
+
+    // 用同尺寸的 Dummy 占位：告诉 ImGui"这块内容在这里"。
+    // 只用 SetCursorScreenPos 往后放东西会被判成"越界扩展窗口边界"并弹 ImGui 报错（踩过）
+    ImGui::SetCursorScreenPos(cardMin);
+    ImGui::Dummy(ImVec2(cardMax.x - cardMin.x, cardH));
+
+    // 第一行：节点 / 层 / 状态，各一个小标签（数字用强调色）
+    char first[32];
+    ImGui::SetCursorScreenPos(ImVec2(cardMin.x + padX, cardMin.y + padY));
     if (!this->currentViewFile.empty())
     {
-        ImGui::TextColored(accentColor(), "视图节点 %d", this->viewNodeCount);
-        ImGui::SameLine();
-        ImGui::TextColored(mutedColor(), "· 字段 %d", this->viewFieldCount);
+        std::snprintf(first, sizeof(first), "%d", this->viewNodeCount);
+        statChip("##chipViewNodes", "视图节点", first, "页面视图里的节点总数");
+        ImGui::SameLine(0.0f, gap);
+        std::snprintf(first, sizeof(first), "%d", this->viewFieldCount);
+        statChip("##chipViewFields", "字段", first, "页面视图里绑定的字段数");
     }
     else
     {
-        ImGui::TextColored(accentColor(), "节点 %d", nodes);
-        ImGui::SameLine();
-        ImGui::TextColored(mutedColor(), "· 层 %d · 状态 %d", this->doc.layerCount(),
-            (int)this->doc.stateNames().size());
+        std::snprintf(first, sizeof(first), "%d", nodes);
+        statChip("##chipNodes", "节点", first, "盒模型字段 + 各层字段 + 各状态通道的总数");
+        ImGui::SameLine(0.0f, gap);
+        std::snprintf(first, sizeof(first), "%d", this->doc.layerCount());
+        statChip("##chipLayers", "层", first, "这份外观的绘制层数（顺序 = 绘制顺序）");
+        ImGui::SameLine(0.0f, gap);
+        std::snprintf(first, sizeof(first), "%d", (int)this->doc.stateNames().size());
+        statChip("##chipStates", "状态", first, "默认 / 聚焦 / 按下 … 里的状态数");
     }
 
-    // 这里原来是另一行"路径"文本，和下面的面包屑重复，已删掉
+    // 第二行：选中路径（面包屑，点一下回退到上一层）
+    ImGui::SetCursorScreenPos(ImVec2(cardMin.x + padX, cardMin.y + padY + lineH + gap));
     this->drawSelectionBreadcrumb();
 
-    if (!this->statusMessage.empty())
-        ImGui::TextColored(mutedColor(), "%s", this->statusMessage.c_str());
-    if (!this->errorMessage.empty())
-        ImGui::TextColored(errorColor(), "%s", this->errorMessage.c_str());
+    // 第三行（可选）：操作结果 / 错误
+    if (hasMsg)
+    {
+        ImGui::SetCursorScreenPos(ImVec2(cardMin.x + padX, cardMin.y + padY + (lineH + gap) * 2.0f));
+        if (!this->errorMessage.empty())
+            ImGui::TextColored(palette.error, "%s", this->errorMessage.c_str());
+        else
+            ImGui::TextColored(palette.textDim, "%s", this->statusMessage.c_str());
+    }
 
-    ImGui::Unindent(kChipPadX * 0.5f); // 和上面 Indent 配对
+    // 注意：这里**不能**再补一次 SetCursorScreenPos 收尾 ——
+    // 那会让 window->DC.IsSetPos 停在 true，EndChild 时 ImGui 判定"越界扩展边界"并弹报错框。
+    // 卡片范围已经由上面那个同尺寸 Dummy 占好了，光标停在哪里都不影响内容高度。
 }
 
 // ---------------------------------------------------------------- 预览
@@ -4805,37 +4832,26 @@ float DesignerWindow::drawHorizontalSplitter(const char* id, float current, floa
 
 void DesignerWindow::drawSelectionBreadcrumb()
 {
-    // 一眼看清"我现在改的是哪个文件的哪一层哪个字段"，而且能点着往回退
-    auto crumb = [this](const char* text, SelKind kind, int index, const char* key,
-        bool last) {
+    // 一眼看清"我现在改的是哪个文件的哪一层哪个字段"，而且能点着往回退。
+    // 每一节都是一个小标签（点它回退到那一层），当前那一节用强调色底。
+    auto crumb = [this](const char* text, SelKind kind, int index, const char* key, bool last) {
         const bool isCurrent = (this->selection.kind == kind)
             && (kind == SelKind::FILE || this->selection.index == index)
             && (key == nullptr || this->selection.key == key);
-        if (isCurrent)
-            ImGui::TextColored(accentColor(), "%s", text);
-        else
-            ImGui::TextColored(mutedColor(), "%s", text);
-
+        if (crumbChip(text, isCurrent, last ? nullptr : "点一下回到这里"))
+        {
+            this->selection       = Selection{};
+            this->selection.kind  = kind;
+            this->selection.index = index;
+            if (key != nullptr)
+                this->selection.key = key;
+            this->previewDirty    = true;
+        }
         if (!last)
         {
-            const bool hovered = ImGui::IsItemHovered();
-            if (hovered)
-            {
-                ImGui::SetTooltip("点一下回到这里");
-                ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-            }
-            if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-            {
-                this->selection      = Selection{};
-                this->selection.kind = kind;
-                this->selection.index = index;
-                if (key != nullptr)
-                    this->selection.key = key;
-                this->previewDirty   = true;
-            }
-            ImGui::SameLine();
-            ImGui::TextColored(mutedColor(), "/");
-            ImGui::SameLine();
+            ImGui::SameLine(0.0f, 4.0f);
+            ImGui::TextColored(mutedColor(), "\xE2\x80\xBA"); // › 分隔
+            ImGui::SameLine(0.0f, 4.0f);
         }
     };
 
