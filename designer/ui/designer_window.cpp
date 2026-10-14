@@ -2462,7 +2462,11 @@ void DesignerWindow::drawTableProps()
     const std::string keyPrefix
         = this->currentTable.rfind("metrics", 0) == 0 ? "metric." : "color.";
 
-    panelHeader("主题表", this->currentTable.c_str());
+    {
+        const float barHeight = panelTitleBarStart(this->uiScale, this->glass.getTuning().panelRadius);
+        panelTitleBarTitle("主题表", this->currentTable.c_str());
+        panelTitleBarEnd(barHeight, this->uiScale);
+    }
     ImGui::TextColored(mutedColor(), "保存 = 写回文件 + 热重载");
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("改完点「保存」即写回这个 JSON，并热重载主题（预览立刻变）");
@@ -3316,9 +3320,13 @@ void DesignerWindow::drawPreview()
         modeText = "对比";
         modeHelp = "左=编辑中 / 右=磁盘上那份";
     }
-    ImGui::TextColored(mutedColor(), "%s", modeText);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("%s", modeHelp);
+    {
+        const float barHeight = panelTitleBarStart(this->uiScale, this->glass.getTuning().panelRadius);
+        panelTitleBarTitle(modeText, nullptr);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", modeHelp);
+        panelTitleBarEnd(barHeight, this->uiScale);
+    }
 
     // 整块就是画布：不要边框、不要内边距，控件直接画在上面
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -3641,7 +3649,11 @@ void DesignerWindow::drawProps()
 
     if (!this->currentViewFile.empty())
     {
-        panelHeader("页面视图", this->currentViewFile.c_str());
+        {
+            const float barHeight = panelTitleBarStart(this->uiScale, this->glass.getTuning().panelRadius);
+            panelTitleBarTitle("页面视图", this->currentViewFile.c_str());
+            panelTitleBarEnd(barHeight, this->uiScale);
+        }
         ImGui::TextColored(mutedColor(), "直接改下面的 JSON：点「应用」会先做语法校验 + 试实例化，"
                                    "通过才进预览；「保存」走同一条（diff → 校验 → 原子写 + .bak）。");
         ImGui::Separator();
@@ -3672,7 +3684,11 @@ void DesignerWindow::drawProps()
         return;
     }
 
-    panelHeader("属性", this->currentWidget.c_str());
+    {
+        const float barHeight = panelTitleBarStart(this->uiScale, this->glass.getTuning().panelRadius);
+        panelTitleBarTitle("属性", this->currentWidget.c_str());
+        panelTitleBarEnd(barHeight, this->uiScale);
+    }
     // 只显示路径尾巴：整条挂在右栏会被切掉（悬停看全路径）
     ImGui::TextColored(mutedColor(), "%s", shortenPath(this->currentFilePath, 3).c_str());
     if (ImGui::IsItemHovered())
@@ -5917,13 +5933,13 @@ void DesignerWindow::draw()
     }
     else
     {
-        // 用矢量图标而不是 "«"：中文字体里没有那个字形，会画成一个 "?"（踩过）
-        if (iconButton("##collapseLeft", Icon::CHEVRON_RIGHT, 15.0f, false, "折叠左栏（给预览让地方）"))
+        // 左栏标题栏：折叠图标（矢量，不用 "«" —— 中文字体里没那个字形会画成 "?"）+ 标题
+        const float leftBarHeight = panelTitleBarStart(this->uiScale, this->glass.getTuning().panelRadius);
+        if (iconButton("##collapseLeft", Icon::CHEVRON_RIGHT, 16.0f, false, "折叠左栏（给预览让地方）"))
             this->leftCollapsed = true;
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("折叠左栏（给预览让地方）");
-        ImGui::SameLine();
-        panelHeader("文件", "● 未保存");
+        ImGui::SameLine(0.0f, 8.0f);
+        panelTitleBarTitle("文件", this->dirty ? "● 未保存" : nullptr);
+        panelTitleBarEnd(leftBarHeight, this->uiScale);
         ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::BeginChild("##files", ImVec2(0, (float)this->fileListHeightUi), false);
         this->drawFileList();

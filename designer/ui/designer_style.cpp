@@ -242,6 +242,63 @@ void applyDesignerStyle(float uiScale)
     set(ImGuiCol_PlotHistogram, palette.focusBorder);
 }
 
+// ---------------------------------------------------------------- 面板标题栏
+
+namespace
+{
+// 标题栏：比正文小一档的字号 + 四边相同的边距
+constexpr float kTitleBarPad     = 10.0f;
+constexpr float kTitleFontFactor = 0.90f;
+
+float titleBarFontSize = 0.0f;
+} // namespace
+
+float panelTitleBarStart(float uiScale, float cornerRadius)
+{
+    const float pad = kTitleBarPad * (uiScale > 0.0f ? uiScale : 1.0f);
+    titleBarFontSize = ImGui::GetFontSize() * kTitleFontFactor;
+    const float barHeight = titleBarFontSize + pad * 2.0f;
+
+    ImDrawList* list    = ImGui::GetWindowDrawList();
+    const ImVec2 winPos = ImGui::GetWindowPos();
+    const ImVec2 barMax(winPos.x + ImGui::GetWindowWidth(), winPos.y + barHeight);
+
+    // 深色底：比面板内容深一档，一眼区分"这是标题栏"；顶部两角跟面板圆角，底部压一条细线
+    list->AddRectFilled(winPos, barMax, IM_COL32(0, 0, 0, 104),
+        cornerRadius, ImDrawFlags_RoundCornersTop);
+    list->AddLine(ImVec2(winPos.x, barMax.y - 1.0f), ImVec2(barMax.x, barMax.y - 1.0f),
+        IM_COL32(255, 255, 255, 26), 1.0f);
+
+    // 光标放到栏内：上、左都是 pad（栏高 = 字高 + 2*pad，所以下也是 pad）→ 四边等边距
+    ImGui::SetCursorPos(ImVec2(pad, (barHeight - titleBarFontSize) * 0.5f));
+    return barHeight;
+}
+
+void panelTitleBarTitle(const char* title, const char* hint)
+{
+    if (titleBarFontSize <= 0.0f)
+        titleBarFontSize = ImGui::GetFontSize() * kTitleFontFactor;
+
+    const DesignerPalette palette = currentDesignerPalette();
+    // 标题字号比正文小一档：ImGui 1.92 的 PushFont(字体, 尺寸)
+    ImGui::PushFont(nullptr, titleBarFontSize);
+    ImGui::TextColored(palette.textPrimary, "%s", title != nullptr ? title : "");
+    if (hint != nullptr && hint[0] != 0)
+    {
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::TextColored(palette.textDim, "%s", hint);
+    }
+    ImGui::PopFont();
+}
+
+void panelTitleBarEnd(float barHeight, float uiScale)
+{
+    // 光标移回内容区（保持面板自己的左右内边距），标题栏下面留一点空
+    const float pad = kTitleBarPad * (uiScale > 0.0f ? uiScale : 1.0f);
+    ImGui::SetCursorPos(ImVec2(ImGui::GetStyle().WindowPadding.x, barHeight + pad * 0.9f));
+    titleBarFontSize = 0.0f;
+}
+
 void panelHeader(const char* title, const char* hint)
 {
     const DesignerPalette palette = currentDesignerPalette();

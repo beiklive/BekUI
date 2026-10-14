@@ -727,28 +727,36 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
        菜单栏会顶在最上沿，"顶部没留边距"
      · 功能条/图标段这类自绘控件，图标尺寸要**给下限**（`max(14, …)`）：条一压矮，
        按比例算出来的图标会糊成一团
-  9）**界面控件也走同一套风格**：`applyDesignerStyle()` 里所有控件底一律用"磨砂白"
+  9）**面板标题栏和内容区不是一个样式**（三个面板共用 `panelTitleBar*`，`designer_style.cpp`）：
+     深色底（黑 40%）+ 顶部两角跟面板圆角（用 `glass.getTuning().panelRadius`，和玻璃矩形一致）
+     + 底边一条细线；高度 = 标题字号 + 2×边距，边距 `kTitleBarPad` 乘 uiScale；
+     **标题字号 = 正文 × 0.9**（`PushFont(nullptr, size)`，ImGui 1.92 的重载）。
+     ⚠️ 标题栏必须画在**面板自己的绘制列表**里、坐标用 `GetWindowPos()`（子窗 (0,0) 就是窗口左上角，
+     不受 WindowPadding 影响），这样它正好盖住玻璃面板顶部那条约 10px 的高光带 ——
+     不盖住的话，量出来有 12px 留白、看着仍是"字贴着顶"（高光带把留白的视觉空间吃掉了，踩过）。
+     左栏的折叠按钮、脏标记都放进栏内同一行；`panelHeader()` 留着给**分区标题**（如左栏的"节点树"）。
+  10）**界面控件也走同一套风格**：`applyDesignerStyle()` 里所有控件底一律用"磨砂白"
      （`ImGuiCol_FrameBg/Button/Tab/TableHeaderBg…` 都是半透明白，不再铺不透明灰块），
      圆角统一 8~12；因为面板背后有玻璃，控件看起来就是玻璃上的磨砂片。
      `WindowBg/ChildBg/MenuBarBg` 全透明（底交给玻璃），但**预览面板要显式压一层
      不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
      所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
      遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
-  10）**VK 那条路的可见性验证还差一步**：Vulkan 后端没有 `RenderBackend::readPixels`
+  11）**VK 那条路的可见性验证还差一步**：Vulkan 后端没有 `RenderBackend::readPixels`
      实现，`App::requestScreenshot` 在 VK 下会报"后端不支持帧读回" → VK 的玻璃效果
      目前只能靠日志 + 校验层静默来确认，**看不到图**。要视觉验收得先给 VK 后端补
      帧读回（host-visible buffer + `vkCmdCopyImageToBuffer`）。
-  11）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
+  12）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
      台面 = 竖向渐变 + 点阵网格（24px，alpha 18）+ 四边内阴影；画布 = 柔化投影 + 1px 细线 +
      顶边高光 + 尺寸/缩放角标；参考线用虚线。三档画布底：细棋盘（看透明/阴影）/ 暗面 /
      纸面（看浅色主题），存在 `ui_state.canvasBackdrop`（老文件按 `canvasChecker` 迁移）。
      ⚠️ **工作台必须画在 `##stage` 子窗里面**：面板/子窗的不透明底是 BeginChild 那一刻铺的，
      画在它之前会被整块盖掉（踩过一次：台面、点阵、内阴影全不见，看着还是纯色）。
-  12）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
+  13）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
      （清透 / 磨砂 / 厚重 / 极简），F4 面板上一排按钮一键切；当前参数能被 `matchGlassPreset`
      认回哪一档（认不出显示"自定义"）。`designer_glass.json`（可执行文件目录）存/取当前参数，
      方便调好一套留着或贴给别人。纯数据 + 纯函数 → 无窗口测试覆盖（往返、越界、非法输入）。
-  13）**样式要全覆盖**（三轮自查的结论，别再漏）：
+  14）**样式要全覆盖**（三轮自查的结论，别再漏）：
      ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
         退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
         `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。

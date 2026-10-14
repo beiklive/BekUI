@@ -67,4 +67,12 @@ ImVec4 unsavedColor();    // "改过 / 未保存"专用的琥珀色
 // 面板小标题：一条带强调色标题的东西（统一各面板的头部观感）
 void panelHeader(const char* title, const char* hint = nullptr);
 
+// 面板标题栏（三个面板共用）：和内容区不是一个样式 ——
+// 深色底 + 顶部两角跟面板圆角 + 固定高度 + **四边等边距** + 标题字号比正文小一档。
+// 用法：barHeight = panelTitleBarStart(...) →（可选）在栏内放按钮/文字 →
+//       panelTitleBarTitle(...) → panelTitleBarEnd(barHeight, uiScale)
+float panelTitleBarStart(float uiScale, float cornerRadius);
+void  panelTitleBarTitle(const char* title, const char* hint);
+void  panelTitleBarEnd(float barHeight, float uiScale);
+
 } // namespace designer
