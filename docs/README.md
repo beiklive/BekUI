@@ -11,6 +11,7 @@
 | [`bklv-api.md`](bklv-api.md) | bklv 移植层速查：文件职责表、Box 布局调用、交互与内容控件、imgui.ini 开关、日志约定、已知的坑、分层约定 |
 | [`icon-fonts.md`](icon-fonts.md) | **图标字体规则**：两套字体（Material / switch_icons）、码位必须与字体配对、按层指定与运行时切换、三种典型写错方式 |
 | [`json-syntax.md`](json-syntax.md) | **JSON 语法速查**：视图描述 / 控件外观 / 主题 / 文案 四类 JSON 的完整键表、取值形式、枚举拼写与报错行为 |
+| [`glass-layer-feasibility.md`](glass-layer-feasibility.md) | **调研**：液态玻璃能不能做成 bklv 的一层、用 Shell 接口配置 —— 现状盘点、两种"层"的取舍、要动的地方与行数、API 草案、六个坑、分阶段计划 |
 | [`dependencies.md`](dependencies.md) | **依赖清单**（可直接转发）：9 个 vendored 子模块及版本/许可证、各平台要装的东西、随包资源体积 |
 
 ## 规划
