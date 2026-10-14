@@ -74,9 +74,11 @@ Box* makeItemRow(View* item)
 }
 
 // 小节 = 卡片 + header（控件名）。一个基础控件一节。
+// 卡片用**半透明玻璃卡**：页面壁纸透出来，节里的"玻璃版本"控件才有背景可采、糊得出效果
+//（不透明深色底上玻璃只能糊自己，看着就是块纯色 —— 设计器那边同样踩过）。
 Rectangle* makeSection(const char* titleKey)
 {
-    Rectangle* card = makeCard();
+    Rectangle* card = makeCard("card.glass");
     card->addView(makeText(getStr(titleKey), getTheme().number("metric.font.size.md", 18.0f),
         getTheme().color("color.text.primary")));
     return card;
@@ -101,14 +103,16 @@ Box* makeStateRow(const char* stateKey, View* item, bool stretch = true)
 }
 
 // 按钮的一个状态：state 传空串 = 默认态
-Button* makeStateButton(
-    const char* variant, const std::string& text, const char* state, const char* iconName)
+Button* makeStateButton(const char* variant, const std::string& text, const char* state,
+    const char* iconName, bool glass = false)
 {
     Button* button = makeVariantButton(variant, text);
     if (iconName != nullptr)
         button->setIcon(glyph(iconName));
     if (state != nullptr && state[0] != 0)
         button->setAppearanceState(state, true);
+    if (glass)
+        button->setAppearanceVariant("glass");   // 主题里的 <外观>.glass：底换成液态玻璃
     return button;
 }
 
@@ -131,6 +135,10 @@ void addButtonStates(Rectangle* section, const char* variant, const std::string&
     for (const StateSpec& spec : kStates)
         section->addView(makeStateRow(
             spec.key, makeStateButton(variant, text, spec.state, iconName), stretch));
+
+    // 同一个控件的**液态玻璃版本**（外观变体 glass：底是玻璃，文字/图标不变）
+    section->addView(makeStateRow("base_widgets/state_glass",
+        makeStateButton(variant, text, "", iconName, true), stretch));
 }
 
 // 开关一族：开 / 关两行（on / off 本身就是它的状态）
@@ -146,6 +154,28 @@ void addSwitchStates(
     off->setSwitched(false);
     off->setInfoText(getStr("base_widgets/off"));
     section->addView(makeStateRow("base_widgets/state_off", off));
+
+    Button* glass = makeStateButton(variant, text, "", iconName, true);
+    glass->setSwitched(true);
+    glass->setInfoText(getStr("base_widgets/on"));
+    section->addView(makeStateRow("base_widgets/state_glass", glass));
+}
+
+// 玻璃板：给"没有自己的面"的控件（文字/图片/滑块/进度）用的液态玻璃版本 ——
+// 控件放在一块玻璃上，读作"这个控件在液态玻璃里"。
+Rectangle* makeGlassPlate(View* content)
+{
+    Rectangle* plate = new Rectangle();
+    plate->setAppearanceName("base/glass_plate");
+    content->setGrow(1.0f);
+    plate->addView(content);
+    return plate;
+}
+
+// 玻璃板一行（状态名 + 板子）
+Box* makeGlassPlateRow(View* content)
+{
+    return makeStateRow("base_widgets/state_glass", makeGlassPlate(content));
 }
 
 // 文字：正文大小 + 主色
@@ -160,6 +190,9 @@ Label* bodyText(const std::string& text)
 Box* buildBaseWidgetsPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
+
+    // 壁纸铺满整页、最先绘制：小节卡片是半透明的，玻璃版本控件才有背景可采、糊得出效果
+    page->addView(makeGlassWallpaper());
     page->addView(makeHint(getStr("base_widgets/hint")));
 
     // ---------------------------------------------------------------- 容器
@@ -171,6 +204,11 @@ Box* buildBaseWidgetsPage()
         box->setAppearanceName("base/box");
         box->addView(bodyText(getStr("base_widgets/box_inner")));
         section->addView(makeItemRow(box));
+
+        Rectangle* glassBox = new Rectangle();
+        glassBox->setAppearanceName("base/box");
+        glassBox->addView(bodyText(getStr("base_widgets/box_inner")));
+        section->addView(makeGlassPlateRow(glassBox));
         section->addView(makeHint(getStr("base_widgets/box_hint")));
         page->addView(section);
     }
@@ -187,6 +225,10 @@ Box* buildBaseWidgetsPage()
         inner->addView(bodyText(getStr("base_widgets/component_inner")));
         layout->addView(inner);
         section->addView(makeItemRow(layout));
+
+        Rectangle* glassInner = makeComponentBox();
+        glassInner->addView(bodyText(getStr("base_widgets/component_inner")));
+        section->addView(makeGlassPlateRow(glassInner));
         section->addView(makeHint(getStr("base_widgets/layout_hint")));
         page->addView(section);
     }
@@ -197,6 +239,10 @@ Box* buildBaseWidgetsPage()
         Rectangle* box     = makeComponentBox();
         box->addView(bodyText(getStr("base_widgets/component_inner")));
         section->addView(makeItemRow(box));
+
+        Rectangle* glassBox = makeComponentBox();
+        glassBox->addView(bodyText(getStr("base_widgets/component_inner")));
+        section->addView(makeGlassPlateRow(glassBox));
         section->addView(makeHint(getStr("base_widgets/component_hint")));
         page->addView(section);
     }
@@ -212,6 +258,7 @@ Box* buildBaseWidgetsPage()
             getTheme().number("metric.font.size.sm", 15.0f),
             getTheme().color("color.text.primary"), true);
         section->addView(makeStateRow("base_widgets/state_single_line", truncated));
+        section->addView(makeGlassPlateRow(bodyText(getStr("base_widgets/label_body"))));
         section->addView(makeHint(getStr("base_widgets/label_hint")));
         page->addView(section);
     }
@@ -227,6 +274,12 @@ Box* buildBaseWidgetsPage()
         row->addView(image);
         row->addView(makeHint(getStr("base_widgets/image_hint")));
         section->addView(row);
+
+        Image* glassImage = new Image();
+        glassImage->setImageFromFileAsync("resources/testcard.png");
+        glassImage->setWidth(120.0f);
+        glassImage->setHeight(120.0f);
+        section->addView(makeGlassPlateRow(glassImage));
         page->addView(section);
     }
 
@@ -240,6 +293,10 @@ Box* buildBaseWidgetsPage()
             value->setText(getStr("base_widgets/slider_value", (int)(progress * 100.0f)));
         });
         section->addView(makeStateRow("base_widgets/state_default", slider));
+
+        Slider* glassSlider = new Slider();
+        glassSlider->setProgress(0.4f);
+        section->addView(makeGlassPlateRow(glassSlider));
         section->addView(value);
         section->addView(makeHint(getStr("base_widgets/slider_hint")));
         page->addView(section);
@@ -256,6 +313,10 @@ Box* buildBaseWidgetsPage()
         row->addView(slow);
         row->addView(makeHint(getStr("base_widgets/spinner_hint")));
         section->addView(row);
+
+        Box* glassRow = makeRow(getTheme().number("metric.spacing.lg", 16.0f));
+        glassRow->addView(new ProgressSpinner());
+        section->addView(makeGlassPlateRow(glassRow));
         page->addView(section);
     }
 
@@ -359,6 +420,17 @@ Box* buildBaseWidgetsPage()
             trigger->setInfoText(dropdown->getSelectedText());
         });
         section->addView(makeItemRow(dropdown));
+
+        Dropdown* glassDropdown = new Dropdown();
+        glassDropdown->setOptions({ getStr("base_widgets/option_a"),
+            getStr("base_widgets/option_b"), getStr("base_widgets/option_c") }, 0);
+        AppearanceView* glassTrigger = glassDropdown->getTrigger();
+        glassTrigger->setAppearanceName("widget/button.dropdown");
+        glassTrigger->setAppearanceVariant("glass");
+        glassTrigger->setIcon(glyph("list"));
+        glassTrigger->setText(getStr("base_widgets/btn_dropdown"));
+        glassTrigger->setInfoText(glassDropdown->getSelectedText());
+        section->addView(makeStateRow("base_widgets/state_glass", glassDropdown));
         section->addView(makeHint(getStr("base_widgets/dropdown_hint")));
         page->addView(section);
     }
@@ -372,6 +444,12 @@ Box* buildBaseWidgetsPage()
         number->setOnValueChanged(
             [](float value) { BKLV_LOG_INFO("选择器（数值）：%.1f", (double)value); });
         section->addView(makeItemRow(number));
+
+        SelectorButton* glassNumber = new SelectorButton(getStr("base_widgets/btn_selector_number"));
+        glassNumber->setIcon(glyph("palette"));
+        glassNumber->setNumberRange(0.0f, 100.0f, 5.0f, 1, 40.0f);
+        glassNumber->setAppearanceVariant("glass");
+        section->addView(makeStateRow("base_widgets/state_glass", glassNumber));
         section->addView(makeHint(getStr("base_widgets/selector_hint")));
         page->addView(section);
     }
@@ -388,6 +466,14 @@ Box* buildBaseWidgetsPage()
             BKLV_LOG_INFO("选择器（列表）：" + std::to_string(index) + " " + text);
         });
         section->addView(makeItemRow(list));
+
+        SelectorButton* glassList = new SelectorButton(getStr("base_widgets/btn_selector_list"));
+        glassList->setIcon(glyph("list"));
+        glassList->setOptions({ getStr("base_widgets/option_a"), getStr("base_widgets/option_b"),
+            getStr("base_widgets/option_c") });
+        glassList->setArrowStyle(SelectorArrow::LR);
+        glassList->setAppearanceVariant("glass");
+        section->addView(makeStateRow("base_widgets/state_glass", glassList));
         page->addView(section);
     }
 

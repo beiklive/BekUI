@@ -241,6 +241,17 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
     return AppearanceLayer::Op::RECT;
 }
 
+// `op: "glass"` 表达的是"这个控件的底是玻璃"，所以**永远排在最前**（早于 bg/阴影/内容）。
+// 解析期排一次序，这样主题里可以用 `import` 基外观 + 追加一层 glass 的写法做玻璃变体，
+// 不用关心书写位置（否则玻璃会盖住内容 —— 这是最容易犯的错）。
+void hoistGlassLayers(std::vector<AppearanceLayer>& layers)
+{
+    std::stable_sort(layers.begin(), layers.end(),
+        [](const AppearanceLayer& a, const AppearanceLayer& b) {
+            return a.op == AppearanceLayer::Op::GLASS && b.op != AppearanceLayer::Op::GLASS;
+        });
+}
+
 // 状态优先级：同一属性被多个状态同时管着时，优先级高的说了算。
 int priorityOf(const std::string& state)
 {
@@ -653,6 +664,9 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
 
         appearance->layers.push_back(layer);
     }
+
+    // 玻璃层一律提到最前（见 hoistGlassLayers 的注释）
+    hoistGlassLayers(appearance->layers);
 
     // ---- 盒模型/布局（顶层 "box" 段）----
     if (doc.contains("box") && doc["box"].is_object())

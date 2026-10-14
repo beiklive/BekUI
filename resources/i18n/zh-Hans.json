@@ -24,8 +24,7 @@
     "pokedex": "图鉴",
     "shadow": "阴影",
     "icons": "图标",
-    "base": "基础控件",
-    "glass": "玻璃"
+    "base": "基础控件"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -152,8 +151,7 @@
     "pokedex_sub": "分段回收列表 + 详情页导航",
     "shadow_sub": "外观 JSON 的 shadow 层与模糊档位",
     "icons_sub": "两套图标字体的全部字形：一排 10 个，格子下面是码位",
-    "base_sub": "容器与按钮变体",
-    "glass_sub": "液态玻璃（GL / Switch / Vulkan）"
+    "base_sub": "容器与按钮变体"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -351,12 +349,7 @@
     "icon_hint": "两款都是 48×48：正方形的圆角取 component.radius，圆形四层都用 radius.round(=999)，图标层 align/valign 都是 center，所以是真正的完全居中。",
     "sec_btn_list": "按钮 · 列表（无边框）",
     "btn_list": "列表按钮",
-    "list_hint": "普通按钮的列表元素款：外观 widget/button.list 把边框去掉了（bg.stroke 透明 + strokeWidth 0），文字改成正常左对齐 —— 尺寸、内边距、状态动效跟普通按钮一致。"
-  },
-  "glass": {
-    "hint": "左边是**玻璃卡**（视图在自己的绘制里声明“这一块要玻璃”），右边是同样尺寸的不透明卡。玻璃采的是“这一帧到此刻已经画好的内容”，所以背景必须先画。",
-    "glass_card": "玻璃卡（声明了玻璃）",
-    "opaque": "不透明卡（没声明玻璃 → 一个像素都不该被影响）",
-    "backend_hint": "后端不可用时自动退回不透明底（右侧那张卡就是对照）；开关与档位在 Shell 上：setGlassEnabled / setGlassQuality / getGlassTuning。"
+    "list_hint": "普通按钮的列表元素款：外观 widget/button.list 把边框去掉了（bg.stroke 透明 + strokeWidth 0），文字改成正常左对齐 —— 尺寸、内边距、状态动效跟普通按钮一致。",
+    "state_glass": "玻璃"
   }
 }

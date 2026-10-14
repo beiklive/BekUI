@@ -16,8 +16,8 @@ DemoApp::DemoApp()
 {
     // ---- 外壳：Shell 四层 ----
     this->shell = new Shell();
-    // 玻璃是 opt-in：这里打开**总开关**，但只有声明了玻璃的视图（玻璃展示页那张卡）
-    // 才会真的吃到效果 —— 其它页面一个像素都不受影响。
+    // 玻璃是 opt-in：这里打开**总开关**，但只有外观里写了 `op: "glass"` 的控件
+    // 才吃得到效果 —— 其它控件一个像素都不受影响（基础控件页每个控件都有一行玻璃版本）。
     this->shell->setGlassEnabled(true);
 
     this->header = new Header();
@@ -237,7 +237,6 @@ Box* DemoApp::buildPage(size_t index)
         case 12: return buildShadowPage();
         case 13: return buildIconsPage();
         case 14: return buildBaseWidgetsPage();
-        case 15: return buildGlassPage();
         default: return nullptr;
     }
 }

@@ -22,6 +22,13 @@ bklv::Label* makeHint(const std::string& text);
 // 卡片：外观是 widgets/rectangle.card.json，内边距取 metric.card.padding
 bklv::Rectangle* makeCard();
 
+// 变体版："card" 是不透明卡片，"card.glass" 是半透明玻璃卡片（主题里的 base/rectangle.card.glass）
+bklv::Rectangle* makeCard(const std::string& variant);
+
+// 玻璃的"背景"：渐变 + 斜条纹 + 柔光圆，铺在外壳的背景层（最早绘制）。
+// 玻璃采的是"这一帧已经画好的内容"，所以它必须在最底层、且要够亮 + 有高频细节。
+bklv::View* makeGlassWallpaper();
+
 // 横向一行 / 纵向一列
 bklv::Box* makeRow(float gap = 12.0f, bklv::AlignItems align = bklv::AlignItems::CENTER);
 bklv::Box* makeColumn(float gap = 10.0f);
