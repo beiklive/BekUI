@@ -760,6 +760,17 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      背景 → 玻璃 → 我的内容。自己手填 `drawCommandOffset` 就会踩这个坑。
      验收：玻璃卡内"无文字区"的横向梯度要远低于壁纸（实测 0.07 vs 3.43），
      同时标题亮像素 > 0（文字在玻璃之上）。
+  6b）**改守卫必须核实，别信"替换成功"**（Switch 上玻璃一直不生效的真因）：
+     `bklv/backends/gl_glass.cpp` 的守卫实际只有 `#if defined(BKLV_OPENGL)` ——
+     某次"改成 `|| defined(BKLV_GLES3)`"的字符串替换是**静默空操作**（没匹配上），事后没核实，
+     于是 Switch 上一直编的是文件末尾那份**"能力为空"的桩**（对象文件 2.6KB，真实现 33KB），
+     玻璃在真机上永远不可用、而且**一条日志都不会打**（桩里没有日志）。
+     核实办法：`nm -C build/switch/bklv/backends/gl_glass.o | grep -cE "renderBlur|createTarget"`
+     → **0 就是编成了桩**。
+     同理：`gl_glass_procs.hpp` 在 ES3 下把自带的 GL 类型/枚举让给 `<GLES3/gl3.h>`，
+     就必须**自己包含那个头**，否则真实现一编就是一片 `GLuint has not been declared`。
+     另：玻璃开启但后端不可用时 `GlassService` 会打 `[玻璃] 已开启但后端不可用` 的告警 ——
+     在真机上看到它，先按这条查。
   5）**不引入构建期工具**：着色器是 GLSL 150 常量字符串（`gl_shaders.cpp`），
      公共模块（blur_kernel / glass_math / glass_color / glass_lighting）直接内联，
      不需要 glslc / SPIR-V 生成步骤。着色器改自 MIT 项目，版权声明留在文件头。
