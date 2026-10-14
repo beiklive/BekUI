@@ -244,6 +244,11 @@ void SelectorButton::refreshInfoText()
 
 std::string SelectorButton::getLayerText(const std::string& source)
 {
+    // LR 模式是**普通字母**（走正文字体）；ARROWS 模式是 Material 图标字体的私有区字形
+    // （getLayerFont() 会把 arrowLeft/arrowRight 两层切到 Material）。
+    // 字形用 icon::utf8Glyph(码位) 取：U+E5CB / U+E5CC 就是 Material 的
+    // chevron_left / chevron_right。**不要写 std::to_string("\uXXXX")** ——
+    // 实参是 const char*，没有匹配的重载（编不过）；就算能编也不是"把码位转字形"的意思。
     if (source == "arrowLeft")
         return this->arrowStyle == SelectorArrow::LR ? "L" : icon::utf8Glyph(0xE5CB);
     if (source == "arrowRight")

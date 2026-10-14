@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "bklv/bklv.hpp"
+#include "bklv/core/icon_font.hpp"
 #include "bklv/core/input.hpp"
 #include "tests/test_util.hpp"
 
@@ -214,6 +215,37 @@ int main()
         check(getInputManager().getFocusCapture() == nullptr, "失焦也放开捕获");
 
         delete selector;
+    }
+
+    std::printf("\n== 6b. 选择器箭头层的文字（LR 是字母，ARROWS 是图标字形）==\n");
+    {
+        // getLayerText 是 protected 的扩展点（给子类翻译内容用），测试用一个薄壳把它提上来
+        struct ArrowProbe : SelectorButton
+        {
+            using SelectorButton::SelectorButton;   // 继承构造函数
+            using SelectorButton::getLayerText;     // 把扩展点提成 public 给测试用
+        };
+
+        ArrowProbe selector("箭头");
+        selector.setArrowStyle(SelectorArrow::LR);
+        checkEqual(selector.getLayerText("arrowLeft"), "L", "LR 模式左箭头是字母 L");
+        checkEqual(selector.getLayerText("arrowRight"), "R", "LR 模式右箭头是字母 R");
+
+        selector.setArrowStyle(SelectorArrow::ARROWS);
+        const std::string left  = selector.getLayerText("arrowLeft");
+        const std::string right = selector.getLayerText("arrowRight");
+
+        // 私有区字形是 3 字节 UTF-8；这里也顺便钉住"绝不是一个数字"——
+        // std::to_string("\uE5CB") 那种写法语法上骗得过编译器，却会返回 "1"（踩过）
+        check(left.size() == 3 && right.size() == 3, "ARROWS 模式是 3 字节 UTF-8 字形");
+        check(left != "1" && right != "1", "箭头不是数字 1（to_string 的坑）");
+        check(left != right, "左右箭头字形不一样");
+        checkEqual(left, icon::utf8Glyph(0xE5CB), "左箭头 = Material chevron_left（U+E5CB）");
+        checkEqual(right, icon::utf8Glyph(0xE5CC), "右箭头 = Material chevron_right（U+E5CC）");
+
+        // 其它 source 仍然走 Button 的那套（图标 / 文字 / 信息）
+        selector.setText("选项");
+        checkEqual(selector.getLayerText("text"), "选项", "非箭头层仍走 Button::getLayerText");
     }
 
     std::printf("\n== 7. 主题里的 view/ 也能取到 ==\n");
