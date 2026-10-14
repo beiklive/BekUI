@@ -902,12 +902,46 @@ const char* logLevelTag(bklv::LogLevel level)
 
 } // namespace
 
+void DesignerWindow::applyGlassToFloatingWindows()
+{
+    if (!this->glass.isEnabled())
+        return;
+
+    ImGuiContext* context = ImGui::GetCurrentContext();
+    if (context == nullptr)
+        return;
+
+    // 主窗自己按"面板/横条"上过玻璃了；子窗跟着父窗走；提示浮层不铺玻璃（会糊住字）
+    static const char* kMainWindow = "bklv 设计器";
+
+    for (int index = 0; index < context->Windows.Size; index++)
+    {
+        ImGuiWindow* window = context->Windows[index];
+        if (window == nullptr || !window->Active || window->Hidden || window->SkipItems)
+            continue;
+        if (window->DrawList == nullptr || window->Name == nullptr)
+            continue;
+        if ((window->Flags & ImGuiWindowFlags_ChildWindow) != 0)
+            continue; // 子窗画在父窗的 draw list 上，父窗已经处理过
+        if ((window->Flags & ImGuiWindowFlags_Tooltip) != 0)
+            continue;
+        if (std::string(window->Name) == kMainWindow)
+            continue;
+
+        const ImVec2 pos  = window->Pos;
+        const ImVec2 size = window->Size;
+        if (size.x < 4.0f || size.y < 4.0f)
+            continue;
+
+        // 注入点 0：玻璃落在窗口自己的底色/内容之前 —— 弹窗底是半透明的，叠上去正好
+        this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
+            window->DrawList, 0);
+    }
+}
+
 void DesignerWindow::drawGlassTuningPanel()
 {
     glass::GlassTuning& tuning = this->glass.getTuning();
-
-    ImDrawList* list = ImGui::GetForegroundDrawList();
-    const int offset = list->CmdBuffer.Size;
 
     ImGui::SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond_FirstUseEver);
     // 底给一薄层：玻璃在预览区会被裁掉（禁区），那时还得看得清字
@@ -922,13 +956,6 @@ void DesignerWindow::drawGlassTuningPanel()
     }
     if (!open)
         tuning.showPanel = false;
-
-    {
-        const ImVec2 pos  = ImGui::GetWindowPos();
-        const ImVec2 size = ImGui::GetWindowSize();
-        this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
-            ImGui::GetWindowDrawList(), offset);
-    }
 
     ImGui::Checkbox("启用玻璃", &tuning.enabled);
     ImGui::SameLine();
@@ -989,8 +1016,6 @@ void DesignerWindow::drawLogPanel()
     bool open = true;
     // 浮窗也走玻璃：先把底设透明（否则玻璃采到的是浮窗自己的纯色底），
     // 再按窗口矩形交一块玻璃 —— 注入点在窗口内容之前
-    ImDrawList* logList = ImGui::GetForegroundDrawList();
-    const int logOffset = logList != nullptr ? logList->CmdBuffer.Size : 0;
     ImGui::SetNextWindowBgAlpha(0.35f);
     if (!ImGui::Begin("bklv 日志", &open, ImGuiWindowFlags_NoSavedSettings))
     {
@@ -1001,13 +1026,6 @@ void DesignerWindow::drawLogPanel()
     }
     if (!open)
         this->showLogPanel = false;
-
-    {
-        const ImVec2 pos  = ImGui::GetWindowPos();
-        const ImVec2 size = ImGui::GetWindowSize();
-        this->glass.addPanel(ImVec4(pos.x, pos.y, pos.x + size.x, pos.y + size.y),
-            ImGui::GetWindowDrawList(), logOffset);
-    }
 
     const std::deque<bklv::LogEntry>& logs = bklv::Logger::getLogs();
     ImGui::Text("日志 %zu 条", logs.size());
@@ -5378,22 +5396,22 @@ void DesignerWindow::draw()
         ImDrawList* background = ImGui::GetBackgroundDrawList();
         const ImVec2 size = io.DisplaySize;
         background->AddRectFilledMultiColor(ImVec2(0.0f, 0.0f), size,
-            IM_COL32(22, 26, 40, 255), IM_COL32(30, 24, 46, 255), IM_COL32(16, 20, 32, 255),
-            IM_COL32(20, 30, 40, 255));
+            IM_COL32(20, 24, 36, 255), IM_COL32(26, 21, 40, 255), IM_COL32(14, 18, 29, 255),
+            IM_COL32(18, 27, 36, 255));
         // 柔光 + 斜条纹：纯渐变太平，玻璃的模糊/折射看不出来，得有结构
         background->AddCircleFilled(ImVec2(size.x * 0.16f, size.y * 0.30f), size.y * 0.46f,
-            IM_COL32(72, 132, 255, 96), 64);
+            IM_COL32(72, 132, 255, 58), 64);
         background->AddCircleFilled(ImVec2(size.x * 0.90f, size.y * 0.80f), size.y * 0.38f,
-            IM_COL32(255, 84, 186, 84), 64);
+            IM_COL32(255, 84, 186, 50), 64);
         background->AddCircleFilled(ImVec2(size.x * 0.60f, size.y * 0.04f), size.y * 0.30f,
-            IM_COL32(80, 240, 210, 72), 64);
+            IM_COL32(80, 240, 210, 42), 64);
 
         for (int stripe = -6; stripe < 14; stripe++)
         {
             const float offset = (float)stripe * size.y * 0.16f;
             background->AddQuadFilled(ImVec2(offset, size.y), ImVec2(offset + size.y * 0.5f, 0.0f),
                 ImVec2(offset + size.y * 0.5f + size.x * 0.06f, 0.0f),
-                ImVec2(offset + size.x * 0.06f, size.y), IM_COL32(255, 255, 255, 22));
+                ImVec2(offset + size.x * 0.06f, size.y), IM_COL32(255, 255, 255, 13));
         }
     }
 
@@ -5528,12 +5546,21 @@ void DesignerWindow::draw()
 
     if (this->previewMaximized)
     {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, currentDesignerPalette().page);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
         ImGui::BeginChild("##previewMax", ImVec2(0, 0), true);
-        this->glass.excludeRect(ImVec4(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y,
-            ImGui::GetWindowPos().x + ImGui::GetWindowSize().x,
-            ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
+        {
+            constexpr float kGlassMargin = 8.0f;
+            const ImVec2 previewPos  = ImGui::GetWindowPos();
+            const ImVec2 previewSize = ImGui::GetWindowSize();
+            this->glass.excludeRect(ImVec4(previewPos.x - kGlassMargin,
+                previewPos.y - kGlassMargin, previewPos.x + previewSize.x + kGlassMargin,
+                previewPos.y + previewSize.y + kGlassMargin));
+        }
         this->drawPreview();
         ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
         this->drawModals();
         ImGui::End();
         this->glass.endFrame();
@@ -5616,13 +5643,29 @@ void DesignerWindow::draw()
     }
     ImGui::SameLine();
 
-    ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0), true);
-    // 预览区是玻璃禁区：这里渲染的是主题 JSON 的真实效果，一个像素都不许被玻璃影响
-    this->glass.excludeRect(ImVec4(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y,
-        ImGui::GetWindowPos().x + ImGui::GetWindowSize().x,
-        ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
+    // 预览是"画布"：显式压一层不透明底 —— 面板默认透明是为了让玻璃透出来，
+    // 但预览区必须是干净的画面（也不能让壁纸透进来）
+    // 预览面板：不透明底 + **直角**。圆角会把背后（壁纸/玻璃）露出来，
+    // 那样"预览区一个玻璃像素都不能有"就保不住（实测圆角那 2 行会透出横条玻璃）
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, currentDesignerPalette().page);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 0.10f));
+    ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0),
+        ImGuiChildFlags_Borders);
+    // 预览区是玻璃禁区：这里渲染的是主题 JSON 的真实效果，一个像素都不许被玻璃影响。
+    // 往外多留 8px：玻璃的外阴影会把绘制范围外扩几像素，不留缝就会渗进预览面板边缘
+    {
+        constexpr float kGlassMargin = 8.0f;
+        const ImVec2 previewPos  = ImGui::GetWindowPos();
+        const ImVec2 previewSize = ImGui::GetWindowSize();
+        this->glass.excludeRect(ImVec4(previewPos.x - kGlassMargin, previewPos.y - kGlassMargin,
+            previewPos.x + previewSize.x + kGlassMargin,
+            previewPos.y + previewSize.y + kGlassMargin));
+    }
     this->drawPreview();
     ImGui::EndChild();
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar();
 
     ImGui::SameLine();
     this->rightWidthUi = (int)this->drawVerticalSplitter("##splitRight", rightWidth, 300.0f,
@@ -5666,6 +5709,9 @@ void DesignerWindow::draw()
             this->pushUndoSnapshot();
         this->lastFrameText = now;
     }
+
+    // 所有浮窗（弹窗 / 下拉 / 日志 / 调参面板）统一补玻璃：一处覆盖，风格一致
+    this->applyGlassToFloatingWindows();
 
     // 玻璃收口：这一帧要哪些玻璃面就这些了
     this->glass.endFrame();

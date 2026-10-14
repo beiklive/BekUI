@@ -688,6 +688,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      那块得有底色才看得清字。
      自查开关：`BKLV_DESIGNER_GLASS=0` 关玻璃、`BKLV_DESIGNER_GLASS_PANEL=1` 开局就展开调参面板
      （**必须在 loadUiState() 之后生效**，否则被状态文件盖掉）。
+  8）**界面控件也走同一套风格**：`applyDesignerStyle()` 里所有控件底一律用"磨砂白"
+     （`ImGuiCol_FrameBg/Button/Tab/TableHeaderBg…` 都是半透明白，不再铺不透明灰块），
+     圆角统一 8~12；因为面板背后有玻璃，控件看起来就是玻璃上的磨砂片。
+     `WindowBg/ChildBg/MenuBarBg` 全透明（底交给玻璃），但**预览面板要显式压一层
+     不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
+     所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
+     遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
 
 ## 测试
 

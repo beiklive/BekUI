@@ -206,6 +206,8 @@ class DesignerWindow
     void drawLogPanel();
     // 玻璃调参面板（F4 / 工具菜单）：滑块直接改 DesignerGlass 的 GlassTuning
     void drawGlassTuningPanel();
+    // 给所有浮窗（弹窗 / 下拉 / 浮动面板）统一补玻璃，风格一致
+    void applyGlassToFloatingWindows();
 
     void setDebugPanelsForTest(bool log, bool focusOrder)
     {

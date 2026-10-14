@@ -74,91 +74,103 @@ void applyDesignerStyle(float uiScale)
     // 尺寸：先按"100%"写死，再乘缩放 —— 每次调用都幂等，不用维护"原始尺寸"副本
     const float s = uiScale;
 
-    // 扁平：**一律直角**（没有圆角、没有抬起感），靠纯色块 + 1px 细线分区
-    style.WindowRounding    = 0.0f;
-    style.ChildRounding     = 0.0f;
-    style.FrameRounding     = 0.0f;
-    style.PopupRounding     = 0.0f;
-    style.ScrollbarRounding = 0.0f;
-    style.GrabRounding      = 0.0f;
-    style.TabRounding       = 0.0f;
+    // ---- 玻璃风：圆角 + 半透明填充 ----
+    // 面板/横条背后已经有一层玻璃（designer/glass/），所以控件自己**不再铺不透明底**：
+    // 一律用半透明白做"磨砂片"，这样同一套样式放在玻璃上、放在普通面板上都成立，
+    // 也不会再出现 ImGui 默认那种灰色实心方块。
+    style.WindowRounding    = 12.0f * s;
+    style.ChildRounding     = 10.0f * s;
+    style.FrameRounding     = 10.0f * s;
+    style.PopupRounding     = 12.0f * s;
+    style.ScrollbarRounding = 8.0f * s;
+    style.GrabRounding      = 8.0f * s;
+    style.TabRounding       = 10.0f * s;
     style.WindowBorderSize  = 0.0f;
-    style.ChildBorderSize   = 1.0f;
+    style.ChildBorderSize   = 0.0f;
     style.FrameBorderSize   = 1.0f;
     style.PopupBorderSize   = 1.0f;
 
-    style.WindowPadding    = ImVec2(10.0f * s, 8.0f * s);
-    style.FramePadding     = ImVec2(8.0f * s, 4.0f * s);
-    style.CellPadding      = ImVec2(6.0f * s, 3.0f * s);
-    style.ItemSpacing      = ImVec2(8.0f * s, 5.0f * s);
-    style.ItemInnerSpacing = ImVec2(6.0f * s, 4.0f * s);
-    style.IndentSpacing    = 16.0f * s;
-    style.ScrollbarSize    = 10.0f * s;
-    style.GrabMinSize      = 9.0f * s;
+    style.WindowPadding    = ImVec2(12.0f * s, 10.0f * s);
+    style.FramePadding     = ImVec2(10.0f * s, 6.0f * s);
+    style.CellPadding      = ImVec2(8.0f * s, 4.0f * s);
+    style.ItemSpacing      = ImVec2(8.0f * s, 7.0f * s);
+    style.ItemInnerSpacing = ImVec2(7.0f * s, 5.0f * s);
+    style.IndentSpacing    = 18.0f * s;
+    style.ScrollbarSize    = 12.0f * s;
+    style.GrabMinSize      = 12.0f * s;
 
     auto set  = [&style](ImGuiCol index, const ImVec4& color) { style.Colors[index] = color; };
     auto alpha = [](const ImVec4& color, float a) {
         return ImVec4(color.x, color.y, color.z, a);
     };
+    // 磨砂白：玻璃上叠一层很淡的白（悬停/按下再亮一档）
+    auto frost = [](float a) { return ImVec4(1.0f, 1.0f, 1.0f, a); };
 
-    // ---- 三层底色 ----
-    set(ImGuiCol_WindowBg, palette.page);       // 编辑器
-    set(ImGuiCol_ChildBg, palette.card);        // 侧栏/面板
-    set(ImGuiCol_PopupBg, palette.card);
-    set(ImGuiCol_MenuBarBg, palette.raised);    // 菜单栏用抬头色
-    set(ImGuiCol_TitleBg, palette.raised);
-    set(ImGuiCol_TitleBgActive, palette.raised);
+    // ---- 三层底色：主窗交给玻璃，浮窗留一层薄底 ----
+    set(ImGuiCol_WindowBg, ImVec4(palette.page.x, palette.page.y, palette.page.z, 0.0f));
+    set(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));         // 面板背后是玻璃
+    set(ImGuiCol_PopupBg, alpha(palette.card, 0.55f)); // 弹窗：薄底 + 玻璃
+    set(ImGuiCol_MenuBarBg, ImVec4(0, 0, 0, 0));       // 菜单栏背后是横条玻璃
+    set(ImGuiCol_TitleBg, alpha(palette.raised, 0.8f));
+    set(ImGuiCol_TitleBgActive, alpha(palette.raised, 0.9f));
 
     // ---- 文字层级 ----
     set(ImGuiCol_Text, palette.textPrimary);
     set(ImGuiCol_TextDisabled, palette.textDisabled);
     set(ImGuiCol_TextSelectedBg, alpha(palette.focusBorder, 0.35f));
 
-    // ---- 边框：只留很淡的一层，靠底色区分而不是靠框线 ----
-    set(ImGuiCol_Border, palette.border);
+    // ---- 边框：玻璃的"边"，一律淡白细线 ----
+    set(ImGuiCol_Border, frost(0.12f));
     set(ImGuiCol_BorderShadow, ImVec4(0, 0, 0, 0));
-    set(ImGuiCol_Separator, palette.borderSubtle);
-    set(ImGuiCol_SeparatorHovered, palette.focusBorder);
+    set(ImGuiCol_Separator, frost(0.10f));
+    set(ImGuiCol_SeparatorHovered, alpha(palette.focusBorder, 0.7f));
     set(ImGuiCol_SeparatorActive, palette.focusBorder);
 
-    // ---- 输入框（VS Code 的 input.background 比侧栏更亮）----
-    set(ImGuiCol_FrameBg, palette.sunken);
-    set(ImGuiCol_FrameBgHovered, ImVec4(0.29f, 0.29f, 0.29f, 1.0f));
-    set(ImGuiCol_FrameBgActive, ImVec4(0.33f, 0.33f, 0.33f, 1.0f));
+    // ---- 输入框 / 下拉框 / 滑块轨道：磨砂片 ----
+    set(ImGuiCol_FrameBg, frost(0.07f));
+    set(ImGuiCol_FrameBgHovered, frost(0.12f));
+    set(ImGuiCol_FrameBgActive, frost(0.17f));
 
-    // ---- 交互蓝：按钮 / 勾选 / 滑块 ----
-    set(ImGuiCol_Button, palette.accent);
-    set(ImGuiCol_ButtonHovered, palette.accentPressed);
-    set(ImGuiCol_ButtonActive, ImVec4(0.05f, 0.33f, 0.51f, 1.0f));
+    // ---- 按钮：磨砂片；强调按钮仍用蓝（但半透明） ----
+    set(ImGuiCol_Button, frost(0.10f));
+    set(ImGuiCol_ButtonHovered, frost(0.16f));
+    set(ImGuiCol_ButtonActive, alpha(palette.accent, 0.65f));
     set(ImGuiCol_CheckMark, palette.focusBorder);
-    set(ImGuiCol_SliderGrab, palette.focusBorder);
-    set(ImGuiCol_SliderGrabActive, palette.accentPressed);
+    set(ImGuiCol_SliderGrab, frost(0.65f));
+    set(ImGuiCol_SliderGrabActive, palette.focusBorder);
 
-    // ---- 选中：背景块（不能只靠文字变色）；失焦时用更暗的一档 ----
-    set(ImGuiCol_Header, palette.selection);
-    set(ImGuiCol_HeaderHovered, ImVec4(0.05f, 0.31f, 0.47f, 1.0f));
-    set(ImGuiCol_HeaderActive, palette.selection);
-    set(ImGuiCol_NavCursor, palette.focusBorder);
+    // ---- 选中 / 悬停行 ----
+    set(ImGuiCol_Header, alpha(palette.accent, 0.45f));
+    set(ImGuiCol_HeaderHovered, frost(0.12f));
+    set(ImGuiCol_HeaderActive, alpha(palette.accent, 0.60f));
+    set(ImGuiCol_NavCursor, alpha(palette.focusBorder, 0.9f));
 
-    // ---- 滚动条：默认几乎隐形，悬停才明显（VS Code 就是这样）----
+    // ---- 滚动条：几乎隐形，悬停才亮 ----
     set(ImGuiCol_ScrollbarBg, ImVec4(0, 0, 0, 0));
-    set(ImGuiCol_ScrollbarGrab, ImVec4(0.47f, 0.47f, 0.47f, 0.35f));
-    set(ImGuiCol_ScrollbarGrabHovered, ImVec4(0.53f, 0.53f, 0.53f, 0.60f));
-    set(ImGuiCol_ScrollbarGrabActive, ImVec4(0.53f, 0.53f, 0.53f, 0.85f));
+    set(ImGuiCol_ScrollbarGrab, frost(0.22f));
+    set(ImGuiCol_ScrollbarGrabHovered, frost(0.38f));
+    set(ImGuiCol_ScrollbarGrabActive, frost(0.55f));
 
     set(ImGuiCol_ResizeGrip, ImVec4(0, 0, 0, 0));
     set(ImGuiCol_ResizeGripHovered, alpha(palette.focusBorder, 0.5f));
     set(ImGuiCol_ResizeGripActive, palette.focusBorder);
 
-    set(ImGuiCol_Tab, palette.card);
-    set(ImGuiCol_TabHovered, palette.raised);
-    set(ImGuiCol_TabSelected, palette.page);
+    // ---- 页签：玻璃片 ----
+    set(ImGuiCol_Tab, frost(0.05f));
+    set(ImGuiCol_TabHovered, frost(0.14f));
+    set(ImGuiCol_TabSelected, frost(0.18f));
+    set(ImGuiCol_TabSelectedOverline, alpha(palette.focusBorder, 0.9f));
+    set(ImGuiCol_TabDimmed, frost(0.03f));
+    set(ImGuiCol_TabDimmedSelected, frost(0.10f));
 
-    set(ImGuiCol_TableHeaderBg, palette.raised);
-    set(ImGuiCol_TableBorderStrong, palette.border);
-    set(ImGuiCol_TableBorderLight, palette.borderSubtle);
+    // ---- 表格 ----
+    set(ImGuiCol_TableHeaderBg, frost(0.08f));
+    set(ImGuiCol_TableBorderStrong, frost(0.14f));
+    set(ImGuiCol_TableBorderLight, frost(0.07f));
     set(ImGuiCol_TableRowBg, ImVec4(0, 0, 0, 0));
-    set(ImGuiCol_TableRowBgAlt, ImVec4(1, 1, 1, 0.02f));
+    set(ImGuiCol_TableRowBgAlt, frost(0.03f));
+
+    set(ImGuiCol_TextLink, alpha(palette.focusBorder, 0.95f));
 
     set(ImGuiCol_PlotLines, palette.focusBorder);
     set(ImGuiCol_PlotHistogram, palette.focusBorder);
