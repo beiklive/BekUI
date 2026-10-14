@@ -34,3 +34,5 @@
 | [`../notes/wiliwili-yoga-architecture.md`](../notes/wiliwili-yoga-architecture.md) | wiliwili 里 borealis + Yoga 的架构分析 |
 | [`../notes/borealis-to-imgui-port-assessment.md`](../notes/borealis-to-imgui-port-assessment.md) | 从 borealis 移植到 ImGui 的可行性评估 |
 | [`../notes/borealis-port-priorities.md`](../notes/borealis-port-priorities.md) | 移植的优先级与取舍 |
+
+- [基础控件页对照表](base-widgets-map.md)：基础控件页里每个控件的代码 / 类文件 / 外观名 / JSON 路径
