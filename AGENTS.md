@@ -552,6 +552,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `getIconFontCodepoints()` 裁到 U+E153 为止（`SWITCH_ICON_LAST_USABLE`）；
   `scanFontCodepoints()` 保持"原样扫"，要什么范围自己裁。
   另外 `setIconFont(ImFont*)` 可以手动指定图标字体（默认由 `loadFonts()` 装好后设）。
+  **"哪一层用哪套"按层声明**：`setLayerIconFontKind(layerId, MATERIAL|SWITCH)`（不指定就跟随
+  `setIconFontKind` 的全局那套），取指针走 `AppearanceView::iconFontFor(kind)`；
+  `getLayerFont()` 已经会读它，子类**不要**再重写 `getLayerFont` 硬编码字体。
+  **码位必须和字体配套**（同一码位在不同字体里是不同图标：选择器箭头踩过"画成笑脸+表格"），
+  完整规则、实测对照表与三种典型写错方式见 **`docs/icon-fonts.md`**。
 - **图片解码的统一契约**（`core/image_decoder.*`）：对外只有 `decodeImageFile/Memory`
   与 `decodeAnimationFile/Memory`，内部**按文件内容**分发（`detectImageFormat` /
   `probeImageSize` / `isImageSizeAllowed`）。三条硬约定：
@@ -582,7 +587,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      换基名（名字是主题里的完整路径，如 `widget/button.icon_text`）；一行放置靠层 inset。
   2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字形）与
      `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
-     `getLayerFont` 对 id/source 为 `icon` 的层返回图标字体（用正文字体会把图标画成方块）。
+     `getLayerFont` 对图标层返回图标字体（用正文字体会把图标画成方块）；
+     同一个控件里要多套图标字体混排就按层声明 `setLayerIconFontKind(layerId, kind)`
+     （见上面"图标有两套"那条与 `docs/icon-fonts.md`），**别重写 getLayerFont 硬编码**。
      **图标字体有两套，用哪套由控件说**：`setIconFontKind(IconFontKind::MATERIAL | SWITCH)`，
      **默认 MATERIAL**（`icon::font()`，控件图标用它；`icon::glyphByName("star")` 取字形）；
      SWITCH 那套（`getIconFont()`，按键/系统图标）**只给提示栏、菜单这类地方**用
