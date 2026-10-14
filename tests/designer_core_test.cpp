@@ -84,7 +84,7 @@ int main()
     std::error_code code;
     // ---- 玻璃观感预设（纯数据，无窗口可测）----
     {
-        using designer::glass::GlassTuning;
+        using bklv::glass::GlassTuning;
         using designer::glass::glassPresets;
 
         const std::vector<designer::glass::GlassPreset>& presets = glassPresets();

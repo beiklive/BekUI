@@ -3,13 +3,13 @@
 // 一次玻璃绘制的请求：一块矩形（可带圆角/胶囊/圆）加上采样与样式参数。
 // 后端按这些数据生成几何、采样背景、合成，不改 bklv 库里的任何东西。
 
-#include "designer/glass/glass_style.hpp"
+#include "bklv/glass/glass_style.hpp"
 
 #include "imgui.h"
 
 #include <cstdint>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 enum class GlassBackdropSource : uint8_t
@@ -47,4 +47,4 @@ struct EffectCapabilities
     uint32_t maxGlassRegions = 0;
 };
 
-} // namespace designer::glass
+} // namespace bklv::glass

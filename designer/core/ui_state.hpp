@@ -4,7 +4,7 @@
 //
 // 放在 core 是为了能测：以前 load/save 直接写在 UI 文件里，等于没有回归保护。
 
-#include "designer/glass/glass_tuning.hpp"
+#include "bklv/glass/glass_tuning.hpp"
 
 #include <string>
 
@@ -37,7 +37,7 @@ struct UiState
     bool previewSubtree   = false;
 
     // 玻璃观感（设计器界面上调的参数，见 DesignerGlass）
-    glass::GlassTuning glass{};
+    bklv::glass::GlassTuning glass{};
 
     std::string lastAppearance; // 上次打开的外观（编辑主题表时拿它当预览）
     std::string lastViewFile;   // 上次打开的页面视图

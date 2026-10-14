@@ -11,7 +11,8 @@
 //   3. 每条玻璃命令 → composite() 合成那一块
 //   4. 帧末 → finishFrame()
 
-#include "designer/glass/glass_queue.hpp"
+#include "designer/glass/glass_lib.hpp"
+#include "bklv/glass/glass_queue.hpp"
 
 #include <memory>
 

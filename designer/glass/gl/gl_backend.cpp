@@ -1,8 +1,9 @@
+#include "designer/glass/glass_lib.hpp"
 #include "designer/glass/gl/gl_backend.hpp"
 
 #include "bklv/core/logger.hpp"
 
-#include "designer/glass/glass_blur_plan.hpp"
+#include "bklv/glass/glass_blur_plan.hpp"
 #include "designer/glass/gl/gl_procs.hpp"
 #include "designer/glass/gl/gl_shaders.hpp"
 

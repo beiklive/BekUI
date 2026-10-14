@@ -1,6 +1,7 @@
 // Vulkan 版玻璃的实现。设计要点见头文件注释：
 // 只用 vkCmdBlitImage（mip 链下采样 = 模糊），不建管线、不用 SPIR-V。
 
+#include "designer/glass/glass_lib.hpp"
 #include "designer/glass/vk/vk_glass.hpp"
 
 #if defined(BKLV_VULKAN)

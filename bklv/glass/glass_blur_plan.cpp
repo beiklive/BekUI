@@ -1,9 +1,9 @@
-#include "designer/glass/glass_blur_plan.hpp"
+#include "bklv/glass/glass_blur_plan.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 namespace
@@ -66,4 +66,4 @@ GlassBlurPlan makeGlassBlurPlan(float physicalRadius, GlassQuality quality) noex
     return plan;
 }
 
-} // namespace designer::glass
+} // namespace bklv::glass

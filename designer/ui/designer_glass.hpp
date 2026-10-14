@@ -9,11 +9,13 @@
 // 时整体关闭，面板回退普通绘制，设计器不会因此不能用。
 // 开关：环境变量 BKLV_DESIGNER_GLASS=0 关掉（默认开）。
 
-#include "designer/glass/glass_queue.hpp"
-#include "designer/glass/glass_tuning.hpp"
+#include "designer/glass/glass_lib.hpp"
+#include "bklv/glass/glass_queue.hpp"
+#include "bklv/glass/glass_tuning.hpp"
 #include "designer/glass/gl/gl_backend.hpp"
 
 #include <string>
+#include <vector>
 
 #if defined(BKLV_VULKAN)
 #include <memory>
@@ -90,6 +92,11 @@ class DesignerGlass
     void submit(const ImVec4& rect, const glass::CornerRadii& radii,
         const glass::GlassStyle& style, ImDrawList* list, int commandOffset);
 
+    // 禁区（预览区）由设计器自己维护：库侧的队列只有 opt-in，不含裁剪机制
+    // （见 bklv/glass/glass_queue.hpp 的说明）。这里是**物理像素**坐标。
+    bool clipAgainstForbidden(ImVec4& rect) const;
+
+    std::vector<ImVec4> forbiddenRects;
     glass::GlassTuning tuning{};
     glass::GlGlassBackend backend;
     glass::GlassRequestQueue queue;

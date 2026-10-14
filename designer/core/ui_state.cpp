@@ -69,7 +69,7 @@ bool loadUiState(const std::string& path, UiState& out)
         && doc["glass"].value("version", 0) == kGlassTuningVersion)
     {
         const Json& g = doc["glass"];
-        glass::GlassTuning& t = out.glass;
+        bklv::glass::GlassTuning& t = out.glass;
         t.enabled             = g.value("enabled", t.enabled);
         t.blurRadius          = g.value("blurRadius", t.blurRadius);
         t.quality             = g.value("quality", t.quality);
@@ -118,7 +118,7 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     doc["previewMaximized"] = state.previewMaximized;
     doc["previewSubtree"]   = state.previewSubtree;
     {
-        const glass::GlassTuning& t = state.glass;
+        const bklv::glass::GlassTuning& t = state.glass;
         Json g                      = Json::object();
         g["version"]             = kGlassTuningVersion;
         g["enabled"]             = t.enabled;

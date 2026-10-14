@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 struct GlassTuning
@@ -71,4 +71,4 @@ struct GlassTuning
     }
 };
 
-} // namespace designer::glass
+} // namespace bklv::glass

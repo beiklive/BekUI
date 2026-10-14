@@ -12,7 +12,7 @@
 
 #include <cstdint>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 enum class GlassQuality : uint8_t
@@ -76,4 +76,4 @@ struct GlassBackdropStyle
     GlassQuality quality = GlassQuality::AUTO;
 };
 
-} // namespace designer::glass
+} // namespace bklv::glass

@@ -73,6 +73,7 @@ void DesignerGlass::beginFrame(int framebufferWidth, int framebufferHeight, floa
         : (this->tuning.quality >= 2 ? glass::GlassQuality::FULL
                                     : glass::GlassQuality::BALANCED);
 
+    this->forbiddenRects.clear();
     this->queue.beginFrame(backdrop, density);
 }
 
@@ -86,7 +87,7 @@ void DesignerGlass::addVulkanRect(const ImVec4& rect, ImDrawList* list, bool isB
     float minY = rect.y;
     float maxX = rect.z;
     float maxY = rect.w;
-    for (const ImVec4& forbidden : this->queue.getExcludedRects())
+    for (const ImVec4& forbidden : this->forbiddenRects)
     {
         const bool intersects = minX < forbidden.z && maxX > forbidden.x && minY < forbidden.w
             && maxY > forbidden.y;
@@ -203,9 +204,15 @@ void DesignerGlass::submit(const ImVec4& rect, const glass::CornerRadii& radii,
     // 传进来的是 ImGui 的逻辑坐标；玻璃着色器与 GL 视口都是物理像素，
     // 所以这里按 density 放大（Retina 上不放大，模糊半径与折射会差一倍）
     const float density = this->queue.getDensity();
-    glass::GlassRequest request;
-    request.minMax           = ImVec4(rect.x * density, rect.y * density, rect.z * density,
+    ImVec4 physical      = ImVec4(rect.x * density, rect.y * density, rect.z * density,
         rect.w * density);
+
+    // 预览区是禁区：裁到"避开的更大那一半"，全被吃掉就不交这块玻璃
+    if (!this->clipAgainstForbidden(physical))
+        return;
+
+    glass::GlassRequest request;
+    request.minMax           = physical;
     request.radii            = radii;
     request.style            = style;
     request.clipRect         = ImVec4(0.0f, 0.0f, (float)this->width, (float)this->height);
@@ -221,9 +228,51 @@ void DesignerGlass::excludeRect(const ImVec4& rect)
     if (!this->isEnabled())
         return;
 
+    // 这里传进来的是逻辑坐标；队列里存的是物理像素，统一换算后存本地
     const float density = this->queue.getDensity();
-    this->queue.excludeRect(ImVec4(rect.x * density, rect.y * density, rect.z * density,
+    this->forbiddenRects.push_back(ImVec4(rect.x * density, rect.y * density, rect.z * density,
         rect.w * density));
+}
+
+// 把一块玻璃裁到"避开禁区的更大那一半"；整块都被吃掉返回 false。
+// 逻辑与原来的 GlassRequestQueue::largestRemainder 一致（只是搬到了设计器这边）。
+bool DesignerGlass::clipAgainstForbidden(ImVec4& rect) const
+{
+    float minX = rect.x;
+    float minY = rect.y;
+    float maxX = rect.z;
+    float maxY = rect.w;
+
+    for (const ImVec4& forbidden : this->forbiddenRects)
+    {
+        const bool intersects = minX < forbidden.z && maxX > forbidden.x && minY < forbidden.w
+            && maxY > forbidden.y;
+        if (!intersects)
+            continue;
+
+        const float above = std::max(0.0f, forbidden.y - minY);
+        const float below = std::max(0.0f, maxY - forbidden.w);
+        const float left  = std::max(0.0f, forbidden.x - minX);
+        const float right = std::max(0.0f, maxX - forbidden.z);
+        const float best  = std::max(std::max(above, below), std::max(left, right));
+        if (best <= 0.0f)
+            return false;
+
+        if (best == above)
+            maxY = forbidden.y;
+        else if (best == below)
+            minY = forbidden.w;
+        else if (best == left)
+            maxX = forbidden.x;
+        else
+            minX = forbidden.z;
+    }
+
+    if (maxX <= minX || maxY <= minY)
+        return false;
+
+    rect = ImVec4(minX, minY, maxX, maxY);
+    return true;
 }
 
 void DesignerGlass::endFrame()

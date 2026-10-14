@@ -4,12 +4,12 @@
 // 逻辑与 imgui-liquid-glass 的 GlassBlurPolicy 一致：模糊在半分辨率上跑，
 // sigma 用工作纹素表示，配对采样把纹理请求数减半。
 
-#include "designer/glass/glass_style.hpp"
+#include "bklv/glass/glass_style.hpp"
 
 #include <array>
 #include <cstdint>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 inline constexpr uint32_t kGlassGaussianPairCapacity = 12;
@@ -24,4 +24,4 @@ struct GlassBlurPlan
 
 GlassBlurPlan makeGlassBlurPlan(float physicalRadius, GlassQuality quality) noexcept;
 
-} // namespace designer::glass
+} // namespace bklv::glass

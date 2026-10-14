@@ -314,6 +314,9 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 
 set(BKLV_CORE_SOURCES
     core/focus_ring.cpp
+    glass/glass_blur_plan.cpp
+    glass/glass_geometry.cpp
+    glass/glass_queue.cpp
     core/logger.cpp
     core/input.cpp
     core/shadow.cpp
