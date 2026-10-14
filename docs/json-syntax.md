@@ -208,7 +208,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 
 | 键 | 适用 op | 说明 |
 |---|---|---|
-| `op` | 全部 | `rect`(默认) / `text` / `image` / `shadow` / `custom` |
+| `op` | 全部 | `rect`(默认) / `text` / `image` / `shadow` / **`glass`** / `custom` |
 | `id` | 全部 | 状态里引用它；不写 = `op+序号` |
 | `fill` | rect, shadow | 填充色 |
 | `stroke` `strokeWidth` | rect | 描边色 / 宽 |
@@ -225,9 +225,14 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `valign` | 全部 | `center`(默认) / `top` / `bottom` |
 | `feather` `spread` | shadow | 羽化半径 / 额外外扩 |
 | `cutout` | shadow | BOOL：挖空控件自身圆角形状，只画外圈（这样后面加的层即使半透明也不会透出阴影） |
+| `fill` | glass | 染色（带 alpha）。写了就覆盖 `Shell` 的 `GlassTuning` 染色；不写就用 Shell 的 |
+| `opacity` | glass | 这块玻璃的整体不透明度 |
+| `radius` | glass | 圆角（半径等于短边一半时就是胶囊/正圆） |
 
 **层序有三条硬约定**（`theme_test` 会遍历两套主题的每一份外观断言）：
 
+0. **`glass` 层必须排在自己的内容层之前**：玻璃画在这一层的位置上，后面的内容层压在它上面；
+   排反了内容会被玻璃盖住。详见 [`glass-layer.md`](glass-layer.md)。
 1. `hlBg`（焦点高亮底）必须在 `text` / `image` / `custom` **之前** —— 排反了聚焦时那块
    不透明高亮底会把内容盖住（开关/单选图形消失过）。
 2. `shadow` 层必须在本控件的底色**之前**。

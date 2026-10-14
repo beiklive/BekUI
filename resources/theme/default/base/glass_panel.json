@@ -1,7 +1,7 @@
 {
   "box": {
     "radius": "@theme/metric.component.radius",
-    "padding": [14, 16]
+    "padding": [14, 16, 14, 16]
   },
   "layers": [
     {

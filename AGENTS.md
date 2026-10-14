@@ -375,6 +375,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      之后，**旧的 minWidth=120 会留在节点上** —— 图标按钮明明写了 `width: 48`，
      布局宽度却一直是 120（踩过：量了半天布局才追到这个 token）。
      要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`widget/button.icon` 就是这么修的）。
+  ⑦a **亚克力/液态玻璃用 `op: "glass"` 层声明**（`docs/glass-layer.md`）：
+     **`glass` 层必须排在自己的内容层之前**（和 `shadow` 同规矩），后面的内容层自然压在玻璃上。
+     外观能覆盖的只有**样式**（`fill` 染色 / `opacity` / `radius` / inset 几何）；
+     `blurRadius`、`quality` 与总开关只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
+     两个清单坑：`theme.json` 的 `files[]` 条目要**带 `.json` 后缀**（`base/glass_panel.json`，
+     少了后缀会以"主题里没有控件外观"的形式静默回退）；`box.padding` 只接受**一个数**或
+     **四个数**（`[上,右,下,左]`），写两个数会编译失败。
   ⑦ **一行里放多个内容层要用 inset 排队，并写 `measureContent: "sum"`**：
      绘制层不是流式布局（`align: left` 的两个层会叠在左边，参考 `base/hint_item` 给
      文字层写 `inset: [0,0,0,34]` 跳过图标）；默认固有尺寸取"最宽的一层"，

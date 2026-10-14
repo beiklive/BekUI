@@ -64,7 +64,7 @@
     "widget/sidebar.json",
     "view/list_item.json",
     "view/page_json.json",
-    "base/glass_panel"
+    "base/glass_panel.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -214,3 +214,27 @@ virtual glass::GlassRequest View::getGlassBackdrop() const;   // 默认无效 = 
 
 仍未做：Switch **真机画面**未验（需要实机 + nxlink）；这条要等你有机器时跑一次
 （`nxlink -s dist/switch/demo.nro`，开/关玻璃各看一次）。
+
+
+---
+
+## 阶段 4 完成记录（外观层 `op: "glass"`）
+
+- `appearance`：新增 `Op::GLASS`，解析 `"op": "glass"`
+- `AppearanceView` 的 GLASS 分支：按该层矩形调用 `GlassService::submitBackdrop()`
+  （内含"先切命令再入队"，所以内容不会被玻璃盖住）
+- `GlassLayerOptions`：外观覆盖的样式字段（`fill` 染色 / `opacity`），
+  实现"**JSON 优先于 `makeGlassStyle(Shell 的 tuning)` 默认值**"
+- 主题新增 `resources/theme/default/base/glass_panel.json`（并进 `theme.json` 的 `files[]`）
+- demo 玻璃页改用该外观：**视图里不再有任何玻璃代码**，只给标题文字 + 关掉时的回退底色
+- 文档：新增 [`glass-layer.md`](glass-layer.md)（使用说明 + 验收数据 + 文件地图），
+  `json-syntax.md` 补 op 表与层序规则，`README.md` 索引，`AGENTS.md` 补两条清单坑
+
+验收（走 op 这条路，GL）
+- 卡内"无文字区"横向梯度 **0.07** vs 壁纸 **3.43**（模糊生效）
+- 标题亮像素 **607**（内容压在玻璃之上）
+- 不透明卡区差异 **0 / 161600**（opt-in 保证）
+- GL / VK 构建退出码 0、零警告；`check.sh` 全过；命名检查全过
+
+至此阶段 0–4 全部落地。唯一还挂着的验收是 **Switch 真机画面**（需要实机 + nxlink）：
+`nxlink -s dist/switch/demo.nro`，开/关玻璃各看一次。
