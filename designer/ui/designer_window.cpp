@@ -2188,14 +2188,20 @@ void DesignerWindow::drawStatus()
     const float padY   = 8.0f * s;
     const float gap    = 6.0f * s;
     const float lineH  = ImGui::GetTextLineHeight() + 6.0f * s; // 标签高度
-    const float sideIn = 6.0f * s;                              // 卡片离面板左右
     const bool  hasMsg = !this->statusMessage.empty() || !this->errorMessage.empty();
 
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const float avail   = ImGui::GetContentRegionAvail().x;
-    const float cardH   = padY * 2.0f + lineH * 2.0f + gap + (hasMsg ? lineH + gap : 0.0f);
-    const ImVec2 cardMin(origin.x - sideIn, origin.y - padY * 0.5f);
-    const ImVec2 cardMax(origin.x + avail + sideIn, cardMin.y + cardH);
+    // 卡片的三面边距（左/右/下）都取面板自己的内容内边距：
+    // 以前是"内容列左右各往外扩 5.1px"，结果比其它所有内容都贴边（左右只剩 ~8px，看着就是没留边距）
+    const ImVec2 panelPad = ImGui::GetStyle().WindowPadding;
+    const ImVec2 winPos   = ImGui::GetWindowPos();
+    const float avail     = ImGui::GetContentRegionAvail().x;
+    const float cardH     = padY * 2.0f + lineH * 2.0f + gap + (hasMsg ? lineH + gap : 0.0f);
+
+    // 纵向：卡片是"页脚"，直接贴着面板底部往上摆，底部自然留出 panelPad.y
+    const float innerBottom = winPos.y + ImGui::GetWindowHeight() - panelPad.y;
+    const ImVec2 cardMin(winPos.x + panelPad.x, innerBottom - cardH);
+    const ImVec2 cardMax(cardMin.x + avail, innerBottom);
+    ImGui::SetCursorScreenPos(ImVec2(cardMin.x, cardMin.y));
 
     // 卡片底：磨砂半透明（玻璃上的一块磨砂片）——
     // 以前这里铺的是 palette.sunken（alpha=1.0 的不透明灰），把面板的玻璃整个挡住了
@@ -2203,7 +2209,6 @@ void DesignerWindow::drawStatus()
 
     // 用同尺寸的 Dummy 占位：告诉 ImGui"这块内容在这里"。
     // 只用 SetCursorScreenPos 往后放东西会被判成"越界扩展窗口边界"并弹 ImGui 报错（踩过）
-    ImGui::SetCursorScreenPos(cardMin);
     ImGui::Dummy(ImVec2(cardMax.x - cardMin.x, cardH));
 
     // 第一行：节点 / 层 / 状态，各一个小标签（数字用强调色）
@@ -5965,6 +5970,9 @@ void DesignerWindow::draw()
             (float)this->fileListHeightUi, 120.0f,
             ImGui::GetContentRegionAvail().y - 160.0f, (float)kFileListDefault);
         ImGui::Separator();
+        // 分区标题左缩进对齐下面的树行（箭头那儿）：不缩进的话它比它标题的内容还靠左，
+        // 看着就是"标题没留左边距"（其它内容都有图标槽/树缩进）
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40.0f * this->uiScale);
         panelHeader("节点树", "点哪层渲染哪层");
         // 开关收在标题**右侧**、用图标（不要一排文字按钮）
         // 偏移必须夹到 >= 0：窄栏 / 大缩放下这个值会变成负数（疑似"树上切换闪红框"的来源之一）

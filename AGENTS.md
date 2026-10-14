@@ -750,7 +750,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      卡片空白处像素标准差 0.00 = 完全平的，换成磨砂底后 3.65 = 壁纸透出来了）。
      玻璃是画在**面板内容之前**的，任何 alpha=1 的内容色块都会盖住它。
      需要"玻璃上的一块磨砂片"就用 `frostedCard()`（半透明深色 + 冷白描边 + 顶部高光）。
-  9b）**自绘"卡片式"区块要先用同尺寸 `Dummy` 占位**（左栏底部那块状态卡就是这么写的）：
+  9b) **卡片/分区标题的边距要对齐面板的内容列，别自己定一套**：
+     · 卡片（如左栏底部状态卡）三面可见（左/右/下）的边距取 `style.WindowPadding`，
+       底部按 `winPos.y + GetWindowHeight() - WindowPadding.y` 反推着摆 ——
+       曾经"左右各往外扩 5px"，结果卡片比内容列还宽、看着像没留边距（踩过）
+     · 分区标题（如左栏"节点树"）要缩进到和它下面的内容对齐（树行箭头那儿，约 +40×uiScale）：
+       不缩进它就是面板里最靠左的文字，比它标题的内容还左 20~40px
+  9c）**自绘"卡片式"区块要先用同尺寸 `Dummy` 占位**（左栏底部那块状态卡就是这么写的）：
      用 `SetCursorPos/SetCursorScreenPos` 把光标挪到卡片里画小标签（`statChip`/`crumbChip`），
      必须先在卡片矩形处 `Dummy(卡片尺寸)` 把范围报给 ImGui，并且**收尾不能再补一次
      `SetCursorScreenPos`** —— 那会让 `window->DC.IsSetPos` 停在 true，`EndChild()` 时
