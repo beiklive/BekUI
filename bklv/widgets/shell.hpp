@@ -2,6 +2,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/focus_ring.hpp"
+#include "bklv/glass/glass_service.hpp"
 #include "bklv/widgets/focus_ring_view.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
@@ -91,6 +92,23 @@ class Shell : public Box
 
     // 需要自己画法时（FocusRingType::CUSTOM）直接拿这个视图挂渲染器
     FocusRingView* getFocusRingView() const { return this->focusRingView; }
+
+    // ---- 液态玻璃（外观层）----
+    // Shell 是**面向使用者的所有者**：开关 / 档位 / 默认参数 / 能力查询都从这里走。
+    // 样式参数的优先级：**外观层 JSON 写了就用 JSON，没写才用这里的 GlassTuning**；
+    // `enabled` 与 `quality` 只由这里决定（开关与性能，不是样式）。
+    void setGlassEnabled(bool enabled);
+    bool isGlassEnabled() const;
+
+    void setGlassQuality(glass::GlassQuality quality);
+    glass::GlassQuality getGlassQuality() const;
+
+    glass::GlassTuning& getGlassTuning();
+    const glass::GlassTuning& getGlassTuning() const;
+
+    // 后端能力：拿不到就别把玻璃开关暴露给用户
+    glass::EffectCapabilities getGlassCapabilities() const;
+    bool isGlassSupported() const;
     // 调试层：**在 HudLayer 之上**（子节点顺序里排在最后 = 最后绘制），
     // 专门给调试 UI 用（日志窗口挂这里）。与 HudLayer 的区别：Hud 是业务浮层
     // （toast / 常驻指示，后加的东西会盖住前面的），调试层保证永远在最上面。

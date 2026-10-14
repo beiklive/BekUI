@@ -1,10 +1,11 @@
-#include "designer/glass/gl/gl_procs.hpp"
+#if defined(BKLV_OPENGL)
+#include "bklv/backends/gl_glass_procs.hpp"
 
 #include "bklv/core/logger.hpp"
 
 #include <SDL3/SDL.h>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 namespace
@@ -49,4 +50,6 @@ bool isGlProcsReady()
     return ready;
 }
 
-} // namespace designer::glass
+} // namespace bklv::glass
+
+#endif // BKLV_OPENGL

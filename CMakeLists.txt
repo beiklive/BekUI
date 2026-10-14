@@ -176,6 +176,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_shadow.cpp
     app/pages/page_icons.cpp
     app/pages/page_base_widgets.cpp
+    app/pages/page_glass.cpp
     app/pages/page_transform.cpp
 )
 
@@ -233,9 +234,6 @@ set(BKLV_DESIGNER_UI_SOURCES
     ui/designer_window.cpp
     ui/designer_glass.cpp
     glass/vk/vk_glass.cpp
-    glass/gl/gl_procs.cpp
-    glass/gl/gl_shaders.cpp
-    glass/gl/gl_backend.cpp
 )
 
 set(BKLV_DESIGNER_UI_ABS "")

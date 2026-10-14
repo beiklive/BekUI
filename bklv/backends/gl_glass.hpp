@@ -11,12 +11,14 @@
 //   3. 每条玻璃命令 → composite() 合成那一块
 //   4. 帧末 → finishFrame()
 
-#include "designer/glass/glass_lib.hpp"
+#include "bklv/glass/glass_blur_plan.hpp"
+#include "bklv/glass/glass_geometry.hpp"
+#include "bklv/glass/glass_request.hpp"
 #include "bklv/glass/glass_queue.hpp"
 
 #include <memory>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 class GlGlassBackend
@@ -48,4 +50,4 @@ class GlGlassBackend
     std::unique_ptr<Impl> impl;
 };
 
-} // namespace designer::glass
+} // namespace bklv::glass

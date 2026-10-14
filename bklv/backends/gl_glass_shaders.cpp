@@ -1,6 +1,7 @@
-#include "designer/glass/gl/gl_shaders.hpp"
+#if defined(BKLV_OPENGL)
+#include "bklv/backends/gl_glass_shaders.hpp"
 
-namespace designer::glass::shaders
+namespace bklv::glass::shaders
 {
 
 // ---------------------------------------------------------------------------
@@ -414,4 +415,6 @@ void main() {
 }
 )GLSL";
 
-} // namespace designer::glass::shaders
+} // namespace bklv::glass::shaders
+
+#endif // BKLV_OPENGL

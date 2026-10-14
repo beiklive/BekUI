@@ -32,6 +32,8 @@ ACTION_PREFIXES = (
     "create", "mainLoop", "collect", "check", "ensure", "wants",
     # 动作类：读/写/请求/捕获/存取都算动作返回是否成功（约定见 AGENTS.md）
     "read", "write", "request", "capture", "save", "parse", "copy", "install",
+    # prepare 也是动作（"准备好某样东西"，成败用返回值表示）：玻璃后端每帧准备背景用它
+    "prepare",
 )
 # 布尔开关的非法动词前缀
 BAD_BOOL_SETTER = re.compile(r"\bvoid\s+(enable|disable|show|hide)([A-Z]\w*)\s*\([^)]*\bbool\b")

@@ -1,18 +1,25 @@
-#include "designer/glass/glass_lib.hpp"
-#include "designer/glass/gl/gl_backend.hpp"
+// 桌面 GL 的玻璃后端：只在 GL 构建里编；其它后端给出「能力为空」的桩，
+// 这样服务层不必到处写 #if。
+#include "bklv/backends/gl_glass.hpp"
+
+#if defined(BKLV_OPENGL)
+#include "bklv/glass/glass_blur_plan.hpp"
+#include "bklv/glass/glass_geometry.hpp"
+#include "bklv/glass/glass_request.hpp"
+#include "bklv/backends/gl_glass.hpp"
 
 #include "bklv/core/logger.hpp"
 
 #include "bklv/glass/glass_blur_plan.hpp"
-#include "designer/glass/gl/gl_procs.hpp"
-#include "designer/glass/gl/gl_shaders.hpp"
+#include "bklv/backends/gl_glass_procs.hpp"
+#include "bklv/backends/gl_glass_shaders.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 namespace
@@ -673,4 +680,28 @@ void GlGlassBackend::inject(ImDrawData& drawData, const GlassRequestQueue& queue
     }
 }
 
-} // namespace designer::glass
+} // namespace bklv::glass
+
+#else // 非 GL 构建：桩实现（能力为空，服务层据此整层关闭）
+
+namespace bklv::glass
+{
+
+struct GlGlassBackend::Impl
+{
+};
+
+GlGlassBackend::GlGlassBackend() = default;
+GlGlassBackend::~GlGlassBackend() = default;
+bool GlGlassBackend::ensure(int, int) { return false; }
+bool GlGlassBackend::isReady() const { return false; }
+EffectCapabilities GlGlassBackend::getCapabilities() const { return EffectCapabilities{}; }
+bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue&) { return false; }
+void GlGlassBackend::composite(const GlassRequest&) { }
+void GlGlassBackend::finishFrame() { }
+void GlGlassBackend::shutdown() { }
+void GlGlassBackend::inject(ImDrawData&, const GlassRequestQueue&) { }
+
+} // namespace bklv::glass
+
+#endif // BKLV_OPENGL

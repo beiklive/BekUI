@@ -24,7 +24,8 @@
     "pokedex": "Pokédex",
     "shadow": "Shadow",
     "icons": "Icons",
-    "base": "Base widgets"
+    "base": "Base widgets",
+    "glass": "Glass"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -151,7 +152,8 @@
     "pokedex_sub": "Sectioned recycler + detail navigation",
     "shadow_sub": "shadow layers and blur quality",
     "icons_sub": "All glyphs of both icon fonts: 10 per row, code below",
-    "base_sub": "Containers & button variants"
+    "base_sub": "Containers & button variants",
+    "glass_sub": "Liquid glass (GL / Switch / Vulkan)"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -350,5 +352,11 @@
     "sec_btn_list": "Button · list (no border)",
     "btn_list": "List button",
     "list_hint": "The list-element flavour of the plain button: widget/button.list drops the border (transparent bg.stroke + strokeWidth 0) and left-aligns the text; size, padding and states stay the same as the plain button."
+  },
+  "glass": {
+    "hint": "Left is a **glass card** (the view declares it in its own draw); right is an opaque card of the same size. Glass samples what has been drawn so far this frame, so the background must be drawn first.",
+    "glass_card": "Glass card (declared)",
+    "opaque": "Opaque card (not declared -> must stay pixel-identical)",
+    "backend_hint": "If the backend is unavailable it falls back to an opaque fill (the right card). Switch/quality live on the Shell: setGlassEnabled / setGlassQuality / getGlassTuning."
   }
 }

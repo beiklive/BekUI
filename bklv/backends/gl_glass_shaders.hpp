@@ -13,7 +13,7 @@
 //   · fullscreen.vert  + blur.frag     —— 半分辨率两趟可分离高斯模糊
 //   · liquid_glass.vert + liquid_glass.frag —— 折射 / 色散 / 染色 / 边缘光照
 
-namespace designer::glass::shaders
+namespace bklv::glass::shaders
 {
 
 extern const char* const kFullscreenVertex;
@@ -21,4 +21,4 @@ extern const char* const kBlurFragment;
 extern const char* const kGlassVertex;
 extern const char* const kGlassFragment;
 
-} // namespace designer::glass::shaders
+} // namespace bklv::glass::shaders

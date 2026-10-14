@@ -61,6 +61,46 @@ Shell::Shell()
     this->hudLayer->addView(this->focusRingView);
 }
 
+void Shell::setGlassEnabled(bool enabled)
+{
+    glass::getGlassService().setEnabled(enabled);
+}
+
+bool Shell::isGlassEnabled() const
+{
+    return glass::getGlassService().isEnabled();
+}
+
+void Shell::setGlassQuality(glass::GlassQuality quality)
+{
+    glass::getGlassService().setQuality(quality);
+}
+
+glass::GlassQuality Shell::getGlassQuality() const
+{
+    return glass::getGlassService().getQuality();
+}
+
+glass::GlassTuning& Shell::getGlassTuning()
+{
+    return glass::getGlassService().getTuning();
+}
+
+const glass::GlassTuning& Shell::getGlassTuning() const
+{
+    return glass::getGlassService().getTuning();
+}
+
+glass::EffectCapabilities Shell::getGlassCapabilities() const
+{
+    return glass::getGlassService().getCapabilities();
+}
+
+bool Shell::isGlassSupported() const
+{
+    return glass::getGlassService().isSupported();
+}
+
 void Shell::setFocusRingEnabled(bool enabled)
 {
     if (this->focusRingView != nullptr)

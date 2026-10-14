@@ -1,4 +1,6 @@
 #include "bklv/core/app.hpp"
+
+#include "bklv/glass/glass_service.hpp"
 #include "bklv/core/image_writer.hpp"
 #include "bklv/core/audio.hpp"
 #include "bklv/core/task.hpp"
@@ -467,12 +469,31 @@ int App::run(const std::string& title, int width, int height)
         while (!this->quitRequested && platform->mainLoopIteration())
         {
             backend->newFrame();
+
+            // 玻璃：帧首清队列并记下帧缓冲尺寸（物理像素）与密度。
+            // 必须在 this->frame() 之前 —— 视图是在那一趟里声明"我要玻璃"的。
+            {
+                const ImGuiIO& io = ImGui::GetIO();
+                const float scaleX = io.DisplayFramebufferScale.x > 0.0f
+                    ? io.DisplayFramebufferScale.x : 1.0f;
+                const float scaleY = io.DisplayFramebufferScale.y > 0.0f
+                    ? io.DisplayFramebufferScale.y : 1.0f;
+                glass::getGlassService().beginFrame((int)(io.DisplaySize.x * scaleX),
+                    (int)(io.DisplaySize.y * scaleY), scaleX);
+            }
+
             this->frame();
             backend->clear(clearColor);
             // 宿主可以在这里改 draw data（设计器的液态玻璃注入玻璃命令）
             if (this->onPrepareDrawData)
                 this->onPrepareDrawData(ImGui::GetDrawData());
+
+            // 玻璃注入：排在宿主钩子之后，宿主对绘制数据的改动也能被采进背景
+            if (ImDrawData* drawData = ImGui::GetDrawData())
+                glass::getGlassService().prepareDrawData(*drawData);
+
             backend->renderDrawData(ImGui::GetDrawData());
+            glass::getGlassService().finishFrame();
 
             // 截图要在交换之前读后缓冲（交换之后内容未定义）
             if (!this->screenshotPath.empty())

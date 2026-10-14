@@ -16,6 +16,9 @@ DemoApp::DemoApp()
 {
     // ---- 外壳：Shell 四层 ----
     this->shell = new Shell();
+    // 玻璃是 opt-in：这里打开**总开关**，但只有声明了玻璃的视图（玻璃展示页那张卡）
+    // 才会真的吃到效果 —— 其它页面一个像素都不受影响。
+    this->shell->setGlassEnabled(true);
 
     this->header = new Header();
     // 应用外壳的页头比独立页头高（88，borealis 的 applet_frame/header_height）：
@@ -146,6 +149,7 @@ DemoApp::DemoApp()
     this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false);
     this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false);
     this->addPage("base", getStr("tab/base"), getStr("page/base_sub"), false);
+    this->addPage("glass", getStr("tab/glass"), getStr("page/glass_sub"), false);
 
     // 起始页**推迟到第一帧**再选（见 update()）：视图树是在 App::run() 之前建的，
     // 而字体（含两套图标字体）要等 App::run() 建好图集才装载。页面若在这之前构建，
@@ -233,6 +237,7 @@ Box* DemoApp::buildPage(size_t index)
         case 12: return buildShadowPage();
         case 13: return buildIconsPage();
         case 14: return buildBaseWidgetsPage();
+        case 15: return buildGlassPage();
         default: return nullptr;
     }
 }

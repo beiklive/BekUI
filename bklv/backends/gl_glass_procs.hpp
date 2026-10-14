@@ -66,7 +66,7 @@ typedef unsigned int GLbitfield;
 #define GL_NO_ERROR 0
 #endif
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 // 需要的一组 GL 入口。X(返回类型, 名字, 参数表)
@@ -130,4 +130,4 @@ bool loadGlProcs();
 GlProcs& glProcs();
 bool isGlProcsReady();
 
-} // namespace designer::glass
+} // namespace bklv::glass
