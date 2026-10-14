@@ -91,7 +91,10 @@ void applyDesignerStyle(float uiScale)
     //  · 边距用 uiScale（上一轮已按"文字贴边"的反馈放宽了一档，保持）
     //  · 字号再乘一个收紧系数 —— 基准字体是 20px，按 uiScale 直接缩会在面板里显得很大
     //    （用户反馈过好几次"文字太大"）。0.86 → 0.85*0.86 ≈ 0.73，字高约 11~12px，接近工具类界面
-    constexpr float kFontTighten = 0.86f;
+    // 全界面统一一个字号：原来是正文 20*0.85*0.86 = 14.62、标题再乘 0.9 = 13.16，
+    // 用户要求"正文小一点、标题大一点，取两者的平均值" → (14.62+13.16)/2 = 13.89
+    // → 0.817 = 13.89 / 20 / 0.85。改字号只动这一个数就行。
+    constexpr float kFontTighten = 0.817f;
     style.FontScaleMain = uiScale * kFontTighten;
 
     // 尺寸：先按"100%"写死，再乘缩放 —— 每次调用都幂等，不用维护"原始尺寸"副本
@@ -248,7 +251,8 @@ namespace
 {
 // 标题栏：比正文小一档的字号 + 四边相同的边距
 constexpr float kTitleBarPad     = 10.0f;
-constexpr float kTitleFontFactor = 0.90f;
+// 标题字号系数：1.0 = 和正文同一个字号（用户要求全页面统一；想恢复层级改这一个数）
+constexpr float kTitleFontFactor = 1.0f;
 
 float titleBarFontSize = 0.0f;
 } // namespace
