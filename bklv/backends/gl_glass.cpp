@@ -595,11 +595,13 @@ void renderGlassCommand(const ImDrawList*, const ImDrawCmd* command)
     if (data == nullptr || data->backend == nullptr || data->request == nullptr)
         return;
 
-    const FramebufferGuard guard;
-
+    // 抓帧 + 模糊会改 framebuffer 绑定（都画到离屏 FBO），**必须在自己这一段里恢复** ——
+    // 让守卫包住 composite 是错的：那样合成会被画进离屏 FBO、屏幕上什么都看不到
+    //（FBO=3 留在绑定上，踩过）。
     if (data->backdropPrepared != nullptr && !*data->backdropPrepared
         && data->queue != nullptr)
     {
+        const FramebufferGuard guard;
         *data->backdropPrepared = data->backend->prepareBackdrop(*data->queue);
     }
     data->backend->composite(*data->request);

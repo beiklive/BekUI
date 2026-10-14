@@ -736,6 +736,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不恢复的话后面所有 ImGui 命令都画进离屏 FBO（整屏四分之三会变透明，这次踩到）。
      `designer/glass/gl/gl_backend.cpp` 里用 `FramebufferGuard` 兜住；
      玻璃命令后面还要插一条 `DrawCallback_ResetRenderState` 让 ImGui 接着画。
+  4b）**守卫要包住"一次操作"，不能包住"整段回调"**（库侧 `bklv/backends/gl_glass.cpp` 踩过）：
+     `FramebufferGuard` 包到 `renderGlassCommand` 整段时，抓帧+模糊留下的离屏 FBO 会一直绑着，
+     于是**合成被画进离屏 FBO**，屏幕上什么都不出现（回读 `GL_READ_FRAMEBUFFER_BINDING` 得 3）。
+     正确写法是让守卫只包住 `prepareBackdrop`（抓帧 + 模糊）那一段，`composite` 在 FBO 恢复之后执行。
+     排查手法同样可复用：在合成前后各回读一次 framebuffer 绑定与一个像素值。
+  4c）**注入点的偏移是"插在下标 == drawCommandOffset 那条命令之前"**，而 ImGui 会把
+     **连续图元合并进同一条命令**：直接记 `CmdBuffer.Size` 拿到的不是真边界，
+     调用方自己的文字会跟前面的内容并进同一条命令 —— 玻璃插在后面就把它盖住。
+     库侧给的入口是 `GlassService::submitBackdrop()`：**先 `AddDrawCmd()` 切一条新命令**，
+     偏移取 `Size - 1`（玻璃插在"承载调用方内容的那条空命令"之前）→ 顺序 =
+     背景 → 玻璃 → 我的内容。自己手填 `drawCommandOffset` 就会踩这个坑。
+     验收：玻璃卡内"无文字区"的横向梯度要远低于壁纸（实测 0.07 vs 3.43），
+     同时标题亮像素 > 0（文字在玻璃之上）。
   5）**不引入构建期工具**：着色器是 GLSL 150 常量字符串（`gl_shaders.cpp`），
      公共模块（blur_kernel / glass_math / glass_color / glass_lighting）直接内联，
      不需要 glslc / SPIR-V 生成步骤。着色器改自 MIT 项目，版权声明留在文件头。
