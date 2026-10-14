@@ -343,6 +343,12 @@
     "states_hint": "状态行是每个状态一个独立实例、直接 setAppearanceState() 摆出来的（不是真去点它）；状态名照主题 JSON 里写的 focused / pressed / disabled。",
     "info_hint": "点上面这个「可交互」的按钮，右侧信息会变成点击次数。",
     "switch_hint": "开 / 关两个状态里写了补间（knob 的位移），上面的「可交互」那个点一下能看到动画。",
-    "dropdown_hint": "下拉、选择器都没有多状态可看，只展示本体：点它会弹遮罩列表 / 进入设置态。"
+    "dropdown_hint": "下拉、选择器都没有多状态可看，只展示本体：点它会弹遮罩列表 / 进入设置态。",
+    "shape_square": "正方形（图标居中）",
+    "shape_circle": "圆形（图标居中）",
+    "icon_hint": "两款都是 48×48：正方形的圆角取 component.radius，圆形四层都用 radius.round(=999)，图标层 align/valign 都是 center，所以是真正的完全居中。",
+    "sec_btn_list": "按钮 · 列表（无边框）",
+    "btn_list": "列表按钮",
+    "list_hint": "普通按钮的列表元素款：外观 widget/button.list 把边框去掉了（bg.stroke 透明 + strokeWidth 0），文字改成正常左对齐 —— 尺寸、内边距、状态动效跟普通按钮一致。"
   }
 }

@@ -370,6 +370,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      新 id 追加），其它数组整体替换，标量覆盖。所以"改 base/box.component 的边框，
      所有 import 它的按钮一起变"，而按钮自己写的字段仍然赢。
      循环引用、深度 > 8、父级不存在都会**报错**（不静默降级）。
+  ⑦b **换外观时"没写的字段不会清掉旧值"**：`applyAppearanceBox` 只覆盖 JSON 里出现的字段，
+     所以从 `base/button`（有 `minWidth: @theme/metric.control.minWidth`）切到 `widget/button.*`
+     之后，**旧的 minWidth=120 会留在节点上** —— 图标按钮明明写了 `width: 48`，
+     布局宽度却一直是 120（踩过：量了半天布局才追到这个 token）。
+     要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`widget/button.icon` 就是这么修的）。
   ⑦ **一行里放多个内容层要用 inset 排队，并写 `measureContent: "sum"`**：
      绘制层不是流式布局（`align: left` 的两个层会叠在左边，参考 `base/hint_item` 给
      文字层写 `inset: [0,0,0,34]` 跳过图标）；默认固有尺寸取"最宽的一层"，

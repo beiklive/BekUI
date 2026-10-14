@@ -82,8 +82,9 @@ Rectangle* makeSection(const char* titleKey)
     return card;
 }
 
-// 状态行：左边是状态名（固定宽度，保证右边的控件纵向对齐），右边是"那个状态下的控件"
-Box* makeStateRow(const char* stateKey, View* item)
+// 状态行：左边是状态名（固定宽度，保证右边的控件纵向对齐），右边是"那个状态下的控件"。
+// stretch=false 用于固定尺寸的控件（正方形 / 圆形的图标按钮）—— 拉伸会把圆形拉成椭圆
+Box* makeStateRow(const char* stateKey, View* item, bool stretch = true)
 {
     Box* row = makeRow(getTheme().number("metric.spacing.md", 12.0f));
 
@@ -93,7 +94,8 @@ Box* makeStateRow(const char* stateKey, View* item)
     name->setWidth(104.0f);
     row->addView(name);
 
-    item->setGrow(1.0f);
+    if (stretch)
+        item->setGrow(1.0f);
     row->addView(item);
     return row;
 }
@@ -111,8 +113,8 @@ Button* makeStateButton(
 }
 
 // 按钮一族：本体（默认）+ 各状态。状态名照主题 JSON 里的 state 写。
-void addButtonStates(
-    Rectangle* section, const char* variant, const std::string& text, const char* iconName)
+void addButtonStates(Rectangle* section, const char* variant, const std::string& text,
+    const char* iconName, bool stretch = true)
 {
     struct StateSpec
     {
@@ -127,8 +129,8 @@ void addButtonStates(
     };
 
     for (const StateSpec& spec : kStates)
-        section->addView(
-            makeStateRow(spec.key, makeStateButton(variant, text, spec.state, iconName)));
+        section->addView(makeStateRow(
+            spec.key, makeStateButton(variant, text, spec.state, iconName), stretch));
 }
 
 // 开关一族：开 / 关两行（on / off 本身就是它的状态）
@@ -267,10 +269,14 @@ Box* buildBaseWidgetsPage()
         page->addView(section);
     }
 
-    // 纯图标
+    // 纯图标：两款 —— 正方形（icon）与圆形（icon_circle），图标都完全居中
     {
         Rectangle* section = makeSection("base_widgets/sec_btn_icon");
-        addButtonStates(section, "icon", "", "star");
+        section->addView(makeHint(getStr("base_widgets/shape_square")));
+        addButtonStates(section, "icon", "", "star", false);
+        section->addView(makeHint(getStr("base_widgets/shape_circle")));
+        addButtonStates(section, "icon_circle", "", "settings", false);
+        section->addView(makeHint(getStr("base_widgets/icon_hint")));
         page->addView(section);
     }
 
@@ -278,6 +284,14 @@ Box* buildBaseWidgetsPage()
     {
         Rectangle* section = makeSection("base_widgets/sec_btn_icon_text");
         addButtonStates(section, "icon_text", getStr("base_widgets/btn_icon_text"), "save");
+        page->addView(section);
+    }
+
+    // 列表按钮：普通按钮的"列表元素"款 —— 没有边框，文字正常左对齐
+    {
+        Rectangle* section = makeSection("base_widgets/sec_btn_list");
+        addButtonStates(section, "list", getStr("base_widgets/btn_list"), nullptr);
+        section->addView(makeHint(getStr("base_widgets/list_hint")));
         page->addView(section);
     }
 

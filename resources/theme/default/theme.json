@@ -42,6 +42,8 @@
     "base/dropdown_popup.json",
     "widget/button.text.json",
     "widget/button.icon.json",
+    "widget/button.list.json",
+    "widget/button.icon_circle.json",
     "widget/button.icon_text.json",
     "widget/button.dropdown.json",
     "widget/button.switch_text.json",

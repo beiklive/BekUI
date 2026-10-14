@@ -343,6 +343,12 @@
     "states_hint": "Each state row is a separate instance with setAppearanceState() applied (nothing is really clicked); the names come from the theme JSON.",
     "info_hint": "Click the 'interactive' button above: its info text becomes the click count.",
     "switch_hint": "The on/off states carry tweens (knob offset); click the 'interactive' one to see the animation.",
-    "dropdown_hint": "Dropdowns and selectors have no extra states to show, so only the control itself is shown."
+    "dropdown_hint": "Dropdowns and selectors have no extra states to show, so only the control itself is shown.",
+    "shape_square": "Square (icon centered)",
+    "shape_circle": "Circle (icon centered)",
+    "icon_hint": "Both are 48x48: the square uses component.radius, the circle uses radius.round (=999) on all four layers; the icon layer is align/valign center, so it is truly centered.",
+    "sec_btn_list": "Button · list (no border)",
+    "btn_list": "List button",
+    "list_hint": "The list-element flavour of the plain button: widget/button.list drops the border (transparent bg.stroke + strokeWidth 0) and left-aligns the text; size, padding and states stay the same as the plain button."
   }
 }
