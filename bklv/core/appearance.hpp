@@ -78,6 +78,10 @@ struct AppearanceLayer
         TEXT,   // source(数据名) / color / fontSize / align / valign / inset
         IMAGE,  // source(数据名) / scaling / radius / inset
         SHADOW, // 阴影：fill(色) / feather(羽化) / spread(外扩) / radius / offset(x,y) / cutout(挖空内圈)
+        GLASS,  // 液态玻璃（外观层声明"这块要玻璃"）。
+                // **必须排在自己的内容层之前** —— 玻璃画在下面，内容压在上面。
+                // 可覆盖的样式：fill(染色，带 alpha) / opacity / radius(圆角) / inset 几何；
+                // 帧级参数（blurRadius / quality）与总开关仍只由 Shell 决定（两条后端共用一份背景模糊）。
         CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
     };
 

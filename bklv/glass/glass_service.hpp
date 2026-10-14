@@ -25,6 +25,14 @@
 namespace bklv::glass
 {
 
+// 外观层 `op: glass` 能覆盖的样式字段（帧级参数与总开关不在这里，它们只由 Shell 决定）
+struct GlassLayerOptions
+{
+    bool hasTint   = false;   // 外观写了 fill 就用它当染色（带 alpha）
+    ImVec4 tint    = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
+    float opacity  = 1.0f;
+};
+
 class GlassService
 {
   public:
@@ -57,8 +65,10 @@ class GlassService
     // 内部会先在 drawList 上切一条新命令再入队 —— 直接手填 drawCommandOffset 会被
     // ImGui 的"连续图元合并进同一条命令"吃掉，导致自己的文字被玻璃盖住（踩过）。
     // pixelBounds：x,y=左上；z,w=右下（**物理像素**）。
+    // options 非空 = 外观层覆盖了样式（**JSON 优先于 Shell 的 GlassTuning 默认值**）
     bool submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBounds,
-        const CornerRadii& radii, GlassShapeKind shape, float density);
+        const CornerRadii& radii, GlassShapeKind shape, float density,
+        const GlassLayerOptions* options = nullptr);
 
     // ImGui::Render() 之后、renderDrawData() 之前：把玻璃命令注入绘制数据
     void prepareDrawData(ImDrawData& drawData);

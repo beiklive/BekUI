@@ -1,5 +1,7 @@
 #include "bklv/widgets/appearance_view.hpp"
 
+#include "bklv/glass/glass_service.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -486,6 +488,36 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 if (strokeWidth > 0.0f && (stroke >> 24) != 0)
                     drawList->AddRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
                         scaleAlpha(stroke), radius, 0, strokeWidth);
+                break;
+            }
+
+            case AppearanceLayer::Op::GLASS:
+            {
+                // 外观层声明"这块要玻璃"。玻璃画在这一层的位置上，后面的内容层自然压在它上面
+                //（所以 glass 层必须排在内容层之前）。
+                // 能被外观覆盖的只有样式：fill(染色) / opacity / radius；
+                // blurRadius、quality 与总开关只由 Shell 决定（两条后端的背景模糊是整帧共用一份）。
+                glass::GlassService& service = glass::getGlassService();
+                if (alphaScale <= 0.001f || !service.isEnabled())
+                    break;
+
+                const ImVec2 fbScale = ImGui::GetIO().DisplayFramebufferScale;
+                const float density  = fbScale.x > 0.0f ? fbScale.x : 1.0f;
+
+                glass::GlassLayerOptions options;
+                options.opacity = alphaScale;
+                if ((fill >> 24) != 0)
+                {
+                    const ImVec4 tint = ImGui::ColorConvertU32ToFloat4(fill);
+                    options.hasTint   = true;
+                    options.tint      = ImVec4(tint.x, tint.y, tint.z, tint.w * alphaScale);
+                }
+
+                service.submitBackdrop(drawList,
+                    ImVec4(rect[0] * density, rect[1] * density, rect[2] * density,
+                        rect[3] * density),
+                    glass::CornerRadii::all(radius), glass::GlassShapeKind::ROUNDED_RECT, density,
+                    &options);
                 break;
             }
 

@@ -143,7 +143,8 @@ void GlassService::submit(GlassRequest request)
 }
 
 bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBounds,
-    const CornerRadii& radii, GlassShapeKind shape, float frameDensity)
+    const CornerRadii& radii, GlassShapeKind shape, float frameDensity,
+    const GlassLayerOptions* options)
 {
     if (!this->isEnabled() || drawList == nullptr)
         return false;
@@ -160,6 +161,13 @@ bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBound
     request.radii             = radii;
     request.shape             = shape;
     request.density           = frameDensity > 0.0f ? frameDensity : this->density;
+    if (options != nullptr)
+    {
+        // 外观层写了的样式覆盖 Shell 的默认值（没写就保持 makeGlassStyle(tuning) 的结果）
+        if (options->hasTint && options->tint.w > 0.0f)
+            request.style.tint = options->tint;
+        request.opacity = std::max(0.0f, std::min(1.0f, options->opacity));
+    }
     request.drawList = drawList;
     // 后端把玻璃插在"下标 == drawCommandOffset 的那条命令**之前**"。
     // 刚 AddDrawCmd() 出来的空命令（下标 Size-1）会承载调用方接下来画的内容，

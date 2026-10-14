@@ -233,6 +233,8 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
         return AppearanceLayer::Op::IMAGE;
     if (enumMatches(text, "shadow"))
         return AppearanceLayer::Op::SHADOW;
+    if (enumMatches(text, "glass"))
+        return AppearanceLayer::Op::GLASS;
     if (enumMatches(text, "custom"))
         return AppearanceLayer::Op::CUSTOM;
     ok = false;
