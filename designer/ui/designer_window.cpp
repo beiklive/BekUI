@@ -196,6 +196,15 @@ void DesignerWindow::attach(App* application)
     // 会直接踩崩（实测 segfault）。要么改库的字体装载（超出"只动 designer/"的边界），
     // 要么就用手写的矢量图标（icon_draw.cpp，已经和文字对齐）。
     // 用户的 MaterialIcons-Regular.ttf 已放进 resources/font/，接进来只需在库那侧加一行。
+    // 玻璃要在 ImGui::Render() 之后、renderDrawData() 之前注入绘制命令
+    if (application != nullptr)
+    {
+        application->onPrepareDrawData = [this](ImDrawData* drawData) {
+            this->glass.prepareDrawData(drawData);
+            this->glass.finishFrame();
+        };
+    }
+
     this->loadUiState();
     applyDesignerStyle(this->uiScale);
 
@@ -1373,6 +1382,52 @@ void DesignerWindow::drawMenuBar()
     }
 
     ImGui::EndMenuBar();
+}
+
+void DesignerWindow::drawGlassPanel(const ImVec4& rect, ImDrawList* list, int commandOffset)
+{
+    if (!this->glass.isEnabled() || list == nullptr)
+        return;
+
+    glass::GlassStyle style;
+    style.refractionHeight    = 24.0f;
+    style.refractionAmount    = -110.0f;
+    style.depthEffect         = 0.75f;
+    style.chromaticAberration = 0.50f;
+    style.contrast            = -0.08f;
+    style.tint                = ImVec4(0.05f, 0.08f, 0.13f, 0.30f);
+    style.lighting.innerShadow   = 0.14f;
+    style.lighting.rimGlow       = 0.26f;
+    style.lighting.specular      = 0.32f;
+    style.lighting.outerShadow   = 0.10f;
+    style.lighting.shadowExtent  = 5.0f;
+
+    this->glass.addPanel(rect, glass::CornerRadii::all(12.0f), style, list, commandOffset);
+}
+
+void DesignerWindow::drawGlassBar(const ImVec4& rect, ImDrawList* list, int commandOffset)
+{
+    if (!this->glass.isEnabled() || list == nullptr)
+        return;
+
+    glass::GlassStyle style;
+    style.refractionHeight    = 18.0f;
+    style.refractionAmount    = -90.0f;
+    style.depthEffect         = 0.65f;
+    style.chromaticAberration = 0.45f;
+    style.contrast            = -0.06f;
+    style.tint                = ImVec4(0.06f, 0.09f, 0.14f, 0.30f);
+    style.lighting.innerShadow   = 0.10f;
+    style.lighting.rimGlow       = 0.24f;
+    style.lighting.specular      = 0.30f;
+    // 横条不画外阴影：阴影会把绘制范围外扩几像素、渗进下面的预览面板，
+    // 而"预览区逐像素不被影响"是硬要求（面板自己有内阴影/边缘高光，够看）
+    style.lighting.outerShadow  = 0.0f;
+    style.lighting.shadowExtent = 0.0f;
+
+    // 横条两端只留很小的圆角（贴着窗口边）
+    this->glass.addPanel(rect, glass::CornerRadii{ 6.0f, 6.0f, 6.0f, 6.0f }, style, list,
+        commandOffset);
 }
 
 void DesignerWindow::drawTopBar()
@@ -5262,13 +5317,60 @@ void DesignerWindow::drawModals()
 void DesignerWindow::draw()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+    // ---- 液态玻璃：起帧 + 铺底 ----
+    // 玻璃采样的是"本帧已经画好的内容"，所以先在最底层画一张壁纸（渐变 + 几团柔光）：
+    // 纯色底上模糊/折射都看不出来。壁纸只出现在外壳区域，与预览区无关。
+    const ImGuiIO& io     = ImGui::GetIO();
+    const float density   = io.DisplayFramebufferScale.x > 0.0f ? io.DisplayFramebufferScale.x
+                                                                : 1.0f;
+    this->glass.beginFrame((int)(io.DisplaySize.x * io.DisplayFramebufferScale.x),
+        (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y), density);
+
+    {
+        ImDrawList* background = ImGui::GetBackgroundDrawList();
+        const ImVec2 size = io.DisplaySize;
+        background->AddRectFilledMultiColor(ImVec2(0.0f, 0.0f), size,
+            IM_COL32(22, 26, 40, 255), IM_COL32(30, 24, 46, 255), IM_COL32(16, 20, 32, 255),
+            IM_COL32(20, 30, 40, 255));
+        // 柔光 + 斜条纹：纯渐变太平，玻璃的模糊/折射看不出来，得有结构
+        background->AddCircleFilled(ImVec2(size.x * 0.16f, size.y * 0.30f), size.y * 0.46f,
+            IM_COL32(72, 132, 255, 96), 64);
+        background->AddCircleFilled(ImVec2(size.x * 0.90f, size.y * 0.80f), size.y * 0.38f,
+            IM_COL32(255, 84, 186, 84), 64);
+        background->AddCircleFilled(ImVec2(size.x * 0.60f, size.y * 0.04f), size.y * 0.30f,
+            IM_COL32(80, 240, 210, 72), 64);
+
+        for (int stripe = -6; stripe < 14; stripe++)
+        {
+            const float offset = (float)stripe * size.y * 0.16f;
+            background->AddQuadFilled(ImVec2(offset, size.y), ImVec2(offset + size.y * 0.5f, 0.0f),
+                ImVec2(offset + size.y * 0.5f + size.x * 0.06f, 0.0f),
+                ImVec2(offset + size.x * 0.06f, size.y), IM_COL32(255, 255, 255, 22));
+        }
+    }
+
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
+    // 窗口自己不铺底：底由壁纸 + 玻璃面板负责（否则玻璃采到的是一块纯色窗口底）
+    ImGui::SetNextWindowBgAlpha(0.0f);
     // 顶层窗口不滚动：里面的四块自己滚（否则整窗一滚，顶栏与画布就跑到视野外了）
     ImGui::Begin("bklv 设计器", nullptr,
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings
             | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar
             | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
+
+    // 菜单栏玻璃：注入点取"画菜单栏之前"，矩形按菜单栏实际高度算 ——
+    // 玻璃压在菜单栏内容下面，内容照常画在玻璃上
+    {
+        ImDrawList* list = ImGui::GetWindowDrawList();
+        const int offset = list->CmdBuffer.Size;
+        const ImVec2 windowPos = ImGui::GetWindowPos();
+        const float barHeight  = ImGui::GetFrameHeight();
+        this->drawGlassBar(ImVec4(windowPos.x, windowPos.y, windowPos.x + ImGui::GetWindowWidth(),
+                              windowPos.y + barHeight),
+            list, offset);
+    }
     this->drawMenuBar();
 
     // 自查：BKLV_DESIGNER_INJECT_MOUSE=<帧数> —— 指针扫过左栏（列表/树）并点击，
@@ -5357,7 +5459,19 @@ void DesignerWindow::draw()
             this->selectNextChange(ImGui::GetIO().KeyShift ? -1 : 1);
     }
 
-    this->drawTopBar();
+    // 顶栏玻璃：先在"画之前"记注入点与上边，画完量出实际高度再交玻璃
+    {
+        ImDrawList* list = ImGui::GetWindowDrawList();
+        const int offset = list->CmdBuffer.Size;
+        const ImVec2 before = ImGui::GetCursorScreenPos();
+        const float width   = ImGui::GetContentRegionAvail().x;
+
+        this->drawTopBar();
+
+        const float bottom = ImGui::GetCursorScreenPos().y - ImGui::GetStyle().ItemSpacing.y;
+        if (bottom > before.y)
+            this->drawGlassBar(ImVec4(before.x, before.y, before.x + width, bottom), list, offset);
+    }
 
     const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
     const float rightWidth = (float)this->rightWidthUi;
@@ -5366,14 +5480,28 @@ void DesignerWindow::draw()
     if (this->previewMaximized)
     {
         ImGui::BeginChild("##previewMax", ImVec2(0, 0), true);
+        this->glass.excludeRect(ImVec4(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y,
+            ImGui::GetWindowPos().x + ImGui::GetWindowSize().x,
+            ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
         this->drawPreview();
         ImGui::EndChild();
         this->drawModals();
         ImGui::End();
+        this->glass.endFrame();
         return;
     }
 
-    ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
+    {
+        ImDrawList* parentList = ImGui::GetWindowDrawList();
+        const int leftOffset   = parentList->CmdBuffer.Size;
+        ImGui::SetNextWindowBgAlpha(0.0f); // 底交给玻璃，否则玻璃采到的是纯色面板底
+        ImGui::BeginChild("##left", ImVec2(leftWidth, 0), true);
+        const ImVec2 panelPos  = ImGui::GetWindowPos();
+        const ImVec2 panelSize = ImGui::GetWindowSize();
+        this->drawGlassPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
+                                panelPos.y + panelSize.y),
+            parentList, leftOffset);
+    }
     if (this->leftCollapsed)
     {
         if (ImGui::Button("»"))
@@ -5389,6 +5517,7 @@ void DesignerWindow::draw()
             ImGui::SetTooltip("折叠左栏（给预览让地方）");
         ImGui::SameLine();
         panelHeader("文件", "● 未保存");
+        ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::BeginChild("##files", ImVec2(0, (float)this->fileListHeightUi), false);
         this->drawFileList();
         ImGui::EndChild();
@@ -5419,6 +5548,7 @@ void DesignerWindow::draw()
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
             sizeof(this->treeFilter));
+        ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::BeginChild("##tree", ImVec2(0, ImGui::GetContentRegionAvail().y - 78), false);
         this->drawTree();
         ImGui::EndChild();
@@ -5438,6 +5568,10 @@ void DesignerWindow::draw()
     ImGui::SameLine();
 
     ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0), true);
+    // 预览区是玻璃禁区：这里渲染的是主题 JSON 的真实效果，一个像素都不许被玻璃影响
+    this->glass.excludeRect(ImVec4(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y,
+        ImGui::GetWindowPos().x + ImGui::GetWindowSize().x,
+        ImGui::GetWindowPos().y + ImGui::GetWindowSize().y));
     this->drawPreview();
     ImGui::EndChild();
 
@@ -5446,7 +5580,17 @@ void DesignerWindow::draw()
         avail.x - leftWidth - 320.0f, -1.0f, (float)kRightWidthDefault);
 
     ImGui::SameLine();
-    ImGui::BeginChild("##props", ImVec2(rightWidth, 0), true);
+    {
+        ImDrawList* parentList = ImGui::GetWindowDrawList();
+        const int propsOffset  = parentList->CmdBuffer.Size;
+        ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGui::BeginChild("##props", ImVec2(rightWidth, 0), true);
+        const ImVec2 panelPos  = ImGui::GetWindowPos();
+        const ImVec2 panelSize = ImGui::GetWindowSize();
+        this->drawGlassPanel(ImVec4(panelPos.x, panelPos.y, panelPos.x + panelSize.x,
+                                panelPos.y + panelSize.y),
+            parentList, propsOffset);
+    }
     this->drawProps();
     ImGui::EndChild();
 
@@ -5469,6 +5613,9 @@ void DesignerWindow::draw()
             this->pushUndoSnapshot();
         this->lastFrameText = now;
     }
+
+    // 玻璃收口：这一帧要哪些玻璃面就这些了
+    this->glass.endFrame();
 }
 
 } // namespace designer

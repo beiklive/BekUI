@@ -58,6 +58,11 @@ class App
     // 必须在 ImGui::Render() 之前，所以单独给一个回调，不混在 onUpdate 里。
     std::function<void()> onDrawWindows;
 
+    // ImGui 的绘制数据已经生成、还没交给后端渲染时的钩子（在 ImGui::Render() 之后、
+    // backend->renderDrawData() 之前）。给"要往绘制命令里插东西"的宿主用：
+    // 设计器的液态玻璃就是在这里把玻璃命令注入 draw data（见 designer/glass/）。
+    std::function<void(ImDrawData*)> onPrepareDrawData;
+
     // 触发一次布局重算时用的画布尺寸。
     // invalidate() 从根节点发起重算时需要它：传 Undefined 会让百分比尺寸全部失效。
     static float getLayoutWidth() { return lastLayoutWidth; }

@@ -469,6 +469,9 @@ int App::run(const std::string& title, int width, int height)
             backend->newFrame();
             this->frame();
             backend->clear(clearColor);
+            // 宿主可以在这里改 draw data（设计器的液态玻璃注入玻璃命令）
+            if (this->onPrepareDrawData)
+                this->onPrepareDrawData(ImGui::GetDrawData());
             backend->renderDrawData(ImGui::GetDrawData());
 
             // 截图要在交换之前读后缓冲（交换之后内容未定义）

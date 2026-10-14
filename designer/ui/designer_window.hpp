@@ -21,6 +21,7 @@
 #include "designer/core/json_cache.hpp"
 #include "designer/core/undo_stack.hpp"
 #include "designer/core/project.hpp"
+#include "designer/ui/designer_glass.hpp"
 
 namespace designer
 {
@@ -235,6 +236,10 @@ class DesignerWindow
 
     // ---- 各块 ----
     void drawTopBar();
+    // 一块玻璃横条（顶栏 / 菜单栏共用）：rect 用逻辑坐标，注入点在画它的内容之前
+    void drawGlassBar(const ImVec4& rect, ImDrawList* list, int commandOffset);
+    // 一块玻璃面板（左栏 / 右栏）
+    void drawGlassPanel(const ImVec4& rect, ImDrawList* list, int commandOffset);
     void drawFileList();
     void drawTree();
     // 页面视图的节点树（type + id + 属性 + children 逐层展开）
@@ -355,6 +360,9 @@ class DesignerWindow
     void drawWarningsPanel();
 
     bklv::App* app = nullptr;
+
+    // 液态玻璃（只给设计器外壳用；预览区是禁区，见 DesignerGlass::excludeRect）
+    DesignerGlass glass;
 
     Project project;
     bool hasProject = false;

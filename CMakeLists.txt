@@ -215,6 +215,8 @@ set(BKLV_DESIGNER_CORE_SOURCES
     core/json_cache.cpp
     core/file_browser.cpp
     core/icon_align.cpp
+    glass/glass_blur_plan.cpp
+    glass/glass_queue.cpp
 )
 
 set(BKLV_DESIGNER_CORE_ABS "")
@@ -230,6 +232,10 @@ set(BKLV_DESIGNER_UI_SOURCES
     ui/icon_draw.cpp
     ui/designer_style.cpp
     ui/designer_window.cpp
+    ui/designer_glass.cpp
+    glass/gl/gl_procs.cpp
+    glass/gl/gl_shaders.cpp
+    glass/gl/gl_backend.cpp
 )
 
 set(BKLV_DESIGNER_UI_ABS "")

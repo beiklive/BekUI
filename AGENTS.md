@@ -660,6 +660,28 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - 设计器里要关掉 ImGui 自己的键盘/手柄导航（`io.ConfigFlags &= ~NavEnableKeyboard`），
   否则方向键会被 ImGui 拿去移动它的内部焦点、把面板滚到不知哪里去。
 
+- **液态玻璃只服务设计器外壳，预览区是禁区**（`designer/glass/` + `designer/ui/designer_glass.*`）：
+  1）**只在 GL 下启用**：后端是 GLSL 150（`designer/glass/gl/`），跑在 Vulkan 构建里时
+     `beginFrame` 会看到后端名不是 GL 就整体关掉（没有 GL 上下文还去调 GL 会崩）。
+     拿不到 GL 入口 / 着色器编不过 / 尺寸非法 → 回退普通面板，设计器不会因此不能用。
+     开关：`BKLV_DESIGNER_GLASS=0`。
+  2）**预览区的像素一个都不许被玻璃影响**：预览面板的矩形进 `GlassRequestQueue::excludeRect()`，
+     玻璃请求与它相交时会被裁到"避开的更大那一半"；另外横条不画外阴影
+     （阴影会把绘制范围外扩几像素、渗进预览面板）。
+     验收方式：开/关玻璃各截一张，**预览面板区域逐像素一致**（实测 0 像素差）。
+  3）**采样的是"本帧已经画好的内容"**：所以先在最底层画壁纸（渐变 + 柔光 + 斜条纹，
+     纯色底上玻璃看不出来），玻璃面板压在上面。与源项目（Android 覆盖层，画之前抓帧缓冲）
+     不同，抓取放在**第一条玻璃命令**里，一帧只抓一次。
+  4）**GL 状态必须还回去**：抓背景/模糊都画到离屏 FBO 上，而 framebuffer 绑定是全局状态 ——
+     不恢复的话后面所有 ImGui 命令都画进离屏 FBO（整屏四分之三会变透明，这次踩到）。
+     `designer/glass/gl/gl_backend.cpp` 里用 `FramebufferGuard` 兜住；
+     玻璃命令后面还要插一条 `DrawCallback_ResetRenderState` 让 ImGui 接着画。
+  5）**不引入构建期工具**：着色器是 GLSL 150 常量字符串（`gl_shaders.cpp`），
+     公共模块（blur_kernel / glass_math / glass_color / glass_lighting）直接内联，
+     不需要 glslc / SPIR-V 生成步骤。着色器改自 MIT 项目，版权声明留在文件头。
+  6）库侧只加了一个通用钩子：`App::onPrepareDrawData`（ImGui::Render() 之后、
+     renderDrawData() 之前），设计器用它注入玻璃命令；库里没有任何玻璃代码。
+
 ## 测试
 
 无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：
