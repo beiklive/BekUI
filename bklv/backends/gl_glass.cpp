@@ -66,11 +66,20 @@ GLuint compileShader(GLenum type, const char* source, const char* name)
     return 0;
 }
 
+// #version 必须是源码第一行，所以这里把版本头拼到正文前面
+//（桌面 GLSL 150 / Switch GLES3 的差异只在头上，正文共用一份）
+const std::string withHeader(const char* source)
+{
+    return std::string(shaders::kGlslHeader) + source;
+}
+
 GLuint linkProgram(const char* vertexSource, const char* fragmentSource, const char* name)
 {
     GlProcs& gl = glProcs();
-    const GLuint vertex   = compileShader(GL_VERTEX_SHADER, vertexSource, name);
-    const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fragmentSource, name);
+    const std::string vertexText   = withHeader(vertexSource);
+    const std::string fragmentText = withHeader(fragmentSource);
+    const GLuint vertex   = compileShader(GL_VERTEX_SHADER, vertexText.c_str(), name);
+    const GLuint fragment = compileShader(GL_FRAGMENT_SHADER, fragmentText.c_str(), name);
     if (vertex == 0 || fragment == 0)
     {
         if (vertex != 0)
@@ -708,4 +717,4 @@ void GlGlassBackend::inject(ImDrawData&, const GlassRequestQueue&) { }
 
 } // namespace bklv::glass
 
-#endif // BKLV_OPENGL
+#endif // BKLV_OPENGL || BKLV_GLES3

@@ -140,6 +140,10 @@ done < <(find "${BKLV_DIR}/core" "${BKLV_DIR}/glass" "${BKLV_DIR}/views" "${BKLV
 # 桌面的 opengl/vulkan/sdl3 那几份不参与（文件内部也有 BKLV_SWITCH 守卫，但不必编）。
 BKLV_SOURCES+=(
     "${BKLV_DIR}/backends/gles3_backend.cpp"
+    # 玻璃的 GL 后端（桌面 GL 与 Switch GLES3 共用同一份实现与着色器）
+    "${BKLV_DIR}/backends/gl_glass.cpp"
+    "${BKLV_DIR}/backends/gl_glass_procs.cpp"
+    "${BKLV_DIR}/backends/gl_glass_shaders.cpp"
     "${BKLV_DIR}/backends/imgui_impl_libnx.cpp"
     "${BKLV_DIR}/platforms/switch_platform.cpp"
     "${BKLV_DIR}/platforms/switch_ime.cpp"

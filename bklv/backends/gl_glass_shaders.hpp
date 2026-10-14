@@ -16,6 +16,9 @@
 namespace bklv::glass::shaders
 {
 
+// 着色器源码的版本头（见 .cpp：由 linkProgram 拼在第一行）
+extern const char* const kGlslHeader;
+
 extern const char* const kFullscreenVertex;
 extern const char* const kBlurFragment;
 extern const char* const kGlassVertex;

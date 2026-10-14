@@ -1,14 +1,22 @@
-#if defined(BKLV_OPENGL)
+#if defined(BKLV_OPENGL) || defined(BKLV_GLES3)
 #include "bklv/backends/gl_glass_shaders.hpp"
 
 namespace bklv::glass::shaders
 {
 
+// 版本头单独给：桌面是 GLSL 150，Switch 是 GLSL ES 3.0（要写 precision）。
+// #version 必须是源码第一行，所以由 linkProgram 拼在最前面。
+#if defined(BKLV_GLES3)
+const char* const kGlslHeader = "#version 300 es\nprecision highp float;\n"
+                                "precision highp sampler2D;\n";
+#else
+const char* const kGlslHeader = "#version 150\n";
+#endif
+
 // ---------------------------------------------------------------------------
 // 全屏三角形（无顶点属性，位置由 gl_VertexID 生成）
 // ---------------------------------------------------------------------------
-const char* const kFullscreenVertex = R"GLSL(#version 150
-
+const char* const kFullscreenVertex = R"GLSL(
 out vec2 vUv;
 
 const vec2 positions[3] = vec2[3](
@@ -25,8 +33,7 @@ void main() {
 // ---------------------------------------------------------------------------
 // 模糊：第一趟做 2x2 box 降采样，后两趟做可分离高斯（双线性配对采样）
 // ---------------------------------------------------------------------------
-const char* const kBlurFragment = R"GLSL(#version 150
-
+const char* const kBlurFragment = R"GLSL(
 uniform sampler2D uSource;
 uniform vec2 uInverseSourceResolution;
 uniform vec2 uDirection;
@@ -82,8 +89,7 @@ void main() {
 // ---------------------------------------------------------------------------
 // 玻璃几何：一个覆盖"玻璃矩形向外扩阴影范围"的四边形，位置由 gl_VertexID 生成
 // ---------------------------------------------------------------------------
-const char* const kGlassVertex = R"GLSL(#version 150
-
+const char* const kGlassVertex = R"GLSL(
 uniform vec4 uBounds;
 uniform vec4 uLight;
 uniform vec2 uFramebufferSize;
@@ -110,8 +116,7 @@ void main() {
 // 液态玻璃主体：折射 + 色散 + 染色 + 边缘光照 + 外阴影
 // 内联了 glass_math / glass_color / glass_lighting 三个公共模块
 // ---------------------------------------------------------------------------
-const char* const kGlassFragment = R"GLSL(#version 150
-
+const char* const kGlassFragment = R"GLSL(
 // Adapted from AndroidLiquidGlassView@9cdd915; (c) 2025 QmDeve, MIT.
 
 uniform sampler2D uBackdrop;
@@ -417,4 +422,4 @@ void main() {
 
 } // namespace bklv::glass::shaders
 
-#endif // BKLV_OPENGL
+#endif // BKLV_OPENGL || BKLV_GLES3

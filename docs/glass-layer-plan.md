@@ -188,3 +188,29 @@ virtual glass::GlassRequest View::getGlassBackdrop() const;   // 默认无效 = 
 - 构建：GL / VK 退出码 0、零警告；`check.sh` 2975 项全过；命名检查 165 文件
 
 两个关键坑都写进了 `AGENTS.md`（4b 守卫作用域、4c 注入偏移与命令合并）。
+
+
+---
+
+## 阶段 2 完成记录（Switch / GLES3）
+
+玻璃的 GL 后端与桌面**共用一份正文**，差异收敛到三个点：
+
+1. **着色器版本头**：新增 `glass::shaders::kGlslHeader` —— 桌面 `#version 150`，
+   Switch `#version 300 es` + `precision highp float/sampler2D`。
+   `#version` 必须是源码第一行，所以由 `linkProgram()` 拼在正文之前（正文一份，头一份）。
+2. **GL 加载器**：`gl_glass_procs.cpp` 在 `BKLV_GLES3` 下**直接取函数地址**
+   （`procs.x = &glx`，符号链接期就解析好了），桌面仍走 `SDL_GL_GetProcAddress` 表。
+   `gl_glass_procs.hpp` 里那份"自己定义 GL 类型与枚举"的兜底在 ES3 下让位给 `<GLES3/gl3.h>`，
+   避免重复定义。
+3. **构建接线**：`scripts/build_switch.sh` 的 backends 清单加上
+   `gl_glass.cpp` / `gl_glass_procs.cpp` / `gl_glass_shaders.cpp`（这几个目录是手列的，不是按目录收集）。
+
+验收
+- `./scripts/build_switch.sh` → **退出码 0**，`dist/switch/demo.nro` 9.8M，
+  `build/switch/bklv/backends/{gl_glass,gl_glass_procs,gl_glass_shaders}.o` 三个目标产物都在
+- 构建日志里 48 条 warning **全部来自 libnx 系统头**，本仓代码零警告
+- 桌面回归：GL 构建退出码 0；设计器玻璃仍正常（玻璃面板内横向梯度 **0.08** = 模糊生效）
+
+仍未做：Switch **真机画面**未验（需要实机 + nxlink）；这条要等你有机器时跑一次
+（`nxlink -s dist/switch/demo.nro`，开/关玻璃各看一次）。

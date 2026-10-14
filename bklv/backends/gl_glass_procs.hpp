@@ -15,6 +15,8 @@
 
 // ---- GL 类型与常量（只定义用到的那部分；带 #ifndef 防冲突）----
 #ifndef GL_TEXTURE_2D
+// ES3（Switch）直接用 <GLES3/gl3.h> 的类型与枚举，这里不再重复定义
+#if !defined(BKLV_GLES3)
 typedef unsigned int GLenum;
 typedef unsigned int GLuint;
 typedef int GLint;
@@ -33,6 +35,8 @@ typedef unsigned int GLbitfield;
 #define GL_NEAREST 0x2600
 #define GL_CLAMP_TO_EDGE 0x812F
 #define GL_RGBA 0x1908
+#endif // !BKLV_GLES3
+
 #define GL_RGBA8 0x8058
 #define GL_UNSIGNED_BYTE 0x1401
 #define GL_BACK 0x0405
