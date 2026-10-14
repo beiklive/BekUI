@@ -43,5 +43,8 @@ bool listFilesByMtime(const std::string& directory, size_t count,
 
 // 把路径拼成 `a/b`（去掉多余的斜杠）
 std::string joinPath(const std::string& directory, const std::string& name);
+// 界面上显示路径时用：只保留最后 keepParts 段，前面用 "…" 代替
+// （完整路径放到悬停提示里；不缩的话右栏标题和底栏都会被切掉）
+std::string shortenPath(const std::string& path, int keepParts = 2);
 
 } // namespace designer

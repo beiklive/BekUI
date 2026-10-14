@@ -948,23 +948,23 @@ void DesignerWindow::drawCanvasChips(ImVec2 origin, ImVec2 displaySize, ImVec2 l
 
     auto chip = [&](const ImVec2& pos, const char* text, const ImVec4& tint) {
         const ImVec2 textSize = ImGui::CalcTextSize(text);
-        const ImVec2 end(pos.x + textSize.x + 14.0f, pos.y + textSize.y + 6.0f);
+        const ImVec2 end(pos.x + textSize.x + 20.0f, pos.y + textSize.y + 10.0f);
         drawList->AddRectFilled(pos, end, ImGui::ColorConvertFloat4ToU32(tint), 6.0f);
         drawList->AddRect(pos, end, IM_COL32(255, 255, 255, 26), 6.0f);
-        drawList->AddText(ImVec2(pos.x + 7.0f, pos.y + 3.0f), IM_COL32(240, 244, 252, 255), text);
+        drawList->AddText(ImVec2(pos.x + 10.0f, pos.y + 5.0f), IM_COL32(240, 244, 252, 255), text);
     };
 
     // 尺寸写**逻辑尺寸**（画布要求多少 px），缩放写**实际显示比例**
     // （底部信息条那个是"设置值"，适应画布时两者会不一样，混在一起会误导）
     const std::string sizeText = std::to_string((int)(logicalSize.x + 0.5f)) + " × "
         + std::to_string((int)(logicalSize.y + 0.5f));
-    const float chipY = origin.y - ImGui::GetTextLineHeight() - 12.0f;
+    const float chipY = origin.y - ImGui::GetTextLineHeight() - 20.0f;
     chip(ImVec2(origin.x, chipY), sizeText.c_str(), ImVec4(0.10f, 0.13f, 0.18f, 0.92f));
 
     char zoomText[32];
     std::snprintf(zoomText, sizeof(zoomText), "%.0f%%", (double)(zoom * 100.0f));
     const ImVec2 zoomSize = ImGui::CalcTextSize(zoomText);
-    chip(ImVec2(origin.x + displaySize.x - zoomSize.x - 14.0f, chipY), zoomText,
+    chip(ImVec2(origin.x + displaySize.x - zoomSize.x - 20.0f, chipY), zoomText,
         ImVec4(0.07f, 0.20f, 0.24f, 0.92f));
 }
 
@@ -1599,7 +1599,7 @@ void DesignerWindow::drawMenuBar()
         if (readOnlyText != nullptr)
         {
             ImGui::SameLine(ImGui::GetWindowWidth() - readOnlyWidth
-                - ImGui::CalcTextSize(shortName.c_str()).x - 20.0f);
+                - ImGui::CalcTextSize(shortName.c_str()).x - 22.0f);
             ImGui::TextColored(warningColor(), "%s", readOnlyText);
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("default / ocean 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
@@ -1608,7 +1608,7 @@ void DesignerWindow::drawMenuBar()
         if (!shortName.empty())
         {
             const float textWidth = ImGui::CalcTextSize(shortName.c_str()).x;
-            ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
+            ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 22.0f);
             ImGui::TextColored(this->dirty ? unsavedColor() : mutedColor(), "%s%s",
                 shortName.c_str(), this->dirty ? "  ●" : "");
             if (ImGui::IsItemHovered())
@@ -2459,7 +2459,9 @@ void DesignerWindow::drawTableProps()
     ImGui::TextColored(mutedColor(), "改完「保存」= 写回这个文件 + 热重载（预览立刻变）");
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##tableFilter", "过滤 key…", this->tableFilter, sizeof(this->tableFilter));
-    ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
+    ImGui::TextColored(mutedColor(), "%s", shortenPath(this->currentFilePath, 3).c_str());
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", this->currentFilePath.c_str());
     ImGui::Separator();
 
     bool edited = false;
@@ -3239,7 +3241,7 @@ void DesignerWindow::drawPreview()
 
     // 左侧：五种状态竖排点选（中文）
     {
-        ImGui::SetCursorPos(ImVec2(8.0f, 8.0f));
+        ImGui::SetCursorPos(ImVec2(12.0f, 12.0f));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##stateStrip", ImVec2(kLeftStripW, 0.0f), true);
         static const char* kStateLabels[] = { "默认", "聚焦", "按下", "禁用", "选中" };
@@ -3259,7 +3261,7 @@ void DesignerWindow::drawPreview()
 
     // 右侧：视图开关竖排图标（网格底 / 对齐网格 / 层序条 / 适应 / 重置）
     {
-        ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 8.0f, 8.0f));
+        ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 12.0f, 12.0f));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
         if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasBackdrop != 1,
@@ -3442,8 +3444,12 @@ void DesignerWindow::drawPreview()
     {
         const float barHeight = 24.0f;
         ImGui::SetCursorPos(ImVec2(0.0f, ImGui::GetWindowHeight() - barHeight));
+        // 底栏里的"尺寸/缩放/主题"别贴着画布左边：给子窗加内边距 + 左缩进
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+            ImVec2(12.0f * this->uiScale, 5.0f * this->uiScale));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
         ImGui::BeginChild("##canvasFoot", ImVec2(0.0f, barHeight), false);
-        ImGui::SetNextItemWidth(126.0f);
+        ImGui::SetNextItemWidth(112.0f);
         ImGui::Combo("##size2", &this->canvasPreset,
             "自适应\0" "1280×720\0" "720×480\0" "640×360\0" "自定义\0");
         ImGui::SameLine();
@@ -3456,18 +3462,17 @@ void DesignerWindow::drawPreview()
         ImGui::TextColored(mutedColor(), "· %s", zoomText);
         ImGui::SameLine();
         // 路径只显示最后两段，免得把信息条撑爆
+        // 只显示主题名（"…/theme/default" 这种会把整条底栏撑到被切），全路径给悬停
         std::string shortDir = this->project.themeDir();
-        {
-            const size_t last = shortDir.find_last_of('/');
-            const size_t prev = last == std::string::npos ? std::string::npos
-                                                          : shortDir.find_last_of('/', last - 1);
-            if (prev != std::string::npos && prev + 1 < shortDir.size())
-                shortDir = "…" + shortDir.substr(prev);
-        }
+        const size_t lastSlash = shortDir.find_last_of('/');
+        if (lastSlash != std::string::npos && lastSlash + 1 < shortDir.size())
+            shortDir = shortDir.substr(lastSlash + 1);
         ImGui::TextColored(mutedColor(), "· %s", shortDir.c_str());
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", this->project.themeDir().c_str());
         ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
     }
 
     ImGui::EndChild();
@@ -3527,7 +3532,10 @@ void DesignerWindow::drawProps()
     }
 
     panelHeader("属性", this->currentWidget.c_str());
-    ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
+    // 只显示路径尾巴：整条挂在右栏会被切掉（悬停看全路径）
+    ImGui::TextColored(mutedColor(), "%s", shortenPath(this->currentFilePath, 3).c_str());
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", this->currentFilePath.c_str());
 
     // 这份外观 import 了谁：继承来的字段不在本文件里，不提示的话会以为样式丢了
     if (this->doc.root().contains("import"))
@@ -5603,6 +5611,10 @@ void DesignerWindow::draw()
         }
     }
 
+    // 菜单栏的内边距：ImGui 默认让菜单项贴着窗口上沿和左边（用户反馈"文字贴边"），
+    // 这里临时把 FramePadding 放大一档 —— 菜单栏高度和菜单项左右留白都跟着变
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+        ImVec2(14.0f * this->uiScale, 9.0f * this->uiScale));
     // 菜单栏玻璃：注入点取"画菜单栏之前"，矩形按菜单栏实际高度算 ——
     // 玻璃压在菜单栏内容下面，内容照常画在玻璃上
     {
@@ -5615,6 +5627,7 @@ void DesignerWindow::draw()
             list, offset);
     }
     this->drawMenuBar();
+    ImGui::PopStyleVar();
 
     // 自查：BKLV_DESIGNER_INJECT_MOUSE=<帧数> —— 指针扫过左栏（列表/树）并点击，
     // 用来复现"鼠标在树上切换时闪红框"。用 ImGui 官方事件队列接口。
@@ -5748,14 +5761,14 @@ void DesignerWindow::draw()
     }
     if (this->leftCollapsed)
     {
-        if (ImGui::Button("»"))
+        // 同样别用 "»"（字体里没有字形）：折叠状态下用矢量图标展开
+        if (iconButton("##expandLeft", Icon::CHEVRON_DOWN, 15.0f, false, "展开左栏"))
             this->leftCollapsed = false;
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("展开左栏");
     }
     else
     {
-        if (ImGui::SmallButton("«"))
+        // 用矢量图标而不是 "«"：中文字体里没有那个字形，会画成一个 "?"（踩过）
+        if (iconButton("##collapseLeft", Icon::CHEVRON_RIGHT, 15.0f, false, "折叠左栏（给预览让地方）"))
             this->leftCollapsed = true;
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("折叠左栏（给预览让地方）");
@@ -5790,8 +5803,10 @@ void DesignerWindow::draw()
         iconText(Icon::STATE, std::to_string((int)this->doc.stateNames().size()).c_str(),
             ImGui::ColorConvertFloat4ToU32(mutedColor()), mutedColor());
         ImGui::SetNextItemWidth(-1);
-        ImGui::InputTextWithHint("##treeFilter", "过滤字段 / 层名…", this->treeFilter,
+        ImGui::InputTextWithHint("##treeFilter", "过滤层名…", this->treeFilter,
             sizeof(this->treeFilter));
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("按层名或字段名过滤节点树");
         ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::BeginChild("##tree", ImVec2(0, ImGui::GetContentRegionAvail().y - 78), false);
         this->drawTree();

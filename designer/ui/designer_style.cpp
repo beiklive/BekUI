@@ -109,17 +109,19 @@ void applyDesignerStyle(float uiScale)
     style.FrameBorderSize   = 1.0f;
     style.PopupBorderSize   = 1.0f;
 
-    style.WindowPadding    = ImVec2(12.0f * s, 10.0f * s);
-    style.FramePadding     = ImVec2(10.0f * s, 6.0f * s);
-    style.CellPadding      = ImVec2(8.0f * s, 4.0f * s);
-    style.ItemSpacing      = ImVec2(8.0f * s, 7.0f * s);
-    style.ItemInnerSpacing = ImVec2(7.0f * s, 5.0f * s);
-    style.IndentSpacing    = 18.0f * s;
-    style.ScrollbarSize    = 12.0f * s;
-    style.GrabMinSize      = 12.0f * s;
+    // 边距整体比"ImGui 默认"宽一档：用户反馈文字老是贴着边。
+    // 面板/控件都靠这几个值拿内边距，所以统一在这里加，别在各处塞 Dummy
+    style.WindowPadding    = ImVec2(16.0f * s, 14.0f * s);
+    style.FramePadding     = ImVec2(12.0f * s, 8.0f * s);
+    style.CellPadding      = ImVec2(10.0f * s, 6.0f * s);
+    style.ItemSpacing      = ImVec2(10.0f * s, 9.0f * s);
+    style.ItemInnerSpacing = ImVec2(8.0f * s, 7.0f * s);
+    style.IndentSpacing    = 20.0f * s;
+    style.ScrollbarSize    = 13.0f * s;
+    style.GrabMinSize      = 13.0f * s;
     style.SeparatorTextBorderSize = 1.0f;
     style.SeparatorTextAlign      = ImVec2(0.0f, 0.5f);
-    style.SeparatorTextPadding    = ImVec2(18.0f * s, 4.0f * s);
+    style.SeparatorTextPadding    = ImVec2(20.0f * s, 8.0f * s);
     style.ButtonTextAlign         = ImVec2(0.5f, 0.5f);
     style.SelectableTextAlign     = ImVec2(0.0f, 0.5f);
     style.TabBarBorderSize        = 0.0f;
@@ -240,10 +242,12 @@ void panelHeader(const char* title, const char* hint)
 {
     const DesignerPalette palette = currentDesignerPalette();
 
+    // 注意：这里不能塞 Dummy 之类的换行元素 —— 左栏是 `SameLine()` 之后调过来的，
+    // 一换行标题就掉到第二行（踩过）
     ImGui::TextColored(palette.textPrimary, "%s", title);
     if (hint != nullptr && hint[0] != 0)
     {
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, 8.0f);
         ImGui::TextColored(palette.textDim, "%s", hint);
     }
     ImGui::Separator(); // 扁平：只用一条细线分区，不画抬起的条

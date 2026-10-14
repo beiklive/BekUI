@@ -4,6 +4,10 @@ namespace
 {
 // 玻璃默认参数的版本：改了默认观感就 +1，让老状态文件里的旧参数失效
 constexpr int kGlassTuningVersion = 2;
+
+// 界面状态版本：改了默认观感（比如默认缩放 0.85 → 0.92）就 +1，
+// 让老状态文件里的旧值失效，否则用户那边看到的还是老排版
+constexpr int kUiStateVersion = 2;
 }
 
 #include <cmath>
@@ -51,7 +55,12 @@ bool loadUiState(const std::string& path, UiState& out)
     out.leftWidth        = doc.value("leftWidth", out.leftWidth);
     out.rightWidth       = doc.value("rightWidth", out.rightWidth);
     out.fileListHeight   = doc.value("fileListHeight", out.fileListHeight);
-    out.uiScale          = clampUiScale(doc.value("uiScale", out.uiScale));
+    // 老状态文件里的 0.85 是"旧默认"：默认排版改宽了，不再沿用（否则还是文字贴边）。
+    // 其它值照旧读（含越界值钳到 0.7~1.6）—— 用户自己调过的不该被吃掉
+    const float storedScale = doc.value("uiScale", out.uiScale);
+    if (doc.value("version", 0) >= kUiStateVersion
+        || std::fabs(storedScale - 0.85f) > 0.001f)
+        out.uiScale = clampUiScale(storedScale);
     out.leftCollapsed    = doc.value("leftCollapsed", out.leftCollapsed);
     out.canvasPreset     = doc.value("canvasPreset", out.canvasPreset);
     out.canvasChecker    = doc.value("canvasChecker", out.canvasChecker);
@@ -106,6 +115,7 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     doc["leftWidth"]        = state.leftWidth;
     doc["rightWidth"]       = state.rightWidth;
     doc["fileListHeight"]   = state.fileListHeight;
+    doc["version"]          = kUiStateVersion;
     doc["uiScale"]          = std::round(state.uiScale * 100.0f) / 100.0f;
     doc["leftCollapsed"]    = state.leftCollapsed;
     doc["canvasPreset"]     = state.canvasPreset;

@@ -18,6 +18,29 @@ std::string joinPath(const std::string& directory, const std::string& name)
     return directory + "/" + name;
 }
 
+std::string shortenPath(const std::string& path, int keepParts)
+{
+    if (path.empty() || keepParts <= 0)
+        return path;
+
+    // 从后往前数分隔符，数够 keepParts 段就切
+    int parts = 0;
+    for (size_t index = path.size(); index > 0; index--)
+    {
+        if (path[index - 1] != '/' && path[index - 1] != '\\')
+            continue;
+        parts++;
+        if (parts >= keepParts)
+        {
+            // index-1 就是那一段前面的分隔符
+            if (index - 1 == 0)
+                return path; // 已经是根了，没必要加省略号
+            return "…/" + path.substr(index);
+        }
+    }
+    return path; // 段数不够，原样返回
+}
+
 std::string parentDirectory(const std::string& path)
 {
     std::string trimmed = path;

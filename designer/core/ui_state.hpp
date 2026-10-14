@@ -19,9 +19,9 @@ struct UiState
     int fileListHeight = 250;
     bool leftCollapsed = false;
 
-    // 设计器界面的整体缩放（不是预览画布的缩放）：0.75 / 0.85 / 1.0 / 1.15 / 1.3
-    // 默认 0.85：按 ImGui 默认字号排版 + Retina 逻辑分辨率下，1.0 显得偏大（用户反馈过）
-    float uiScale = 0.85f;
+    // 设计器界面的整体缩放（不是预览画布的缩放）：0.75 / 0.85 / 0.92 / 1.0 / 1.15 / 1.3
+    // 默认 0.92：0.85 时字与间距都偏挤（用户反馈"文字贴着边"），1.0 又偏大，取中间
+    float uiScale = 0.92f;
 
     int canvasPreset   = 0;  // 0=自适应 1=1280×720 2=720×480 3=640×360 4=自定义
     bool canvasChecker = true;
