@@ -80,4 +80,9 @@ void  panelTitleBarEnd(float barHeight, float uiScale);
 bool statChip(const char* id, const char* label, const char* value, const char* tooltip);
 bool crumbChip(const char* text, bool current, const char* tooltip);
 
+// 磨砂卡片底：**半透明**深色 + 冷白描边 + 顶部一条高光，和面板玻璃同一套观感。
+// ⚠️ 不要用 palette.page/card/raised/sunken 直接铺底 —— 那些 hex 的 alpha 是 1.0，
+// 会把面板的玻璃整个挡住（左下状态卡踩过：看着就是一块灰板）。
+void frostedCard(ImDrawList* list, const ImVec2& min, const ImVec2& max, float radius);
+
 } // namespace designer

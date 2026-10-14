@@ -2197,9 +2197,9 @@ void DesignerWindow::drawStatus()
     const ImVec2 cardMin(origin.x - sideIn, origin.y - padY * 0.5f);
     const ImVec2 cardMax(origin.x + avail + sideIn, cardMin.y + cardH);
 
-    // 卡片底：圆角、比面板内容低一档 —— 原来是一行裸文字用「·」分隔，块底还贴着面板下沿
-    ImGui::GetWindowDrawList()->AddRectFilled(cardMin, cardMax,
-        ImGui::ColorConvertFloat4ToU32(palette.sunken), 8.0f * s);
+    // 卡片底：磨砂半透明（玻璃上的一块磨砂片）——
+    // 以前这里铺的是 palette.sunken（alpha=1.0 的不透明灰），把面板的玻璃整个挡住了
+    frostedCard(ImGui::GetWindowDrawList(), cardMin, cardMax, 8.0f * s);
 
     // 用同尺寸的 Dummy 占位：告诉 ImGui"这块内容在这里"。
     // 只用 SetCursorScreenPos 往后放东西会被判成"越界扩展窗口边界"并弹 ImGui 报错（踩过）

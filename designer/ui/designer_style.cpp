@@ -294,6 +294,19 @@ bool chipImpl(const char* id, const char* label, const char* value, bool current
 
 } // namespace
 
+void frostedCard(ImDrawList* list, const ImVec2& min, const ImVec2& max, float radius)
+{
+    if (list == nullptr)
+        return;
+
+    // 半透明深色：让面板背后那层玻璃（模糊壁纸）透出来，又不至于和内容糊在一起
+    list->AddRectFilled(min, max, IM_COL32(0, 0, 0, 72), radius);
+    list->AddRect(min, max, IM_COL32(255, 255, 255, 28), radius, 0, 1.0f);
+    // 顶部高光一条：和玻璃面板边缘的高光是同一套观感
+    list->AddLine(ImVec2(min.x + radius, min.y + 0.5f), ImVec2(max.x - radius, min.y + 0.5f),
+        IM_COL32(255, 255, 255, 40), 1.0f);
+}
+
 bool statChip(const char* id, const char* label, const char* value, const char* tooltip)
 {
     return chipImpl(id, label, value, false, tooltip, false);
