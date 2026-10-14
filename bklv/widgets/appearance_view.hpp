@@ -20,6 +20,15 @@
 namespace bklv
 {
 
+// 图标层用哪套图标字体。库里有两套：
+//   MATERIAL —— bklv 自带的 Material Icons（icon::font()），控件图标默认用它；
+//   SWITCH   —— switch_icons.ttf（按键/系统图标），只给提示栏、菜单这类地方用。
+enum class IconFontKind
+{
+    MATERIAL,
+    SWITCH,
+};
+
 class AppearanceView : public Box
 {
   public:
@@ -59,6 +68,9 @@ class AppearanceView : public Box
 
     void setInfoText(const std::string& value);
     const std::string& getInfoText() const { return this->infoText; }
+
+    void setIconFontKind(IconFontKind kind) { this->iconFontKind = kind; }
+    IconFontKind getIconFontKind() const { return this->iconFontKind; }
 
     // 直接套一份**外部的**外观 JSON（用当前主题解析）。
     // 设计器靠它做"改了但还没保存也能看到效果"：编译 → 换成这一份 → 重排。
@@ -119,6 +131,7 @@ class AppearanceView : public Box
     bool focusable = false;
     std::string icon;
     std::string infoText;
+    IconFontKind iconFontKind = IconFontKind::MATERIAL;
     bool pressed   = false;
     AppearanceInstance appearance;
 };

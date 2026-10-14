@@ -549,10 +549,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   外观 `widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`）：
   1）**变体 = 组合外观**，代码只给内容和行为。`AppearanceView::setAppearanceName(name)`
      换基名（名字是主题里的完整路径，如 `widget/button.icon_text`）；一行放置靠层 inset。
-  2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字体字形）与
+  2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字形）与
      `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
-     `getLayerFont` 对 id/source 为 `icon` 的层返回 `getIconFont()`
-     （用正文字体会把图标画成方块）。`Dropdown` 的触发器也能换这套外观。
+     `getLayerFont` 对 id/source 为 `icon` 的层返回图标字体（用正文字体会把图标画成方块）。
+     **图标字体有两套，用哪套由控件说**：`setIconFontKind(IconFontKind::MATERIAL | SWITCH)`，
+     **默认 MATERIAL**（`icon::font()`，控件图标用它；`icon::glyphByName("star")` 取字形）；
+     SWITCH 那套（`getIconFont()`，按键/系统图标）**只给提示栏、菜单这类地方**用
+     （`HintItemView` 自己 override 成 SWITCH）。`Dropdown` 的触发器也能换这套外观。
   3）开关类（`switch_text` / `switch_icon`）用**外观状态** `on`/`off` 表达布尔态
      （`Button::setSwitched`），过渡动画由主题里那两个状态的 duration/easing 描述 ——
      不要再写一套动画代码；图案开关的滑块位移就是 `knob.offsetX` 补间。
@@ -566,6 +569,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `glTexSubImage2D`，Vulkan 走 staging + 屏障 + `vkCmdCopyBufferToImage`）。
   没有它的后端返回 false（默认实现），上层当作"这次换帧失败"处理。
   Vulkan 那段和 `createTexture` 的上传步骤同构但**故意不共用** —— 那条路径是验证过的，动它风险更大。
+- **demo 页面的控件一行一个**：别把好几个按钮塞一行（挤在一起会截断信息文字）。
+  用"一行 + 控件 `grow=1`"铺满；容器/按钮的宽度靠 `measureContent: "sum"` 撑开，
+  不要靠手写固定宽度。
 - **页面里不要再套 `ScrollingFrame`**（demo 约定）：非自滚动页（`selfScrolling=false`）由
   宿主的外层滚动器负责滚动，页面的外层框是 `height: auto` —— 里面再放一个
   `grow/shrink` 的滚动器拿不到确定高度，高度会算成 0，**整页内容都看不见**（图标总览页踩过）。

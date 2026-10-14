@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "bklv/core/font.hpp"
+#include "bklv/core/icon_font.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/shadow.hpp"
@@ -243,10 +244,12 @@ TextureRef AppearanceView::getLayerImage(const std::string&)
 
 ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
 {
-    // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块
+    // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块。
+    // 默认 Material（控件图标），提示栏/菜单那类自己 setIconFontKind(SWITCH)。
     if (layer.id == "icon" || layer.source == "icon")
     {
-        ImFont* iconFont = getIconFont();
+        ImFont* iconFont = this->iconFontKind == IconFontKind::SWITCH ? getIconFont()
+                                                                     : icon::font();
         if (iconFont != nullptr)
             return iconFont;
     }
