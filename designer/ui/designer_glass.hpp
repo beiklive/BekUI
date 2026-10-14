@@ -15,6 +15,12 @@
 
 #include <string>
 
+#if defined(BKLV_VULKAN)
+#include <memory>
+
+#include "designer/glass/vk/vk_glass.hpp"
+#endif
+
 namespace designer
 {
 
@@ -51,6 +57,17 @@ class DesignerGlass
     // 当前帧有没有玻璃要画（没有就不必注入）
     bool hasWork() const { return this->tuning.enabled && !this->queue.isEmpty(); }
 
+    // Vulkan 那条路：底由玻璃自己铺（上一帧画面 + mip 链模糊），
+    // ImGui 就不要再画壁纸了，否则会把玻璃盖掉
+    bool usesOwnWallpaper() const
+    {
+#if defined(BKLV_VULKAN)
+        return this->vulkanActive;
+#else
+        return false;
+#endif
+    }
+
     // ImGui::Render() 之后、renderDrawData() 之前：注入玻璃命令
     void prepareDrawData(ImDrawData* drawData);
 
@@ -62,6 +79,14 @@ class DesignerGlass
     const std::string& getStatus() const { return this->status; }
 
   private:
+#if defined(BKLV_VULKAN)
+    // Vulkan 路径：不建管线，只做 mip 链模糊 + 让 ImGui 叠一层圆角染色
+    void addVulkanRect(const ImVec4& rect, ImDrawList* list, bool isBar);
+    std::unique_ptr<glass::VkGlass> vk;
+    bool vulkanActive  = false;
+    float vulkanDensity = 1.0f;
+#endif
+
     void submit(const ImVec4& rect, const glass::CornerRadii& radii,
         const glass::GlassStyle& style, ImDrawList* list, int commandOffset);
 

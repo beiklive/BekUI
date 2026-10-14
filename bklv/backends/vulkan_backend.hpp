@@ -21,6 +21,8 @@
 // 而 CMake 只在 vk 构建里把 Vulkan 的 include 目录加进来。
 #if !defined(BKLV_SWITCH) && defined(BKLV_VULKAN)
 
+#include "bklv/backends/vulkan_ui_pass.hpp"
+
 #include <SDL3/SDL.h>
 #include <vulkan/vulkan.h>
 
@@ -34,6 +36,12 @@ class VulkanBackend : public RenderBackend
   public:
     VulkanBackend();
     ~VulkanBackend() override;
+
+    // 宿主钩子（设计器的玻璃用）：UI 通道前/后各一次机会。
+    // 传 nullptr 取消。**只在动态渲染路径下生效**（传统 render pass 的 loadOp
+    // 是在 VkRenderPass 里烘死的，做不到"不清屏"，所以那条路径不调用钩子）。
+    void setUiPassHook(bklv::VulkanUiPassHook* hook);
+    bool isUiPassHookActive() const;
 
     const char* getName() const override { return "Vulkan"; }
 
@@ -57,6 +65,10 @@ class VulkanBackend : public RenderBackend
     void destroyTexture(TextureHandle& handle) override;
 
   private:
+    bklv::VulkanUiPassHook* uiPassHook = nullptr;
+    // 这一帧钩子是否已经铺好底（true 时 ImGui 通道用 LOAD 不清屏）
+    bool uiPassPreserve = false;
+
     // 一张上传好的纹理。userData 指向它，销毁时才能找回 image/view/memory。
     struct TextureRecord
     {
@@ -128,6 +140,10 @@ class VulkanBackend : public RenderBackend
     bool recreateSwapchain     = false;
     bool imguiRendererInited   = false;
 };
+
+// 当前活着的 Vulkan 后端（设计器要把 UI 通道钩子挂上去）。
+// 没创建过时返回 nullptr。GL 构建里不存在这个声明。
+VulkanBackend* activeVulkanBackend();
 
 } // namespace bklv
 

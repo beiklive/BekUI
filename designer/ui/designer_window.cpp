@@ -5602,6 +5602,9 @@ void DesignerWindow::draw()
     // 玻璃抓帧发生在第一条玻璃命令（菜单栏那块），之前试过放在 ImGui 的
     // 背景绘制列表里 —— 实测抓到的只有菜单栏文字、没有壁纸，于是玻璃采到一片黑，
     // 面板看着就是黑的。放进窗口列表、且排在菜单栏之前，就保证"玻璃下面一定有壁纸"。
+    // Vulkan 那条路：底（壁纸 + 上一帧画面）由玻璃的前置画铺好，这里不要再画，
+    // 否则会把玻璃整个盖掉
+    if (!this->glass.usesOwnWallpaper())
     {
         ImDrawList* wallpaperList = ImGui::GetWindowDrawList();
         const ImVec2 size         = io.DisplaySize;

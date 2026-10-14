@@ -234,6 +234,7 @@ set(BKLV_DESIGNER_UI_SOURCES
     ui/designer_style.cpp
     ui/designer_window.cpp
     ui/designer_glass.cpp
+    glass/vk/vk_glass.cpp
     glass/gl/gl_procs.cpp
     glass/gl/gl_shaders.cpp
     glass/gl/gl_backend.cpp

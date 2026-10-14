@@ -17,6 +17,12 @@
 
 namespace bklv
 {
+namespace
+{
+// 活跃实例：给宿主（设计器）挂 UI 通道钩子用
+VulkanBackend* gActiveBackend = nullptr;
+} // namespace
+
 
 namespace
 {
@@ -105,10 +111,26 @@ VkExtent2D clampExtent(const VkSurfaceCapabilitiesKHR& caps, int width, int heig
 // 生命周期
 // ---------------------------------------------------------------------------
 
-VulkanBackend::VulkanBackend() = default;
+VulkanBackend::VulkanBackend()
+{
+    gActiveBackend = this;
+}
+
+VulkanBackend* activeVulkanBackend()
+{
+    return gActiveBackend;
+}
 
 VulkanBackend::~VulkanBackend()
 {
+    // 宿主钩子（设计器的玻璃）的资源也是用这个 device 建的：必须在销毁设备前让它释放，
+    // 否则它自己的析构里会对着死设备调 vkDestroyImage（踩过：Abort trap: Invalid device）
+    if (this->uiPassHook != nullptr)
+    {
+        this->uiPassHook->detach();
+        this->uiPassHook = nullptr;
+    }
+
     // 正常路径下 App 已经按 "纹理 -> ImGui 渲染后端 -> 平台" 的顺序清理过，
     // 这里兜底，避免异常退出时泄漏 Vulkan 对象。
     if (this->device == VK_NULL_HANDLE)
@@ -1066,6 +1088,31 @@ bool VulkanBackend::prepareFrame()
     return true;
 }
 
+void VulkanBackend::setUiPassHook(bklv::VulkanUiPassHook* hook)
+{
+    this->uiPassHook     = hook;
+    this->uiPassPreserve = false;
+    if (hook == nullptr)
+        return;
+
+    if (!this->blendDynamic)
+    {
+        // 传统 render pass 路径做不到"不清屏"，直接告诉宿主：钩子用不了
+        BKLV_LOG_WARNING("[UI 钩子] 当前走的是传统 render pass，做不到保留画面，钩子不生效");
+        this->uiPassHook = nullptr;
+        return;
+    }
+
+    hook->attach(this->instance, this->physical, this->device, this->queue, this->queueFamily,
+        this->commandPools.empty() ? VK_NULL_HANDLE : this->commandPools[0]);
+    hook->configure(this->imageFormat, this->extent);
+}
+
+bool VulkanBackend::isUiPassHookActive() const
+{
+    return this->uiPassHook != nullptr;
+}
+
 bool VulkanBackend::beginRendering()
 {
     VkCommandBuffer commandBuffer = this->commandBuffers[this->frameIndex];
@@ -1097,12 +1144,19 @@ bool VulkanBackend::beginRendering()
         colorAttachment.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
         colorAttachment.imageView   = this->imageViews[this->imageIndex];
         colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttachment.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        // 钩子说"底我已经铺好了"时不能清屏，否则会把它画的东西擦掉
+        colorAttachment.loadOp      = this->uiPassPreserve ? VK_ATTACHMENT_LOAD_OP_LOAD
+                                                          : VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.clearValue.color.float32[0] = this->clearColor[0];
         colorAttachment.clearValue.color.float32[1] = this->clearColor[1];
         colorAttachment.clearValue.color.float32[2] = this->clearColor[2];
         colorAttachment.clearValue.color.float32[3] = this->clearColor[3];
+
+        // 玻璃等宿主工作在通道外做：此时命令缓冲已开、图像已是颜色附件布局
+        this->uiPassPreserve = this->uiPassHook != nullptr
+            && this->uiPassHook->beforeUiPass(commandBuffer, this->images[this->imageIndex],
+                this->imageViews[this->imageIndex], this->imageFormat, this->extent);
 
         VkRenderingInfo renderingInfo = {};
         renderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -1175,6 +1229,11 @@ void VulkanBackend::endRendering()
     if (this->blendDynamic)
     {
         vkCmdEndRendering(this->commandBuffers[this->frameIndex]);
+
+        // 通道之后、转 present 之前：钩子可以把成品拷走留给下一帧
+        if (this->uiPassHook != nullptr)
+            this->uiPassHook->afterUiPass(this->commandBuffers[this->frameIndex],
+                this->images[this->imageIndex], this->imageFormat, this->extent);
 
         // 呈现前转成 PRESENT_SRC。
         VkImageMemoryBarrier barrier = {};

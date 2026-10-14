@@ -24,6 +24,8 @@ class GlassRequestQueue
     // 禁区：任何玻璃都不许碰到这块矩形（设计器用它保护预览区）。
     // 必须在 seal() 之前调用；被禁区和请求相交时，请求会被裁到"剩下的更大那一块"。
     void excludeRect(const ImVec4& forbidden);
+    // 禁区列表（Vulkan 那条路自己按它裁：它的矩形不走 draw call 注入）
+    const std::vector<ImVec4>& getExcludedRects() const noexcept { return this->forbiddenRects; }
 
     // 收口：之后再 submit 会被忽略（避免同一帧改来改去）
     void seal();

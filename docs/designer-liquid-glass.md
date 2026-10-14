@@ -166,7 +166,13 @@ designer/ui/designer_glass.{hpp,cpp}  设计器门面（开关、能力、注入
      （现在的行为就是不启用）。验证用 `BKLV_VULKAN_VALIDATION=1` 跑一遍干净日志 +
      与 GL 截图对比（预览区逐像素不变的断言照跑）。
 
-  现在 Vulkan 下玻璃整体关闭（不崩、回退普通面板）
+  **已落地（本轮）**：`bklv/backends/vulkan_ui_pass.hpp` 两个钩子 + `VulkanBackend` 的
+  `setUiPassHook/detach`；`designer/glass/vk/vk_glass.{hpp,cpp}` 用 `vkCmdBlitImage`
+  走 mip 链做模糊（无管线/无 SPIR-V），圆角染色描边由 ImGui 叠画；
+  `DesignerGlass` 在 VK 构建下自动切到这条路，并让 ImGui 不再画壁纸（底由前置画铺）。
+  实测：VK 构建零警告、运行 20s 校验层静默、资源创建/释放正常（此前析构顺序不对会 abort，
+  已用 `detach()` 修掉）。
+  仍差：VK 后端没有帧读回 → 截不了图，**视觉验收待补**
 - 面板逐个细调（滚动、重叠、拖拽时的表现）
 - 玻璃参数预设（几套命名观感，一键切）与"导出到主题 JSON"
 3. 玻璃调参面板（模糊档位/染色/折射/色散/高光）做成设计器自己的 ImGui 面板，方便迭代审美

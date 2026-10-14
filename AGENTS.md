@@ -661,9 +661,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   否则方向键会被 ImGui 拿去移动它的内部焦点、把面板滚到不知哪里去。
 
 - **液态玻璃只服务设计器外壳，预览区是禁区**（`designer/glass/` + `designer/ui/designer_glass.*`）：
-  1）**只在 GL 下启用**：后端是 GLSL 150（`designer/glass/gl/`），跑在 Vulkan 构建里时
-     `beginFrame` 会看到后端名不是 GL 就整体关掉（没有 GL 上下文还去调 GL 会崩）。
-     拿不到 GL 入口 / 着色器编不过 / 尺寸非法 → 回退普通面板，设计器不会因此不能用。
+  1）**两条后端各有一套**：
+     · **GL**（`designer/glass/gl/`，GLSL 150）：抓帧 + 半分辨率可分离高斯 + 折射/色散合成。
+     · **Vulkan**（`designer/glass/vk/`）：ImGui 的绘制回调在渲染通道里，抓帧/模糊必须
+       **在通道外** —— 所以走 `bklv::VulkanUiPassHook` 两个钩子：
+       UI 通道**前**（`beginRendering()` 里、`vkCmdBeginRendering` 之前）铺底 +
+       模糊 + 合成，通道**后**（`endRendering()` 里、转 present 之前）把成品拷进常驻图像
+       留给下一帧。ImGui 那趟通道因此要用 **LOAD_OP_LOAD 不清屏**（钩子返回 true 时后端自动切）。
+       模糊**不用 shader**：`vkCmdBlitImage` 顺 mip 链下采样（硬件 box 滤波）；
+       圆角/染色/描边高光由 ImGui 叠着画。代价：背景是**上一帧**的（滞后一帧，静态界面看不出来）、
+       没有折射/色散（GL 才有）。
+     · 钩子类型在 `bklv/backends/vulkan_ui_pass.hpp`（只有 VK 构建会包含它，GL 不受影响）；
+       后端销毁设备**之前**必须 `detach()` 让钩子释放资源 —— 否则析构里 vkDestroyImage
+       会 "Invalid device" 直接 abort（踩过）。
+     · 拿不到 GL 入口 / 着色器编不过 / 尺寸非法 / 传统 render pass 路径 → 回退普通面板。
      开关：`BKLV_DESIGNER_GLASS=0`。
   2）**预览区的像素一个都不许被玻璃影响**：预览面板的矩形进 `GlassRequestQueue::excludeRect()`，
      玻璃请求与它相交时会被裁到"避开的更大那一半"；另外横条不画外阴影
@@ -701,17 +712,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
      所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
      遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
-  9）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
+  9）**VK 那条路的可见性验证还差一步**：Vulkan 后端没有 `RenderBackend::readPixels`
+     实现，`App::requestScreenshot` 在 VK 下会报"后端不支持帧读回" → VK 的玻璃效果
+     目前只能靠日志 + 校验层静默来确认，**看不到图**。要视觉验收得先给 VK 后端补
+     帧读回（host-visible buffer + `vkCmdCopyImageToBuffer`）。
+  10）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
      台面 = 竖向渐变 + 点阵网格（24px，alpha 18）+ 四边内阴影；画布 = 柔化投影 + 1px 细线 +
      顶边高光 + 尺寸/缩放角标；参考线用虚线。三档画布底：细棋盘（看透明/阴影）/ 暗面 /
      纸面（看浅色主题），存在 `ui_state.canvasBackdrop`（老文件按 `canvasChecker` 迁移）。
      ⚠️ **工作台必须画在 `##stage` 子窗里面**：面板/子窗的不透明底是 BeginChild 那一刻铺的，
      画在它之前会被整块盖掉（踩过一次：台面、点阵、内阴影全不见，看着还是纯色）。
-  10）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
+  11）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
      （清透 / 磨砂 / 厚重 / 极简），F4 面板上一排按钮一键切；当前参数能被 `matchGlassPreset`
      认回哪一档（认不出显示"自定义"）。`designer_glass.json`（可执行文件目录）存/取当前参数，
      方便调好一套留着或贴给别人。纯数据 + 纯函数 → 无窗口测试覆盖（往返、越界、非法输入）。
-  11）**样式要全覆盖**（三轮自查的结论，别再漏）：
+  12）**样式要全覆盖**（三轮自查的结论，别再漏）：
      ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
         退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
         `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。

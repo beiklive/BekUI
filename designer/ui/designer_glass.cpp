@@ -1,6 +1,10 @@
 #include "designer/ui/designer_glass.hpp"
 
 #include "bklv/core/graphics.hpp"
+
+#if defined(BKLV_VULKAN)
+#include "bklv/backends/vulkan_backend.hpp"
+#endif
 #include "bklv/core/logger.hpp"
 
 #include "bklv/3rd/imgui/imgui.h"
@@ -22,6 +26,28 @@ void DesignerGlass::applyEnvOverrides()
 
 void DesignerGlass::beginFrame(int framebufferWidth, int framebufferHeight, float density)
 {
+#if defined(BKLV_VULKAN)
+    // Vulkan：ImGui 的绘制回调在渲染通道里，抓帧/模糊必须在通道外，
+    // 所以走"UI 通道前铺底 + 通道后存档"这条路（见 vk_glass.hpp）
+    if (bklv::activeVulkanBackend() != nullptr)
+    {
+        if (this->vk == nullptr)
+            this->vk = std::make_unique<glass::VkGlass>();
+        // 只挂一次（每帧重挂会重复 attach/configure，日志刷屏也没必要）
+        if (!bklv::activeVulkanBackend()->isUiPassHookActive())
+            bklv::activeVulkanBackend()->setUiPassHook(this->vk.get());
+
+        this->vulkanActive     = true;
+        this->vulkanDensity    = density > 0.0f ? density : 1.0f;
+        this->injectedThisFrame = false;
+        this->width  = framebufferWidth;
+        this->height = framebufferHeight;
+        if (this->tuning.enabled)
+            this->vk->beginFrame(this->tuning.blurRadius, true);
+        return;
+    }
+#endif
+
     // 玻璃后端是 GL（GLSL 150）。跑在 Vulkan 下时连 GL 上下文都没有，
     // 直接关掉 —— 不然会在没有当前上下文的情况下调 GL，轻则报错重则崩。
     if (this->tuning.enabled && !this->backendChecked)
@@ -50,10 +76,76 @@ void DesignerGlass::beginFrame(int framebufferWidth, int framebufferHeight, floa
     this->queue.beginFrame(backdrop, density);
 }
 
+#if defined(BKLV_VULKAN)
+void DesignerGlass::addVulkanRect(const ImVec4& rect, ImDrawList* list, bool isBar)
+{
+    const glass::GlassTuning& tuning = this->tuning;
+
+    // 禁区（预览区）：玻璃一律不许碰 —— 和 GL 那条路同一个规则
+    float minX = rect.x;
+    float minY = rect.y;
+    float maxX = rect.z;
+    float maxY = rect.w;
+    for (const ImVec4& forbidden : this->queue.getExcludedRects())
+    {
+        const bool intersects = minX < forbidden.z && maxX > forbidden.x && minY < forbidden.w
+            && maxY > forbidden.y;
+        if (!intersects)
+            continue;
+        // 取"避开的更大那一半"（和 gl 后端同一套裁剪）
+        const float above = std::max(0.0f, forbidden.y - minY);
+        const float below = std::max(0.0f, maxY - forbidden.w);
+        const float left  = std::max(0.0f, forbidden.x - minX);
+        const float right = std::max(0.0f, maxX - forbidden.z);
+        const float best  = std::max(std::max(above, below), std::max(left, right));
+        if (best <= 0.0f)
+            return;
+        if (best == above)
+            maxY = forbidden.y;
+        else if (best == below)
+            minY = forbidden.w;
+        else if (best == left)
+            maxX = forbidden.x;
+        else
+            minX = forbidden.z;
+    }
+    if (maxX <= minX || maxY <= minY)
+        return;
+
+    const float density = this->vulkanDensity;
+    glass::VkGlassRect physical;
+    physical.minX      = minX * density;
+    physical.minY      = minY * density;
+    physical.maxX      = maxX * density;
+    physical.maxY      = maxY * density;
+    physical.blurScale = std::min(tuning.blurRadius / 48.0f, 1.0f);
+    if (this->vk != nullptr && this->tuning.enabled)
+        this->vk->addRect(physical);
+
+    // 模糊只有形状没有颜色：圆角、染色、描边高光由 ImGui 叠在这上面画
+    // （VK 这条路的取舍：不做折射/色散，先把"磨砂 + 染色 + 边缘高光"做出来）
+    const float radius = isBar ? tuning.barRadius : tuning.panelRadius;
+    const ImU32 tint   = ImGui::ColorConvertFloat4ToU32(ImVec4(tuning.tintR, tuning.tintG,
+        tuning.tintB, std::max(tuning.tintA, 0.35f)));
+    const ImU32 rim    = ImGui::ColorConvertFloat4ToU32(
+        ImVec4(1.0f, 1.0f, 1.0f, 0.10f + tuning.rimGlow * 0.35f));
+    list->AddRectFilled(ImVec2(minX, minY), ImVec2(maxX, maxY), tint, radius);
+    list->AddRect(ImVec2(minX, minY), ImVec2(maxX, maxY), rim, radius, 0, 1.0f);
+}
+#endif
+
 void DesignerGlass::addBar(const ImVec4& rect, ImDrawList* list, int commandOffset)
 {
     if (!this->isEnabled() || list == nullptr)
         return;
+
+#if defined(BKLV_VULKAN)
+    if (this->vulkanActive)
+    {
+        this->addVulkanRect(rect, list, true);
+        return;
+    }
+#endif
 
     const glass::GlassTuning& tuning = this->tuning;
 
@@ -78,6 +170,14 @@ void DesignerGlass::addPanel(const ImVec4& rect, ImDrawList* list, int commandOf
 {
     if (!this->isEnabled() || list == nullptr)
         return;
+
+#if defined(BKLV_VULKAN)
+    if (this->vulkanActive)
+    {
+        this->addVulkanRect(rect, list, false);
+        return;
+    }
+#endif
 
     const glass::GlassTuning& tuning = this->tuning;
 
@@ -130,6 +230,15 @@ void DesignerGlass::endFrame()
 {
     if (!this->isEnabled())
         return;
+
+#if defined(BKLV_VULKAN)
+    if (this->vulkanActive)
+    {
+        if (this->vk != nullptr)
+            this->vk->endFrame();
+        return;
+    }
+#endif
     this->queue.seal();
 }
 
