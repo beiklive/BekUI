@@ -498,8 +498,19 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 // 能被外观覆盖的只有样式：fill(染色) / opacity / radius；
                 // blurRadius、quality 与总开关只由 Shell 决定（两条后端的背景模糊是整帧共用一份）。
                 glass::GlassService& service = glass::getGlassService();
-                if (alphaScale <= 0.001f || !service.isEnabled())
+                if (alphaScale <= 0.001f)
                     break;
+
+                // 玻璃不可用（后端没起来 / 关掉了）：退化成半透明底。
+                // 不能什么都不画 —— 玻璃变体把底色覆盖成了透明，那样控件在真机上会整个消失
+                // （Switch 上踩过：玻璃没生效时控件完全透明）。
+                if (!service.isEnabled() || !service.isSupported())
+                {
+                    if ((fill >> 24) != 0)
+                        drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
+                            scaleAlpha(fill), radius);
+                    break;
+                }
 
                 const ImVec2 fbScale = ImGui::GetIO().DisplayFramebufferScale;
                 const float density  = fbScale.x > 0.0f ? fbScale.x : 1.0f;

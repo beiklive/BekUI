@@ -82,6 +82,12 @@ void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float
 #endif
 
     this->supported = this->isEnabled() && this->ensureBackend();
+    if (this->isEnabled() && !this->supported && !this->warnedUnsupported)
+    {
+        this->warnedUnsupported = true;
+        Logger::warning("[玻璃] 已开启但后端不可用 —— 声明了玻璃的层会回退成\"什么都不画\" "
+                        "（真机上看着就是完全透明）。逐条原因见上面的 [玻璃] 日志。");
+    }
 }
 
 void GlassService::submit(GlassRequest request)

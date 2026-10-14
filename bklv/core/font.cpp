@@ -228,9 +228,53 @@ unsigned int getFontGeneration()
     return g_fontGeneration;
 }
 
+// 图标字体：按键字形（switch_icons.ttf）与 Material 图标库。
+// **两个平台都要装** —— 以前这段只在桌面的 #else 分支里，Switch 上加载完系统共享字体就
+// 直接 return 了，于是真机上"所有图标字体都不显示"（踩过）。
+// 必须在图集建好之前调用：建好之后再加字体 ImGui 会崩（设计器踩过）。
+static void loadIconFonts(ImFontAtlas* atlas)
+{
+    const std::string iconPath = resourcePath("resources/font/switch_icons.ttf");
+    if (fileExists(iconPath.c_str()))
+    {
+        ImFont* icon
+            = atlas->AddFontFromFileTTF(iconPath.c_str(), ICON_FONT_SIZE, nullptr, PUA_RANGES);
+        if (icon != nullptr)
+        {
+            setIconFont(icon);
+            Logger::info("已加载图标字体：resources/font/switch_icons.ttf");
+        }
+        else
+            Logger::warning("图标字体解析失败：resources/font/switch_icons.ttf");
+    }
+    else
+        Logger::info("没找到图标字体 resources/font/switch_icons.ttf，hint 图标用文字代替");
+
+    const std::string materialPath = resourcePath("resources/font/MaterialIcons-Regular.ttf");
+    if (fileExists(materialPath.c_str()))
+    {
+        ImFontConfig config;
+        config.FontDataOwnedByAtlas = true;
+        ImFont* material = atlas->AddFontFromFileTTF(materialPath.c_str(), ICON_FONT_SIZE,
+            &config, PUA_RANGES);
+        if (material != nullptr)
+        {
+            bklv::icon::setFont(material);
+            Logger::info("已加载图标库：resources/font/MaterialIcons-Regular.ttf");
+        }
+        else
+            Logger::warning("图标字体解析失败：resources/font/MaterialIcons-Regular.ttf");
+    }
+    else
+        Logger::info("没找到 resources/font/MaterialIcons-Regular.ttf，图标用文字代替");
+}
+
 void loadFonts()
 {
     ImGuiIO& io = ImGui::GetIO();
+
+    // 图标字体先装：两个平台都要，不能被下面各分支的 return 跳过
+    loadIconFonts(io.Fonts);
 
 #if defined(BKLV_SWITCH)
     // 用户自备字体优先（对应 borealis 的自定义字体覆盖）。
@@ -270,51 +314,6 @@ void loadFonts()
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     };
 #endif
-
-    // 图标字体先加载：里面是按键字形（私有区），和正文字体分开方便各取所需
-    {
-        const std::string iconPath = bklv::resourcePath("resources/font/switch_icons.ttf");
-        if (fileExists(iconPath.c_str()))
-        {
-            ImFont* icon = io.Fonts->AddFontFromFileTTF(iconPath.c_str(), ICON_FONT_SIZE, nullptr,
-                PUA_RANGES);
-            if (icon != nullptr)
-            {
-                setIconFont(icon);
-                Logger::info("已加载图标字体：resources/font/switch_icons.ttf");
-            }
-            else
-                Logger::warning("图标字体解析失败：resources/font/switch_icons.ttf");
-        }
-        else
-        {
-            Logger::info("没找到图标字体 resources/font/switch_icons.ttf，hint 图标用文字代替");
-    }
-
-    // Material Icons：库自带的图标库（core/icon_font.*）。
-    // **必须在这里装**：图集一旦建好，再加字体就会崩（设计器里踩过 segfault）。
-    {
-        const std::string materialPath
-            = bklv::resourcePath("resources/font/MaterialIcons-Regular.ttf");
-        if (fileExists(materialPath.c_str()))
-        {
-            ImFontConfig config;
-            config.FontDataOwnedByAtlas = true;
-            ImFont* material = io.Fonts->AddFontFromFileTTF(materialPath.c_str(),
-                ICON_FONT_SIZE, &config, PUA_RANGES);
-            if (material != nullptr)
-            {
-                bklv::icon::setFont(material);
-                Logger::info("已加载图标库：resources/font/MaterialIcons-Regular.ttf");
-            }
-            else
-                Logger::warning("图标字体解析失败：resources/font/MaterialIcons-Regular.ttf");
-        }
-        else
-            Logger::info("没找到 resources/font/MaterialIcons-Regular.ttf，图标用文字代替");
-    
-        }
-    }
 
     for (const char* path : candidates)
     {

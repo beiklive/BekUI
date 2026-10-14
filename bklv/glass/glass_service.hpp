@@ -99,6 +99,7 @@ class GlassService
     int frameHeight  = 0;
     float density    = 1.0f;
     bool supported   = false;
+    bool warnedUnsupported = false;
     bool injected    = false;
 };
 
