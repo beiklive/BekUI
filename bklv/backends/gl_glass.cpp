@@ -1,10 +1,10 @@
-// 桌面 GL 的玻璃后端：只在 GL 构建里编；其它后端给出「能力为空」的桩，
-// 这样服务层不必到处写 #if。
+// 玻璃的 GL 后端：桌面 GL 3.2 与 Switch 的 GLES3 **共用这一份实现**
+//（差异只在着色器版本头与 GL 入口取法，见 gl_glass_shaders.* / gl_glass_procs.*）；其它后端给出「能力为空」的桩。
 #include "bklv/backends/gl_glass.hpp"
 
 #include "bklv/core/logger.hpp"
 
-#if defined(BKLV_OPENGL)
+#if defined(BKLV_OPENGL) || defined(BKLV_GLES3)
 #include "bklv/glass/glass_blur_plan.hpp"
 #include "bklv/glass/glass_geometry.hpp"
 #include "bklv/glass/glass_request.hpp"
