@@ -1589,64 +1589,36 @@ void DesignerWindow::drawMenuBar()
     const std::string shortName = !this->currentWidget.empty()
         ? this->currentWidget
         : (!this->currentTable.empty() ? this->currentTable : this->currentViewFile);
-    if (!shortName.empty())
     {
-        const float textWidth = ImGui::CalcTextSize(shortName.c_str()).x;
-        ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
-        ImGui::TextColored(this->dirty ? unsavedColor() : mutedColor(), "%s%s", shortName.c_str(),
-            this->dirty ? "  ●" : "");
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s%s", this->currentFilePath.c_str(),
-                this->dirty ? "\n（有未保存改动）" : "");
+        // 右侧信息：只读标记 + 当前文件 + 未保存圆点（原来那一行细状态行已按用户要求去掉，
+        // 它显示的就是这几项，唯一的增量信息"基准主题只读"挪到这里）
+        const char* readOnlyText = this->readOnly ? "基准主题只读" : nullptr;
+        const float readOnlyWidth
+            = readOnlyText != nullptr ? ImGui::CalcTextSize(readOnlyText).x + 16.0f : 0.0f;
+
+        if (readOnlyText != nullptr)
+        {
+            ImGui::SameLine(ImGui::GetWindowWidth() - readOnlyWidth
+                - ImGui::CalcTextSize(shortName.c_str()).x - 20.0f);
+            ImGui::TextColored(warningColor(), "%s", readOnlyText);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("default / ocean 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
+        }
+
+        if (!shortName.empty())
+        {
+            const float textWidth = ImGui::CalcTextSize(shortName.c_str()).x;
+            ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
+            ImGui::TextColored(this->dirty ? unsavedColor() : mutedColor(), "%s%s",
+                shortName.c_str(), this->dirty ? "  ●" : "");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s%s", this->currentFilePath.c_str(),
+                    this->dirty ? "\n（有未保存改动）" : "");
+        }
     }
 
     ImGui::EndMenuBar();
 }
-
-void DesignerWindow::drawTopBar()
-{
-    // 顶栏**只有菜单栏**（在 drawMenuBar 里）。这里是它下面那条细状态行：
-    // 只报"我在哪个工程 / 哪个文件 / 有没有未保存"，不放任何按钮 ——
-    // 所有动作都在菜单里（评审 + 用户口述都要求不要再堆一行按钮）。
-    const DesignerPalette palette = currentDesignerPalette();
-
-    const char* mode = this->project.mode == ProjectMode::FORK ? "模板新建" : "直接编辑";
-    const std::string current = !this->currentWidget.empty()
-        ? this->currentWidget
-        : (!this->currentTable.empty() ? this->currentTable : this->currentViewFile);
-
-    if (!this->hasProject)
-        ImGui::TextColored(palette.textDim, "还没有打开工程 —— 菜单「文件 → 打开项目」");
-    else
-    {
-        ImGui::TextColored(palette.textDim, "%s · %s", this->project.name.c_str(), mode);
-        if (!current.empty())
-        {
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(palette.textDim, "·");
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(palette.textPrimary, "%s", current.c_str());
-        }
-        if (this->dirty)
-        {
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(unsavedColor(), "● 未保存");
-        }
-        if (this->readOnly)
-        {
-            ImGui::SameLine(0.0f, 12.0f);
-            ImGui::TextColored(warningColor(), "基准主题只读");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("default / ocean 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
-        }
-    }
-
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("主题根目录：%s", this->project.themeRoot.c_str());
-    ImGui::Separator();
-}
-
-
 
 // ---------------------------------------------------------------- 文件列表
 
@@ -5732,19 +5704,8 @@ void DesignerWindow::draw()
             this->selectNextChange(ImGui::GetIO().KeyShift ? -1 : 1);
     }
 
-    // 顶栏玻璃：先在"画之前"记注入点与上边，画完量出实际高度再交玻璃
-    {
-        ImDrawList* list = ImGui::GetWindowDrawList();
-        const int offset = list->CmdBuffer.Size;
-        const ImVec2 before = ImGui::GetCursorScreenPos();
-        const float width   = ImGui::GetContentRegionAvail().x;
-
-        this->drawTopBar();
-
-        const float bottom = ImGui::GetCursorScreenPos().y - ImGui::GetStyle().ItemSpacing.y;
-        if (bottom > before.y)
-            this->glass.addBar(ImVec4(before.x, before.y, before.x + width, bottom), list, offset);
-    }
+    // （原来这里还有一条"菜单栏下面的细状态行"：实测是空条、没有任何内容，
+    //   按用户要求去掉；它要显示的工程/文件/未保存信息在菜单栏右侧与左栏标题里都有）
 
     const float leftWidth  = this->leftCollapsed ? 26.0f : (float)this->leftWidthUi;
     const float rightWidth = (float)this->rightWidthUi;

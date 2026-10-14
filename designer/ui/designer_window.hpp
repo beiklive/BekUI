@@ -243,7 +243,6 @@ class DesignerWindow
     };
 
     // ---- 各块 ----
-    void drawTopBar();
 
     void drawFileList();
     void drawTree();
