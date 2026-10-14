@@ -217,7 +217,7 @@ int main()
         delete selector;
     }
 
-    std::printf("\n== 6b. 选择器箭头层的文字（LR 是字母，ARROWS 是图标字形）==\n");
+    std::printf("\n== 6b. 选择器箭头层的文字（两种风格各一套私有区字形）==\n");
     {
         // getLayerText 是 protected 的扩展点（给子类翻译内容用），测试用一个薄壳把它提上来
         struct ArrowProbe : SelectorButton
@@ -227,21 +227,25 @@ int main()
         };
 
         ArrowProbe selector("箭头");
+
+        // LR 风格：U+E0A4 / U+E0A5（只在 switch_icons.ttf 里，getLayerFont 会切到那套字体）
         selector.setArrowStyle(SelectorArrow::LR);
-        checkEqual(selector.getLayerText("arrowLeft"), "L", "LR 模式左箭头是字母 L");
-        checkEqual(selector.getLayerText("arrowRight"), "R", "LR 模式右箭头是字母 R");
+        const std::string lrLeft  = selector.getLayerText("arrowLeft");
+        const std::string lrRight = selector.getLayerText("arrowRight");
+        checkEqual(lrLeft, icon::utf8Glyph(0xE0A4), "LR 左箭头 = U+E0A4");
+        checkEqual(lrRight, icon::utf8Glyph(0xE0A5), "LR 右箭头 = U+E0A5");
+        check(lrLeft.size() == 3 && lrRight.size() == 3, "私有区字形是 3 字节 UTF-8");
+        check(lrLeft != "1" && lrRight != "1",
+            "箭头不是数字 1（to_string 包字符串那种写法的症状）");
 
+        // ARROWS 风格：U+E0ED / U+E0EE（Material 里有）
         selector.setArrowStyle(SelectorArrow::ARROWS);
-        const std::string left  = selector.getLayerText("arrowLeft");
-        const std::string right = selector.getLayerText("arrowRight");
-
-        // 私有区字形是 3 字节 UTF-8；这里也顺便钉住"绝不是一个数字"——
-        // std::to_string("\uE5CB") 那种写法语法上骗得过编译器，却会返回 "1"（踩过）
-        check(left.size() == 3 && right.size() == 3, "ARROWS 模式是 3 字节 UTF-8 字形");
-        check(left != "1" && right != "1", "箭头不是数字 1（to_string 的坑）");
-        check(left != right, "左右箭头字形不一样");
-        checkEqual(left, icon::utf8Glyph(0xE5CB), "左箭头 = Material chevron_left（U+E5CB）");
-        checkEqual(right, icon::utf8Glyph(0xE5CC), "右箭头 = Material chevron_right（U+E5CC）");
+        checkEqual(selector.getLayerText("arrowLeft"), icon::utf8Glyph(0xE0ED),
+            "ARROWS 左箭头 = U+E0ED");
+        checkEqual(selector.getLayerText("arrowRight"), icon::utf8Glyph(0xE0EE),
+            "ARROWS 右箭头 = U+E0EE");
+        check(selector.getLayerText("arrowLeft") != lrLeft, "两种风格的左箭头字形不同");
+        check(selector.getLayerText("arrowRight") != lrRight, "两种风格的右箭头字形不同");
 
         // 其它 source 仍然走 Button 的那套（图标 / 文字 / 信息）
         selector.setText("选项");

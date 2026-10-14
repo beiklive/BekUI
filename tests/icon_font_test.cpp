@@ -78,6 +78,18 @@ int main()
         // 没设字体时：空表、不崩
         check(icon::allGlyphs().empty(), "没装图标字体时 allGlyphs() 是空表");
 
+        // ---- 选择器箭头用的四个码位：只在 switch_icons 里是箭头/按键图标 ----
+        // 这条是为了钉住"码位必须和字体配套"：同样这四个码位在 Material 里也有字形，
+        // 但画出来是笑脸、表格之类的**别的图标**（踩过：箭头成了笑脸）。
+        check(switchIcons->IsGlyphInFont(0xE0A4) && switchIcons->IsGlyphInFont(0xE0A5),
+            "switch_icons 里有 U+E0A4/E0A5（LR 箭头）");
+        check(switchIcons->IsGlyphInFont(0xE0ED) && switchIcons->IsGlyphInFont(0xE0EE),
+            "switch_icons 里有 U+E0ED/E0EE（ARROWS 箭头）");
+        check(!material->IsGlyphInFont(0xE0A4) && !material->IsGlyphInFont(0xE0A5),
+            "Material 里没有 U+E0A4/E0A5（所以箭头层不能走 Material）");
+        check(material->IsGlyphInFont(0xE0ED) && material->IsGlyphInFont(0xE0EE),
+            "Material 里 U+E0ED/E0EE 也有字形 —— 但是别的图标，所以仍要走 switch_icons");
+
         icon::setFont(material);
         const std::vector<icon::Glyph>& materialGlyphs = icon::allGlyphs();
         check(materialGlyphs.size() > 1000, "Material 字体里有一千多个字形（远多于手写表）");

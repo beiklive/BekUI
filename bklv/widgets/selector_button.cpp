@@ -244,28 +244,28 @@ void SelectorButton::refreshInfoText()
 
 std::string SelectorButton::getLayerText(const std::string& source)
 {
-    // LR 模式是**普通字母**（走正文字体）；ARROWS 模式是 Material 图标字体的私有区字形
-    // （getLayerFont() 会把 arrowLeft/arrowRight 两层切到 Material）。
-    // 字形用 icon::utf8Glyph(码位) 取：U+E5CB / U+E5CC 就是 Material 的
-    // chevron_left / chevron_right。**不要写 std::to_string("\uXXXX")** ——
-    // 实参是 const char*，没有匹配的重载（编不过）；就算能编也不是"把码位转字形"的意思。
+    // 两种箭头风格各用一套私有区字形（码位定死，字体选择见 getLayerFont）：
+    //   LR      U+E0A4 / U+E0A5   —— 只有 switch_icons.ttf 里有
+    //   ARROWS  U+E0ED / U+E0EE   —— Material 图标字体里有
+    // 注意：\uXXXX 在 C++ 里是**字符串字面量**（编译出来就是那个字形的 UTF-8 字节），
+    // 不要写成 std::to_string("\uXXXX")：那是把指针当整数，既编不过也不是这个意思。
     if (source == "arrowLeft")
-        return this->arrowStyle == SelectorArrow::LR ? "L" : icon::utf8Glyph(0xE5CB);
+        return this->arrowStyle == SelectorArrow::LR ? "\uE0A4" : "\uE0ED";
     if (source == "arrowRight")
-        return this->arrowStyle == SelectorArrow::LR ? "R" : icon::utf8Glyph(0xE5CC);
+        return this->arrowStyle == SelectorArrow::LR ? "\uE0A5" : "\uE0EE";
 
     return Button::getLayerText(source);
 }
 
 ImFont* SelectorButton::getLayerFont(const AppearanceLayer& layer)
 {
-    // 箭头用 Material 图标字体；LR 字形是普通字母，走正文字体
-    if (this->arrowStyle == SelectorArrow::ARROWS
-        && (layer.id == "arrowLeft" || layer.id == "arrowRight"))
+    // 箭头层必须用"真正含有该字形"的字体，否则画出来是豆腐块或者别的图标：
+    //   U+E0A4/E0A5（LR）与 U+E0ED/E0EE（ARROWS）**都只在 switch_icons 里**是箭头/按键图标；
+    //   同一批码位在 Material 里是笑脸、表格之类的别的图标，所以这里统一走 switch_icons。
+    if (layer.id == "arrowLeft" || layer.id == "arrowRight")
     {
-        ImFont* material = icon::font();
-        if (material != nullptr)
-            return material;
+        if (ImFont* font = getIconFont())
+            return font;
     }
 
     return Button::getLayerFont(layer);
