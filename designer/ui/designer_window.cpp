@@ -1566,11 +1566,9 @@ void DesignerWindow::drawFileList()
             ImVec2(start.x + gutter * 0.5f,
                 iconTopForTextLine(start.y + 2.0f, lineHeight, iconSize) + iconSize * 0.5f),
             iconSize,
-            ImGui::ColorConvertFloat4ToU32(selected ? ImVec4(0.85f, 0.92f, 1.0f, 1.0f)
-                                                    : palette.textDim));
+            ImGui::ColorConvertFloat4ToU32(rowIconColor(selected)));
         ImGui::GetWindowDrawList()->AddText(ImVec2(start.x + gutter, start.y + 2.0f),
-            ImGui::ColorConvertFloat4ToU32(selected ? ImVec4(1, 1, 1, 1) : palette.textPrimary),
-            text.c_str());
+            ImGui::ColorConvertFloat4ToU32(rowTextColor(selected)), text.c_str());
         if (tag != nullptr)
             ImGui::GetWindowDrawList()->AddText(
                 ImVec2(start.x + gutter + ImGui::CalcTextSize(text.c_str()).x + 8.0f,
@@ -3085,6 +3083,7 @@ void DesignerWindow::drawPreview()
     // 左侧：五种状态竖排点选（中文）
     {
         ImGui::SetCursorPos(ImVec2(8.0f, 8.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##stateStrip", ImVec2(kLeftStripW, 0.0f), true);
         static const char* kStateLabels[] = { "默认", "聚焦", "按下", "禁用", "选中" };
         for (int i = 0; i < 5; i++)
@@ -3098,11 +3097,13 @@ void DesignerWindow::drawPreview()
             }
         }
         ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
 
     // 右侧：视图开关竖排图标（网格底 / 对齐网格 / 层序条 / 适应 / 重置）
     {
         ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth() - kRightStripW - 8.0f, 8.0f));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
         if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasChecker, "网格底"))
             this->canvasChecker = !this->canvasChecker;
@@ -3124,6 +3125,7 @@ void DesignerWindow::drawPreview()
             this->canvasPanY = 0.0f;
         }
         ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
     (void)stageAvailNow;
 
@@ -3136,6 +3138,7 @@ void DesignerWindow::drawPreview()
     if (showLayerStrip && this->currentWidget.empty() == false && this->doc.layerCount() > 0
         && !this->previewCompare)
     {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##layerStrip", ImVec2(132.0f, 0.0f), true);
         ImGui::TextColored(mutedColor(), "绘制顺序");
         for (int i = 0; i < this->doc.layerCount(); i++)
@@ -3187,6 +3190,7 @@ void DesignerWindow::drawPreview()
                 ImGui::GetWindowDrawList()->AddRectFilled(chipMin, chipMax, swatch, 3.0f);
         }
         ImGui::EndChild();
+        ImGui::PopStyleColor();
         ImGui::SameLine();
     }
 

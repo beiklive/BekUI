@@ -45,6 +45,25 @@ DesignerPalette currentDesignerPalette()
 }
 
 ImVec4 accentColor() { return currentDesignerPalette().accent; }
+
+ImVec4 chipColor() { return ImVec4(1.0f, 1.0f, 1.0f, 0.06f); }
+ImVec4 chipHoverColor() { return ImVec4(1.0f, 1.0f, 1.0f, 0.12f); }
+// 选中态也半透明：玻璃面板上不能出现"实心色块"（会盖住背后的模糊）
+ImVec4 chipActiveColor()
+{
+    const ImVec4 accent = currentDesignerPalette().accent;
+    return ImVec4(accent.x, accent.y, accent.z, 0.45f);
+}
+ImVec4 iconIdleColor() { return currentDesignerPalette().textDim; }
+ImVec4 iconActiveColor() { return currentDesignerPalette().textPrimary; }
+ImVec4 rowTextColor(bool selected)
+{
+    return selected ? currentDesignerPalette().onAccent : currentDesignerPalette().textPrimary;
+}
+ImVec4 rowIconColor(bool selected)
+{
+    return selected ? currentDesignerPalette().onAccent : currentDesignerPalette().textDim;
+}
 ImVec4 mutedColor() { return currentDesignerPalette().textDim; }
 ImVec4 cardColor() { return currentDesignerPalette().card; }
 ImVec4 borderColor() { return currentDesignerPalette().border; }
@@ -98,6 +117,14 @@ void applyDesignerStyle(float uiScale)
     style.IndentSpacing    = 18.0f * s;
     style.ScrollbarSize    = 12.0f * s;
     style.GrabMinSize      = 12.0f * s;
+    style.SeparatorTextBorderSize = 1.0f;
+    style.SeparatorTextAlign      = ImVec2(0.0f, 0.5f);
+    style.SeparatorTextPadding    = ImVec2(18.0f * s, 4.0f * s);
+    style.ButtonTextAlign         = ImVec2(0.5f, 0.5f);
+    style.SelectableTextAlign     = ImVec2(0.0f, 0.5f);
+    style.TabBarBorderSize        = 0.0f;
+    style.TabBarOverlineSize      = 2.0f;
+    style.ScrollbarPadding        = 2.0f * s;
 
     auto set  = [&style](ImGuiCol index, const ImVec4& color) { style.Colors[index] = color; };
     auto alpha = [](const ImVec4& color, float a) {
@@ -171,6 +198,39 @@ void applyDesignerStyle(float uiScale)
     set(ImGuiCol_TableRowBgAlt, frost(0.03f));
 
     set(ImGuiCol_TextLink, alpha(palette.focusBorder, 0.95f));
+
+    // ---- 容易漏掉但设计器真在用的那一批（不设就退回 ImGui 默认色）----
+    // 树的层级线（节点树）：默认色偏暗，调到能看见
+    set(ImGuiCol_TreeLines, frost(0.16f));
+    // 输入框光标（过滤框、JSON 文本框）：要显眼
+    set(ImGuiCol_InputTextCursor, palette.textPrimary);
+    // 勾选框选中态的底（1.92 新增）
+    set(ImGuiCol_CheckboxSelectedBg, alpha(palette.focusBorder, 0.55f));
+    // 拖拽（节点树里拖层）：默认是亮黄，跟玻璃风对不上
+    set(ImGuiCol_DragDropTarget, alpha(palette.focusBorder, 0.95f));
+    set(ImGuiCol_DragDropTargetBg, alpha(palette.focusBorder, 0.35f));
+    // 未保存标记（1.92 新增）
+    set(ImGuiCol_UnsavedMarker, palette.unsaved);
+    // 页签（dimmed 一侧的顶部高亮线）
+    set(ImGuiCol_TabDimmedSelectedOverline, alpha(palette.focusBorder, 0.45f));
+    // 折叠标题栏（浮窗最小化时）
+    set(ImGuiCol_TitleBgCollapsed, alpha(palette.raised, 0.6f));
+    // 键盘导航遮罩（设计器关了导航，但配色保持一致）
+    set(ImGuiCol_NavWindowingHighlight, frost(0.75f));
+    set(ImGuiCol_NavWindowingDimBg, ImVec4(0, 0, 0, 0.35f));
+    // 模态遮罩：比默认更沉一点，玻璃面板才立得住
+    set(ImGuiCol_ModalWindowDimBg, ImVec4(0.03f, 0.04f, 0.06f, 0.55f));
+    // 曲线（暂时没画，但保持同一套调子）
+    set(ImGuiCol_PlotLines, alpha(palette.focusBorder, 0.9f));
+    set(ImGuiCol_PlotLinesHovered, palette.accentPressed);
+    set(ImGuiCol_PlotHistogram, alpha(palette.focusBorder, 0.75f));
+    set(ImGuiCol_PlotHistogramHovered, palette.accentPressed);
+
+    // 兼容用的旧名字（1.92 里是别名，写上避免以后重命名时又漏）
+    set(ImGuiCol_TabActive, frost(0.18f));
+    set(ImGuiCol_TabUnfocused, frost(0.04f));
+    set(ImGuiCol_TabUnfocusedActive, frost(0.12f));
+    set(ImGuiCol_NavHighlight, alpha(palette.focusBorder, 0.9f));
 
     set(ImGuiCol_PlotLines, palette.focusBorder);
     set(ImGuiCol_PlotHistogram, palette.focusBorder);

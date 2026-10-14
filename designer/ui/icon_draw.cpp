@@ -2,6 +2,7 @@
 
 #include "bklv/core/icon_font.hpp"
 #include "designer/core/icon_align.hpp"
+#include "designer/ui/designer_style.hpp"
 
 #include <cmath>
 
@@ -292,14 +293,13 @@ bool iconButton(const char* id, Icon icon, float size, bool activeState, const c
 
     if (activeState || hovered)
         ImGui::GetWindowDrawList()->AddRectFilled(start, ImVec2(start.x + box, start.y + lineHeight),
-            ImGui::ColorConvertFloat4ToU32(activeState ? ImVec4(0.14f, 0.28f, 0.44f, 1.0f)
-                                                       : ImVec4(1, 1, 1, 0.06f)));
+            ImGui::ColorConvertFloat4ToU32(activeState ? chipActiveColor() : chipHoverColor()),
+            ImGui::GetStyle().FrameRounding);
 
     drawIcon(ImGui::GetWindowDrawList(), icon,
         ImVec2(start.x + box * 0.5f,
             iconTopForTextLine(start.y, lineHeight, size) + size * 0.5f),
-        size, ImGui::ColorConvertFloat4ToU32(activeState ? ImVec4(0.85f, 0.9f, 0.98f, 1.0f)
-                                                        : ImVec4(0.62f, 0.62f, 0.62f, 1.0f)));
+        size, ImGui::ColorConvertFloat4ToU32(activeState ? iconActiveColor() : iconIdleColor()));
     if (tooltip != nullptr && hovered)
         ImGui::SetTooltip("%s", tooltip);
     return clicked;

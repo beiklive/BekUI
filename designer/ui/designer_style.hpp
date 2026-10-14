@@ -46,6 +46,15 @@ void applyDesignerStyle(float uiScale = 1.0f);
 
 // 常用快捷取色
 ImVec4 accentColor();
+// 自绘控件（iconButton / 列表行 / 分隔条）用的"磨砂片"取色：和 ImGui 那套样式同源，
+// 免得自绘的地方自己写死颜色 —— 写死过一版：选中态用了不透明蓝，正好把玻璃盖掉
+ImVec4 chipColor();        // 常态底
+ImVec4 chipHoverColor();   // 悬停
+ImVec4 chipActiveColor();  // 选中 / 打开
+ImVec4 iconIdleColor();    // 常态图标
+ImVec4 iconActiveColor();  // 高亮图标
+ImVec4 rowTextColor(bool selected);
+ImVec4 rowIconColor(bool selected);
 ImVec4 mutedColor();
 ImVec4 cardColor();
 ImVec4 borderColor();

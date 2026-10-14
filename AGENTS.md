@@ -695,6 +695,17 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
      所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
      遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
+  9）**样式要全覆盖**（三轮自查的结论，别再漏）：
+     ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
+        退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
+        `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。
+        核对办法：从 `imgui.h` 里 `enum ImGuiCol_` 提取名字，和 `set(ImGuiCol_...)` 求差集。
+     ② **自绘控件也必须走同一套取色**：`iconButton`（`icon_draw.cpp`）、文件/外观列表行、
+        分隔条都是手画的，曾经在里面写死颜色，而且选中态用了**不透明**色块 —— 正好把玻璃盖掉。
+        统一走 `designer_style.hpp` 的 `chipColor/chipHoverColor/chipActiveColor/
+        iconIdleColor/iconActiveColor/rowTextColor/rowIconColor`。
+     ③ 画布里的**设计辅助色**（棋盘格、padding 参考线、中轴线、选中框）不受这条约束：
+        那是画布自己的视觉语言（青色/橙色参考线），故意与界面配色不同。
 
 ## 测试
 
