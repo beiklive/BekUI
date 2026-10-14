@@ -93,8 +93,11 @@ bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBound
     request.radii             = radii;
     request.shape             = shape;
     request.density           = frameDensity > 0.0f ? frameDensity : this->density;
-    request.drawList          = drawList;
-    request.drawCommandOffset = drawList->CmdBuffer.Size;
+    request.drawList = drawList;
+    // 后端把玻璃插在"下标 == drawCommandOffset 的那条命令**之前**"。
+    // 刚 AddDrawCmd() 出来的空命令（下标 Size-1）会承载调用方接下来画的内容，
+    // 所以玻璃要插在**它之前** → 偏移取 Size-1。顺序就是：背景 → 玻璃 → 我的内容。
+    request.drawCommandOffset = drawList->CmdBuffer.Size - 1;
 
     if (!this->isEnabled())
         return false;
