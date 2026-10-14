@@ -13,8 +13,8 @@ namespace designer
 
 enum class FileKind
 {
-    APPEARANCE, // <themeDir>/widgets/*.json
-    VIEW,       // <resourcesDir>/views/*.json
+    APPEARANCE, // <themeDir>/base/*.json、<themeDir>/widget/*.json（老的 widgets/ 也认）
+    VIEW,       // <themeDir>/view/*.json（老的 <resourcesDir>/views/ 也认）
     TABLE,      // <themeDir>/colors.json 或 metrics.json
     UNKNOWN,    // 既不是主题文件也不是页面视图 → 保存时拒绝
 };

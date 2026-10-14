@@ -263,6 +263,9 @@ class DesignerWindow
 
     // ---- 数据 ----
     void refreshFileList();
+
+    // 主题表文件（清单里的 tokens/*.json；老主题退回根下的 colors.json / metrics.json）
+    std::vector<std::string> themeTableFiles() const;
     bool loadCurrentFile(std::string& error);
     void rebuildPreview();
     void markEdited();
@@ -357,7 +360,8 @@ class DesignerWindow
     bool hasProject = false;
     bool readOnly    = false;
 
-    std::vector<std::string> widgetFiles; // "widgets/button.json" 这种相对路径
+    std::vector<std::string> widgetFiles; // 外观：相对主题根的路径（"base/button.json" / "widget/…"）
+    std::vector<std::string> tableFiles;  // 主题表：清单里的 "tokens/colors.json" 这类路径
     std::vector<std::string> viewFiles;   // "views/page_json.json"
     std::string currentWidget;            // 短名，空 = 没开外观文件
     std::string currentViewFile;

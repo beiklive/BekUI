@@ -295,6 +295,15 @@ void DesignerWindow::switchTheme(const std::string& name)
         this->statusMessage = "已切到主题 " + name + (isBaseTheme(name) ? "（只读浏览）" : "");
 }
 
+std::vector<std::string> DesignerWindow::themeTableFiles() const
+{
+    if (!this->tableFiles.empty())
+        return this->tableFiles;
+
+    // 兜底：清单里没登记表（或还是老布局）时给标准两个名字
+    return { "tokens/colors.json", "tokens/metrics.json" };
+}
+
 void DesignerWindow::refreshFileList()
 {
     this->widgetFiles.clear();
@@ -305,7 +314,7 @@ void DesignerWindow::refreshFileList()
     readWidgetFileList(this->project.themeDir(), allFiles, error);
 
     // 清单里是主题的全部文件（tokens/ + base/ + widget/ + view/），按目录分流：
-    //   外观 = base/ 与 widget/（老布局的 widgets/ 也算），页面视图 = view/
+    //   外观 = base/ 与 widget/（老布局的 widgets/ 也算），页面视图 = view/，主题表 = tokens/
     for (const std::string& relative : allFiles)
     {
         if (relative.rfind("base/", 0) == 0 || relative.rfind("widget/", 0) == 0
@@ -313,6 +322,9 @@ void DesignerWindow::refreshFileList()
             this->widgetFiles.push_back(relative);
         else if (relative.rfind("view/", 0) == 0)
             this->viewFiles.push_back(relative);
+        else if (relative.rfind("tokens/", 0) == 0 || relative == "colors.json"
+            || relative == "metrics.json")
+            this->tableFiles.push_back(relative);
     }
 
     // 最近修改：外观（base/ + widget/）与页面视图各取前几个
@@ -1507,11 +1519,11 @@ void DesignerWindow::drawFileList()
     if (ImGui::BeginTabItem("主题表"))
     {
         ImGui::Spacing();
-        for (const char* table : { "colors.json", "metrics.json" })
+        for (const std::string& table : this->themeTableFiles())
         {
             const bool current = (table == this->currentTable);
             const bool dirty   = current && this->dirty;
-            if (row(Icon::TABLE, table, current, dirty, nullptr, table))
+            if (row(Icon::TABLE, table.c_str(), current, dirty, nullptr, table.c_str()))
                 this->openTableFile(table);
         }
         ImGui::EndTabItem();
@@ -2197,7 +2209,9 @@ bool DesignerWindow::colorField(const char* label, std::string& value)
         ImGui::SameLine();
         if (ImGui::SmallButton((std::string("定位##") + label).c_str()))
         {
-            this->openTableFile("colors.json");
+            const std::vector<std::string> tables = this->themeTableFiles();
+            if (!tables.empty())
+                this->openTableFile(tables.front());
             std::string key = value.substr(7);
             if (key.rfind("color.", 0) == 0)
                 key = key.substr(6);
@@ -3222,6 +3236,22 @@ void DesignerWindow::drawProps()
 
     panelHeader("属性", this->currentWidget.c_str());
     ImGui::TextColored(mutedColor(), "%s", this->currentFilePath.c_str());
+
+    // 这份外观 import 了谁：继承来的字段不在本文件里，不提示的话会以为样式丢了
+    if (this->doc.root().contains("import"))
+    {
+        std::string inherited;
+        const AppearanceDoc::Json& node = this->doc.root()["import"];
+        if (node.is_string())
+            inherited = node.get<std::string>();
+        else if (node.is_array())
+            for (const AppearanceDoc::Json& entry : node)
+                if (entry.is_string())
+                    inherited += (inherited.empty() ? "" : " + ") + entry.get<std::string>();
+        if (!inherited.empty())
+            ImGui::TextColored(accentColor(), "继承自 %s（父级字段在这里看不到，去那份文件改）",
+                inherited.c_str());
+    }
     ImGui::SameLine();
     if (ImGui::SmallButton("复制 JSON"))
     {
