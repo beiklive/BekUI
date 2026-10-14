@@ -483,7 +483,7 @@ class DesignerWindow
     std::string previewError;
     int canvasPreset   = 0; // 0=自适应 1=1280x720 2=720x480 3=640x360 4=自定义
     bool canvasChecker = true;
-    // 画布底：0 = 细棋盘（看半透明/阴影）1 = 暗面 2 = 纸面（看浅色主题）
+    // 画布底：0 = 细棋盘 1 = 暗面 2 = 纸面 3 = 透明（直接看面板玻璃）
     int canvasBackdrop = 0;
     int canvasWidth    = 420;
     int canvasHeight   = 160;

@@ -1526,8 +1526,9 @@ void DesignerWindow::drawMenuBar()
         ImGui::MenuItem("预览对齐网格", nullptr, &this->showGrid);
         if (ImGui::BeginMenu("画布底"))
         {
-            static const char* kBackdrops[] = { "细棋盘（看透明/阴影）", "暗面", "纸面（看浅色主题）" };
-            for (int i = 0; i < 3; i++)
+            static const char* kBackdrops[] = { "细棋盘（看透明/阴影）", "暗面",
+                "纸面（看浅色主题）", "透明（直接看面板玻璃）" };
+            for (int i = 0; i < 4; i++)
             {
                 if (ImGui::MenuItem(kBackdrops[i], nullptr, this->canvasBackdrop == i))
                 {
@@ -2910,10 +2911,8 @@ void DesignerWindow::drawWorkbench(ImVec2 pos, ImVec2 size)
 {
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     const ImVec2 end(pos.x + size.x, pos.y + size.y);
-    // 台面：竖向渐变，比纯色多一点空间感（预览区不上玻璃，所以这里自己铺底）
-    drawList->AddRectFilledMultiColor(pos, end,
-        IM_COL32(30, 31, 36, 255), IM_COL32(30, 31, 36, 255), IM_COL32(22, 23, 27, 255),
-        IM_COL32(22, 23, 27, 255));
+    // 台面不再是"不透明渐变"：面板本身已经有玻璃了，再铺一层不透明底会把玻璃盖回去。
+    // 只留点阵刻度 + 四边淡内阴影，让中间的玻璃继续透出壁纸。
 
     // 点阵网格：给"工作台"一个尺度参照（不随画布缩放/平移，是台面的纹理）
     constexpr float kDotStep = 24.0f;
@@ -2923,18 +2922,18 @@ void DesignerWindow::drawWorkbench(ImVec2 pos, ImVec2 size)
             drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + 2.0f, y + 2.0f), dot);
 
     // 四边内阴影：把视线收进中间那块画布
-    constexpr float kBand = 48.0f;
+    constexpr float kBand = 40.0f;
     drawList->AddRectFilledMultiColor(pos, ImVec2(end.x, pos.y + kBand),
-        IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 0),
+        IM_COL32(0, 0, 0, 40), IM_COL32(0, 0, 0, 40), IM_COL32(0, 0, 0, 0),
         IM_COL32(0, 0, 0, 0));
     drawList->AddRectFilledMultiColor(ImVec2(pos.x, end.y - kBand), end,
-        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 70),
-        IM_COL32(0, 0, 0, 70));
+        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 40),
+        IM_COL32(0, 0, 0, 40));
     drawList->AddRectFilledMultiColor(pos, ImVec2(pos.x + kBand, end.y),
-        IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0),
-        IM_COL32(0, 0, 0, 70));
+        IM_COL32(0, 0, 0, 30), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0),
+        IM_COL32(0, 0, 0, 30));
     drawList->AddRectFilledMultiColor(ImVec2(end.x - kBand, pos.y), end,
-        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 70), IM_COL32(0, 0, 0, 70),
+        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 30), IM_COL32(0, 0, 0, 30),
         IM_COL32(0, 0, 0, 0));
 }
 
@@ -2953,8 +2952,13 @@ void DesignerWindow::drawPreviewCanvas(ImVec2 origin, ImVec2 size, View* view, b
     }
 
     // 画布底：0=细棋盘（看半透明/阴影）1=暗面 2=纸面（看浅色主题与对比）
+    //        3=透明（不铺底：直接看到面板的玻璃，bklv 渲染的内容按它自己的方式叠在上面）
     const int backdrop = this->canvasBackdrop;
-    if (backdrop == 2)
+    if (backdrop == 3)
+    {
+        // 透明档：什么底都不铺
+    }
+    else if (backdrop == 2)
     {
         drawList->AddRectFilled(origin, end, IM_COL32(244, 245, 248, 255));
         for (int y = 0; y < (int)size.y; y += 8)
@@ -3287,9 +3291,9 @@ void DesignerWindow::drawPreview()
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1.0f, 1.0f, 1.0f, 0.06f));
         ImGui::BeginChild("##viewIcons", ImVec2(kRightStripW, 0.0f), true);
         if (iconButton("##icGrid", Icon::GRID, 16.0f, this->canvasBackdrop != 1,
-                "画布底：棋盘 / 暗面 / 纸面"))
+                "画布底：棋盘 / 暗面 / 纸面 / 透明"))
         {
-            this->canvasBackdrop = (this->canvasBackdrop + 1) % 3;
+            this->canvasBackdrop = (this->canvasBackdrop + 1) % 4;
             this->canvasChecker  = this->canvasBackdrop == 0;
             this->previewDirty   = true;
         }
@@ -5748,21 +5752,22 @@ void DesignerWindow::draw()
 
     if (this->previewMaximized)
     {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, currentDesignerPalette().page);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-        ImGui::BeginChild("##previewMax", ImVec2(0, 0), true);
+        // 预览面板本身也上玻璃（和左右两栏一致）：
+        // 只有 bklv 渲染出来的 JSON 内容按它自己的方式画在玻璃**之上**，不受玻璃影响
         {
-            constexpr float kGlassMargin = 8.0f;
+            ImDrawList* parentList = ImGui::GetWindowDrawList();
+            const int previewOffset = parentList->CmdBuffer.Size;
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::BeginChild("##previewMax", ImVec2(0, 0), true);
             const ImVec2 previewPos  = ImGui::GetWindowPos();
             const ImVec2 previewSize = ImGui::GetWindowSize();
-            this->glass.excludeRect(ImVec4(previewPos.x - kGlassMargin,
-                previewPos.y - kGlassMargin, previewPos.x + previewSize.x + kGlassMargin,
-                previewPos.y + previewSize.y + kGlassMargin));
+            this->glass.addPanel(ImVec4(previewPos.x, previewPos.y,
+                                    previewPos.x + previewSize.x,
+                                    previewPos.y + previewSize.y),
+                parentList, previewOffset);
         }
         this->drawPreview();
         ImGui::EndChild();
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar();
         this->drawModals();
         ImGui::End();
         this->glass.endFrame();
@@ -5847,27 +5852,25 @@ void DesignerWindow::draw()
 
     // 预览是"画布"：显式压一层不透明底 —— 面板默认透明是为了让玻璃透出来，
     // 但预览区必须是干净的画面（也不能让壁纸透进来）
-    // 预览面板：不透明底 + **直角**。圆角会把背后（壁纸/玻璃）露出来，
-    // 那样"预览区一个玻璃像素都不能有"就保不住（实测圆角那 2 行会透出横条玻璃）
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, currentDesignerPalette().page);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 0.10f));
-    ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0),
-        ImGuiChildFlags_Borders);
-    // 预览区是玻璃禁区：这里渲染的是主题 JSON 的真实效果，一个像素都不许被玻璃影响。
-    // 往外多留 8px：玻璃的外阴影会把绘制范围外扩几像素，不留缝就会渗进预览面板边缘
+        // 预览面板：和左右两栏一样上玻璃（透明底），只有 bklv 渲染的 JSON 内容
+    // 按它自己的方式画在玻璃之上 —— 内容不受玻璃影响，见 AGENTS
     {
-        constexpr float kGlassMargin = 8.0f;
-        const ImVec2 previewPos  = ImGui::GetWindowPos();
-        const ImVec2 previewSize = ImGui::GetWindowSize();
-        this->glass.excludeRect(ImVec4(previewPos.x - kGlassMargin, previewPos.y - kGlassMargin,
-            previewPos.x + previewSize.x + kGlassMargin,
-            previewPos.y + previewSize.y + kGlassMargin));
+        ImDrawList* parentList = ImGui::GetWindowDrawList();
+        const int previewOffset = parentList->CmdBuffer.Size;
+        ImGui::SetNextWindowBgAlpha(0.0f);
+        ImGui::BeginChild("##preview", ImVec2(avail.x - leftWidth - rightWidth - 16.0f, 0),
+        ImGuiChildFlags_Borders);
+        {
+            const ImVec2 previewPos  = ImGui::GetWindowPos();
+            const ImVec2 previewSize = ImGui::GetWindowSize();
+            this->glass.addPanel(ImVec4(previewPos.x, previewPos.y,
+                                    previewPos.x + previewSize.x,
+                                    previewPos.y + previewSize.y),
+                parentList, previewOffset);
+        }
     }
     this->drawPreview();
     ImGui::EndChild();
-    ImGui::PopStyleColor(2);
-    ImGui::PopStyleVar();
 
     ImGui::SameLine();
     this->rightWidthUi = (int)this->drawVerticalSplitter("##splitRight", rightWidth, 300.0f,

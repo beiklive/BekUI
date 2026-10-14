@@ -25,7 +25,7 @@ struct UiState
 
     int canvasPreset   = 0;  // 0=自适应 1=1280×720 2=720×480 3=640×360 4=自定义
     bool canvasChecker = true;
-    // 0 = 细棋盘 / 1 = 暗面 / 2 = 纸面（老状态文件只有 canvasChecker，按它迁移）
+    // 0 = 细棋盘 / 1 = 暗面 / 2 = 纸面 / 3 = 透明（老状态文件只有 canvasChecker，按它迁移）
     int canvasBackdrop = 0;
     int canvasZoom     = 2;  // 0=50% 1=75% 2=100% 3=150%
     bool showGrid      = false; // 对齐网格 + 中线
