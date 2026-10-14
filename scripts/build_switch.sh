@@ -24,14 +24,19 @@ for arg in "$@"; do
     case "${arg}" in
         --clean|--force) CLEAN=1 ;;
         --no-webp) WITH_WEBP=0 ;;
+        --svg) WITH_SVG=1 ;;
         --no-svg) WITH_SVG=0 ;;
-        *) echo "未知参数：${arg}（支持 --clean / --no-webp / --no-svg）" >&2; exit 1 ;;
+        *) echo "未知参数：${arg}（支持 --clean / --no-webp / --svg / --no-svg）" >&2; exit 1 ;;
     esac
 done
 
-# 可选图片解码器（子模块存在就默认开；编不过时可以用 --no-webp / --no-svg 关掉）
+# 可选图片解码器。
+# WebP：子模块存在就默认开。
+# SVG：**Switch 上默认关** —— lunasvg 的矢量后端 plutovg 用了 sys/mman.h，devkitA64 没有这个头，
+#      编不过（踩过：加了 SVG 解码器之后 Switch 构建直接断在这里）。
+#      桌面仍然默认开；Switch 上确实要用就显式 --svg，并且得自己解决 mmap 缺失。
 WITH_WEBP="${WITH_WEBP:-1}"
-WITH_SVG="${WITH_SVG:-1}"
+WITH_SVG="${WITH_SVG:-0}"
 
 # ---- 工具链 ----
 export DEVKITPRO="${DEVKITPRO:-/opt/devkitpro}"

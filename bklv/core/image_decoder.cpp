@@ -1,6 +1,7 @@
 #include "bklv/core/image_decoder.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -633,7 +634,10 @@ const char* getImageDecoderName()
 namespace
 {
 
-bool readWholeFile(const char* path, std::vector<unsigned char>& out, std::string& error)
+// 各个解码分支都会用；某些平台配置（Switch 走 stb + 内建的 GIF）下没人调它，
+// 所以显式标一下，免得在别的工具链上变成 "defined but not used" 警告
+[[maybe_unused]] bool readWholeFile(
+    const char* path, std::vector<unsigned char>& out, std::string& error)
 {
     std::FILE* file = std::fopen(path, "rb");
     if (file == nullptr)

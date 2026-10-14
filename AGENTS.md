@@ -122,6 +122,14 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 `Switch` 走独立脚本：工具链（devkitA64）与编译参数和桌面完全不同，且不能链接 SDL3，
 CMake 覆盖不了，所以 `scripts/build_switch.sh` 是唯一保留的构建脚本。
+两条容易断的经验（都踩过）：
+① **SVG 在 Switch 上默认关**（脚本 `WITH_SVG=0`）：lunasvg 的矢量后端 plutovg 用了
+   `sys/mman.h`，devkitA64 没有这个头，一开就编译失败。桌面仍默认开，Switch 要用得显式 `--svg`。
+② 改了脚本里的 `DEFINES`（比如开关可选解码器）**必须 `--clean` 重编**：脚本按时间戳增量
+   编译，不会因为宏变了重编旧目标文件，会以"undefined reference to lunasvg::…"的形式在
+   链接期暴露（那些 .o 是用 `BKLV_USE_SVG` 编的）。
+产物大小（2026-10 实测）：`demo.nro` **8.89 MB** = 代码+数据 8.14 MB（strip 后 ELF）
++ romfs 0.82 MB（171 个资源文件：字体 532 KB / 主题 608 KB / 文案 32 KB）。
 
 桌面（macOS / Linux / Windows）上不再有 shell 构建脚本，`build.sh` 与
 `scripts/build_sdl3.sh` 已删除；SDL3 作为 `add_subdirectory` 的子项目随 CMake 一起编。
