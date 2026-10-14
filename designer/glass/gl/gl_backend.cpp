@@ -402,7 +402,6 @@ bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue& queue)
     gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, self.captureFramebuffer);
     gl.BlitFramebuffer(0, 0, self.width, self.height, 0, 0, self.width, self.height,
         GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
     const float physicalRadius = clampFinite(
         queue.getBackdropStyle().blurRadius * queue.getDensity(), 0.0f, kMaximumBlurRadius,
         0.01f);

@@ -16,21 +16,22 @@ struct GlassTuning
     bool enabled = true;
 
     // 背景模糊：半径按物理像素（源项目调参范围 4~24），档位决定采样对数
-    float blurRadius = 18.0f;
+    float blurRadius = 32.0f;
     int quality      = 1; // 0 = 最小（5 对）/ 1 = 均衡（8 对）/ 2 = 完整（12 对）
 
     // 染色（RGB + 透明度）：玻璃整体色调
-    float tintR = 0.05f;
-    float tintG = 0.08f;
-    float tintB = 0.13f;
-    float tintA = 0.30f;
+    // 染色别太重：这是"玻璃"，底下的壁纸要看得见（0.30 时整个面板看着还是黑的）
+    float tintR = 0.04f;
+    float tintG = 0.06f;
+    float tintB = 0.12f;
+    float tintA = 0.34f;
 
     // 折射与色散
     float refractionHeight    = 22.0f;
     float refractionAmount    = -100.0f;
     float depthEffect         = 0.70f;
     float chromaticAberration = 0.48f;
-    float contrast            = -0.07f;
+    float contrast            = 0.02f;
 
     // 光照
     float innerShadow = 0.12f;

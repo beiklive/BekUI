@@ -1,5 +1,11 @@
 #include "designer/core/ui_state.hpp"
 
+namespace
+{
+// 玻璃默认参数的版本：改了默认观感就 +1，让老状态文件里的旧参数失效
+constexpr int kGlassTuningVersion = 2;
+}
+
 #include <cmath>
 
 #include <nlohmann/json.hpp>
@@ -56,8 +62,11 @@ bool loadUiState(const std::string& path, UiState& out)
     out.previewCompare   = doc.value("previewCompare", out.previewCompare);
     out.previewMaximized = doc.value("previewMaximized", out.previewMaximized);
     out.previewSubtree   = doc.value("previewSubtree", out.previewSubtree);
-    // 玻璃参数：老状态文件里没有这一节就保持默认
-    if (doc.contains("glass") && doc["glass"].is_object())
+    // 玻璃参数：老状态文件里没有这一节就保持默认。
+    // version 用来作废旧参数 —— 默认值调过一次（面板曾经是黑的），旧文件里的
+    // tintA=0.30 会把新默认盖掉，界面上又变回暗面板
+    if (doc.contains("glass") && doc["glass"].is_object()
+        && doc["glass"].value("version", 0) == kGlassTuningVersion)
     {
         const Json& g = doc["glass"];
         glass::GlassTuning& t = out.glass;
@@ -110,6 +119,7 @@ bool saveUiState(const std::string& path, const UiState& state, std::string& err
     {
         const glass::GlassTuning& t = state.glass;
         Json g                      = Json::object();
+        g["version"]             = kGlassTuningVersion;
         g["enabled"]             = t.enabled;
         g["blurRadius"]          = t.blurRadius;
         g["quality"]             = t.quality;

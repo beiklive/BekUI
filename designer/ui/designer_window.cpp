@@ -5396,29 +5396,6 @@ void DesignerWindow::draw()
     this->glass.beginFrame((int)(io.DisplaySize.x * io.DisplayFramebufferScale.x),
         (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y), density);
 
-    {
-        ImDrawList* background = ImGui::GetBackgroundDrawList();
-        const ImVec2 size = io.DisplaySize;
-        background->AddRectFilledMultiColor(ImVec2(0.0f, 0.0f), size,
-            IM_COL32(20, 24, 36, 255), IM_COL32(26, 21, 40, 255), IM_COL32(14, 18, 29, 255),
-            IM_COL32(18, 27, 36, 255));
-        // 柔光 + 斜条纹：纯渐变太平，玻璃的模糊/折射看不出来，得有结构
-        background->AddCircleFilled(ImVec2(size.x * 0.16f, size.y * 0.30f), size.y * 0.46f,
-            IM_COL32(72, 132, 255, 58), 64);
-        background->AddCircleFilled(ImVec2(size.x * 0.90f, size.y * 0.80f), size.y * 0.38f,
-            IM_COL32(255, 84, 186, 50), 64);
-        background->AddCircleFilled(ImVec2(size.x * 0.60f, size.y * 0.04f), size.y * 0.30f,
-            IM_COL32(80, 240, 210, 42), 64);
-
-        for (int stripe = -6; stripe < 14; stripe++)
-        {
-            const float offset = (float)stripe * size.y * 0.16f;
-            background->AddQuadFilled(ImVec2(offset, size.y), ImVec2(offset + size.y * 0.5f, 0.0f),
-                ImVec2(offset + size.y * 0.5f + size.x * 0.06f, 0.0f),
-                ImVec2(offset + size.x * 0.06f, size.y), IM_COL32(255, 255, 255, 13));
-        }
-    }
-
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
     // 窗口自己不铺底：底由壁纸 + 玻璃面板负责（否则玻璃采到的是一块纯色窗口底）
@@ -5428,6 +5405,32 @@ void DesignerWindow::draw()
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings
             | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollbar
             | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
+
+    // 壁纸必须画在**主窗口绘制列表的最前面**：
+    // 玻璃抓帧发生在第一条玻璃命令（菜单栏那块），之前试过放在 ImGui 的
+    // 背景绘制列表里 —— 实测抓到的只有菜单栏文字、没有壁纸，于是玻璃采到一片黑，
+    // 面板看着就是黑的。放进窗口列表、且排在菜单栏之前，就保证"玻璃下面一定有壁纸"。
+    {
+        ImDrawList* wallpaperList = ImGui::GetWindowDrawList();
+        const ImVec2 size         = io.DisplaySize;
+        wallpaperList->AddRectFilledMultiColor(ImVec2(0.0f, 0.0f), size,
+            IM_COL32(44, 58, 104, 255), IM_COL32(62, 44, 100, 255), IM_COL32(28, 40, 74, 255),
+            IM_COL32(34, 66, 92, 255));
+        wallpaperList->AddCircleFilled(ImVec2(size.x * 0.16f, size.y * 0.30f), size.y * 0.46f,
+            IM_COL32(86, 150, 255, 150), 64);
+        wallpaperList->AddCircleFilled(ImVec2(size.x * 0.90f, size.y * 0.80f), size.y * 0.38f,
+            IM_COL32(255, 96, 196, 130), 64);
+        wallpaperList->AddCircleFilled(ImVec2(size.x * 0.60f, size.y * 0.04f), size.y * 0.30f,
+            IM_COL32(88, 240, 214, 110), 64);
+        for (int stripe = -6; stripe < 14; stripe++)
+        {
+            const float offset = (float)stripe * size.y * 0.16f;
+            wallpaperList->AddQuadFilled(ImVec2(offset, size.y),
+                ImVec2(offset + size.y * 0.5f, 0.0f),
+                ImVec2(offset + size.y * 0.5f + size.x * 0.06f, 0.0f),
+                ImVec2(offset + size.x * 0.06f, size.y), IM_COL32(255, 255, 255, 26));
+        }
+    }
 
     // 菜单栏玻璃：注入点取"画菜单栏之前"，矩形按菜单栏实际高度算 ——
     // 玻璃压在菜单栏内容下面，内容照常画在玻璃上
