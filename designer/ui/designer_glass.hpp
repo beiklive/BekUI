@@ -20,7 +20,7 @@
 #if defined(BKLV_VULKAN)
 #include <memory>
 
-#include "designer/glass/vk/vk_glass.hpp"
+#include "bklv/backends/vk_glass.hpp"
 #endif
 
 namespace designer

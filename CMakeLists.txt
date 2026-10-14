@@ -233,7 +233,6 @@ set(BKLV_DESIGNER_UI_SOURCES
     ui/designer_style.cpp
     ui/designer_window.cpp
     ui/designer_glass.cpp
-    glass/vk/vk_glass.cpp
 )
 
 set(BKLV_DESIGNER_UI_ABS "")

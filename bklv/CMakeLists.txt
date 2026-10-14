@@ -320,6 +320,7 @@ set(BKLV_CORE_SOURCES
     glass/glass_tuning.cpp
     glass/glass_service.cpp
     backends/gl_glass.cpp
+    backends/vk_glass.cpp
     backends/gl_glass_procs.cpp
     backends/gl_glass_shaders.cpp
     core/logger.cpp

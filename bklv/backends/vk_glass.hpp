@@ -16,6 +16,7 @@
 
 #if defined(BKLV_VULKAN)
 
+#if defined(BKLV_VULKAN)
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -24,7 +25,7 @@
 
 #include "bklv/backends/vulkan_ui_pass.hpp"
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 // 一块玻璃的矩形（物理像素）+ 想要的模糊程度（0..1）
@@ -94,6 +95,8 @@ class VkGlass : public bklv::VulkanUiPassHook
     std::vector<VkGlassRect> pending;
 };
 
-} // namespace designer::glass
+} // namespace bklv::glass
+
+#endif // BKLV_VULKAN
 
 #endif // BKLV_VULKAN

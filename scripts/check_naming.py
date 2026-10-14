@@ -34,6 +34,9 @@ ACTION_PREFIXES = (
     "read", "write", "request", "capture", "save", "parse", "copy", "install",
     # prepare 也是动作（"准备好某样东西"，成败用返回值表示）：玻璃后端每帧准备背景用它
     "prepare",
+    # before/after 是钩子式动作（"这趟我接不接手"，返回值表示是否接管）：
+    # VulkanUiPassHook 的 beforeUiPass/afterUiPass 用它
+    "before", "after",
 )
 # 布尔开关的非法动词前缀
 BAD_BOOL_SETTER = re.compile(r"\bvoid\s+(enable|disable|show|hide)([A-Z]\w*)\s*\([^)]*\bbool\b")

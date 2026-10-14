@@ -2,6 +2,10 @@
 
 #include "bklv/core/logger.hpp"
 
+#if defined(BKLV_VULKAN)
+#include "bklv/backends/vulkan_backend.hpp"
+#endif
+
 namespace bklv::glass
 {
 
@@ -21,6 +25,31 @@ bool GlassService::ensureBackend()
     if (this->frameWidth <= 0 || this->frameHeight <= 0)
         return false;
 
+#if defined(BKLV_VULKAN)
+    // 路线 A：玻璃挂在 UI 通道的前/后钩子上（抓帧与模糊都在通道外做）
+    if (VulkanBackend* backend = activeVulkanBackend())
+    {
+        if (!this->vkHooked)
+        {
+            if (!backend->isUiPassHookActive())
+                backend->setUiPassHook(&this->vkGlass);
+            this->vkHooked = true;
+        }
+        EffectCapabilities caps;
+        caps.backdropCapture    = true;
+        caps.blur               = true;
+        caps.refraction         = false;   // 路线 A 不做折射
+        caps.dispersion         = false;   // 也不做色散
+        caps.maxGlassRegions    = 32;
+        this->capabilities      = caps;
+        const bool ready        = this->vkGlass.isReady();
+        if (ready && !this->supported)
+            Logger::info("[玻璃] Vulkan 后端就绪（路线 A：mip 链模糊，无折射/色散）");
+        return ready;
+    }
+    return false;
+#else
+
     // 尺寸变了会重建资源；失败会被记住（这个尺寸下不再每帧重试），所以这里可以每帧调。
     this->backend.ensure(this->frameWidth, this->frameHeight);
     this->capabilities = this->backend.getCapabilities();
@@ -31,6 +60,7 @@ bool GlassService::ensureBackend()
         Logger::info("[玻璃] 后端就绪：" + std::to_string(this->frameWidth) + "x"
             + std::to_string(this->frameHeight));
     return ready;
+#endif // BKLV_VULKAN
 }
 
 void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float frameDensity)
@@ -46,6 +76,11 @@ void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float
     style.quality    = this->getQuality();
     this->queue.beginFrame(style, this->density);
 
+#if defined(BKLV_VULKAN)
+    if (activeVulkanBackend() != nullptr)
+        this->vkGlass.beginFrame(this->tuning.blurRadius, false);
+#endif
+
     this->supported = this->isEnabled() && this->ensureBackend();
 }
 
@@ -53,6 +88,38 @@ void GlassService::submit(GlassRequest request)
 {
     if (!this->isEnabled())
         return;
+
+#if defined(BKLV_VULKAN)
+    if (activeVulkanBackend() != nullptr)
+    {
+        VkGlassRect rect;
+        rect.minX      = request.minMax.x;
+        rect.minY      = request.minMax.y;
+        rect.maxX      = request.minMax.z;
+        rect.maxY      = request.minMax.w;
+        rect.blurScale = std::min(this->tuning.blurRadius / 48.0f, 1.0f);
+        this->vkGlass.addRect(rect);
+
+        // 模糊只有形状没有颜色：圆角、染色、描边高光由 ImGui 叠在它上面
+        //（VK 这条路的取舍：不做折射/色散）
+        if (request.drawList != nullptr)
+        {
+            const float radius = std::min(
+                (request.minMax.z - request.minMax.x) * 0.5f, request.radii.topLeft * request.density);
+            const ImU32 tint = ImGui::ColorConvertFloat4ToU32(ImVec4(this->tuning.tintR,
+                this->tuning.tintG, this->tuning.tintB,
+                std::max(this->tuning.tintA, 0.35f)));
+            const ImU32 rim = ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f,
+                0.10f + this->tuning.rimGlow * 0.35f));
+            const float density = request.density > 0.0f ? request.density : this->density;
+            const ImVec2 min(request.minMax.x / density, request.minMax.y / density);
+            const ImVec2 max(request.minMax.z / density, request.minMax.w / density);
+            request.drawList->AddRectFilled(min, max, tint, radius / density);
+            request.drawList->AddRect(min, max, rim, radius / density, 0, 1.0f);
+        }
+        return;
+    }
+#endif
 
     // 后端起不来时静默丢弃：视图不需要知道玻璃有没有生效（它只是"声明"）
     if (!this->backend.isReady())
@@ -119,6 +186,10 @@ void GlassService::finishFrame()
 {
     this->queue.seal();
     this->backend.finishFrame();
+#if defined(BKLV_VULKAN)
+    if (activeVulkanBackend() != nullptr)
+        this->vkGlass.endFrame();
+#endif
 }
 
 EffectCapabilities GlassService::getCapabilities() const

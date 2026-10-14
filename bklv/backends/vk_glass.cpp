@@ -1,8 +1,11 @@
+// Vulkan 的玻璃后端（路线 A：mip 链模糊 + ImGui 叠染色/高光），只在 VK 构建里编。
+// 其它后端不编这个 TU（类继承 VulkanUiPassHook，只有 VK 构建才有）。
+#if defined(BKLV_VULKAN)
 // Vulkan 版玻璃的实现。设计要点见头文件注释：
 // 只用 vkCmdBlitImage（mip 链下采样 = 模糊），不建管线、不用 SPIR-V。
 
-#include "designer/glass/glass_lib.hpp"
-#include "designer/glass/vk/vk_glass.hpp"
+#include "bklv/backends/vk_glass.hpp"
+#include "bklv/backends/vk_glass.hpp"
 
 #if defined(BKLV_VULKAN)
 
@@ -11,7 +14,7 @@
 
 #include "bklv/core/logger.hpp"
 
-namespace designer::glass
+namespace bklv::glass
 {
 
 namespace
@@ -419,6 +422,8 @@ void VkGlass::afterUiPass(VkCommandBuffer commandBuffer, VkImage colorImage, VkF
     this->contentValid = true;
 }
 
-} // namespace designer::glass
+} // namespace bklv::glass
+
+#endif // BKLV_VULKAN
 
 #endif // BKLV_VULKAN
