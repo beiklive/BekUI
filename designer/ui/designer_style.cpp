@@ -254,13 +254,18 @@ constexpr float kTitleBarPad     = 10.0f;
 // 标题字号系数：1.0 = 和正文同一个字号（用户要求全页面统一；想恢复层级改这一个数）
 constexpr float kTitleFontFactor = 1.0f;
 
-float titleBarFontSize = 0.0f;
+// PushFont 要的是"未缩放基准字号"，而 GetFontSize() 是已缩放的结果
+//（imgui.h 里明确写了 DO NOT PASS THIS VALUE TO PushFont）——
+// 传错的话 ImGui 会再乘一次 FontScaleMain，标题就比正文小 30%（实测 18.5×8.5 vs 26×12.5，踩过）
+float titleBarFontSize    = 0.0f; // 实际渲染字高（用于算栏高）
+float titleBarPushSize    = 0.0f; // 传给 PushFont 的基准字号
 } // namespace
 
 float panelTitleBarStart(float uiScale, float cornerRadius)
 {
     const float pad = kTitleBarPad * (uiScale > 0.0f ? uiScale : 1.0f);
-    titleBarFontSize = ImGui::GetFontSize() * kTitleFontFactor;
+    titleBarFontSize = ImGui::GetFontSize() * kTitleFontFactor;                 // 已缩放：算栏高用
+    titleBarPushSize = ImGui::GetStyle().FontSizeBase * kTitleFontFactor;       // 未缩放：传给 PushFont
     const float barHeight = titleBarFontSize + pad * 2.0f;
 
     ImDrawList* list    = ImGui::GetWindowDrawList();
@@ -280,12 +285,15 @@ float panelTitleBarStart(float uiScale, float cornerRadius)
 
 void panelTitleBarTitle(const char* title, const char* hint)
 {
-    if (titleBarFontSize <= 0.0f)
+    if (titleBarPushSize <= 0.0f)
+    {
         titleBarFontSize = ImGui::GetFontSize() * kTitleFontFactor;
+        titleBarPushSize = ImGui::GetStyle().FontSizeBase * kTitleFontFactor;
+    }
 
     const DesignerPalette palette = currentDesignerPalette();
-    // 标题字号比正文小一档：ImGui 1.92 的 PushFont(字体, 尺寸)
-    ImGui::PushFont(nullptr, titleBarFontSize);
+    // 标题字号 = 正文 × kTitleFontFactor（现在是 1.0，即和正文同一个字号）
+    ImGui::PushFont(nullptr, titleBarPushSize);
     ImGui::TextColored(palette.textPrimary, "%s", title != nullptr ? title : "");
     if (hint != nullptr && hint[0] != 0)
     {
@@ -301,6 +309,7 @@ void panelTitleBarEnd(float barHeight, float uiScale)
     const float pad = kTitleBarPad * (uiScale > 0.0f ? uiScale : 1.0f);
     ImGui::SetCursorPos(ImVec2(ImGui::GetStyle().WindowPadding.x, barHeight + pad * 0.9f));
     titleBarFontSize = 0.0f;
+    titleBarPushSize = 0.0f;
 }
 
 void panelHeader(const char* title, const char* hint)

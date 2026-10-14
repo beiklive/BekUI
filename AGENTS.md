@@ -733,7 +733,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   9）**面板标题栏和内容区不是一个样式**（三个面板共用 `panelTitleBar*`，`designer_style.cpp`）：
      深色底（黑 40%）+ 顶部两角跟面板圆角（用 `glass.getTuning().panelRadius`，和玻璃矩形一致）
      + 底边一条细线；高度 = 标题字号 + 2×边距，边距 `kTitleBarPad` 乘 uiScale；
-     **标题字号 = 正文 × 0.9**（`PushFont(nullptr, size)`，ImGui 1.92 的重载）。
+     **标题字号 = 正文 × `kTitleFontFactor`**（现在 1.0，即全界面同号）。
+     ⚠️ **`PushFont(font, size)` 收的是"未缩放基准字号"**，不是 `GetFontSize()`：
+     imgui.h 里原话是 "DO NOT PASS THIS VALUE TO PushFont()! Use ImGui::GetStyle().FontSizeBase"。
+     传错的话 ImGui 会再乘一次 `FontScaleMain`（我们这里是 0.85×0.817≈0.69），
+     文字会比预期小 30% —— 实测同一个「文件」：菜单栏 26.0×12.5、标题栏 18.5×8.5（踩了两轮才发现）。
+     正确写法：`PushFont(font, style.FontSizeBase * factor)` 用于绘制，
+     排版算高度用 `GetFontSize() * factor`（已缩放）。
      ⚠️ 标题栏必须画在**面板自己的绘制列表**里、坐标用 `GetWindowPos()`（子窗 (0,0) 就是窗口左上角，
      不受 WindowPadding 影响），这样它正好盖住玻璃面板顶部那条约 10px 的高光带 ——
      不盖住的话，量出来有 12px 留白、看着仍是"字贴着顶"（高光带把留白的视觉空间吃掉了，踩过）。
@@ -768,7 +774,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
         分隔条都是手画的，曾经在里面写死颜色，而且选中态用了**不透明**色块 —— 正好把玻璃盖掉。
         统一走 `designer_style.hpp` 的 `chipColor/chipHoverColor/chipActiveColor/
         iconIdleColor/iconActiveColor/rowTextColor/rowIconColor`。
-     ③ 画布里的**设计辅助色**（棋盘格、padding 参考线、中轴线、选中框）不受这条约束：
+     ③ **矢量图标**：`drawIcon` 的 Material 路径本来就是 `CalcTextSizeA(size, ...)` + `AddText(font, size, ...)`
+        （正确）；**回退路径**曾经用当前正文字体量尺寸、还顺手 `PushFont(图标字体, size)`（同样踩了上面那个坑），
+        已改成用 `g_iconFont->CalcTextSizeA(size, ...)` 量、直接 `AddText(g_iconFont, size, ...)` 画。
+     ④ 画布里的**设计辅助色**（棋盘格、padding 参考线、中轴线、选中框）不受这条约束：
         那是画布自己的视觉语言（青色/橙色参考线），故意与界面配色不同。
 
 ## 测试

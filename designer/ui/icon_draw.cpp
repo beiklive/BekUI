@@ -118,18 +118,14 @@ void drawIcon(ImDrawList* list, Icon icon, ImVec2 c, float size, ImU32 color)
         const unsigned int cp = codepointFor(icon);
         if (cp != 0)
         {
-            ImFont* font     = ImGui::GetFont();
-            const float base = ImGui::GetFontSize();
-            ImGui::PushFont(g_iconFont, size);
-            const ImVec2 glyphSize = g_iconFont->CalcTextSizeA(size, FLT_MAX, 0.0f,
-                (const char*)u8"\uE000"); // 用一个占位字形量高度
+            // 量尺寸必须用"要绘制的那套字体 + 那个字号"：以前量的是当前正文字体，
+            // 而且中间那段 PushFont(字体, size) 也传错（PushFont 要未缩放基准字号），
+            // 结果量出来的宽度偏小、图标落位偏右（踩过，见 designer_style 里的同类注释）
             const char text[5] = { (char)(0xE0 | (cp >> 12)), (char)(0x80 | ((cp >> 6) & 0x3F)),
                 (char)(0x80 | (cp & 0x3F)), 0, 0 };
-            const ImVec2 textSize = ImGui::CalcTextSize(text);
+            const ImVec2 textSize = g_iconFont->CalcTextSizeA(size, FLT_MAX, 0.0f, text);
             list->AddText(g_iconFont, size, ImVec2(c.x - textSize.x * 0.5f, c.y - size * 0.5f),
                 color, text);
-            ImGui::PopFont();
-            (void)font; (void)base; (void)glyphSize;
             return;
         }
     }
