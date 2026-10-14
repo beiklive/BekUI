@@ -10,6 +10,7 @@
 //
 // 数据来源（`"source": "text"` 之类）由子类翻译成实际内容，见 getLayerText/getLayerImage。
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -72,6 +73,18 @@ class AppearanceView : public Box
 
     void setIconFontKind(IconFontKind kind) { this->iconFontKind = kind; }
     IconFontKind getIconFontKind() const { return this->iconFontKind; }
+
+    // 两套图标字体的统一入口：MATERIAL -> icon::font()，SWITCH -> getIconFont()。
+    // 返回 nullptr 表示那套还没装好（调用方自己回退正文字体）。
+    static ImFont* iconFontFor(IconFontKind kind);
+
+    // ---- 按层指定用哪套图标字体（不指定 = 跟随 setIconFontKind 的那一套）----
+    // 用途：同一个控件里"图标层用 Material、箭头层用 switch"这种混排，
+    // 也不用为此写一个 getLayerFont 重写 —— 而且运行时可切，方便调。
+    void setLayerIconFontKind(const std::string& layerId, IconFontKind kind);
+    void clearLayerIconFontKind(const std::string& layerId);
+    bool hasLayerIconFontKind(const std::string& layerId) const;
+    IconFontKind getLayerIconFontKind(const std::string& layerId) const;
 
     // 直接套一份**外部的**外观 JSON（用当前主题解析）。
     // 设计器靠它做"改了但还没保存也能看到效果"：编译 → 换成这一份 → 重排。
@@ -149,6 +162,7 @@ class AppearanceView : public Box
     std::string icon;
     std::string infoText;
     IconFontKind iconFontKind = IconFontKind::MATERIAL;
+    std::map<std::string, IconFontKind> layerIconFontKinds;
     bool pressed   = false;
     AppearanceInstance appearance;
 

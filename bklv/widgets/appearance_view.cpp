@@ -316,16 +316,50 @@ TextureRef AppearanceView::getLayerImage(const std::string&)
     return TextureRef();
 }
 
+ImFont* AppearanceView::iconFontFor(IconFontKind kind)
+{
+    // 注意：这里的 getIconFont() 是 core/font.hpp 的自由函数（switch 那套）；
+    // icon::font() 是 Material。两套都可能还没装好，返回 nullptr 让调用方回退。
+    return kind == IconFontKind::SWITCH ? bklv::getIconFont() : icon::font();
+}
+
+void AppearanceView::setLayerIconFontKind(const std::string& layerId, IconFontKind kind)
+{
+    if (layerId.empty())
+        return;
+
+    this->layerIconFontKinds[layerId] = kind;
+
+    // 字体变了要重新测量（字宽不一样）
+    this->markMeasureDirty();
+}
+
+void AppearanceView::clearLayerIconFontKind(const std::string& layerId)
+{
+    if (this->layerIconFontKinds.erase(layerId) > 0)
+        this->markMeasureDirty();
+}
+
+bool AppearanceView::hasLayerIconFontKind(const std::string& layerId) const
+{
+    return this->layerIconFontKinds.find(layerId) != this->layerIconFontKinds.end();
+}
+
+IconFontKind AppearanceView::getLayerIconFontKind(const std::string& layerId) const
+{
+    const auto found = this->layerIconFontKinds.find(layerId);
+    return found != this->layerIconFontKinds.end() ? found->second : this->iconFontKind;
+}
+
 ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
 {
     // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块。
-    // 默认 Material（控件图标），提示栏/菜单那类自己 setIconFontKind(SWITCH)。
-    if (layer.id == "icon" || layer.source == "icon")
+    // 哪一套由"这一层的 kind"决定：显式指定过就按指定的，否则跟随 setIconFontKind 的全局那套。
+    const bool isIconLayer = layer.id == "icon" || layer.source == "icon";
+    if (isIconLayer || this->hasLayerIconFontKind(layer.id))
     {
-        ImFont* iconFont = this->iconFontKind == IconFontKind::SWITCH ? getIconFont()
-                                                                     : icon::font();
-        if (iconFont != nullptr)
-            return iconFont;
+        if (ImFont* font = iconFontFor(this->getLayerIconFontKind(layer.id)))
+            return font;
     }
     return getDefaultFont();
 }

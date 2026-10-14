@@ -250,6 +250,25 @@ int main()
         // 其它 source 仍然走 Button 的那套（图标 / 文字 / 信息）
         selector.setText("选项");
         checkEqual(selector.getLayerText("text"), "选项", "非箭头层仍走 Button::getLayerText");
+
+        // 字体也是"按层"指定的：箭头两层用 switch 那套，控件自己的 icon 层仍是 Material
+        check(selector.hasLayerIconFontKind("arrowLeft"), "arrowLeft 指定了图标字体");
+        check(selector.getLayerIconFontKind("arrowLeft") == IconFontKind::SWITCH,
+            "arrowLeft 用 switch 那套（它的码位只在 switch_icons 里）");
+        check(selector.getLayerIconFontKind("arrowRight") == IconFontKind::SWITCH,
+            "arrowRight 用 switch 那套");
+        check(!selector.hasLayerIconFontKind("icon"), "icon 层没有单独指定");
+        check(selector.getLayerIconFontKind("icon") == IconFontKind::MATERIAL,
+            "未指定的层跟随全局那套（Material）");
+
+        // 运行时可切：两套字体就是两个指针，换一下就行
+        selector.setLayerIconFontKind("arrowLeft", IconFontKind::MATERIAL);
+        check(selector.getLayerIconFontKind("arrowLeft") == IconFontKind::MATERIAL,
+            "运行时把左箭头切到 Material（不重编、不重写 getLayerFont）");
+        selector.clearLayerIconFontKind("arrowLeft");
+        check(!selector.hasLayerIconFontKind("arrowLeft")
+                && selector.getLayerIconFontKind("arrowLeft") == IconFontKind::MATERIAL,
+            "清掉指定后回落到全局那套");
     }
 
     std::printf("\n== 7. 主题里的 view/ 也能取到 ==\n");

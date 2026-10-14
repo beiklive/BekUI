@@ -2,6 +2,7 @@
 #include "bklv/core/icon_font.hpp"
 
 #include "bklv/core/font.hpp"
+#include "bklv/widgets/appearance_view.hpp"
 #include "bklv/core/resource.hpp"
 #include "tests/test_util.hpp"
 
@@ -91,6 +92,16 @@ int main()
             "Material 里 U+E0ED/E0EE 也有字形 —— 但是别的图标，所以仍要走 switch_icons");
 
         icon::setFont(material);
+
+        // 两套图标字体就是两个指针，统一入口 AppearanceView::iconFontFor(kind)：
+        // 上层（比如选择器的箭头层）只声明"这一层用哪套"，取指针的事在这里。
+        bklv::setIconFont(switchIcons);
+        check(AppearanceView::iconFontFor(IconFontKind::MATERIAL) == material,
+            "iconFontFor(MATERIAL) 拿到 Material 指针");
+        check(AppearanceView::iconFontFor(IconFontKind::SWITCH) == switchIcons,
+            "iconFontFor(SWITCH) 拿到 switch 指针");
+        // 后面的用例要验证"没设图标字体时的行为"，所以这里还原回去
+        bklv::setIconFont(nullptr);
         const std::vector<icon::Glyph>& materialGlyphs = icon::allGlyphs();
         check(materialGlyphs.size() > 1000, "Material 字体里有一千多个字形（远多于手写表）");
         check(materialGlyphs.size() > icon::all().size() * 10, "字体里的字形数远多于手写表");

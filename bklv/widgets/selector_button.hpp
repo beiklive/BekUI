@@ -88,7 +88,6 @@ class SelectorButton : public Button
 
   protected:
     std::string getLayerText(const std::string& source) override;
-    ImFont* getLayerFont(const AppearanceLayer& layer) override;
 
   private:
     void refreshInfoText();

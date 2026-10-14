@@ -59,6 +59,13 @@ SelectorButton::SelectorButton(const std::string& text)
 {
     // 组合外观：直接给完整路径名（变体是点拼的后缀，这里没有第二个变体）
     this->setAppearanceName("widget/button.selector");
+
+    // 箭头的码位（见 getLayerText）只有 switch_icons.ttf 里有，所以这两层指定用 switch 那套；
+    // 控件自己的 icon 层（调色板/列表图标）仍走默认的 Material —— 同一个控件两套字体混排。
+    // 运行时要换：setLayerIconFontKind("arrowLeft", IconFontKind::MATERIAL) 即可。
+    this->setLayerIconFontKind("arrowLeft", IconFontKind::SWITCH);
+    this->setLayerIconFontKind("arrowRight", IconFontKind::SWITCH);
+
     this->refreshInfoText();
 }
 
@@ -255,20 +262,6 @@ std::string SelectorButton::getLayerText(const std::string& source)
         return this->arrowStyle == SelectorArrow::LR ? "\uE0A5" : "\uE0EE";
 
     return Button::getLayerText(source);
-}
-
-ImFont* SelectorButton::getLayerFont(const AppearanceLayer& layer)
-{
-    // 箭头层必须用"真正含有该字形"的字体，否则画出来是豆腐块或者别的图标：
-    //   U+E0A4/E0A5（LR）与 U+E0ED/E0EE（ARROWS）**都只在 switch_icons 里**是箭头/按键图标；
-    //   同一批码位在 Material 里是笑脸、表格之类的别的图标，所以这里统一走 switch_icons。
-    if (layer.id == "arrowLeft" || layer.id == "arrowRight")
-    {
-        if (ImFont* font = getIconFont())
-            return font;
-    }
-
-    return Button::getLayerFont(layer);
 }
 
 namespace
