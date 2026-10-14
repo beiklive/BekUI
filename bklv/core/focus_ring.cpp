@@ -207,13 +207,17 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
     const int segments = segmentCount(ring, style);
     const float half   = style.lineWidth * 0.5f;
 
-    // 呼吸：贴图照用，只有整体透明度在起伏
+    // 三种类型的区别只在"动什么"：
+    //   FLOW      相位推动贴图（颜色绕圈流动）
+    //   BREATHING 贴图不动，只有整体透明度在起伏
+    //   SOLID     都不动
     float segmentAlpha = style.alpha;
     float segmentPhase = phase;
     if (style.type == Type::BREATHING)
     {
         const float pulse = 0.45f + 0.55f * (0.5f + 0.5f * std::sin(phase * 2.0f * kPi));
         segmentAlpha      = style.alpha * pulse;
+        segmentPhase      = 0.0f;
     }
     else if (style.type == Type::SOLID)
     {

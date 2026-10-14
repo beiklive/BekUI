@@ -4,8 +4,10 @@
 // 颜色本身来自贴图（不在这里断言），这里管的是**位置与 UV**对不对。
 
 #include <algorithm>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/focus_ring.hpp"
@@ -69,6 +71,27 @@ UvScan scanUv(const focus_ring::Outline& outline, const focus_ring::Style& style
             scan.smeared++;
     }
     return scan;
+}
+
+// 取一批顶点的 UV 与颜色，用来判断"换类型到底改了哪一部分"：
+// 流光改 UV（颜色流动）、呼吸改 alpha（UV 不动）、静止两者都不动。
+void collectVertices(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase,
+    std::vector<ImVec2>& uvs, std::vector<ImU32>& colors)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+
+    uvs.clear();
+    colors.clear();
+    for (int i = 0; i < list.VtxBuffer.Size; i++)
+    {
+        uvs.push_back(list.VtxBuffer[i].uv);
+        colors.push_back(list.VtxBuffer[i].col);
+    }
 }
 
 int countVertices(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase)
@@ -168,10 +191,77 @@ int main()
         check(edge.wrapped, "绕回起点也算跨接缝（拆开画）");
     }
 
-    std::printf("\n== 6. 绘制：贴图无效/关掉时一个顶点都不画 ==\n");
+    std::printf("\n== 5b. 换类型：流光动 UV、呼吸动 alpha、静止都不动 ==\n");
     {
         ImGui::CreateContext();
 
+        const focus_ring::Outline outline = makeOutline(10, 10, 80, 40, 6.0f);
+        focus_ring::Style style;
+        style.lut      = fakeLut();
+        style.segments = 12;
+
+        std::vector<ImVec2> uvsA, uvsB;
+        std::vector<ImU32> colorsA, colorsB;
+
+        // 流光：相位一变，UV 跟着变（颜色沿着边框走）
+        style.type = focus_ring::Type::FLOW;
+        collectVertices(outline, style, 0.0f, uvsA, colorsA);
+        collectVertices(outline, style, 0.4f, uvsB, colorsB);
+        // 注意：相位不同 -> 跨接缝的那一段落在不同位置，顶点数可能不同（拆分的后半段有时退化），
+        // 所以只比公共前缀里"有没有 UV 变化"。
+        const size_t flowCommon = std::min(uvsA.size(), uvsB.size());
+        bool flowUvChanged      = flowCommon > 0;
+        for (size_t i = 0; i < flowCommon && flowUvChanged; i++)
+            flowUvChanged = uvsA[i].x != uvsB[i].x;
+        check(flowUvChanged, "流光：相位改变采样位置（UV 变了）");
+
+        // 静止：相位不影响 UV
+        style.type = focus_ring::Type::SOLID;
+        collectVertices(outline, style, 0.0f, uvsA, colorsA);
+        collectVertices(outline, style, 0.4f, uvsB, colorsB);
+        const size_t solidCommon = std::min(uvsA.size(), uvsB.size());
+        bool solidUvSame         = solidCommon > 0;
+        for (size_t i = 0; i < solidCommon && solidUvSame; i++)
+            solidUvSame = uvsA[i].x == uvsB[i].x;
+        check(solidUvSame, "静止：相位不影响 UV");
+
+        // 呼吸：UV 不动，透明度在变（颜色分量不同）
+        style.type = focus_ring::Type::BREATHING;
+        collectVertices(outline, style, 0.0f, uvsA, colorsA);
+        collectVertices(outline, style, 0.25f, uvsB, colorsB);
+        const size_t breathCommon = std::min(uvsA.size(), uvsB.size());
+        bool breathUvSame         = breathCommon > 0;
+        for (size_t i = 0; i < breathCommon && breathUvSame; i++)
+            breathUvSame = uvsA[i].x == uvsB[i].x;
+        check(breathUvSame, "呼吸：UV 不动（还是同一张贴图）");
+        check(!colorsA.empty() && !colorsB.empty() && colorsA[0] != colorsB[0],
+            "呼吸：透明度在随时间起伏");
+
+        // 三种类型画出来的顶点数一致（几何共用一条路径）
+        style.type = focus_ring::Type::FLOW;
+        const int flowCount = countVertices(outline, style, 0.0f);
+        style.type          = focus_ring::Type::SOLID;
+        const int solidCount = countVertices(outline, style, 0.0f);
+        style.type           = focus_ring::Type::BREATHING;
+        const int breathCount = countVertices(outline, style, 0.0f);
+        check(flowCount == solidCount && flowCount == breathCount,
+            "换类型不改变几何（共用同一条描边路径）");
+
+        // 自定义渲染器：挂上就由它画
+        style.type = focus_ring::Type::CUSTOM;
+        check(countVertices(outline, style, 0.0f) == 0, "CUSTOM 没挂渲染器 -> 不画");
+        int customCalls = 0;
+        style.customRenderer = [&customCalls](ImDrawList* list, const focus_ring::Outline&,
+                                   const focus_ring::Style&, float) {
+            customCalls++;
+            list->AddCircleFilled(ImVec2(0.0f, 0.0f), 4.0f, IM_COL32_WHITE);
+        };
+        check(countVertices(outline, style, 0.0f) > 0 && customCalls > 0,
+            "CUSTOM 挂了渲染器 -> 交给它画");
+    }
+
+    std::printf("\n== 6. 绘制：贴图无效/关掉时一个顶点都不画 ==\n");
+    {
         focus_ring::Outline outline = makeOutline(10, 10, 48, 48, 24.0f /* 圆 */);
         focus_ring::Style style;
         style.type = focus_ring::Type::FLOW;
