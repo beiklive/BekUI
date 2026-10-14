@@ -111,6 +111,10 @@ DemoApp::DemoApp()
 
     this->contentRoot->addView(body);
     // 基础内容进下钻栈的栈底；详情页往上叠（Shell::pushContentView）
+    // 玻璃的背景壁纸：挂在**内容层**（不滚动的父层），并且插在内容之前 ——
+    // 页面在滚动器里，壁纸放进页面就会跟着滚（踩过）。内容层的背景是不透明的，
+    // 所以铺在 backdrop 层看不见；挂在内容层才既在页面之下、又不随页面滚动。
+    this->shell->getContentLayer()->addView(makeGlassWallpaper());
     this->shell->pushContentView(this->contentRoot);
 
     // 内容避让是**显式**的：内容层按页头/底栏高度留白

@@ -190,9 +190,6 @@ Label* bodyText(const std::string& text)
 Box* buildBaseWidgetsPage()
 {
     Box* page = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
-
-    // 壁纸铺满整页、最先绘制：小节卡片是半透明的，玻璃版本控件才有背景可采、糊得出效果
-    page->addView(makeGlassWallpaper());
     page->addView(makeHint(getStr("base_widgets/hint")));
 
     // ---------------------------------------------------------------- 容器
