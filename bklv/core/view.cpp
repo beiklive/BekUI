@@ -596,6 +596,52 @@ void View::drawBorder(ImDrawList* drawList, float x, float y, float width, float
         this->cornerRadius, 0, this->borderThickness);
 }
 
+focus_ring::Outline View::getFocusOutline() const
+{
+    // 自己的绝对矩形（getX/getY 已经累加了各级布局位置与 translation）
+    Point corners[4] = {
+        Point(this->getX(), this->getY()),
+        Point(this->getX() + this->getWidth(), this->getY()),
+        Point(this->getX() + this->getWidth(), this->getY() + this->getHeight()),
+        Point(this->getX(), this->getY() + this->getHeight()),
+    };
+
+    // 沿父链套各层绘制变换 —— 顺序与 View::frame 里改顶点一致（先自己，再父级……），
+    // 每层都以自己的绝对中心为锚点。这样转场位移/聚焦放大时框都跟得住。
+    float scale = 1.0f;
+    for (const View* node = this; node != nullptr; node = node->getParent())
+    {
+        const Transform2D& transform = node->getTransform();
+        if (transform.isIdentity())
+            continue;
+
+        const Point center(node->getX() + node->getWidth() * 0.5f,
+            node->getY() + node->getHeight() * 0.5f);
+        for (Point& corner : corners)
+            corner = transform.apply(corner.x, corner.y, center);
+
+        // 等比缩放的部分记下来：圆角半径要跟着放大，否则圆控件会被框成方圆不匹配的形状
+        scale *= 0.5f * (std::abs(transform.scaleX) + std::abs(transform.scaleY));
+    }
+
+    float minX = corners[0].x;
+    float maxX = corners[0].x;
+    float minY = corners[0].y;
+    float maxY = corners[0].y;
+    for (const Point& corner : corners)
+    {
+        minX = std::min(minX, corner.x);
+        maxX = std::max(maxX, corner.x);
+        minY = std::min(minY, corner.y);
+        maxY = std::max(maxY, corner.y);
+    }
+
+    focus_ring::Outline outline;
+    outline.bounds = Rect(minX, minY, maxX - minX, maxY - minY);
+    outline.scale  = std::abs(scale);
+    return outline;
+}
+
 void View::frame(FrameContext* ctx)
 {
     if (this->visibility != Visibility::VISIBLE)

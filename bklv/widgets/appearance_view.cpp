@@ -28,6 +28,77 @@ AppearanceView::AppearanceView(std::string appearanceName, bool focusable)
     this->applyTheme();
 }
 
+namespace
+{
+// 聚焦放大：数值**写死在代码里**（用户要求焦点相关表现不受主题 JSON 控制）。
+// 想改就走 setFocusScale()/setFocusScaleEnabled()。
+constexpr float kFocusScaleSeconds = 0.13f;
+} // namespace
+
+focus_ring::Outline AppearanceView::getFocusOutline() const
+{
+    // 几何交给基类（世界矩形 + 变换链），这里只补"我有多圆"。
+    focus_ring::Outline outline = View::getFocusOutline();
+    outline.cornerRadius        = this->getCornerRadius();
+    return outline;
+}
+
+float AppearanceView::getCornerRadius() const
+{
+    // 取 bg 层的圆角：外观里 radius 写到 >= 短边一半时，这里读出来就是"圆"，
+    // 于是聚焦框自然变成圆框 —— 形状不用逐控件声明。
+    const std::vector<AppearanceLayer>& layers = this->appearance.getAppearance().getLayers();
+    for (size_t index = 0; index < layers.size(); index++)
+    {
+        if (layers[index].id == "bg")
+            return this->appearance.getNumber((int)index, AppearanceProp::RADIUS);
+    }
+    return 0.0f;
+}
+
+void AppearanceView::updateFocusScale()
+{
+    if (!this->focusScaleEnabled)
+    {
+        if (this->focusScaleApplied != 1.0f)
+        {
+            this->focusScaleApplied = 1.0f;
+            this->setScaleX(1.0f);
+            this->setScaleY(1.0f);
+        }
+        return;
+    }
+
+    const bool focused = this->isFocused();
+    if (!this->focusScaleInitialized)
+    {
+        this->focusScaleInitialized = true;
+        this->focusScaleWasFocused  = focused;
+        this->focusScaleAnim.reset(1.0f);
+    }
+
+    if (focused != this->focusScaleWasFocused)
+    {
+        this->focusScaleWasFocused = focused;
+        this->focusScaleAnim.addStep(focused ? this->focusScaleTarget : 1.0f, kFocusScaleSeconds,
+            EasingFunction::QUADRATIC_OUT);
+        this->focusScaleAnim.start();
+    }
+
+    if (this->focusScaleAnim.isStopped())
+        return;
+
+    this->focusScaleAnim.update();
+
+    const float scale = this->focusScaleAnim.getValue();
+    if (std::abs(scale - this->focusScaleApplied) <= 1e-4f)
+        return;
+
+    this->focusScaleApplied = scale;
+    this->setScaleX(scale);
+    this->setScaleY(scale);
+}
+
 void AppearanceView::enableContentMeasurement()
 {
     // 固有尺寸 = 各层里最大的那个"内容尺寸 + 两侧 inset"。
@@ -196,6 +267,9 @@ void AppearanceView::update()
     // AppearanceView 也是容器（底栏里装提示栏/状态区、页头里装图标与标题、
     // 弹窗面板里装按钮行），必须先递归子树——不递归的话子树永远不会 update
     Box::update();
+
+    // 聚焦反馈：轻微放大（画框在浮层上，这边只管"变大一点"）
+    this->updateFocusScale();
 
     if (!this->appearance.isAnimating())
         return;

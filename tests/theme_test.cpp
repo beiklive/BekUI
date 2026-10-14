@@ -145,13 +145,14 @@ int main()
                     "外壳底色 = color.surface.page");
 
             check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
-            // borealis 的 hideHighlightBackground：primary/highlight/default 聚焦时**不出高亮底**，
-            // 只有 bordered/borderless 才出。所以这里断言的条数不一样，不是漏了。
-            check(button->getTransitions("focused").size() == 4,
-                "default 按钮 focused 有四条（辉光 + 描边，无高亮底）");
+            // 聚焦的**框**已经搬到浮层的焦点框（FocusRingView）上：外观里不再补 hlGlow/hlBorder
+            // 的描边，只保留"高亮底"这一条。borealis 的 hideHighlightBackground 依然成立：
+            // primary/highlight/default 聚焦不出高亮底，只有 bordered/borderless 才出。
+            check(button->getTransitions("focused").empty(),
+                "default 按钮 focused 不再画框（无高亮底、无描边）");
             std::shared_ptr<const Appearance> bordered = getWidgetAppearance("base/button.bordered");
-            check(bordered != nullptr && bordered->getTransitions("focused").size() == 5,
-                "bordered 按钮 focused 有五条（含高亮底）");
+            check(bordered != nullptr && bordered->getTransitions("focused").size() == 1,
+                "bordered 按钮 focused 只剩高亮底那一条");
         }
     }
 
@@ -190,18 +191,18 @@ int main()
         check(mid != idleFill && mid != focusedFill, "60ms 时高亮底色在中间态（不是跳变）");
         check(instance.isAnimating(), "动效还没结束");
 
-        // 描边宽度同样在补
+        // 描边宽度不再补：框由浮层的焦点框画，外观状态里不该再去动描边
         const float midStroke = instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH);
-        check(midStroke > 0.0f && midStroke < 5.0f, "描边宽度在 0 与 5 之间");
+        checkFloat(midStroke, 0.0f, "聚焦不再补描边宽度（框改由浮层画）");
 
         // 再推进到结束
         instance.update(0.2f);
         checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), focusedFill,
             "结束值：高亮底 = color.highlight.background");
-        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 5.0f,
-            "结束值：描边 5px（borealis 的 highlight/stroke_width）");
-        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::STROKE),
-            getTheme().color("color.highlight.border"), "结束值：描边色 = color1");
+        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 0.0f,
+            "结束值：描边仍是 0（外观不再画框）");
+        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::STROKE), 0,
+            "结束值：描边色保持透明");
         check(!instance.isAnimating(), "动效结束后不再是 animating");
 
         // 文字颜色同样按各自动效插值

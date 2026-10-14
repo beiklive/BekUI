@@ -22,6 +22,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/geometry.hpp"
+#include "bklv/core/focus_ring.hpp"
 #include "bklv/core/gesture.hpp"
 #include "bklv/core/transform.hpp"
 #include "bklv/core/input.hpp"
@@ -183,6 +184,10 @@ class View
     float getLocalY() const;
     float getWidth() const;
     float getHeight() const;
+    // 聚焦框的形状（画布坐标）。默认 = 自己的世界矩形、无圆角；
+    // 外观驱动的控件会覆盖它补上圆角（圆角够大就是圆/胶囊，所以圆形控件自动就是圆框）。
+    // 这是"控件告诉浮层自己长什么样"的唯一接口 —— 控件不需要知道谁在画框。
+    virtual focus_ring::Outline getFocusOutline() const;
 
     // ---- 外观（本轮只保留 ImDrawList 能直接画的部分） ----
     void setBackgroundColor(ImU32 color);
@@ -410,6 +415,7 @@ class View
 
     // 子类唯一需要实现的绘制函数，坐标系原点在本 View 左上角。
     virtual void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) = 0;
+
 
     // 递归绘制子节点，只有 Box 会重写它。
     virtual void drawChildren(ImDrawList*, float, float, float, float, FrameContext*) { }

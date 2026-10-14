@@ -28,10 +28,6 @@
   ],
   "states": {
     "focused": {
-      "hlGlow.stroke": { "to": "@theme/color.highlight.glow", "duration": 120, "easing": "quadraticOut" },
-      "hlGlow.strokeWidth": { "to": 11, "duration": 120 },
-      "hlBorder.stroke": { "to": "@theme/color.highlight.border", "duration": 120, "easing": "quadraticOut" },
-      "hlBorder.strokeWidth": { "to": "@theme/metric.highlight.strokeWidth", "duration": 120 }
     },
     "editing": {
       "arrowLeft.color": { "to": "@theme/color.accent.base", "duration": 120 },

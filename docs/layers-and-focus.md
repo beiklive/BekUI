@@ -85,11 +85,33 @@ toast 在最上"矛盾。二选一：
 4. **`focusable` / `disabled` / `visible` / `reachable` 是四个独立条件**，规则写成
    `canFocus = isFocusable() && !isDisabled() && isVisibleInTree() && isReachableFromModal()`
 
-### 3.5 焦点框绘制
+### 3.5 焦点框绘制（已落地）
 
-- **唯一真相**是 FocusManager 的 current；浮层只是读者
-- 控件自带的 `hlBg / hlGlow / hlBorder`（focused 状态的外观层）**保留** —— 它是外观的一部分，
-  主题可以逐控件调参；浮层只放**跨层/临时**指示（toast、跨层飞行元素、无外观控件的通用焦点圈）
+**唯一真相**是 InputManager 的 current focus；浮层只是读者。
+
+分工（刻意保持单向依赖）：
+
+| 角色 | 职责 | 位置 |
+|---|---|---|
+| 控件 | 只回答"我是什么形状" | `View::getFocusOutline()`（外观驱动的控件补上圆角） |
+| 浮层 | 每帧**拉取**焦点形状并画出来 | `FocusRingView`（`widgets/focus_ring_view.*`） |
+| 外壳 | 拥有它 + 全局开关 / 换类型 / 调参数 | `Shell::setFocusRingEnabled/Type`、`getFocusRingStyle()` |
+| 几何与画法 | 纯函数（周长、取点、UV 区间、贴图采样） | `core/focus_ring.*` |
+
+要点：
+
+1. **形状用圆角矩形统一表达**：矩形是 `r=0`，胶囊是 `r=高/2`，正圆是 `r=短边/2`（半径自动钳制）。
+   所以"聚焦到圆形控件上就变圆"不需要任何额外声明 —— 圆角半径够了，形状自己就成圆了。
+2. **颜色只来自一张 LUT 贴图**（`resources/focus_ring_gradient.png`，512×4 的横向 1D 色谱）：
+   U 轴 = 沿边框弧长 + 相位，V 轴 = 描边宽度方向。这就是 GBAStation `nvgBoxGradientLUT` 的做法
+   （那边给 NanoVG 加自定义 paint，这边用 ImDrawList 的分段贴图四边形）。**不自己算颜色**。
+   跨接缝的段会按 U 比例拆成两段画，否则 UV 会被拉花。
+3. **画在浮层（HUD）上**，永远在最上层（页头/弹窗也盖得住）；浮层不吃输入。
+4. **控件自带的 `hlBg / hlGlow / hlBorder` 不再承担"框"**：聚焦的描边已经从所有主题的
+   focused 状态里删掉（59 份外观），只保留 `hlBg.fill` 这类高亮底；聚焦反馈改成
+   轻微放大（`AppearanceView` 的聚焦缩放，1.05 / 130ms，代码写死）。
+5. **样式不跟主题 JSON 走**（用户要求）：线宽/缝/周期/类型都写在代码里，要改走外壳接口。
+   类型：`NONE / FLOW / BREATHING / SOLID / CUSTOM`（CUSTOM 可挂自己的渲染器）。
 
 ## 4. 落地顺序（待用户确认后开工）
 

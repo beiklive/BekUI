@@ -16,6 +16,7 @@
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/graphics.hpp" // TextureRef
+#include "bklv/core/time.hpp"     // Animatable（聚焦放大）
 
 namespace bklv
 {
@@ -106,6 +107,20 @@ class AppearanceView : public Box
     // 当前生效的外观（只读）。测试与诊断用：换肤后这里应该换成新主题的那份。
     const Appearance& getActiveAppearance() const { return this->appearance.getAppearance(); }
 
+    // 聚焦框形状：基类给世界矩形，这里补上自己的圆角半径 ——
+    // 所以"聚焦到圆形控件上就变圆"是自动的（外观里的 radius 已经写成大圆角了）。
+    focus_ring::Outline getFocusOutline() const override;
+
+    // 当前外观的圆角半径（取 bg 层；没有 bg 层就是 0）
+    float getCornerRadius() const;
+
+    // 聚焦时轻微放大（画框由浮层负责，控件这边只做"变大一点"的反馈）。
+    // 数值写死在代码里（见 kFocusScale* 常量），全屏级的大面板可以自己关掉。
+    void setFocusScaleEnabled(bool enabled) { this->focusScaleEnabled = enabled; }
+    bool isFocusScaleEnabled() const { return this->focusScaleEnabled; }
+    void setFocusScale(float scale) { this->focusScaleTarget = scale > 0.0f ? scale : 1.0f; }
+    float getFocusScale() const { return this->focusScaleTarget; }
+
     // 按层 id 找索引（-1 表示没有）。滑块这类控件用它按名字取"轨道/进度/滑块"各段的颜色。
     int indexOfLayer(const std::string& layerId) const
     {
@@ -119,6 +134,8 @@ class AppearanceView : public Box
   protected:
 
   private:
+    // 聚焦放大：每帧按焦点变化推进一条补间
+    void updateFocusScale();
 
 
     // 取层在给定控件矩形里的实际绘制范围（应用 inset 与 offset）
@@ -134,6 +151,14 @@ class AppearanceView : public Box
     IconFontKind iconFontKind = IconFontKind::MATERIAL;
     bool pressed   = false;
     AppearanceInstance appearance;
+
+    // 聚焦放大：一条从 1.0 到 focusScaleTarget 的补间（用库自带的 Animatable）
+    Animatable focusScaleAnim;
+    float focusScaleTarget        = 1.05f;
+    float focusScaleApplied       = 1.0f;
+    bool  focusScaleEnabled       = true;
+    bool  focusScaleInitialized   = false;
+    bool  focusScaleWasFocused    = false;
 };
 
 } // namespace bklv

@@ -313,6 +313,7 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 # ImGui 静态初始化的问题。
 
 set(BKLV_CORE_SOURCES
+    core/focus_ring.cpp
     core/logger.cpp
     core/input.cpp
     core/shadow.cpp
@@ -369,6 +370,7 @@ set(BKLV_CORE_SOURCES
     widgets/widget_types.cpp
     widgets/dialog.cpp
     widgets/dropdown.cpp
+    widgets/focus_ring_view.cpp
     widgets/shell.cpp
     widgets/pager.cpp
     widgets/edit_text_dialog.cpp

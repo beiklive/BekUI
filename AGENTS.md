@@ -287,13 +287,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   value 色；SelectorCell 右侧是**当前值的纯文本**、点击**弹 Dropdown**（无 App 退化成切下一项）；
   DetailCell 只有两个 Label、**没有箭头**。几何按 `style.cpp`：行高 70、字号 22、
   左右内缩 16、上下 12.5、对勾半径 15。
-- **控件外观要还原 borealis 的焦点高亮**：每个可聚焦控件的外观里有三层高亮
-  （`hlBg` / `hlGlow` / `hlBorder`），focus 态把它们补到
-  `color.highlight.background`、`color.highlight.glow`、`color.highlight.border`，
-  描边宽度 `metric.highlight.strokeWidth`（5，borealis 的 `brls/highlight/stroke_width`）、
-  圆角 `metric.highlight.radius`（6），并且**向外扩 2.5px**（inset 负数）。
-  顺序是：自己的底 → hlBg → 内容 → hlGlow → hlBorder（和 borealis 的
-  "高亮底画在内容之前、描边画在内容之后"一致）。
+- **聚集高亮只剩"高亮底"，框由浮层的焦点框负责**：每个可聚焦控件的外观里仍保留三层
+  （`hlBg` / `hlGlow` / `hlBorder`，顺序：自己的底 → hlBg → 内容 → hlGlow → hlBorder），
+  但 focused 状态里**只补 `hlBg.fill` = `color.highlight.background`**；
+  原来那两条描边（`hlGlow` / `hlBorder`，宽 `metric.highlight.strokeWidth`、圆角
+  `metric.highlight.radius`、外扩 2.5px）已经**从全部主题里删掉**，改由浮层的流光焦点框画
+  （见上面那条"焦点框画在浮层上"）。`hideHighlightBackground` 依然成立：
+  primary / highlight / default 聚焦不出高亮底，只有 bordered / borderless 出。
 - **显式设置优先于主题/外观**（`setCornerRadius(r, explicit=true)`）：
   代码里显式设过的值，外观 JSON 不能覆盖它；外观套用一律走 `explicit=false`。
   Label 的 `setFontSizeExplicit` / `setTextColorExplicit` 是同一套约定的老成员。
@@ -476,6 +476,24 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （以前写死 13，加两个属性后 per-layer 数组少两格，越界写把堆写坏、崩在 malloc 里）。
   加 `AppearanceProp` + `ALL_PROPS` + `PROP_NAMES` + 每层初值 + `getNumber` 回落，
   五处要同步，`static_assert` 与顺序自检会兜住。
+- **焦点框（流光框）画在浮层上，控件只声明形状**（`core/focus_ring.*` +
+  `widgets/focus_ring_view.*` + `View::getFocusOutline()`）：
+  ① **单向依赖**：`FocusRingView` 每帧问 `getInputManager().getCurrentFocus()`，再问那个视图
+     `getFocusOutline()` → 控件完全不知道谁在画框，换画法/换类型/开关都不用动控件。
+     形状用**圆角矩形**统一表达（半径自动钳到短边一半）：矩形 r=0、胶囊 r=高/2、正圆 r=短边/2，
+     所以"聚焦到圆形控件上就变圆"是自动的（`AppearanceView` 从 bg 层读出圆角补上）。
+  ② **颜色只来自 LUT 贴图**（`resources/focus_ring_gradient.png`，512×4 横向色谱）：
+     U = 弧长 + 相位，V = 描边宽度方向；跨接缝的段按 U 比例**拆成两段**画，否则 UV 被拉花。
+     这是 GBAStation `nvgBoxGradientLUT` 的同款做法（那边改 NanoVG paint，这边用 ImDrawList）。
+     ⚠️ 贴图没加载成功时**什么都不画**，不要退回"自己算的颜色"。
+  ③ **所有者是顶层外壳**：`Shell::setFocusRingEnabled/setFocusRingType/getFocusRingStyle()`，
+     挂在 HUD 层（永远最上层）。**样式不跟主题 JSON 走**（用户要求），默认值写死在代码里。
+  ④ **外观不再画聚焦的框**：所有主题 focused 状态里的 `hlGlow.stroke(.strokeWidth)` /
+     `hlBorder.stroke(.strokeWidth)` 已删除（59 份外观，只剩 `hlBg.fill` 这类高亮底）；
+     聚焦反馈改成**轻微放大**（`AppearanceView` 的 1.05 / 130ms，代码写死，可用
+     `setFocusScaleEnabled(false)` 关掉）。改回"外观画框"之前先想清楚：框在浮层上才能
+     跨层、才能不被父容器裁剪。
+
 - **`shadow` 的 `cutout`**：打开后只画外圈（把控件自身矩形挖掉，borealis 用 `NVG_HOLE`
   做同一件事），内圈一个顶点都不落 → 后面加的层即使是**半透明底色也不会透出阴影**。
   实现是沿中线描一圈（`PathRect` + `PathStroke`），`shadow::drawSoft(..., cutout)`。

@@ -77,11 +77,20 @@ int main()
 
     std::printf("\n== 2. 状态切换驱动动效 ==\n");
     {
+        // 聚焦的"框"搬到了浮层的焦点框上，所以 default 按钮聚焦时外观**没有**补间
+        // （只有 hlBg.fill 这类状态才动）。用 bordered 来验证"状态仍然驱动补间"。
         Button button("状态");
         check(!button.isAppearanceStateActive("focused"), "初始没有聚焦状态");
         button.onFocusGained();
         check(button.isAppearanceStateActive("focused"), "聚焦后状态打开");
-        check(button.getAppearanceInstanceForTest().isAnimating(), "打开了动效");
+        check(!button.getAppearanceInstanceForTest().isAnimating(),
+            "default 按钮聚焦不再补间（框改由浮层画）");
+
+        Button bordered("状态", "bordered");
+        bordered.onFocusGained();
+        check(bordered.isAppearanceStateActive("focused"), "bordered 聚焦后状态打开");
+        check(bordered.getAppearanceInstanceForTest().isAnimating(),
+            "bordered 聚焦仍有补间（高亮底）");
 
         button.onFocusLost();
         check(!button.isAppearanceStateActive("focused"), "失焦后状态关闭");

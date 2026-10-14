@@ -1,0 +1,266 @@
+// 无窗口测试：焦点框（流光框）的几何、LUT 采样区间与绘制图元。
+//
+// 这一层是"纯函数 + ImDrawList"——不起窗口就能把形状、相位、接缝拆分全部钉住。
+// 颜色本身来自贴图（不在这里断言），这里管的是**位置与 UV**对不对。
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+
+#include "bklv/core/box.hpp"
+#include "bklv/core/focus_ring.hpp"
+#include "bklv/views/label.hpp"
+
+using namespace bklv;
+
+#include "test_util.hpp"
+
+namespace
+{
+
+focus_ring::Outline makeOutline(float x, float y, float width, float height, float radius)
+{
+    focus_ring::Outline outline;
+    outline.bounds       = Rect(x, y, width, height);
+    outline.cornerRadius = radius;
+    return outline;
+}
+
+// 只要求"是一张有效的 LUT 贴图"：绘制只写顶点与 UV，不需要真后端。
+TextureRef fakeLut()
+{
+    TextureRef lut;
+    lut.index   = 0;
+    lut.texture = (ImTextureID)1;
+    lut.width   = 512;
+    lut.height  = 4;
+    return lut;
+}
+
+// 每个贴图四边形写 4 个顶点（v0=(u0,0) v1=(u1,0) v2=(u1,1) v3=(u0,1)），
+// 这里扫一遍 UV，看有没有哪个四边形的 U 跨度不合理（跨过整张贴图 = 被拉花）。
+struct UvScan
+{
+    int quads       = 0;
+    int smeared     = 0;   // U 倒着走，或者跨度远超一段
+    float widest    = 0.0f;
+};
+
+UvScan scanUv(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase,
+    float maxSpan)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+
+    UvScan scan;
+    for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+    {
+        const float u0 = list.VtxBuffer[i].uv.x;
+        const float u1 = list.VtxBuffer[i + 1].uv.x;
+        const float du = u1 - u0;
+
+        scan.quads++;
+        scan.widest = std::max(scan.widest, du);
+        if (du < 0.0f || du > maxSpan + 0.01f)
+            scan.smeared++;
+    }
+    return scan;
+}
+
+int countVertices(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+    return list.VtxBuffer.Size;
+}
+
+} // namespace
+
+int main()
+{
+    std::printf("== 1. 相位：按流动周期折成 [0,1) ==\n");
+    {
+        checkFloat(focus_ring::phaseForTime(0.0f, 1.8f), 0.0f, "0 秒 -> 相位 0");
+        checkFloat(focus_ring::phaseForTime(0.9f, 1.8f), 0.5f, "半圈 -> 相位 0.5");
+        checkFloat(focus_ring::phaseForTime(1.8f, 1.8f), 0.0f, "整圈回到 0");
+        checkFloat(focus_ring::phaseForTime(4.5f, 1.8f), 0.5f, "两圈半 -> 相位 0.5");
+        checkFloat(focus_ring::phaseForTime(-0.45f, 1.8f), 0.75f, "负时间也折回 [0,1)");
+        checkFloat(focus_ring::phaseForTime(3.0f, 0.0f), 0.0f, "周期 <= 0 等于不流动");
+    }
+
+    std::printf("\n== 2. 周长：矩形 / 圆角矩形 / 正圆（半径自动钳制） ==\n");
+    {
+        checkFloat(focus_ring::perimeter(makeOutline(0, 0, 100, 50, 0)), 300.0f, "矩形 = 2(w+h)");
+        checkFloat(focus_ring::perimeter(makeOutline(0, 0, 100, 50, 10)),
+            160.0f + 60.0f + 2.0f * 3.14159265f * 10.0f, "圆角矩形 = 直边 + 2πr");
+        // 半径超出短边一半时按短边一半算：50x50 + radius 999 就是一个正圆
+        checkFloat(focus_ring::perimeter(makeOutline(0, 0, 50, 50, 999.0f)),
+            2.0f * 3.14159265f * 25.0f, "50x50 的圆 = 2πr（r=25）");
+        checkFloat(focus_ring::perimeter(makeOutline(0, 0, 48, 48, 24.0f)),
+            2.0f * 3.14159265f * 24.0f, "48x48 圆角 24 也是正圆");
+    }
+
+    std::printf("\n== 3. 沿周长取点（t=0 在上边起点，顺时针） ==\n");
+    {
+        const focus_ring::Outline rect = makeOutline(10.0f, 20.0f, 100.0f, 50.0f, 0.0f);
+        const Point start              = focus_ring::pointAt(rect, 0.0f);
+        checkFloat(start.x, 10.0f, "t=0 的 x");
+        checkFloat(start.y, 20.0f, "t=0 的 y（上边）");
+
+        const Point quarter = focus_ring::pointAt(rect, 0.25f);
+        checkFloat(quarter.x, 85.0f, "t=0.25 落到上边 3/4 处");
+        checkFloat(quarter.y, 20.0f, "仍然在上边");
+
+        const Point half = focus_ring::pointAt(rect, 0.5f);
+        checkFloat(half.x, 110.0f, "t=0.5 在右上角（周长正好一半）");
+        checkFloat(half.y, 70.0f, "y 到底边");
+
+        // 圆：t=0.25 应该落在 3 点钟方向
+        const Point circle = focus_ring::pointAt(makeOutline(0, 0, 50, 50, 999.0f), 0.25f);
+        checkFloat(circle.x, 50.0f, "圆的 t=0.25 在右侧");
+        checkFloat(circle.y, 25.0f, "圆的 t=0.25 在垂直中间");
+
+        // 越界与负数都要折回来，不能画到别处
+        const Point wrapped = focus_ring::pointAt(rect, 1.25f);
+        checkFloat(wrapped.x, 85.0f, "t>1 折回");
+        checkFloat(wrapped.y, 20.0f, "t>1 折回（y）");
+    }
+
+    std::printf("\n== 4. 分段数：自动按周长，显式优先，且有上下限 ==\n");
+    {
+        focus_ring::Style style;
+        const int small = focus_ring::segmentCount(makeOutline(0, 0, 20, 20, 0), style);
+        check(small >= focus_ring::kMinSegments, "小控件也不少于下限");
+        check(small <= focus_ring::kMaxSegments, "小控件不超过上限");
+
+        const int huge = focus_ring::segmentCount(makeOutline(0, 0, 4000, 2000, 0), style);
+        check(huge == focus_ring::kMaxSegments, "超大控件钳到上限");
+
+        style.segments = 8;
+        check(focus_ring::segmentCount(makeOutline(0, 0, 4000, 2000, 0), style) == 8,
+            "显式分段数优先");
+    }
+
+    std::printf("\n== 5. LUT 采样区间：跨接缝要拆 ==\n");
+    {
+        const focus_ring::LutSpan plain = focus_ring::lutSpanAt(0.1f, 0.2f, 0.5f);
+        checkFloat(plain.u0, 0.6f, "u0 = t0 + 相位");
+        checkFloat(plain.u1, 0.7f, "u1 = t1 + 相位");
+        check(!plain.wrapped, "没跨接缝");
+
+        const focus_ring::LutSpan across = focus_ring::lutSpanAt(0.0f, 0.5f, 0.75f);
+        checkFloat(across.u0, 0.75f, "跨接缝时的 u0");
+        checkFloat(across.u1, 0.25f, "跨接缝时的 u1");
+        check(across.wrapped, "u1 < u0 就是要拆开画");
+
+        // t1 = 1 就是绕回起点，UV 也回到 0 —— 这一段确实跨了接缝（画的时候后半段是退化的，会跳过）
+        const focus_ring::LutSpan edge = focus_ring::lutSpanAt(0.9f, 1.0f, 0.0f);
+        checkFloat(edge.u0, 0.9f, "t=0.9 的 u");
+        checkFloat(edge.u1, 0.0f, "t=1 回到 0");
+        check(edge.wrapped, "绕回起点也算跨接缝（拆开画）");
+    }
+
+    std::printf("\n== 6. 绘制：贴图无效/关掉时一个顶点都不画 ==\n");
+    {
+        ImGui::CreateContext();
+
+        focus_ring::Outline outline = makeOutline(10, 10, 48, 48, 24.0f /* 圆 */);
+        focus_ring::Style style;
+        style.type = focus_ring::Type::FLOW;
+
+        check(countVertices(outline, style, 0.0f) == 0, "没贴图 -> 不画（不退回自己算的颜色）");
+
+        style.lut = fakeLut();
+        const int flow = countVertices(outline, style, 0.0f);
+        check(flow > 0, "有贴图 -> 画出来了");
+
+        style.type = focus_ring::Type::NONE;
+        check(countVertices(outline, style, 0.0f) == 0, "类型 NONE -> 不画");
+
+        style.type  = focus_ring::Type::FLOW;
+        style.alpha = 0.0f;
+        check(countVertices(outline, style, 0.0f) == 0, "全透明 -> 不画");
+
+        // 分段数越多顶点越多：证明 style.segments 真的走到绘制里
+        focus_ring::Style coarse = style;
+        coarse.alpha             = 1.0f;
+        coarse.segments          = 8;
+        focus_ring::Style fine   = coarse;
+        fine.segments            = 64;
+        check(countVertices(outline, fine, 0.0f) > countVertices(outline, coarse, 0.0f),
+            "分段越多顶点越多");
+
+        // 呼吸态也走贴图（只是透明度在变），一样要画出来
+        focus_ring::Style breathing = style;
+        breathing.type              = focus_ring::Type::BREATHING;
+        breathing.alpha             = 1.0f;
+        check(countVertices(outline, breathing, 0.25f) > 0, "呼吸态用同一张贴图");
+
+        // 接缝拆分：闭环里任何相位都**恰好有一段**跨接缝（所以不能靠"顶点数变多"判断），
+        // 真正的不变量是"没有任何一个四边形的 U 跨过整张贴图"——没拆的话那条会倒着走。
+        focus_ring::Style seam = style;
+        seam.alpha             = 1.0f;
+        seam.segments          = 4;
+        const float maxSpan    = 1.0f / 4.0f;
+
+        int totalQuads = 0;
+        for (float phase : { 0.0f, 0.13f, 0.25f, 0.5f, 0.75f, 0.99f })
+        {
+            const UvScan scan = scanUv(outline, seam, phase, maxSpan);
+            totalQuads += scan.quads;
+            check(scan.quads > 0 && scan.smeared == 0, "接缝处的段被拆开画，UV 没有拉花");
+        }
+        check(totalQuads > 0, "各个相位都画出了四边形");
+
+        // 注意：不调 ImGui::DestroyContext()（没接平台后端的上下文会在 Shutdown 里踩空）
+    }
+
+    std::printf("\n== 7. 形状跟着布局与变换走（控件只回答「我是什么形状」） ==\n");
+    {
+        Box* row = new Box(Axis::ROW);
+        row->setWidth(400.0f);
+        row->setHeight(60.0f);
+
+        Label* child = new Label();
+        child->setText("x");
+        child->setWidth(100.0f);
+        child->setHeight(40.0f);
+        row->addView(child);
+
+        YGNodeCalculateLayout(row->getYGNode(), 400.0f, 60.0f, YGDirectionLTR);
+
+        const focus_ring::Outline plain = child->getFocusOutline();
+        checkFloat(plain.bounds.width, 100.0f, "默认形状 = 自己的世界矩形（宽）");
+        checkFloat(plain.bounds.height, 40.0f, "默认形状 = 自己的世界矩形（高）");
+        checkFloat(plain.cornerRadius, 0.0f, "默认没有圆角（外观驱动的控件才会补）");
+        checkFloat(plain.scale, 1.0f, "没有变换时缩放是 1");
+
+        // 放大（聚焦反馈就是这个通道）：形状跟着放大，半径也要跟着放大
+        child->setScaleX(1.5f);
+        child->setScaleY(1.5f);
+        const focus_ring::Outline scaled = child->getFocusOutline();
+        checkFloat(scaled.bounds.width, 150.0f, "放大 1.5 倍后形状也放大");
+        checkFloat(scaled.scale, 1.5f, "缩放系数上报给画框的人（用来放大圆角半径）");
+        checkFloat(scaled.bounds.x + scaled.bounds.width * 0.5f,
+            plain.bounds.x + plain.bounds.width * 0.5f, "以中心为锚点放大");
+
+        // 位移（滚动/转场都走这条）：形状要跟着走
+        row->setTranslation(30.0f, 12.0f);
+        const focus_ring::Outline moved = child->getFocusOutline();
+        checkFloat(moved.bounds.x, scaled.bounds.x + 30.0f, "父级位移后 x 跟着走");
+        checkFloat(moved.bounds.y, scaled.bounds.y + 12.0f, "父级位移后 y 跟着走");
+
+        delete row;
+    }
+
+    std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
+    return g_failed > 0 ? 1 : 0;
+}

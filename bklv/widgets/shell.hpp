@@ -1,6 +1,8 @@
 #pragma once
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/focus_ring.hpp"
+#include "bklv/widgets/focus_ring_view.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
 // 转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里
@@ -73,6 +75,22 @@ class Shell : public Box
     Box* getContentLayer() const { return this->contentLayer; }
     Box* getOverlayLayer() const { return this->overlayLayer; }
     Box* getHudLayer() const { return this->hudLayer; }
+
+    // ---- 焦点框（流光框）----
+    // 外壳是焦点框的**所有者**：它挂在浮层（HUD）上，永远画在最上层。
+    // 开关 / 换类型 / 调参数都从这里走，控件侧完全不用管。
+    void setFocusRingEnabled(bool enabled);
+    bool isFocusRingEnabled() const;
+
+    void setFocusRingType(focus_ring::Type type);
+    focus_ring::Type getFocusRingType() const;
+
+    // 细调（线宽/缝/流动速度/透明度/分段）；颜色永远来自 LUT 贴图，这里改不了。
+    focus_ring::Style& getFocusRingStyle();
+    const focus_ring::Style& getFocusRingStyle() const;
+
+    // 需要自己画法时（FocusRingType::CUSTOM）直接拿这个视图挂渲染器
+    FocusRingView* getFocusRingView() const { return this->focusRingView; }
     // 调试层：**在 HudLayer 之上**（子节点顺序里排在最后 = 最后绘制），
     // 专门给调试 UI 用（日志窗口挂这里）。与 HudLayer 的区别：Hud 是业务浮层
     // （toast / 常驻指示，后加的东西会盖住前面的），调试层保证永远在最上面。
@@ -249,6 +267,7 @@ class Shell : public Box
     Box* contentLayer  = nullptr;
     Box* overlayLayer  = nullptr;
     Box* hudLayer      = nullptr;
+    FocusRingView* focusRingView = nullptr;
     Box* debugLayer    = nullptr;
 
     std::vector<View*> dialogStack;

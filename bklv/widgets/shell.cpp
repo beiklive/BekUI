@@ -54,6 +54,45 @@ Shell::Shell()
     this->addView(this->overlayLayer);
     this->addView(this->hudLayer);
     this->addView(this->debugLayer);
+
+    // 焦点框挂在浮层上：永远画在内容/覆盖层之上（弹窗、页头也盖得住）。
+    // 它自己每帧去问"当前焦点是谁、你是什么形状"，控件侧不需要任何登记。
+    this->focusRingView = new FocusRingView();
+    this->hudLayer->addView(this->focusRingView);
+}
+
+void Shell::setFocusRingEnabled(bool enabled)
+{
+    if (this->focusRingView != nullptr)
+        this->focusRingView->setRingEnabled(enabled);
+}
+
+bool Shell::isFocusRingEnabled() const
+{
+    return this->focusRingView != nullptr && this->focusRingView->isRingEnabled();
+}
+
+void Shell::setFocusRingType(focus_ring::Type type)
+{
+    if (this->focusRingView != nullptr)
+        this->focusRingView->setRingType(type);
+}
+
+focus_ring::Type Shell::getFocusRingType() const
+{
+    return this->focusRingView != nullptr ? this->focusRingView->getRingType() : focus_ring::Type::NONE;
+}
+
+focus_ring::Style& Shell::getFocusRingStyle()
+{
+    static focus_ring::Style fallback;
+    return this->focusRingView != nullptr ? this->focusRingView->getRingStyle() : fallback;
+}
+
+const focus_ring::Style& Shell::getFocusRingStyle() const
+{
+    static const focus_ring::Style fallback;
+    return this->focusRingView != nullptr ? this->focusRingView->getRingStyle() : fallback;
 }
 
 void Shell::setHeaderView(View* view)

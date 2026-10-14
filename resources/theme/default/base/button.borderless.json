@@ -64,24 +64,6 @@
   ],
   "states": {
     "focused": {
-      "hlGlow.stroke": {
-        "to": "@theme/color.highlight.glow",
-        "duration": 120,
-        "easing": "quadraticOut"
-      },
-      "hlGlow.strokeWidth": {
-        "to": 11,
-        "duration": 120
-      },
-      "hlBorder.stroke": {
-        "to": "@theme/color.highlight.border",
-        "duration": 120,
-        "easing": "quadraticOut"
-      },
-      "hlBorder.strokeWidth": {
-        "to": "@theme/metric.highlight.strokeWidth",
-        "duration": 120
-      },
       "hlBg.fill": {
         "to": "@theme/color.highlight.background",
         "duration": 120,
