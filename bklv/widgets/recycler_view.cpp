@@ -24,6 +24,9 @@ void RecyclerItemCell::ensureContent(const std::string& appearanceFallback)
     if (this->content != nullptr)
         return;
     this->content = new AppearanceView(appearanceFallback, false);
+    // 内容必须铺满 cell：RecyclerCell 的宽高由 layoutCell 给，内容自己没有尺寸就什么都画不出来
+    this->content->setWidthPercentage(100.0f);
+    this->content->setHeightPercentage(100.0f);
     this->addView((View*)this->content);
 }
 
