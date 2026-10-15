@@ -34,6 +34,18 @@ enum class IconFontKind
 class AppearanceView : public Box
 {
   public:
+    // 语义绘制交给控件自己（CUSTOM 层）；**public** 是为了让注册表里的绘制钩子能调它
+    virtual void drawCustomLayer(ImDrawList*, const AppearanceLayer&, float, float, float, float,
+        const AppearanceInstance&)
+    {
+    }
+
+    // 开启"按内容算固有尺寸"：文字层用字号量文本 + 两侧 inset。
+    //
+    // **只能给叶子控件开**：Yoga 不允许带测量函数的节点再有子节点
+    // （DialogPanel 这类要装按钮行的容器就不能开，得用自己的尺寸）。
+    void enableContentMeasurement();
+
     // appearanceName 是主题里 widgets/<name>.json 的名字（如 "button"）。
     explicit AppearanceView(std::string appearanceName, bool focusable);
 
@@ -102,16 +114,6 @@ class AppearanceView : public Box
     // （私有区字形不在正文字体里，用错字体会量出错误的尺寸、画出方块）。
     virtual ImFont* getLayerFont(const AppearanceLayer& layer);
     // custom 层：交给子类画（矩形范围已按 inset/offset 算好）。
-    virtual void drawCustomLayer(ImDrawList*, const AppearanceLayer&, float, float, float, float,
-        const AppearanceInstance&)
-    {
-    }
-
-    // 开启"按内容算固有尺寸"：文字层用字号量文本 + 两侧 inset。
-    //
-    // **只能给叶子控件开**：Yoga 不允许带测量函数的节点再有子节点
-    // （DialogPanel 这类要装按钮行的容器就不能开，得用自己的尺寸）。
-    void enableContentMeasurement();
 
     const AppearanceInstance& getAppearanceInstance() const { return this->appearance; }
     // 视图过渡的取用点（注意：上面那个 const 版是另一件事，别混）

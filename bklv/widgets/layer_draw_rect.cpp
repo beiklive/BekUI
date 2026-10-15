@@ -72,6 +72,8 @@ void ensureLayerDrawsRegistered()
         BKLV_LOG_ERROR("注册 text 的绘制钩子失败：注册表里没有这个名字");
     if (!compile::setLayerDraw("image", drawImage))
         BKLV_LOG_ERROR("注册 image 的绘制钩子失败：注册表里没有这个名字");
+    if (!compile::setLayerDraw("custom", drawCustom))
+        BKLV_LOG_ERROR("注册 custom 的绘制钩子失败：注册表里没有这个名字");
 }
 
 } // namespace layers

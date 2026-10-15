@@ -713,6 +713,17 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             }
 
             case AppearanceLayer::Op::CUSTOM:
+                // ③：走注册表钩子（原地实现留作兜底）
+                if (const compile::LayerType* customType = compile::findLayer("custom");
+                    customType != nullptr && customType->draw)
+                {
+                    customType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this, nullptr, nullptr, nullptr, nullptr });
+                    break;
+                }
                 this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
                     rect[3] - rect[1], this->appearance);
                 break;
