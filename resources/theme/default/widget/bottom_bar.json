@@ -27,5 +27,5 @@
       "valign": "top"
     }
   ],
-  "import": "base/glass_surface"
+  "import": "base/glass_surface.chrome"
 }

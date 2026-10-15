@@ -110,6 +110,21 @@ class GlassPanelView : public AppearanceView
 
 - `fill` 就是**染色**，同时是**玻璃不可用时的降级底**（后端没起来 / `setGlassEnabled(false)`
   时控件不会消失 —— 见 §5 的降级逻辑）
+- `stroke` / `strokeWidth` 是**内缘高光**：玻璃层写这两个字段就沿内缘描一圈
+  （半径用控件自己的 `radius`，所以圆角不会错位）。这是"玻璃"最有效的一笔 ——
+  borealis 的面板也靠 1px 内描边立起来。玻璃不可用时这圈描边照画（两种情况下观感一致）
+
+### chrome 变体：给上下栏的淡玻璃
+
+```json
+// resources/theme/default/base/glass_surface.chrome.json
+{ "import": "base/glass_surface",
+  "layers": [ { "id": "glass", "fill": "#0E16263D" } ] }
+```
+
+`widget/header`、`widget/header.applet`、`widget/bottom_bar` 用这一份：染色更淡（24% vs 77%），
+**让底下的内容透出来** —— 栏是"盖在内容上的玻璃"，不是不透明的隔板。高光等其余写法从
+`base/glass_surface` 继承（同 id 的层按字段合并）。
 - 想整体换观感：改这一个文件的 `fill`；想整体关掉：去掉各容器的 `import`（或关 Shell 开关）
 - 侧栏面板不是 `AppearanceView`（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里
   用同一个 `color.sidebar.background` 当染色 —— 行为与上面一致

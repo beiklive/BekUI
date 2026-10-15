@@ -513,11 +513,22 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 // 玻璃不可用（后端没起来 / 关掉了）：退化成半透明底。
                 // 不能什么都不画 —— 玻璃变体把底色覆盖成了透明，那样控件在真机上会整个消失
                 // （Switch 上踩过：玻璃没生效时控件完全透明）。
+                // 玻璃的边缘高光：层里写了 stroke/strokeWidth 就沿内缘描一圈。
+                // 这是"玻璃"最有效的一笔（borealis 的面板也靠 1px 内描边立起来）；
+                // 半径用的是控件自己的 radius，所以圆角不会错位。
+                const ImU32 rimColor     = layer.stroke;
+                const float rimThickness = layer.strokeWidth;
+                const float rimInset     = rimThickness * 0.5f;
+
                 if (!service.isEnabled() || !service.isSupported())
                 {
                     if ((fill >> 24) != 0)
                         drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
                             scaleAlpha(fill), radius);
+                    if ((rimColor >> 24) != 0 && rimThickness > 0.0f)
+                        drawList->AddRect(ImVec2(rect[0] + rimInset, rect[1] + rimInset),
+                            ImVec2(rect[2] - rimInset, rect[3] - rimInset), scaleAlpha(rimColor),
+                            radius, 0, rimThickness);
                     break;
                 }
 
@@ -538,6 +549,12 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         rect[3] * density),
                     glass::CornerRadii::all(radius), glass::GlassShapeKind::ROUNDED_RECT, density,
                     &options);
+
+                // 高光画在玻璃之后（submitBackdrop 会切一条新命令，所以这圈描边压在玻璃上面）
+                if ((rimColor >> 24) != 0 && rimThickness > 0.0f)
+                    drawList->AddRect(ImVec2(rect[0] + rimInset, rect[1] + rimInset),
+                        ImVec2(rect[2] - rimInset, rect[3] - rimInset), scaleAlpha(rimColor),
+                        radius, 0, rimThickness);
                 break;
             }
 

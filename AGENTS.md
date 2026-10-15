@@ -392,6 +392,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      玻璃不能排到真正的第一个，否则半透明的阴影层会把玻璃压暗（踩过）。
      侧栏不是 AppearanceView（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里补，
      染色同样来自 `color.sidebar.background`。
+     玻璃层的 **`stroke` / `strokeWidth` = 内缘高光**（沿内缘描一圈，半径跟控件走）——
+     玻璃质感主要靠这一笔；`base/glass_surface.chrome` 是给上下栏的淡版本（染色 24%，
+     让内容透出来），其余写法从 `base/glass_surface` 继承。
   ⑦c **`rect` 层可以写 `gradient`**（`docs/rect-gradient.md` / `docs/json-syntax.md`）：
      语法 `gradient{ type(linear|radial), angle, center, stops[2..4]{at,color} }`，
      `at` 必须 0..1 且严格递增，五类写错都**报错**（不静默降级）。

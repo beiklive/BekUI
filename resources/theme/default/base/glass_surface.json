@@ -3,7 +3,9 @@
     {
       "id": "glass",
       "op": "glass",
-      "fill": "#0E1626C4"
+      "fill": "#0E1626C4",
+      "stroke": "#FFFFFF1F",
+      "strokeWidth": 1
     }
   ]
 }
