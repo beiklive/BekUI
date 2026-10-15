@@ -394,3 +394,21 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 
 **测试**：无窗口可测计数/边界/LRU 选择/路径同步删除（把"启动解码/执行上传"做成可注入回调也可测队列）；
 "淘汰后 GPU 纹理真被释放"需窗口环境（用截图或日志，并如实标注）。
+
+##### 小步3 的落地进度（背压）
+
+| 块 | 内容 | 状态 |
+|---|---|---|
+| 3-1 | 旋钮与默认值：`setDecodeConcurrency`(默认 4) / `setMaxUploadsPerFrame`(默认 2)，`0 = 不限` | ✅ `215da06`（26 项测试）|
+| 3-2 | **队列纯调度**：`core/decode_queue.*`（优先级出队 / 并发上限 / 每帧上传配额 / 去重 / 取消，回调注入，可无窗口测）| ✅ `a3d7500`（16 项测试）|
+| 3-3 | **解码限并发接线**：`Image::setImageFromFileAsync` 的 `task::runResult` 包进 `enqueueDecode(resolved, 0, ...)`；`App::frame` 每帧 `pumpDecodeQueue()` + `pumpUploads()` | ✅ `4c87fec` |
+| 3-4 | **上传改由 `pumpUploads()` 按每帧配额消费**（把上传体从解码回调里挪进 `notifyDecodeFinished(resolved, upload)`）| ⬜ 未做（见下）|
+
+**为什么 3-3 已经拿到主要收益**：解码完成回调本身就是在 `task::pumpMainThread()` 里跑的，
+而 3-3 之后**同时在飞的解码数被限制在 4**（`getDecodeConcurrency()`），
+所以"一次滚出 20 个 cell 同时解 20 张、随后一帧内传 20 张纹理"这个**掉帧来源已经被削掉**。
+
+3-4 的增量收益是"把上传再摊到多帧"（例如 20 张解码完成时，每帧只传 2 张），
+代价是要把上传体整段搬进 `notifyDecodeFinished` 的回调里 —— 这属于**改上传时序**，
+必须单独一轮做，并且要做窗口侧验证（图片仍正常显示 + 上传确实按配额分布）。
+**在没做之前，不要声称"每帧上传配额已生效"。**
