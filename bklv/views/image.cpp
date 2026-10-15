@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "bklv/core/image_decoder.hpp"
+#include "bklv/core/decode_queue.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/task.hpp"
@@ -248,44 +249,48 @@ void Image::setImageFromFileAsync(const std::string& path)
     // 回调捕获的是 weak 护栏，不是裸 this：Image 先死了就直接放弃
     std::weak_ptr<const AliveFlag::Flag> guard = this->alive.handle();
 
-    task::runResult(
-        [resolved] { return decodeImageFile(resolved.c_str()); },
-        [this, generation, guard](DecodedImage image) {
-            if (guard.expired() || !guard.lock()->isAlive())
-                return; // 视图已经销毁，别再碰它
+    // 背压 3-3：解码启动走队列（并发受 getDecodeConcurrency() 限制）
+    enqueueDecode(resolved, 0, [this, generation, guard, resolved]() {
+        task::runResult(
+            [resolved] { return decodeImageFile(resolved.c_str()); },
+            [this, generation, guard, resolved](DecodedImage image) {
+                notifyDecodeFinished(resolved, nullptr); // 无论哪条路径都腾出在飞名额
+                if (guard.expired() || !guard.lock()->isAlive())
+                    return; // 视图已经销毁，别再碰它
 
-            if (generation != this->loadGeneration)
-                return; // 已经发起了更新的加载，这个结果丢掉
+                if (generation != this->loadGeneration)
+                    return; // 已经发起了更新的加载，这个结果丢掉
 
-            this->asyncPending = false;
+                this->asyncPending = false;
 
-            if (!image.isValid() || !isTextureStoreReady())
-            {
-                // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
-                return;
-            }
+                if (!image.isValid() || !isTextureStoreReady())
+                {
+                    // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
+                    return;
+                }
 
-            const TextureRef loaded =
-                loadTextureFromPixels(image.pixels.data(), image.width, image.height);
-            if (!loaded.isValid())
-                return;
+                const TextureRef loaded =
+                    loadTextureFromPixels(image.pixels.data(), image.width, image.height);
+                if (!loaded.isValid())
+                    return;
 
-            releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
-
-
-            this->texture = loaded;
+                releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
 
 
-            retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
-            this->pendingPath.clear();
+                this->texture = loaded;
 
-            if (this->getWidth() <= 0.0f)
-                this->setWidth(static_cast<float>(loaded.width));
-            if (this->getHeight() <= 0.0f)
-                this->setHeight(static_cast<float>(loaded.height));
 
-            this->invalidate();
-        });
+                retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
+                this->pendingPath.clear();
+
+                if (this->getWidth() <= 0.0f)
+                    this->setWidth(static_cast<float>(loaded.width));
+                if (this->getHeight() <= 0.0f)
+                    this->setHeight(static_cast<float>(loaded.height));
+
+                this->invalidate();
+            });
+    });
 }
 
 bool Image::setImageFromFile(const std::string& path)

@@ -1,4 +1,5 @@
 #include "bklv/core/app.hpp"
+#include "bklv/core/decode_queue.hpp"
 
 #include "bklv/glass/glass_service.hpp"
 #include "bklv/core/image_writer.hpp"
@@ -321,6 +322,8 @@ void App::frame()
     // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
 
     task::pumpMainThread();
+    pumpDecodeQueue(); // 背压：按并发上限启动解码
+    pumpUploads();     // 背压：按每帧配额执行上传
 
     ImGui::NewFrame();
 
