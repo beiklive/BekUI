@@ -492,3 +492,73 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 时间账（解析期算好）：`totalMs = max(事件时长, 每条条目 delay + duration)`，
 调用方拿 `totalMs` 决定"这段动画播完了"的时机 —— 出场播完才摘页 / 摘弹层，报早了动画会被砍。
+
+## 扩展图层类型（第三方）
+
+内置的 `op` 只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` / `custom`。
+**别人可以加自己的**，而且**不需要改 `bklv/` 里任何文件**：写一个文件 + 注册一行，
+主题里就能写 `"op": "你的名字"`。
+
+完整可运行的样例在 `demo/contrib/stripe_layer.cpp`（斜条纹）。下面是契约。
+
+### 注册
+
+```cpp
+#include "bklv/compile/json_util.hpp"      // 取值/报错的共享工具
+#include "bklv/compile/layer_registry.hpp" // 注册表
+
+// 在你自己的初始化里调一次（第三方程序就是在 main 里调）
+void registerMyLayer()
+{
+    std::string error;
+    bklv::compile::LayerType type;
+    type.name     = "stripe";                 // JSON 里的 op 值
+    type.label    = "斜条纹";                  // 设计器里显示的名字
+    type.idPrefix = "stripe";                 // 不写 id 时 -> stripe0 / stripe1
+    type.order    = bklv::compile::LayerOrder::DECORATION;
+    type.help     = "斜条纹：angle / lineWidth / gap";
+    type.keys     = { "angle", "lineWidth", "gap", "fill" };
+    type.parse    = myParse;                  // 可选：把该层自己的键读进 AppearanceLayer
+    type.draw     = myDraw;                   // 可选：绘制（引擎会调）
+
+    if (!bklv::compile::registerLayer(std::move(type), error))
+        BKLV_LOG_WARNING("注册失败：%s", error.c_str());
+}
+```
+
+两个钩子的签名：
+
+```cpp
+bool parse(const Json& node, const ThemeData& theme, AppearanceLayer& out,
+           std::string& error, const std::string& where);   // 返回 false = 整体编译失败
+void draw (const AppearanceLayer& layer, void* drawList,   // drawList 就是 ImDrawList*
+           const LayerRect& rect);                          // rect 已含矩形/圆角/有效 alpha
+```
+
+### 三条硬规则
+
+1. **不许用引擎保留键**：`op` / `id` / `width` / `height` / `inset` / `align` / `valign` /
+   `offset` / `opacity` 是**层几何与通用属性**，引擎会先拿去算矩形。注册时会**直接报错**
+   拒绝（内置 6 种豁免）。用保留键的后果很隐蔽：样例曾用 `width` 表示线宽，整个层被做成
+   3px 宽的条，画面上只剩左边缘几个毛刺。
+2. **失败要报错，不要静默降级**：`parse` 返回 false 会让整份外观编译失败（和内置 op 一致）。
+3. **只在 `parse` 里读自己的键**：`draw` 里不要再查 JSON、不要再查主题 —— 外观值在编译期
+   就定下来，绘制只读 `AppearanceLayer` / `LayerRect`（和内置层同一条约定）。
+
+### 注册之后免费得到
+
+- **解析**：主题里写 `"op": "stripe"` 就能编译，落到 `Op::EXTENSION` + `extensionType`；
+  **没注册过的 op 仍然报错**（不会静默放过）
+- **默认 id**：用你的 `idPrefix`（`stripe0` / `stripe1`），所以 `states` / `transitions`
+  能直接按 id 寻址这层
+- **设计器**：加层菜单、中文名、检查器候选键全部从注册表读 → 第三方不用改设计器
+- **绘制**：引擎的 `EXTENSION` 分支查注册表调你的 `draw`，并把"矩形 + 圆角 + 有效 alpha"给你
+- **层序**：由 `order` 档位决定（阴影 → 玻璃 → 底色 → 高亮底 → 内容 → 装饰 → 覆盖），
+  不用自己决定先后
+
+### 注意
+
+- 扩展层**只画，不参与布局**（不能改变控件尺寸或让兄弟节点移动）—— 要"能装子节点"的组合
+  属于控件级扩展（`children`），不是 `op`。
+- 主题里用扩展 op 时，**主题加载前必须已经注册**（调用方的初始化里注册）。
+  测试侧要整主题校验的话，注册要放在测试开头（见 `tests/test_contrib.hpp`）。
