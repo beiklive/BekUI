@@ -164,8 +164,8 @@ void registerMyLayers() {
 | 步骤 | 内容 | 验收 | 回滚 |
 |---|---|---|---|
 | ①a | 抽 `compile/json_util.{hpp,cpp}`（把 appearance.cpp 的文件内解析助手搬过去） | 测试全绿（3266 项） | 单提交 revert |
-| ①b | 把 `compile` 里按 op 的解析拆成 `layers/<op>.cpp` 的函数（仍在原 TU，先拆函数） | 同上 | 单提交 revert |
-| ①c | 引入 `layer_registry`，注册 6 个内置 op（此时才谈得上"一种 op 一个文件"） | 同上 + 注册表查表测试 | 单提交 revert |
+| ①b | 把 `compile` 里的解析按**关注点**拆成函数（**不按 op**：字段解析是表驱动的，见 §12.12） | 同上 | 单提交 revert |
+| ①c | 引入 `layer_registry`，注册 6 个内置 op（**"一种 op 一个文件"落在注册表层**，§12.12） | 同上 + 注册表查表测试 | 单提交 revert |
 | ② | 拆 `appearance_parse`：501 行 → 若干 ≤80 行；`appearance_box/states/transitions` 分文件 | 同上 + `compile` 行数断言 | 单提交 revert |
 | ③ | 搬 view/theme 解析进 `compile/`；`appearance_view.cpp` 改为查注册表 | 同上 + 设计器照常工作 | 单提交 revert |
 | ④ | `appearance_children` + 三档节点 | 见 §8 的验收样例 | 单提交 revert |
@@ -595,3 +595,21 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 
 **方法论**：「写入 -> 构建 -> 失败自动回滚」这个脚本形态值得保留 ——
 它让"试一刀"的成本变成零风险（这次就是它兜住的）。
+
+### 12.15 ①② 的收口状态（第 50 轮）
+
+| 目标 | 结果 |
+|---|---|
+| `Appearance::compile` ≤80 行 | **53 行** ✓（起点 501）|
+| `parseLayers` ≤80 行 | **30 行** ✓（起点 382）|
+| `parseStates` ≤80 行 | **87 行** ✗（差 7 行）|
+| `appearance.cpp` | 1906 -> **1465 行** |
+| 解析层落点 | `bklv/compile/`：json_util / layer_registry / appearance_box / appearance_layer_meta /
+  appearance_layer_fields / appearance_gradient / appearance_children |
+
+`parseStates` 是唯一没达标的：结构是"一个 `if` 包一个循环"，要压到 ≤80 只能把**循环体**提成
+`parseOneState(...)`。第 50 轮试了一次，**循环体配平断言没过、脚本没落盘（文件零改动）** ✗ ——
+下次先把它循环体的括号分布打出来（像 §12.9 量布局、§12.14 定位切片那样），看清再切。
+
+**①② 的实质目标已达成**：`compile` 与 `parseLayers` 都达标、"一种 op 一个文件"落在注册表层、
+四种 JSON 共用 `json_util`。`parseStates` 那 7 行属于"顺手收尾"，不影响结构与可扩展性。
