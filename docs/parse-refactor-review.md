@@ -401,3 +401,38 @@ struct AppearanceChild {
 3. 第三档 `ref`（复用视图模板）+ 测试
 4. 主题示例外观 + demo 一行 + 截图；`docs/json-syntax.md` 补"children"一节
 5. （可选）设计器里把 children 树显示出来（只读展示即可，编辑放最后）
+
+### 12.8 里程碑 2 实现路径（侦察后确定）
+
+已经确认的现成设施（不用新造）：
+
+- `AppearanceView : public Box`，构造 `AppearanceView(std::string appearanceName, bool focusable)`
+- 加子节点就是 `parent.addView(std::move(child))`（`account.cpp` / `bottom_bar.cpp` 都是这么写的）
+- **`applyAppearanceBox(Box* view, const AppearanceBox& box)`** —— 正是"只写 `box` 的子节点"需要的；
+  它跟外观套用走同一个函数，行为天然一致
+- `AppearanceView` 在**构造**（`appearance_view.cpp:207`）与 `applyTheme()`（:240）里套自己的 box
+
+因此里程碑 2 的实现是：
+
+```cpp
+// widgets/appearance_children.cpp（新）
+// 按 spec 建子视图并挂到 parent 上；返回 false = 建不起来（调用方决定是否报错）
+bool buildChildViews(AppearanceView& parent, const std::vector<AppearanceChild>& spec);
+```
+
+- `APPEARANCE` -> `new AppearanceView(child.name, false)` + `applyAppearanceBox` + 内容槽
+  （`setText` / `setIcon` / `setInfoText`）+ 递归
+- `BOX` -> `new Box()` + `applyAppearanceBox` + 递归
+- `VIEW_TEMPLATE` -> 里程碑 3
+- 时机：父视图**构造时**建一次；`applyTheme()` 里若外观**名字变了**就重建
+  （v1 不做"规格逐字段比较"，按名字变即重建 —— 简单且够用）
+
+⚠️ **里程碑 1 需要先修的一处隐患**：`AppearanceBox` 是靠"哪些字段写过"来决定套不套用的
+（AGENTS ⑦b：没写的字段不会清掉旧值），而我在 `compile/appearance_children.cpp` 里手搓的
+`parseChildBox` **只填了值、没设那些存在标记** —— 直接拿它去 `applyAppearanceBox` 会把
+width/height/padding 等**清零套用** ✗。
+
+正确做法（也正好消掉我标的那条 TODO）：**把 `appearance.cpp` 里现有的 box 段解析提成一个可复用函数**
+（例如 `compile::parseBox(node, theme, AppearanceBox&, std::string& error, where)`），
+`children` 与主 `box` 段共用同一份 —— 这样 `axis`、`margin`、`justifyContent` 等全部自动支持，
+存在标记也由同一套逻辑维护。**这是里程碑 2 的第一步**，而不是继续手搓。
