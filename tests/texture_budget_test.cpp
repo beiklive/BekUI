@@ -50,6 +50,13 @@ int main()
         setTextureBudget(0);
     }
 
+    std::printf("\n== 6. LRU 查询：空缓存返回空串，不崩 ==\n");
+    {
+        check(getLeastRecentlyUsedPath().empty(), "没有记录 -> 空串");
+        setTextureBudget(0);
+        check(getLeastRecentlyUsedPath().empty(), "预算变化不影响 LRU 查询");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

@@ -45,6 +45,10 @@ size_t g_textureBudget = 0;
 // 路径 -> 索引，做加载缓存。
 std::map<std::string, int> g_pathCache;
 
+// LRU 记账（小步2 的前半）：路径 -> 最后一次使用的序号。只记录，不淘汰。
+uint64_t g_useTick = 0;
+std::map<std::string, uint64_t> g_pathLastUse;
+
 [[maybe_unused]] int registerTexture(const TextureHandle& handle)
 {
     // 复用已经释放的位置，避免长跑时数组无限增长。
@@ -142,6 +146,22 @@ size_t getTextureCacheCount()
     return g_pathCache.size();
 }
 
+const std::string& getLeastRecentlyUsedPath()
+{
+    static const std::string empty;
+    const std::string* best = nullptr;
+    uint64_t oldest = 0;
+    for (const auto& entry : g_pathLastUse)
+    {
+        if (best == nullptr || entry.second < oldest)
+        {
+            best   = &entry.first;
+            oldest = entry.second;
+        }
+    }
+    return best != nullptr ? *best : empty;
+}
+
 const char* getTextureBackendName()
 {
     return g_backend != nullptr ? g_backend->getName() : "none";
@@ -174,6 +194,7 @@ static constexpr int TEXTURE_CACHE_FAILED = -2;
 
 TextureRef loadTexture(const std::string& path)
 {
+    g_pathLastUse[path] = ++g_useTick; // LRU 记账：这次命中也算"用过"
     auto cached = g_pathCache.find(path);
     if (cached != g_pathCache.end())
     {

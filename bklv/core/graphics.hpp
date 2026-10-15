@@ -164,6 +164,9 @@ size_t getTextureCount();
 bool isTextureBudgetExceeded();
 // 路径缓存的条目数（只读；淘汰前后用它观察缓存是否真的降下来）
 size_t getTextureCacheCount();
+// 最近最少使用的路径（空串 = 缓存为空或无记录）。小步2 的淘汰会按它挑选候选；
+// 现在只是记账，不做任何淘汰。
+const std::string& getLeastRecentlyUsedPath();
 
 // 当前编入的是哪个图形后端（编译期常量，用于日志）。
 const char* getGraphicsBackendName();
