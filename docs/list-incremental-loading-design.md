@@ -369,3 +369,28 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 6. **可测范围（无窗口）**：队列的调度逻辑本身是纯数据（先来/优先级/并发上限/每帧配额都能测）——
    把"启动解码"和"执行上传"做成可注入的函数指针/回调，测试里用假实现计数即可；
    真实解码与上传的耗时验证需要窗口环境（如实标注）
+
+##### 2d 施工单（已定位到确切位置，照做即可）
+
+**先看清了现有所有权模型**（`views/image.cpp` 的析构注释就写着）：
+
+| 类型 | 纹理归谁 | 现有行为 |
+|---|---|---|
+| 动图（animated）| **`Image` 自己**（`ownsTexture`）| 析构时 `releaseOwnedTexture()` 释放真纹理 |
+| 静态图（走路径缓存）| **`g_pathCache` 持有** | `Image` **不释放**（注释明确写"静态图是路径缓存持有的，不能动"）|
+
+**结论**：2d 的引用计数**不是**为了"谁能释放"（那已经分好了），
+而是为了让缓存知道"哪张静态图正被用着、能不能淘汰" -> `refCount > 0` 不许淘汰。
+
+**接线位置（`views/image.cpp`）**：赋值 `this->texture = loaded;` 的四处 —— **270 / 291 / 328 / 341 行**。
+- 每处：先 `releaseTexture(this->texture.index)`（换图时释放旧的；首次为无效下标 -> 安全 no-op），
+  再 `this->texture = loaded;`，再 `retainTexture(loaded.index)`（**仅静态/非 owned 的路径**）
+- `releaseOwnedTexture()` 只处理 owned（**不要**在这里 release 静态图）
+- `Image::~Image()` 里：若**不是** owned 且下标有效 -> `releaseTexture(this->texture.index)`
+
+**淘汰（`core/graphics.cpp`）**：`trimTextureCache()` —— 候选 = `refCount == 0 && alive` 的 LRU
+（按 `lastUseTick` 升序），淘汰时**同步 `g_pathCache.erase(path)`** 并释放 GPU 纹理；
+`refCount > 0` 绝不淘汰。调用时机：`Image::updateTexture()` 之后 + `setTextureBudget()` 变小后各一次。
+
+**测试**：无窗口可测计数/边界/LRU 选择/路径同步删除（把"启动解码/执行上传"做成可注入回调也可测队列）；
+"淘汰后 GPU 纹理真被释放"需窗口环境（用截图或日志，并如实标注）。
