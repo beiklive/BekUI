@@ -34,7 +34,7 @@ Rectangle* makeStepHeader(const char* titleKey)
 }
 
 // JSON 片段按列宽硬换行（Label 只在空格处折行，长片段不折会把整页撑宽）
-std::string wrapSnippet(const std::string& text, size_t maxColumns = 46)
+std::string wrapSnippet(const std::string& text, size_t maxColumns = 34)
 {
     std::string out;
     size_t lineLength = 0;
@@ -81,14 +81,33 @@ Label* makeSnippet(const std::string& json)
     return label;
 }
 
-// 一行：说明文字 + JSON 片段 + 演示卡
-Box* makeRow(const char* titleKey, const std::string& json, View* demo)
+// 一个小板块：标题一行 + 下面左右两块
+//   左 = 渲染结果（JSON 解析出来的样子）  右 = 那段 JSON 代码
+// 用户要求分左右看，摞在一起不清晰。
+Box* makeSplitRow(const char* titleKey, const std::string& json, View* demo)
 {
     Box* row = makeCard();
     row->addView(makeText(getStr(titleKey), getTheme().number("metric.font.size.md", 18.0f),
         getTheme().color("color.text.primary")));
-    row->addView(makeSnippet(json));
-    row->addView(demo);
+
+    Box* split = demo::makeRow(getTheme().number("metric.spacing.sm", 8.0f) + 4.0f);
+    split->setAlignItems(AlignItems::STRETCH);
+
+    // 左：渲染结果占满剩余宽度
+    demo->setGrow(1.0f);
+    split->addView(demo);
+
+    // 右：代码块（一点点底色 + 内边距，和左边的"实物"区分开）
+    Box* code = makeColumn(0.0f);
+    code->setWidthPercentage(44.0f);
+    code->setJustifyContent(JustifyContent::CENTER);
+    code->setPadding(10.0f);
+    code->setCornerRadius(8.0f);
+    code->setBackgroundColor(getTheme().color("color.surface.sunken"));
+    code->addView(makeSnippet(json));
+    split->addView(code);
+
+    row->addView(split);
     return row;
 }
 
@@ -174,13 +193,13 @@ Box* buildJsonPage()
     for (const auto& layer : kLayers)
     {
         const std::string name = std::string(kDemoAppearance) + "." + layer.variant;
-        page->addView(makeRow(layer.titleKey, layer.json, makeDemoCard(name)));
+        page->addView(makeSplitRow(layer.titleKey, layer.json, makeDemoCard(name)));
     }
 
     // ---- ② 合成效果 ----
     page->addView(makeStepHeader("json/composite_title"));
     page->addView(makeHint(getStr("json/composite_hint")));
-    page->addView(makeRow("json/composite_row",
+    page->addView(makeSplitRow("json/composite_row",
         R"(// 逐层变体就是「import 这份 + 把别的层涂透明」
 { "import": "base/json_demo" })",
         makeDemoCard(kDemoAppearance)));
@@ -221,11 +240,11 @@ Box* buildJsonPage()
     for (const auto& anim : kAnims)
     {
         const std::string name = std::string(kDemoAppearance) + "." + anim.variant;
-        page->addView(makeRow(anim.titleKey, anim.json, new AnimDemo(name)));
+        page->addView(makeSplitRow(anim.titleKey, anim.json, new AnimDemo(name)));
     }
 
     // 「什么都没写」的样子：默认淡入淡出
-    page->addView(makeRow("json/anim_default",
+    page->addView(makeSplitRow("json/anim_default",
         R"(// 外观里不写 transitions —— 默认就是淡入淡出
 // （时长取主题 metric.anim.normal）
 { "import": "base/json_demo" })",
