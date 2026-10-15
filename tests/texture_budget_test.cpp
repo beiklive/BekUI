@@ -57,6 +57,18 @@ int main()
         check(getLeastRecentlyUsedPath().empty(), "预算变化不影响 LRU 查询");
     }
 
+    std::printf("\n== 7. 引用计数：越界/未初始化一律安全 no-op ==\n");
+    {
+        checkEqualInt((int)getTextureRefCount(0), 0, "空仓库 -> 计数 0");
+        checkEqualInt((int)getTextureRefCount(9999), 0, "越界 -> 计数 0");
+        retainTexture(0);            // 不该崩
+        retainTexture((size_t)-1);   // 越界
+        releaseTexture(0);           // 不该崩
+        releaseTexture(9999);
+        checkEqualInt((int)getTextureRefCount(0), 0, "no-op 后计数仍是 0");
+        checkEqualInt((int)getTextureCount(), 0, "存活纹理数不变");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

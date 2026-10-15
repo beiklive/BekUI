@@ -167,6 +167,11 @@ size_t getTextureCacheCount();
 // 最近最少使用的路径（空串 = 缓存为空或无记录）。小步2 的淘汰会按它挑选候选；
 // 现在只是记账，不做任何淘汰。
 const std::string& getLeastRecentlyUsedPath();
+// 引用计数（小步2）：TextureRef 是到处按值拷贝的小类型，所以计数放在仓库侧。
+// 越界/已释放下标一律安全 no-op；release 在计数为 0 时只警告、不下溢。
+void retainTexture(size_t index);
+void releaseTexture(size_t index);
+size_t getTextureRefCount(size_t index);
 
 // 当前编入的是哪个图形后端（编译期常量，用于日志）。
 const char* getGraphicsBackendName();

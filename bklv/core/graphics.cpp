@@ -33,6 +33,8 @@ struct TextureEntry
 {
     TextureHandle handle;
     bool alive = false;
+    size_t refCount      = 0; // 还有几个使用者（小步2：refCount>0 的不许淘汰）
+    uint64_t lastUseTick = 0; // LRU 记账
 };
 
 // 句柄表。存 TextureHandle 而不是裸 ImTextureID，
@@ -144,6 +146,33 @@ bool isTextureBudgetExceeded()
 size_t getTextureCacheCount()
 {
     return g_pathCache.size();
+}
+
+void retainTexture(size_t index)
+{
+    if (index >= g_textures.size() || !g_textures[index].alive)
+        return; // 越界/已释放：安全 no-op
+    ++g_textures[index].refCount;
+    g_textures[index].lastUseTick = ++g_useTick;
+}
+
+void releaseTexture(size_t index)
+{
+    if (index >= g_textures.size() || !g_textures[index].alive)
+        return;
+    if (g_textures[index].refCount == 0)
+    {
+        BKLV_LOG_WARNING("纹理 %zu 的引用计数已经是 0，release 被忽略（计数不会下溢）", index);
+        return;
+    }
+    --g_textures[index].refCount;
+}
+
+size_t getTextureRefCount(size_t index)
+{
+    if (index >= g_textures.size() || !g_textures[index].alive)
+        return 0;
+    return g_textures[index].refCount;
 }
 
 const std::string& getLeastRecentlyUsedPath()
