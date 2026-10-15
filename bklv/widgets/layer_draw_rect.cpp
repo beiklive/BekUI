@@ -66,6 +66,8 @@ void ensureLayerDrawsRegistered()
         BKLV_LOG_ERROR("注册 rect 的绘制钩子失败：注册表里没有这个名字");
     if (!compile::setLayerDraw("shadow", drawShadow))
         BKLV_LOG_ERROR("注册 shadow 的绘制钩子失败：注册表里没有这个名字");
+    if (!compile::setLayerDraw("glass", drawGlass))
+        BKLV_LOG_ERROR("注册 glass 的绘制钩子失败：注册表里没有这个名字");
 }
 
 } // namespace layers

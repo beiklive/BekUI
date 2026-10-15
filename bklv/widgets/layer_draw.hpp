@@ -12,6 +12,7 @@ namespace layers
 
 void drawRect(const compile::LayerDrawContext& ctx);
 void drawShadow(const compile::LayerDrawContext& ctx);
+void drawGlass(const compile::LayerDrawContext& ctx);
 
 void ensureLayerDrawsRegistered();
 

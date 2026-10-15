@@ -522,6 +522,17 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
             case AppearanceLayer::Op::GLASS:
             {
+                // ③：走注册表钩子（原地实现留作兜底）
+                if (const compile::LayerType* glassType = compile::findLayer("glass");
+                    glassType != nullptr && glassType->draw)
+                {
+                    glassType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this });
+                    break;
+                }
                 // 外观层声明"这块要玻璃"。玻璃画在这一层的位置上，后面的内容层自然压在它上面
                 //（所以 glass 层必须排在内容层之前）。
                 // 能被外观覆盖的只有样式：fill(染色) / opacity / radius；
