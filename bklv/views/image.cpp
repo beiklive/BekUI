@@ -253,21 +253,20 @@ void Image::setImageFromFileAsync(const std::string& path)
     enqueueDecode(resolved, 0, [this, generation, guard, resolved]() {
         task::runResult(
             [resolved] { return decodeImageFile(resolved.c_str()); },
-            [this, generation, guard, resolved](DecodedImage image) {
-                notifyDecodeFinished(resolved, nullptr); // 无论哪条路径都腾出在飞名额
+        [this, generation, guard, resolved](DecodedImage image) {
+            // 背压 3-4：解码一完成只登记"待上传"，真正的上传交给 pumpUploads()
+            // 按 getMaxUploadsPerFrame() 每帧消费 -> 20 张完成会摊到多帧，不会一帧传 20 张
+            notifyDecodeFinished(resolved, [this, generation, guard, image]() {
                 if (guard.expired() || !guard.lock()->isAlive())
                     return; // 视图已经销毁，别再碰它
 
                 if (generation != this->loadGeneration)
                     return; // 已经发起了更新的加载，这个结果丢掉
 
-                this->asyncPending = false;
-
                 if (!image.isValid() || !isTextureStoreReady())
-                {
-                    // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
-                    return;
-                }
+                    return; // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
+
+                this->asyncPending = false;
 
                 const TextureRef loaded =
                     loadTextureFromPixels(image.pixels.data(), image.width, image.height);
@@ -275,11 +274,7 @@ void Image::setImageFromFileAsync(const std::string& path)
                     return;
 
                 releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
-
-
                 this->texture = loaded;
-
-
                 retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
                 this->pendingPath.clear();
 
@@ -290,6 +285,7 @@ void Image::setImageFromFileAsync(const std::string& path)
 
                 this->invalidate();
             });
+        });
     });
 }
 
