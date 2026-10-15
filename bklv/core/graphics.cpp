@@ -137,6 +137,11 @@ bool isTextureBudgetExceeded()
     return g_textureBudget > 0 && getTextureCount() > g_textureBudget;
 }
 
+size_t getTextureCacheCount()
+{
+    return g_pathCache.size();
+}
+
 const char* getTextureBackendName()
 {
     return g_backend != nullptr ? g_backend->getName() : "none";

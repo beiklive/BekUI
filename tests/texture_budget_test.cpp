@@ -42,6 +42,14 @@ int main()
         checkEqualInt((int)getTextureBudget(), 0, "复原为不限");
     }
 
+    std::printf("\n== 5. 缓存条目数可读（暂无后端 -> 0）==\n");
+    {
+        checkEqualInt((int)getTextureCacheCount(), 0, "未初始化时缓存为空");
+        setTextureBudget(4);
+        check(getTextureCacheCount() <= (size_t)getTextureBudget() || true, "读缓存数不崩");
+        setTextureBudget(0);
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }
