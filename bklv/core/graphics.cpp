@@ -48,6 +48,10 @@ size_t g_textureBudget = 0;
 std::map<std::string, int> g_pathCache;
 
 // LRU 记账（小步2 的前半）：路径 -> 最后一次使用的序号。只记录，不淘汰。
+// 背压旋钮（0 = 不限）；下一步的 enqueueDecode 队列才会读它们
+size_t g_decodeConcurrency  = 4;
+size_t g_maxUploadsPerFrame = 2;
+
 uint64_t g_useTick = 0;
 std::map<std::string, uint64_t> g_pathLastUse;
 
@@ -176,6 +180,26 @@ size_t getTextureRefCount(size_t index)
     if (index >= g_textures.size() || !g_textures[index].alive)
         return 0;
     return g_textures[index].refCount;
+}
+
+void setDecodeConcurrency(size_t maxConcurrentDecodes)
+{
+    g_decodeConcurrency = maxConcurrentDecodes;
+}
+
+size_t getDecodeConcurrency()
+{
+    return g_decodeConcurrency;
+}
+
+void setMaxUploadsPerFrame(size_t maxUploads)
+{
+    g_maxUploadsPerFrame = maxUploads;
+}
+
+size_t getMaxUploadsPerFrame()
+{
+    return g_maxUploadsPerFrame;
 }
 
 void trimTextureCache()

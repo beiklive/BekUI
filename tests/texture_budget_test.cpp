@@ -82,6 +82,25 @@ int main()
         setTextureBudget(0);                      // 复原
     }
 
+    std::printf("\n== 9. 背压旋钮：默认 4 / 2，0 表示不限，边界不崩 ==\n");
+    {
+        checkEqualInt((int)getDecodeConcurrency(), 4, "解码并发默认 4");
+        checkEqualInt((int)getMaxUploadsPerFrame(), 2, "每帧上传默认 2");
+
+        setDecodeConcurrency(8);
+        setMaxUploadsPerFrame(0);
+        checkEqualInt((int)getDecodeConcurrency(), 8, "并发可设");
+        checkEqualInt((int)getMaxUploadsPerFrame(), 0, "上传配额可设 0（不限）");
+
+        setDecodeConcurrency((size_t)-1);
+        setMaxUploadsPerFrame((size_t)-1);
+        check(getDecodeConcurrency() == (size_t)-1 && getMaxUploadsPerFrame() == (size_t)-1, "极大值不崩");
+
+        setDecodeConcurrency(4);   // 复原，别影响别的测试
+        setMaxUploadsPerFrame(2);
+        checkEqualInt((int)getDecodeConcurrency(), 4, "复原默认值");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

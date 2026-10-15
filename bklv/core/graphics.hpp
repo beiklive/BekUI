@@ -175,6 +175,13 @@ size_t getTextureRefCount(size_t index);
 // 淘汰（2d）：只在超预算时做，候选 = refCount==0 的 LRU；淘汰时同步清路径缓存并释放 GPU 纹理。
 void trimTextureCache();
 
+// —— 背压（小步3 第一块：只存值，尚未接队列）——
+// 0 一律表示"不限"（保持旧行为的逃生门）。默认 4 / 2：有上限但足够顺。
+void setDecodeConcurrency(size_t maxConcurrentDecodes);
+size_t getDecodeConcurrency();
+void setMaxUploadsPerFrame(size_t maxUploads);
+size_t getMaxUploadsPerFrame();
+
 // 当前编入的是哪个图形后端（编译期常量，用于日志）。
 const char* getGraphicsBackendName();
 
