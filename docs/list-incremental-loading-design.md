@@ -125,10 +125,19 @@ virtual void   onWindowReleased(size_t from, size_t to) { }          // 库告�
 - **加载的所有权不能挂在 cell 上** —— 挂在 cell 上，cell 被回收/销毁就会取消或丢结果，
   滚动一快就"图一直加载不出来/一直闪"。正确做法是挂在**资源缓存**上，cell 只借用 `TextureRef`，
   销毁 cell 不影响加载，加载完的图还能被别的 cell 复用。
-- **现状**：`Image::setImageFromFileAsync` 已经有 `AliveFlag` 护栏（视图先销毁、回调后到是安全的，
-  有测试覆盖）；**没有**的是 ① 共享纹理缓存（同一张图多个 cell 各存一份）② 同一个 `Image`
-  被复用时的**代际保护**（旧结果可能写进新内容 —— ⚠️ 这一点是设计推断，**尚未实测**，要用测试确认）
-  ③ 并发上限 / 优先级 / 每帧上传配额（一次滚出 20 个新 cell 就是 20 次解码 + 20 次上传）。
+- **现状（已核对代码，更正我先前的说法）**：
+  · ✅ `AliveFlag` 护栏：视图先销毁、回调后到是安全的（有测试覆盖）
+  · ✅ **代际保护已经有了** —— `setImageFromFileAsync` 里
+    `const uint64_t generation = ++this->loadGeneration;`，回调第一件事就是
+    `if (generation != this->loadGeneration) return;` -> **"同一个 Image 被复用后旧结果写进新内容"
+    这件事已经被挡住**。⚠️ 我此前在对话里说它"只是推断、未实测"——**那是我说错了**，
+    代码里本来就有（`views/image.cpp`，发起时自增那行之下几行）。
+  · ❌ **没有共享纹理缓存**：`Image` 自己持有并上传纹理（`ownsTexture`），
+    同一张图被多个 cell 显示就是多份（内存 ×N）
+  · ❌ **没有背压**：一次滚出 20 个新 cell = 20 次解码 + 20 次上传（不是死锁，是掉帧风险）
+
+- **所以 3.5 真正要做的只有两件**：① 共享纹理缓存（key = 资源路径 + 尺寸，引用计数 + 预算 + LRU）
+  ② 背压（解码并发上限 + 主线程每帧上传配额）。代际与销毁护栏**不用动**。
 - **策略**：key = 资源路径 + 尺寸，引用计数 + 预算 + LRU；每个 `Image` 自增 **token**，回调比对；
   只在"可见 + prefetchLines"范围发起；队列按离视口距离排序；主线程**每帧最多上传 N 张**。
 - **配置**（与加载旋钮同风格，全部有安全默认值）：`decodeConcurrency` / `maxUploadsPerFrame` /
