@@ -628,3 +628,40 @@ C++ 一行都不用写，也不用新加控件类。
   （`compile/appearance_box.cpp`），所以 `axis` / `alignItems` / `justifyContent` / `margin` /
   `padding` / `minWidth` / 背景 / 圆角 / 边框 / `measureContent` 等**全套字段都支持**，
   "只覆盖写了的字段"（`hasXxx` 标记）的语义也天然一致
+
+## Recycler：JSON 描述列表/网格（结构归 JSON，数据与行为归 C++）
+
+三条硬分工（这就是「JSON 只描述容器与 item 的组织方式」）：
+
+| 谁 | 负责 | 在哪 |
+|---|---|---|
+| **JSON** | 容器类型、**一份** item 模板、列规则、数据源**名字**、绑定函数**名字**、段头模板、预加载数值 | 主题 `view/*.json` |
+| **数据源**（注册） | "第 N 项是谁"：总数/高度/身份/分段 | C++ `data::registerSource("名字", 工厂)` |
+| **绑定函数**（注册） | "第 N 项长什么样、点了干什么" | C++ `binding::registerItemBinder("名字", 函数)` |
+
+**JSON 属性表**（`widgets/recycler_view.cpp` 的 `attributes()`）：
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `data` | STRING | 数据源**名字**，可写 `@data/xxx`（前缀会剥掉）；没注册过 -> 警告 + 不挂 |
+| `itemAppearance` | STRING | item 的**一份**模板（外观名），所有 item 共用 |
+| `itemTemplate` | STRING | 同上，但用**视图模板**（`loadViewTemplateFromTheme` + `instantiate`）|
+| `itemBinder` | STRING | 绑定函数名：`(View& item, size_t 行号)` 里套数据/挂行为 |
+| `sectionHeaderAppearance` | STRING | 段头模板（数据源给"有几段/段标题"，JSON 只描述段头长什么样）|
+| `columns` | NUMBER | 列数（**Grid 就是 Recycler 的多列模式**，不另设类型）|
+| `minItemWidth` | NUMBER | 自动列数用（0 = 用 `columns`）|
+| `itemHeight` | NUMBER | 数据源没给高度时的兜底 |
+| `preFetchLine` | NUMBER | 预取行数（默认 1）|
+| `showScrollingIndicator` | BOOL | 是否显示滚动条 |
+| `slotLoading` / `slotEmpty` | STRING | loading / empty 具名槽位（视图模板名）；**由 C++ 选择显示哪个**，不做 `if` 解释器 |
+| `onEnd` | STRING | 增量加载的挂点**名字**（实现留 C++，见 `docs/list-incremental-loading-design.md`）|
+| `count` | STRING | 目前只认 `"infinite"`（或省略），别的值警告 |
+
+**两条容易踩的**（都踩过）：
+1. **json 类型要先注册再装载**：`registerRecyclerViewType()` 由 `registerWidgetViewTypes()` 调用；
+   测试里要自己调一次，否则报「未知类型 "Recycler"」。
+2. **绑定函数挂在两个索引入口上**：回收器分段路径走 `setSectionIndex(段, 段内下标)`，
+   单段路径才走 `setIndex(下标)` —— 只重写一个会让绑定函数**永远不被调用**（现象是列表整条空白）。
+
+**能力边界（当前）**：`columns > 1` 已实现（视觉行顶按行内最高项算）；
+**未知总数**的滚动条长度/焦点策略见 `docs/list-incremental-loading-design.md`（设计稿，未实现）。

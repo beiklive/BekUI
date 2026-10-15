@@ -307,7 +307,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   分段重写 `getSectionCount()` + `getItemCountInSection()` / `getSectionTitle()` /
   `getItemIdentifierInSection()`。**段标题返回空串表示这一段不占表头行**。
   接口刻意不叫 `getItemCount(section)`（borealis 的重载写法）——派生类只重写一个
-  会把另一个名字隐藏掉，属于典型 C++ 坑。段头 cell 继承 `RecyclerSectionHeader`，
+  会把另一个名字隐藏掉，属于典型 C++ 坑。
+- **Recycler 可由 JSON 描述**（`"type": "Recycler"`，桥接层 `widgets/recycler_view.*`）：
+  **结构归 JSON、数据与行为归 C++** —— JSON 只写容器、**一份** item 模板、列规则、
+  以及"名字"：`data`（数据源名）/`itemBinder`（绑定函数名）/`onEnd`（增量加载挂点名）。
+  数据源走 `bklv::data::registerSource("名字", 工厂)`（纯数据层，不认识 JSON/ImGui），
+  绑定函数走 `bklv::binding::registerItemBinder("名字", 函数)`（形状 `(View&, size_t 行号)`）。
+  **行为写进绑定函数，不要 `static_cast` 回某个 cell 具体类**（那会在 JSON 建的 item 上是 UB）。
+  属性表/模板实例化都在 widgets 桥接层；`views/recycler.*` 只管纯数据源接口与布局能力
+  （`setColumns` / `visualTopOf`）。JSON 属性清单与踩过的坑见 `docs/json-syntax.md` 的
+  「Recycler」一节；增量追加/预加载/缓存销毁的设计见 `docs/list-incremental-loading-design.md`。段头 cell 继承 `RecyclerSectionHeader`，
   标题通过虚函数 `onSectionTitle` 下发（Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
 - **枚举值大小写与 `_`/`-` 都不敏感**（`enumMatches`，两套 JSON 一致）：
   `flexEnd` == `flex_end` == `FLEX_END`。视图描述 JSON 里拼错 → 不建控件 + 报错（列出可选值）；
