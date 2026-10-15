@@ -18,6 +18,7 @@
 #include "bklv/compile/appearance_box.hpp"
 #include "bklv/compile/appearance_gradient.hpp"
 #include "bklv/compile/appearance_layer_fields.hpp"
+#include "bklv/compile/appearance_layer_meta.hpp"
 #include "bklv/compile/appearance_children.hpp"
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -119,30 +120,6 @@ const PropName PROP_NAMES[] = {
 
 // 数值项：数字 或 `"@theme/metric.x.y"`
 
-AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
-{
-    ok = true;
-    if (enumMatches(text, "rect"))
-        return AppearanceLayer::Op::RECT;
-    if (enumMatches(text, "text"))
-        return AppearanceLayer::Op::TEXT;
-    if (enumMatches(text, "image"))
-        return AppearanceLayer::Op::IMAGE;
-    if (enumMatches(text, "shadow"))
-        return AppearanceLayer::Op::SHADOW;
-    if (enumMatches(text, "glass"))
-        return AppearanceLayer::Op::GLASS;
-    if (enumMatches(text, "custom"))
-        return AppearanceLayer::Op::CUSTOM;
-
-    // 未命中内置：看注册表里有没有同名的**扩展 op**（第三方在自己初始化里注册的）。
-    // 有就按扩展处理（名字由调用方记进 layer.extensionType），没有才报错。
-    if (findLayer(text) != nullptr)
-        return AppearanceLayer::Op::EXTENSION;
-
-    ok = false;
-    return AppearanceLayer::Op::RECT;
-}
 
 // `op: "glass"` 表达的是"这个控件的底是玻璃"，所以**永远排在最前**（早于 bg/阴影/内容）。
 // 解析期排一次序，这样主题里可以用 `import` 基外观 + 追加一层 glass 的写法做玻璃变体，
@@ -506,70 +483,9 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
             const Json& node = doc["layers"][i];
             const std::string where = "layers[" + std::to_string(i) + "]";
 
-            if (!node.is_object())
-            {
-                error = where + " 必须是对象";
+            AppearanceLayer layer; // 由 parseLayerMeta 造出来（元信息 + 默认 id）
+            if (!parseLayerMeta(node, i, theme, layer, error))
                 return false;
-            }
-
-            AppearanceLayer layer;
-            // 没写 id 时用 op + 序号当 id（状态里引用它）
-            const std::string opName = node.value("op", "rect");
-            bool opOk               = false;
-            layer.op                = parseOp(opName, opOk);
-            if (layer.op == AppearanceLayer::Op::EXTENSION)
-            {
-                layer.extensionType = opName;
-
-                // 扩展 op 自己的键交给**注册表里的 parse 钩子**（第三方注册时提供）。
-                // 之前只记了类型名、没调钩子 —— 样例的 angle/lineWidth 其实一直没生效
-                // （条纹是靠默认值碰巧画对的）。失败按硬错误处理，和内置 op 一致。
-                const compile::LayerType* extType = compile::findLayer(opName);
-                if (extType != nullptr && extType->parse)
-                {
-                    if (!extType->parse(node, theme, layer, error,
-                            "layers[" + std::to_string(i) + "] (" + opName + ")"))
-                        return false; // parseLayers 的失败约定是 false（compile 才转成 nullptr）
-                }
-            }
-            if (!opOk)
-            {
-                error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";
-                return false;
-            }
-
-            // 默认 id 的前缀从**注册表**取（单一事实来源）。
-            // 以前这里是一张三元的映射表，只认 rect/text/image —— shadow/glass 会落到 custom 分支，
-            // 被叫成 custom0 / custom1（tests/layer_parse_test.cpp 里把这个 quirk 钉成了基线，
-            // 现在按注册表修掉）。
-            // （opName 是上面已经取好的 op 字符串）
-            const compile::LayerType* layerType = compile::findLayer(opName);
-            const std::string idPrefix = layerType != nullptr ? layerType->idPrefix : opName;
-            layer.id     = node.value("id", idPrefix + std::to_string(i));
-            layer.source = node.value("source", "");
-            layer.align  = node.value("align", "left");
-            layer.valign = node.value("valign", "center");
-            layer.scaling = node.value("scaling", "fit");
-
-            // 这三项拼错时在**编译期**警告一次（绘制期每帧都比一遍，在那儿报会刷屏）
-            {
-                const std::string alignWhere = where + ".align";
-                if (!(enumMatches(layer.align, "left") || enumMatches(layer.align, "center")
-                        || enumMatches(layer.align, "right")))
-                    warnUnknownEnumValue(alignWhere.c_str(), layer.align, "left|center|right");
-
-                const std::string valignWhere = where + ".valign";
-                if (!(enumMatches(layer.valign, "center") || enumMatches(layer.valign, "top")
-                        || enumMatches(layer.valign, "bottom")))
-                    warnUnknownEnumValue(valignWhere.c_str(), layer.valign, "center|top|bottom");
-
-                const std::string scalingWhere = where + ".scaling";
-                if (!enumMatches(layer.scaling, "fit"))
-                    warnUnknownEnumValue(scalingWhere.c_str(), layer.scaling,
-                        "fit（其它缩放由控件自己在 custom 层处理）");
-            }
-
-            // 通用字段（颜色/数值字段表 + cutout/inset/offset）：见 compile/appearance_layer_fields.cpp
             if (!parseLayerFields(node, theme, layer, error))
                 return false;
     if (!parseGradient(node, theme, layer, error))
