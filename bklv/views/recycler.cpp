@@ -194,6 +194,7 @@ void RecyclerFrame::buildRowOffsets()
             this->rows.push_back(row);
         }
     }
+    this->rebuildVisualTops(); // 行高算完 -> 同步视觉行顶（多列用）
 }
 
 float RecyclerFrame::getSectionHeaderHeight(size_t section) const
@@ -288,22 +289,42 @@ void RecyclerFrame::setColumns(int count)
         BKLV_LOG_WARNING("Recycler 的 columns 至少是 1（收到 %d）", count);
         count = 1;
     }
-    if (count > 1)
-    {
-        // 多列排布尚未启用（见 docs/parse-refactor-review.md 13.1）：这里明确拒绝，
-        // 免得"看着支持、其实摆错位置"。views 层不知道 JSON，这只是纯视图能力。
-        BKLV_LOG_WARNING("Recycler 的多列排布还没做（columns=%d 先按 1 处理）", count);
-        count = 1;
-    }
     this->columns = count;
+    this->rebuildVisualTops();
+}
+
+// columns > 1 时：第 r 个**视觉行**的高度 = 该行内各 item 高度的最大值（保留不等高），
+// top 依次累加。columns == 1 时清空（走 rows[index].top，与从前逐像素等价）。
+void RecyclerFrame::rebuildVisualTops()
+{
+    this->visualTops.clear();
+    if (this->columns <= 1)
+        return;
+
+    const size_t columns = (size_t)this->columns;
+    float top = 0.0f;
+    for (size_t rowStart = 0; rowStart < this->rows.size(); rowStart += columns)
+    {
+        float rowHeight = 0.0f;
+        const size_t rowEnd = std::min(rowStart + columns, this->rows.size());
+        for (size_t i = rowStart; i < rowEnd; i++)
+            rowHeight = std::max(rowHeight, this->rows[i].height);
+
+        for (size_t i = rowStart; i < rowEnd; i++)
+            this->visualTops.push_back(top);
+        top += rowHeight;
+    }
 }
 
 float RecyclerFrame::visualTopOf(size_t index) const
 {
     // columns = 1：视觉位置就是流式行的 top -> 与引入本函数之前**逐像素等价**
-    if (index < this->rows.size())
-        return this->rows[index].top;
-    return 0.0f;
+    if (this->columns <= 1)
+        return index < this->rows.size() ? this->rows[index].top : 0.0f;
+
+    // 多列：用预先算好的视觉行顶。
+    // 已知限制：滚动范围仍按 rows 累加，所以"多列 + 不等高"时总高会偏大（等高于时完全一致）。
+    return index < this->visualTops.size() ? this->visualTops[index] : 0.0f;
 }
 
 void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t row)

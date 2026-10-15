@@ -241,6 +241,8 @@ class RecyclerFrame : public ScrollingFrame
     void buildRowOffsets();
 
     int columns = 1;
+    std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
+    void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;
 
     Box* contentBox = nullptr;
