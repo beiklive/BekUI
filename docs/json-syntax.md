@@ -414,3 +414,26 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 与 `import` 合并时：`gradient` 是对象按字段合并，`stops` 是数组**整体替换**。
 与 `fill` 的关系：写了 `gradient` 以它为准；`fill` 继续服务状态覆盖（状态里写 `fill` 的层不带渐变）。
 **渐变不做补间**（不是标量通道），也不支持给 `stroke` 加渐变 —— 见 [`rect-gradient.md`](rect-gradient.md)。
+
+### 侧栏面板（`widget/sidebar.json`）
+
+侧栏的面板观感**只由 `box` 段决定**（`Sidebar::applyPanelLook()` 走 `applyWidgetBox`）：
+
+```json
+"box": {
+  "width": "@theme/metric.sidebar.width",
+  "margin": "@theme/metric.sidebar.margin",
+  "padding": [ "@theme/metric.sidebar.paddingTop", "@theme/metric.sidebar.paddingRight",
+               "@theme/metric.sidebar.paddingBottom", "@theme/metric.sidebar.paddingLeft" ],
+  "cornerRadius": "@theme/metric.sidebar.radius",
+  "borderThickness": 1,
+  "borderColor": "@theme/color.sidebar.border",
+  "backgroundColor": "@theme/color.sidebar.background"
+}
+```
+
+- `layers` 段在这里**不参与绘制**，但**必须存在**（少了会报「外观 JSON 缺少 layers 数组」）
+- 面板投影没有对应的 box 字段，由 `Sidebar::draw()` 用 `shadow::drawSoft(..., cutout=true)` 补
+- 条目外观是 `base/tab_cell.sidebar.json`：`icon` 层（`"source": "icon"`，自动用图标字体）+
+  `title` 层（`inset` 让位）+ 选中态的 `bg.fill` / `accent.fill` / `title.color` / `icon.color`
+- 分组用 `Sidebar::addSeparator()`（不可聚焦、不进条目索引）

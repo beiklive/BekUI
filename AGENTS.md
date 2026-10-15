@@ -473,6 +473,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   A/B 也走同一套（borealis 的 A/B 会重复）。
   **一个物理键一个重复状态**：以前两个键（方向键 + WASD）共用一个"边沿状态"，
   互相把对方清掉 → 按住方向键每帧都判成"刚按下"，导航飙到帧率。
+- **侧栏（`widgets/sidebar.*`）的面板观感只吃 `box` 段**：`applyPanelLook()` 走的是
+  `applyWidgetBox(this, "widget/sidebar")` —— 也就是**只应用 box**（宽高/内边距/圆角/
+  边框/底色/margin），文件里的 `layers` 段**不参与绘制**（但**必须存在**：解析器要求有
+  `layers` 数组，删了会报「外观 JSON 缺少 layers 数组」）。所以要让面板有圆角/细边/半透明面，
+  改的是 `widget/sidebar.json` 的 **box 段**，别去写 layers。
+  投影没有对应的 box 字段，所以在 `Sidebar::draw()` 里补一层 `shadow::drawSoft(..., cutout=true)`
+  （cutout = 只画外圈，不会把面板自己的底色压暗）。
+- **侧栏条目 = 图标 + 文字 + 选中底**（`base/tab_cell.sidebar.json`）：
+  条目是 `TabCell : AppearanceView`，图标走**现成的** `setIcon()` + 外观里的 `"icon"` 层
+  （`"source": "icon"` → `getLayerText`/`getLayerFont` 自动认它、自动用图标字体），
+  文字层用 `inset` 给图标让位（`metric.sidebar.titleInset`）。
+  选中态要写 `bg.fill`（**别只有 accent + 文字变色** —— 15 条里太不显眼）。
+  分组用 `Sidebar::addSeparator()`（不可聚焦、不进条目索引；用上 `metric.sidebar.separatorHeight`
+  与 `color.sidebar.separator`），别塞一条假 tab 去占位。
 - **页头与底部栏是外壳级的（全局），内容避让是显式的**（`widgets/shell.*` + `widgets/pager.*`）：
   宿主自己建 `Header` / `BottomBar` 交给 `Shell::setHeaderView/setFooterView`（挂覆盖层，
   中间用 `Padding` 顶开），页面再按 `getHeaderInset()/getFooterInset()` 自己留白。

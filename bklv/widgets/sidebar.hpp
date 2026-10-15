@@ -31,6 +31,13 @@ class Sidebar : public Box
     // 老写法只传一个回调时，它同时承担这两个时机。
     void addItem(const std::string& title, std::function<void()> onActivate,
         std::function<void()> onConfirm = nullptr);
+    // 带图标的版本：icon 是图标字体的字形（`icon::glyphByName("palette")`）。
+    // 图标层由主题的条目外观声明（`base/tab_cell.sidebar.json` 里的 "icon" 层）。
+    void addItem(const std::string& title, const std::string& icon,
+        std::function<void()> onActivate, std::function<void()> onConfirm = nullptr);
+
+    // 分组用的分隔（不可聚焦，不进条目索引）：条目多了靠它分组，别塞一条假 tab
+    void addSeparator();
     void clearItems();
 
     void setSelectedIndex(size_t index);
@@ -58,6 +65,11 @@ class Sidebar : public Box
     // 换肤时刷新面板底色/圆角/内边距（标题的字体颜色由 Label::applyTheme 处理）
     void applyTheme() override { this->applyPanelLook(); }
 
+    // 面板投影：面板底/边框由 View::drawBackground 画（观感来自 box 段），
+    // 投影没有对应的 box 字段，所以在这里补一层（cutout = 只画外圈，不会把面板压暗）
+    void draw(ImDrawList* drawList, float x, float y, float width, float height,
+        FrameContext* ctx) override;
+
     // 面板外观（底/标题）由主题描述；这里声明它用哪份外观
     const AttributeTable& attributes() const override;
 
@@ -71,6 +83,7 @@ class Sidebar : public Box
     Box* itemBox   = nullptr;
     size_t selected = 0;
     std::vector<TabCell*> cells;
+    std::vector<View*> separators; // 只为了 clearItems 时一并摘掉
 };
 
 } // namespace bklv

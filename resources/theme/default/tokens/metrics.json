@@ -60,18 +60,24 @@
     "contentPaddingTopBottom": 42
   },
   "sidebar": {
-    "width": 410,
-    "itemHeight": 70,
+    "width": 300,
+    "itemHeight": 52,
     "itemFontSize": 22,
-    "gap": 4,
-    "paddingTop": 32,
-    "paddingBottom": 47,
-    "paddingLeft": 80,
-    "paddingRight": 40,
+    "gap": 2,
+    "paddingTop": 12,
+    "paddingBottom": 12,
+    "paddingLeft": 20,
+    "paddingRight": 20,
     "accentWidth": 4,
     "accentMarginY": 9,
     "accentMarginX": 8,
-    "separatorHeight": 30
+    "separatorHeight": 18,
+    "radius": 14,
+    "margin": 8,
+    "iconSize": 22,
+    "iconInset": 22,
+    "titleInset": 54,
+    "shadowFeather": 14
   },
   "tabCell": {
     "height": 40,

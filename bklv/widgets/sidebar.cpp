@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/shadow.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
@@ -63,10 +64,18 @@ void Sidebar::setPanelWidth(float width)
 void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onActivate,
     std::function<void()> onConfirm)
 {
+    this->addItem(itemTitle, std::string(), std::move(onActivate), std::move(onConfirm));
+}
+
+void Sidebar::addItem(const std::string& itemTitle, const std::string& icon,
+    std::function<void()> onActivate, std::function<void()> onConfirm)
+{
     const size_t index = this->cells.size();
 
     TabCell* cell = new TabCell();
     cell->setTitle(itemTitle);
+    if (!icon.empty())
+        cell->setIcon(icon);
     // 侧栏条目比 tab 格子高（borealis 是 70）：走 tab_cell 的 "sidebar" 变体
     cell->setAppearanceVariant("sidebar");
     // 聚焦 = 激活：直接切子页面（borealis 的语义）
@@ -90,11 +99,55 @@ void Sidebar::addItem(const std::string& itemTitle, std::function<void()> onActi
         cell->setSelected(true);
 }
 
+void Sidebar::addSeparator()
+{
+    const float height = getTheme().number("metric.sidebar.separatorHeight", 18.0f);
+
+    Box* spacer = new Box(Axis::COLUMN);
+    spacer->setHeight(height);
+    spacer->setShrink(0.0f);
+    spacer->setJustifyContent(JustifyContent::CENTER);
+    spacer->setAlignItems(AlignItems::CENTER);
+
+    // 一条 60% 宽的细线，用主题里的分隔色（这个 token 以前没人用）
+    const ImU32 color = getTheme().color("color.sidebar.separator", 0x515151FF);
+    if ((color >> 24) != 0)
+    {
+        Box* line = new Box(Axis::ROW);
+        line->setHeight(1.0f);
+        line->setWidthPercentage(60.0f);
+        line->setBackgroundColor(color);
+        spacer->addView(line);
+    }
+
+    this->itemBox->addView(spacer);
+    this->separators.push_back(spacer);
+}
+
+void Sidebar::draw(ImDrawList* drawList, float x, float y, float width, float height,
+    FrameContext*)
+{
+    const float feather = getTheme().number("metric.sidebar.shadowFeather", 0.0f);
+    if (drawList == nullptr || feather <= 0.0f || width <= 0.0f || height <= 0.0f)
+        return;
+
+    const ImU32 color = getTheme().color("color.common.shadow", 0x00000059);
+    if ((color >> 24) == 0)
+        return;
+
+    // cutout：只画面板外圈，内圈一个顶点都不落 —— 所以不会把自己的底色压暗
+    shadow::drawSoft(drawList, x, y, x + width, y + height, this->getCornerRadius(), color, 0.9f,
+        feather, 0.0f, true);
+}
+
 void Sidebar::clearItems()
 {
     for (TabCell* cell : this->cells)
         this->itemBox->removeView(cell, true);
+    for (View* separator : this->separators)
+        this->itemBox->removeView(separator, true);
     this->cells.clear();
+    this->separators.clear();
     this->selected = 0;
 }
 

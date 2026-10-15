@@ -6,6 +6,7 @@
 
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
+#include "bklv/core/icon_font.hpp"
 
 using namespace bklv;
 
@@ -138,22 +139,23 @@ DemoApp::DemoApp()
     this->shell->setOnBackRequested([this] { return this->handleBackRequest(); });
 
     // ---- 页面（顺序就是侧栏顺序）----
-    this->addPage("theme", getStr("tab/theme"), getStr("page/theme_sub"), false);
-    this->addPage("widgets", getStr("tab/widgets"), getStr("page/widgets_sub"), false);
-    this->addPage("text", getStr("tab/text"), getStr("page/text_sub"), false);
-    this->addPage("layout", getStr("tab/layout"), getStr("page/layout_sub"), false);
-    this->addPage("list", getStr("tab/list"), getStr("page/list_sub"), true);
-    this->addPage("pokedex", getStr("tab/pokedex"), getStr("page/pokedex_sub"), true);
-    this->addPage("json", getStr("tab/json"), getStr("page/json_sub"), false);
-    this->addPage("nav", getStr("tab/nav"), getStr("page/nav_sub"), false);
-    this->addPage("overlay", getStr("tab/overlay"), getStr("page/overlay_sub"), false);
-    this->addPage("scroll", getStr("tab/scroll"), getStr("page/scroll_sub"), false);
-    this->addPage("transform", getStr("tab/transform"), getStr("page/transform_sub"), false);
-    this->addPage("settings", getStr("tab/settings"), getStr("page/settings_sub"), false);
-    this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false);
-    this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false);
-    this->addPage("base", getStr("tab/base"), getStr("page/base_sub"), false);
-    this->addPage("glass", getStr("tab/glass"), getStr("page/glass_sub"), false);
+    this->addPage("theme", getStr("tab/theme"), getStr("page/theme_sub"), false, "palette");
+    this->addPage("widgets", getStr("tab/widgets"), getStr("page/widgets_sub"), false, "dashboard");
+    this->addPage("text", getStr("tab/text"), getStr("page/text_sub"), false, "format_align_left");
+    this->addPage("layout", getStr("tab/layout"), getStr("page/layout_sub"), false, "grid_on");
+    this->sidebar->addSeparator(); // 分组：示例 / 组件 / 工具
+    this->addPage("list", getStr("tab/list"), getStr("page/list_sub"), true, "list");
+    this->addPage("pokedex", getStr("tab/pokedex"), getStr("page/pokedex_sub"), true, "favorite");
+    this->addPage("json", getStr("tab/json"), getStr("page/json_sub"), false, "description");
+    this->addPage("nav", getStr("tab/nav"), getStr("page/nav_sub"), false, "menu");
+    this->addPage("overlay", getStr("tab/overlay"), getStr("page/overlay_sub"), false, "layers");
+    this->sidebar->addSeparator();
+    this->addPage("scroll", getStr("tab/scroll"), getStr("page/scroll_sub"), false, "drag_indicator");
+    this->addPage("transform", getStr("tab/transform"), getStr("page/transform_sub"), false, "fullscreen");
+    this->addPage("settings", getStr("tab/settings"), getStr("page/settings_sub"), false, "settings");
+    this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false, "brush");
+    this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false, "star");
+    this->addPage("base", getStr("tab/base"), getStr("page/base_sub"), false, "home");
 
     // 起始页**推迟到第一帧**再选（见 update()）：视图树是在 App::run() 之前建的，
     // 而字体（含两套图标字体）要等 App::run() 建好图集才装载。页面若在这之前构建，
@@ -192,7 +194,7 @@ DemoApp::~DemoApp()
 }
 
 void DemoApp::addPage(const std::string& id, const std::string& name, const std::string& subtitle,
-    bool selfScrolling)
+    bool selfScrolling, const char* iconName)
 {
     const size_t index = this->pages.size();
 
@@ -205,7 +207,9 @@ void DemoApp::addPage(const std::string& id, const std::string& name, const std:
 
     // 捕获 this + index：DemoApp 活到程序结束，安全；捕获局部下标引用会悬空
     // 聚焦 = 切页（不带内容焦点）；A = 切页并把焦点交给子页面的默认控件
-    this->sidebar->addItem(name, [this, index] { this->selectPage(index, false); },
+    // 侧栏条目 = 图标 + 文字（图标字形是字形表里的名字，建树期就查得到）
+    this->sidebar->addItem(name, icon::glyphByName(iconName),
+        [this, index] { this->selectPage(index, false); },
         [this, index] { this->selectPage(index, true); });
 
     // 工厂：切到这一页时现建（旧页由 Pager 删）

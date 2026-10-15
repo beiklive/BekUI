@@ -67,7 +67,7 @@ class DemoApp
     };
 
     void addPage(const std::string& id, const std::string& name, const std::string& subtitle,
-        bool selfScrolling);
+        bool selfScrolling, const char* iconName);
     // 按页下标分派到 pages.hpp 的构建函数
     bklv::Box* buildPage(size_t index);
     // 页面外面套一层内容内边距（对标 borealis 的 tab_frame/content_padding_*）
