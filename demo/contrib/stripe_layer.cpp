@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+#include "bklv/3rd/imgui/imgui.h"
+
 #include "bklv/compile/json_util.hpp"
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/logger.hpp"
@@ -30,17 +32,59 @@ bool parseStripe(const nlohmann::json& node, const bklv::ThemeData& theme,
                                    where + ".fill"))
         return false;
 
-    out.feather = angle; // 这一层没有自己的存储字段，先用 feather 把角度带过去（③ 接钩子后换掉）
+    float width = 2.0f;
+    if (node.contains("width") && !bklv::compile::resolveNumber(node["width"], theme, width, error,
+                                      where + ".width"))
+        return false;
+
+    // 这一层暂时借用库里现成的两个通用字段：feather 存角度、spread 存线宽。
+    // （等 `AppearanceLayer` 给扩展 op 提供自己的参数槽后换掉 —— 那样才彻底不借用。）
+    out.feather = angle;
+    out.spread  = width;
     return true;
 }
 
-// 绘制：斜条纹。③ 把它接到注册表的 draw 钩子上（签名里的 void* 是 ImDrawList*）
-void drawStripe(const bklv::AppearanceLayer& layer, void* drawList, const bklv::compile::LayerRect& rect)
+// 绘制：斜条纹。引擎（appearance_view.cpp 的 EXTENSION 分支）会把这个钩子接上，
+// 传进来的 void* 就是 ImDrawList*，rect 是这一层自己的矩形（含圆角与有效 alpha）。
+void drawStripe(const bklv::AppearanceLayer& layer, void* drawListPtr,
+    const bklv::compile::LayerRect& rect)
 {
-    (void)layer;
-    (void)drawList;
-    (void)rect;
-    // 真正的绘制在 ③ 完成后再补（那时这里能拿到 ImDrawList 并落下实际的线）
+    ImDrawList* drawList = static_cast<ImDrawList*>(drawListPtr);
+    if (drawList == nullptr || rect.maxX - rect.minX <= 1.0f || rect.maxY - rect.minY <= 1.0f)
+        return;
+
+    const float angle = layer.feather; // 解析钩子暂存在这里
+    const float width = layer.spread > 0.0f ? layer.spread : 2.0f;
+    const float gap   = 14.0f;
+
+    // 有效 alpha 直接折进颜色（引擎已经算好 rect.alpha）
+    const float alpha = rect.alpha * (float)((layer.fill >> 24) & 0xFFu) / 255.0f;
+    const ImU32 color = (layer.fill & 0x00FFFFFFu)
+        | ((ImU32)(alpha * 255.0f + 0.5f) << 24);
+
+    const float radians = angle * 3.14159265f / 180.0f;
+    const float dx      = std::cos(radians);
+    const float dy      = std::sin(radians);
+    const float length  = std::sqrt((rect.maxX - rect.minX) * (rect.maxX - rect.minX)
+                              + (rect.maxY - rect.minY) * (rect.maxY - rect.minY));
+    const float centerX = (rect.minX + rect.maxX) * 0.5f;
+    const float centerY = (rect.minY + rect.maxY) * 0.5f;
+    // 与条纹垂直的方向：沿线排开每 gap 像素一条
+    const float stepX = -dy * gap;
+    const float stepY = dx * gap;
+
+    drawList->PushClipRect(ImVec2(rect.minX, rect.minY), ImVec2(rect.maxX, rect.maxY), true);
+    const int count = (int)(length / gap) + 2;
+    for (int i = -count; i <= count; i++)
+    {
+        const float offsetX = stepX * (float)i;
+        const float offsetY = stepY * (float)i;
+        drawList->AddLine(
+            ImVec2(centerX + offsetX - dx * length * 0.5f, centerY + offsetY - dy * length * 0.5f),
+            ImVec2(centerX + offsetX + dx * length * 0.5f, centerY + offsetY + dy * length * 0.5f),
+            color, width);
+    }
+    drawList->PopClipRect();
 }
 
 } // namespace
