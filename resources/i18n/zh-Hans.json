@@ -48,7 +48,26 @@
   },
   "json": {
     "row_title": "第 {} 行（模板相同，数据不同）",
-    "row_subtitle": "字段 title / subtitle / thumb 由 C++ 侧的 binder 提供"
+    "row_subtitle": "字段 title / subtitle / thumb 由 C++ 侧的 binder 提供",
+    "intro": "这一页把视图描述 JSON 的能力逐层追加地演示一遍：每一步都是上一步加上一小段，下面的界面就是那段 JSON 现场建出来的。",
+    "step1_title": "① type + 属性",
+    "step1_note": "最小的一份 JSON：一个类型 + 一个属性。",
+    "step2_title": "② 容器与 children",
+    "step2_note": "追加：Box（axis/gap）+ children —— 视图树就是这么长出来的。",
+    "step3_title": "③ 布局属性",
+    "step3_note": "追加：内边距、圆角、底色、grow —— 尺寸与外观都写在 JSON 里。",
+    "step4_title": "④ @theme 引用与百分比",
+    "step4_note": "追加：颜色/数值改从主题取（@theme/...），宽度写百分比 —— 换肤时一起变。",
+    "step5_title": "⑤ @res 资源引用",
+    "step5_note": "追加：Image + @res/... 图片路径（相对 resources 目录）。",
+    "step6_title": "⑥ @i18n 文案引用",
+    "step6_note": "追加：把写死的文字换成 @i18n/... 引用，字号也从主题取（切语言/换肤都能跟上）。",
+    "step7_title": "⑦ include 拆文件",
+    "step7_note": "追加：结构拆到另一份文件里，主文件只剩一句 include（路径相对 resources 根）。",
+    "step8_title": "⑧ 模板 + 数据绑定",
+    "step8_note": "最后一步：同一份模板实例化很多次，取值由 C++ 按 bind 字段名贴上去 —— 列表项、卡片这类重复结构都这么做。",
+    "step7_text": "这段内容来自另一份文件（include 进来的）。",
+    "failed": "这段 JSON 建视图失败（日志里有原因）"
   },
   "theme": {
     "hint": "外观由 resources/theme/<主题>/widgets/*.json 描述：绘制结构（底/边框/文字）、状态动效（tweeny 插值）都在 JSON 里。复制 default 改名改 JSON 就是一套新皮肤。",

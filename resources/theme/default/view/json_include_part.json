@@ -1,0 +1,23 @@
+{
+  "type": "Box",
+  "axis": "row",
+  "gap": 12,
+  "padding": 12,
+  "width": "100%",
+  "cornerRadius": "@style/metric.component.radius",
+  "backgroundColor": "@theme/color.surface.card",
+  "children": [
+    {
+      "type": "Image",
+      "src": "@res/testcard.png",
+      "width": 96,
+      "height": 54,
+      "cornerRadius": 8,
+      "scalingType": "fill"
+    },
+    {
+      "type": "Label",
+      "text": "@i18n/json/step7_text"
+    }
+  ]
+}

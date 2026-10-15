@@ -48,7 +48,26 @@
   },
   "json": {
     "row_title": "Row {} (same template, different data)",
-    "row_subtitle": "fields title / subtitle / thumb come from a C++ binder"
+    "row_subtitle": "fields title / subtitle / thumb come from a C++ binder",
+    "intro": "This page walks through the view-description JSON one layer at a time: each step is the previous JSON plus a small addition, and the view below is built from that JSON.",
+    "step1_title": "1) type + one attribute",
+    "step1_note": "The smallest possible JSON: a type plus one attribute.",
+    "step2_title": "2) Containers & children",
+    "step2_note": "Adds Box (axis/gap) + children - this is how the view tree grows.",
+    "step3_title": "3) Layout attributes",
+    "step3_note": "Adds padding, corner radius, background color and grow - size and looks live in JSON.",
+    "step4_title": "4) @theme references & percentages",
+    "step4_note": "Adds theme lookups (@theme/...) and a percentage width - a theme switch updates them.",
+    "step5_title": "5) @res resource references",
+    "step5_note": "Adds Image + @res/... (paths are relative to the resources directory).",
+    "step6_title": "6) @i18n text references",
+    "step6_note": "Adds @i18n/... instead of hard-coded text, plus font size from the theme.",
+    "step7_title": "7) Split files with include",
+    "step7_note": "Adds include: the structure moves to another file, the main file keeps one line.",
+    "step8_title": "8) Templates + data binding",
+    "step8_note": "Finally: one template instantiated many times, values filled in by C++ via bind fields.",
+    "step7_text": "This content comes from another file (included).",
+    "failed": "This JSON failed to build a view (see the log)"
   },
   "theme": {
     "hint": "Appearance comes from resources/theme/<name>/widgets/*.json: draw structure (background/border/text) and state animation (tweeny interpolation) all live in JSON. Copy default, rename, edit JSON - that is a new skin.",
