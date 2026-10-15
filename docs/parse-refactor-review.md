@@ -288,3 +288,25 @@ struct AppearanceLayer {
   改写可能造出自引用（`box = box`），编译器会直接报出来
 - 聚合初始化会踩 `-Wmissing-field-initializers`（尾部钩子字段）→ 用工厂函数命名赋值，
   将来加字段也不会漏
+
+### 阶段性验证（第 23 轮，全部改动之后的复查）
+
+近期连续改过库代码（json_util / 注册表 / 默认 id / 扩展槽 / 扩展 parse+draw 钩子 / 保留键校验），
+所以做了一次完整复查：
+
+- `rm -rf build/fresh` + 从零 configure/build（GL）：**总告警 0 条**（本仓 0，第三方 0）
+- 恢复 `dist/`（`rm -f dist/*_test dist/demo dist/designer && cmake --build build/gl -j 8`）后
+  `./scripts/check.sh`：**3348 项全过**；`check_naming.py`：175 个文件全过
+- 扩展链端到端：注册（`bklv/` 之外）→ 保留键防呆 → 解析（`EXTENSION` + `type` + **parse 钩子**）
+  → 默认 id → 设计器自动认 → 主题里直接用 → 绘制钩子 → 出画面（截图确认过条纹铺满）
+
+**剩余三件（都还没动）**
+
+1. **①c-3 余下**：内置 6 种的字段解析仍挤在 `parseLayers`（382 行）里，尚未按 op 拆进
+   `compile/layers/<op>.cpp`（扩展路径已经走注册表，内置路径还是老样子）
+2. **④** view / theme 解析搬进 `compile/`（`core/` 只留运行时；tweeny 只出现在运行时 TU）
+3. **⑤** `appearance.children`（外观内组合控件：`appearance` / 只写 `box` / `ref` 三档）——
+   设计已在本文 §6，实现尚未开始；这是"一份外观 = 一个完整控件"的关键一步
+
+优先级建议：**先 ⑤**（新能力，用户侧感知最强，且不依赖前两件），再 ④（结构与依赖清理），
+最后收 ①c-3 余下（纯内部整理）。
