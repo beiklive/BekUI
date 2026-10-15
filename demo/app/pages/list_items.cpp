@@ -29,7 +29,7 @@ ListCell::ListCell()
     this->thumbnail = new Image();
     this->thumbnail->setDimensions(76.0f, 44.0f);
     this->thumbnail->setCornerRadius(6.0f);
-    this->thumbnail->setScalingType(ImageScalingType::FILL);
+    this->thumbnail->setScalingType(ImageScalingType::FIT); // 保持比例完整显示（FILL 会把方形图上下裁掉）
     this->addView(this->thumbnail);
 
     Box* textBox = new Box(Axis::COLUMN);
