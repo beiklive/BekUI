@@ -210,3 +210,34 @@ void registerMyLayers() {
 >
 > 原因：注册表要求"每种 op 一个 parse 钩子"，而现在的解析是 `compile` 里一个 501 行的函数体，
 > 钩子无处可挂 —— 所以顺序是 **先搬助手（①a）→ 再按 op 拆函数（①b）→ 最后才注册（①c）**。
+
+## 11. 实施进度（每步一个提交，可回滚）
+
+| 步骤 | 内容 | 提交 | 结果 |
+|---|---|---|---|
+| ①a | 抽 `compile/json_util.{hpp,cpp}`（取值/报错只写一遍；`Json` 别名收敛） | `8462f74` | `appearance.cpp` 1906 → 1798；`check.sh` 3266 全过（零行为变化） |
+| ①b-1 | `states` 段抽成 `parseStates()` | `bf22110` | `compile` 501 → 423 |
+| ①b-2 | `layers` 段抽成 `parseLayers()` | `ee04bd4` | `compile` 423 → **49 行**（达标 <80） |
+| ①b-预备 | 图层解析行为基线 `tests/layer_parse_test.cpp`（拆之前的保险） | `5f5e94e` | 33 项；立刻抓出"默认 id 是 `rect0` 而非 `rect`"与 `shadow/glass → custom<N>` 的 quirk |
+| ①c-1 | 图层类型注册表（名字/默认 id 前缀/层序档位/键表/help；无宏显式注册；内置 6 种惰性注册） | `ee50139` | 注册表测试 + **注册表 vs 解析器交叉校验**（64 项） |
+| ①c-2 | 默认 id 前缀改由注册表提供 | `c6fa9f6` | **修掉 quirk**：`shadow`/`glass` 从 `custom<N>` → `shadow0`/`glass1`；基线翻断言，变化显式可见 |
+
+**还剩**（按顺序）
+
+1. ①c-3：把 `parse` / `draw` 钩子接上注册表 → `parseLayers` 退化成"查表 + 分派"，
+   键校验读键表；每种 op 的字段解析迁进 `compile/layers/<op>.cpp`（一文件一 op）
+2. ③ `widgets/appearance_view.cpp` 改读注册表的 draw 钩子，删掉 `if (op == ...)` 链
+3. ④ 把 view / theme 解析搬进 `compile/`（`core/` 只留运行时；tweeny 只出现在运行时 TU）
+4. ⑤ `appearance.children`（三档节点 + 递归 + 复用 ViewTemplate + 循环/深度报错）
+5. ⑥ 设计器改读注册表（加层菜单/键表/层序校验自动认新 op）
+6. **可扩展性验收**：在 `bklv/` 之外新增 `stripe` op（1 文件 + 1 行注册）→
+   `git diff --stat` 不含 `bklv/`；主题可用；设计器能加能编
+7. ①/② 收尾：补一次页面截图对比（当前每步靠 3331 项检查兜底，比截图更硬）
+
+**过程中记录的三条经验**（都已写进提交信息，值得进 AGENTS）
+
+- 机械替换必须先 `assert` 再落盘：定位错边界时脚本中止、文件零改动（`bf22110` 那次）
+- 切出来的代码块 `return nullptr` 要按新函数签名改成 `return false`；`appearance->x` 的机械
+  改写可能造出自引用（`box = box`），编译器会直接报出来
+- 聚合初始化会踩 `-Wmissing-field-initializers`（尾部钩子字段）→ 用工厂函数命名赋值，
+  将来加字段也不会漏
