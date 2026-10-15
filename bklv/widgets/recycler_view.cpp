@@ -51,8 +51,12 @@ RecyclerView::RecyclerView()
 
 void RecyclerView::setDataSourceName(const std::string& name)
 {
-    this->dataSourceName = name;
-    RecyclerDataSource* source = data::createSource(name); // 没注册过会打警告并返回 nullptr
+    // JSON 里可以写 "@data/pokedex"（与 @theme/ @i18n/ 同一套前缀习惯），也可以直接写名字
+    std::string plain = name;
+    if (plain.rfind("@data/", 0) == 0)
+        plain = plain.substr(6);
+    this->dataSourceName = plain;
+    RecyclerDataSource* source = data::createSource(plain); // 没注册过会打警告并返回 nullptr
     if (source != nullptr)
         this->setDataSource(source);
 }
@@ -100,9 +104,40 @@ void RecyclerView::rebuildItemCells()
 
 const AttributeTable& RecyclerView::attributes() const
 {
-    // v1：属性表先留空（类型已可被 JSON 建出来）；字符串/数值属性下一轮补，
-    // 需要先确认 ResolvedValue 的成员名，避免猜错。
-    static const AttributeTable table = {};
+    // 属性表：JSON 只写"名字/规则"，不写每一项（数据在 C++ 数据源里）
+    static const AttributeTable table = {
+        { "data", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setDataSourceName(r.text);
+         }, nullptr },
+        { "itemAppearance", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setItemAppearance(r.text);
+         }, nullptr },
+        { "itemTemplate", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setItemTemplate(r.text);
+         }, nullptr },
+        { "columns", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setColumns((int)r.number);
+         }, nullptr },
+        { "minItemWidth", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setMinItemWidth(r.number);
+         }, nullptr },
+        { "slotLoading", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setSlotLoading(r.text);
+         }, nullptr },
+        { "slotEmpty", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setSlotEmpty(r.text);
+         }, nullptr },
+        { "onEnd", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setOnEndName(r.text);
+         }, nullptr },
+        { "count", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             // v1：只认 "infinite"（表示"总数由数据源决定、可能无限"），别的值警告
+             if (r.text != "infinite")
+                 BKLV_LOG_WARNING("Recycler 的 count 只支持 \"infinite\" 或省略（收到 \"%s\"）",
+                     r.text.c_str());
+             (void)v;
+         }, nullptr },
+    };
     return table;
 }
 

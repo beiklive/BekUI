@@ -99,7 +99,8 @@
     "base/children_demo.json",
     "view/children_ref_demo.json",
     "base/children_ref.json",
-    "base/sample_card.json"
+    "base/sample_card.json",
+    "view/recycler_json_demo.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",
