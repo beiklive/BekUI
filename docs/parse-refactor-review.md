@@ -504,3 +504,43 @@ child[1] 内层盒 x=473 y=1806 w=345 h=188 ownChildren=2  （两个标签在盒
 **下一刀的落点**：`parseLayers` 现在 ~230 行，大头是**图层循环里的字段解析**；
 按 op 拆进 `compile/layers/<op>.cpp` 是 ①c-3 余下的内容（模式已经定：
 机械切片 + 先 assert 边界 + 先验括号配平 + 改完 grep 确认真的改上了）。
+
+### 12.12 ①c-3 余下的侦察结果：**不能按 op 拆**（计划修正）
+
+侦察 `parseLayers`（499-758，**259 行**）的结构，得到与 ①b 时同样的结论，而且更明确：
+
+```
+502  for (size_t i = 0; i < doc["layers"].size(); i++)     <- 图层循环，占 245 行
+507    if (!node.is_object())                              <- 元信息
+518    if (layer.op == Op::EXTENSION) ... parse 钩子        <- 扩展 op（已按注册表）
+533    if (!opOk)
+539    ／ 默认 id 前缀（来自注册表）
+552    ／ 三项拼错的编译期警告
+570    // 颜色 / 数值字段
+582    for (const ColorField& field : colorFields)          <- **字段表驱动**
+609    for (const NumberField& field : numberFields)        <- **字段表驱动**
+619    if (node.contains("inset")) ... 628 offset
+637    // RECT 层的渐变
+638    if (node.contains("gradient"))                       <- 约 110 行
+747  hoistGlassLayers(...)
+751  parseBoxNode(...)                                      <- 已抽出（12.10）
+```
+
+**关键事实：图层字段解析是"表驱动"的，不是按 op 分支的** ✗。
+`colorFields` / `numberFields` 两张表被**所有 op 共用**（这正是"单一事实来源"该有的样子），
+所以"按 op 拆进 `compile/layers/<op>.cpp`"这一刀**切不下去** —— 硬切只会造出一堆
+互相复制的分支，反而把现在的好设计拆坏。
+
+**每种 op 的"个性"其实已经集中了**：名字 / 中文名 / 默认 id 前缀 / 层序档位 / 键表 / help /
+parse / draw 全在 `compile/layer_registry.cpp` ✓ —— 也就是说 §2 想要的"一种 op 一个文件"
+在**注册表层**已经达成；字段解析层**本来就应该通用**。
+
+**修正后的切法（按"关注点"切，不按 op 切）**
+
+1. `parseLayerMeta(...)`：node 检查 / op / id / source / align / valign / scaling / 拼写警告
+2. `parseLayerFields(...)`：两张字段表 + cutout + inset + offset
+3. `parseGradient(...)`：渐变那 ~110 行（本来就是一个自成一体的校验器）
+4. `parseLayers` 剩下"循环 + 调度 + hoist"（目标 ≤80 行）
+
+三条都落在 `compile/` 下（`layers/` 这个目录**不建了** —— 因为没有"每种 op 一个文件"这回事），
+并把 §7 表格里 ①c-3 的措辞改成"按关注点拆字段解析；op 的个性留在注册表"。
