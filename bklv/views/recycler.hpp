@@ -229,6 +229,12 @@ class RecyclerFrame : public ScrollingFrame
     // 加载触发：滚到"末尾附近"就向数据源要下一页（单飞去抖；数据到了走增量追加）。
     // 条件用"最后活跃行 + loadThreshold >= 行数"，所以不依赖滚动器的内部状态。
     void maybeRequestMore();
+
+    // 想聚焦某一行但它还没加载：先记下并触发加载，数据到了用 takePendingFocusIndex() 取走
+    // （**滚动动作留给调用方** —— views 只负责"什么时候可以滚了"这个时机）
+    void requestFocusIndex(size_t index);
+    bool hasPendingFocus() const { return this->pendingFocusIndex != (size_t)-1; }
+    size_t takePendingFocusIndex();
     bool isLoadingMore() const { return this->requestInFlight; }
 
     // **增量追加**：数据源多出了条目时用它，只补尾巴（单段走真增量；其余情况内部回落到全量）。
@@ -304,6 +310,7 @@ class RecyclerFrame : public ScrollingFrame
     RecyclerLoadConfig loadConfig;
     size_t poolLimitPerIdentifier = 32;
     bool requestInFlight = false;
+    size_t pendingFocusIndex = (size_t)-1;
     std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
     void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;

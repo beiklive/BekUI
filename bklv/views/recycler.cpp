@@ -158,6 +158,31 @@ void RecyclerFrame::notifyDataChanged()
 // 行高与偏移
 // ---------------------------------------------------------------------------
 
+void RecyclerFrame::requestFocusIndex(size_t index)
+{
+    if (index < this->rows.size())
+    {
+        // 行已经在表里：不需要"等数据"，由调用方直接滚即可
+        if (this->pendingFocusIndex == index)
+            this->pendingFocusIndex = (size_t)-1;
+        return;
+    }
+
+    this->pendingFocusIndex = index;
+    this->maybeRequestMore(); // 先要数据
+}
+
+size_t RecyclerFrame::takePendingFocusIndex()
+{
+    // 只有"目标行已经出现"才交给调用方；否则继续等（数据分页可能要好几次）
+    if (this->pendingFocusIndex == (size_t)-1 || this->pendingFocusIndex >= this->rows.size())
+        return (size_t)-1;
+
+    const size_t index = this->pendingFocusIndex;
+    this->pendingFocusIndex = (size_t)-1;
+    return index;
+}
+
 void RecyclerFrame::maybeRequestMore()
 {
     if (this->dataSource == nullptr || this->requestInFlight || !this->dataSource->hasMore())
