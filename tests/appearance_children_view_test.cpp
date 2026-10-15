@@ -62,6 +62,30 @@ int main()
         check(spec != nullptr && spec->getChildren().empty(), "编译产物里也没有 children");
     }
 
+    std::printf("\n== 4. ref：引用视图模板（第三档）==\n");
+    {
+        // base/children_ref 的 children = [ { "ref": "view/children_ref_demo" }, { "appearance": … } ]
+        AppearanceView view("base/children_ref", false);
+        checkEqualInt((int)view.getChildrenCount(), 2, "ref 与 appearance 各建出一个");
+        if (view.getChildrenCount() == 2)
+        {
+            // 第一个来自视图模板（Padding），第二个是普通外观
+            check(view.getChildren()[0] != nullptr, "ref 建出来的子视图非空");
+            // 注意：模板内容是 Padding（是个 View，不是 Box），所以这里不断言 asBox()；
+            // 真要断言"ref 的产物是什么控件"得按类型判断，而 Switch 带 -fno-rtti 不许 dynamic_cast。
+            check(view.getChildren()[1] != nullptr, "第二个（普通外观）也建出来了");
+        }
+
+        const auto spec = getWidgetAppearance("base/children_ref");
+        check(spec != nullptr && spec->getChildren().size() == 2, "编译产物里两档都在");
+        if (spec != nullptr && spec->getChildren().size() == 2)
+        {
+            checkEqualInt((int)spec->getChildren()[0].kind, (int)AppearanceChild::Kind::VIEW_TEMPLATE,
+                "第 1 档是 ref");
+            check(spec->getChildren()[0].name == "view/children_ref_demo", "记下模板名");
+        }
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

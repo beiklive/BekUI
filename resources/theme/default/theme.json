@@ -96,7 +96,9 @@
     "base/json_demo.anim.after.json",
     "base/section.json",
     "base/stripe_demo.json",
-    "base/children_demo.json"
+    "base/children_demo.json",
+    "view/children_ref_demo.json",
+    "base/children_ref.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",
