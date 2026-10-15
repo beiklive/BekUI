@@ -250,7 +250,7 @@ void Image::setImageFromFileAsync(const std::string& path)
     std::weak_ptr<const AliveFlag::Flag> guard = this->alive.handle();
 
     // 背压 3-3：解码启动走队列（并发受 getDecodeConcurrency() 限制）
-    enqueueDecode(resolved, 0, [this, generation, guard, resolved]() {
+    enqueueDecode(resolved, this->decodePriority, [this, generation, guard, resolved]() {
         task::runResult(
             [resolved] { return decodeImageFile(resolved.c_str()); },
         [this, generation, guard, resolved](DecodedImage image) {

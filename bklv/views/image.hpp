@@ -74,6 +74,11 @@ class Image : public View
     void stepAnimation(float deltaSeconds);
 
     const TextureRef& getTexture() const { return this->texture; }
+
+    // 解码优先级（背压）：数字越小越先启动解码，默认 0（= 先到先得）。
+    // 调用方按"离可见区距离"给值即可；队列只认数字，不认识回收器。
+    void setDecodePriority(int value) { this->decodePriority = value; }
+    int getDecodePriority() const { return this->decodePriority; }
     bool hasImage() const { return this->texture.isValid(); }
 
     // 视图树可能先于图形后端就绪而建好，那时图片上传不了。
@@ -98,6 +103,7 @@ class Image : public View
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
     TextureRef texture;
+    int decodePriority = 0; // 背压：解码优先级（越小越优先）
     bool asyncPending = false;   // 正在后台解码
     uint64_t loadGeneration = 0; // 代数：只接受最新一次的异步结果
     // 异步解码回调的生命周期护栏：Image 先被销毁时回调直接放弃（否则是 use-after-free）
