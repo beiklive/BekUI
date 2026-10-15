@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include "bklv/3rd/imgui/imgui.h"
+#include "bklv/compile/layer_registry.hpp"
 #include "designer/ui/designer_style.hpp"
 #include "designer/ui/icon_draw.hpp"
 // 自查要用到 ImGuiContext 的 ErrorCallback / ErrorCountCurrentFrame（公共头里是不完整类型）
@@ -93,13 +94,9 @@ void propLabel(const char* label)
 // 不要 +/- 按钮：窄栏里那对按钮会把后面的内容顶出可视区
 const char* layerOpLabel(const std::string& op)
 {
-    if (op == "rect") return "矩形";
-    if (op == "text") return "文字";
-    if (op == "image") return "图片";
-    if (op == "shadow") return "阴影";
-    if (op == "glass") return "玻璃";
-    if (op == "custom") return "自定义";
-    return op.c_str();
+    // 显示名也来自注册表（加新 op 时设计器自动有中文名，不用改这里）
+    const bklv::compile::LayerType* type = bklv::compile::findLayer(op);
+    return type != nullptr ? type->label.c_str() : op.c_str();
 }
 
 // 字段名 → 中文标签。界面上一律显示中文（用户明确要求"能中文就中文"）。
@@ -2039,11 +2036,11 @@ void DesignerWindow::drawTree()
                         ImGui::Separator();
                         if (ImGui::BeginMenu("增加层"))
                         {
-                            for (const char* leftOp : { "rect", "text", "image", "shadow", "glass", "custom" })
+                            for (const bklv::compile::LayerType& type : bklv::compile::registeredLayers())
                             {
-                                if (ImGui::MenuItem(layerOpLabel(leftOp)))
+                                if (ImGui::MenuItem(layerOpLabel(type.name)))
                                 {
-                                    const int created = this->doc.addLayer(leftOp);
+                                    const int created = this->doc.addLayer(type.name);
                                     this->pushUndoSnapshot();
                                     this->markEdited();
                                     this->previewDirty    = true;
@@ -4049,16 +4046,29 @@ void DesignerWindow::drawProps()
 
             // op 可切换（以前只能改 JSON 文本）
             {
-                const char* ops[] = { "rect", "text", "image", "shadow", "glass", "custom" };
+                // 列表来自注册表：以前这里写死了 5 项（漏了 glass），
+                // 而且匹配循环也只走 5 项 —— 结果在设计器里根本切不到玻璃层。
+                const std::vector<bklv::compile::LayerType>& registered
+                    = bklv::compile::registeredLayers();
+                std::vector<std::string> opNames;
+                std::string opItems;
+                for (const bklv::compile::LayerType& type : registered)
+                {
+                    opNames.push_back(type.name);
+                    opItems += layerOpLabel(type.name);
+                    opItems.push_back('\0');
+                }
+                opItems.push_back('\0');
+
                 std::string current = this->doc.layerOp(this->selection.index);
                 int opIndex         = 0;
-                for (int i = 0; i < 5; i++)
-                    if (current == ops[i])
-                        opIndex = i;
+                for (size_t i = 0; i < opNames.size(); i++)
+                    if (current == opNames[i])
+                        opIndex = (int)i;
                 propLabel(fieldLabel("op"));
-                if (ImGui::Combo("##op", &opIndex, "矩形\0文字\0图片\0阴影\0自定义\0"))
+                if (ImGui::Combo("##op", &opIndex, opItems.c_str()))
                 {
-                    (*layer)["op"] = ops[opIndex];
+                    (*layer)["op"] = opNames[(size_t)opIndex];
                     edited();
                 }
             }

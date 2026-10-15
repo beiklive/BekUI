@@ -57,6 +57,7 @@ struct LayerRect
 struct LayerType
 {
     std::string name;              // "rect"（JSON 里的 op 值）
+    std::string label;             // 界面显示名（"矩形"），第三方可给自己的 op 一个中文名
     std::string idPrefix;          // 没写 id 时的默认前缀：rect -> rect0 / rect1
     LayerOrder order = LayerOrder::DECORATION;
     std::string help;              // 设计器与文档用的一句话

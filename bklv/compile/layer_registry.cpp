@@ -98,10 +98,11 @@ void registerBuiltinLayers()
     };
 
     // 用工厂而不是聚合初始化：钩子字段保持默认空值，也不会踩 -Wmissing-field-initializers
-    auto make = [](const char* name, const char* idPrefix, LayerOrder order, const char* help,
-                    std::vector<std::string> keys) {
+    auto make = [](const char* name, const char* label, const char* idPrefix, LayerOrder order,
+                    const char* help, std::vector<std::string> keys) {
         LayerType type;
         type.name     = name;
+        type.label    = label;
         type.idPrefix = idPrefix;
         type.order    = order;
         type.help     = help;
@@ -109,25 +110,25 @@ void registerBuiltinLayers()
         return type; // parse / draw 留空：①c-3 才接上
     };
 
-    add(make("rect", "rect", LayerOrder::BACKGROUND,
+    add(make("rect", "矩形", "rect", LayerOrder::BACKGROUND,
         "矩形：填充/描边/圆角/内缩，可带 gradient（渐变）",
         { "fill", "stroke", "strokeWidth", "radius", "opacity", "inset", "width", "height",
             "align", "valign", "gradient" }));
-    add(make("text", "text", LayerOrder::CONTENT,
+    add(make("text", "文字", "text", LayerOrder::CONTENT,
         "文字：从内容槽取字（source: text/icon/info），可指定字体、颜色、对齐、内缩",
         { "source", "color", "fontSize", "align", "valign", "inset", "width", "height", "opacity" }));
-    add(make("image", "image", LayerOrder::CONTENT,
+    add(make("image", "图片", "image", LayerOrder::CONTENT,
         "图片：source: image + scaling(fit/fill/crop...)",
         { "source", "scaling", "tint", "align", "valign", "inset", "width", "height", "radius",
             "opacity" }));
-    add(make("shadow", "shadow", LayerOrder::SHADOW,
+    add(make("shadow", "阴影", "shadow", LayerOrder::SHADOW,
         "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空",
         { "fill", "feather", "spread", "offset", "radius", "cutout", "inset", "width", "height",
             "opacity" }));
-    add(make("glass", "glass", LayerOrder::GLASS,
+    add(make("glass", "玻璃", "glass", LayerOrder::GLASS,
         "玻璃：fill 是染色（也是后端不可用时的降级底），stroke/strokeWidth 是内缘高光",
         { "fill", "stroke", "strokeWidth", "radius", "opacity", "inset", "width", "height" }));
-    add(make("custom", "custom", LayerOrder::CONTENT,
+    add(make("custom", "自定义", "custom", LayerOrder::CONTENT,
         "自定义：语义绘制在 C++ 里（控件的 drawCustomLayer），外观只给几何与底色",
         { "fill", "inset", "width", "height", "opacity" }));
 }
