@@ -31,6 +31,14 @@ void ensureBuiltins()
 
 } // namespace
 
+const std::vector<std::string>& LayerType::reservedKeys()
+{
+    static const std::vector<std::string> keys = {
+        "op", "id", "width", "height", "inset", "align", "valign", "offset", "opacity",
+    };
+    return keys;
+}
+
 bool registerLayer(LayerType type, std::string& error)
 {
     if (type.name.empty())
@@ -43,6 +51,21 @@ bool registerLayer(LayerType type, std::string& error)
         error = "图层类型 \"" + type.name + "\" 的 idPrefix 不能为空（没写 id 时要用它生成默认 id）";
         return false;
     }
+    if (!type.allowReservedKeys)
+    {
+        for (const std::string& key : type.keys)
+        {
+            const std::vector<std::string>& reserved = LayerType::reservedKeys();
+            if (std::find(reserved.begin(), reserved.end(), key) != reserved.end())
+            {
+                error = "图层类型 \"" + type.name + "\" 的键 \"" + key
+                    + "\" 是引擎保留键（层几何/通用属性），扩展层请起独立名字"
+                      "（如 lineWidth / gap）";
+                return false;
+            }
+        }
+    }
+
     if (findLayer(type.name) != nullptr)
     {
         error = "图层类型 \"" + type.name + "\" 重复注册";
@@ -107,6 +130,7 @@ void registerBuiltinLayers()
         type.order    = order;
         type.help     = help;
         type.keys     = std::move(keys);
+        type.allowReservedKeys = true; // 内置层本来就用这些键
         return type; // parse / draw 留空：①c-3 才接上
     };
 

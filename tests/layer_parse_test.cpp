@@ -200,6 +200,17 @@ int main()
         check(layerOrderRank(LayerOrder::GLASS) < layerOrderRank(LayerOrder::BACKGROUND),
             "玻璃在底色之前");
 
+        // 扩展层不许用引擎保留键（踩过的坑，见 layer_registry.hpp 的注释）
+        {
+            std::string reservedError;
+            LayerType bad;
+            bad.name     = "stripe_reserved";
+            bad.idPrefix = "stripe_reserved";
+            bad.keys     = { "angle", "width" }; // width 是层几何键
+            check(!registerLayer(std::move(bad), reservedError), "扩展层用保留键 -> 失败");
+            check(reservedError.find("保留键") != std::string::npos, "错误串点明是保留键");
+        }
+
         // 重复注册 / 空名字 / 空前缀都要报错
         std::string error;
         LayerType duplicate = *findLayer("rect");
@@ -229,7 +240,7 @@ int main()
         stripe.idPrefix = "stripe";
         stripe.order    = LayerOrder::DECORATION;
         stripe.help     = "测试用的扩展 op";
-        stripe.keys     = { "angle", "width" };
+        stripe.keys     = { "angle", "lineWidth" };
         std::string error;
         check(registerLayer(std::move(stripe), error), "扩展 op 注册成功");
 

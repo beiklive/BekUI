@@ -63,6 +63,12 @@ struct LayerType
     std::string help;              // 设计器与文档用的一句话
     std::vector<std::string> keys; // 该 op 可写的键（检查器候选、文档表格、键校验）
 
+    // 引擎保留键：这些是**层几何/通用属性**，引擎会先拿去算矩形与透明度，扩展层不能占用它们
+    // （踩过：样例用 `width` 表示线宽 → 整层被做成 3px 宽的条，看着像"只剩左边缘几个毛刺"）。
+    // 内置 6 种本来就该用这些键，所以它们置 true 豁免；第三方注册一律 false。
+    static const std::vector<std::string>& reservedKeys();
+    bool allowReservedKeys = false;
+
     // 钩子：①c-3 才接上（现在允许为空 —— 先让"数据"成为唯一事实来源）
     std::function<bool(const nlohmann::json& node, const ThemeData& theme, AppearanceLayer& out,
         std::string& error, const std::string& where)>
