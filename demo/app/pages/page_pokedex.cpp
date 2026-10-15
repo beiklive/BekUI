@@ -359,8 +359,30 @@ namespace
 class FlatDexSource : public bklv::RecyclerDataSource
 {
   public:
-    size_t getItemCount() override { return starters().size(); }
+    // 「分页」演示：初始一条不给，滚动到底时由回收器自动要下一页
+    size_t getItemCount() override { return this->visible; }
+    size_t getLoadedCount() override { return this->visible; }
+    bool hasMore() override { return this->visible < starters().size(); }
     float getItemHeight(size_t) override { return 70.0f; }
+
+    void requestMore(size_t want, size_t from) override
+    {
+        (void)from;
+        if (want == 0)
+            want = 2;
+        this->visible += want;
+        if (this->visible > starters().size())
+            this->visible = starters().size();
+        // demo 同步模拟"数据到了"；真实项目里在 task::run* 的 done 回调里调它
+        if (this->listener)
+            this->listener();
+    }
+
+    void setLoadListener(std::function<void()> value) override { this->listener = value; }
+
+  private:
+    size_t visible = 0;
+    std::function<void()> listener;
 };
 
 } // namespace

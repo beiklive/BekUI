@@ -9,5 +9,7 @@
   "width": "100%",
   "itemHeight": 72,
   "showScrollingIndicator": true,
-  "preFetchLine": 1
+  "preFetchLine": 1,
+  "pageSize": 2,
+  "loadThreshold": 1
 }
