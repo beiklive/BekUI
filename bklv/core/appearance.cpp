@@ -484,6 +484,392 @@ bool resolveImports(const Json& doc, const ThemeData& theme, std::vector<std::st
 
 } // namespace
 
+// layers 段：每一层是一个"绘制声明"（op + 该 op 自己的字段）。
+// 抽成函数是为下一步做准备：**每种 op 的字段解析会各自独立成文件**（compile/layers/<op>.cpp），
+// 那时这里只剩按 op 的调度。
+bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
+    std::vector<AppearanceLayer>& layers, std::string& error)
+{
+        for (size_t i = 0; i < doc["layers"].size(); i++)
+        {
+            const Json& node = doc["layers"][i];
+            const std::string where = "layers[" + std::to_string(i) + "]";
+
+            if (!node.is_object())
+            {
+                error = where + " 必须是对象";
+                return false;
+            }
+
+            AppearanceLayer layer;
+            // 没写 id 时用 op + 序号当 id（状态里引用它）
+            const std::string opName = node.value("op", "rect");
+            bool opOk               = false;
+            layer.op                = parseOp(opName, opOk);
+            if (!opOk)
+            {
+                error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";
+                return false;
+            }
+
+            const char* defaultId = layer.op == AppearanceLayer::Op::RECT      ? "rect"
+                                    : layer.op == AppearanceLayer::Op::TEXT    ? "text"
+                                    : layer.op == AppearanceLayer::Op::IMAGE   ? "image"
+                                                                               : "custom";
+            layer.id     = node.value("id", std::string(defaultId) + std::to_string(i));
+            layer.source = node.value("source", "");
+            layer.align  = node.value("align", "left");
+            layer.valign = node.value("valign", "center");
+            layer.scaling = node.value("scaling", "fit");
+
+            // 这三项拼错时在**编译期**警告一次（绘制期每帧都比一遍，在那儿报会刷屏）
+            {
+                const std::string alignWhere = where + ".align";
+                if (!(enumMatches(layer.align, "left") || enumMatches(layer.align, "center")
+                        || enumMatches(layer.align, "right")))
+                    warnUnknownEnumValue(alignWhere.c_str(), layer.align, "left|center|right");
+
+                const std::string valignWhere = where + ".valign";
+                if (!(enumMatches(layer.valign, "center") || enumMatches(layer.valign, "top")
+                        || enumMatches(layer.valign, "bottom")))
+                    warnUnknownEnumValue(valignWhere.c_str(), layer.valign, "center|top|bottom");
+
+                const std::string scalingWhere = where + ".scaling";
+                if (!enumMatches(layer.scaling, "fit"))
+                    warnUnknownEnumValue(scalingWhere.c_str(), layer.scaling,
+                        "fit（其它缩放由控件自己在 custom 层处理）");
+            }
+
+            // 颜色 / 数值字段
+            struct ColorField
+            {
+                const char* key;
+                ImU32* target;
+            };
+            const ColorField colorFields[] = {
+                { "fill", &layer.fill },
+                { "stroke", &layer.stroke },
+                { "color", &layer.textColor },
+                { "textColor", &layer.textColor },
+            };
+            for (const ColorField& field : colorFields)
+            {
+                if (!node.contains(field.key))
+                    continue;
+                if (!resolveColor(node[field.key], theme, *field.target, error, where + "." + field.key))
+                    return false;
+            }
+
+            struct NumberField
+            {
+                const char* key;
+                float* target;
+                bool pixels; // 像素量要跟随 720p 缩放；opacity 是系数不缩放
+            };
+            const NumberField numberFields[] = {
+                { "strokeWidth", &layer.strokeWidth, true },
+                { "radius", &layer.radius, true },
+                { "opacity", &layer.opacity, false },
+                { "fontSize", &layer.fontSize, true },
+                { "width", &layer.width, true },
+                { "height", &layer.height, true },
+                { "feather", &layer.feather, true },
+                { "spread", &layer.spread, true },
+            };
+            if (node.contains("cutout") && node["cutout"].is_boolean())
+                layer.cutout = node["cutout"].get<bool>();
+
+            for (const NumberField& field : numberFields)
+            {
+                if (!node.contains(field.key))
+                    continue;
+                if (!resolveNumber(node[field.key], theme, *field.target, error, where + "." + field.key))
+                    return false;
+                if (field.pixels)
+                    *field.target = scalePixels(*field.target);
+            }
+
+            if (node.contains("inset") && node["inset"].is_array() && node["inset"].size() == 4)
+                for (size_t k = 0; k < 4; k++)
+                {
+                    if (!resolveNumber(node["inset"][k], theme, layer.inset[k], error,
+                            where + ".inset[" + std::to_string(k) + "]"))
+                        return false;
+                    layer.inset[k] = scalePixels(layer.inset[k]);
+                }
+
+            if (node.contains("offset") && node["offset"].is_array() && node["offset"].size() == 2)
+                for (size_t k = 0; k < 2; k++)
+                {
+                    if (!resolveNumber(node["offset"][k], theme, layer.offset[k], error,
+                            where + ".offset[" + std::to_string(k) + "]"))
+                        return false;
+                    layer.offset[k] = scalePixels(layer.offset[k]);
+                }
+
+            // RECT 层的渐变（可选）。校验从严：停靠点数量 / 递增 / 越界都**报错**，不静默降级。
+            if (node.contains("gradient"))
+            {
+                const Json& gradientNode = node["gradient"];
+                const std::string gradientWhere = where + ".gradient";
+                if (!gradientNode.is_object())
+                {
+                    error = gradientWhere + " 要写成对象：{ type, angle, center, stops }";
+                    return false;
+                }
+
+                Gradient parsed;
+                const std::string typeName
+                    = gradientNode.value("type", std::string("linear"));
+                if (!gradientTypeFromName(typeName, parsed.type))
+                {
+                    error = gradientWhere + ".type 只支持 linear / radial（当前：" + typeName + "）";
+                    return false;
+                }
+
+                // angle / center / at 都是**无量纲**，不跟随 720p 缩放
+                if (gradientNode.contains("angle")
+                    && !resolveNumber(gradientNode["angle"], theme, parsed.angle, error,
+                        gradientWhere + ".angle"))
+                    return false;
+
+                if (gradientNode.contains("center"))
+                {
+                    const Json& centerNode = gradientNode["center"];
+                    if (!centerNode.is_array() || centerNode.size() != 2)
+                    {
+                        error = gradientWhere + ".center 要写成 [x, y]（0..1 相对层矩形）";
+                        return false;
+                    }
+                    for (size_t k = 0; k < 2; k++)
+                    {
+                        float value = 0.0f;
+                        if (!resolveNumber(centerNode[k], theme, value, error,
+                                gradientWhere + ".center[" + std::to_string(k) + "]"))
+                            return false;
+                        if (value < 0.0f || value > 1.0f)
+                        {
+                            error = gradientWhere + ".center[" + std::to_string(k)
+                                + "] 要在 0..1 之内（当前：" + std::to_string(value) + "）";
+                            return false;
+                        }
+                        parsed.center[k] = value;
+                    }
+                }
+
+                if (!gradientNode.contains("stops") || !gradientNode["stops"].is_array())
+                {
+                    error = gradientWhere + ".stops 要写成数组：[{ \"at\": 0, \"color\": \"#RRGGBBAA\" }, ...]";
+                    return false;
+                }
+
+                const Json& stopsNode = gradientNode["stops"];
+                if (stopsNode.size() < 2 || (int)stopsNode.size() > kMaxGradientStops)
+                {
+                    error = gradientWhere + ".stops 要 2~" + std::to_string(kMaxGradientStops)
+                        + " 个（当前 " + std::to_string(stopsNode.size()) + " 个）";
+                    return false;
+                }
+
+                float previousAt = -1.0f;
+                for (size_t i = 0; i < stopsNode.size(); i++)
+                {
+                    const Json& stopNode  = stopsNode[i];
+                    const std::string stopWhere
+                        = gradientWhere + ".stops[" + std::to_string(i) + "]";
+                    if (!stopNode.is_object())
+                    {
+                        error = stopWhere + " 要写成对象 { at, color }";
+                        return false;
+                    }
+
+                    GradientStop stop;
+                    if (stopNode.contains("at")
+                        && !resolveNumber(stopNode["at"], theme, stop.at, error, stopWhere + ".at"))
+                        return false;
+                    if (stop.at < 0.0f || stop.at > 1.0f)
+                    {
+                        error = stopWhere + ".at 要在 0..1 之内（当前：" + std::to_string(stop.at) + "）";
+                        return false;
+                    }
+                    if (stop.at <= previousAt)
+                    {
+                        error = stopWhere + ".at 必须比上一个停靠点大（停在 "
+                            + std::to_string(previousAt) + "，这个是 " + std::to_string(stop.at) + "）";
+                        return false;
+                    }
+                    previousAt = stop.at;
+
+                    if (!stopNode.contains("color"))
+                    {
+                        error = stopWhere + " 缺少 color";
+                        return false;
+                    }
+                    if (!resolveColor(stopNode["color"], theme, stop.color, error, stopWhere + ".color"))
+                        return false;
+
+                    parsed.stops[i] = stop;
+                }
+                parsed.stopCount = (int)stopsNode.size();
+                layer.gradient   = parsed;
+            }
+
+            layers.push_back(layer);
+        }
+
+        // 玻璃层一律提到最前（见 hoistGlassLayers 的注释）
+        hoistGlassLayers(layers);
+
+        // ---- 盒模型/布局（顶层 "box" 段）----
+        if (doc.contains("box") && doc["box"].is_object())
+        {
+            const Json& boxNode = doc["box"];
+
+            // 长度值：数字=像素（按 720p 缩放）、"50%"=百分比、"auto"=由内容决定、
+            // "@theme/metric.a.b"=主题数值
+            auto readLength = [&](const Json& node, float& out, bool& percent, bool& autoFlag,
+                                  const std::string& where) -> bool {
+                percent  = false;
+                autoFlag = false;
+                if (node.is_string())
+                {
+                    const std::string text = node.get<std::string>();
+                    if (text == "auto")
+                    {
+                        autoFlag = true;
+                        return true;
+                    }
+                    if (!text.empty() && text.back() == '%')
+                    {
+                        out      = std::strtof(text.c_str(), nullptr);
+                        percent  = true;
+                        return true;
+                    }
+                }
+                if (!resolveNumber(node, theme, out, error, where))
+                    return false;
+                out = scalePixels(out);
+                return true;
+            };
+
+            auto readEdges = [&](const Json& node, float* edges, const std::string& where) -> bool {
+                // 单值（数字或 "@theme/metric.x" 引用）：四边同值
+                if (node.is_number() || node.is_string())
+                {
+                    float all = 0.0f;
+                    if (!resolveNumber(node, theme, all, error, where))
+                        return false;
+                    all = scalePixels(all);
+                    for (int i = 0; i < 4; i++)
+                        edges[i] = all;
+                    return true;
+                }
+                if (!node.is_array() || node.size() != 4)
+                {
+                    error = where + " 要写成数字、@theme/ 引用或 [上, 右, 下, 左]";
+                    return false;
+                }
+                for (size_t i = 0; i < 4; i++)
+                {
+                    if (!resolveNumber(node[i], theme, edges[i], error,
+                            where + "[" + std::to_string(i) + "]"))
+                        return false;
+                    edges[i] = scalePixels(edges[i]);
+                }
+                return true;
+            };
+
+            auto readNumber = [&](const char* key, float& out, bool& has, const std::string& where) {
+                if (!boxNode.contains(key))
+                    return true;
+                if (!resolveNumber(boxNode[key], theme, out, error, where + "." + key))
+                    return false;
+                out = scalePixels(out);
+                has = true;
+                return true;
+            };
+
+            const std::string where = "box";
+            if (boxNode.contains("width") && !readLength(boxNode["width"], box.width, box.widthPercent,
+                                              box.widthAuto, where + ".width"))
+                return false;
+            box.hasWidth = boxNode.contains("width");
+
+            if (boxNode.contains("height") && !readLength(boxNode["height"], box.height, box.heightPercent,
+                                               box.heightAuto, where + ".height"))
+                return false;
+            box.hasHeight = boxNode.contains("height");
+
+            if (!readNumber("minWidth", box.minWidth, box.hasMinWidth, where))
+                return false;
+            if (!readNumber("minHeight", box.minHeight, box.hasMinHeight, where))
+                return false;
+            if (!readNumber("gap", box.gap, box.hasGap, where))
+                return false;
+            if (!readNumber("grow", box.grow, box.hasGrow, where))
+                return false;
+            if (!readNumber("shrink", box.shrink, box.hasShrink, where))
+                return false;
+            if (!readNumber("cornerRadius", box.cornerRadius, box.hasCornerRadius, where))
+                return false;
+            if (!readNumber("borderThickness", box.borderThickness, box.hasBorderThickness, where))
+                return false;
+
+            if (boxNode.contains("padding"))
+            {
+                if (!readEdges(boxNode["padding"], box.padding, where + ".padding"))
+                    return false;
+                box.hasPadding = true;
+            }
+            if (boxNode.contains("margin"))
+            {
+                if (!readEdges(boxNode["margin"], box.margin, where + ".margin"))
+                    return false;
+                box.hasMargin = true;
+            }
+            if (boxNode.contains("justifyContent") && boxNode["justifyContent"].is_string())
+            {
+                box.justify   = boxNode["justifyContent"].get<std::string>();
+                box.hasJustify = true;
+            }
+            if (boxNode.contains("alignItems") && boxNode["alignItems"].is_string())
+            {
+                box.align   = boxNode["alignItems"].get<std::string>();
+                box.hasAlign = true;
+            }
+            if (boxNode.contains("axis") && boxNode["axis"].is_string())
+            {
+                box.axis    = boxNode["axis"].get<std::string>();
+                box.hasAxis = true;
+            }
+            if (boxNode.contains("measureContent") && boxNode["measureContent"].is_string())
+            {
+                const std::string mode = boxNode["measureContent"].get<std::string>();
+                if (enumMatches(mode, "sum"))
+                    box.measureSum = true;
+                else if (enumMatches(mode, "max"))
+                    box.measureSum = false;
+                else
+                    warnUnknownEnumValue("measureContent", mode, "max|sum");
+            }
+            if (boxNode.contains("backgroundColor"))
+            {
+                if (!resolveColor(boxNode["backgroundColor"], theme, box.background, error,
+                        where + ".backgroundColor"))
+                    return false;
+                box.hasBackground = true;
+            }
+            if (boxNode.contains("borderColor"))
+            {
+                if (!resolveColor(boxNode["borderColor"], theme, box.borderColor, error,
+                        where + ".borderColor"))
+                    return false;
+                box.hasBorderColor = true;
+            }
+        }
+    return true;
+}
+
 // states 段：`states.<状态>.<层id>.<属性>` -> 每个状态一组通道补间。
 // 抽成函数只为可读（原来和 box / layers / transitions 挤在 compile 里一个 501 行的函数体）。
 bool parseStates(const Json& doc, const ThemeData& theme, Appearance& target,
@@ -925,384 +1311,10 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
 
     auto appearance = std::shared_ptr<Appearance>(new Appearance());
 
-    for (size_t i = 0; i < doc["layers"].size(); i++)
-    {
-        const Json& node = doc["layers"][i];
-        const std::string where = "layers[" + std::to_string(i) + "]";
+    // 图层
+    if (!parseLayers(doc, theme, appearance->box, appearance->layers, error))
+        return nullptr;
 
-        if (!node.is_object())
-        {
-            error = where + " 必须是对象";
-            return nullptr;
-        }
-
-        AppearanceLayer layer;
-        // 没写 id 时用 op + 序号当 id（状态里引用它）
-        const std::string opName = node.value("op", "rect");
-        bool opOk               = false;
-        layer.op                = parseOp(opName, opOk);
-        if (!opOk)
-        {
-            error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";
-            return nullptr;
-        }
-
-        const char* defaultId = layer.op == AppearanceLayer::Op::RECT      ? "rect"
-                                : layer.op == AppearanceLayer::Op::TEXT    ? "text"
-                                : layer.op == AppearanceLayer::Op::IMAGE   ? "image"
-                                                                           : "custom";
-        layer.id     = node.value("id", std::string(defaultId) + std::to_string(i));
-        layer.source = node.value("source", "");
-        layer.align  = node.value("align", "left");
-        layer.valign = node.value("valign", "center");
-        layer.scaling = node.value("scaling", "fit");
-
-        // 这三项拼错时在**编译期**警告一次（绘制期每帧都比一遍，在那儿报会刷屏）
-        {
-            const std::string alignWhere = where + ".align";
-            if (!(enumMatches(layer.align, "left") || enumMatches(layer.align, "center")
-                    || enumMatches(layer.align, "right")))
-                warnUnknownEnumValue(alignWhere.c_str(), layer.align, "left|center|right");
-
-            const std::string valignWhere = where + ".valign";
-            if (!(enumMatches(layer.valign, "center") || enumMatches(layer.valign, "top")
-                    || enumMatches(layer.valign, "bottom")))
-                warnUnknownEnumValue(valignWhere.c_str(), layer.valign, "center|top|bottom");
-
-            const std::string scalingWhere = where + ".scaling";
-            if (!enumMatches(layer.scaling, "fit"))
-                warnUnknownEnumValue(scalingWhere.c_str(), layer.scaling,
-                    "fit（其它缩放由控件自己在 custom 层处理）");
-        }
-
-        // 颜色 / 数值字段
-        struct ColorField
-        {
-            const char* key;
-            ImU32* target;
-        };
-        const ColorField colorFields[] = {
-            { "fill", &layer.fill },
-            { "stroke", &layer.stroke },
-            { "color", &layer.textColor },
-            { "textColor", &layer.textColor },
-        };
-        for (const ColorField& field : colorFields)
-        {
-            if (!node.contains(field.key))
-                continue;
-            if (!resolveColor(node[field.key], theme, *field.target, error, where + "." + field.key))
-                return nullptr;
-        }
-
-        struct NumberField
-        {
-            const char* key;
-            float* target;
-            bool pixels; // 像素量要跟随 720p 缩放；opacity 是系数不缩放
-        };
-        const NumberField numberFields[] = {
-            { "strokeWidth", &layer.strokeWidth, true },
-            { "radius", &layer.radius, true },
-            { "opacity", &layer.opacity, false },
-            { "fontSize", &layer.fontSize, true },
-            { "width", &layer.width, true },
-            { "height", &layer.height, true },
-            { "feather", &layer.feather, true },
-            { "spread", &layer.spread, true },
-        };
-        if (node.contains("cutout") && node["cutout"].is_boolean())
-            layer.cutout = node["cutout"].get<bool>();
-
-        for (const NumberField& field : numberFields)
-        {
-            if (!node.contains(field.key))
-                continue;
-            if (!resolveNumber(node[field.key], theme, *field.target, error, where + "." + field.key))
-                return nullptr;
-            if (field.pixels)
-                *field.target = scalePixels(*field.target);
-        }
-
-        if (node.contains("inset") && node["inset"].is_array() && node["inset"].size() == 4)
-            for (size_t k = 0; k < 4; k++)
-            {
-                if (!resolveNumber(node["inset"][k], theme, layer.inset[k], error,
-                        where + ".inset[" + std::to_string(k) + "]"))
-                    return nullptr;
-                layer.inset[k] = scalePixels(layer.inset[k]);
-            }
-
-        if (node.contains("offset") && node["offset"].is_array() && node["offset"].size() == 2)
-            for (size_t k = 0; k < 2; k++)
-            {
-                if (!resolveNumber(node["offset"][k], theme, layer.offset[k], error,
-                        where + ".offset[" + std::to_string(k) + "]"))
-                    return nullptr;
-                layer.offset[k] = scalePixels(layer.offset[k]);
-            }
-
-        // RECT 层的渐变（可选）。校验从严：停靠点数量 / 递增 / 越界都**报错**，不静默降级。
-        if (node.contains("gradient"))
-        {
-            const Json& gradientNode = node["gradient"];
-            const std::string gradientWhere = where + ".gradient";
-            if (!gradientNode.is_object())
-            {
-                error = gradientWhere + " 要写成对象：{ type, angle, center, stops }";
-                return nullptr;
-            }
-
-            Gradient parsed;
-            const std::string typeName
-                = gradientNode.value("type", std::string("linear"));
-            if (!gradientTypeFromName(typeName, parsed.type))
-            {
-                error = gradientWhere + ".type 只支持 linear / radial（当前：" + typeName + "）";
-                return nullptr;
-            }
-
-            // angle / center / at 都是**无量纲**，不跟随 720p 缩放
-            if (gradientNode.contains("angle")
-                && !resolveNumber(gradientNode["angle"], theme, parsed.angle, error,
-                    gradientWhere + ".angle"))
-                return nullptr;
-
-            if (gradientNode.contains("center"))
-            {
-                const Json& centerNode = gradientNode["center"];
-                if (!centerNode.is_array() || centerNode.size() != 2)
-                {
-                    error = gradientWhere + ".center 要写成 [x, y]（0..1 相对层矩形）";
-                    return nullptr;
-                }
-                for (size_t k = 0; k < 2; k++)
-                {
-                    float value = 0.0f;
-                    if (!resolveNumber(centerNode[k], theme, value, error,
-                            gradientWhere + ".center[" + std::to_string(k) + "]"))
-                        return nullptr;
-                    if (value < 0.0f || value > 1.0f)
-                    {
-                        error = gradientWhere + ".center[" + std::to_string(k)
-                            + "] 要在 0..1 之内（当前：" + std::to_string(value) + "）";
-                        return nullptr;
-                    }
-                    parsed.center[k] = value;
-                }
-            }
-
-            if (!gradientNode.contains("stops") || !gradientNode["stops"].is_array())
-            {
-                error = gradientWhere + ".stops 要写成数组：[{ \"at\": 0, \"color\": \"#RRGGBBAA\" }, ...]";
-                return nullptr;
-            }
-
-            const Json& stopsNode = gradientNode["stops"];
-            if (stopsNode.size() < 2 || (int)stopsNode.size() > kMaxGradientStops)
-            {
-                error = gradientWhere + ".stops 要 2~" + std::to_string(kMaxGradientStops)
-                    + " 个（当前 " + std::to_string(stopsNode.size()) + " 个）";
-                return nullptr;
-            }
-
-            float previousAt = -1.0f;
-            for (size_t i = 0; i < stopsNode.size(); i++)
-            {
-                const Json& stopNode  = stopsNode[i];
-                const std::string stopWhere
-                    = gradientWhere + ".stops[" + std::to_string(i) + "]";
-                if (!stopNode.is_object())
-                {
-                    error = stopWhere + " 要写成对象 { at, color }";
-                    return nullptr;
-                }
-
-                GradientStop stop;
-                if (stopNode.contains("at")
-                    && !resolveNumber(stopNode["at"], theme, stop.at, error, stopWhere + ".at"))
-                    return nullptr;
-                if (stop.at < 0.0f || stop.at > 1.0f)
-                {
-                    error = stopWhere + ".at 要在 0..1 之内（当前：" + std::to_string(stop.at) + "）";
-                    return nullptr;
-                }
-                if (stop.at <= previousAt)
-                {
-                    error = stopWhere + ".at 必须比上一个停靠点大（停在 "
-                        + std::to_string(previousAt) + "，这个是 " + std::to_string(stop.at) + "）";
-                    return nullptr;
-                }
-                previousAt = stop.at;
-
-                if (!stopNode.contains("color"))
-                {
-                    error = stopWhere + " 缺少 color";
-                    return nullptr;
-                }
-                if (!resolveColor(stopNode["color"], theme, stop.color, error, stopWhere + ".color"))
-                    return nullptr;
-
-                parsed.stops[i] = stop;
-            }
-            parsed.stopCount = (int)stopsNode.size();
-            layer.gradient   = parsed;
-        }
-
-        appearance->layers.push_back(layer);
-    }
-
-    // 玻璃层一律提到最前（见 hoistGlassLayers 的注释）
-    hoistGlassLayers(appearance->layers);
-
-    // ---- 盒模型/布局（顶层 "box" 段）----
-    if (doc.contains("box") && doc["box"].is_object())
-    {
-        const Json& boxNode = doc["box"];
-        AppearanceBox& box  = appearance->box;
-
-        // 长度值：数字=像素（按 720p 缩放）、"50%"=百分比、"auto"=由内容决定、
-        // "@theme/metric.a.b"=主题数值
-        auto readLength = [&](const Json& node, float& out, bool& percent, bool& autoFlag,
-                              const std::string& where) -> bool {
-            percent  = false;
-            autoFlag = false;
-            if (node.is_string())
-            {
-                const std::string text = node.get<std::string>();
-                if (text == "auto")
-                {
-                    autoFlag = true;
-                    return true;
-                }
-                if (!text.empty() && text.back() == '%')
-                {
-                    out      = std::strtof(text.c_str(), nullptr);
-                    percent  = true;
-                    return true;
-                }
-            }
-            if (!resolveNumber(node, theme, out, error, where))
-                return false;
-            out = scalePixels(out);
-            return true;
-        };
-
-        auto readEdges = [&](const Json& node, float* edges, const std::string& where) -> bool {
-            // 单值（数字或 "@theme/metric.x" 引用）：四边同值
-            if (node.is_number() || node.is_string())
-            {
-                float all = 0.0f;
-                if (!resolveNumber(node, theme, all, error, where))
-                    return false;
-                all = scalePixels(all);
-                for (int i = 0; i < 4; i++)
-                    edges[i] = all;
-                return true;
-            }
-            if (!node.is_array() || node.size() != 4)
-            {
-                error = where + " 要写成数字、@theme/ 引用或 [上, 右, 下, 左]";
-                return false;
-            }
-            for (size_t i = 0; i < 4; i++)
-            {
-                if (!resolveNumber(node[i], theme, edges[i], error,
-                        where + "[" + std::to_string(i) + "]"))
-                    return false;
-                edges[i] = scalePixels(edges[i]);
-            }
-            return true;
-        };
-
-        auto readNumber = [&](const char* key, float& out, bool& has, const std::string& where) {
-            if (!boxNode.contains(key))
-                return true;
-            if (!resolveNumber(boxNode[key], theme, out, error, where + "." + key))
-                return false;
-            out = scalePixels(out);
-            has = true;
-            return true;
-        };
-
-        const std::string where = "box";
-        if (boxNode.contains("width") && !readLength(boxNode["width"], box.width, box.widthPercent,
-                                          box.widthAuto, where + ".width"))
-            return nullptr;
-        box.hasWidth = boxNode.contains("width");
-
-        if (boxNode.contains("height") && !readLength(boxNode["height"], box.height, box.heightPercent,
-                                           box.heightAuto, where + ".height"))
-            return nullptr;
-        box.hasHeight = boxNode.contains("height");
-
-        if (!readNumber("minWidth", box.minWidth, box.hasMinWidth, where))
-            return nullptr;
-        if (!readNumber("minHeight", box.minHeight, box.hasMinHeight, where))
-            return nullptr;
-        if (!readNumber("gap", box.gap, box.hasGap, where))
-            return nullptr;
-        if (!readNumber("grow", box.grow, box.hasGrow, where))
-            return nullptr;
-        if (!readNumber("shrink", box.shrink, box.hasShrink, where))
-            return nullptr;
-        if (!readNumber("cornerRadius", box.cornerRadius, box.hasCornerRadius, where))
-            return nullptr;
-        if (!readNumber("borderThickness", box.borderThickness, box.hasBorderThickness, where))
-            return nullptr;
-
-        if (boxNode.contains("padding"))
-        {
-            if (!readEdges(boxNode["padding"], box.padding, where + ".padding"))
-                return nullptr;
-            box.hasPadding = true;
-        }
-        if (boxNode.contains("margin"))
-        {
-            if (!readEdges(boxNode["margin"], box.margin, where + ".margin"))
-                return nullptr;
-            box.hasMargin = true;
-        }
-        if (boxNode.contains("justifyContent") && boxNode["justifyContent"].is_string())
-        {
-            box.justify   = boxNode["justifyContent"].get<std::string>();
-            box.hasJustify = true;
-        }
-        if (boxNode.contains("alignItems") && boxNode["alignItems"].is_string())
-        {
-            box.align   = boxNode["alignItems"].get<std::string>();
-            box.hasAlign = true;
-        }
-        if (boxNode.contains("axis") && boxNode["axis"].is_string())
-        {
-            box.axis    = boxNode["axis"].get<std::string>();
-            box.hasAxis = true;
-        }
-        if (boxNode.contains("measureContent") && boxNode["measureContent"].is_string())
-        {
-            const std::string mode = boxNode["measureContent"].get<std::string>();
-            if (enumMatches(mode, "sum"))
-                box.measureSum = true;
-            else if (enumMatches(mode, "max"))
-                box.measureSum = false;
-            else
-                warnUnknownEnumValue("measureContent", mode, "max|sum");
-        }
-        if (boxNode.contains("backgroundColor"))
-        {
-            if (!resolveColor(boxNode["backgroundColor"], theme, box.background, error,
-                    where + ".backgroundColor"))
-                return nullptr;
-            box.hasBackground = true;
-        }
-        if (boxNode.contains("borderColor"))
-        {
-            if (!resolveColor(boxNode["borderColor"], theme, box.borderColor, error,
-                    where + ".borderColor"))
-                return nullptr;
-            box.hasBorderColor = true;
-        }
-    }
 
     // 状态
     if (!parseStates(doc, theme, *appearance, appearance->stateNames, appearance->states, error))
