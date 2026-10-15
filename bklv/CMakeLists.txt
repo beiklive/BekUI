@@ -376,6 +376,7 @@ set(BKLV_CORE_SOURCES
     widgets/account.cpp
     widgets/appearance_view.cpp
     widgets/appearance_children.cpp
+    widgets/layer_draw_rect.cpp
     widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp

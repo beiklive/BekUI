@@ -2,6 +2,7 @@
 
 #include "bklv/glass/glass_service.hpp"
 #include "bklv/widgets/appearance_children.hpp"
+#include "bklv/widgets/layer_draw.hpp"
 #include "bklv/compile/layer_registry.hpp"
 
 #include <algorithm>
@@ -432,6 +433,8 @@ void AppearanceView::layerRect(const AppearanceLayer& layer, float x, float y, f
 
 void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
+    layers::ensureLayerDrawsRegistered(); // 幂等
+
     if (width <= 0.0f || height <= 0.0f)
         return;
 
@@ -487,6 +490,17 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         {
             case AppearanceLayer::Op::RECT:
             {
+                // ③：内置层走注册表钩子（原地实现保留为兜底，全部搬完后再删）
+                if (const compile::LayerType* rectType = compile::findLayer("rect");
+                    rectType != nullptr && rectType->draw)
+                {
+                    rectType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this });
+                    break;
+                }
                 if (alphaScale <= 0.001f)
                     break;
                 if (layer.gradient.isValid())
