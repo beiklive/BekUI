@@ -69,6 +69,19 @@ int main()
         checkEqualInt((int)getTextureCount(), 0, "存活纹理数不变");
     }
 
+    std::printf("\n== 8. 淘汰：无后端时安全 no-op，边界不崩 ==\n");
+    {
+        trimTextureCache();                       // 预算 0 -> 直接返回
+        setTextureBudget(1);                      // 触发一次（缓存里本来就没东西）
+        trimTextureCache();
+        checkEqualInt((int)getTextureCount(), 0, "没有纹理可淘汰 -> 计数仍 0");
+        checkEqualInt((int)getTextureCacheCount(), 0, "路径缓存仍为空");
+        setTextureBudget((size_t)-1);
+        trimTextureCache();                       // 极大预算也不崩
+        check(!isTextureBudgetExceeded(), "极大预算 -> 不算超");
+        setTextureBudget(0);                      // 复原
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

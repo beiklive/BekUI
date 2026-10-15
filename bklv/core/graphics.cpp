@@ -116,9 +116,12 @@ void shutdownTextureStore()
     g_pathCache.clear();
 }
 
+void trimTextureCache(); // 前置声明（实现在下方）
+
 void setTextureBudget(size_t maxTextures)
 {
     g_textureBudget = maxTextures;
+    trimTextureCache(); // 预算变小后立刻收一次（预算 0 = 不限，直接返回）
     if (maxTextures > 0 && getTextureCount() > maxTextures)
         BKLV_LOG_WARNING("纹理数 %zu 已超过预算 %zu（本步只记账不淘汰，见 docs §11.4）",
             getTextureCount(), maxTextures);
@@ -173,6 +176,48 @@ size_t getTextureRefCount(size_t index)
     if (index >= g_textures.size() || !g_textures[index].alive)
         return 0;
     return g_textures[index].refCount;
+}
+
+void trimTextureCache()
+{
+    if (g_textureBudget == 0 || getTextureCount() <= g_textureBudget)
+        return; // 不限 / 未超预算：不遍历
+
+    while (getTextureCount() > g_textureBudget)
+    {
+        // 找最旧的、且没人在用的那张
+        size_t victim = (size_t)-1;
+        uint64_t oldest = 0;
+        for (size_t i = 0; i < g_textures.size(); ++i)
+        {
+            if (!g_textures[i].alive || g_textures[i].refCount > 0)
+                continue;
+            if (victim == (size_t)-1 || g_textures[i].lastUseTick < oldest)
+            {
+                victim = i;
+                oldest = g_textures[i].lastUseTick;
+            }
+        }
+        if (victim == (size_t)-1)
+            break; // 全都在用：停，不硬淘汰
+
+        if (g_backend != nullptr)
+            g_backend->destroyTexture(g_textures[victim].handle);
+        g_textures[victim].alive    = false;
+        g_textures[victim].refCount = 0;
+
+        // 同步清掉指向它的路径记录（否则下次命中会拿到已释放的下标）
+        for (auto it = g_pathCache.begin(); it != g_pathCache.end();)
+        {
+            if (it->second == (int)victim)
+            {
+                g_pathLastUse.erase(it->first);
+                it = g_pathCache.erase(it);
+            }
+            else
+                ++it;
+        }
+    }
 }
 
 const std::string& getLeastRecentlyUsedPath()

@@ -172,6 +172,8 @@ const std::string& getLeastRecentlyUsedPath();
 void retainTexture(size_t index);
 void releaseTexture(size_t index);
 size_t getTextureRefCount(size_t index);
+// 淘汰（2d）：只在超预算时做，候选 = refCount==0 的 LRU；淘汰时同步清路径缓存并释放 GPU 纹理。
+void trimTextureCache();
 
 // 当前编入的是哪个图形后端（编译期常量，用于日志）。
 const char* getGraphicsBackendName();
