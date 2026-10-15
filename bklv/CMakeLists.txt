@@ -350,6 +350,7 @@ set(BKLV_CORE_SOURCES
     core/appearance.cpp
     compile/json_util.cpp
     compile/layer_registry.cpp
+    compile/appearance_box.cpp
     compile/appearance_children.cpp
     core/audio.cpp
     core/platform.cpp

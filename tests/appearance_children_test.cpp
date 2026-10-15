@@ -111,6 +111,24 @@ int main()
         check(compileDoc(R"({ "box": {} })", error) == nullptr, "children 不是数组 -> 失败");
     }
 
+    std::printf("\n== 3b. children 的 box 现在是全套字段（复用主 box 解析器）==\n");
+    {
+        std::string error;
+        const auto appearance = compileDoc(R"([
+            { "box": { "axis": "row", "alignItems": "center", "gap": 6, "margin": 4, "justifyContent": "spaceBetween" } }
+        ])", error);
+        check(appearance != nullptr, "children 的 box 能写 axis/alignItems/margin/justifyContent");
+        if (appearance != nullptr && appearance->getChildren().size() == 1)
+        {
+            const AppearanceBox& box = appearance->getChildren()[0].box;
+            check(box.hasAxis && box.axis == "row", "axis 生效");
+            check(box.hasAlign && box.align == "center", "alignItems 生效");
+            check(box.hasJustify && box.justify == "spaceBetween", "justifyContent 生效");
+            check(box.hasMargin, "margin 带标记");
+            check(box.hasGap && box.gap == 6.0f, "gap 生效");
+        }
+    }
+
     std::printf("\n== 4b. 已知坑：children 写进 box 里不会生效（只告警）==\n");
     {
         // `box` 里只认 width/height/grow/shrink/gap/padding；这里写了 children 会被忽略，

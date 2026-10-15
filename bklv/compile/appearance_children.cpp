@@ -1,5 +1,6 @@
 #include "bklv/compile/appearance_children.hpp"
 
+#include "bklv/compile/appearance_box.hpp" // box 段解析（与外观主 box 段共用）
 #include "bklv/compile/json_util.hpp"
 
 #include "bklv/core/logger.hpp"
@@ -15,9 +16,6 @@ namespace
 
 // 视图 JSON 的深度上限是 32；控件组合嵌套不该那么深，这里更保守（§12.5 规则 5）
 constexpr int MAX_CHILD_DEPTH = 16;
-
-bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
-    std::string& error, const std::string& where);
 
 bool parseOneChild(const Json& node, const ThemeData& theme, AppearanceChild& out,
     std::string& error, const std::string& where, int depth)
@@ -63,7 +61,7 @@ bool parseOneChild(const Json& node, const ThemeData& theme, AppearanceChild& ou
         out.kind = AppearanceChild::Kind::BOX;
     }
 
-    if (hasBox && !parseChildBox(node["box"], theme, out.box, error, where + ".box"))
+    if (hasBox && !parseBoxNode(node["box"], theme, out.box, error, where + ".box"))
         return false;
 
     for (const char* slot : { "text", "icon", "info" })
@@ -103,73 +101,6 @@ bool parseOneChild(const Json& node, const ThemeData& theme, AppearanceChild& ou
         }
     }
 
-    return true;
-}
-
-// box 段：只认这几个键（写别的键告警，对齐既有约定；这里先只做"只覆盖写了的字段"）
-bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
-    std::string& error, const std::string& where)
-{
-    if (!node.is_object())
-    {
-        error = where + " 必须是对象";
-        return false;
-    }
-    // 注意：`AppearanceBox` 是靠 `hasXxx` 标记决定"套不套用"的（AGENTS ⑦b：没写的字段不该清掉
-    // 控件上的旧值）。所以这里**填值必须同时设标记**，否则 applyAppearanceBox 会把
-    // 没写的 width/height/padding 当成"写了 0"清零套用 ✗。
-    if (node.contains("width"))
-    {
-        if (!resolveNumber(node["width"], theme, out.width, error, where + ".width"))
-            return false;
-        out.hasWidth = true;
-    }
-    if (node.contains("height"))
-    {
-        if (!resolveNumber(node["height"], theme, out.height, error, where + ".height"))
-            return false;
-        out.hasHeight = true;
-    }
-    if (node.contains("grow"))
-    {
-        out.grow     = node["grow"].get<float>();
-        out.hasGrow  = true;
-    }
-    if (node.contains("shrink"))
-    {
-        out.shrink    = node["shrink"].get<float>();
-        out.hasShrink = true;
-    }
-    if (node.contains("gap"))
-    {
-        out.gap    = node["gap"].get<float>();
-        out.hasGap = true;
-    }
-    if (node.contains("padding"))
-    {
-        out.padding[0] = out.padding[1] = out.padding[2] = out.padding[3] = node["padding"].get<float>();
-        out.hasPadding = true;
-    }
-    // TODO(里程碑 2)：`axis` 以及 box 的其余键应当**复用现有 box 解析器**，
-    // 而不是在这里手搓一份（手搓就是这次重构要消灭的重复）。里程碑 1 先只支持最常用的几个。
-
-    // 未知键告警：写错位置（比如把 `children` 写进 box 里）时会静默失效，
-    // 那个坑写测试时踩过一次（`{ "box": { "children": [...] } }` 被忽略）。
-    static const char* const KNOWN[] = { "width", "height", "grow", "shrink", "gap", "padding" };
-    if (node.is_object())
-    {
-        for (auto it = node.begin(); it != node.end(); ++it)
-        {
-            const std::string& key = it.key();
-            bool known = false;
-            for (const char* candidate : KNOWN)
-                known = known || key == candidate;
-            if (!known)
-                BKLV_LOG_WARNING("%s：box 段里的键 \"%s\" 不认识（这里只认 width/height/grow/shrink/"
-                                 "gap/padding）；注意 `children` 要与 box 平级，写进 box 里不会生效",
-                    where.c_str(), key.c_str());
-        }
-    }
     return true;
 }
 
