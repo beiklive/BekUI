@@ -94,6 +94,7 @@ DemoApp::DemoApp()
     // 第三方扩展层：注册一次（不注册的话主题里写 stripe 会报错）
     registerStripeLayer();
     registerPokedexDataSource();
+    registerPokedexJsonBindings();
 
     this->applyContentInsets();
 

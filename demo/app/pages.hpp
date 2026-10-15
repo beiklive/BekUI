@@ -47,6 +47,9 @@ void registerStripeLayer();
 
 // 图鉴的数据源（JSON 里写 data: "@data/pokedex" 就能用）
 void registerPokedexDataSource();
+
+// JSON 列表用到的：扁平数据源 + item 绑定函数（名字注册）
+void registerPokedexJsonBindings();
 const PageDeps& getPageDeps();
 
 // 主题页要能切主题，需要 App 实例；main.cpp 在建 DemoApp 之前调用

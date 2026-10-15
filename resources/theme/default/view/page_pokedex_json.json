@@ -1,6 +1,6 @@
 {
   "type": "Recycler",
-  "data": "@data/pokedex",
+  "data": "@data/pokedex_flat",
   "itemAppearance": "base/tab_cell.sidebar",
   "itemBinder": "pokedexCell",
   "columns": 1,

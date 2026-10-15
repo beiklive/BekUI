@@ -5,6 +5,8 @@
 
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
+#include "bklv/widgets/appearance_view.hpp"
+#include "bklv/views/item_binder.hpp"
 #include "bklv/views/data_source.hpp"
 
 using namespace bklv;
@@ -320,17 +322,9 @@ Box* buildPokedexPage()
     // 数据源要活到列表销毁
     static DexSource source;
 
-    RecyclerFrame* list = new RecyclerFrame();
-    list->setWidthPercentage(100.0f);
-    list->setGrow(1.0f);
-    list->setItemHeight(getTheme().number("metric.pokedex.cellHeight", 72.0f));
-    list->setPreFetchLine(1);
-    list->setShowScrollingIndicator(true);
-    list->registerCell("starter", [] { return new DexCell(); });
-    list->registerCell("wild", [] { return new DexCell(); });
-    list->registerCell("section_header", [] { return new DexHeaderCell(); });
-    list->setSectionHeaderIdentifier("section_header");
-    list->setDataSource(&source);
+    // 列表整块交给 **JSON 描述**（容器类型 + 一份 item 模板 + 数据源名字 + 绑定函数名字）
+    // 注：图鉴原有的分段（starter/wild）与自定义绘制暂未进 JSON（见 docs/parse-refactor-review.md 13.1）
+    bklv::View* list = bklv::createViewFromTheme("page_pokedex_json");
 
     // 选中条目 → 下钻一层（B 返回：Shell 的 onBackRequested → popContentView）
     list->registerAction(ControllerButton::A, getStr("pokedex/open"), [](View* focused) {
@@ -367,6 +361,46 @@ void registerPokedexDataSource()
     if (!bklv::data::registerSource("pokedex",
             [] { return (bklv::RecyclerDataSource*)new DexSource(); }, error))
         BKLV_LOG_WARNING("pokedex 数据源注册失败：%s", error.c_str());
+}
+
+} // namespace demo
+
+namespace demo
+{
+
+namespace
+{
+
+// 单段版（图鉴原有的"starter / wild 分段"目前不在 Recycler 的 JSON 表达里，见 13.1 的记录）：
+// JSON 只描述容器与 item 组织方式，这里提供"第 N 项是谁"。
+class FlatDexSource : public bklv::RecyclerDataSource
+{
+  public:
+    size_t getItemCount() override { return starters().size(); }
+    float getItemHeight(size_t) override { return 70.0f; }
+};
+
+} // namespace
+
+// 注册 JSON 用得到的两样东西：数据源名字 + item 绑定函数名字
+void registerPokedexJsonBindings()
+{
+    std::string error;
+    if (!bklv::data::registerSource("pokedex_flat",
+            [] { return (bklv::RecyclerDataSource*)new FlatDexSource(); }, error))
+        BKLV_LOG_WARNING("pokedex_flat 数据源注册失败：%s", error.c_str());
+
+    if (!bklv::binding::registerItemBinder("pokedexCell",
+            [](bklv::View& item, size_t index) {
+                const std::vector<DexEntry>& list = starters();
+                if (index >= list.size())
+                    return;
+                // JSON 的 item 是用 itemAppearance 建的 -> 就是一个 AppearanceView
+                if (auto* view = static_cast<bklv::AppearanceView*>(&item))
+                    view->setText(list[index].name);
+            },
+            error))
+        BKLV_LOG_WARNING("pokedexCell 绑定函数注册失败：%s", error.c_str());
 }
 
 } // namespace demo
