@@ -114,6 +114,13 @@ class AppearanceView : public Box
     void enableContentMeasurement();
 
     const AppearanceInstance& getAppearanceInstance() const { return this->appearance; }
+    // 视图过渡的取用点（注意：上面那个 const 版是另一件事，别混）
+    AppearanceInstance* getTransitionAppearanceInstance() override { return &this->appearance; }
+    const Appearance* getTransitionAppearance() const override
+    {
+        // 没绑定时 getAppearance() 给一份空外观（hasTransitions() 为 false），所以直接给地址
+        return &this->appearance.getAppearance();
+    }
     const std::string& getAppearanceName() const { return this->appearanceName; }
 
   public:

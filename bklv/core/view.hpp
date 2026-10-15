@@ -250,7 +250,9 @@ class View
 
     // 视图过渡（transitions）的取用点：有外观的视图返回自己的外观/实例，基类返回 nullptr
     //（前向声明，避免 core 头文件互相包含）。
-    virtual AppearanceInstance* getAppearanceInstance() { return nullptr; }
+    // 注意名字：AppearanceView 另有一个 const 版 getAppearanceInstance()（返回引用，Dialog 在用），
+    // 同名会把基类这个虚函数隐藏掉并触发 -Woverloaded-virtual，所以这里带 transition 前缀
+    virtual AppearanceInstance* getTransitionAppearanceInstance() { return nullptr; }
     virtual const Appearance* getTransitionAppearance() const { return nullptr; }
 
     // ---- 手势（指针事件由 InputManager 派发过来）----
