@@ -544,3 +544,29 @@ parse / draw 全在 `compile/layer_registry.cpp` ✓ —— 也就是说 §2 想
 
 三条都落在 `compile/` 下（`layers/` 这个目录**不建了** —— 因为没有"每种 op 一个文件"这回事），
 并把 §7 表格里 ①c-3 的措辞改成"按关注点拆字段解析；op 的个性留在注册表"。
+
+### 12.13 ①c-3 第三刀（parseLayerMeta）的侦察与正确切法
+
+`parseLayers` 现在 **91 行**（目标 ≤80，差 11 行）。剩下的主体是**单个图层的元信息解析**
+（`appearance.cpp` 509-572，64 行，括号 5:5 配平）。
+
+**它不能像前两刀那样直接整块搬** ✗：这段引用了循环内的局部量
+`i` / `opName` / `opOk` / `layerType` / `idPrefix` / `where` / `layers`。
+其中 `opName` / `opOk` / `layerType` / `idPrefix` 都是**在段内自己算出来的** ✓（从前面的结构图看：
+`parseOp` 取 op、`opOk` 判成败、`findLayer` 查注册表、`idPrefix` 取默认前缀）——
+真正必须外部传入的只有 **`i`**（默认 id 的后缀 `rect0/rect1` 要用）和 `layers`。
+
+**正确切法（下一轮一次做完）**
+
+```cpp
+bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
+    AppearanceLayer& layer, std::string& error);
+```
+1. 段内自己算 `opName` / `opOk` / `layerType` / `idPrefix`（都在 509-572 的范围内）
+2. 只有 `index` 从调用方传（后面拼默认 id）
+3. `layers` 的引用先确认是"往里 push"还是"读 size"：若是 push，就留在 `parseLayers` 里
+   （push 是循环的职责，不属于"解析一层"）
+4. 完成 `parseLayers` ≤80 行后，②就算收口，进 ④（view/theme 解析搬进 `compile/`）
+
+**做法**：仍然"先自检边界（括号配平 + 引用清单）-> 再落盘 -> 构建失败自动回滚"，
+这套在这一轮已经拦下过三次错误切片。
