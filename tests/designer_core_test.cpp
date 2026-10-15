@@ -7,6 +7,7 @@
 // dist/designer_test_work/ 下，不落到仓库树里。
 
 #include <algorithm>
+#include "tests/test_contrib.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -77,6 +78,8 @@ std::string makeTheme(const std::string& root, const std::string& name)
 
 int main()
 {
+    test_contrib::registerStripe(); // 整主题校验前先注册样例扩展 op
+
     bklv::initResources();
     bklv::registerWidgetViewTypes(); // 不建 App 的场合要自己注册（App::App() 会自动注册）
 

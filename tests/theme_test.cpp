@@ -11,6 +11,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "tests/test_contrib.hpp"
+#include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -33,8 +35,11 @@ static void writeFile(const std::string& relativePath, const std::string& conten
     out << content;
 }
 
+
 int main()
 {
+    test_contrib::registerStripe(); // 主题里用扩展 op 的前提（共享测试头）
+
     // 资源按可执行文件目录解析：从哪个目录跑都一致，fixture 也落在 dist/
     bklv::initResources();
 

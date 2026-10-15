@@ -89,7 +89,8 @@
     "anim_alpha": "alpha - fade in",
     "anim_after": "layer + when: after - the title surfaces only after the card lands (offsetY + opacity)",
     "anim_default": "Nothing written - the default fade",
-    "card_text": "Sample content"
+    "card_text": "Sample content",
+    "extension_row": "Extension layer: the op is registered by a third party (see demo/contrib/stripe_layer.cpp); the theme just writes it"
   },
   "theme": {
     "hint": "Appearance comes from resources/theme/<name>/widgets/*.json: draw structure (background/border/text) and state animation (tweeny interpolation) all live in JSON. Copy default, rename, edit JSON - that is a new skin.",

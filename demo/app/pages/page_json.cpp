@@ -208,6 +208,13 @@ Box* buildJsonPage()
 { "import": "base/json_demo" })",
         makeDemoCard(kDemoAppearance)));
 
+    // 第三方扩展层：`op` 是 demo/contrib/stripe_layer.cpp 注册的（bklv/ 里没有这个类型），
+    // 主题里直接写就行 —— 这条是"可扩展性"的实物：加层不用改库，也不用改这一页。
+    page->addView(makeSplitRow("json/extension_row",
+        R"({ "op": "stripe", "angle": 45, "width": 3, "gap": 16,
+  "fill": "@theme/color.accent.base" })",
+        makeDemoCard("base/stripe_demo")));
+
     // ---- ③ 动画逐个演示 ----
     page->addView(makeStepHeader("json/anim_title"));
     page->addView(makeHint(getStr("json/anim_hint")));
