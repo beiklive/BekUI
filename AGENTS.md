@@ -316,8 +316,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   **行为写进绑定函数，不要 `static_cast` 回某个 cell 具体类**（那会在 JSON 建的 item 上是 UB）。
   属性表/模板实例化都在 widgets 桥接层；`views/recycler.*` 只管纯数据源接口与布局能力
   （`setColumns` / `visualTopOf`）。JSON 属性清单与踩过的坑见 `docs/json-syntax.md` 的
-  「Recycler」一节；增量追加/预加载/缓存销毁的设计见 `docs/list-incremental-loading-design.md`。段头 cell 继承 `RecyclerSectionHeader`，
-  标题通过虚函数 `onSectionTitle` 下发（Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
+  「Recycler」一节；增量追加/预加载/缓存销毁的设计见 `docs/list-incremental-loading-design.md`。
+  段头 cell 继承 `RecyclerSectionHeader`，标题通过虚函数 `onSectionTitle` 下发
+  （Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
+  增量加载的旋钮（`RecyclerLoadConfig` → JSON 键 `pageSize` / `loadThreshold` /
+  `maxPerIdentifier` / `estimatedItemHeight` / `preFetchLine`）都有安全默认值，
+  **不写也能跑**；数值一律夹到 >= 0。
 - **枚举值大小写与 `_`/`-` 都不敏感**（`enumMatches`，两套 JSON 一致）：
   `flexEnd` == `flex_end` == `FLEX_END`。视图描述 JSON 里拼错 → 不建控件 + 报错（列出可选值）；
   外观 JSON 里拼错 → 警告 + **保持原值不动**（`justifyFromName` 这类返回 bool，别退回默认值）。

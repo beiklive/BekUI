@@ -102,3 +102,34 @@ virtual void   onWindowReleased(size_t from, size_t to) { }          // 库告�
   `setSectionIndex` 时重套（已有）；异步回调按 AGENTS 的 `AliveFlag` 加护栏
 - `rows[]` 与**绝对下标**绑定：这是 v1 不做"元数据裁前缀"的原因（§7）
 - 别把分页/缓存策略塞进库：库只提供**信号**（hasMore / onWindowReleased / 估算高度）
+
+## 11. 落地进度（实施记录）
+
+| 刀 | 内容 | 状态 | 测试 |
+|---|---|---|---|
+| 1 | 数据源扩展接口（hasMore/getLoadedCount/requestMore/setLoadListener）+ `RecyclerLoadConfig`（5 个旋钮，安全默认值）| ✅ 完成（`77d4ca7`）| 21 项 |
+| 2 | `rows` 增量追加（`notifyItemsAppended`）—— **实测取高度次数 = 1000**（全量重建是 1 万+）| ✅ 完成（`d37c3c3`）| 7 项 |
+| 3 | cell 池**可配置上限**，超出**真正销毁**（`shouldPoolCell` 纯函数）| ✅ 完成（`ffbb5da`）| 12 项 |
+| 4a | **加载触发**：滚到末尾附近要下一页 + **单飞去抖** + 数据到达走增量追加 | ✅ 完成（`c6e43a2`）| 12 项 |
+| 4b | 未知区域**高度估算** `getEstimatedScrollHeight()`（可配置、不虚报）| ✅ 完成（`eec07c1`）| 10 项 |
+| 4c | `pendingFocusIndex`：焦点进未加载区 -> 先加载 -> 数据到了交给调用方滚 | ✅ 完成（`4e69c81`）| 13 项 |
+| 5a | 旋钮接成 **JSON 属性**（pageSize/loadThreshold/maxPoolPerIdentifier/estimatedItemHeight；负值夹 0）| ✅ 完成（`fdac783`）| 30 项 |
+| 4d | 估算**接进滚动条长度** + 数据到达时**锚定首行不跳动** | ⏳ 待做（要碰 `ScrollingFrame`，风险较高，带测试做）| — |
+| 5b | 图鉴页切"分段 + 分页加载更多" + **截图验收** | ⏳ 待做 | — |
+| 3.5 | **图片资源**：共享纹理缓存（引用计数 + 预算 + LRU）/ 请求代际 token / 背压（并发上限 + 每帧上传配额）| ⏳ 待做（建议与第 3 刀共用一套预算与淘汰逻辑）| — |
+
+### 11.1 关于"图片资源"的补充设计（3.5 刀）
+
+列表项的数据与**图片资源**是两类生命周期，不能一套糊过去：
+
+- **加载的所有权不能挂在 cell 上** —— 挂在 cell 上，cell 被回收/销毁就会取消或丢结果，
+  滚动一快就"图一直加载不出来/一直闪"。正确做法是挂在**资源缓存**上，cell 只借用 `TextureRef`，
+  销毁 cell 不影响加载，加载完的图还能被别的 cell 复用。
+- **现状**：`Image::setImageFromFileAsync` 已经有 `AliveFlag` 护栏（视图先销毁、回调后到是安全的，
+  有测试覆盖）；**没有**的是 ① 共享纹理缓存（同一张图多个 cell 各存一份）② 同一个 `Image`
+  被复用时的**代际保护**（旧结果可能写进新内容 —— ⚠️ 这一点是设计推断，**尚未实测**，要用测试确认）
+  ③ 并发上限 / 优先级 / 每帧上传配额（一次滚出 20 个新 cell 就是 20 次解码 + 20 次上传）。
+- **策略**：key = 资源路径 + 尺寸，引用计数 + 预算 + LRU；每个 `Image` 自增 **token**，回调比对；
+  只在"可见 + prefetchLines"范围发起；队列按离视口距离排序；主线程**每帧最多上传 N 张**。
+- **配置**（与加载旋钮同风格，全部有安全默认值）：`decodeConcurrency` / `maxUploadsPerFrame` /
+  `textureBudgetMB` / `poolLimitPerIdentifier`。
