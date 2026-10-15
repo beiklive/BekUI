@@ -1,6 +1,7 @@
 #include "bklv/widgets/appearance_view.hpp"
 
 #include "bklv/glass/glass_service.hpp"
+#include "bklv/compile/layer_registry.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -621,8 +622,26 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             }
 
             case AppearanceLayer::Op::EXTENSION:
-                // 注册表里注册的扩展 op：绘制钩子由 ③ 接上（这一步先只保证值能解析、枚举穷尽）
+            {
+                // 扩展 op：绘制交给**注册表里的 draw 钩子**（第三方注册时提供）。
+                // 引擎这里不写任何 `if (op == ...)`，所以别人加新层级不用改这个文件。
+                const compile::LayerType* type = compile::findLayer(layer.extensionType);
+                if (type == nullptr || !type->draw)
+                    break;
+                if (alphaScale <= 0.001f)
+                    break;
+
+                compile::LayerRect hookRect;
+                hookRect.minX   = rect[0];
+                hookRect.minY   = rect[1];
+                hookRect.maxX   = rect[2];
+                hookRect.maxY   = rect[3];
+                hookRect.radius = this->appearance.getNumber(index, AppearanceProp::RADIUS);
+                hookRect.alpha  = alphaScale;
+
+                type->draw(layer, drawList, hookRect);
                 break;
+            }
 
             case AppearanceLayer::Op::CUSTOM:
                 this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
