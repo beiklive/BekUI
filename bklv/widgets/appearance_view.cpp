@@ -448,10 +448,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         const AppearanceLayer& layer = layers[i];
         const int index              = (int)i;
 
-        const ImU32 fill        = this->appearance.getColor(index, AppearanceProp::FILL);
-        const ImU32 stroke      = this->appearance.getColor(index, AppearanceProp::STROKE);
-        const ImU32 textColor   = this->appearance.getColor(index, AppearanceProp::TEXT_COLOR);
-        const float strokeWidth = this->appearance.getNumber(index, AppearanceProp::STROKE_WIDTH);
         // 圆角优先级：**代码显式设的 > 外观里的 > 控件自己的（0 时才用）
         // 以前只读外观，代码里的 setCornerRadius(60) 完全不生效
         // （想画圆形头像，画出来是圆角方块 —— 实测踩过）。
@@ -459,7 +455,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         if (this->isCornerRadiusExplicit() || radius <= 0.0f)
             radius = this->getCornerRadius();
         const float opacity     = this->appearance.getNumber(index, AppearanceProp::OPACITY);
-        const float fontSize    = this->appearance.getNumber(index, AppearanceProp::FONT_SIZE);
 
         float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         this->layerRect(layer, x, y, width, height, rect);
@@ -480,11 +475,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
         // 逐层透明度：和控件自身的 alpha 相乘
         const float alphaScale = std::max(0.0f, std::min(1.0f, opacity)) * this->getAlpha();
-        auto scaleAlpha        = [alphaScale](ImU32 color) {
-            const unsigned int a = (color >> 24) & 0xFF;
-            const unsigned int scaled = (unsigned int)std::round((float)a * alphaScale);
-            return (color & 0x00FFFFFFu) | ((scaled & 0xFFu) << 24);
-        };
 
         switch (layer.op)
         {
@@ -501,23 +491,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
-                if (alphaScale <= 0.001f)
-                    break;
-                if (layer.gradient.isValid())
-                {
-                    // 渐变优先于单色 fill（fill 继续服务状态覆盖：状态里写 fill 的层不带渐变）
-                    addGradientRectMesh(drawList, layer.gradient, ImVec2(rect[0], rect[1]),
-                        ImVec2(rect[2], rect[3]), radius, alphaScale);
-                }
-                else if ((fill >> 24) != 0)
-                {
-                    drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
-                        scaleAlpha(fill), radius);
-                }
-                if (strokeWidth > 0.0f && (stroke >> 24) != 0)
-                    drawList->AddRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
-                        scaleAlpha(stroke), radius, 0, strokeWidth);
-                break;
             }
 
             case AppearanceLayer::Op::GLASS:
@@ -533,60 +506,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
-                // 外观层声明"这块要玻璃"。玻璃画在这一层的位置上，后面的内容层自然压在它上面
-                //（所以 glass 层必须排在内容层之前）。
-                // 能被外观覆盖的只有样式：fill(染色) / opacity / radius；
-                // blurRadius、quality 与总开关只由 Shell 决定（两条后端的背景模糊是整帧共用一份）。
-                glass::GlassService& service = glass::getGlassService();
-                if (alphaScale <= 0.001f)
-                    break;
-
-                // 玻璃不可用（后端没起来 / 关掉了）：退化成半透明底。
-                // 不能什么都不画 —— 玻璃变体把底色覆盖成了透明，那样控件在真机上会整个消失
-                // （Switch 上踩过：玻璃没生效时控件完全透明）。
-                // 玻璃的边缘高光：层里写了 stroke/strokeWidth 就沿内缘描一圈。
-                // 这是"玻璃"最有效的一笔（borealis 的面板也靠 1px 内描边立起来）；
-                // 半径用的是控件自己的 radius，所以圆角不会错位。
-                const ImU32 rimColor     = layer.stroke;
-                const float rimThickness = layer.strokeWidth;
-                const float rimInset     = rimThickness * 0.5f;
-
-                if (!service.isEnabled() || !service.isSupported())
-                {
-                    if ((fill >> 24) != 0)
-                        drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
-                            scaleAlpha(fill), radius);
-                    if ((rimColor >> 24) != 0 && rimThickness > 0.0f)
-                        drawList->AddRect(ImVec2(rect[0] + rimInset, rect[1] + rimInset),
-                            ImVec2(rect[2] - rimInset, rect[3] - rimInset), scaleAlpha(rimColor),
-                            radius, 0, rimThickness);
-                    break;
-                }
-
-                const ImVec2 fbScale = ImGui::GetIO().DisplayFramebufferScale;
-                const float density  = fbScale.x > 0.0f ? fbScale.x : 1.0f;
-
-                glass::GlassLayerOptions options;
-                options.opacity = alphaScale;
-                if ((fill >> 24) != 0)
-                {
-                    const ImVec4 tint = ImGui::ColorConvertU32ToFloat4(fill);
-                    options.hasTint   = true;
-                    options.tint      = ImVec4(tint.x, tint.y, tint.z, tint.w * alphaScale);
-                }
-
-                service.submitBackdrop(drawList,
-                    ImVec4(rect[0] * density, rect[1] * density, rect[2] * density,
-                        rect[3] * density),
-                    glass::CornerRadii::all(radius), glass::GlassShapeKind::ROUNDED_RECT, density,
-                    &options);
-
-                // 高光画在玻璃之后（submitBackdrop 会切一条新命令，所以这圈描边压在玻璃上面）
-                if ((rimColor >> 24) != 0 && rimThickness > 0.0f)
-                    drawList->AddRect(ImVec2(rect[0] + rimInset, rect[1] + rimInset),
-                        ImVec2(rect[2] - rimInset, rect[3] - rimInset), scaleAlpha(rimColor),
-                        radius, 0, rimThickness);
-                break;
             }
 
             case AppearanceLayer::Op::SHADOW:
@@ -602,20 +521,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
-                if (alphaScale <= 0.001f || (fill >> 24) == 0)
-                    break;
-
-                // 阴影形状 = 层矩形（inset/width/height/align 都按层语法来），再按 offset 平移；
-                // 这几个值都从 AppearanceInstance 取，所以状态动效（offsetY / feather / spread）算数
-                const float feather = this->appearance.getNumber(index, AppearanceProp::FEATHER);
-                const float spread  = this->appearance.getNumber(index, AppearanceProp::SPREAD);
-                const float offsetX = this->appearance.getNumber(index, AppearanceProp::OFFSET_X);
-                const float offsetY = this->appearance.getNumber(index, AppearanceProp::OFFSET_Y);
-
-                shadow::drawSoft(drawList, rect[0] + offsetX, rect[1] + offsetY,
-                    rect[2] + offsetX, rect[3] + offsetY, radius, fill, alphaScale, feather,
-                    spread, layer.cutout);
-                break;
             }
 
             case AppearanceLayer::Op::TEXT:
@@ -633,28 +538,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this, &textContent, layerFont, nullptr, nullptr });
                     break;
                 }
-                ImFont* font = this->getLayerFont(layer);
-                const std::string content = this->getLayerText(layer.source);
-                if (content.empty() || font == nullptr || alphaScale <= 0.001f)
-                    break;
-
-                const float size = fontSize > 0.0f ? fontSize : 15.0f;
-                const ImVec2 textSize = font->CalcTextSizeA(size, FLT_MAX, 0.0f, content.c_str());
-
-                float textX = rect[0];
-                if (enumMatches(layer.align, "center"))
-                    textX = rect[0] + ((rect[2] - rect[0]) - textSize.x) * 0.5f;
-                else if (enumMatches(layer.align, "right"))
-                    textX = rect[2] - textSize.x;
-
-                float textY = rect[1];
-                if (enumMatches(layer.valign, "center"))
-                    textY = rect[1] + ((rect[3] - rect[1]) - textSize.y) * 0.5f;
-                else if (enumMatches(layer.valign, "bottom"))
-                    textY = rect[3] - textSize.y;
-
-                drawList->AddText(font, size, ImVec2(textX, textY), scaleAlpha(textColor), content.c_str());
-                break;
             }
 
             case AppearanceLayer::Op::IMAGE:
@@ -672,20 +555,6 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         layerImage.isValid() ? (void*)layerImage.texture : nullptr, nullptr });
                     break;
                 }
-                const TextureRef texture = this->getLayerImage(layer.source);
-                if (!texture.isValid() || alphaScale <= 0.001f)
-                    break;
-
-                const ImVec2 min(rect[0], rect[1]);
-                const ImVec2 max(rect[2], rect[3]);
-                const ImU32 tint = scaleAlpha(IM_COL32(255, 255, 255, 255));
-
-                if (radius > 0.0f)
-                    drawList->AddImageRounded(texture.texture, min, max, ImVec2(0, 0), ImVec2(1, 1), tint,
-                        radius);
-                else
-                    drawList->AddImage(texture.texture, min, max, ImVec2(0, 0), ImVec2(1, 1), tint);
-                break;
             }
 
             case AppearanceLayer::Op::EXTENSION:
