@@ -91,6 +91,34 @@ void RecyclerItemCell::setSectionIndex(size_t sectionValue, size_t indexValue)
 
 void RecyclerItemCell::prepareForReuse() { }
 
+// ---------------- RecyclerHeaderCell ----------------
+
+RecyclerHeaderCell::RecyclerHeaderCell()
+    : RecyclerSectionHeader()
+{
+}
+
+RecyclerHeaderCell::~RecyclerHeaderCell() = default;
+
+void RecyclerHeaderCell::setAppearanceName(const std::string& name)
+{
+    if (this->content == nullptr)
+    {
+        this->content = new AppearanceView(name.empty() ? "base/section" : name, false);
+        this->content->setWidthPercentage(100.0f);
+        this->content->setHeightPercentage(100.0f);
+        this->addView((View*)this->content);
+    }
+    else if (!name.empty())
+        this->content->setAppearanceName(name);
+}
+
+void RecyclerHeaderCell::onSectionTitle(size_t, const std::string& title)
+{
+    if (this->content != nullptr)
+        this->content->setText(title); // 段标题由数据源给，这里套进段头模板
+}
+
 // ---------------- RecyclerView ----------------
 
 RecyclerView::RecyclerView()
@@ -139,6 +167,22 @@ void RecyclerView::setMinItemWidth(float width) { this->minItemWidth = width; }
 void RecyclerView::setSlotLoading(const std::string& name) { this->slotLoading = name; }
 void RecyclerView::setSlotEmpty(const std::string& name) { this->slotEmpty = name; }
 void RecyclerView::setOnEndName(const std::string& name) { this->onEndName = name; }
+
+void RecyclerView::setSectionHeaderAppearance(const std::string& name)
+{
+    this->sectionHeaderAppearance = name;
+    if (name.empty())
+        return;
+
+    // 段头：注册一个 identifier + 告诉回收器段头用哪个 identifier
+    const std::string appearance = name;
+    this->registerCell("section_header", [appearance] {
+        RecyclerHeaderCell* header = new RecyclerHeaderCell();
+        header->setAppearanceName(appearance);
+        return header;
+    });
+    this->setSectionHeaderIdentifier("section_header");
+}
 
 void RecyclerView::setItemBinderName(const std::string& name)
 {
@@ -193,6 +237,9 @@ const AttributeTable& RecyclerView::attributes() const
          }, nullptr },
         { "itemBinder", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setItemBinderName(r.text);
+         }, nullptr },
+        { "sectionHeaderAppearance", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setSectionHeaderAppearance(r.text);
          }, nullptr },
         { "itemHeight", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerFrame*>(v)->setItemHeight(r.number);

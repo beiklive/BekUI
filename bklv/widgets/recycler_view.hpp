@@ -54,6 +54,19 @@ class RecyclerItemCell : public RecyclerCell
     std::function<void(View&, size_t)> binder;
 };
 
+// 段头的载体：RecyclerSectionHeader 也是 Box 派生，外观同样要靠 AppearanceView 画
+class RecyclerHeaderCell : public RecyclerSectionHeader
+{
+  public:
+    RecyclerHeaderCell();
+    ~RecyclerHeaderCell() override;
+    void setAppearanceName(const std::string& name);
+    void onSectionTitle(size_t section, const std::string& title) override;
+
+  private:
+    AppearanceView* content = nullptr;
+};
+
 class RecyclerView : public RecyclerFrame
 {
   public:
@@ -71,6 +84,9 @@ class RecyclerView : public RecyclerFrame
     void setSlotEmpty(const std::string& name);      // "slotEmpty"
     void setOnEndName(const std::string& name);      // "onEnd": 只存名字（行为在 ② 接）
     void setItemBinderName(const std::string& name); // "itemBinder": 只写名字
+    // "sectionHeaderAppearance": 段头模板（一份外观）。数据源提供"有几段/段标题"，
+    // JSON 只描述段头长什么样。
+    void setSectionHeaderAppearance(const std::string& name);
 
     int getColumns() const { return this->columns; }
     float getMinItemWidth() const { return this->minItemWidth; }
@@ -92,6 +108,7 @@ class RecyclerView : public RecyclerFrame
     std::string slotEmpty;
     std::string onEndName;
     std::string itemBinderName;
+    std::string sectionHeaderAppearance;
     int columns = 1;
     float minItemWidth = 0.0f;
 };
