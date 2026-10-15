@@ -15,6 +15,7 @@
 
 #include "bklv/core/logger.hpp"
 #include "bklv/compile/json_util.hpp"
+#include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/ui_scale.hpp"
 
@@ -512,11 +513,14 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
                 return false;
             }
 
-            const char* defaultId = layer.op == AppearanceLayer::Op::RECT      ? "rect"
-                                    : layer.op == AppearanceLayer::Op::TEXT    ? "text"
-                                    : layer.op == AppearanceLayer::Op::IMAGE   ? "image"
-                                                                               : "custom";
-            layer.id     = node.value("id", std::string(defaultId) + std::to_string(i));
+            // 默认 id 的前缀从**注册表**取（单一事实来源）。
+            // 以前这里是一张三元的映射表，只认 rect/text/image —— shadow/glass 会落到 custom 分支，
+            // 被叫成 custom0 / custom1（tests/layer_parse_test.cpp 里把这个 quirk 钉成了基线，
+            // 现在按注册表修掉）。
+            // （opName 是上面已经取好的 op 字符串）
+            const compile::LayerType* layerType = compile::findLayer(opName);
+            const std::string idPrefix = layerType != nullptr ? layerType->idPrefix : opName;
+            layer.id     = node.value("id", idPrefix + std::to_string(i));
             layer.source = node.value("source", "");
             layer.align  = node.value("align", "left");
             layer.valign = node.value("valign", "center");

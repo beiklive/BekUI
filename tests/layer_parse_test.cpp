@@ -134,7 +134,7 @@ int main()
         }
     }
 
-    std::printf("\n== 2b. 已知 quirk：shadow / glass 没写 id 时会被叫成 custom<N> ==\n");
+    std::printf("\n== 2b. shadow / glass 的默认 id 也走注册表（此前是 quirk：叫 custom<N>）==\n");
     {
         std::string error;
         const auto appearance = compileLayers(R"({ "op": "shadow", "fill": "#00000040" },
@@ -142,11 +142,12 @@ int main()
         check(appearance != nullptr, "shadow/glass 不写 id 也能编译");
         if (appearance != nullptr)
         {
-            // 这张默认 id 映射表只有 rect/text/image，shadow/glass 落到 "custom" 分支。
-            // 重构（①c 注册表）会让每种 op 自带默认 id 前缀，这个 quirk 会一并修掉 ——
-            // 现在先把它**钉成基线**，修的时候就能看到行为变化是有意的。
-            check(appearance->indexOfLayer("custom0") >= 0, "shadow 的默认 id 现在是 custom0（待修）");
-            check(appearance->indexOfLayer("custom1") >= 0, "glass 的默认 id 现在是 custom1（待修）");
+            // ①c-2 起：默认 id 前缀来自注册表，所以 shadow/glass 不再落到 custom。
+            // 这是一次**有意的行为变化**（此前是 quirk：两者都叫 custom<N>），基线先钉住旧行为、
+            // 修完再翻断言 —— 变化显式可见。
+            check(appearance->indexOfLayer("shadow0") >= 0, "shadow 的默认 id 是 shadow0");
+            check(appearance->indexOfLayer("glass1") >= 0, "glass 的默认 id 是 glass1");
+            check(appearance->indexOfLayer("custom0") < 0, "不再落到 custom（quirk 已修）");
         }
     }
 
