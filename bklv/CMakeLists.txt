@@ -351,6 +351,7 @@ set(BKLV_CORE_SOURCES
     compile/json_util.cpp
     compile/layer_registry.cpp
     compile/appearance_box.cpp
+    compile/appearance_gradient.cpp
     compile/appearance_children.cpp
     core/audio.cpp
     core/platform.cpp
