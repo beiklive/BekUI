@@ -23,7 +23,8 @@
     "pokedex": "Pokédex",
     "shadow": "Shadow",
     "icons": "Icons",
-    "base": "Base widgets"
+    "base": "Base widgets",
+    "shell": "Shell"
   },
   "demo": {
     "$comment": "the three demo/* keys below are formatting fixtures for tests/i18n_test.cpp",
@@ -155,7 +156,8 @@
     "pokedex_sub": "Sectioned recycler + detail navigation",
     "shadow_sub": "shadow layers and blur quality",
     "icons_sub": "All glyphs of both icon fonts: 10 per row, code below",
-    "base_sub": "Containers & button variants"
+    "base_sub": "Containers & button variants",
+    "shell_sub": "Header / footer / log window switches"
   },
   "text": {
     "hint": "Font sizes and colors come from the theme: they follow skin switches and window size (sizes are authored for 720p).",
@@ -356,5 +358,18 @@
     "list_hint": "The list-element flavour of the plain button: widget/button.list drops the border (transparent bg.stroke + strokeWidth 0) and left-aligns the text; size, padding and states stay the same as the plain button.",
     "state_glass": "Glass",
     "box_gradient": "Gradient fill (same rect layer, gradient instead of a solid)"
+  },
+  "shell": {
+    "intro": "These three switches drive shell-level state (header / footer / log window). They used to sit above every page; now they live here.",
+    "section_bars": "Shell bars",
+    "bars_hint": "Hidden means GONE - it takes no space and content expands.",
+    "section_debug": "Debug",
+    "debug_hint": "The log window is a real view (no view per line) and never takes focus.",
+    "header": "Header",
+    "footer": "Footer",
+    "log": "Log window",
+    "on": "Now: shown",
+    "off": "Now: hidden",
+    "toggle": "Toggle"
   }
 }

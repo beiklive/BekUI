@@ -69,34 +69,6 @@ DemoApp::DemoApp()
     right->setShrink(1.0f);
     right->setHeight(AUTO); // 交叉轴 stretch 会让它填满 body
 
-    // 右上角：日志开关 + 全局页头/底栏显隐（这两样是外壳级的，所有页面共用）
-    Box* topRow = makeRow(getTheme().number("metric.spacing.sm", 8.0f), AlignItems::CENTER);
-    topRow->setJustifyContent(JustifyContent::FLEX_END);
-
-    Button* headerButton = new Button(getStr("app/hide_header"));
-    headerButton->setOnClick([this, headerButton] {
-        const bool next = !this->isHeaderVisible();
-        this->setHeaderVisible(next);
-        headerButton->setText(next ? getStr("app/hide_header") : getStr("app/show_header"));
-    });
-    topRow->addView(headerButton);
-
-    Button* footerButton = new Button(getStr("app/hide_footer"));
-    footerButton->setOnClick([this, footerButton] {
-        const bool next = !this->isFooterVisible();
-        this->setFooterVisible(next);
-        footerButton->setText(next ? getStr("app/hide_footer") : getStr("app/show_footer"));
-    });
-    topRow->addView(footerButton);
-
-    Button* logButton = new Button(getStr("app/show_log"));
-    logButton->setOnClick([this, logButton] {
-        this->setLogWindowEnabled(!this->isLogWindowEnabled());
-        logButton->setText(this->isLogWindowEnabled() ? getStr("app/hide_log")
-                                                     : getStr("app/show_log"));
-    });
-    topRow->addView(logButton);
-    right->addView(topRow);
 
     // 滚动槽：Pager 的页面都挂在这里（页面工厂负责现建现删）
     this->scroller = new ScrollingFrame();
@@ -133,6 +105,7 @@ DemoApp::DemoApp()
     deps.setBarsAnimated        = [this](bool animated) { this->setBarsAnimated(animated); };
     deps.setBarAnimationDuration = [this](float seconds) { this->setBarAnimationDuration(seconds); };
     deps.setLogWindowVisible     = [this](bool visible) { this->setLogWindowEnabled(visible); };
+    deps.getLogWindowVisible     = [this] { return this->isLogWindowEnabled(); };
     setPageDeps(deps);
 
     // B 键路由的第 3 级：内容层还有下钻的层 → 退回上一层
@@ -155,6 +128,7 @@ DemoApp::DemoApp()
     this->addPage("shadow", getStr("tab/shadow"), getStr("page/shadow_sub"), false, "brush");
     this->addPage("icons", getStr("tab/icons"), getStr("page/icons_sub"), false, "star");
     this->addPage("base", getStr("tab/base"), getStr("page/base_sub"), false, "home");
+    this->addPage("shell", getStr("tab/shell"), getStr("page/shell_sub"), false, "info");
 
     // 起始页**推迟到第一帧**再选（见 update()）：视图树是在 App::run() 之前建的，
     // 而字体（含两套图标字体）要等 App::run() 建好图集才装载。页面若在这之前构建，
@@ -243,6 +217,7 @@ Box* DemoApp::buildPage(size_t index)
         case 11: return buildShadowPage();
         case 12: return buildIconsPage();
         case 13: return buildBaseWidgetsPage();
+        case 14: return buildShellPage();
         default: return nullptr;
     }
 }

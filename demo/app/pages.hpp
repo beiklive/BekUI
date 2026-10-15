@@ -36,6 +36,8 @@ struct PageDeps
     std::function<void(float)> setBarAnimationDuration;
     // 日志窗口（视图树里的调试面板，挂在外壳调试层上）
     std::function<void(bool)> setLogWindowVisible;
+    // 读回当前值（日志窗口的状态在宿主 DemoApp 上，Shell 不知道）
+    std::function<bool()> getLogWindowVisible;
 };
 
 void setPageDeps(const PageDeps& deps);
@@ -93,5 +95,8 @@ bklv::Box* buildTransformPage();
 // 9. 设置：列表型 Cell 全家桶（detail / bool / radio / selector / slider / input）
 //    页里的开关要能操作外壳的页头/底栏，读 getPageDeps()
 bklv::Box* buildSettingsPage();
+
+// 外壳开关（页头/底栏显隐、日志窗口）—— 原来挂在内容列顶部，等于全局
+bklv::Box* buildShellPage();
 
 } // namespace demo

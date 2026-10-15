@@ -23,7 +23,8 @@
     "pokedex": "图鉴",
     "shadow": "阴影",
     "icons": "图标",
-    "base": "基础控件"
+    "base": "基础控件",
+    "shell": "外壳"
   },
   "demo": {
     "$comment": "demo/* 里这三个 key 是 tests/i18n_test.cpp 的格式化样例（int / string / float）",
@@ -155,7 +156,8 @@
     "pokedex_sub": "分段回收列表 + 详情页导航",
     "shadow_sub": "外观 JSON 的 shadow 层与模糊档位",
     "icons_sub": "两套图标字体的全部字形：一排 10 个，格子下面是码位",
-    "base_sub": "容器与按钮变体"
+    "base_sub": "容器与按钮变体",
+    "shell_sub": "页头 / 底栏 / 日志窗口的开关"
   },
   "text": {
     "hint": "字号、颜色都取自主题：换肤或窗口尺寸变化时跟着变（尺寸按 720p 写）。",
@@ -356,5 +358,18 @@
     "list_hint": "普通按钮的列表元素款：外观 widget/button.list 把边框去掉了（bg.stroke 透明 + strokeWidth 0），文字改成正常左对齐 —— 尺寸、内边距、状态动效跟普通按钮一致。",
     "state_glass": "玻璃",
     "box_gradient": "渐变底（同层换 gradient：上深下浅）"
+  },
+  "shell": {
+    "intro": "这三个开关操作的是外壳级状态（页头 / 底栏 / 日志窗口），以前挂在内容列顶部等于每个页面都带着，现在收进这一页。",
+    "section_bars": "外壳两栏",
+    "bars_hint": "隐藏时不占位（GONE），内容区会立刻补上来。",
+    "section_debug": "调试",
+    "debug_hint": "日志窗口是视图树里的控件（不为每条日志建视图），不吃焦点。",
+    "header": "页头",
+    "footer": "底栏",
+    "log": "日志窗口",
+    "on": "当前：显示",
+    "off": "当前：隐藏",
+    "toggle": "切换"
   }
 }
