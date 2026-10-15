@@ -2,6 +2,8 @@
 
 #include "bklv/compile/json_util.hpp"
 
+#include "bklv/core/logger.hpp"
+
 
 namespace bklv
 {
@@ -127,6 +129,24 @@ bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
         out.padding[0] = out.padding[1] = out.padding[2] = out.padding[3] = node["padding"].get<float>();
     // TODO(里程碑 2)：`axis` 以及 box 的其余键应当**复用现有 box 解析器**，
     // 而不是在这里手搓一份（手搓就是这次重构要消灭的重复）。里程碑 1 先只支持最常用的几个。
+
+    // 未知键告警：写错位置（比如把 `children` 写进 box 里）时会静默失效，
+    // 那个坑写测试时踩过一次（`{ "box": { "children": [...] } }` 被忽略）。
+    static const char* const KNOWN[] = { "width", "height", "grow", "shrink", "gap", "padding" };
+    if (node.is_object())
+    {
+        for (auto it = node.begin(); it != node.end(); ++it)
+        {
+            const std::string& key = it.key();
+            bool known = false;
+            for (const char* candidate : KNOWN)
+                known = known || key == candidate;
+            if (!known)
+                BKLV_LOG_WARNING("%s：box 段里的键 \"%s\" 不认识（这里只认 width/height/grow/shrink/"
+                                 "gap/padding）；注意 `children` 要与 box 平级，写进 box 里不会生效",
+                    where.c_str(), key.c_str());
+        }
+    }
     return true;
 }
 

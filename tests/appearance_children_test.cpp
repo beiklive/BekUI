@@ -107,6 +107,17 @@ int main()
         check(compileDoc(R"({ "box": {} })", error) == nullptr, "children 不是数组 -> 失败");
     }
 
+    std::printf("\n== 4b. 已知坑：children 写进 box 里不会生效（只告警）==\n");
+    {
+        // `box` 里只认 width/height/grow/shrink/gap/padding；这里写了 children 会被忽略，
+        // 解析器打一条告警（写这条测试时我自己踩过）。行为钉住，免得以后误判成 bug。
+        std::string error;
+        const auto appearance = compileDoc(R"([ { "box": { "children": [ { "box": {} } ] } } ])", error);
+        check(appearance != nullptr, "box 里写了 children 仍能编译（只是不生效）");
+        if (appearance != nullptr && appearance->getChildren().size() == 1)
+            check(appearance->getChildren()[0].children.empty(), "box 里的 children 被忽略 -> 空");
+    }
+
     std::printf("\n== 5. 深度上限 16 ==\n");
     {
         // 造 18 层嵌套（每层一个 box 包一个 box）
