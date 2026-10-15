@@ -241,6 +241,19 @@ int main()
         stripe.order    = LayerOrder::DECORATION;
         stripe.help     = "测试用的扩展 op";
         stripe.keys     = { "angle", "lineWidth" };
+        // parse 钩子必须**真的被调用**，而且它的失败要能变成硬错误
+        stripe.parse    = [](const nlohmann::json& node, const bklv::ThemeData& theme,
+                              bklv::AppearanceLayer& out, std::string& err, const std::string& where) {
+            (void)theme;
+            (void)where;
+            if (node.contains("fail"))
+            {
+                err = "样例 parse 钩子主动失败";
+                return false;
+            }
+            out.feather = node.value("angle", 0.0f); // 用自己的键写进层字段
+            return true;
+        };
         std::string error;
         check(registerLayer(std::move(stripe), error), "扩展 op 注册成功");
 
@@ -252,6 +265,14 @@ int main()
                 "落到 Op::EXTENSION（枚举保持封闭）");
             check(appearance->getLayers()[0].extensionType == "stripe_test", "extensionType 记下类型名");
             check(appearance->indexOfLayer("stripe0") >= 0, "默认 id 用注册表的 idPrefix");
+            // parse 钩子真的被调用了（angle=45 写进了 feather）
+            checkFloat(appearance->getLayers()[0].feather, 45.0f, "扩展 op 的 parse 钩子被调用");
+
+            std::string hookError;
+            check(compileLayers(R"({ "op": "stripe_test", "fail": true })", hookError) == nullptr,
+                "扩展 op 的 parse 钩子失败 -> 整体编译失败");
+            check(hookError.find("样例 parse 钩子主动失败") != std::string::npos,
+                "错误串来自钩子");
         }
 
         error.clear();

@@ -514,7 +514,20 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
             bool opOk               = false;
             layer.op                = parseOp(opName, opOk);
             if (layer.op == AppearanceLayer::Op::EXTENSION)
+            {
                 layer.extensionType = opName;
+
+                // 扩展 op 自己的键交给**注册表里的 parse 钩子**（第三方注册时提供）。
+                // 之前只记了类型名、没调钩子 —— 样例的 angle/lineWidth 其实一直没生效
+                // （条纹是靠默认值碰巧画对的）。失败按硬错误处理，和内置 op 一致。
+                const compile::LayerType* extType = compile::findLayer(opName);
+                if (extType != nullptr && extType->parse)
+                {
+                    if (!extType->parse(node, theme, layer, error,
+                            "layers[" + std::to_string(i) + "] (" + opName + ")"))
+                        return false; // parseLayers 的失败约定是 false（compile 才转成 nullptr）
+                }
+            }
             if (!opOk)
             {
                 error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";
