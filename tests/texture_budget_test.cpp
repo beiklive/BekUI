@@ -1,0 +1,47 @@
+// 无窗口测试：纹理预算（3.5 第一小步）—— 只记账不淘汰，默认不限。
+
+#include <cstdio>
+
+#include "bklv/core/graphics.hpp"
+
+using namespace bklv;
+
+#include "test_util.hpp"
+
+int main()
+{
+    std::printf("== 1. 默认 0 = 不限 ==\n");
+    {
+        setTextureBudget(0);
+        checkEqualInt((int)getTextureBudget(), 0, "默认不限");
+        check(!isTextureBudgetExceeded(), "不限时永远不算超");
+    }
+
+    std::printf("\n== 2. 设置/读取往返 ==\n");
+    {
+        setTextureBudget(64);
+        checkEqualInt((int)getTextureBudget(), 64, "预算 64");
+        setTextureBudget(1);
+        checkEqualInt((int)getTextureBudget(), 1, "预算 1");
+    }
+
+    std::printf("\n== 3. 没有后端时计数为 0（无窗口不崩）==\n");
+    {
+        checkEqualInt((int)getTextureCount(), 0, "未初始化仓库 -> 0 张");
+        setTextureBudget(8);
+        check(!isTextureBudgetExceeded(), "0 张 < 8 -> 不超");
+    }
+
+    std::printf("\n== 4. 边界：0 / 极大都不崩 ==\n");
+    {
+        setTextureBudget(0);
+        checkEqualInt((int)getTextureCount(), 0, "0 预算下计数仍可读");
+        setTextureBudget((size_t)-1);
+        check(!isTextureBudgetExceeded(), "极大预算 -> 不超");
+        setTextureBudget(0); // 复原，别影响别的测试
+        checkEqualInt((int)getTextureBudget(), 0, "复原为不限");
+    }
+
+    std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
+    return g_failed > 0 ? 1 : 0;
+}

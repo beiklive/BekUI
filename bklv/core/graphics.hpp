@@ -156,6 +156,13 @@ void shutdownTextureStore();
 // 当前后端名，调试层展示用。
 const char* getTextureBackendName();
 
+// —— 纹理预算（3.5 第一小步：只记账，不淘汰）——
+// 0 = 不限（默认）。淘汰需要引用计数（否则会释放正在被使用的纹理），是下一小步。
+void setTextureBudget(size_t maxTextures);
+size_t getTextureBudget();
+size_t getTextureCount();
+bool isTextureBudgetExceeded();
+
 // 当前编入的是哪个图形后端（编译期常量，用于日志）。
 const char* getGraphicsBackendName();
 

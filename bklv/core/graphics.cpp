@@ -39,6 +39,9 @@ struct TextureEntry
 // 这样释放之后能把条目置为 dead，外部拿着的引用会失效而不是变成野指针。
 std::vector<TextureEntry> g_textures;
 
+// 纹理预算（0 = 不限）；只做账目，不淘汰
+size_t g_textureBudget = 0;
+
 // 路径 -> 索引，做加载缓存。
 std::map<std::string, int> g_pathCache;
 
@@ -105,6 +108,33 @@ void shutdownTextureStore()
 
     g_textures.clear();
     g_pathCache.clear();
+}
+
+void setTextureBudget(size_t maxTextures)
+{
+    g_textureBudget = maxTextures;
+    if (maxTextures > 0 && getTextureCount() > maxTextures)
+        BKLV_LOG_WARNING("纹理数 %zu 已超过预算 %zu（本步只记账不淘汰，见 docs §11.4）",
+            getTextureCount(), maxTextures);
+}
+
+size_t getTextureBudget()
+{
+    return g_textureBudget;
+}
+
+size_t getTextureCount()
+{
+    size_t count = 0;
+    for (const TextureEntry& entry : g_textures)
+        if (entry.alive)
+            ++count;
+    return count;
+}
+
+bool isTextureBudgetExceeded()
+{
+    return g_textureBudget > 0 && getTextureCount() > g_textureBudget;
 }
 
 const char* getTextureBackendName()
