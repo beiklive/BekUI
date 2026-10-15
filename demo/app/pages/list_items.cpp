@@ -88,7 +88,8 @@ void ListCell::applyIndex(size_t section, size_t index)
         "resources/img/demo/pokemon_021.png", "resources/img/demo/pokemon_024.png",
     };
     const size_t pick = index % 8;
-    this->thumbnail->setImageFromFile(kThumbs[pick]);
+    this->thumbnail->setDecodePriority(static_cast<int>(index)); // 背压：越靠前越优先
+    this->thumbnail->setImageFromFileAsync(kThumbs[pick]);
 
     char title[16] = { 0 };
     std::snprintf(title, sizeof(title), "No.%03d", (int)pick * 3 + 1); // 001/004/007/...
@@ -170,7 +171,8 @@ void GridCell::applyIndex(size_t section, size_t index)
         "resources/img/demo/pokemon_021.png", "resources/img/demo/pokemon_024.png",
     };
     const size_t pick = index % 8;
-    this->image->setImageFromFile(kThumbs[pick]);
+    this->image->setDecodePriority(static_cast<int>(index)); // 背压：越靠前越优先
+    this->image->setImageFromFileAsync(kThumbs[pick]);
 
     char caption[16] = { 0 };
     std::snprintf(caption, sizeof(caption), "No.%03d", (int)pick * 3 + 1);
