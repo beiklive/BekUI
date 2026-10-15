@@ -161,7 +161,6 @@ endfunction()
 set(BKLV_APP_SOURCES
     app/demo_app.cpp
     app/ui.cpp
-    app/pages/page_widgets.cpp
     app/pages/page_text.cpp
     app/pages/page_layout.cpp
     app/pages/list_items.cpp

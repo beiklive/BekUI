@@ -140,7 +140,6 @@ DemoApp::DemoApp()
 
     // ---- 页面（顺序就是侧栏顺序）----
     this->addPage("theme", getStr("tab/theme"), getStr("page/theme_sub"), false, "palette");
-    this->addPage("widgets", getStr("tab/widgets"), getStr("page/widgets_sub"), false, "dashboard");
     this->addPage("text", getStr("tab/text"), getStr("page/text_sub"), false, "format_align_left");
     this->addPage("layout", getStr("tab/layout"), getStr("page/layout_sub"), false, "grid_on");
     this->sidebar->addSeparator(); // 分组：示例 / 组件 / 工具
@@ -226,25 +225,24 @@ Box* DemoApp::buildPage(size_t index)
     switch (index)
     {
         case 0:  return buildThemePage();
-        case 1:  return buildWidgetsPage();
-        case 2:  return buildTextPage();
-        case 3:  return buildLayoutPage();
-        case 4:
+        case 1:  return buildTextPage();
+        case 2:  return buildLayoutPage();
+        case 3:
         {
             ListPageResult listPage = buildListPage();
             this->mainList          = listPage.list;
             return listPage.view;
         }
-        case 5:  return buildPokedexPage();
-        case 6:  return buildJsonPage();
-        case 7:  return buildNavPage();
-        case 8:  return buildOverlayPage();
-        case 9:  return buildScrollPage();
-        case 10: return buildTransformPage();
-        case 11: return buildSettingsPage();
-        case 12: return buildShadowPage();
-        case 13: return buildIconsPage();
-        case 14: return buildBaseWidgetsPage();
+        case 4:  return buildPokedexPage();
+        case 5:  return buildJsonPage();
+        case 6:  return buildNavPage();
+        case 7:  return buildOverlayPage();
+        case 8:  return buildScrollPage();
+        case 9: return buildTransformPage();
+        case 10: return buildSettingsPage();
+        case 11: return buildShadowPage();
+        case 12: return buildIconsPage();
+        case 13: return buildBaseWidgetsPage();
         default: return nullptr;
     }
 }
