@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "bklv/core/image_decoder.hpp"
+#include "bklv/core/graphics.hpp"
 #include "bklv/core/decode_queue.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
@@ -276,6 +277,7 @@ void Image::setImageFromFileAsync(const std::string& path)
                 releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
                 this->texture = loaded;
                 retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
+                trimTextureCache(); // 2d：新纹理进缓存后收一次（超预算才淘汰，且只淘汰没人在用的）
                 this->pendingPath.clear();
 
                 if (this->getWidth() <= 0.0f)

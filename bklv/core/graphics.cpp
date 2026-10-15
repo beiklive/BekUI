@@ -227,6 +227,8 @@ void trimTextureCache()
 
         if (g_backend != nullptr)
             g_backend->destroyTexture(g_textures[victim].handle);
+        BKLV_LOG_INFO("纹理淘汰：释放下标 %zu（当前 %zu 张 / 预算 %zu）",
+            victim, getTextureCount() - 1, g_textureBudget);
         g_textures[victim].alive    = false;
         g_textures[victim].refCount = 0;
 
