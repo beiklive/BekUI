@@ -75,7 +75,8 @@
     "widget/button.switch_icon.glass.json",
     "widget/button.dropdown.glass.json",
     "widget/button.selector.glass.json",
-    "base/glass_plate.json"
+    "base/glass_plate.json",
+    "base/rectangle.card.gradient.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

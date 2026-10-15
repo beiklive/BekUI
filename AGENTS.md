@@ -386,6 +386,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      两个清单坑：`theme.json` 的 `files[]` 条目要**带 `.json` 后缀**（`base/glass_panel.json`，
      少了后缀会以"主题里没有控件外观"的形式静默回退）；`box.padding` 只接受**一个数**或
      **四个数**（`[上,右,下,左]`），写两个数会编译失败。
+  ⑦c **`rect` 层可以写 `gradient`**（`docs/rect-gradient.md` / `docs/json-syntax.md`）：
+     语法 `gradient{ type(linear|radial), angle, center, stops[2..4]{at,color} }`，
+     `at` 必须 0..1 且严格递增，五类写错都**报错**（不静默降级）。
+     写法优先于 `fill`；**渐变不做补间**，`stroke` 渐变不支持。
+     实现是 **ImDrawList 顶点色网格**（`bklv/core/gradient.*` 的 `addGradientRectMesh`）——
+     三条后端零改动；采样/参数/网格都是纯函数，`tests/gradient_test.cpp` 钉住
+     （含「线性渐变投影范围按四个角取 min/max」：45° 写错时 t 会到 1.5）。
   ⑦ **一行里放多个内容层要用 inset 排队，并写 `measureContent: "sum"`**：
      绘制层不是流式布局（`align: left` 的两个层会叠在左边，参考 `base/hint_item` 给
      文字层写 `inset: [0,0,0,34]` 跳过图标）；默认固有尺寸取"最宽的一层"，

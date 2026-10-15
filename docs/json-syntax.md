@@ -210,7 +210,8 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 |---|---|---|
 | `op` | 全部 | `rect`(默认) / `text` / `image` / `shadow` / **`glass`** / `custom` |
 | `id` | 全部 | 状态里引用它；不写 = `op+序号` |
-| `fill` | rect, shadow | 填充色 |
+| `fill` | rect, shadow | 填充色（单色）。同层写了 `gradient` 时以渐变为准 |
+| `gradient` | rect | 渐变：`{ type(linear/radial), angle, center, stops[2..4]{at, color} }` |
 | `stroke` `strokeWidth` | rect | 描边色 / 宽 |
 | `radius` | rect, shadow | 圆角 |
 | `color` / `textColor` | text | 文字色 |
@@ -388,3 +389,28 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 | `"50%"` 没效果 | 百分比只对 `width` / `height` 与绝对定位的四边偏移（`top` / `left` / `right` / `bottom`）有效；其它 NUMBER 属性要绝对像素 |
 | 枚举写错 | 视图描述 JSON 会**建不出控件**并在日志里列可选值；外观 JSON 只警告并保持原值（见第 6 节） |
 | 切语言界面没变 | 文案在控件构造时已解析成字符串，需要重建视图（见 AGENTS） |
+
+### 渐变（rect 的 `gradient`）
+
+```json
+{ "id": "bg", "op": "rect", "radius": 10,
+  "gradient": {
+    "type": "linear",
+    "angle": 90,
+    "stops": [ { "at": 0.0, "color": "#2E4A9EFF" },
+               { "at": 1.0, "color": "@theme/color.accent.base" } ] } }
+```
+
+| 键 | 取值 | 说明 |
+|---|---|---|
+| `type` | `linear`(默认) / `radial` | 枚举比较大小写与 `_`/`-` 不敏感；拼错**报错**（列出可选值） |
+| `angle` | 数字（度） | 0 = 从左到右、90 = 从上到下（顺时针）；只有 `linear` 用。**无量纲，不按 720p 缩放** |
+| `center` | `[x, y]`，各 0..1 | 相对层矩形；只有 `radial` 用（默认 `[0.5, 0.5]`） |
+| `stops` | 2~4 个 `{ at, color }` | `at` 是 0..1 且必须**严格递增**；`color` 支持 `@theme/...` |
+
+报错规则（都不静默降级）：`at` 越界、`at` 不递增、停靠点数量不在 2~4、停靠点缺 `color`、
+`type` 不认识 —— 都会带上「是哪个 stop / 当前值」的提示。
+
+与 `import` 合并时：`gradient` 是对象按字段合并，`stops` 是数组**整体替换**。
+与 `fill` 的关系：写了 `gradient` 以它为准；`fill` 继续服务状态覆盖（状态里写 `fill` 的层不带渐变）。
+**渐变不做补间**（不是标量通道），也不支持给 `stroke` 加渐变 —— 见 [`rect-gradient.md`](rect-gradient.md)。

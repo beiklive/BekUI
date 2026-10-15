@@ -206,6 +206,12 @@ Box* buildBaseWidgetsPage()
         glassBox->setAppearanceName("base/box");
         glassBox->addView(bodyText(getStr("base_widgets/box_inner")));
         section->addView(makeGlassPlateRow(glassBox));
+
+        // 渐变底：同一个 rect 层，把 fill 换成 gradient{angle, stops}
+        Rectangle* gradientBox = new Rectangle();
+        gradientBox->setAppearanceName("base/rectangle.card.gradient");
+        gradientBox->addView(bodyText(getStr("base_widgets/box_gradient")));
+        section->addView(makeItemRow(gradientBox));
         section->addView(makeHint(getStr("base_widgets/box_hint")));
         page->addView(section);
     }

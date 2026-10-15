@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <vector>
 
 #include "bklv/core/font.hpp"
 #include "bklv/core/icon_font.hpp"
@@ -482,9 +483,17 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             {
                 if (alphaScale <= 0.001f)
                     break;
-                if ((fill >> 24) != 0)
+                if (layer.gradient.isValid())
+                {
+                    // 渐变优先于单色 fill（fill 继续服务状态覆盖：状态里写 fill 的层不带渐变）
+                    addGradientRectMesh(drawList, layer.gradient, ImVec2(rect[0], rect[1]),
+                        ImVec2(rect[2], rect[3]), radius, alphaScale);
+                }
+                else if ((fill >> 24) != 0)
+                {
                     drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
                         scaleAlpha(fill), radius);
+                }
                 if (strokeWidth > 0.0f && (stroke >> 24) != 0)
                     drawList->AddRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
                         scaleAlpha(stroke), radius, 0, strokeWidth);

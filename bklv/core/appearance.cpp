@@ -662,6 +662,113 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 layer.offset[k] = scalePixels(layer.offset[k]);
             }
 
+        // RECT 层的渐变（可选）。校验从严：停靠点数量 / 递增 / 越界都**报错**，不静默降级。
+        if (node.contains("gradient"))
+        {
+            const Json& gradientNode = node["gradient"];
+            const std::string gradientWhere = where + ".gradient";
+            if (!gradientNode.is_object())
+            {
+                error = gradientWhere + " 要写成对象：{ type, angle, center, stops }";
+                return nullptr;
+            }
+
+            Gradient parsed;
+            const std::string typeName
+                = gradientNode.value("type", std::string("linear"));
+            if (!gradientTypeFromName(typeName, parsed.type))
+            {
+                error = gradientWhere + ".type 只支持 linear / radial（当前：" + typeName + "）";
+                return nullptr;
+            }
+
+            // angle / center / at 都是**无量纲**，不跟随 720p 缩放
+            if (gradientNode.contains("angle")
+                && !resolveNumber(gradientNode["angle"], theme, parsed.angle, error,
+                    gradientWhere + ".angle"))
+                return nullptr;
+
+            if (gradientNode.contains("center"))
+            {
+                const Json& centerNode = gradientNode["center"];
+                if (!centerNode.is_array() || centerNode.size() != 2)
+                {
+                    error = gradientWhere + ".center 要写成 [x, y]（0..1 相对层矩形）";
+                    return nullptr;
+                }
+                for (size_t k = 0; k < 2; k++)
+                {
+                    float value = 0.0f;
+                    if (!resolveNumber(centerNode[k], theme, value, error,
+                            gradientWhere + ".center[" + std::to_string(k) + "]"))
+                        return nullptr;
+                    if (value < 0.0f || value > 1.0f)
+                    {
+                        error = gradientWhere + ".center[" + std::to_string(k)
+                            + "] 要在 0..1 之内（当前：" + std::to_string(value) + "）";
+                        return nullptr;
+                    }
+                    parsed.center[k] = value;
+                }
+            }
+
+            if (!gradientNode.contains("stops") || !gradientNode["stops"].is_array())
+            {
+                error = gradientWhere + ".stops 要写成数组：[{ \"at\": 0, \"color\": \"#RRGGBBAA\" }, ...]";
+                return nullptr;
+            }
+
+            const Json& stopsNode = gradientNode["stops"];
+            if (stopsNode.size() < 2 || (int)stopsNode.size() > kMaxGradientStops)
+            {
+                error = gradientWhere + ".stops 要 2~" + std::to_string(kMaxGradientStops)
+                    + " 个（当前 " + std::to_string(stopsNode.size()) + " 个）";
+                return nullptr;
+            }
+
+            float previousAt = -1.0f;
+            for (size_t i = 0; i < stopsNode.size(); i++)
+            {
+                const Json& stopNode  = stopsNode[i];
+                const std::string stopWhere
+                    = gradientWhere + ".stops[" + std::to_string(i) + "]";
+                if (!stopNode.is_object())
+                {
+                    error = stopWhere + " 要写成对象 { at, color }";
+                    return nullptr;
+                }
+
+                GradientStop stop;
+                if (stopNode.contains("at")
+                    && !resolveNumber(stopNode["at"], theme, stop.at, error, stopWhere + ".at"))
+                    return nullptr;
+                if (stop.at < 0.0f || stop.at > 1.0f)
+                {
+                    error = stopWhere + ".at 要在 0..1 之内（当前：" + std::to_string(stop.at) + "）";
+                    return nullptr;
+                }
+                if (stop.at <= previousAt)
+                {
+                    error = stopWhere + ".at 必须比上一个停靠点大（停在 "
+                        + std::to_string(previousAt) + "，这个是 " + std::to_string(stop.at) + "）";
+                    return nullptr;
+                }
+                previousAt = stop.at;
+
+                if (!stopNode.contains("color"))
+                {
+                    error = stopWhere + " 缺少 color";
+                    return nullptr;
+                }
+                if (!resolveColor(stopNode["color"], theme, stop.color, error, stopWhere + ".color"))
+                    return nullptr;
+
+                parsed.stops[i] = stop;
+            }
+            parsed.stopCount = (int)stopsNode.size();
+            layer.gradient   = parsed;
+        }
+
         appearance->layers.push_back(layer);
     }
 

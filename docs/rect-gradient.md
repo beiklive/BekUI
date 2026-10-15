@@ -1,5 +1,7 @@
 # `rect` 层加渐变 —— 可行性调研与方案
 
+**状态：已实现**（第一步 + 第二步都落地，见文末「已实现」一节）。
+
 结论先给：**可行，而且不用碰任何后端**。渐变做成 `ImDrawList` 的**顶点色网格**，
 GL / Switch-GLES3 / Vulkan 三条后端自动都支持（现在那些自绘几何就是这么工作的）。
 建议分两步做，第一步约 1 个阶段的工作量。
@@ -150,3 +152,28 @@ float gradientParameter(const Gradient& gradient, const ImVec2& p, const ImVec2&
 | 径向近似 | 扇形内线性插值 | 分段数取够（8/角）；必要时加"环"细分 |
 | 顶点数增加 | 每层几百个顶点 | 可忽略；先不做缓存（过度设计） |
 | 与 `fill` 语义冲突 | 两种底色并存 | 明确规则：写了 `gradient` 以它为准，`fill` 仍服务状态覆盖 |
+
+
+---
+
+## 9. 已实现（本次落地）
+
+| 文件 | 内容 |
+|---|---|
+| `bklv/core/gradient.{hpp,cpp}` | `GradientStop` / `Gradient`、`sampleGradient`、`gradientParameter`、`gradientTypeFromName`、网格生成 `addGradientRectMesh` |
+| `bklv/core/appearance.{hpp,cpp}` | 层里加 `Gradient gradient`；解析 `gradient`（`type`/`angle`/`center`/`stops`，五类错误全部报错） |
+| `bklv/widgets/appearance_view.cpp` | `Op::RECT`：有渐变就走网格，没写仍是原来的单色 `AddRectFilled` |
+| `resources/theme/default/base/rectangle.card.gradient.json` | 示例外观（蓝→紫 90° 渐变卡）；demo 基础控件页「基本盒」小节加了一行 |
+| `tests/gradient_test.cpp` | **55 项**：采样（端点/中点/多段/钳制/无效）、参数（0°/90°/45°/径向）、枚举名、解析正例与五类反例、网格（顶点数/角点颜色/圆角/羽边/整体 alpha） |
+
+实测：GL / VK / Switch 三个构建退出码 0、本仓零警告；`check.sh` **3108** 项全过（+61）；
+命名检查 169 文件。
+
+过程中单测抓到一个真错：线性渐变的投影范围**必须按矩形四个角的投影取 min/max** ——
+最初用 `width*dirX` 与 `height*dirY` 分开算，45° 时 t 会跑到 1.5。
+
+## 10. 仍然不做
+
+- `stroke` 的渐变（要沿路径逐段采样）
+- 锥形/角度渐变、超过 4 个停靠点
+- 渐变的补间动画（`states` 只能改标量通道；想换渐变就做两个 layer，或等后续给 states 加对象覆盖）

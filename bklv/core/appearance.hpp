@@ -36,6 +36,8 @@
 #include <string>
 #include <vector>
 
+#include "bklv/core/gradient.hpp"
+
 #include "imgui.h"
 
 namespace bklv
@@ -74,7 +76,7 @@ struct AppearanceLayer
 {
     enum class Op
     {
-        RECT,   // fill / stroke / strokeWidth / radius
+        RECT,   // fill / stroke / strokeWidth / radius / gradient（渐变优先于 fill）
         TEXT,   // source(数据名) / color / fontSize / align / valign / inset
         IMAGE,  // source(数据名) / scaling / radius / inset
         SHADOW, // 阴影：fill(色) / feather(羽化) / spread(外扩) / radius / offset(x,y) / cutout(挖空内圈)
@@ -90,6 +92,9 @@ struct AppearanceLayer
     std::string source; // Text/Image/Custom 的数据来源名
 
     // 初值（编译时已把 @theme/... 解析成具体值）
+    // RECT 层的渐变（`gradient` 对象）。写了就以它为准，没写用上面的 fill 单色。
+    // 停在层里定长存放（不进 ALL_PROPS —— 渐变不是标量通道，不做补间）。
+    Gradient gradient;
     ImU32 fill        = 0;
     ImU32 stroke      = 0;
     ImU32 textColor   = 0;

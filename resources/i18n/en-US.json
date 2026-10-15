@@ -350,6 +350,7 @@
     "sec_btn_list": "Button · list (no border)",
     "btn_list": "List button",
     "list_hint": "The list-element flavour of the plain button: widget/button.list drops the border (transparent bg.stroke + strokeWidth 0) and left-aligns the text; size, padding and states stay the same as the plain button.",
-    "state_glass": "Glass"
+    "state_glass": "Glass",
+    "box_gradient": "Gradient fill (same rect layer, gradient instead of a solid)"
   }
 }

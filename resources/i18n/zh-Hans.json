@@ -350,6 +350,7 @@
     "sec_btn_list": "按钮 · 列表（无边框）",
     "btn_list": "列表按钮",
     "list_hint": "普通按钮的列表元素款：外观 widget/button.list 把边框去掉了（bg.stroke 透明 + strokeWidth 0），文字改成正常左对齐 —— 尺寸、内边距、状态动效跟普通按钮一致。",
-    "state_glass": "玻璃"
+    "state_glass": "玻璃",
+    "box_gradient": "渐变底（同层换 gradient：上深下浅）"
   }
 }
