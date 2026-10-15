@@ -470,6 +470,10 @@ void RecyclerFrame::rebuildVisualTops()
             this->visualTops.push_back(top);
         top += rowHeight;
     }
+
+    // 多列：真实内容高度是"视觉行高度之和"，不是逐条目累加
+    // （否则滚动范围会偏大 columns 倍 —— 网格滚到底之前就出现大段空白）
+    this->totalHeight = top;
 }
 
 float RecyclerFrame::visualTopOf(size_t index) const
