@@ -799,3 +799,40 @@ GL/VK/Switch 退出码 0 且本仓告警 0；命名 196 文件全过；绘制路
 1. **先量/先看再改**：几何问题打日志量真实值（§12.9/§12.14）、切片前先 `sed` 看清边界（§12.10/§12.15/§12.18）
 2. **写入 -> 构建 -> 失败自动回滚**：整场重构用这个形态试切大文件，拦下 **7 次**错误切片，`main` 全程没坏
 3. **机械改代码必须带断言**：切完要 grep/计数确认"真的改上了"（有一次没加断言、`pop_back` 静默没插进去）
+
+## 13. 「列表/页面交给 JSON」的实现记录（承接第 66 轮）
+
+### 13.1 多列（Grid）的侦察结论 —— 别动 `rows[]` 的语义
+
+`RecyclerFrame` 的布局接缝（`views/recycler.cpp:284`）：
+
+```cpp
+void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t row) {
+    cell->setWidth(this->getWidth());
+    cell->setHeight(this->rows[row].height);
+    cell->setTranslation(0.0f, this->rows[row].top);
+}
+```
+
+**关键不变量**：`rows[]` 与 **item 是 1:1** 的 —— `activeCells[index]`、`rowIdentifier(index)`、
+滚动与焦点都按 item 下标索引它。所以多列（Grid）**不能**把 `rows[]` 改成"视觉行" ✗
+（那会连带动到滚动、回收、焦点、段头等一大片）。
+
+**做法（不动语义，只改摆放）**：
+1. `views/recycler.*` 加一个纯视图能力 `setColumns(int)`（+ 内部 `columns` 成员）—— 这是**纯视图**，
+   不违反"views 不认识 JSON"的红线 ✓
+2. 额外维护一个**视觉行顶**数组（`visualRowTops` 或等价的"每个 item 的视觉 y"）：
+   第 r 个视觉行的高度 = 该行内各 item 高度的**最大值**（保留不等高 ✓），top 依次累加
+   -> 只在数据/列数变化时重算一次
+3. `layoutCell` 改成：
+   ```cpp
+   const float cellW = this->getWidth() / (float)this->columns;
+   cell->setWidth(cellW);
+   cell->setTranslation((float)(index % columns) * cellW, visualTopOf(index));
+   ```
+   注意 `layoutCell` 现在的签名只给 `row`（= item 下标）✓ 正好够用
+4. 内容总高 = 视觉行高之和（滚动条与"未知总数"策略一起定，见 13.2）
+5. 验收：`columns = 1` 时行为必须**逐像素等价**（回归基线 ✓）；`columns = 3` 时用一张截图确认
+
+**下一轮的顺序**：先做 `columns = 1` 的等价重构（引入视觉行顶、但仍单列）-> 测试全绿 ->
+再打开 `columns > 1`（这样任何问题都能定位到"引入了视觉行"还是"多列摆放"）。
