@@ -306,3 +306,30 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 而受测的列表/图鉴页要切过去才会构建与绘制 -> 探针读到的是"没渲染"，
 误判成"渲染有问题"。**规矩**：任何页面级探针，先把起始页切到受测页面（临时改
 `pendingStartPage`，跑完 `git checkout` 还原，且绝不提交）。
+
+#### 小步2 的实现设计（引用计数 + LRU 淘汰，定稿待实现）
+
+现状：`core/graphics.cpp` 里 `std::vector<TextureEntry> g_textures`（`handle` + `alive`）+
+`std::map<std::string,int> g_pathCache`（路径 -> 下标）。纹理**只在 `shutdownTextureStore()`
+时统一释放**，平时只增不减（小步1 只加了账目与预算旋钮）。
+
+**协议（按这个实现，不要临时发明）**：
+1. **引用计数放在仓库侧，不放在 `TextureRef` 里** —— `TextureRef` 是个小值类型（`index/texture/width/height`），
+   到处按值拷贝（`getTexture()` 返回 const 引用、`Image` 里存一份）。给它加计数会让拷贝语义变复杂、
+   而且很容易漏减。改成：`TextureEntry` 加 `refCount` 与 `lastUseTick`，
+   仓库提供 `retainTexture(index)` / `releaseTexture(index)`。
+2. **谁加减**：
+   - `Image::setImageFromFile()` / `updateTexture()` 成功后 `retainTexture(新)` + `releaseTexture(旧)`
+   - `Image::~Image()` / 换图 / `releaseTexture()` 时 `releaseTexture(当前)`
+   - `TextureRef` 的**其它使用者**（例如未来共享的缩略图缓存）同样成对调用
+3. **淘汰规则**（只在超预算且有人请求时做，不做后台线程）：
+   - 候选 = `refCount == 0` 且 `alive` 的条目
+   - 按 `lastUseTick` 升序淘汰 LRU，直到 `getTextureCount() <= budget`
+   - 淘汰 = 真正释放 GPU 纹理 + 从 `g_textures` 标记 `alive=false` + **从 `g_pathCache` 删掉该路径**
+     （否则下次命中会拿到已释放的下标）
+   - **`refCount > 0` 的绝不淘汰**（这是"正在被 cell 用着的不淘汰"的落点）
+4. **调用时机**：`Image::updateTexture()` 之后、以及 `setTextureBudget()` 变小之后各调一次
+   `trimTextureCache()`；不要每帧无条件遍历（缓存小，但没必要）
+5. **测试**（无窗口可做的部分）：`getTextureCount()`/预算边界、`retainTexture`/`releaseTexture`
+   的计数、`trimTextureCache()` 在 refCount>0 时不淘汰、`g_pathCache` 同步删除；
+   真正"淘汰后 GPU 纹理被释放"需要窗口环境，用截图/日志验证（并如实标注）
