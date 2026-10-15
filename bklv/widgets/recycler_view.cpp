@@ -97,7 +97,10 @@ void RecyclerView::setDataSourceName(const std::string& name)
     this->dataSourceName = plain;
     RecyclerDataSource* source = data::createSource(plain); // 没注册过会打警告并返回 nullptr
     if (source != nullptr)
+    {
+        this->ownedSource.reset(source); // 由本视图持有：JSON 建出来的对象总得有人管
         this->setDataSource(source);
+    }
 }
 
 void RecyclerView::setItemAppearance(const std::string& name)

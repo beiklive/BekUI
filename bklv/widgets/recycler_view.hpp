@@ -10,6 +10,7 @@
 // 这里（widgets）做 JSON 属性表与模板实例化 —— 和 registerViewType 的既有惯例一致。
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "bklv/core/attributes.hpp"
@@ -79,6 +80,9 @@ class RecyclerView : public RecyclerFrame
     void rebuildItemCells();
 
   private:
+    // JSON 路径下数据源是注册表的工厂 new 出来的 -> 由本视图持有并负责释放
+    // （C++ 页面用的是 static 局部对象，那条路不经过这里）
+    std::unique_ptr<RecyclerDataSource> ownedSource;
     std::string dataSourceName;
     std::string itemAppearance;
     std::string itemTemplate;
