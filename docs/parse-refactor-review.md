@@ -633,3 +633,23 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 - 判断**数值/几何** -> 打日志量真实值（探针）
 - 判断**行为不变** -> 测试（用例数比截图硬得多）
 - 判断**观感/有没有画出来** -> 截图（而且要看整图，别拿裁剪图下结论）
+
+### 12.17 收尾状态（第 55 轮）：①② 完全达标
+
+| 目标 | 起点 | 现在 |
+|---|---|---|
+| `Appearance::compile` | 501 行 | **53 行** ✓ |
+| `parseLayers` | 382 行 | **30 行** ✓ |
+| `parseStates` | 87 行 | **12 行** ✓（+ parseAllStates 23 / parseStateProps 67）|
+| `core/appearance.cpp` | 1906 行 | **1354 行** |
+
+- ①（助手抽进 `compile/json_util`）✓ ②（`compile` 与各解析函数 ≤80 行 + 注册表）✓
+- ④（view/theme 解析搬进 `compile/`，core 只留运行时；tweeny 只在 appearance.cpp）✓
+- ⑤（`children` 三档 + 递归 + 循环检测 + 测试 + 文档 + 截图）✓
+- ⑥（设计器读注册表；顺手修掉"切不到 glass"的 bug）✓
+- 可扩展性验收（`bklv/` 之外注册 `stripe` → 主题可用 → 绘制出画面）✓
+- ①/② 的截图对比：无回归（整图 JPEG 差 0.08%）✓
+
+**唯一没做的**：③ 的"内置 6 种绘制也走注册表"—— 现在内置 6 种仍是 `appearance_view.cpp` 里的
+枚举分支，只有扩展 op 走注册表 `draw` 钩子。这是最后一块（属于"整理内部结构"，
+不影响任何功能与可扩展性：第三方加层级已经能走注册表了）。

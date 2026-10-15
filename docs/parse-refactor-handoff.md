@@ -45,8 +45,8 @@ bklv/widgets/                     ← 看图、建视图
 |---|---|---|
 | `Appearance::compile` | 501 行 | **53 行** |
 | `parseLayers` | 382 行 | **30 行** |
-| `core/appearance.cpp` | 1906 行 | **1335 行** |
-| `parseStates` | — | 87 行（就差 7 行没到 80，唯一尾巴）|
+| `core/appearance.cpp` | 1906 行 | **1354 行** |
+| `parseStates` | — | **12 行**（拆成 parseStates 12 / parseAllStates 23 / parseStateProps 67，全部 ≤80）|
 | 解析层落点 | 散在 `core/` | **`bklv/compile/` 10 个文件** |
 
 ## 3. 示例 JSON（这份是**真实可编译**的：已进主题清单，`theme_test` 每轮都会编译它）
@@ -175,6 +175,6 @@ align/valign/offset/opacity`）会在注册时被拒绝并告诉你改名。
 
 ## 5. 还剩什么
 
-1. `parseStates` 87 -> ≤80（7 行，唯一没到位的数字）
-2. ③ 内置 6 种绘制仍走枚举分支（扩展 op 已经走注册表 draw 钩子）
-3. 收尾：重构前后的页面截图对比
+1. ~~`parseStates` 87 -> ≤80~~ **已完成**（拆成三个函数、12/23/67 行）
+2. ③ 内置 6 种绘制仍走枚举分支（扩展 op 已经走注册表 draw 钩子）—— 这是最后一块
+3. ~~收尾截图对比~~ **已完成**（无回归：整图 JPEG 差 0.08%）
