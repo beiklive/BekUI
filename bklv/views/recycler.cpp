@@ -273,6 +273,33 @@ void RecyclerFrame::buildRowOffsets()
     this->rebuildVisualTops(); // 行高算完 -> 同步视觉行顶（多列用）
 }
 
+float RecyclerFrame::getEstimatedScrollHeight() const
+{
+    if (this->dataSource == nullptr || !this->dataSource->hasMore())
+        return this->totalHeight; // 没有更多：不虚报
+
+    // 估算行高：优先用配置；没配就用"已加载项的平均高"；一个都没有就用 itemHeight
+    float estimate = this->loadConfig.estimatedItemHeight;
+    if (estimate <= 0.0f)
+    {
+        size_t itemCount = 0;
+        float sum = 0.0f;
+        for (const Row& row : this->rows)
+            if (row.kind == RowKind::ITEM)
+            {
+                sum += row.height;
+                ++itemCount;
+            }
+        estimate = itemCount > 0 ? sum / (float)itemCount : this->itemHeight;
+    }
+    if (estimate < 0.0f)
+        estimate = 0.0f;
+
+    // 估算行数：下一次大概会来多少（pageSize；0 时按 1 行算，保证"还有更多"时高度是增长的）
+    const float rows = this->loadConfig.pageSize > 0 ? (float)this->loadConfig.pageSize : 1.0f;
+    return this->totalHeight + estimate * rows;
+}
+
 size_t RecyclerFrame::getPooledCellCount() const
 {
     size_t total = 0;

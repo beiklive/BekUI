@@ -218,6 +218,10 @@ class RecyclerFrame : public ScrollingFrame
     float getRowHeight(size_t row) const;
     float getTotalHeight() const { return this->totalHeight; }
 
+    // **未知区域的估算滚动高度**（给滚动条/边界用，不参与布局）：
+    // 还有更多时 = 真实高度 + 估算行高 × 估算行数；没有更多时 == 真实高度。
+    float getEstimatedScrollHeight() const;
+
     // 数据变了：重建内容尺寸并重新取数。
     void reloadData();
     void notifyDataChanged();
