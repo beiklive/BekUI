@@ -727,3 +727,34 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 仍然走「写入 -> 构建 -> 失败自动回滚」。**注意**：这轮先只搬 RECT，且 `appearance_view.cpp`
 里**保留原地实现做兜底**（注册表有钩子就走钩子、没有就走老代码），这样行为零风险；
 等 6 种都搬完再删 switch（那时候 ③ 才达成）。
+
+### 12.20 ③ 的完成配方（确定性清单，下一轮纯机械变换）
+
+`appearance_view.cpp` 的 `draw()`（433 起）在 switch（486）**之前**算好了一批本地量。
+把任何一个 case 搬进绘制钩子时，按下表逐项替换即可（左边是原代码，右边是钩子里的写法，
+`ctx` 是 `LayerDrawContext`，`view` 是 `AppearanceView*` = `ctx.view`）：
+
+| 原本地量（draw() 里，448-480） | 钩子里怎么写 |
+|---|---|
+| `layer`（= layers[i]） | `ctx.layer` |
+| `index` | `ctx.layerIndex` |
+| `fill = appearance.getColor(index, FILL)` | `ctx.instance.getColor(ctx.layerIndex, AppearanceProp::FILL)` |
+| `stroke = ... STROKE` | 同上换 `STROKE` |
+| `textColor = ... TEXT_COLOR` | 同上换 `TEXT_COLOR` |
+| `strokeWidth = ... STROKE_WIDTH` | `ctx.instance.getNumber(ctx.layerIndex, AppearanceProp::STROKE_WIDTH)` |
+| `radius = ... RADIUS` | 同上换 `RADIUS` |
+| `opacity = ... OPACITY` | 同上换 `OPACITY` |
+| `fontSize = ... FONT_SIZE` | 同上换 `FONT_SIZE` |
+| `alphaScale = clamp(opacity) * getAlpha()` | 钩子里自己算：`std::max(0.f, std::min(1.f, opacity)) * view->getAlpha()` |
+| `scaleAlpha(...)`（算 alpha 的 lambda） | 同一个 lambda，在钩子里照抄一份（或用 ctx 给的小工具） |
+| `rect[4]`（按 inset/align/offset 算好） | `ctx.rect` 的四个字段桥接成 `const float rect[4] = { minX, minY, maxX, maxY };` |
+| `shake = getHighlightShakeOffset()` | `view->getHighlightShakeOffset()`（只有用到 shake 的层需要） |
+| `break;`（case 内，RECT 有 2 处） | **改成 `return;`** |
+| case 的 `case ...:` / `{` / 收尾 `break;` / `}` 包装 | **全部剥掉**，只留中间语句 |
+
+`ctx.view` 是 `void*`，钩子里 `static_cast<AppearanceView*>(ctx.view)` 即可
+（钩子实现就在 widgets，能引 `appearance_view.hpp`）。
+
+**顺序**：RECT（已备好配方）-> SHADOW -> GLASS/TEXT/IMAGE -> CUSTOM -> 删 switch。
+每刀都在 `appearance_view.cpp` 里**保留原地实现做兜底**（有钩子走钩子、没有走老代码），
+行为零风险；6 种都搬完后再删兜底与 switch，那时 ③ 达成。
