@@ -42,3 +42,4 @@
 
 - [基础控件页对照表](base-widgets-map.md)：基础控件页里每个控件的代码 / 类文件 / 外观名 / JSON 路径
 - [解析层重构与扩展机制（评审稿）](parse-refactor-review.md) —— `bklv/compile/` 分层、图层类型注册表、外观内 `children`、迁移与验收
+- [解析层重构交付说明与示例](parse-refactor-handoff.md) —— 目录结构、可编译的示例外观、第三方加图层
