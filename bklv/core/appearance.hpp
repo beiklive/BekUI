@@ -86,9 +86,12 @@ struct AppearanceLayer
                 // 可覆盖的样式：fill(染色，带 alpha) / opacity / radius(圆角) / inset 几何；
                 // 帧级参数（blurRadius / quality）与总开关仍只由 Shell 决定（两条后端共用一份背景模糊）。
         CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
+        // 注册表里注册的扩展 op（第三方在 bklv 之外加的）；名字记在 extensionType
+        EXTENSION,
     };
 
     Op op = Op::RECT;
+    std::string extensionType; // op == EXTENSION 时：注册表里的类型名（\"stripe\"）
     std::string id;
     std::string source; // Text/Image/Custom 的数据来源名
 

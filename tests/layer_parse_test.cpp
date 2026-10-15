@@ -218,6 +218,36 @@ int main()
         check(!registerLayer(noPrefix, error), "空 idPrefix -> 失败");
     }
 
+    std::printf("\n== 5. 扩展 op：注册表里注册过就能用（op 枚举保持封闭）==\n");
+    {
+        using namespace bklv::compile;
+
+        // 第三方在自己的初始化里注册一个扩展 op（这里模拟：不碰 bklv 任何文件）
+        LayerType stripe;
+        stripe.name     = "stripe_test";
+        stripe.label    = "斜条纹";
+        stripe.idPrefix = "stripe";
+        stripe.order    = LayerOrder::DECORATION;
+        stripe.help     = "测试用的扩展 op";
+        stripe.keys     = { "angle", "width" };
+        std::string error;
+        check(registerLayer(std::move(stripe), error), "扩展 op 注册成功");
+
+        const auto appearance = compileLayers(R"({ "op": "stripe_test", "angle": 45 })", error);
+        check(appearance != nullptr, "注册过的扩展 op 能编译");
+        if (appearance != nullptr)
+        {
+            checkEqualInt((int)appearance->getLayers()[0].op, (int)AppearanceLayer::Op::EXTENSION,
+                "落到 Op::EXTENSION（枚举保持封闭）");
+            check(appearance->getLayers()[0].extensionType == "stripe_test", "extensionType 记下类型名");
+            check(appearance->indexOfLayer("stripe0") >= 0, "默认 id 用注册表的 idPrefix");
+        }
+
+        error.clear();
+        check(compileLayers(R"({ "op": "没注册过的类型" })", error) == nullptr,
+            "没注册过的 op 仍然报错（不静默放过）");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

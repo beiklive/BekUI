@@ -32,7 +32,6 @@ Gradient twoStop(ImU32 from, ImU32 to)
 int alphaOf(ImU32 color) { return (int)((color >> 24) & 0xFFu); }
 int redOf(ImU32 color) { return (int)(color & 0xFFu); }
 int greenOf(ImU32 color) { return (int)((color >> 8) & 0xFFu); }
-int blueOf(ImU32 color) { return (int)((color >> 16) & 0xFFu); }
 
 } // namespace
 

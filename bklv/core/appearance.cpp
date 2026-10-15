@@ -130,6 +130,12 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
         return AppearanceLayer::Op::GLASS;
     if (enumMatches(text, "custom"))
         return AppearanceLayer::Op::CUSTOM;
+
+    // 未命中内置：看注册表里有没有同名的**扩展 op**（第三方在自己初始化里注册的）。
+    // 有就按扩展处理（名字由调用方记进 layer.extensionType），没有才报错。
+    if (findLayer(text) != nullptr)
+        return AppearanceLayer::Op::EXTENSION;
+
     ok = false;
     return AppearanceLayer::Op::RECT;
 }
@@ -507,6 +513,8 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
             const std::string opName = node.value("op", "rect");
             bool opOk               = false;
             layer.op                = parseOp(opName, opOk);
+            if (layer.op == AppearanceLayer::Op::EXTENSION)
+                layer.extensionType = opName;
             if (!opOk)
             {
                 error = where + ".op 不认识：" + opName + "（可用 rect / text / image / shadow / custom）";

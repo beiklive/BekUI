@@ -620,6 +620,10 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 break;
             }
 
+            case AppearanceLayer::Op::EXTENSION:
+                // 注册表里注册的扩展 op：绘制钩子由 ③ 接上（这一步先只保证值能解析、枚举穷尽）
+                break;
+
             case AppearanceLayer::Op::CUSTOM:
                 this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
                     rect[3] - rect[1], this->appearance);
