@@ -707,3 +707,23 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 **工作量**：169 行拆 6 份 + 钩子加宽 + 注册调用 + 测试（顶点数/命令数断言已有，可复用）。
 分 3-4 刀：① 加宽钩子 + `setLayerDraw` + `layerOpName`（不动行为）② 搬 RECT/SHADOW
 ③ 搬 GLASS/TEXT/IMAGE ④ 搬 CUSTOM + 删 switch。
+
+### 12.19 ③ 第二刀（RECT）的两次失败与正确做法
+
+搬 `case Op::RECT` 那 21 行到 `widgets/layer_draw_rect.cpp`，两次构建失败、**两次都脚本自动回滚**
+（树零改动）。错误信息把做法说清楚了：
+
+1. **切片带上了 switch 的包装** ✗：区域是 `case ...: { <body> break; }`，
+   直接塞进函数会报 `'case' statement not in switch statement` / `'break' not in loop`。
+   -> 必须**剥掉** `case` 行 / 紧跟的 `{` / 结尾的 `break;` 与 `}`，只留中间的语句
+2. **`radius` / `alphaScale` 是 switch 之前算好的外层量** ✗（不是 case 内部的局部量）
+   -> 钩子里要**从上下文现取**：
+   `const float radius = ctx.instance.getNumber(ctx.layerIndex, AppearanceProp::RADIUS);`
+   与 `const float alphaScale = ctx.rect.alpha;`（后者已经有了）
+3. `rect` 也要桥接：`LayerRect` 是 `minX/minY/maxX/maxY` 四个字段，而原代码用 `rect[4]`
+   -> 在钩子里建一个 `const float rect[4] = { ctx.rect.minX, ... };`
+
+**下一轮的正确做法（一次能成）**：写一个"剥包装 + 桥接 + 装壳"的小转换，按上面三条处理，
+仍然走「写入 -> 构建 -> 失败自动回滚」。**注意**：这轮先只搬 RECT，且 `appearance_view.cpp`
+里**保留原地实现做兜底**（注册表有钩子就走钩子、没有就走老代码），这样行为零风险；
+等 6 种都搬完再删 switch（那时候 ③ 才达成）。
