@@ -27,11 +27,11 @@
       },
       "children": [
         {
-          "appearance": "base/label",
+          "appearance": "base/json_demo.title",
           "text": "标题"
         },
         {
-          "appearance": "base/label",
+          "appearance": "base/json_demo.title",
           "text": "副标题"
         }
       ]

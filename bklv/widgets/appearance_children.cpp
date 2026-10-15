@@ -1,6 +1,9 @@
 #include "bklv/widgets/appearance_children.hpp"
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/json_view.hpp" // ref: 视图模板
+
+#include <algorithm>
 #include "bklv/core/logger.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
@@ -11,6 +14,20 @@ namespace appearance
 
 namespace
 {
+
+// 正在构建的外观名链（同一个外观在自己子树里又出现 = 环，见规格 §12.5 规则 6）
+std::vector<std::string>& buildingStack()
+{
+    static std::vector<std::string> stack;
+    return stack;
+}
+
+// 出作用域必定出栈（用 RAII 而不是手写 pop：手写时插错位置=只在出环那条路径才出栈，
+// 结果同名兄弟被误判成循环引用 —— 这个坑我踩过）
+struct BuildingGuard
+{
+    ~BuildingGuard() { buildingStack().pop_back(); }
+};
 
 void buildOne(Box& parent, const AppearanceChild& spec, int depth)
 {
@@ -24,6 +41,16 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
     {
         case AppearanceChild::Kind::APPEARANCE:
         {
+            // 环检测：A 的子树里又引用 A（或 A->B->A）时，硬停下来并报错
+            std::vector<std::string>& stack = buildingStack();
+            if (std::find(stack.begin(), stack.end(), spec.name) != stack.end())
+            {
+                BKLV_LOG_ERROR("children 里出现循环引用：%s 在自己子树里又被引用了，已停止", spec.name.c_str());
+                break;
+            }
+            stack.push_back(spec.name);
+            BuildingGuard guard; // 出错/提前 break 也会正确出栈
+
             auto child = std::make_unique<AppearanceView>(spec.name, false);
             // 只覆盖写了的字段（存在标记由 compile 侧设好，见 compile/appearance_children.cpp）
             applyAppearanceBox(child.get(), spec.box);
@@ -39,6 +66,7 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
             for (const AppearanceChild& grand : spec.children)
                 buildOne(*raw, grand, depth + 1);
             break;
+
         }
         case AppearanceChild::Kind::BOX:
         {
@@ -52,10 +80,30 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
             break;
         }
         case AppearanceChild::Kind::VIEW_TEMPLATE:
-            // 里程碑 3：复用主题里的视图模板（ViewTemplate::instantiate）
-            BKLV_LOG_WARNING("children 的 ref \"%s\" 还没接上（里程碑 3），这一项先跳过",
-                spec.name.c_str());
+        {
+            // ref 引用的是主题 `view/` 里的**视图模板**：复用现成的 ViewTemplate + instantiate，
+            // 所以库里已有的一切控件（Button / Label / Cell…）都能被外观引用，
+            // 绑定与 i18n 也沿用同一套，不用另造"控件注册表"。
+            std::shared_ptr<const ViewTemplate> tmpl = loadViewTemplateFromTheme(spec.name);
+            if (tmpl == nullptr)
+            {
+                BKLV_LOG_WARNING("children 的 ref \"%s\" 找不到视图模板", spec.name.c_str());
+                break;
+            }
+
+            // instantiate() 返回裸指针（库的既有约定：失败返回 nullptr）
+            View* view = tmpl->instantiate();
+            if (view == nullptr)
+            {
+                BKLV_LOG_WARNING("children 的 ref \"%s\" 实例化失败", spec.name.c_str());
+                break;
+            }
+            if (Box* box = view->asBox())
+                applyAppearanceBox(box, spec.box);
+
+            parent.addView(view);
             break;
+        }
     }
 }
 
