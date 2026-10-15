@@ -1,6 +1,7 @@
 #include "bklv/widgets/appearance_view.hpp"
 
 #include "bklv/glass/glass_service.hpp"
+#include "bklv/widgets/appearance_children.hpp"
 #include "bklv/compile/layer_registry.hpp"
 
 #include <algorithm>
@@ -30,6 +31,10 @@ AppearanceView::AppearanceView(std::string appearanceName, bool focusable)
     // 构造时就套用主题：不然直接用 AppearanceView 的地方会拿到空外观
     // （遮罩/面板一笔都画不出来，排查起来很费时间——踩过）。
     this->applyTheme();
+
+    // 外观里声明了子节点就建出来（`children` 段；没写就是空，什么都不做）。
+    // 注意时机：必须放在 applyTheme() **之后**，否则拿不到刚套好的外观。
+    appearance::buildChildren(*this, this->appearance.getAppearance().getChildren());
 }
 
 namespace

@@ -370,6 +370,7 @@ set(BKLV_CORE_SOURCES
     # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
     widgets/account.cpp
     widgets/appearance_view.cpp
+    widgets/appearance_children.cpp
     widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp
