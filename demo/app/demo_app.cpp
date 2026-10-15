@@ -91,6 +91,9 @@ DemoApp::DemoApp()
     this->shell->pushContentView(this->contentRoot);
 
     // 内容避让是**显式**的：内容层按页头/底栏高度留白
+    // 第三方扩展层：注册一次（不注册的话主题里写 stripe 会报错）
+    registerStripeLayer();
+
     this->applyContentInsets();
 
     // ---- Pager：括号里的页面懒加载 + 同级换页 ----

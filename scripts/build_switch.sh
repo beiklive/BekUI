@@ -162,7 +162,7 @@ IMGUI_SOURCES=(
 DEMO_SOURCES=("${ROOT_DIR}/demo/main.cpp")
 while IFS= read -r -d '' f; do
     DEMO_SOURCES+=("$f")
-done < <(find "${ROOT_DIR}/demo/app" -name '*.cpp' -print0 | sort -z)
+done < <(find "${ROOT_DIR}/demo/app" "${ROOT_DIR}/demo/contrib" -name '*.cpp' -print0 | sort -z)
 
 # Yoga 源码（与桌面一致）
 YOGA_SOURCES=()

@@ -41,6 +41,9 @@ struct PageDeps
 };
 
 void setPageDeps(const PageDeps& deps);
+
+// 第三方扩展层样例（见 demo/contrib/stripe_layer.cpp）
+void registerStripeLayer();
 const PageDeps& getPageDeps();
 
 // 主题页要能切主题，需要 App 实例；main.cpp 在建 DemoApp 之前调用
