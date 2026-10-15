@@ -37,6 +37,9 @@ ListPageResult buildListPage()
     //   只露出顶部一条，看起来就是"只有背景、没有图与字"）。给确定高度 + shrink 0。
     grid->setHeight(300.0f);
     grid->setShrink(0.0f);
+    // ScrollingFrame 自己设 flex-basis:0 -> setHeight 被忽略（探针实测裁剪框 h=10）；
+    // 用最小高度顶住，让布局高度真的是 300
+    grid->setMinHeight(300.0f);
     grid->setItemHeight(140.0f);
     grid->setColumns(3); // 多列模式
     grid->setPreFetchLine(1);
