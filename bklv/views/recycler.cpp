@@ -149,6 +149,57 @@ void RecyclerFrame::notifyDataChanged()
 // 行高与偏移
 // ---------------------------------------------------------------------------
 
+void RecyclerFrame::notifyItemsAppended()
+{
+    // 只有"单段 + 已经有行 + 条目变多"才是真追加；其余情况老实走全量重建。
+    if (this->dataSource == nullptr || this->contentBox == nullptr)
+    {
+        this->notifyDataChanged();
+        return;
+    }
+    if (this->dataSource->getSectionCount() > 1)
+    {
+        this->notifyDataChanged(); // 分段列表的段头/段内下标会变，增量不值当（也不假装支持）
+        return;
+    }
+
+    size_t builtItems = 0;
+    for (const Row& row : this->rows)
+        if (row.kind == RowKind::ITEM)
+            ++builtItems;
+
+    const size_t totalItems = this->dataSource->getItemCount();
+    if (this->rows.empty() || totalItems <= builtItems)
+    {
+        this->notifyDataChanged(); // 空表或"变少/不变" -> 这是重置，不是追加
+        return;
+    }
+
+    for (size_t i = builtItems; i < totalItems; ++i)
+    {
+        Row row;
+        row.kind      = RowKind::ITEM;
+        row.section   = 0;
+        row.itemIndex = i;
+        row.top       = this->totalHeight;
+
+        float height = this->dataSource->getItemHeightInSection(0, i);
+        if (height <= 0.0f)
+            height = this->itemHeight;
+
+        row.height = height;
+        this->totalHeight += height;
+        this->rows.push_back(row);
+    }
+
+    // 视觉行顶：单列时根本不用（visualTopOf 走 rows[i].top），多列时才需要，且老实全量重算
+    if (this->columns > 1)
+        this->rebuildVisualTops();
+
+    this->contentBox->setHeight(this->totalHeight);
+    this->invalidate();
+}
+
 void RecyclerFrame::buildRowOffsets()
 {
     this->rows.clear();

@@ -216,6 +216,10 @@ class RecyclerFrame : public ScrollingFrame
     void reloadData();
     void notifyDataChanged();
 
+    // **增量追加**：数据源多出了条目时用它，只补尾巴（单段走真增量；其余情况内部回落到全量）。
+    // 与 notifyDataChanged 的区别就是"不重算前面的行" —— 分页加载场景每页调一次。
+    void notifyItemsAppended();
+
     // 加载/回收的行为旋钮（可 JSON 可 C++ 设置；默认值见 RecyclerLoadConfig）。
     // 第 1 刀只存不接：行为在后续刀里接上，这样每一刀都能单独验收。
     void setLoadConfig(const RecyclerLoadConfig& config) { this->loadConfig = config; }
