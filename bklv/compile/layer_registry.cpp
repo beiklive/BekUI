@@ -85,6 +85,37 @@ const LayerType* findLayer(const std::string& name)
     return it == layers.end() ? nullptr : &(*it);
 }
 
+bool setLayerDraw(const std::string& name, LayerDrawFn draw)
+{
+    ensureBuiltins();
+    for (LayerType& type : registry())
+    {
+        if (type.name == name)
+        {
+            if (!draw)
+                return false;
+            type.draw = std::move(draw);
+            return true;
+        }
+    }
+    return false;
+}
+
+const char* layerOpName(AppearanceLayer::Op op)
+{
+    switch (op)
+    {
+        case AppearanceLayer::Op::RECT: return "rect";
+        case AppearanceLayer::Op::TEXT: return "text";
+        case AppearanceLayer::Op::IMAGE: return "image";
+        case AppearanceLayer::Op::SHADOW: return "shadow";
+        case AppearanceLayer::Op::GLASS: return "glass";
+        case AppearanceLayer::Op::CUSTOM: return "custom";
+        case AppearanceLayer::Op::EXTENSION: return "extension"; // 名字在 layer.extensionType
+        default: return "rect";
+    }
+}
+
 const std::vector<LayerType>& registeredLayers()
 {
     ensureBuiltins();

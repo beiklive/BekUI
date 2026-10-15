@@ -644,7 +644,9 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 hookRect.radius = this->appearance.getNumber(index, AppearanceProp::RADIUS);
                 hookRect.alpha  = alphaScale;
 
-                type->draw(layer, drawList, hookRect);
+                compile::LayerDrawContext ctx{ layer, this->appearance, (int)index, drawList,
+                    hookRect, this };
+                type->draw(ctx);
                 break;
             }
 

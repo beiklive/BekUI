@@ -54,6 +54,20 @@ struct LayerRect
     float alpha = 1.0f;
 };
 
+// 绘制钩子的上下文。`void*` 是为了让 compile/ 不依赖 widgets/ 与 ImGui：
+//   drawList = ImDrawList*，view = AppearanceView*
+struct LayerDrawContext
+{
+    const AppearanceLayer& layer;
+    const AppearanceInstance& instance; // 取属性当前值（含状态补间结果）
+    int layerIndex = 0;
+    void* drawList  = nullptr;          // ImDrawList*
+    LayerRect rect;
+    void* view = nullptr;               // AppearanceView*（TEXT/IMAGE/CUSTOM 用内容槽）
+};
+
+using LayerDrawFn = std::function<void(const LayerDrawContext&)>;
+
 struct LayerType
 {
     std::string name;              // "rect"（JSON 里的 op 值）
@@ -73,13 +87,22 @@ struct LayerType
     std::function<bool(const nlohmann::json& node, const ThemeData& theme, AppearanceLayer& out,
         std::string& error, const std::string& where)>
         parse;
-    std::function<void(const AppearanceLayer& layer, void* drawList, const LayerRect& rect)> draw;
+    // 绘制钩子。上下文故意给全：内置层要拿实例值（含补间结果）与视图的内容槽
+    // （getLayerText/getLayerFont/drawCustomLayer），第三方层多半只用 layer + rect。
+    LayerDrawFn draw;
 };
 
 // 注册 / 查表。name 重复、name 为空、idPrefix 为空都返回 false 并写 error。
 bool registerLayer(LayerType type, std::string& error);
 
 const LayerType* findLayer(const std::string& name);
+
+// 注册/替换绘制钩子。**由 widgets 侧在初始化时调用**（compile 只提供钩子类型，
+// 不反向依赖 widgets）。name 不存在或钩子为空都返回 false。
+bool setLayerDraw(const std::string& name, LayerDrawFn draw);
+
+// op 枚举 -> 注册表里的名字（"一种 op 一个名字"的唯一来源，供绘制分派用）
+const char* layerOpName(AppearanceLayer::Op op);
 
 // 已注册的层（按注册顺序；设计器/文档遍历用）
 const std::vector<LayerType>& registeredLayers();

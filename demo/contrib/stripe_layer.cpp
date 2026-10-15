@@ -49,10 +49,11 @@ bool parseStripe(const nlohmann::json& node, const bklv::ThemeData& theme,
 
 // 绘制：斜条纹。引擎（appearance_view.cpp 的 EXTENSION 分支）会把这个钩子接上，
 // 传进来的 void* 就是 ImDrawList*，rect 是这一层自己的矩形（含圆角与有效 alpha）。
-void drawStripe(const bklv::AppearanceLayer& layer, void* drawListPtr,
-    const bklv::compile::LayerRect& rect)
+void drawStripe(const bklv::compile::LayerDrawContext& ctx)
 {
-    ImDrawList* drawList = static_cast<ImDrawList*>(drawListPtr);
+    const bklv::AppearanceLayer& layer = ctx.layer;
+    const bklv::compile::LayerRect& rect = ctx.rect;
+    ImDrawList* drawList = static_cast<ImDrawList*>(ctx.drawList);
     const float width = rect.maxX - rect.minX;
     const float height = rect.maxY - rect.minY;
     if (drawList == nullptr || width <= 1.0f || height <= 1.0f)
