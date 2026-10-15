@@ -15,6 +15,7 @@
 
 #include "bklv/core/logger.hpp"
 #include "bklv/compile/json_util.hpp"
+#include "bklv/compile/appearance_children.hpp"
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/ui_scale.hpp"
@@ -1340,6 +1341,10 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
     if (!parseLayers(doc, theme, appearance->box, appearance->layers, error))
         return nullptr;
 
+
+    // 子节点声明（外观内组合控件；没写这段就是空，行为不变）
+    if (!compile::parseChildren(doc, theme, appearance->children, error))
+        return nullptr;
 
     // 状态
     if (!parseStates(doc, theme, *appearance, appearance->stateNames, appearance->states, error))

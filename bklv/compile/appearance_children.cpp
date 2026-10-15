@@ -1,0 +1,159 @@
+#include "bklv/compile/appearance_children.hpp"
+
+#include "bklv/compile/json_util.hpp"
+
+
+namespace bklv
+{
+namespace compile
+{
+
+namespace
+{
+
+// 视图 JSON 的深度上限是 32；控件组合嵌套不该那么深，这里更保守（§12.5 规则 5）
+constexpr int MAX_CHILD_DEPTH = 16;
+
+bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
+    std::string& error, const std::string& where);
+
+bool parseOneChild(const Json& node, const ThemeData& theme, AppearanceChild& out,
+    std::string& error, const std::string& where, int depth)
+{
+    if (depth > MAX_CHILD_DEPTH)
+    {
+        error = where + "：children 嵌套超过 " + std::to_string(MAX_CHILD_DEPTH) + " 层";
+        return false;
+    }
+    if (!node.is_object())
+    {
+        error = where + "：children 的每一项都必须是对象";
+        return false;
+    }
+
+    const bool hasAppearance = node.contains("appearance");
+    const bool hasRef        = node.contains("ref");
+    const bool hasBox        = node.contains("box");
+
+    if (hasAppearance && hasRef)
+    {
+        error = where + "：不能同时写 appearance 与 ref（二选一）";
+        return false;
+    }
+    if (!hasAppearance && !hasRef && !hasBox)
+    {
+        error = where + "：至少要有 appearance / ref / box 之一，否则不知道该建什么";
+        return false;
+    }
+
+    if (hasAppearance)
+    {
+        out.kind = AppearanceChild::Kind::APPEARANCE;
+        out.name = node["appearance"].get<std::string>();
+    }
+    else if (hasRef)
+    {
+        out.kind = AppearanceChild::Kind::VIEW_TEMPLATE;
+        out.name = node["ref"].get<std::string>();
+    }
+    else
+    {
+        out.kind = AppearanceChild::Kind::BOX;
+    }
+
+    if (hasBox && !parseChildBox(node["box"], theme, out.box, error, where + ".box"))
+        return false;
+
+    for (const char* slot : { "text", "icon", "info" })
+    {
+        if (node.contains(slot))
+        {
+            const std::string value = node[slot].get<std::string>();
+            if (std::string(slot) == "text")
+                out.text = value;
+            else if (std::string(slot) == "icon")
+                out.icon = value;
+            else
+                out.info = value;
+        }
+    }
+
+    if (node.contains("children"))
+    {
+        if (out.kind == AppearanceChild::Kind::VIEW_TEMPLATE)
+        {
+            error = where + "：ref 引用的是视图模板，它的 children 写在模板里，这里不能再写";
+            return false;
+        }
+        if (!node["children"].is_array())
+        {
+            error = where + ".children 必须是数组";
+            return false;
+        }
+        int index = 0;
+        for (const Json& child : node["children"])
+        {
+            AppearanceChild parsed;
+            if (!parseOneChild(child, theme, parsed, error, where + ".children[" + std::to_string(index) + "]", depth + 1))
+                return false;
+            out.children.push_back(std::move(parsed));
+            index++;
+        }
+    }
+
+    return true;
+}
+
+// box 段：只认这几个键（写别的键告警，对齐既有约定；这里先只做"只覆盖写了的字段"）
+bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
+    std::string& error, const std::string& where)
+{
+    if (!node.is_object())
+    {
+        error = where + " 必须是对象";
+        return false;
+    }
+    if (node.contains("width") && !resolveNumber(node["width"], theme, out.width, error, where + ".width"))
+        return false;
+    if (node.contains("height") && !resolveNumber(node["height"], theme, out.height, error, where + ".height"))
+        return false;
+    if (node.contains("grow"))
+        out.grow = node["grow"].get<float>();
+    if (node.contains("shrink"))
+        out.shrink = node["shrink"].get<float>();
+    if (node.contains("gap"))
+        out.gap = node["gap"].get<float>();
+    if (node.contains("padding"))
+        out.padding[0] = out.padding[1] = out.padding[2] = out.padding[3] = node["padding"].get<float>();
+    // TODO(里程碑 2)：`axis` 以及 box 的其余键应当**复用现有 box 解析器**，
+    // 而不是在这里手搓一份（手搓就是这次重构要消灭的重复）。里程碑 1 先只支持最常用的几个。
+    return true;
+}
+
+} // namespace
+
+bool parseChildren(const Json& doc, const ThemeData& theme, std::vector<AppearanceChild>& out,
+    std::string& error)
+{
+    if (!doc.contains("children"))
+        return true;
+    if (!doc["children"].is_array())
+    {
+        error = "children 必须是数组";
+        return false;
+    }
+
+    int index = 0;
+    for (const Json& node : doc["children"])
+    {
+        AppearanceChild child;
+        if (!parseOneChild(node, theme, child, error, "children[" + std::to_string(index) + "]", 1))
+            return false;
+        out.push_back(std::move(child));
+        index++;
+    }
+    return true;
+}
+
+} // namespace compile
+} // namespace bklv

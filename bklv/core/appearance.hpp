@@ -257,6 +257,23 @@ struct AppearanceBox
     ImU32 borderColor     = 0;
 };
 
+// 外观里的**子节点声明**（`children` 段）。
+// 注意：这是编译产物里的纯数据 —— 建视图是 widgets 的事，解析不建视图。
+struct AppearanceChild
+{
+    enum class Kind
+    {
+        APPEARANCE,    // "appearance": "<外观名>" -> 一个 AppearanceView
+        BOX,           // 只写 "box" -> 一个纯布局 Box（递归嵌套的载体）
+        VIEW_TEMPLATE, // "ref": "<视图模板名>" -> 用主题 view/ 的模板实例化（任意控件类型）
+    };
+
+    Kind kind = Kind::BOX;
+    std::string name;               // appearance 名 或 视图模板名（BOX 时为空）
+    AppearanceBox box;              // 写了的字段才覆盖（沿用"没写不动"的既有约定）
+    std::string text, icon, info;   // 内容槽（可空；实例化后套到 AppearanceView 的既有槽位）
+    std::vector<AppearanceChild> children; // 递归
+};
 class Appearance
 {
   public:
@@ -265,6 +282,7 @@ class Appearance
         std::string& error);
 
     const std::vector<AppearanceLayer>& getLayers() const { return this->layers; }
+    const std::vector<AppearanceChild>& getChildren() const { return this->children; }
     const AppearanceBox& getBox() const { return this->box; }
     const std::vector<std::string>& getStateNames() const { return this->stateNames; }
     const std::vector<AppearanceTransition>& getTransitions(const std::string& state) const;
@@ -279,6 +297,7 @@ class Appearance
 
   private:
     std::vector<AppearanceLayer> layers;
+    std::vector<AppearanceChild> children;
     AppearanceBox box;
     std::vector<std::string> stateNames;
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
