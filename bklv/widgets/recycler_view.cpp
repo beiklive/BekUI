@@ -164,8 +164,84 @@ void RecyclerView::setColumns(int count)
 }
 
 void RecyclerView::setMinItemWidth(float width) { this->minItemWidth = width; }
-void RecyclerView::setSlotLoading(const std::string& name) { this->slotLoading = name; }
-void RecyclerView::setSlotEmpty(const std::string& name) { this->slotEmpty = name; }
+namespace
+{
+
+// 槽位视图：从主题的视图模板实例化（和 itemTemplate 走同一套机制，可缓存、与语言无关）
+View* makeSlotView(const std::string& templateName)
+{
+    if (templateName.empty())
+        return nullptr;
+    std::shared_ptr<const ViewTemplate> tmpl = loadViewTemplateFromTheme(templateName);
+    if (tmpl == nullptr)
+    {
+        BKLV_LOG_WARNING("槽位模板 \"%s\" 找不到（slotLoading/slotEmpty 写的是主题里的视图名）",
+            templateName.c_str());
+        return nullptr;
+    }
+    return tmpl->instantiate();
+}
+
+} // namespace
+
+void RecyclerView::setSlotLoading(const std::string& name)
+{
+    this->slotLoading = name;
+    View* view = makeSlotView(name);
+    if (view != nullptr)
+    {
+        this->slotLoadingView = view;
+        this->addView(view);
+        this->applySlotState(); // 建好就按当前状态套一次（否则初始 CONTENT 下槽位会一直显示）
+    }
+}
+void RecyclerView::setSlotEmpty(const std::string& name)
+{
+    this->slotEmpty = name;
+    View* view = makeSlotView(name);
+    if (view != nullptr)
+    {
+        this->slotEmptyView = view;
+        this->addView(view);
+        this->applySlotState();
+    }
+}
+
+void RecyclerView::update()
+{
+    RecyclerFrame::update();
+
+    // 槽位由**数据源**决定显示哪个（JSON 只声明长什么样，这里不做任何语义判断）
+    RecyclerSlotState state = RecyclerSlotState::CONTENT;
+    if (this->getDataSource() != nullptr)
+        state = this->getDataSource()->getSlotState();
+
+    if (state != this->slotState)
+    {
+        this->slotState = state;
+        this->applySlotState();
+    }
+}
+
+void RecyclerView::applySlotState()
+{
+    const bool showLoading = this->slotState == RecyclerSlotState::LOADING;
+    const bool showEmpty = this->slotState == RecyclerSlotState::EMPTY;
+    if (this->slotLoadingView != nullptr)
+        this->slotLoadingView->setVisibility(showLoading ? Visibility::VISIBLE : Visibility::GONE);
+    if (this->slotEmptyView != nullptr)
+        this->slotEmptyView->setVisibility(showEmpty ? Visibility::VISIBLE : Visibility::GONE);
+}
+
+bool RecyclerView::isSlotVisible(RecyclerSlotState state) const
+{
+    const View* view = nullptr;
+    if (state == RecyclerSlotState::LOADING)
+        view = this->slotLoadingView;
+    else if (state == RecyclerSlotState::EMPTY)
+        view = this->slotEmptyView;
+    return view != nullptr && view->getVisibility() == Visibility::VISIBLE;
+}
 void RecyclerView::setOnEndName(const std::string& name) { this->onEndName = name; }
 
 void RecyclerView::setSectionHeaderAppearance(const std::string& name)

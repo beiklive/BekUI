@@ -97,6 +97,12 @@ class RecyclerView : public RecyclerFrame
     // 建 item cell（registerCell 的工厂）；由属性表在设置模板后自动调用一次
     void rebuildItemCells();
 
+    // —— slots：loading / empty 具名槽位 ——
+    // JSON 只声明"槽位长什么样"（视图模板名）；**显示哪个由数据源的 getSlotState() 决定**
+    void update() override;
+    RecyclerSlotState getSlotState() const { return this->slotState; }
+    bool isSlotVisible(RecyclerSlotState state) const;
+
   private:
     // JSON 路径下数据源是注册表的工厂 new 出来的 -> 由本视图持有并负责释放
     // （C++ 页面用的是 static 局部对象，那条路不经过这里）
@@ -109,6 +115,10 @@ class RecyclerView : public RecyclerFrame
     std::string onEndName;
     std::string itemBinderName;
     std::string sectionHeaderAppearance;
+    View* slotLoadingView = nullptr;
+    View* slotEmptyView = nullptr;
+    RecyclerSlotState slotState = RecyclerSlotState::CONTENT;
+    void applySlotState();
     int columns = 1;
     float minItemWidth = 0.0f;
 };

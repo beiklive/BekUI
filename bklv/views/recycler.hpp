@@ -83,6 +83,14 @@ class RecyclerSectionHeader : public RecyclerCell
 };
 
 // 数据源：列表需要知道"有多少条"以及"第 i 条用哪种 cell"。
+// 列表的"三态"：内容 / 加载中 / 空。由**数据源**决定现在该显示哪个（JSON 只声明槽位长什么样）。
+enum class RecyclerSlotState
+{
+    CONTENT,
+    LOADING,
+    EMPTY,
+};
+
 class RecyclerDataSource
 {
   public:
@@ -90,6 +98,9 @@ class RecyclerDataSource
 
     // ---- 单段用法（老写法，段数默认是 1）----
     virtual size_t getItemCount() { return 0; }
+    // 现在该显示哪个槽位（默认 CONTENT）。JSON 里 slotLoading/slotEmpty 声明"长什么样"，
+    // 到底显示哪个由这里决定 —— 不把判断塞进 JSON 当解释器。
+    virtual RecyclerSlotState getSlotState() { return RecyclerSlotState::CONTENT; }
 
     // 返回第 index 条的复用标识；默认全部用 DEFAULT_CELL_ID。
     virtual std::string getItemIdentifier(size_t) { return DEFAULT_CELL_ID; }
