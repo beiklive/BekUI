@@ -2,7 +2,8 @@
   "box": {
     "axis": "row",
     "gap": 10,
-    "padding": 12
+    "padding": 12,
+    "alignItems": "center"
   },
   "layers": [
     {
