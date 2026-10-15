@@ -40,7 +40,7 @@ class RecyclerItemCell : public RecyclerCell
 
     // 数据绑定挂点：JSON 只写**名字**，实现由 C++ 注册（views/item_binder）
     void setItemBinderName(const std::string& name);
-    void setBinder(std::function<void(View&, size_t)> binder) { this->binder = std::move(binder); }
+    void setBinder(std::function<void(View&, size_t, size_t)> binder) { this->binder = std::move(binder); }
 
     View* getContent() const { return (View*)this->content; }
 
@@ -51,7 +51,7 @@ class RecyclerItemCell : public RecyclerCell
     View* templateContent = nullptr;
     std::string appearanceName;
     std::string viewTemplateName;
-    std::function<void(View&, size_t)> binder;
+    std::function<void(View&, size_t, size_t)> binder;
 };
 
 // 段头的载体：RecyclerSectionHeader 也是 Box 派生，外观同样要靠 AppearanceView 画

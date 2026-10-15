@@ -396,7 +396,8 @@ void registerPokedexJsonBindings()
         BKLV_LOG_WARNING("pokedex_flat 数据源注册失败：%s", error.c_str());
 
     if (!bklv::binding::registerItemBinder("pokedexCell",
-            [](bklv::View& item, size_t index) {
+            [](bklv::View& item, size_t section, size_t index) {
+                (void)section; // 单段页（分段+段头见 docs §11.2）
                 const std::vector<DexEntry>& list = starters();
                 if (index >= list.size())
                     return;

@@ -50,7 +50,7 @@ int main()
         check(data::registerSource("pokedex",
                   [] { return (RecyclerDataSource*)new MockSource(); }, error),
             "注册 pokedex 数据源");
-        check(binding::registerItemBinder("pokedexCell", [](View&, size_t) {}, error),
+        check(binding::registerItemBinder("pokedexCell", [](View&, size_t, size_t) {}, error),
             "注册 pokedexCell 绑定函数");
         registerRecyclerViewType();
         View* page = createViewFromTheme("page_pokedex_json");

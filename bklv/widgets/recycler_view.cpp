@@ -79,7 +79,7 @@ void RecyclerItemCell::setIndex(size_t value)
     this->ensureContent("base/rectangle.card"); // 没设模板时的兜底
     View* target = this->content != nullptr ? (View*)this->content : this->templateContent;
     if (this->binder && target != nullptr)
-        this->binder(*target, value);
+        this->binder(*target, 0, value); // 单段：section 恒为 0
 }
 
 void RecyclerItemCell::setSectionIndex(size_t sectionValue, size_t indexValue)
@@ -89,7 +89,7 @@ void RecyclerItemCell::setSectionIndex(size_t sectionValue, size_t indexValue)
     this->ensureContent("base/rectangle.card");
     View* target = this->content != nullptr ? (View*)this->content : this->templateContent;
     if (this->binder && target != nullptr)
-        this->binder(*target, indexValue);
+        this->binder(*target, sectionValue, indexValue);
 }
 
 void RecyclerItemCell::prepareForReuse() { }

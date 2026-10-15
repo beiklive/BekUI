@@ -17,15 +17,15 @@ int main()
     {
         binding::clearItemBindersForTest();
         std::string error;
-        check(binding::registerItemBinder("mock", [](View&, size_t) {}, error), "注册成功");
+        check(binding::registerItemBinder("mock", [](View&, size_t, size_t) {}, error), "注册成功");
         check(binding::hasItemBinder("mock"), "hasItemBinder 为真");
         check(binding::itemBinderNames().size() == 1, "名字表里有 1 个");
         check((bool)binding::findItemBinder("mock"), "能取到");
 
         error.clear();
-        check(!binding::registerItemBinder("mock", [](View&, size_t) {}, error), "重复注册 -> 失败");
+        check(!binding::registerItemBinder("mock", [](View&, size_t, size_t) {}, error), "重复注册 -> 失败");
         error.clear();
-        check(!binding::registerItemBinder("", [](View&, size_t) {}, error), "空名字 -> 失败");
+        check(!binding::registerItemBinder("", [](View&, size_t, size_t) {}, error), "空名字 -> 失败");
         error.clear();
         check(!binding::registerItemBinder("empty", binding::ItemBinder(), error), "空函数 -> 失败");
         check(binding::itemBinderNames().size() == 1, "失败的注册没进表");
@@ -38,7 +38,7 @@ int main()
         std::string error;
         std::vector<size_t> seen;
         check(binding::registerItemBinder("collect",
-                  [&seen](View&, size_t index) { seen.push_back(index); }, error),
+                  [&seen](View&, size_t, size_t index) { seen.push_back(index); }, error),
             "注册收集用的绑定函数");
 
         RecyclerItemCell cell;

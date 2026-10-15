@@ -20,8 +20,9 @@ class View;
 namespace binding
 {
 
-// 绑定函数的形状：把第 index 项的数据套进 item 视图
-using ItemBinder = std::function<void(View& item, size_t index)>;
+// 绑定函数的形状：把第 section 段、段内第 indexInSection 项的数据套进 item 视图
+// （单段列表 section 恒为 0；显式给段号，省得使用者去 static_cast 某个 cell 具体类）
+using ItemBinder = std::function<void(View& item, size_t section, size_t indexInSection)>;
 
 // 重名、空名字、空函数都返回 false 并写 error（不覆盖）
 bool registerItemBinder(const std::string& name, ItemBinder binder, std::string& error);
