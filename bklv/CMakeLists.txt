@@ -335,6 +335,7 @@ set(BKLV_CORE_SOURCES
     core/event.cpp
     core/gesture.cpp
     core/graphics.cpp
+    core/decode_queue.cpp
     core/image_decoder.cpp
     core/image_decoder_gif.cpp
     core/image_decoder_webp.cpp
