@@ -23,9 +23,17 @@ ListPageResult buildListPage()
     page->addView(makeHint(getStr("list/hint")));
 
     // —— 网格区块（RecyclerFrame 的多列模式；Grid 不另设类型）——
+    // 网格放在一个**固定高度的外层 Box** 里：ScrollingFrame 自己会设 flex-basis:0，
+    // 直接给它 setHeight 不生效（会被下面要 grow 的列表压扁）—— 外层 Box 的高度才作数。
+    Box* gridBox = new Box(Axis::COLUMN);
+    gridBox->setWidthPercentage(100.0f);
+    gridBox->setHeight(300.0f); // 完整两行网格
+    gridBox->setShrink(0.0f);
+
     RecyclerFrame* grid = new RecyclerFrame();
     grid->setWidthPercentage(100.0f);
-    grid->setHeight(210.0f); // 固定高度：上面网格、下面列表
+    grid->setHeightPercentage(100.0f);
+    grid->setMinHeight(0.0f);
     grid->setItemHeight(140.0f);
     grid->setColumns(3); // 多列模式
     grid->setPreFetchLine(1);
@@ -34,7 +42,8 @@ ListPageResult buildListPage()
 
     static ListSource gridSource(24, 140.0f); // 数据源要活到列表销毁
     grid->setDataSource(&gridSource);
-    page->addView(grid);
+    gridBox->addView(grid);
+    page->addView(gridBox);
 
 
     RecyclerFrame* list = new RecyclerFrame();

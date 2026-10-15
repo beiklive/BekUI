@@ -126,10 +126,10 @@ GridCell::GridCell()
     this->card->setAxis(Axis::COLUMN); // 上图下文
     this->card->setAlignItems(AlignItems::CENTER);
     this->card->setGrow(1.0f);
-    this->card->setMarginTop(4.0f);
-    this->card->setMarginBottom(4.0f);
-    this->card->setMarginLeft(4.0f);
-    this->card->setMarginRight(4.0f);
+    this->card->setMarginTop(6.0f);
+    this->card->setMarginBottom(6.0f);
+    this->card->setMarginLeft(6.0f);
+    this->card->setMarginRight(6.0f);
     this->card->setPaddingTop(10.0f);
     this->card->setPaddingBottom(8.0f);
     this->card->setGap(6.0f);
