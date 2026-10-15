@@ -570,3 +570,28 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 
 **做法**：仍然"先自检边界（括号配平 + 引用清单）-> 再落盘 -> 构建失败自动回滚"，
 这套在这一轮已经拦下过三次错误切片。
+
+### 12.14 parseLayerMeta 第一次尝试：自动回滚（三个原因已查明）
+
+这一刀用「写入 -> 构建 -> **失败自动回滚**」的脚本做的，结果构建失败，脚本把改动全部撤掉，
+**树干净、main 仍是绿的** ✓。三个原因都很明确：
+
+1. **`layer` redefinition**：509-572 这段里**自己声明了** `AppearanceLayer layer;` ——
+   也就是元信息解析负责"造出这一层"，而不是改一个传进来的层 ✗
+   -> 签名应当改成**输出参数**：`AppearanceLayer& out`，段内那行声明删掉、`layer` 机械改名为 `out`；
+   调用方在调用**之前**声明 `AppearanceLayer layer;`
+2. **`parseOp` 未声明**：它是 `appearance.cpp` 的**文件内**函数（op 串 -> 枚举 + EXTENSION 兜底），
+   抽出后必须**导出**（放 `layer_registry.hpp` 或 `appearance_layer_meta.hpp` 都行）
+3. **调用点 `layer` 未声明**：因为声明在段内被搬走了 -> 由第 1 条的输出参数解决
+
+**下一轮的正确切法**（一次能成）：
+```cpp
+// appearance_layer_meta.hpp
+AppearanceLayer::Op parseOp(const std::string& text, bool& ok);          // 导出（原为文件内）
+bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
+    AppearanceLayer& out, std::string& error);                            // out = 输出
+```
+调用方：`AppearanceLayer layer; if (!parseLayerMeta(node, i, theme, layer, error)) return false;`
+
+**方法论**：「写入 -> 构建 -> 失败自动回滚」这个脚本形态值得保留 ——
+它让"试一刀"的成本变成零风险（这次就是它兜住的）。
