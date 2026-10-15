@@ -491,6 +491,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
             }
 
             case AppearanceLayer::Op::GLASS:
@@ -506,6 +507,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
             }
 
             case AppearanceLayer::Op::SHADOW:
@@ -521,6 +523,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
             }
 
             case AppearanceLayer::Op::TEXT:
@@ -538,6 +541,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this, &textContent, layerFont, nullptr, nullptr });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
             }
 
             case AppearanceLayer::Op::IMAGE:
@@ -555,6 +559,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         layerImage.isValid() ? (void*)layerImage.texture : nullptr, nullptr });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
             }
 
             case AppearanceLayer::Op::EXTENSION:
@@ -593,6 +598,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                         this, nullptr, nullptr, nullptr, nullptr });
                     break;
                 }
+                break; // 没有钩子时也要断住，别贯穿到下一条 case
                 this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
                     rect[3] - rect[1], this->appearance);
                 break;
