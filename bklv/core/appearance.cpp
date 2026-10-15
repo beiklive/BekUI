@@ -379,6 +379,75 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
 
 // states 段：`states.<状态>.<层id>.<属性>` -> 每个状态一组通道补间。
 // 抽成函数只为可读（原来和 box / layers / transitions 挤在 compile 里一个 501 行的函数体）。
+bool parseStateProps(const std::string& stateName, const Json& stateNode,
+    const ThemeData& theme, Appearance& target,
+    std::vector<AppearanceTransition>& transitions, std::string& error)
+{
+    for (auto propIt = stateNode.begin(); propIt != stateNode.end(); ++propIt)
+    {
+        // property 写成 "<layerId>.<属性名>"
+        const std::string property = propIt.key();
+        const size_t dot           = property.find_last_of('.');
+        if (dot == std::string::npos)
+        {
+            error = "states." + stateName + "." + property
+                + " 要写成 \"<层 id>.<属性名>\"，例如 \"bg.fill\"";
+            return false;
+        }
+
+        const std::string layerId = property.substr(0, dot);
+        const std::string propName = property.substr(dot + 1);
+        const int layerIndex       = target.indexOfLayer(layerId);
+        if (layerIndex < 0)
+        {
+            error = "states." + stateName + "." + property + " 引用了不存在的层 \"" + layerId + "\"";
+            return false;
+        }
+
+        AppearanceProp prop = AppearanceProp::FILL;
+        if (!appearancePropFromName(propName, prop))
+        {
+            error = "states." + stateName + "." + property + " 不认识的属性 \"" + propName + "\"";
+            return false;
+        }
+
+        AppearanceTransition transition;
+        transition.layerId = layerId;
+        transition.prop    = prop;
+        transition.durationMs = stateNode[property].value("duration", 0.0f);
+        transition.easing     = stateNode[property].value("easing", "linear");
+
+        const Json& target = stateNode[property];
+        if (!target.is_object() || !target.contains("to"))
+        {
+            error = "states." + stateName + "." + property + " 必须写成 {\"to\": ..., \"duration\": 毫秒}";
+            return false;
+        }
+
+        if (appearancePropIsColor(prop))
+        {
+            ImU32 color = 0;
+            if (!resolveColor(target["to"], theme, color, error, "states." + stateName + "." + property + ".to"))
+                return false;
+            splitColor(color, transition.target);
+        }
+        else if (!resolveNumber(target["to"], theme, transition.target[0], error,
+                     "states." + stateName + "." + property + ".to"))
+        {
+            return false;
+        }
+        else if (prop != AppearanceProp::OPACITY)
+        {
+            // 几何量（圆角/描边宽/字号/位移/内边距）的目标值也跟随 720p 缩放；
+            // 颜色与 opacity 不缩放
+            transition.target[0] = scalePixels(transition.target[0]);
+        }
+
+        transitions.push_back(transition);
+    }
+    return true;
+}
+
 bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& target,
     std::vector<std::string>& stateNames,
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>>& states,
@@ -395,68 +464,8 @@ bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& 
         }
 
         std::vector<AppearanceTransition> transitions;
-        for (auto propIt = stateNode.begin(); propIt != stateNode.end(); ++propIt)
-        {
-            // property 写成 "<layerId>.<属性名>"
-            const std::string property = propIt.key();
-            const size_t dot           = property.find_last_of('.');
-            if (dot == std::string::npos)
-            {
-                error = "states." + stateName + "." + property
-                    + " 要写成 \"<层 id>.<属性名>\"，例如 \"bg.fill\"";
-                return false;
-            }
-
-            const std::string layerId = property.substr(0, dot);
-            const std::string propName = property.substr(dot + 1);
-            const int layerIndex       = target.indexOfLayer(layerId);
-            if (layerIndex < 0)
-            {
-                error = "states." + stateName + "." + property + " 引用了不存在的层 \"" + layerId + "\"";
-                return false;
-            }
-
-            AppearanceProp prop = AppearanceProp::FILL;
-            if (!appearancePropFromName(propName, prop))
-            {
-                error = "states." + stateName + "." + property + " 不认识的属性 \"" + propName + "\"";
-                return false;
-            }
-
-            AppearanceTransition transition;
-            transition.layerId = layerId;
-            transition.prop    = prop;
-            transition.durationMs = stateNode[property].value("duration", 0.0f);
-            transition.easing     = stateNode[property].value("easing", "linear");
-
-            const Json& target = stateNode[property];
-            if (!target.is_object() || !target.contains("to"))
-            {
-                error = "states." + stateName + "." + property + " 必须写成 {\"to\": ..., \"duration\": 毫秒}";
-                return false;
-            }
-
-            if (appearancePropIsColor(prop))
-            {
-                ImU32 color = 0;
-                if (!resolveColor(target["to"], theme, color, error, "states." + stateName + "." + property + ".to"))
-                    return false;
-                splitColor(color, transition.target);
-            }
-            else if (!resolveNumber(target["to"], theme, transition.target[0], error,
-                         "states." + stateName + "." + property + ".to"))
-            {
-                return false;
-            }
-            else if (prop != AppearanceProp::OPACITY)
-            {
-                // 几何量（圆角/描边宽/字号/位移/内边距）的目标值也跟随 720p 缩放；
-                // 颜色与 opacity 不缩放
-                transition.target[0] = scalePixels(transition.target[0]);
-            }
-
-            transitions.push_back(transition);
-        }
+        if (!parseStateProps(stateName, stateNode, theme, target, transitions, error))
+            return false;
 
         stateNames.push_back(stateName);
         states.emplace_back(stateName, std::move(transitions));
