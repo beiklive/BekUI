@@ -24,6 +24,9 @@ Image::~Image()
 {
     // 动图纹理会占用一张真纹理，必须自己释放（静态图是路径缓存持有的，不能动）
     this->releaseOwnedTexture();
+    // 静态图：只放掉引用计数（纹理本身仍由路径缓存持有），供 2d 的淘汰判断
+    if (!this->ownsTexture)
+        releaseTexture(this->texture.index);
 }
 
 void Image::releaseOwnedTexture()
@@ -267,7 +270,13 @@ void Image::setImageFromFileAsync(const std::string& path)
             if (!loaded.isValid())
                 return;
 
+            releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
+
+
             this->texture = loaded;
+
+
+            retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
             this->pendingPath.clear();
 
             if (this->getWidth() <= 0.0f)
@@ -288,7 +297,13 @@ bool Image::setImageFromFile(const std::string& path)
     if (!loaded.isValid())
         return false;
 
+    releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
+
+
     this->texture = loaded;
+
+
+    retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
     this->pendingPath.clear();
 
     // 没有显式尺寸时，用图片原始尺寸，避免退化成 0x0。
@@ -325,7 +340,13 @@ void Image::update()
     if (!loaded.isValid())
         return;
 
+    releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
+
+
     this->texture = loaded;
+
+
+    retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
     this->pendingPath.clear();
 
     if (this->getWidth() <= 0.0f)
