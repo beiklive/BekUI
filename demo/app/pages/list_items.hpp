@@ -28,6 +28,7 @@ class ListCell : public bklv::RecyclerCell
 
   private:
     void applyIndex(size_t section, size_t index);
+    bklv::AppearanceView* card = nullptr; // 玻璃卡片（行间距靠它的 margin）
     bklv::Image* thumbnail = nullptr;
     bklv::Label* title     = nullptr;
     bklv::Label* subtitle  = nullptr;

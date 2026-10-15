@@ -15,22 +15,31 @@ namespace demo
 
 ListCell::ListCell()
 {
+    // 行间距：cell 本身 64 高，真正的卡片由里面的 glass 视图承担，
+    // 用上下 margin 让相邻两行之间留出空隙（列表不再一行贴一行）
     this->setHeight(64.0f);
     this->setAlignItems(AlignItems::CENTER);
+
+    // 与整体观感一致的 **glass** 卡片（主题里的容器玻璃外观，和页头/侧栏同一套）
+    AppearanceView* card = new AppearanceView(std::string("base/glass_surface"), false);
+    card->setGrow(1.0f);
+    card->setAlignItems(AlignItems::CENTER);
+    card->setMarginTop(4.0f);
+    card->setMarginBottom(4.0f);
     // 左右内缩按 borealis 的 listitem/indent(40) 与 descriptionIndent(16)
-    this->setPaddingTop(10.0f);
-    this->setPaddingBottom(10.0f);
-    this->setPaddingLeft(40.0f);
-    this->setPaddingRight(16.0f);
-    this->setGap(12.0f);
-    this->setCornerRadius(8.0f);
-    this->setBackgroundColor(rgb(38, 42, 50));
+    card->setPaddingTop(8.0f);
+    card->setPaddingBottom(8.0f);
+    card->setPaddingLeft(40.0f);
+    card->setPaddingRight(16.0f);
+    card->setGap(12.0f);
+    this->addView(card);
+    this->card = card;
 
     this->thumbnail = new Image();
     this->thumbnail->setDimensions(76.0f, 44.0f);
     this->thumbnail->setCornerRadius(6.0f);
     this->thumbnail->setScalingType(ImageScalingType::FIT); // 保持比例完整显示（FILL 会把方形图上下裁掉）
-    this->addView(this->thumbnail);
+    card->addView(this->thumbnail);
 
     Box* textBox = new Box(Axis::COLUMN);
     textBox->setGrow(1.0f);
@@ -43,7 +52,7 @@ ListCell::ListCell()
     this->subtitle->setMarginTop(3.0f);
     textBox->addView(this->subtitle);
 
-    this->addView(textBox);
+    card->addView(textBox);
 }
 
 void ListCell::prepareForReuse()
@@ -89,15 +98,18 @@ void ListCell::applyIndex(size_t section, size_t index)
 
 void ListCell::onFocusGained()
 {
-    this->setBackgroundColor(rgb(52, 74, 110));
-    this->setBorderColor(rgb(90, 170, 245));
-    this->setBorderThickness(2.0f);
+    // 玻璃卡片上不加纯色底（会盖住玻璃质感），只用描边表达聚焦
+    if (this->card != nullptr)
+    {
+        this->card->setBorderColor(rgb(90, 170, 245));
+        this->card->setBorderThickness(2.0f);
+    }
 }
 
 void ListCell::onFocusLost()
 {
-    this->setBackgroundColor(rgb(38, 42, 50));
-    this->setBorderThickness(0.0f);
+    if (this->card != nullptr)
+        this->card->setBorderThickness(0.0f);
 }
 
 // ---------------------------------------------------------------------------
