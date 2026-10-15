@@ -310,3 +310,94 @@ struct AppearanceLayer {
 
 优先级建议：**先 ⑤**（新能力，用户侧感知最强，且不依赖前两件），再 ④（结构与依赖清理），
 最后收 ①c-3 余下（纯内部整理）。
+
+## 12. ⑤ `appearance.children` 实现规格（实现前先定死）
+
+### 12.1 JSON 语法
+
+`children` 是外观 JSON 的顶层段，与 `box` / `layers` / `states` / `transitions` 平级：
+
+```json
+{
+  "box": { "axis": "row", "gap": 10, "padding": 12 },
+  "layers": [ { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 12 } ],
+  "children": [
+    { "appearance": "base/icon_badge", "box": { "width": 36, "height": 36 }, "icon": "@icon/star" },
+    { "box": { "axis": "column", "gap": 4, "grow": 1 },
+      "children": [ { "appearance": "base/label", "text": "@i18n/card.title" } ] },
+    { "ref": "widget/button.icon_text", "text": "@i18n/ok", "icon": "@icon/check" }
+  ]
+}
+```
+
+### 12.2 三档节点（互斥，写两个 = 报错）
+
+| 节点 | 建什么 | 就绪度 |
+|---|---|---|
+| `"appearance": "<名>"` | 一个 `AppearanceView`（名字同现有规则，含 `.变体`） | 本步实现 |
+| 只写 `box` | 一个 `Box`，套用该 `box` 段（纯布局盒，递归嵌套的载体） | 本步实现 |
+| `"ref": "<视图模板名>"` | 用主题 `view/` 里的**视图模板**实例化（可产出任意控件类型） | 复用现成机制 |
+
+第三档刻意复用**视图模板**（`ViewTemplate` + `instantiate()`），而不是新造"控件注册表" ✗ ——
+这样"引用别的控件"能把库里已有的一切（Button / Label / Image / Cell…）都用上，
+绑定、i18n、错误路径全部沿用一套。
+
+公共可选键：`box`（覆盖/追加）、`children`（递归，仅当本节点建的是容器时允许）、
+内容槽 `text` / `icon` / `info`（实例化后按名套到 `AppearanceView` 的既有槽位上）。
+
+### 12.3 数据模型与文件
+
+```cpp
+// bklv/core/appearance.hpp（编译产物里的**纯数据**，不含视图）
+struct AppearanceChild {
+    enum class Kind { APPEARANCE, BOX, VIEW_TEMPLATE };
+    Kind kind = Kind::BOX;
+    std::string name;              // appearance 名 或 视图模板名
+    AppearanceBox box;             // 写了的字段才套用
+    std::string text, icon, info;  // 内容槽（可空）
+    std::vector<AppearanceChild> children;
+};
+// Appearance 增：std::vector<AppearanceChild> children; + getChildren()
+```
+
+- **解析**：`bklv/compile/appearance_children.{hpp,cpp}`（新文件；`compile/` 已在 CMake 与
+  Switch 的按目录收集里 ✓，不用再改构建清单）
+- **实例化**：`bklv/widgets/appearance_children.cpp`（建视图是 widgets 的事，compile 不建视图）
+- 公开头 `core/appearance.hpp` 只多一个**纯数据**结构 + getter（不引 nlohmann）✓
+
+### 12.4 时机与生命周期
+
+- 父视图（`AppearanceView`）在**构造时**和 `applyTheme()` 重建外观后，按 `children` 规格
+  建一遍子视图；规格没变就不重建（避免每帧重排 / 丢焦点）
+- 子视图是普通子节点：`addView(...)` ✓ —— 于是它们**进布局**（与 `layers` 的本质区别）
+- 换肤：父外观重取时子节点跟着重建（子节点自己的外观由它自己去 `applyTheme`）
+
+### 12.5 错误规则（全部硬错误，不静默降级）
+
+1. 同时写 `appearance` 与 `ref` → 报错
+2. 两样都没写、也没写 `box` → 报错（不知道要建什么）
+3. `ref` / `appearance` 指向不存在的名字 → 报错
+4. 在 `box`-only 节点上写 `appearance`/`ref` 之外的未知键 → 警告（对齐现有约定）
+5. **深度上限 16**（超过报错）—— 比视图 JSON 的 32 更保守，控件组合嵌套不该那么深
+6. **循环**：`appearance` A 的 children 里引用 A（或 A→B→A）→ 报错。
+   判定走"当前实例化链上的 appearance 名集合"（与 `import` 的循环检测同一套思路）
+7. **v1 不做**：父外观改子节点状态（`states` 的寻址空间仍只有"层"）；子节点参与父的
+   `transitions` 视图级通道以外的东西；"只写 box 但带 children"的隐式容器猜测（明确允许即可）
+
+### 12.6 测试计划（无窗口）
+
+- **解析**（`tests/appearance_children_test.cpp`）：三档各能解析；2/3/5/6 各类错误都能复现；
+  `box` 字段只覆盖写了的字段
+- **实例化**：构造父 `AppearanceView` → 断言子节点个数/类型/外观名/内容槽；
+  规格未变时不重建（对比重建计数）
+- **视觉验收**：主题里加一份用 `children` 的"卡片（图标 + 标题 + 副标题）"外观，
+  demo 的 JSON 页加一行显示它 → 截图与"纯 layers 拼的同类卡片"对比（确认可读、无溢出）
+- 回归：全部既有 3348 项必须保持全绿（`children` 是**纯新增段**，不写就没有任何行为变化）
+
+### 12.7 里程碑（每步一个可回滚提交）
+
+1. 数据模型 + 解析 + 解析层测试（不接触视图）
+2. 实例化：`appearance` + `box` 两档 + 实例化测试
+3. 第三档 `ref`（复用视图模板）+ 测试
+4. 主题示例外观 + demo 一行 + 截图；`docs/json-syntax.md` 补"children"一节
+5. （可选）设计器里把 children 树显示出来（只读展示即可，编辑放最后）
