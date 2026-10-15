@@ -461,3 +461,33 @@ child[1] 内层盒 x=473 y=1806 w=345 h=188 ownChildren=2  （两个标签在盒
 
 仍然待补（不影响正确性）：内层盒的 `justifyContent` 等键还不在手搓的 box 解析里，
 所以标签在 188 高的盒子里靠上 —— 等 `parseBox` 复用之后自然解决。
+
+### 12.10 `parseBox` 复用的侦察结果（下一刀怎么切）
+
+**发现（第 41 轮）**：现在的 `parseLayers`（382 行）其实是**两段**，不是一段 ✗：
+
+- **box 段解析**：`appearance.cpp` 第 **750 行**起（`if (doc.contains("box") && doc["box"].is_object())`），
+  填 `width/height/padding/margin/gap/grow/shrink/axis/justifyContent/alignItems/backgroundColor/
+  cornerRadius/border*` 与 `hasXxx` 存在标记；里面还有 `readLength`（数字 / "auto" / "50%" / 主题引用）
+- **layers 段**：其后的图层循环
+
+这也解释了为什么 `parseLayers` 要收 `AppearanceBox& box`（我抽的时候照搬了签名，没深究）**以及
+为什么 children 的 box 只能认 6 个键**：children 走的是我手搓的那份，而全套逻辑一直在这 150 行里。
+
+**下一刀（机械切片，方法已经用过两次）**
+
+1. 新增 `compile/appearance_box.{hpp,cpp}`：
+   ```cpp
+   // 解析一个 box 对象（doc 里的 box 段、children 里的 box 节点都走它）
+   bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& out,
+                     std::string& error, const std::string& where);
+   ```
+   把 750 行那段**整块切进去**（含 `readLength` 等局部助手），`doc["box"]` 的取用留在调用方
+2. `parseLayers` 开头改成调 `parseBoxNode(doc["box"], …)` -> 从 382 行降到 ~230 行
+3. `compile/appearance_children.cpp` 删掉手搓的 `parseChildBox`，改调同一个 `parseBoxNode`
+   -> **`axis`/`margin`/`justifyContent`/`alignItems` 等自动全都支持**，未知键告警也由同一份逻辑管
+4. 验收：`check.sh` 3410 项全过（纯搬家、行为不变）+ `children` 的主题示例可以去掉那条
+   "axis 不认识" 的告警；测试里补一条"children 的 box 能写 alignItems"
+
+**做法提醒（自己踩过的）**：切片脚本**先 assert 边界、先验花括号配平，再落盘**；
+改完要 grep 确认"真的改上了"（有一次 replace 没加断言，静默失败，靠计数才发现）。
