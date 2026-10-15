@@ -1,6 +1,7 @@
 #include "bklv/widgets/appearance_children.hpp"
 
 #include "bklv/core/box.hpp"
+#include "bklv/core/icon_font.hpp" // 内容槽的 @icon/名字 -> 字形
 #include "bklv/core/json_view.hpp" // ref: 视图模板
 
 #include <algorithm>
@@ -57,7 +58,18 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
             if (!spec.text.empty())
                 child->setText(spec.text);
             if (!spec.icon.empty())
-                child->setIcon(spec.icon);
+            {
+                // JSON 里写 `@icon/star` 这种名字也能用：图标控件要的是**字形**，
+                // 而字形只有 C++ 侧能查（`icon::glyphByName`）—— 这里替使用者查一次。
+                // 直接写字形（或普通文字）也照旧可行，不破坏既有写法。
+                if (spec.icon.rfind("@icon/", 0) == 0)
+                {
+                    const std::string iconName = spec.icon.substr(6); // 局部变量：保证 c_str() 生命周期
+                    child->setIcon(icon::glyphByName(iconName.c_str()));
+                }
+                else
+                    child->setIcon(spec.icon);
+            }
             if (!spec.info.empty())
                 child->setInfoText(spec.info);
 
