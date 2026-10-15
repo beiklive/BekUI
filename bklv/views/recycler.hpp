@@ -83,6 +83,17 @@ class RecyclerSectionHeader : public RecyclerCell
 };
 
 // 数据源：列表需要知道"有多少条"以及"第 i 条用哪种 cell"。
+// 加载与回收的配置（**上线可调**的那组旋钮）：每个字段都有安全默认值，不设也能跑。
+// 第 1 刀只引入"存储"，行为在后续刀里接（这样每一步都能单独验收）。
+struct RecyclerLoadConfig
+{
+    size_t pageSize = 0;               // 每次要多少条；0 = 由数据源自己决定
+    size_t loadThreshold = 3;          // 距"已加载末尾"还剩几条就触发加载
+    size_t prefetchLines = 1;          // 可视区之外预取几行
+    size_t maxPoolPerIdentifier = 32;  // 每种 cell 的池上限，超出**真正销毁**（第 3 刀用）
+    float estimatedItemHeight = 0.0f;  // 未知区域占位高度；0 = 用已加载项平均值
+};
+
 // 列表的"三态"：内容 / 加载中 / 空。由**数据源**决定现在该显示哪个（JSON 只声明槽位长什么样）。
 enum class RecyclerSlotState
 {
@@ -101,6 +112,12 @@ class RecyclerDataSource
     // 现在该显示哪个槽位（默认 CONTENT）。JSON 里 slotLoading/slotEmpty 声明"长什么样"，
     // 到底显示哪个由这里决定 —— 不把判断塞进 JSON 当解释器。
     virtual RecyclerSlotState getSlotState() { return RecyclerSlotState::CONTENT; }
+
+    // —— 增量加载（全部可选；默认实现 = "没有更多"，所以旧数据源零改动）——
+    virtual bool hasMore() { return false; }                       // 还能不能再要
+    virtual size_t getLoadedCount() { return this->getItemCount(); } // 当前已加载多少
+    virtual void requestMore(size_t want, size_t from) { (void)want; (void)from; } // 异步发起
+    virtual void setLoadListener(std::function<void()> listener) { (void)listener; } // 数据到了通知刷新
 
     // 返回第 index 条的复用标识；默认全部用 DEFAULT_CELL_ID。
     virtual std::string getItemIdentifier(size_t) { return DEFAULT_CELL_ID; }
@@ -199,6 +216,11 @@ class RecyclerFrame : public ScrollingFrame
     void reloadData();
     void notifyDataChanged();
 
+    // 加载/回收的行为旋钮（可 JSON 可 C++ 设置；默认值见 RecyclerLoadConfig）。
+    // 第 1 刀只存不接：行为在后续刀里接上，这样每一刀都能单独验收。
+    void setLoadConfig(const RecyclerLoadConfig& config) { this->loadConfig = config; }
+    const RecyclerLoadConfig& getLoadConfig() const { return this->loadConfig; }
+
     // 当前正在显示的 cell 数量（调试用）。
     size_t getVisibleCellCount() const { return this->activeCells.size(); }
 
@@ -252,6 +274,7 @@ class RecyclerFrame : public ScrollingFrame
     void buildRowOffsets();
 
     int columns = 1;
+    RecyclerLoadConfig loadConfig;
     std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
     void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;
