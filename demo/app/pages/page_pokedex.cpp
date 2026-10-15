@@ -356,13 +356,28 @@ namespace
 
 // 单段版（图鉴原有的"starter / wild 分段"目前不在 Recycler 的 JSON 表达里，见 13.1 的记录）：
 // JSON 只描述容器与 item 组织方式，这里提供"第 N 项是谁"。
-class FlatDexSource : public bklv::RecyclerDataSource
+class PagedDexSource : public bklv::RecyclerDataSource
 {
   public:
-    // 「分页」演示：初始一条不给，滚动到底时由回收器自动要下一页
-    size_t getItemCount() override { return this->visible; }
-    size_t getLoadedCount() override { return this->visible; }
-    bool hasMore() override { return this->visible < starters().size(); }
+    // 「分段 + 分页」演示：两段各自从 0 条开始，滚动到底时按页交数据
+    size_t getSectionCount() override { return 2; }
+    size_t getItemCountInSection(size_t section) override
+    {
+        return this->visible[section == 0 ? 0 : 1];
+    }
+    size_t getItemCount() override { return this->getItemCountInSection(0); }
+    size_t getLoadedCount() override
+    {
+        return this->getItemCountInSection(0) + this->getItemCountInSection(1);
+    }
+    bool hasMore() override
+    {
+        return this->visible[0] < starters().size() || this->visible[1] < wildOnes().size();
+    }
+    std::string getSectionTitle(size_t section) override
+    {
+        return getStr(section == 0 ? "pokedex/section_starters" : "pokedex/section_wild");
+    }
     float getItemHeight(size_t) override { return 70.0f; }
 
     void requestMore(size_t want, size_t from) override
@@ -370,18 +385,23 @@ class FlatDexSource : public bklv::RecyclerDataSource
         (void)from;
         if (want == 0)
             want = 2;
-        this->visible += want;
-        if (this->visible > starters().size())
-            this->visible = starters().size();
-        // demo 同步模拟"数据到了"；真实项目里在 task::run* 的 done 回调里调它
+        this->bump(0, want, starters().size());
+        this->bump(1, want, wildOnes().size());
         if (this->listener)
-            this->listener();
+            this->listener(); // demo 同步模拟"数据到了"
     }
 
     void setLoadListener(std::function<void()> value) override { this->listener = value; }
 
   private:
-    size_t visible = 0;
+    void bump(size_t section, size_t want, size_t total)
+    {
+        this->visible[section] += want;
+        if (this->visible[section] > total)
+            this->visible[section] = total;
+    }
+
+    size_t visible[2] = { 0, 0 };
     std::function<void()> listener;
 };
 
@@ -391,9 +411,9 @@ class FlatDexSource : public bklv::RecyclerDataSource
 void registerPokedexJsonBindings()
 {
     std::string error;
-    if (!bklv::data::registerSource("pokedex_flat",
-            [] { return (bklv::RecyclerDataSource*)new FlatDexSource(); }, error))
-        BKLV_LOG_WARNING("pokedex_flat 数据源注册失败：%s", error.c_str());
+    if (!bklv::data::registerSource("pokedex_paged",
+            [] { return (bklv::RecyclerDataSource*)new PagedDexSource(); }, error))
+        BKLV_LOG_WARNING("pokedex_paged 数据源注册失败：%s", error.c_str());
 
     if (!bklv::binding::registerItemBinder("pokedexCell",
             [](bklv::View& item, size_t section, size_t index) {
