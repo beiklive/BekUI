@@ -272,3 +272,37 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
    分别看列表与网格里"每个 cell 及其子树的 draw 调用深度"，一次读数就能定性
 2. 顺带对比两边的 `clipsToBounds`、`getContentOffsetY`、以及内容盒的尺寸
 3. 若确认是绘制路径差异 -> 就是库里的一个真 bug（不是 demo 的问题），修完网格自然就出来了
+
+### 11.8 网格内容不显示：已排除的 10 个假设（附实测证据，交接用）
+
+按排查顺序，每条都有探针读数或代码依据：
+
+| # | 假设 | 排除依据 |
+|---|---|---|
+| 1 | cell 的尺寸/位置算错 | 探针打在 `layoutCell`：网格 `row=0..2 cols=3 cellW=270 cellH=140 top=0` —— 全对 |
+| 2 | 绑定没生效（老坑） | 探针：`GridCell::applyIndex` 被调用、段号/行号/图片路径都正确 |
+| 3 | 是多列代码路径的问题 | `setColumns(1)` 也一样不显示 |
+| 4 | 是 `GridCell` 这个类写错了 | 把网格的 cell 换成**已验证能渲染**的 `ListCell`，网格里依然只有背景 |
+| 5 | 绘制递归"只走一层" | `Box::drawChildren` 探针：侧栏那条路径画到 **depth 8** |
+| 6 | 回收器手工 draw、不走递归 | `ScrollingFrame::draw` 只画滚动条，内容走 `drawChildren` |
+| 7 | 被 `drawChildren` 的"不相交剔除"跳过 | 在该分支打探针：**SKIP 0 条** |
+| 8 | 裁剪矩形是缓存的旧值（h=10 那次） | `PushClipRect` 是每帧按当前 x/y/w/h 现算 |
+| 9 | 绘制时 x/y/w/h 里有 NaN | `View::frame` 探针：全程只有 1 处（底栏 `HintItemView`），与网格无关 |
+| 10 | 图片没有纹理 / 纹理是占位 | `Image::draw` 探针：网格与列表**每个字段都一样** —— `idx=1,2,3`（各自独立）、`texW=texH=0`（列表也是 0）、几何正确 |
+
+**结论**：列表与网格在 `Image::draw` 处的**可测字段完全一致**（几何、纹理下标、是否有效），
+差异只能在**渲染管线的更下游**（顶点变换、drawList 提交、后端裁剪/提交顺序）。
+
+**后续建议**：这一项需要**调试器级别**的手段，而不是继续"读代码 + 打探针"：
+1. 在 `Image::draw` 下断点，检查这一帧 `ImDrawList` 里该图片的 **cmd / 顶点范围**是否真的加入
+2. 或抓一帧的 **draw call 序列**（GL 用 `apitrace`/`renderdoc`，VK 用 `renderdoc`），
+   看网格那三个图片的 draw call 是否发出、被哪个 clip/scissor 剪掉
+3. 顺带对比"列表页"与"列表页+网格"两种布局下，`ScrollingFrame` 推入的 clip 矩形与
+   内容盒的 `contentOffsetY` 是否一致
+
+### 11.9 另一个待办：页面级探针必须先切到受测页面
+
+我在这项上白跑过**两次**（图鉴那次、网格这次）：demo 启动在第 1 页，
+而受测的列表/图鉴页要切过去才会构建与绘制 -> 探针读到的是"没渲染"，
+误判成"渲染有问题"。**规矩**：任何页面级探针，先把起始页切到受测页面（临时改
+`pendingStartPage`，跑完 `git checkout` 还原，且绝不提交）。
