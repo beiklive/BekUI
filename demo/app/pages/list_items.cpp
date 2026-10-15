@@ -24,6 +24,7 @@ ListCell::ListCell()
     AppearanceView* card = new AppearanceView(std::string("base/glass_surface"), false);
     card->setGrow(1.0f);
     card->setAlignItems(AlignItems::CENTER);
+    card->setAxis(Axis::ROW); // 卡片是横向一行：缩略图在左、文字在右
     card->setMarginTop(4.0f);
     card->setMarginBottom(4.0f);
     // 左右内缩按 borealis 的 listitem/indent(40) 与 descriptionIndent(16)
