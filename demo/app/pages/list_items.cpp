@@ -125,7 +125,9 @@ GridCell::GridCell()
     this->card = new AppearanceView(std::string("base/glass_surface"), false);
     this->card->setAxis(Axis::COLUMN); // 上图下文
     this->card->setAlignItems(AlignItems::CENTER);
-    this->card->setGrow(1.0f);
+    // 绝对定位的 cell 里子节点拿不到尺寸 —— 必须显式给（同 RecyclerItemCell 的做法）
+    this->card->setWidthPercentage(100.0f);
+    this->card->setHeightPercentage(100.0f);
     this->card->setMarginTop(6.0f);
     this->card->setMarginBottom(6.0f);
     this->card->setMarginLeft(6.0f);
