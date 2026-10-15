@@ -563,9 +563,16 @@ void RecyclerFrame::update()
         averageHeight = this->totalHeight / static_cast<float>(count);
     const float preFetch = averageHeight * static_cast<float>(this->preFetchLine);
 
-    const size_t first = this->findRowAtOffset(std::max(0.0f, offset - preFetch));
-    const size_t lastRow = this->findRowAtOffset(offset + viewport + preFetch);
-    const size_t last    = std::min(count - 1, lastRow);
+    // 多列（Grid）时一个"视觉行"承载 columns 个条目：起点对齐到行首、终点补齐整行，
+    // 否则一行只会被建出左半边（探针量到过：3 列只构造 2 个单元）。
+    const size_t columns = this->columns > 0 ? static_cast<size_t>(this->columns) : 1;
+    size_t first = this->findRowAtOffset(std::max(0.0f, offset - preFetch));
+    if (columns > 1)
+        first = (first / columns) * columns;
+
+    size_t last = std::min(count - 1, this->findRowAtOffset(offset + viewport + preFetch));
+    if (columns > 1 && last < count - 1)
+        last = std::min(count - 1, ((last / columns) + 1) * columns - 1);
 
     // 1. 回收滚出可视区的
     //    先记住当前焦点：如果它对应的 cell 被回收了，清除"已自动滚动过"的标记，
