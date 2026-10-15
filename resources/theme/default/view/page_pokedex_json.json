@@ -1,0 +1,8 @@
+{
+  "type": "Recycler",
+  "data": "@data/pokedex",
+  "itemAppearance": "base/tab_cell.sidebar",
+  "itemBinder": "pokedexCell",
+  "columns": 1,
+  "count": "infinite"
+}

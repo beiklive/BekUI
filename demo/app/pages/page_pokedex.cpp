@@ -5,6 +5,7 @@
 
 #include "app/ui.hpp"
 #include "bklv/bklv.hpp"
+#include "bklv/views/data_source.hpp"
 
 using namespace bklv;
 
@@ -352,6 +353,20 @@ Box* buildPokedexPage()
 
     page->addView(list);
     return page;
+}
+
+} // namespace demo
+
+namespace demo
+{
+
+// 把图鉴的数据源注册进"名字 -> 工厂"表：JSON 里就能写 "data": "@data/pokedex"
+void registerPokedexDataSource()
+{
+    std::string error;
+    if (!bklv::data::registerSource("pokedex",
+            [] { return (bklv::RecyclerDataSource*)new DexSource(); }, error))
+        BKLV_LOG_WARNING("pokedex 数据源注册失败：%s", error.c_str());
 }
 
 } // namespace demo

@@ -9,6 +9,7 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/json_view.hpp"
 #include "bklv/views/data_source.hpp"
+#include "bklv/views/item_binder.hpp"
 #include "bklv/widgets/recycler_view.hpp"
 
 using namespace bklv;
@@ -41,6 +42,19 @@ int main()
         registerRecyclerViewType();
         View* page = createViewFromTheme("recycler_json_demo");
         check(page != nullptr, "主题里的 recycler_json_demo 能建出视图");
+    }
+
+    std::printf("\n== 1b. 图鉴那份 JSON（data/itemAppearance/itemBinder 都只写名字）能装载 ==\n");
+    {
+        std::string error;
+        check(data::registerSource("pokedex",
+                  [] { return (RecyclerDataSource*)new MockSource(); }, error),
+            "注册 pokedex 数据源");
+        check(binding::registerItemBinder("pokedexCell", [](View&, size_t) {}, error),
+            "注册 pokedexCell 绑定函数");
+        registerRecyclerViewType();
+        View* page = createViewFromTheme("page_pokedex_json");
+        check(page != nullptr, "view/page_pokedex_json 能建出视图（只靠 JSON 描述）");
     }
 
     std::printf("\n== 2. 属性落到 list 上（用库里 JSON 装载器走的同一个入口）==\n");
