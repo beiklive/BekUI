@@ -333,3 +333,31 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 5. **测试**（无窗口可做的部分）：`getTextureCount()`/预算边界、`retainTexture`/`releaseTexture`
    的计数、`trimTextureCache()` 在 refCount>0 时不淘汰、`g_pathCache` 同步删除；
    真正"淘汰后 GPU 纹理被释放"需要窗口环境，用截图/日志验证（并如实标注）
+
+#### 小步3 的实现设计（背压：解码并发上限 + 每帧上传配额 + 优先级，定稿待实现）
+
+问题：一次滚出 20 个新 cell 就是 20 次解码 + 20 次纹理上传 -> 主线程掉帧（不是死锁）。
+现状：`Image::setImageFromFileAsync()` 走 `task::runResult(...)` 后台解码，回调在主线程上传；
+**没有任何并发上限、没有优先级、没有每帧配额**。
+
+**协议**：
+1. **可配置旋钮**（与 `RecyclerLoadConfig` 同风格，放 `core/graphics.hpp` 的纹理预算旁边，
+   未来由 JSON 属性或 C++ 直接设）：
+   - `maxConcurrentDecodes`（默认 4）：同时在飞的解码任务上限
+   - `maxUploadsPerFrame`（默认 2）：主线程每帧最多把几个"解码完成"的结果上传成纹理
+   - `0` 一律表示"不限"（保持现有行为，安全默认）
+2. **解码队列**（`core/graphics.*` 或新建 `core/texture_queue.*`）：
+   - `Image` 不再直接 `task::runResult`，而是 `enqueueDecode(path, priority, 完成回调)`
+   - 队列在 `pumpMainThread()`（每帧）里：把"等待中"的任务按 `priority`（= 离视口距离，越小越优先）
+     启动，直到在飞数达到 `maxConcurrentDecodes`
+   - 解码完成的条目进入"待上传"队列
+3. **上传配额**：每帧最多从"待上传"队列取 `maxUploadsPerFrame` 个执行上传
+   （上传必须在主线程；超额的留到下一帧）
+4. **取消与过期**：已有 `AliveFlag`（视图销毁）与 `loadGeneration`（换图）两道护栏继续用；
+   队列里**取消**一个任务时（滚出视口）直接丢弃，不浪费上传预算
+5. **优先级怎么来**：`RecyclerFrame` 在 `layoutCell()` 时知道每个 cell 的行号 ->
+   可见区中心距离可作为 `priority`；接口上只需要 `enqueueDecode(path, priority, cb)`，
+   **不必让 graphics 认识 recycler**（分层：graphics 只认数字）
+6. **可测范围（无窗口）**：队列的调度逻辑本身是纯数据（先来/优先级/并发上限/每帧配额都能测）——
+   把"启动解码"和"执行上传"做成可注入的函数指针/回调，测试里用假实现计数即可；
+   真实解码与上传的耗时验证需要窗口环境（如实标注）
