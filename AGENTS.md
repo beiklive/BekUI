@@ -405,6 +405,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      `when: before` 报错（看不见的时段做动画没意义），出场/隐藏写 `after` 只警告并按 with 处理。
      `spec.totalMs` = max(事件时长, 各条目 delay+duration)，**调用方用它决定摘页/摘弹层的时机**
      （报早了动画被砍，和"关弹层要等动效播完"是同一个坑）。
+     运行时：外观里写了走 `TransitionPlayer`（视图级通道写 `View` 的绘制期变换 = 零重排，
+     层内通道写 `AppearanceInstance`，并**先撤掉同通道的状态补间**）；**没写就默认淡入淡出**
+     （时长取主题 `metric.anim.normal`）；没写 `from` 的通道起点取当前值。
+     `ViewTransition::getActiveDuration()` 是本次**实际**时长，`Shell/Pager::getTransitionDuration()`
+     报它 —— 出场播完才摘页/摘弹层。`playShow/playHide` 只有"外观写了"或"默认淡入淡出"两种，
+     隐藏后要不要真的 GONE/摘掉由调用方在回调里做（提前 GONE 动画播不出来）。
+     spec 路径收尾**不复位**（终值是外观里写的），预设路径照旧复位。
+     改 `ViewTransition` 时留意：有效时长要在 `suspended()` **之前**算（配置值 0 会被当成"不动"，
+     而 0 的语义是"用主题时长"，想真不动用 `ContentTransition::NONE`）。
   ⑦c **`rect` 层可以写 `gradient`**（`docs/rect-gradient.md` / `docs/json-syntax.md`）：
      语法 `gradient{ type(linear|radial), angle, center, stops[2..4]{at,color} }`，
      `at` 必须 0..1 且严格递增，五类写错都**报错**（不静默降级）。

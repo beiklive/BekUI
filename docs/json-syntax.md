@@ -478,5 +478,17 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 4. **`duration: 0` = 瞬变**；写 `when: "before"` 会报错（出现之前 / 消失之后看不见，
    想让内容先动、整页后动请用 `delay` 表达提前量）
 
+运行时（`core/transition_player.*` + `core/transition.hpp` 的 `ViewTransition`）：
+
+- **外观里写了就用外观的**：视图级通道走 `View` 的绘制期变换（整树一起动、过渡期间零重排），
+  层内通道写进 `AppearanceInstance`（开始前先撤掉同通道的状态补间 —— 状态动效和过渡不能同时对一条属性下手）
+- **没写就是默认淡入淡出**（入场/显示 0→1、出场/隐藏 1→0），时长取主题 `metric.anim.normal`
+- 没写 `from` 的通道**起点取当前值**
+- `ViewTransition::getActiveDuration()` 报**本次实际时长**（spec 的 `totalMs` 或配置值），
+  `Shell/Pager::getTransitionDuration()` 报的就是它 —— **出场播完才摘页/摘弹层**靠这里
+- `playShow` / `playHide` 只有"外观里写了"或"默认淡入淡出"两种；隐藏要不要真的 `GONE`/摘掉
+  由调用方在回调里做（提前设 GONE 动画根本播不出来）
+- spec 路径收尾**不复位**（终值就是外观里写的，比如出场停在屏幕外）；预设路径照旧复位
+
 时间账（解析期算好）：`totalMs = max(事件时长, 每条条目 delay + duration)`，
 调用方拿 `totalMs` 决定"这段动画播完了"的时机 —— 出场播完才摘页 / 摘弹层，报早了动画会被砍。
