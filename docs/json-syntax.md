@@ -562,3 +562,67 @@ void draw (const AppearanceLayer& layer, void* drawList,   // drawList 就是 Im
   属于控件级扩展（`children`），不是 `op`。
 - 主题里用扩展 op 时，**主题加载前必须已经注册**（调用方的初始化里注册）。
   测试侧要整主题校验的话，注册要放在测试开头（见 `tests/test_contrib.hpp`）。
+
+## 外观里的子节点（`children`）
+
+一份外观可以**自己声明子节点** —— 也就是"**一份外观 = 一个完整控件**"。结构、样式全在 JSON 里，
+C++ 一行都不用写，也不用新加控件类。
+
+```json
+{
+  "box": { "axis": "row", "gap": 10, "padding": 12, "alignItems": "center" },
+  "layers": [ { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 12 } ],
+  "children": [
+    { "appearance": "base/tab_cell.sidebar", "box": { "width": 36, "height": 36 }, "icon": "@icon/star" },
+    { "box": { "grow": 1 }, "children": [
+        { "appearance": "base/json_demo.title", "text": "标题" },
+        { "appearance": "base/json_demo.title", "text": "副标题" }
+    ] }
+  ]
+}
+```
+
+上面这份就是 demo 里的 `base/children_demo`：一张"图标 + 标题 + 副标题"的卡片。
+
+### 三档节点（互斥，写两个报错）
+
+| 写法 | 建出什么 |
+|---|---|
+| `"appearance": "<外观名>"` | 一个 `AppearanceView`（名字规则与 `AppearanceView` 一样，含 `.变体`） |
+| 只写 `"box"` | 一个纯布局 `Box`（递归嵌套的载体，想套多深都行） |
+| `"ref": "<视图模板名>"` | 用主题 `view/` 里的**视图模板**实例化 —— **库里已有的一切控件都能这么引用** |
+
+公共可选键：
+- `"box"`：覆盖/追加盒模型字段（**只覆盖写了的字段**，沿用"没写不动"的既有约定）
+- `"children"`：递归（`ref` 节点不能再写，它的子节点写在模板里）
+- 内容槽：`"text"` / `"icon"` / `"info"` —— 实例化后套到 `AppearanceView` 的既有槽位上。
+  `icon` 支持 `"@icon/star"` 这种名字（会查字形），也可以直接写字形
+
+### 与 `layers` 的本质区别
+
+- `layers` **不进布局**：只是在这块矩形里画一笔笔（靠 `inset`/`align` 手排）
+- `children` **进布局**：是真正的子视图，参与 flex 排版、能聚焦、能滚动
+
+所以：**要"画装饰"用 `layers`，要"装控件"用 `children`**。
+
+### 错误规则（全部硬错误，不静默降级）
+
+- `appearance` 与 `ref` 同时写 -> 报错
+- 三样都没写 -> 报错（不知道该建什么）
+- `ref` 节点再写 `children` -> 报错（子节点写在模板里）
+- **嵌套深度上限 16**，超过报错
+- **循环引用**：A 的子节点里又引用 A（或 A→B→A）-> 报错并停止构建
+- `box` 段里出现不认识的键 -> 警告并给出提示（`children` 要与 `box` 平级，写进 `box` 里不会生效）
+
+### 有什么、没什么（当前版本）
+
+有：
+- 三档节点、任意递归、`box` 覆盖、内容槽、循环与深度保护
+- 子节点自己的外观由它自己负责（`states` / `transitions` 照常用）
+
+没有（有意留到后面，不是忘了）：
+- **父外观改子节点的状态**：`states` 的寻址空间仍然只有"层"（`<层id>.<属性>`），
+  不会扩成树路径
+- **`children` 的 `box` 段目前只认 `width/height/grow/shrink/gap/padding`**；
+  `axis`、`margin`、`justifyContent`、`alignItems` 等要等它改成复用主 box 解析器
+  （外观自己的 `box` 段不受此限，那里是全套字段）
