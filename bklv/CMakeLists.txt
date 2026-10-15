@@ -379,6 +379,7 @@ set(BKLV_CORE_SOURCES
     widgets/layer_draw_rect.cpp
     widgets/layer_draw_shadow.cpp
     widgets/layer_draw_glass.cpp
+    widgets/layer_draw_text.cpp
     widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp

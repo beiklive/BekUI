@@ -620,6 +620,19 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
             case AppearanceLayer::Op::TEXT:
             {
+                // ③：走注册表钩子（原地实现留作兜底）。内容槽在这里现算，行为与原来一致
+                if (const compile::LayerType* textType = compile::findLayer("text");
+                    textType != nullptr && textType->draw)
+                {
+                    const std::string textContent = this->getLayerText(layer.source);
+                    ImFont* layerFont = this->getLayerFont(layer);
+                    textType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this, &textContent, layerFont, nullptr, nullptr });
+                    break;
+                }
                 ImFont* font = this->getLayerFont(layer);
                 const std::string content = this->getLayerText(layer.source);
                 if (content.empty() || font == nullptr || alphaScale <= 0.001f)
