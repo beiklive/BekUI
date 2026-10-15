@@ -653,3 +653,57 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 **唯一没做的**：③ 的"内置 6 种绘制也走注册表"—— 现在内置 6 种仍是 `appearance_view.cpp` 里的
 枚举分支，只有扩展 op 走注册表 `draw` 钩子。这是最后一块（属于"整理内部结构"，
 不影响任何功能与可扩展性：第三方加层级已经能走注册表了）。
+
+### 12.18 ③ 的侦察结果：内置绘制要的上下文比扩展钩子多，得先把钩子加宽
+
+`appearance_view.cpp` 的绘制 switch：**486-655，169 行，7 个分支**
+（RECT / GLASS / SHADOW / TEXT / IMAGE / EXTENSION / CUSTOM）。
+
+内置分支依赖的东西（实测清单）：
+
+| 依赖 | 谁提供 |
+|---|---|
+| `this->appearance`（当前属性值、补间结果） | `AppearanceView` 的实例 |
+| `getLayerText` / `getLayerFont` / `getLayerImage` / `drawCustomLayer` | **视图的虚函数**（内容槽与语义绘制） |
+| `addGradientRectMesh`（渐变网格）、`shadow::drawSoft`、`glass::*` | 库内自由函数 |
+
+而现在的扩展钩子签名是 `void(const AppearanceLayer&, void* drawList, const LayerRect&)` ——
+**只够第三方"自己画自己"** ✓，**不够内置**（它们要拿视图的内容槽与实例值）✗。
+所以 ③ 不能只把 case 搬走，得先把钩子加宽：
+
+```cpp
+// compile/layer_registry.hpp（纯数据 + 钩子类型；不依赖 widgets）
+struct LayerDrawContext {
+    const AppearanceLayer& layer;
+    const AppearanceInstance& instance;  // 取属性当前值（含补间结果）
+    int layerIndex = 0;
+    void* drawList = nullptr;            // ImDrawList*
+    LayerRect rect;
+    void* view = nullptr;                // AppearanceView*（TEXT/IMAGE/CUSTOM 要内容槽）
+};
+using LayerDrawFn = std::function<void(const LayerDrawContext&)>;
+
+// 注册表新增：注册/替换绘制钩子（**由 widgets 侧调用**，compile 不反向依赖 widgets）
+bool setLayerDraw(const std::string& name, LayerDrawFn draw);
+// op 枚举 -> 注册表名字（"一种 op 一个名字"的唯一来源）
+const char* layerOpName(AppearanceLayer::Op op);
+```
+
+然后：`widgets/layers/<op>.cpp` 各写一个 `drawRect/drawText/...`（6 个文件，每个 ≤80 行），
+`appearance_view.cpp` 的 switch 变成
+
+```cpp
+if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
+    LayerDrawContext ctx{ layer, this->appearance, (int)index, drawList, hookRect, this };
+    t->draw(ctx);
+    continue;
+}
+```
+
+**分层要点**：钩子的**类型**在 `compile/`（纯函数签名），**实现**在 `widgets/`（由 widgets 在
+初始化时 `setLayerDraw` 注册）—— 这样 compile 不会反向依赖 widgets，`EXTENSION` 那条路
+（第三方注册）也天然一致。
+
+**工作量**：169 行拆 6 份 + 钩子加宽 + 注册调用 + 测试（顶点数/命令数断言已有，可复用）。
+分 3-4 刀：① 加宽钩子 + `setLayerDraw` + `layerOpName`（不动行为）② 搬 RECT/SHADOW
+③ 搬 GLASS/TEXT/IMAGE ④ 搬 CUSTOM + 删 switch。
