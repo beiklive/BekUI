@@ -54,7 +54,20 @@ void ListCell::prepareForReuse()
 
 void ListCell::setIndex(size_t value)
 {
-    RecyclerCell::setIndex(value);
+    this->applyIndex(0, value); // 单段列表：section 恒为 0
+}
+
+void ListCell::setSectionIndex(size_t sectionValue, size_t indexValue)
+{
+    // 回收器的**分段路径**走这里：不重写它的话，绑定永远不生效（踩过两次）
+    RecyclerCell::setSectionIndex(sectionValue, indexValue);
+    this->applyIndex(sectionValue, indexValue);
+}
+
+void ListCell::applyIndex(size_t section, size_t index)
+{
+    (void)section;
+    RecyclerCell::setIndex(index);
 
     // 缩略图用 borealis 的真实素材（8 张精灵图循环）——同一张图会被多行复用，
     // 走的正是纹理仓库的路径缓存（`core/graphics.cpp` 的 g_pathCache）
@@ -64,13 +77,14 @@ void ListCell::setIndex(size_t value)
         "resources/img/demo/pokemon_014.png", "resources/img/demo/pokemon_017.png",
         "resources/img/demo/pokemon_021.png", "resources/img/demo/pokemon_024.png",
     };
-    const size_t pick = value % 8;
+    const size_t pick = index % 8;
     this->thumbnail->setImageFromFile(kThumbs[pick]);
 
     char title[16] = { 0 };
     std::snprintf(title, sizeof(title), "No.%03d", (int)pick * 3 + 1); // 001/004/007/...
     this->title->setText(title);
-    this->subtitle->setText(this->activated ? "已触发（A）" : "图片素材来自 borealis · 行高 64 · 滚出视口即回收复用");
+    this->subtitle->setText(this->activated ? "已触发（A）"
+                                            : "图片素材来自 borealis · 行高 64 · 滚出视口即回收复用");
 }
 
 void ListCell::onFocusGained()

@@ -18,13 +18,16 @@ class ListCell : public bklv::RecyclerCell
     ListCell();
 
     void prepareForReuse() override;
+    // 两个索引入口都要走（分段路径走 setSectionIndex，只重写 setIndex 绑定不会生效）
     void setIndex(size_t value) override;
+    void setSectionIndex(size_t sectionValue, size_t indexValue) override;
 
     bool isFocusable() const override { return true; }
     void onFocusGained() override;
     void onFocusLost() override;
 
   private:
+    void applyIndex(size_t section, size_t index);
     bklv::Image* thumbnail = nullptr;
     bklv::Label* title     = nullptr;
     bklv::Label* subtitle  = nullptr;
