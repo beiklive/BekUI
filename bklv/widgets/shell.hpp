@@ -228,7 +228,8 @@ class Shell : public Box
     {
         this->transition.setBoth(this->transition.getEnter(), seconds);
     }
-    float getTransitionDuration() const { return this->transition.getEnterDuration(); }
+    // 报**实际**时长：外观里写了 transitions 时是 spec 的总时长（出场播完才摘页靠它）
+    float getTransitionDuration() const { return this->transition.getActiveDuration(); }
 
     // 旧的"一个开关"写法：两边都设成同一个（保留给已有调用方/测试）
     void setContentTransition(ContentTransition value)

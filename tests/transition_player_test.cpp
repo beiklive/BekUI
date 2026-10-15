@@ -10,6 +10,7 @@
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/core/transition.hpp"
 #include "bklv/core/transition_player.hpp"
 
 using namespace bklv;
@@ -220,6 +221,97 @@ int main()
         TransitionPlayer player;
         player.play(view, &instance, &appearance->getTransition(TransitionEvent::ENTER), TransitionEvent::ENTER, 150.0f);
         check(!instance.isAnimating(), "过渡开始时撤掉了同通道的状态补间");
+    }
+
+    std::printf("\n== 9. ViewTransition 接入：外观优先、没写就默认淡入淡出 ==\n");
+    {
+        std::string error;
+        const std::shared_ptr<const Appearance> withSpec = compileAppearance(R"(
+            "transitions": {
+                "enter": { "duration": 200,
+                           "translateX": { "from": -60, "to": 0 },
+                           "alpha": { "from": 0, "to": 1 } },
+                "exit":  { "duration": 100, "alpha": { "from": 1, "to": 0 } }
+            } )", error);
+        const std::shared_ptr<const Appearance> noSpec = compileAppearance(R"(
+            "states": { "focused": { "title.opacity": { "to": 1, "duration": 100 } } } )", error);
+        if (withSpec == nullptr || noSpec == nullptr)
+            std::printf("  编译错误：%s\n", error.c_str());
+        check(withSpec != nullptr && noSpec != nullptr, "两份外观都能编译");
+        if (withSpec == nullptr || noSpec == nullptr)
+            return 1;
+
+        // ① 外观里写了 enter -> 用 spec，时长是 spec 的总时长
+        {
+            Box view;
+            ViewTransition transition;
+            transition.playEnter(&view, 800.0f, withSpec.get());
+            check(transition.isSpecDriven(), "走了外观里的 spec");
+            check(transition.isActive(), "在播");
+            checkFloat(transition.getActiveDuration(), 0.2f, "实际时长 = spec 总时长");
+            checkFloat(view.getTransform().translateX, -60.0f, "起点位移来自 spec");
+            checkFloat(view.getAlpha(), 0.0f, "起点透明");
+
+            transition.step(0.3f);
+            check(!transition.isActive(), "播完停下");
+            checkFloat(view.getTransform().translateX, 0.0f, "终点位移");
+            checkFloat(view.getAlpha(), 1.0f, "终点不透明");
+        }
+
+        // ② 外观里没写 -> 默认淡入淡出，时长取主题 metric.anim.normal
+        {
+            Box view;
+            ViewTransition transition;
+            transition.playEnter(&view, 800.0f, noSpec.get());
+            check(!transition.isSpecDriven(), "没写 spec 就走默认路径");
+            checkFloat(transition.getActiveDuration(),
+                getTheme().number("metric.anim.normal", 150.0f) * 0.001f, "时长来自主题");
+            checkFloat(view.getAlpha(), 0.0f, "默认淡入：起点透明");
+            transition.step(0.5f);
+            checkFloat(view.getAlpha(), 1.0f, "默认淡入：终点不透明");
+        }
+
+        // ③ 出场回调等播完才跑（摘页/摘弹层靠这个顺序）
+        {
+            Box view;
+            view.setAlpha(1.0f);
+            bool finished = false;
+            ViewTransition transition;
+            transition.playExit(&view, 800.0f, [&finished] { finished = true; }, withSpec.get());
+            transition.step(0.05f);
+            check(!finished, "还没播完，回调不能提前跑");
+            transition.step(0.2f);
+            check(finished, "播完才回调");
+            checkFloat(view.getAlpha(), 0.0f, "出场终值是 spec 里写的");
+        }
+
+        // ④ 显示 / 隐藏：没写外观就是淡入淡出
+        {
+            Box view;
+            view.setAlpha(1.0f);
+            bool hidden = false;
+            ViewTransition transition;
+            transition.playHide(&view, [&hidden] { hidden = true; }, nullptr);
+            checkFloat(view.getAlpha(), 1.0f, "隐藏起点可见");
+            transition.step(0.5f);
+            check(hidden, "隐藏播完回调（调用方在这里落 GONE）");
+            checkFloat(view.getAlpha(), 0.0f, "隐藏终点不可见");
+
+            transition.playShow(&view, nullptr);
+            checkFloat(view.getAlpha(), 0.0f, "显示起点透明");
+            transition.step(0.5f);
+            checkFloat(view.getAlpha(), 1.0f, "显示终点可见");
+        }
+
+        // ⑤ finishNow 立刻落位
+        {
+            Box view;
+            ViewTransition transition;
+            transition.playEnter(&view, 800.0f, withSpec.get());
+            transition.finishNow();
+            check(!transition.isActive(), "立刻落位后不再活跃");
+            checkFloat(view.getAlpha(), 1.0f, "落到终值");
+        }
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

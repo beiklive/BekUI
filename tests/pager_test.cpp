@@ -367,10 +367,15 @@ int main()
         pager->setTransitionDuration(0.2f);
 
         check(!pager->isPageTransitioning(), "初始没有转场");
-        checkEqualInt((int)pager->getEnterTransition(), (int)ContentTransition::SLIDE_FADE,
-            "默认入场是 SLIDE_FADE");
-        checkEqualInt((int)pager->getExitTransition(), (int)ContentTransition::SLIDE_FADE,
-            "默认出场也是 SLIDE_FADE");
+        // 默认是**淡入淡出**（用户定的语义：没显式设置就淡一下；时长 0 = 用主题的动画时长）
+        checkEqualInt((int)pager->getEnterTransition(), (int)ContentTransition::FADE,
+            "默认入场是 FADE");
+        checkEqualInt((int)pager->getExitTransition(), (int)ContentTransition::FADE,
+            "默认出场也是 FADE");
+
+        // 下面这一段专门验**滑动**路径，所以显式设成 SLIDE_FADE（默认已经不是它了）
+        pager->setEnterTransition(ContentTransition::SLIDE_FADE);
+        pager->setExitTransition(ContentTransition::SLIDE_FADE);
 
         // 首屏：没有旧页可让位 → 不做转场
         pager->show("a");
