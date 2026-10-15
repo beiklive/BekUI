@@ -8,6 +8,7 @@
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/rectangle.hpp"
+#include "bklv/widgets/recycler_view.hpp"
 #include "bklv/widgets/shell.hpp"
 #include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"
@@ -19,6 +20,7 @@ namespace bklv
 
 void registerWidgetViewTypes()
 {
+    registerRecyclerViewType(); // JSON 可描述的回收列表（桥接层）
     static bool done = false;
     if (done)
         return;

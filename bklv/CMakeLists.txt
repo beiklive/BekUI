@@ -383,6 +383,7 @@ set(BKLV_CORE_SOURCES
     widgets/layer_draw_text.cpp
     widgets/layer_draw_image.cpp
     widgets/layer_draw_custom.cpp
+    widgets/recycler_view.cpp
     widgets/notification.cpp
     widgets/rectangle.cpp
     widgets/button.cpp
