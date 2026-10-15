@@ -111,12 +111,9 @@ void RecyclerView::setItemTemplate(const std::string& name)
 
 void RecyclerView::setColumns(int count)
 {
-    if (count < 1)
-    {
-        BKLV_LOG_WARNING("Recycler 的 columns 至少是 1（收到 %d）", count);
-        count = 1;
-    }
-    this->columns = count; // v1：记录；多列排布接在后面（见目标 ① 的 columns 项）
+    // 真正生效的是视图的能力（views 层，纯布局）；这里只记录并转调
+    this->columns = count < 1 ? 1 : count;
+    RecyclerFrame::setColumns(this->columns); // >1 会在视图层警告并当 1 处理（多列未做）
 }
 
 void RecyclerView::setMinItemWidth(float width) { this->minItemWidth = width; }

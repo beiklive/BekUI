@@ -281,16 +281,43 @@ size_t RecyclerFrame::findRowAtOffset(float y) const
 // cell 摆放与回收
 // ---------------------------------------------------------------------------
 
+void RecyclerFrame::setColumns(int count)
+{
+    if (count < 1)
+    {
+        BKLV_LOG_WARNING("Recycler 的 columns 至少是 1（收到 %d）", count);
+        count = 1;
+    }
+    if (count > 1)
+    {
+        // 多列排布尚未启用（见 docs/parse-refactor-review.md 13.1）：这里明确拒绝，
+        // 免得"看着支持、其实摆错位置"。views 层不知道 JSON，这只是纯视图能力。
+        BKLV_LOG_WARNING("Recycler 的多列排布还没做（columns=%d 先按 1 处理）", count);
+        count = 1;
+    }
+    this->columns = count;
+}
+
+float RecyclerFrame::visualTopOf(size_t index) const
+{
+    // columns = 1：视觉位置就是流式行的 top -> 与引入本函数之前**逐像素等价**
+    if (index < this->rows.size())
+        return this->rows[index].top;
+    return 0.0f;
+}
+
 void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t row)
 {
     if (cell == nullptr || row >= this->rows.size())
         return;
 
-    // 宽度跟随可视宽度，纵向位置用 translation 直接摆（绝对定位已跳过 Yoga 布局）。
-    cell->setWidth(this->getWidth());
+    // 宽度跟随可视宽度（单列时等于整宽），纵向位置用 translation 直接摆（绝对定位已跳过 Yoga 布局）。
+    const float cellWidth = this->columns > 0 ? this->getWidth() / (float)this->columns : this->getWidth();
+    cell->setWidth(cellWidth);
 
     cell->setHeight(this->rows[row].height);
-    cell->setTranslation(0.0f, this->rows[row].top);
+    cell->setTranslation((float)(row % (size_t)(this->columns > 0 ? this->columns : 1)) * cellWidth,
+        this->visualTopOf(row));
 }
 
 void RecyclerFrame::recycleCell(size_t index)

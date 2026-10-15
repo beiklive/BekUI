@@ -220,6 +220,14 @@ class RecyclerFrame : public ScrollingFrame
     // 把 cell 摆到第 row 行的位置。
     void layoutCell(RecyclerCell* cell, size_t row);
 
+    // —— 多列（Grid）的**纯视图能力** ——
+    // columns = 1 时一切与从前逐像素等价；> 1 的多列排布尚未启用（会警告）。
+    void setColumns(int count);
+    int getColumns() const { return this->columns; }
+
+    // 第 index 个 item 的**视觉纵向位置**。columns = 1 时等于 rows[index].top（等价重构）。
+    float visualTopOf(size_t index) const;
+
     // 取第 row 行该用哪种 cell
     std::string rowIdentifier(size_t row) const;
 
@@ -232,6 +240,7 @@ class RecyclerFrame : public ScrollingFrame
     void recycleCell(size_t index);
     void buildRowOffsets();
 
+    int columns = 1;
     RecyclerDataSource* dataSource = nullptr;
 
     Box* contentBox = nullptr;
