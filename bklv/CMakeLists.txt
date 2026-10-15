@@ -352,6 +352,7 @@ set(BKLV_CORE_SOURCES
     compile/layer_registry.cpp
     compile/appearance_box.cpp
     compile/appearance_gradient.cpp
+    compile/appearance_imports.cpp
     compile/appearance_layer_fields.cpp
     compile/appearance_layer_meta.cpp
     compile/appearance_children.cpp
