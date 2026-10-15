@@ -343,8 +343,8 @@ set(BKLV_CORE_SOURCES
     core/resource.cpp
     core/i18n.cpp
     core/attributes.cpp
-    core/json_view.cpp
-    core/theme_data.cpp
+    compile/view_parse.cpp
+    compile/theme_parse.cpp
     core/ime.cpp
     core/ui_scale.cpp
     core/appearance.cpp
