@@ -34,6 +34,8 @@ class RecyclerItemCell : public RecyclerCell
     void setViewTemplateName(const std::string& name);
 
     void setIndex(size_t value) override;
+    // 分段列表（默认 1 段也算）走的是这个入口 —— 少了它绑定函数根本不会被调用（踩过）
+    void setSectionIndex(size_t sectionValue, size_t indexValue) override;
     void prepareForReuse() override;
 
     // 数据绑定挂点：JSON 只写**名字**，实现由 C++ 注册（views/item_binder）

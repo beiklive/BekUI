@@ -79,6 +79,16 @@ void RecyclerItemCell::setIndex(size_t value)
         this->binder(*target, value);
 }
 
+void RecyclerItemCell::setSectionIndex(size_t sectionValue, size_t indexValue)
+{
+    RecyclerCell::setSectionIndex(sectionValue, indexValue);
+    // 绑定挂点：两个索引入口都要走，否则（分段路径下）绑定函数永远不会被调用
+    this->ensureContent("base/rectangle.card");
+    View* target = this->content != nullptr ? (View*)this->content : this->templateContent;
+    if (this->binder && target != nullptr)
+        this->binder(*target, indexValue);
+}
+
 void RecyclerItemCell::prepareForReuse() { }
 
 // ---------------- RecyclerView ----------------
