@@ -101,6 +101,15 @@ RecyclerCell* RecyclerFrame::dequeueReusableCell(const std::string& identifier)
 
 void RecyclerFrame::setDataSource(RecyclerDataSource* source)
 {
+    if (source != nullptr)
+    {
+        // 数据到了：解除单飞并把新条目**增量**接上（不全量重建）
+        source->setLoadListener([this] {
+            this->requestInFlight = false;
+            this->notifyItemsAppended();
+        });
+    }
+
     this->dataSource = source;
     this->reloadData();
 }
@@ -148,6 +157,22 @@ void RecyclerFrame::notifyDataChanged()
 // ---------------------------------------------------------------------------
 // 行高与偏移
 // ---------------------------------------------------------------------------
+
+void RecyclerFrame::maybeRequestMore()
+{
+    if (this->dataSource == nullptr || this->requestInFlight || !this->dataSource->hasMore())
+        return;
+
+    // "末尾附近"：最后活跃行的行号 + 阈值 >= 总行数。没有活跃 cell（还没滚/首屏）也算够近。
+    bool nearEnd = this->activeCells.empty();
+    if (!this->activeCells.empty())
+        nearEnd = this->activeCells.rbegin()->first + this->loadConfig.loadThreshold >= this->rows.size();
+    if (!nearEnd)
+        return;
+
+    this->requestInFlight = true;
+    this->dataSource->requestMore(this->loadConfig.pageSize, this->dataSource->getLoadedCount());
+}
 
 void RecyclerFrame::notifyItemsAppended()
 {
@@ -444,6 +469,7 @@ size_t RecyclerFrame::getReusableCellCount() const
 
 void RecyclerFrame::update()
 {
+    this->maybeRequestMore();
     // 先把滚动、惯性、焦点跟随处理掉，这样下面读到的偏移才是本帧最终值。
     ScrollingFrame::update();
 

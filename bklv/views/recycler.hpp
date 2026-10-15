@@ -222,6 +222,11 @@ class RecyclerFrame : public ScrollingFrame
     void reloadData();
     void notifyDataChanged();
 
+    // 加载触发：滚到"末尾附近"就向数据源要下一页（单飞去抖；数据到了走增量追加）。
+    // 条件用"最后活跃行 + loadThreshold >= 行数"，所以不依赖滚动器的内部状态。
+    void maybeRequestMore();
+    bool isLoadingMore() const { return this->requestInFlight; }
+
     // **增量追加**：数据源多出了条目时用它，只补尾巴（单段走真增量；其余情况内部回落到全量）。
     // 与 notifyDataChanged 的区别就是"不重算前面的行" —— 分页加载场景每页调一次。
     void notifyItemsAppended();
@@ -294,6 +299,7 @@ class RecyclerFrame : public ScrollingFrame
     int columns = 1;
     RecyclerLoadConfig loadConfig;
     size_t poolLimitPerIdentifier = 32;
+    bool requestInFlight = false;
     std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
     void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;
