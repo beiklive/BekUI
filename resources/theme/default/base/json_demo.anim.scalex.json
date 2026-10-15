@@ -1,0 +1,13 @@
+{
+  "import": "base/json_demo",
+  "transitions": {
+    "enter": {
+      "duration": 420,
+      "easing": "quadraticOut",
+      "scaleX": {
+        "from": 0.55,
+        "to": 1
+      }
+    }
+  }
+}

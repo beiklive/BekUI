@@ -1,0 +1,25 @@
+{
+  "import": "base/json_demo",
+  "layers": [
+    {
+      "id": "shadow",
+      "fill": "#00000000"
+    },
+    {
+      "id": "bg",
+      "stroke": "#00000000"
+    },
+    {
+      "id": "hlBg",
+      "fill": "#00000000"
+    },
+    {
+      "id": "icon",
+      "color": "#00000000"
+    },
+    {
+      "id": "title",
+      "color": "#00000000"
+    }
+  ]
+}
