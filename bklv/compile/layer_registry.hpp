@@ -63,7 +63,14 @@ struct LayerDrawContext
     int layerIndex = 0;
     void* drawList  = nullptr;          // ImDrawList*
     LayerRect rect;
-    void* view = nullptr;               // AppearanceView*（TEXT/IMAGE/CUSTOM 用内容槽）
+    void* view = nullptr;               // AppearanceView*
+
+    // 内容槽的结果（由 AppearanceView::draw 通过虚函数算好后放进来；compile/ 不认识这些类型，
+    // 所以一律用不透明指针/指针 —— 和 view 同样的处理方式）
+    const std::string* text = nullptr;  // getLayerText(layer.source) 的结果（仅 TEXT 层填）
+    void* font              = nullptr;  // ImFont*（仅 TEXT 层填）
+    void* image             = nullptr;  // TextureRef::texture（仅 IMAGE 层填；nullptr = 没有图）
+    void* customDraw        = nullptr;  // 保留：CUSTOM 层由视图自己画（见 drawCustomLayer）
 };
 
 using LayerDrawFn = std::function<void(const LayerDrawContext&)>;
