@@ -4218,6 +4218,15 @@ void DesignerWindow::drawProps()
                 else
                     candidates.insert(candidates.end(), { "fill", "stroke", "strokeWidth" });
 
+                // 再把注册表里的键并进来（**取并集，不替换**）：注册表是"这种 op 能写什么"的
+                // 单一事实来源，所以第三方新增的 op 不用改这里，检查器就能编它自己的字段。
+                if (const bklv::compile::LayerType* type = bklv::compile::findLayer(op))
+                {
+                    for (const std::string& key : type->keys)
+                        if (std::find(candidates.begin(), candidates.end(), key) == candidates.end())
+                            candidates.insert(candidates.end(), key);
+                }
+
             }
 
             if (this->propFilter[0] != 0 && layer->empty())
