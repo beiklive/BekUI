@@ -322,36 +322,11 @@ Box* buildPokedexPage()
     // 数据源要活到列表销毁
     static DexSource source;
 
-    RecyclerFrame* list = new RecyclerFrame();
-    list->setWidthPercentage(100.0f);
-    list->setGrow(1.0f);
-    list->setItemHeight(getTheme().number("metric.pokedex.cellHeight", 72.0f));
-    list->setPreFetchLine(1);
-    list->setShowScrollingIndicator(true);
-    list->registerCell("starter", [] { return new DexCell(); });
-    list->registerCell("wild", [] { return new DexCell(); });
-    list->registerCell("section_header", [] { return new DexHeaderCell(); });
-    list->setSectionHeaderIdentifier("section_header");
-    list->setDataSource(&source);
+    // 列表整块交给 **JSON 描述**（容器 + 一份 item 模板 + 数据源名字 + 绑定函数名字）
+    // 行为（点 A 下钻）在 demo 注册的绑定函数里，页面不再感知 item 的具体类型
+    bklv::View* list = bklv::createViewFromTheme("page_pokedex_json");
 
     // 选中条目 → 下钻一层（B 返回：Shell 的 onBackRequested → popContentView）
-    list->registerAction(ControllerButton::A, getStr("pokedex/open"), [](View* focused) {
-        auto* cell = static_cast<DexCell*>(focused); // 命中的就是 cell 自己
-        if (cell == nullptr)
-            return false;
-
-        View* detail =
-            buildPokedexDetail(cell->getSection(), cell->getIndex());
-        if (detail == nullptr)
-            return false;
-
-        if (Shell* shell = detailShell())
-            shell->pushContentView(detail);
-        else
-            delete detail;
-
-        return true;
-    }, false);
 
     page->addView(list);
     return page;
@@ -406,6 +381,20 @@ void registerPokedexJsonBindings()
                 // JSON 的 item 是用 itemAppearance 建的 -> 就是一个 AppearanceView
                 if (auto* view = static_cast<bklv::AppearanceView*>(&item))
                     view->setText(list[index].name);
+
+                // 行为放进绑定函数（不依赖 item 是哪个 C++ 类）：只用 index 就能下钻
+                item.registerAction(bklv::ControllerButton::A, bklv::getStr("pokedex/open"),
+                    [index](bklv::View*) {
+                        bklv::View* detail = buildPokedexDetail(0, index);
+                        if (detail == nullptr)
+                            return false;
+                        if (bklv::Shell* shell = detailShell())
+                        {
+                            shell->pushContentView(detail);
+                            return true;
+                        }
+                        return false;
+                    });
             },
             error))
         BKLV_LOG_WARNING("pokedexCell 绑定函数注册失败：%s", error.c_str());
