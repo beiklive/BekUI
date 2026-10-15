@@ -55,10 +55,14 @@ int main()
                 check(children[0].name == "base/label", "记下外观名");
                 check(children[0].text == "@i18n/x", "内容槽 text");
                 checkFloat(children[0].box.grow, 1.0f, "box 覆盖到 grow");
+                check(children[0].box.hasGrow, "写了 grow 就有标记");
+                check(!children[0].box.hasWidth && !children[0].box.hasPadding,
+                    "没写的字段不留标记（否则 applyAppearanceBox 会清零套用）");
 
                 checkEqualInt((int)children[1].kind, (int)AppearanceChild::Kind::BOX, "第 2 档是 box");
                 checkFloat(children[1].box.padding[0], 12.0f, "box.padding 落到四边");
                 checkFloat(children[1].box.gap, 4.0f, "box.gap");
+                check(children[1].box.hasPadding && children[1].box.hasGap, "padding/gap 的标记都在");
 
                 checkEqualInt((int)children[2].kind, (int)AppearanceChild::Kind::VIEW_TEMPLATE, "第 3 档是 ref");
                 check(children[2].name == "widget/button.icon_text", "记下模板名");

@@ -115,18 +115,41 @@ bool parseChildBox(const Json& node, const ThemeData& theme, AppearanceBox& out,
         error = where + " 必须是对象";
         return false;
     }
-    if (node.contains("width") && !resolveNumber(node["width"], theme, out.width, error, where + ".width"))
-        return false;
-    if (node.contains("height") && !resolveNumber(node["height"], theme, out.height, error, where + ".height"))
-        return false;
+    // 注意：`AppearanceBox` 是靠 `hasXxx` 标记决定"套不套用"的（AGENTS ⑦b：没写的字段不该清掉
+    // 控件上的旧值）。所以这里**填值必须同时设标记**，否则 applyAppearanceBox 会把
+    // 没写的 width/height/padding 当成"写了 0"清零套用 ✗。
+    if (node.contains("width"))
+    {
+        if (!resolveNumber(node["width"], theme, out.width, error, where + ".width"))
+            return false;
+        out.hasWidth = true;
+    }
+    if (node.contains("height"))
+    {
+        if (!resolveNumber(node["height"], theme, out.height, error, where + ".height"))
+            return false;
+        out.hasHeight = true;
+    }
     if (node.contains("grow"))
-        out.grow = node["grow"].get<float>();
+    {
+        out.grow     = node["grow"].get<float>();
+        out.hasGrow  = true;
+    }
     if (node.contains("shrink"))
-        out.shrink = node["shrink"].get<float>();
+    {
+        out.shrink    = node["shrink"].get<float>();
+        out.hasShrink = true;
+    }
     if (node.contains("gap"))
-        out.gap = node["gap"].get<float>();
+    {
+        out.gap    = node["gap"].get<float>();
+        out.hasGap = true;
+    }
     if (node.contains("padding"))
+    {
         out.padding[0] = out.padding[1] = out.padding[2] = out.padding[3] = node["padding"].get<float>();
+        out.hasPadding = true;
+    }
     // TODO(里程碑 2)：`axis` 以及 box 的其余键应当**复用现有 box 解析器**，
     // 而不是在这里手搓一份（手搓就是这次重构要消灭的重复）。里程碑 1 先只支持最常用的几个。
 
