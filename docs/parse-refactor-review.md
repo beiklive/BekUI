@@ -491,3 +491,16 @@ child[1] 内层盒 x=473 y=1806 w=345 h=188 ownChildren=2  （两个标签在盒
 
 **做法提醒（自己踩过的）**：切片脚本**先 assert 边界、先验花括号配平，再落盘**；
 改完要 grep 确认"真的改上了"（有一次 replace 没加断言，静默失败，靠计数才发现）。
+
+### 12.11 12.10 已执行（第 42 轮）：box 段解析成为共享实现
+
+- 新增 `compile/appearance_box.{hpp,cpp}`：`parseBoxNode(boxNode, theme, box, error, where)`
+- `parseLayers` 从 382 行降到 **~230 行**；`appearance.cpp` 1906 -> **1714 行**
+- `children` 删掉手搓的 `parseChildBox`，改调同一个函数
+  -> **字段支持变全**（axis/alignItems/justifyContent/margin/minWidth/背景/圆角/边框/measureContent…）
+- 测试 `appearance_children_test` 31 -> **37 项**（新增"children 的 box 能写全套字段"）
+- `check.sh` 3416 项全过；三平台 0 告警 —— 纯搬家 + 一处行为增强
+
+**下一刀的落点**：`parseLayers` 现在 ~230 行，大头是**图层循环里的字段解析**；
+按 op 拆进 `compile/layers/<op>.cpp` 是 ①c-3 余下的内容（模式已经定：
+机械切片 + 先 assert 边界 + 先验括号配平 + 改完 grep 确认真的改上了）。

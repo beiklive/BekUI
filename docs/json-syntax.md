@@ -612,7 +612,8 @@ C++ 一行都不用写，也不用新加控件类。
 - `ref` 节点再写 `children` -> 报错（子节点写在模板里）
 - **嵌套深度上限 16**，超过报错
 - **循环引用**：A 的子节点里又引用 A（或 A→B→A）-> 报错并停止构建
-- `box` 段里出现不认识的键 -> 警告并给出提示（`children` 要与 `box` 平级，写进 `box` 里不会生效）
+- `box` 段里不认识的键：按主 `box` 段的既有行为处理（`children` 要与 `box` **平级**，
+  写进 `box` 里不会生效 —— 这一点有测试钉住）
 
 ### 有什么、没什么（当前版本）
 
@@ -623,6 +624,7 @@ C++ 一行都不用写，也不用新加控件类。
 没有（有意留到后面，不是忘了）：
 - **父外观改子节点的状态**：`states` 的寻址空间仍然只有"层"（`<层id>.<属性>`），
   不会扩成树路径
-- **`children` 的 `box` 段目前只认 `width/height/grow/shrink/gap/padding`**；
-  `axis`、`margin`、`justifyContent`、`alignItems` 等要等它改成复用主 box 解析器
-  （外观自己的 `box` 段不受此限，那里是全套字段）
+- ~~`children` 的 `box` 段只认少数几个键~~ **已解决**：它现在与外观主 `box` 段**共用同一份解析**
+  （`compile/appearance_box.cpp`），所以 `axis` / `alignItems` / `justifyContent` / `margin` /
+  `padding` / `minWidth` / 背景 / 圆角 / 边框 / `measureContent` 等**全套字段都支持**，
+  "只覆盖写了的字段"（`hasXxx` 标记）的语义也天然一致
