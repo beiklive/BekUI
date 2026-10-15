@@ -32,8 +32,11 @@ ListPageResult buildListPage()
 
     RecyclerFrame* grid = new RecyclerFrame();
     grid->setWidthPercentage(100.0f);
-    grid->setHeightPercentage(100.0f);
-    grid->setMinHeight(0.0f);
+    // 关键：ScrollingFrame 自己会设 flex-basis:0 + shrink:1，百分比高度会被压塌
+    // （探针实测过：帧高只有 10px，而它是 clipsToBounds 的 -> 每个 140 高的 cell
+    //   只露出顶部一条，看起来就是"只有背景、没有图与字"）。给确定高度 + shrink 0。
+    grid->setHeight(300.0f);
+    grid->setShrink(0.0f);
     grid->setItemHeight(140.0f);
     grid->setColumns(3); // 多列模式
     grid->setPreFetchLine(1);
