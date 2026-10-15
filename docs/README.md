@@ -41,3 +41,4 @@
 | [`../notes/borealis-port-priorities.md`](../notes/borealis-port-priorities.md) | 移植的优先级与取舍 |
 
 - [基础控件页对照表](base-widgets-map.md)：基础控件页里每个控件的代码 / 类文件 / 外观名 / JSON 路径
+- [解析层重构与扩展机制（评审稿）](parse-refactor-review.md) —— `bklv/compile/` 分层、图层类型注册表、外观内 `children`、迁移与验收
