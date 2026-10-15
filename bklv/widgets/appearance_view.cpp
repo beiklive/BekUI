@@ -659,6 +659,19 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
             case AppearanceLayer::Op::IMAGE:
             {
+                // ③：走注册表钩子（原地实现留作兜底）。图与有效性在这里现算，行为与原来一致
+                if (const compile::LayerType* imageType = compile::findLayer("image");
+                    imageType != nullptr && imageType->draw)
+                {
+                    const TextureRef layerImage = this->getLayerImage(layer.source);
+                    imageType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this, nullptr, nullptr,
+                        layerImage.isValid() ? (void*)layerImage.texture : nullptr, nullptr });
+                    break;
+                }
                 const TextureRef texture = this->getLayerImage(layer.source);
                 if (!texture.isValid() || alphaScale <= 0.001f)
                     break;

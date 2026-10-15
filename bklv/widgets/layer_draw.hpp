@@ -14,6 +14,7 @@ void drawRect(const compile::LayerDrawContext& ctx);
 void drawShadow(const compile::LayerDrawContext& ctx);
 void drawGlass(const compile::LayerDrawContext& ctx);
 void drawText(const compile::LayerDrawContext& ctx);
+void drawImage(const compile::LayerDrawContext& ctx);
 
 void ensureLayerDrawsRegistered();
 
