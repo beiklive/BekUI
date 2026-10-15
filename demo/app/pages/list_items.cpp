@@ -1,5 +1,7 @@
 #include "app/pages/list_items.hpp"
 
+#include <cstdio>
+
 #include "app/ui.hpp"
 
 using namespace bklv;
@@ -28,7 +30,6 @@ ListCell::ListCell()
     this->thumbnail->setDimensions(76.0f, 44.0f);
     this->thumbnail->setCornerRadius(6.0f);
     this->thumbnail->setScalingType(ImageScalingType::FILL);
-    this->thumbnail->setImageFromFile("resources/testcard.png");
     this->addView(this->thumbnail);
 
     Box* textBox = new Box(Axis::COLUMN);
@@ -54,8 +55,22 @@ void ListCell::prepareForReuse()
 void ListCell::setIndex(size_t value)
 {
     RecyclerCell::setIndex(value);
-    this->title->setText("列表项 #" + std::to_string(value));
-    this->subtitle->setText(this->activated ? "已触发" : "固定 64 高的行，滚出视口后会被回收复用");
+
+    // 缩略图用 borealis 的真实素材（8 张精灵图循环）——同一张图会被多行复用，
+    // 走的正是纹理仓库的路径缓存（`core/graphics.cpp` 的 g_pathCache）
+    static const char* const kThumbs[8] = {
+        "resources/img/demo/pokemon_001.png", "resources/img/demo/pokemon_004.png",
+        "resources/img/demo/pokemon_007.png", "resources/img/demo/pokemon_011.png",
+        "resources/img/demo/pokemon_014.png", "resources/img/demo/pokemon_017.png",
+        "resources/img/demo/pokemon_021.png", "resources/img/demo/pokemon_024.png",
+    };
+    const size_t pick = value % 8;
+    this->thumbnail->setImageFromFile(kThumbs[pick]);
+
+    char title[16] = { 0 };
+    std::snprintf(title, sizeof(title), "No.%03d", (int)pick * 3 + 1); // 001/004/007/...
+    this->title->setText(title);
+    this->subtitle->setText(this->activated ? "已触发（A）" : "图片素材来自 borealis · 行高 64 · 滚出视口即回收复用");
 }
 
 void ListCell::onFocusGained()
