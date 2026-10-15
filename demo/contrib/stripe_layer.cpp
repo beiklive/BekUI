@@ -50,39 +50,30 @@ void drawStripe(const bklv::AppearanceLayer& layer, void* drawListPtr,
     const bklv::compile::LayerRect& rect)
 {
     ImDrawList* drawList = static_cast<ImDrawList*>(drawListPtr);
-    if (drawList == nullptr || rect.maxX - rect.minX <= 1.0f || rect.maxY - rect.minY <= 1.0f)
+    const float width = rect.maxX - rect.minX;
+    const float height = rect.maxY - rect.minY;
+    if (drawList == nullptr || width <= 1.0f || height <= 1.0f)
         return;
 
-    const float angle = layer.feather; // 解析钩子暂存在这里
-    const float width = layer.spread > 0.0f ? layer.spread : 2.0f;
-    const float gap   = 14.0f;
+    const float gap  = 16.0f; // 条纹间距（px）
+    const float line = layer.spread > 0.0f ? layer.spread : 2.0f;
+    const bool falling = layer.feather < 90.0f; // 角度决定方向：<90 用 ↘，否则 ↗
 
-    // 有效 alpha 直接折进颜色（引擎已经算好 rect.alpha）
+    // 有效 alpha 折进颜色（引擎已经把控件/状态透明度算进 rect.alpha）
     const float alpha = rect.alpha * (float)((layer.fill >> 24) & 0xFFu) / 255.0f;
-    const ImU32 color = (layer.fill & 0x00FFFFFFu)
-        | ((ImU32)(alpha * 255.0f + 0.5f) << 24);
+    if (alpha <= 0.001f)
+        return;
+    const ImU32 color = (layer.fill & 0x00FFFFFFu) | ((ImU32)(alpha * 255.0f + 0.5f) << 24);
 
-    const float radians = angle * 3.14159265f / 180.0f;
-    const float dx      = std::cos(radians);
-    const float dy      = std::sin(radians);
-    const float length  = std::sqrt((rect.maxX - rect.minX) * (rect.maxX - rect.minX)
-                              + (rect.maxY - rect.minY) * (rect.maxY - rect.minY));
-    const float centerX = (rect.minX + rect.maxX) * 0.5f;
-    const float centerY = (rect.minY + rect.maxY) * 0.5f;
-    // 与条纹垂直的方向：沿线排开每 gap 像素一条
-    const float stepX = -dy * gap;
-    const float stepY = dx * gap;
-
+    // 朴素但可靠的排布：沿 x 每一列画一条跨满矩形高度的斜线，两端各多留一个高度，
+    // 超出矩形由 PushClipRect 裁掉 —— 不用"居中 + 沿垂直线排开"那套（踩过：线大量落到裁剪区外）
     drawList->PushClipRect(ImVec2(rect.minX, rect.minY), ImVec2(rect.maxX, rect.maxY), true);
-    const int count = (int)(length / gap) + 2;
-    for (int i = -count; i <= count; i++)
+    for (float x = rect.minX - height; x <= rect.maxX + height; x += gap)
     {
-        const float offsetX = stepX * (float)i;
-        const float offsetY = stepY * (float)i;
-        drawList->AddLine(
-            ImVec2(centerX + offsetX - dx * length * 0.5f, centerY + offsetY - dy * length * 0.5f),
-            ImVec2(centerX + offsetX + dx * length * 0.5f, centerY + offsetY + dy * length * 0.5f),
-            color, width);
+        if (falling)
+            drawList->AddLine(ImVec2(x, rect.minY), ImVec2(x + height, rect.maxY), color, line);
+        else
+            drawList->AddLine(ImVec2(x, rect.maxY), ImVec2(x + height, rect.minY), color, line);
     }
     drawList->PopClipRect();
 }
