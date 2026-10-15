@@ -222,6 +222,9 @@ class RecyclerFrame : public ScrollingFrame
     // 还有更多时 = 真实高度 + 估算行高 × 估算行数；没有更多时 == 真实高度。
     float getEstimatedScrollHeight() const;
 
+    // 内容盒高度 = 估算滚动高度（把「还没加载的那段」也算进滚动范围）
+    void updateContentHeight();
+
     // 数据变了：重建内容尺寸并重新取数。
     void reloadData();
     void notifyDataChanged();
@@ -311,6 +314,7 @@ class RecyclerFrame : public ScrollingFrame
     size_t poolLimitPerIdentifier = 32;
     bool requestInFlight = false;
     size_t pendingFocusIndex = (size_t)-1;
+    float appliedContentHeight = -1.0f;
     std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
     void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;

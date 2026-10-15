@@ -132,7 +132,7 @@ void RecyclerFrame::reloadData()
     this->buildRowOffsets();
 
     if (this->contentBox != nullptr)
-        this->contentBox->setHeight(this->totalHeight);
+        this->updateContentHeight();
 
     this->setContentOffsetY(0.0f, false);
 }
@@ -151,7 +151,7 @@ void RecyclerFrame::notifyDataChanged()
     this->buildRowOffsets();
 
     if (this->contentBox != nullptr)
-        this->contentBox->setHeight(this->totalHeight);
+        this->updateContentHeight();
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ void RecyclerFrame::notifyItemsAppended()
     if (this->columns > 1)
         this->rebuildVisualTops();
 
-    this->contentBox->setHeight(this->totalHeight);
+    this->updateContentHeight();
     this->invalidate();
 }
 
@@ -296,6 +296,20 @@ void RecyclerFrame::buildRowOffsets()
         }
     }
     this->rebuildVisualTops(); // 行高算完 -> 同步视觉行顶（多列用）
+}
+
+void RecyclerFrame::updateContentHeight()
+{
+    if (this->contentBox == nullptr)
+        return;
+
+    const float wanted = this->getEstimatedScrollHeight();
+    if (wanted == this->appliedContentHeight)
+        return; // 值没变就别动布局
+
+    this->appliedContentHeight = wanted;
+    this->contentBox->setHeight(wanted);
+    this->invalidate();
 }
 
 float RecyclerFrame::getEstimatedScrollHeight() const
@@ -522,6 +536,7 @@ size_t RecyclerFrame::getReusableCellCount() const
 void RecyclerFrame::update()
 {
     this->maybeRequestMore();
+    this->updateContentHeight();
     // 先把滚动、惯性、焦点跟随处理掉，这样下面读到的偏移才是本帧最终值。
     ScrollingFrame::update();
 
