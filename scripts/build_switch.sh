@@ -134,7 +134,7 @@ CFLAGS=(-std=c11 -O2 "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 BKLV_SOURCES=()
 while IFS= read -r -d '' f; do
     BKLV_SOURCES+=("$f")
-done < <(find "${BKLV_DIR}/core" "${BKLV_DIR}/glass" "${BKLV_DIR}/views" "${BKLV_DIR}/widgets" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
+done < <(find "${BKLV_DIR}/compile" "${BKLV_DIR}/core" "${BKLV_DIR}/glass" "${BKLV_DIR}/views" "${BKLV_DIR}/widgets" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
 
 # backends / platforms 里 Switch 只取这几个：
 # 桌面的 opengl/vulkan/sdl3 那几份不参与（文件内部也有 BKLV_SWITCH 守卫，但不必编）。

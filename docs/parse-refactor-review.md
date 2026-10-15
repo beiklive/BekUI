@@ -163,7 +163,9 @@ void registerMyLayers() {
 
 | 步骤 | 内容 | 验收 | 回滚 |
 |---|---|---|---|
-| ① | `json_util` + `layer_registry` + 6 个 op 搬进 `layers/`（纯搬家） | 测试全绿、截图与重构前逐像素一致 | 单提交 revert |
+| ①a | 抽 `compile/json_util.{hpp,cpp}`（把 appearance.cpp 的文件内解析助手搬过去） | 测试全绿（3266 项） | 单提交 revert |
+| ①b | 把 `compile` 里按 op 的解析拆成 `layers/<op>.cpp` 的函数（仍在原 TU，先拆函数） | 同上 | 单提交 revert |
+| ①c | 引入 `layer_registry`，注册 6 个内置 op（此时才谈得上"一种 op 一个文件"） | 同上 + 注册表查表测试 | 单提交 revert |
 | ② | 拆 `appearance_parse`：501 行 → 若干 ≤80 行；`appearance_box/states/transitions` 分文件 | 同上 + `compile` 行数断言 | 单提交 revert |
 | ③ | 搬 view/theme 解析进 `compile/`；`appearance_view.cpp` 改为查注册表 | 同上 + 设计器照常工作 | 单提交 revert |
 | ④ | `appearance_children` + 三档节点 | 见 §8 的验收样例 | 单提交 revert |
@@ -196,3 +198,7 @@ void registerMyLayers() {
 ---
 
 **评审通过后的第一步**：执行 §7 的 ①，并以 §8 的 `stripe` 样例作为验收证据。
+
+> 实施备注（做的时候发现的依赖顺序）：① 必须先拆成 ①a/①b/①c。
+> 原因：注册表要求"每种 op 一个 parse 钩子"，而现在的解析是 `compile` 里一个 501 行的函数体，
+> 钩子无处可挂 —— 所以顺序是 **先搬助手（①a）→ 再按 op 拆函数（①b）→ 最后才注册（①c）**。

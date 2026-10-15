@@ -14,40 +14,27 @@
 #include <tweeny/tweeny.h>
 
 #include "bklv/core/logger.hpp"
+#include "bklv/compile/json_util.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/ui_scale.hpp"
 
 namespace bklv
 {
 
+// 解析助手集中在 compile/json_util（取值/报错只写一遍）
+using namespace bklv::compile;
+
 namespace
 {
 
 // 外观 JSON 里的像素量（圆角/描边/显式宽高/字号/内边距/位移）要跟随 720p 缩放；
 // opacity 是系数、color 是颜色、duration 是毫秒，都不缩放。
-float scalePixels(float value)
-{
-    return value * getUiScale();
-}
 
 // 主题引用里的 key 归一：`color/a.b` 与 `color.a.b` 都当成 `color.a.b`。
 //
 // 分组名（color / metric）后面应该是点，写成斜杠的人不少（我自己就反复写错），
 // 所以这里容错，但会警告一句——**真正不存在的 key 仍然硬失败**，
 // 所以容错不会退回"静默变洋红"。
-std::string normalizeThemeKey(const std::string& key, const std::string& where)
-{
-    const size_t slash = key.find('/');
-    if (slash == std::string::npos)
-        return key;
-
-    std::string normalized = key;
-    normalized[slash]      = '.';
-
-    BKLV_LOG_WARNING("主题引用写法应带点：@theme/%s（%s）；已按 @theme/%s 解析", key.c_str(),
-        where.c_str(), normalized.c_str());
-    return normalized;
-}
 
 
 using Json = nlohmann::json;
@@ -120,107 +107,12 @@ const PropName PROP_NAMES[] = {
     { "fontSize", AppearanceProp::FONT_SIZE },
 };
 
-bool parseHex(const std::string& text, ImU32& out)
-{
-    if (text.size() != 7 && text.size() != 9)
-        return false;
-    if (text[0] != '#')
-        return false;
-    for (size_t i = 1; i < text.size(); i++)
-        if (!std::isxdigit((unsigned char)text[i]))
-            return false;
 
-    const unsigned long value = std::strtoul(text.c_str() + 1, nullptr, 16);
-    if (text.size() == 7)
-        out = IM_COL32((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 255);
-    else
-        out = IM_COL32((value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
-    return true;
-}
 
-void splitColor(ImU32 color, float out[4])
-{
-    out[0] = (float)(color & 0xFF);
-    out[1] = (float)((color >> 8) & 0xFF);
-    out[2] = (float)((color >> 16) & 0xFF);
-    out[3] = (float)((color >> 24) & 0xFF);
-}
-
-ImU32 joinColor(const float in[4])
-{
-    auto clamp255 = [](float v) {
-        return (unsigned int)std::max(0.0f, std::min(255.0f, std::round(v)));
-    };
-    return IM_COL32(clamp255(in[0]), clamp255(in[1]), clamp255(in[2]), clamp255(in[3]));
-}
 
 // 颜色项：`"#RRGGBB"` 或 `"@theme/color.xxx"`
-bool resolveColor(const Json& node, const ThemeData& theme, ImU32& out, std::string& error,
-    const std::string& where)
-{
-    if (!node.is_string())
-    {
-        error = where + " 期望颜色字符串（\"#RRGGBB\" 或 \"@theme/color.x.y\"）";
-        return false;
-    }
-
-    const std::string text = node.get<std::string>();
-    if (text.rfind("@theme/", 0) == 0)
-    {
-        const std::string key = normalizeThemeKey(text.substr(7), where);
-        if (!theme.hasColor(key))
-        {
-            // 不静默回退：写错 key 会变成一块洋红，比报错难查得多
-            error = where + " 引用了主题里不存在的颜色：@theme/" + key
-                + "（当前主题 " + theme.getName() + "；写法是 @theme/color.a.b）";
-            return false;
-        }
-        out = theme.color(key);
-        return true;
-    }
-    if (parseHex(text, out))
-        return true;
-
-    error = where + " 不是合法颜色：" + text;
-    return false;
-}
 
 // 数值项：数字 或 `"@theme/metric.x.y"`
-bool resolveNumber(const Json& node, const ThemeData& theme, float& out, std::string& error,
-    const std::string& where)
-{
-    if (node.is_number())
-    {
-        out = node.get<float>();
-        return true;
-    }
-    if (node.is_string())
-    {
-        const std::string text = node.get<std::string>();
-        if (text.rfind("@theme/", 0) == 0)
-        {
-            const std::string key = normalizeThemeKey(text.substr(7), where);
-            if (!theme.hasNumber(key))
-            {
-                error = where + " 引用了主题里不存在的数值：@theme/" + key
-                    + "（当前主题 " + theme.getName() + "；写法是 @theme/metric.a.b）";
-                return false;
-            }
-            out = theme.number(key);
-            return true;
-        }
-        char* end = nullptr;
-        const double value = std::strtod(text.c_str(), &end);
-        if (end != text.c_str() && *end == '\0')
-        {
-            out = (float)value;
-            return true;
-        }
-    }
-
-    error = where + " 期望数值（数字或 \"@theme/metric.x.y\"）";
-    return false;
-}
 
 AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
 {
