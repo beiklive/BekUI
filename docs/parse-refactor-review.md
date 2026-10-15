@@ -171,6 +171,35 @@ void registerMyLayers() {
 | ④ | `appearance_children` + 三档节点 | 见 §8 的验收样例 | 单提交 revert |
 | ⑤ | 设计器改为读注册表（菜单/键表/层序校验） | 设计器里能加 `stripe` 且不改设计器代码 | 单提交 revert |
 
+
+### 实施备注 3（做 ⑥ 时发现的关键缺口）：op 目前是**封闭枚举**，第三方 op 表示不了
+
+`AppearanceLayer::Op` 是 `enum class { RECT, TEXT, IMAGE, SHADOW, GLASS, CUSTOM }`，
+解析器遇到不认识的 op 串会**直接报错**。也就是说：照现方案，第三方即使注册了 `stripe`，
+`AppearanceLayer` 里也没有东西能表示它 —— §8 那条"在 `bklv/` 之外加一种 op"的验收**走不通** ✗。
+
+**解决办法（建议，改动很小）**：给枚举加一个**扩展槽**，把"是哪一种扩展"放在数据上：
+
+```cpp
+enum class Op { RECT, TEXT, IMAGE, SHADOW, GLASS, CUSTOM, EXTENSION };
+
+struct AppearanceLayer {
+    Op op = Op::RECT;
+    std::string extensionType;   // op == EXTENSION 时，注册表里的类型名（"stripe"）
+    ...
+};
+```
+
+解析期：op 串查注册表 → 命中内置 6 种就填对应枚举；命中**已注册的扩展**就填
+`Op::EXTENSION` + `extensionType`；两者都没有才报错（保持"写错必报错"）。
+绘制期：`Op::EXTENSION` 走注册表的 `draw` 钩子（③ 的自然延伸）。
+层序：用注册表的 `order` 档位排序（引擎里那张"阴影 0 → 玻璃 1 → 其余"的表也一并交给档位）。
+
+好处：**枚举保持封闭**（编译器仍能做穷尽性检查），扩展只带一个字符串；
+内置 6 种的行为完全不变（它们仍然走各自的枚举分支）。
+
+这条必须在 **①c-3 之前**落地，否则注册表的 `parse` 钩子没有合适的返回值可用。
+
 ## 8. 可扩展性验收（这是方案的证据，不是口号）
 
 1. **加一种 op**：在 `mygame/layers/` 新增 1 个文件 + 在自家初始化里注册 1 行 →
