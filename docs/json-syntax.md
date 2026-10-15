@@ -437,3 +437,46 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 - 条目外观是 `base/tab_cell.sidebar.json`：`icon` 层（`"source": "icon"`，自动用图标字体）+
   `title` 层（`inset` 让位）+ 选中态的 `bg.fill` / `accent.fill` / `title.color` / `icon.color`
 - 分组用 `Sidebar::addSeparator()`（不可聚焦、不进条目索引）
+
+### 视图过渡（`transitions`）
+
+外观 JSON 的顶层 `transitions` 段描述**视图生命周期**的动画：`enter` / `exit` / `show` / `hide`。
+和 `states` 的分工：`states` 管控件内部状态（选中/聚焦/按下…），`transitions` 管出现与消失。
+
+```json
+"transitions": {
+  "enter": {
+    "duration": 200, "easing": "quadraticOut",
+    "translateX": { "from": -60, "to": 0 },
+    "alpha":      { "from": 0,   "to": 1 },
+    "layers": {
+      "title": { "when": "after", "duration": 140,
+                 "offsetX": { "from": -20, "to": 0 },
+                 "opacity": { "from": 0,   "to": 1 } }
+    }
+  },
+  "exit": { "alpha": { "from": 1, "to": 0 } },
+  "show": { "alpha": { "from": 0, "to": 1 } },
+  "hide": { "duration": 0, "alpha": { "from": 1, "to": 0 } }
+}
+```
+
+| 位置 | 可写的键 |
+|---|---|
+| 事件级 | `duration`（毫秒，默认取主题 `metric.anim.normal`）、`easing`、`delay` |
+| 视图级通道（整树一起动） | `translateX` / `translateY` / `scaleX` / `scaleY` / `alpha` |
+| 层内通道 | `layers.<层id>.<属性名>`，属性就是 `states` 那 16 个 |
+| 通道对象 | `from`（可省）、`to`（必写）、`duration`、`easing`、`delay` |
+| 层内条目级 | `when`（`with` 默认 / `after`）、`delay`、`duration`、`easing` |
+
+四条语义：
+
+1. **不做预设** —— 没有 `"type": "slideFade"` 这种枚举，效果直接写通道名（写了 `type` 会报错并列出可选通道）
+2. **外观里没写 `transitions`** → 调用方用默认的**淡入淡出**；**事件里没写某个层** → 那层不动，跟着整树一起淡
+3. **`when: "after"`** = 这条层内动画延后到**视图级动画结束**才开始（解析期就把它加进 `delay`）；
+   出场 / 隐藏写 `after` 只会得到一条警告并按 `with` 处理 —— 那时视图已经看不见了
+4. **`duration: 0` = 瞬变**；写 `when: "before"` 会报错（出现之前 / 消失之后看不见，
+   想让内容先动、整页后动请用 `delay` 表达提前量）
+
+时间账（解析期算好）：`totalMs = max(事件时长, 每条条目 delay + duration)`，
+调用方拿 `totalMs` 决定"这段动画播完了"的时机 —— 出场播完才摘页 / 摘弹层，报早了动画会被砍。

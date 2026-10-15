@@ -1,21 +1,14 @@
-// 无窗口测试：Shell 内容栈（层级下钻）的**入场 / 出场**转场。
+// 无窗口测试：视图过渡（appearance JSON 的 `transitions` 段）解析。
 //
-// 语义（v23 起改成两段）：
-//   push：旧层先**出场**（它还挂在树上，所以看得到）→ 出场播完摘它 → 挂新层 → 新层**入场**
-//   pop ：被弹出的临时页先**出场** → 出场播完释放它 → 挂回上一层 → 上一层**入场**
-// 两段都是**绘制期变换**（setTranslateX/setAlpha），不参与布局，所以能按固定 dt 步进。
+// 这里钉住的是**解析期就该算对的东西**：四个事件、视图级通道、层内通道、
+// `when: "after"` 的延迟补偿、事件总时长、默认淡入淡出、以及五类写错要报错。
+// 运行时（真的动起来）由 transition_* 的宿主测试覆盖。
 
 #include <cstdio>
 #include <string>
 
-#include "bklv/core/app.hpp"
-#include "bklv/core/box.hpp"
-#include "bklv/core/i18n.hpp"
-#include "bklv/core/resource.hpp"
+#include "bklv/core/appearance.hpp"
 #include "bklv/core/theme_data.hpp"
-#include "bklv/core/transition.hpp"
-#include "bklv/widgets/button.hpp"
-#include "bklv/widgets/shell.hpp"
 
 using namespace bklv;
 
@@ -24,205 +17,292 @@ using namespace bklv;
 namespace
 {
 
-Box* makePage(const char* text)
+// 包一层：把 layers 和 transitions 拼成一份完整外观 JSON
+std::string appearanceJson(const std::string& transitions)
 {
-    Box* page = new Box(Axis::COLUMN);
-    page->setWidthPercentage(100.0f);
-    page->setHeightPercentage(100.0f);
-    page->addView(new Button(text));
-    return page;
+    return "{ \"layers\": ["
+           "  { \"op\": \"rect\", \"id\": \"bg\", \"fill\": \"#101010FF\" },"
+           "  { \"op\": \"text\", \"id\": \"title\", \"source\": \"text\", \"color\": \"#FFFFFFFF\" }"
+           "], \"transitions\": " + transitions + " }";
+}
+
+// JSON 对象的 key 是按字母序迭代的（nlohmann 用 std::map），**不能按下标断言**，
+// 所以测试一律按通道名 / 层 id 查找。
+const ViewChannelClip* findViewClip(const TransitionEventSpec& spec, ViewChannel channel)
+{
+    for (const ViewChannelClip& clip : spec.viewClips)
+        if (clip.channel == channel)
+            return &clip;
+    return nullptr;
+}
+
+const AppearanceTransition* findLayerClip(const TransitionEventSpec& spec, const std::string& layerId,
+    AppearanceProp prop)
+{
+    for (const AppearanceTransition& clip : spec.layerClips)
+        if (clip.layerId == layerId && clip.prop == prop)
+            return &clip;
+    return nullptr;
+}
+
+std::shared_ptr<const Appearance> compileOrNull(const std::string& transitions, std::string& error)
+{
+    return Appearance::compile(appearanceJson(transitions), getTheme(), error);
+}
+
+float defaultEventDuration()
+{
+    return getTheme().number("metric.anim.normal", 150.0f);
 }
 
 } // namespace
 
 int main()
 {
-    bklv::initResources();
-    initI18n();
-    setLocale("zh-Hans");
-    setTheme("default");
-
-    std::printf("== 1. push：旧层先出场，新层再入场 ==\n");
+    std::printf("== 1. 没写 transitions：不算定义（向后兼容）==\n");
     {
-        Box* first = makePage("第一页");
-        Shell* shell = new Shell();
-        shell->pushContentView(first);
-        shell->setWidth(800.0f);
-        shell->setHeight(600.0f);
-        shell->setEnterTransition(ContentTransition::SLIDE_FADE);
-        shell->setExitTransition(ContentTransition::SLIDE_FADE);
-        shell->setTransitionDuration(0.2f);
-        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
-
-        check(!shell->isEntering() && !shell->isExiting(), "首屏没有转场");
-
-        Box* detail = makePage("详情");
-        shell->pushContentView(detail);
-
-        // ---- 第一段：旧层出场 ----
-        check(shell->isExiting(), "push 先让旧层出场");
-        check(!shell->isEntering(), "出场期间不是入场");
-        check(shell->getOutgoingContentView() == first, "出场的就是旧层");
-        check(first->getParent() == shell->getContentLayer(), "出场期间旧层还挂在内容层（所以看得到）");
-        check(detail->getParent() == nullptr, "新层这时还没挂上去");
-        checkEqualSize(shell->getContentStackSize(), 2, "逻辑上已经是两层");
-        check(shell->getContentView() == detail, "逻辑上的当前层已经是新层");
-        checkFloat(first->getAlpha(), 1.0f, "出场起点：旧层不透明");
-        checkFloat(first->getTransform().translateX, 0.0f, "出场起点：位移为 0");
-
-        shell->stepContentTransition(0.1f);
-        check(shell->isExiting(), "半程仍在出场");
-        check(first->getTransform().translateX < 0.0f, "旧层在往左走");
-        check(first->getAlpha() < 1.0f, "旧层在淡出");
-
-        shell->stepContentTransition(0.5f);
-        check(!shell->isExiting(), "出场结束");
-
-        // ---- 第二段：换层 + 新层入场 ----
-        check(first->getParent() == nullptr, "出场播完旧层才脱离树（但留在栈里）");
-        check(detail->getParent() == shell->getContentLayer(), "出场播完新层才挂上去");
-        check(shell->isEntering(), "接着是新层入场");
-        checkEqualSize(shell->getContentStackSize(), 2, "旧层留在栈里，返回时状态还在");
-        checkFloat(first->getAlpha(), 1.0f, "旧层出场后透明度复位（下次还要用）");
-
-        const float startX = detail->getTransform().translateX;
-        check(startX > 0.0f, "新层从右侧开始入场");
-        check(detail->getAlpha() < 0.2f, "新层起始接近透明");
-
-        shell->stepContentTransition(0.1f);
-        check(detail->getTransform().translateX < startX, "新层在向左走");
-        check(detail->getAlpha() > 0.0f, "新层在变清晰");
-
-        shell->stepContentTransition(0.5f);
-        check(!shell->isEntering() && !shell->isExiting(), "两段都播完");
-        checkFloat(detail->getTransform().translateX, 0.0f, "新层落位（位移归零）");
-        checkFloat(detail->getAlpha(), 1.0f, "新层完全不透明");
-        check(shell->getOutgoingContentView() == nullptr, "没有正在出场的层");
-
-        std::printf("\n== 2. pop：被弹出的页先出场，再释放，上一层入场 ==\n");
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance = Appearance::compile(
+            R"({"layers": [{"op": "rect", "id": "bg", "fill": "#101010FF"}]})", getTheme(), error);
+        check(appearance != nullptr, "只写 layers 的外观照旧能编译");
+        if (appearance != nullptr)
         {
-            bool callbackRan = false;
-            shell->popContentView([&] { callbackRan = true; });
+            check(!appearance->hasTransitions(), "没写 transitions 时 hasTransitions() 为 false");
+            check(!appearance->getTransition(TransitionEvent::ENTER).defined, "enter 未定义");
+            check(!appearance->getTransition(TransitionEvent::HIDE).defined, "hide 未定义");
+        }
+    }
 
-            check(shell->isExiting(), "pop 先让被弹出的页出场");
-            checkEqualSize(shell->getContentStackSize(), 1, "逻辑上栈已经回到一层");
-            check(shell->getOutgoingContentView() == detail, "出场的是被弹出的那一页");
-            check(!callbackRan, "回调要等出场播完才跑");
-            checkFloat(detail->getAlpha(), 1.0f, "出场起点：不透明");
+    std::printf("\n== 2. 视图级通道 + 层内通道 + when: after ==\n");
+    {
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance = compileOrNull(R"({
+            "enter": {
+                "duration": 200, "easing": "quadraticOut",
+                "translateX": { "from": -60, "to": 0 },
+                "alpha":      { "from": 0, "to": 1 },
+                "layers": {
+                    "title": { "when": "after", "duration": 140,
+                               "offsetX": { "from": -20, "to": 0 },
+                               "opacity": { "from": 0, "to": 1 } }
+                }
+            }
+        })", error);
+        check(appearance != nullptr, "完整 enter 能编译");
+        if (appearance != nullptr)
+        {
+            const TransitionEventSpec& enter = appearance->getTransition(TransitionEvent::ENTER);
+            check(enter.defined, "enter 被记下来了");
+            checkEqualInt((int)enter.viewClips.size(), 2, "两条视图级通道");
+            checkEqualInt((int)enter.layerClips.size(), 2, "层内两条通道");
+            checkFloat(enter.durationMs, 200.0f, "事件默认时长");
+            check(enter.easing == "quadraticOut", "事件默认缓动");
 
-            shell->stepContentTransition(0.5f);
-            check(callbackRan, "出场播完回调执行");
-            check(shell->isEntering(), "接着上一层入场");
-            check(shell->getContentView() == first, "当前页回到第一页");
-            check(first->getParent() == shell->getContentLayer(), "上一页已经挂回内容层");
+            const ViewChannelClip* move = findViewClip(enter, ViewChannel::TRANSLATE_X);
+            check(move != nullptr, "有 translateX 通道");
+            if (move != nullptr)
+            {
+                check(move->hasSource, "写了 from 就有起点");
+                checkFloat(move->source, -60.0f, "translateX 起点");
+                checkFloat(move->target, 0.0f, "translateX 终点");
+            }
 
-            shell->stepContentTransition(0.5f);
-            check(!shell->isEntering() && !shell->isExiting(), "入场也播完");
-            checkFloat(first->getTransform().translateX, 0.0f, "回来的页面位移归零");
-            checkFloat(first->getAlpha(), 1.0f, "回来的页面不透明");
+            const ViewChannelClip* fade = findViewClip(enter, ViewChannel::ALPHA);
+            check(fade != nullptr, "有 alpha 通道");
+            if (fade != nullptr)
+            {
+                checkFloat(fade->source, 0.0f, "alpha 起点");
+                checkFloat(fade->target, 1.0f, "alpha 终点");
+            }
+
+            checkFloat(enter.viewTotalMs, 200.0f, "视图级总时长 = 200");
+            // when: after 的核心：层内条目的 delay 自动补上视图级总时长
+            const AppearanceTransition* title
+                = findLayerClip(enter, "title", AppearanceProp::OFFSET_X);
+            check(title != nullptr, "有 title.offsetX 通道");
+            if (title != nullptr)
+                checkFloat(title->delayMs, 200.0f, "when:after 的层内条目延后 200ms");
+            checkFloat(enter.totalMs, 340.0f, "事件总时长 = 200 + 140");
+        }
+    }
+
+    std::printf("\n== 3. 默认时长来自主题、duration: 0 = 瞬变 ==\n");
+    {
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance
+            = compileOrNull(R"({"enter": { "alpha": { "from": 0, "to": 1 } }})", error);
+        check(appearance != nullptr, "只写一条 alpha 能编译");
+        if (appearance != nullptr)
+        {
+            const TransitionEventSpec& enter = appearance->getTransition(TransitionEvent::ENTER);
+            checkFloat(enter.durationMs, defaultEventDuration(), "没写 duration 时用主题的动画时长");
+            checkFloat(enter.totalMs, defaultEventDuration(), "总时长跟着走");
         }
 
-        delete shell;
+        error.clear();
+        const std::shared_ptr<const Appearance> instant
+            = compileOrNull(R"({"hide": { "duration": 0, "alpha": { "from": 1, "to": 0 } }})", error);
+        check(instant != nullptr, "duration: 0 是合法写法");
+        if (instant != nullptr)
+        {
+            const TransitionEventSpec& hide = instant->getTransition(TransitionEvent::HIDE);
+            checkFloat(hide.durationMs, 0.0f, "duration: 0 记成 0");
+            checkFloat(hide.totalMs, 0.0f, "总时长也是 0 = 瞬变");
+        }
     }
 
-    std::printf("\n== 3. NONE：入场/出场都直接落位 ==\n");
+    std::printf("\n== 4. delay 与 when 的时间账 ==\n");
     {
-        Box* first = makePage("A");
-        Shell* shell = new Shell();
-        shell->pushContentView(first);
-        shell->setWidth(800.0f);
-        shell->setHeight(600.0f);
-        shell->setEnterTransition(ContentTransition::NONE);
-        shell->setExitTransition(ContentTransition::NONE);
-        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
-
-        Box* second = makePage("B");
-        shell->pushContentView(second);
-        check(!shell->isEntering() && !shell->isExiting(), "NONE 不产生转场");
-        check(shell->getContentView() == second, "新页直接生效");
-        check(second->getParent() == shell->getContentLayer(), "新页直接挂上");
-        check(first->getParent() == nullptr, "旧页直接摘掉");
-        checkFloat(second->getAlpha(), 1.0f, "不透明");
-        checkFloat(second->getTransform().translateX, 0.0f, "不位移");
-
-        bool ran = false;
-        shell->popContentView([&] { ran = true; });
-        check(ran, "NONE 时 pop 回调同步执行");
-        check(shell->getContentView() == first, "NONE 时直接回到上一层");
-        check(!shell->isEntering() && !shell->isExiting(), "NONE 时 pop 也不留转场");
-
-        delete shell;
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance = compileOrNull(R"({
+            "enter": {
+                "duration": 120,
+                "alpha":   { "from": 0, "to": 1, "delay": 50, "duration": 200 },
+                "layers": {
+                    "title": { "offsetX": { "from": -10, "to": 0, "duration": 80 } },
+                    "bg":    { "when": "after", "opacity": { "from": 0, "to": 1, "duration": 60 } }
+                }
+            }
+        })", error);
+        check(appearance != nullptr, "带 delay 的能编译");
+        if (appearance != nullptr)
+        {
+            const TransitionEventSpec& enter = appearance->getTransition(TransitionEvent::ENTER);
+            checkFloat(enter.viewTotalMs, 250.0f, "视图级 = delay 50 + 200");
+            const AppearanceTransition* titleClip
+                = findLayerClip(enter, "title", AppearanceProp::OFFSET_X);
+            const AppearanceTransition* bgClip
+                = findLayerClip(enter, "bg", AppearanceProp::OPACITY);
+            check(titleClip != nullptr && bgClip != nullptr, "两条层内通道都在");
+            if (titleClip != nullptr)
+                checkFloat(titleClip->delayMs, 0.0f, "没写 when 的层内条目不延后");
+            if (bgClip != nullptr)
+                checkFloat(bgClip->delayMs, 250.0f, "when:after 补到视图级结束");
+            // 通道对象里写 duration 优先于层条目级 / 事件默认
+            if (bgClip != nullptr)
+                checkFloat(bgClip->durationMs, 60.0f, "通道对象里的 duration 生效");
+            checkFloat(enter.totalMs, 310.0f, "总时长取最大：250 + 60");
+        }
     }
 
-    std::printf("\n== 4. 入场/出场可以分开配（FADE 只淡不滑）==\n");
+    std::printf("\n== 5. 出场/隐藏写 when: after 只警告、按 with 处理 ==\n");
     {
-        Box* first = makePage("A");
-        Shell* shell = new Shell();
-        shell->pushContentView(first);
-        shell->setWidth(800.0f);
-        shell->setHeight(600.0f);
-        shell->setEnterTransition(ContentTransition::FADE);
-        shell->setExitTransition(ContentTransition::FADE);
-        shell->setTransitionDuration(0.2f);
-        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
-
-        checkEqualInt((int)shell->getEnterTransition(), (int)ContentTransition::FADE,
-            "入场方式读得回来");
-        checkEqualInt((int)shell->getExitTransition(), (int)ContentTransition::FADE,
-            "出场方式读得回来");
-
-        Box* second = makePage("B");
-        shell->pushContentView(second);
-        checkFloat(first->getTransform().translateX, 0.0f, "FADE 出场不位移");
-        shell->stepContentTransition(0.5f);
-
-        check(shell->isEntering(), "出场完接着入场");
-        checkFloat(second->getTransform().translateX, 0.0f, "FADE 入场不位移");
-        check(second->getAlpha() < 0.2f, "但入场有淡入");
-
-        shell->stepContentTransition(0.5f);
-        checkFloat(second->getAlpha(), 1.0f, "淡入完成");
-        check(!shell->isEntering(), "入场结束");
-
-        // 入场/出场分开设：入场 NONE、出场 SLIDE
-        shell->setEnterTransition(ContentTransition::NONE);
-        shell->setExitTransition(ContentTransition::SLIDE);
-        Box* third = makePage("C");
-        shell->pushContentView(third);
-        check(shell->isExiting(), "出场照旧播");
-        shell->stepContentTransition(0.5f);
-        check(!shell->isEntering(), "入场设成 NONE 就不播入场");
-        checkFloat(third->getAlpha(), 1.0f, "NONE 入场直接落位");
-
-        delete shell;
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance = compileOrNull(R"({
+            "exit": {
+                "alpha": { "from": 1, "to": 0 },
+                "layers": { "title": { "when": "after", "opacity": { "from": 1, "to": 0 } } }
+            }
+        })", error);
+        check(appearance != nullptr, "出场写 after 不算错误");
+        if (appearance != nullptr)
+        {
+            const TransitionEventSpec& exit = appearance->getTransition(TransitionEvent::EXIT);
+            const AppearanceTransition* titleClip
+                = findLayerClip(exit, "title", AppearanceProp::OPACITY);
+            check(titleClip != nullptr, "层内通道在");
+            if (titleClip != nullptr)
+                checkFloat(titleClip->delayMs, 0.0f, "被按 with 处理：不额外延后");
+        }
     }
 
-    std::printf("\n== 5. finishContentTransition：立刻落位 ==\n");
+    std::printf("\n== 6. 颜色通道与主题引用 ==\n");
     {
-        Box* first = makePage("A");
-        Shell* shell = new Shell();
-        shell->pushContentView(first);
-        shell->setWidth(800.0f);
-        shell->setHeight(600.0f);
-        shell->setTransitionDuration(0.5f);
-        YGNodeCalculateLayout(shell->getYGNode(), 800.0f, 600.0f, YGDirectionLTR);
+        std::string error;
+        const std::shared_ptr<const Appearance> appearance = compileOrNull(R"({
+            "show": {
+                "layers": {
+                    "title": { "color": { "from": "@theme/color.common.transparent",
+                                          "to": "@theme/color.common.white" },
+                               "fill":  { "from": "#00000000", "to": "#FFFFFFFF" } }
+                }
+            }
+        })", error);
+        check(appearance != nullptr, "颜色通道能编译（含 @theme 引用）");
+        if (appearance != nullptr)
+        {
+            const TransitionEventSpec& show = appearance->getTransition(TransitionEvent::SHOW);
+            checkEqualInt((int)show.layerClips.size(), 2, "两条颜色通道");
+            const AppearanceTransition* textClip
+                = findLayerClip(show, "title", AppearanceProp::TEXT_COLOR);
+            check(textClip != nullptr, "color 通道在");
+            if (textClip != nullptr)
+            {
+                check(textClip->hasSource, "写了 from 就有起点");
+                check(textClip->target[3] > 0.5f, "终点是不透明的白");
+                checkFloat(textClip->source[3], 0.0f, "起点是全透明");
+            }
+        }
+    }
 
-        Box* second = makePage("B");
-        shell->pushContentView(second);
-        check(shell->isExiting(), "出场在跑");
-        shell->finishContentTransition();
-        check(!shell->isEntering() && !shell->isExiting(), "finishContentTransition 之后彻底空闲");
-        check(shell->getContentView() == second, "并且画面上已经是新层");
-        check(second->getParent() == shell->getContentLayer(), "新层挂上了");
-        checkFloat(second->getAlpha(), 1.0f, "新层不透明");
+    std::printf("\n== 7. 写错必须报错（不静默降级）==\n");
+    {
+        std::string error;
 
-        // 出场 + 入场两段能被同一次 finish 收掉
-        Box* third = makePage("C");
-        shell->pushContentView(third);
-        shell->finishContentTransition();
-        check(!shell->isEntering() && !shell->isExiting(), "连续两段也能一次落位");
+        check(compileOrNull(R"({"slide": { "alpha": { "from": 0, "to": 1 } }})", error) == nullptr,
+            "事件名不认识 -> 失败");
+        check(error.find("enter") != std::string::npos, "错误里列出了可选事件");
 
-        delete shell;
+        error.clear();
+        check(compileOrNull(R"({"enter": { "type": "slideFade" }})", error) == nullptr,
+            "预设写法（type）-> 失败");
+        check(error.find("translateX") != std::string::npos, "错误里列出了可选通道");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "alpha": { "from": 0, "to": 1 },
+            "layers": { "title": { "when": "before", "opacity": { "from": 0, "to": 1 } } } }})",
+                  error)
+                == nullptr,
+            "when: before -> 失败");
+        check(error.find("delay") != std::string::npos, "错误里提示改用 delay");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "layers": { "不存在": { "opacity": { "from": 0, "to": 1 } } } }})",
+                  error)
+                == nullptr,
+            "层 id 不存在 -> 失败");
+        check(error.find("不存在") != std::string::npos, "错误里带上那个层 id");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "layers": { "title": { "不认识的属性": { "from": 0, "to": 1 } } } }})",
+                  error)
+                == nullptr,
+            "属性名不认识 -> 失败");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "alpha": { "from": 0 } }})", error) == nullptr,
+            "缺 to -> 失败");
+        check(error.find("to") != std::string::npos, "错误里说明了要写 to");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "duration": -5, "alpha": { "from": 0, "to": 1 } }})", error)
+                == nullptr,
+            "负数时长 -> 失败");
+
+        error.clear();
+        check(compileOrNull(R"({"enter": { "when": "after" }})", error) == nullptr,
+            "when 写在事件级（放错位置）-> 失败");
+    }
+
+    std::printf("\n== 8. 枚举名大小写与 _/- 都不敏感 ==\n");
+    {
+        TransitionEvent event = TransitionEvent::ENTER;
+        check(transitionEventFromName("EXIT", event) && event == TransitionEvent::EXIT, "EXIT");
+        check(transitionEventFromName("show", event) && event == TransitionEvent::SHOW, "show");
+        check(!transitionEventFromName("before", event), "before 不是事件名");
+        check(std::string(transitionEventName(TransitionEvent::HIDE)) == "hide", "名字反查");
+
+        ViewChannel channel = ViewChannel::ALPHA;
+        check(viewChannelFromName("TRANSLATE_X", channel)
+                && channel == ViewChannel::TRANSLATE_X,
+            "TRANSLATE_X");
+        check(viewChannelFromName("translate-x", channel)
+                && channel == ViewChannel::TRANSLATE_X,
+            "translate-x");
+        check(viewChannelFromName("scaleY", channel) && channel == ViewChannel::SCALE_Y, "scaleY");
+        check(!viewChannelFromName("rotate", channel), "rotate 不支持（要报错）");
+        check(viewChannelIsScaled(ViewChannel::TRANSLATE_X), "位移按 720p 缩放");
+        check(!viewChannelIsScaled(ViewChannel::ALPHA), "透明度不缩放");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

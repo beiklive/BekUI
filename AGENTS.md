@@ -395,6 +395,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      玻璃层的 **`stroke` / `strokeWidth` = 内缘高光**（沿内缘描一圈，半径跟控件走）——
      玻璃质感主要靠这一笔；`base/glass_surface.chrome` 是给上下栏的淡版本（染色 24%，
      让内容透出来），其余写法从 `base/glass_surface` 继承。
+  ⑦d **视图生命周期动画写在外观 JSON 的 `transitions` 段**（`docs/json-syntax.md`）：
+     四个事件 `enter` / `exit` / `show` / `hide`；**不做预设**（没有 `type: slideFade`），
+     效果直接写通道 —— 视图级 `translateX/Y`、`scaleX/Y`、`alpha`（整树一起动，绘制期变换零重排），
+     层内 `layers.<层id>.<属性名>`（和 states 同一批属性）。
+     每条通道可写 `from`（可省）/`to`（必写）/`duration`/`easing`/`delay`；层内条目还能写
+     `when: with|after`（after = 延后到视图级动画结束，解析期折算成 delay）。
+     **没写 transitions = 默认淡入淡出**；**没写某个层 = 那层不动**；`duration: 0` = 瞬变。
+     `when: before` 报错（看不见的时段做动画没意义），出场/隐藏写 `after` 只警告并按 with 处理。
+     `spec.totalMs` = max(事件时长, 各条目 delay+duration)，**调用方用它决定摘页/摘弹层的时机**
+     （报早了动画被砍，和"关弹层要等动效播完"是同一个坑）。
   ⑦c **`rect` 层可以写 `gradient`**（`docs/rect-gradient.md` / `docs/json-syntax.md`）：
      语法 `gradient{ type(linear|radial), angle, center, stops[2..4]{at,color} }`，
      `at` 必须 0..1 且严格递增，五类写错都**报错**（不静默降级）。

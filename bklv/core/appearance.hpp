@@ -33,6 +33,7 @@
 // 不让它污染这个头文件。
 
 #include <memory>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -128,6 +129,92 @@ struct AppearanceTransition
     float target[4]          = { 0.0f, 0.0f, 0.0f, 0.0f }; // 颜色用 4 个通道，标量用 [0]
     float durationMs         = 0.0f;
     std::string easing       = "linear";
+    // 过渡（transitions）比 states 多两个字段：显式起点与延迟。
+    // states 路径不用它们（hasSource=false、delayMs=0），所以行为完全不变。
+    float source[4]          = { 0.0f, 0.0f, 0.0f, 0.0f };
+    bool hasSource           = false;
+    float delayMs            = 0.0f;
+};
+
+// ---- 视图过渡（外观 JSON 的顶层 `transitions` 段）----
+//
+// 和 `states` 的分工：states 管"控件内部状态"（选中/聚焦/按下…，按层的标量通道补间），
+// transitions 管"视图生命周期"（出现 / 消失），并且多一类**视图级**通道 ——
+// 整棵子树一起动的绘制期变换（位移 / 缩放 / 整体透明度），零重排。
+//
+// **不做预设**：没有 `"type": "slideFade"` 这种枚举，效果直接写通道名：
+//
+//   "transitions": {
+//     "enter": {
+//       "duration": 200, "easing": "quadraticOut",
+//       "translateX": { "from": -60, "to": 0 },
+//       "alpha":      { "from": 0,   "to": 1 },
+//       "layers": {
+//         "title": { "when": "after", "offsetX": { "from": -20, "to": 0 } }
+//       }
+//     },
+//     "exit": { ... }, "show": { ... }, "hide": { ... }
+//   }
+//
+// 四个事件、两条规则：
+//   · 外观里**没写** transitions → 调用方用默认的**淡入淡出**（时长取主题 metric.anim.normal）
+//   · 事件里**没写**某个层 → 那一层不动，跟着整树一起淡
+//   · `duration: 0` = 瞬变（想显式关掉动画就用它）
+enum class TransitionEvent
+{
+    ENTER,
+    EXIT,
+    SHOW,
+    HIDE,
+    COUNT,
+};
+
+const char* transitionEventName(TransitionEvent event);
+bool transitionEventFromName(const std::string& name, TransitionEvent& out);
+
+// 视图级通道：作用于整棵子树（绘制期变换）
+enum class ViewChannel
+{
+    TRANSLATE_X,
+    TRANSLATE_Y,
+    SCALE_X,
+    SCALE_Y,
+    ALPHA,
+    COUNT,
+};
+
+const char* viewChannelName(ViewChannel channel);
+bool viewChannelFromName(const std::string& name, ViewChannel& out);
+// 位移按 720p 缩放；缩放倍数与透明度是系数，不缩放
+bool viewChannelIsScaled(ViewChannel channel);
+
+// 一条视图级通道动画
+struct ViewChannelClip
+{
+    ViewChannel channel = ViewChannel::ALPHA;
+    float source        = 0.0f;
+    float target        = 0.0f;
+    bool hasSource      = false; // 没写 from 就用视图当前值
+    float delayMs       = 0.0f;
+    float durationMs    = 0.0f;
+    std::string easing  = "quadraticOut";
+};
+
+// 一个事件的完整描述。解析期就把时间算好：
+//   · `when: "after"` 的层内条目，delay 已经加上视图级总时长
+//   · `totalMs` = max(事件时长, 所有条目 delay + duration)
+//     调用方（Shell / Pager）拿 totalMs 决定"这段动画播完了"的时机 ——
+//     出场播完才摘页/摘弹层，报早了动画会被砍。
+struct TransitionEventSpec
+{
+    bool defined       = false;
+    float durationMs   = 0.0f; // 事件默认时长（条目没写 duration 时用它）
+    float delayMs      = 0.0f; // 事件默认延迟
+    std::string easing = "quadraticOut";
+    float viewTotalMs  = 0.0f; // 视图级动画的名义总时长（when:after 的基准）
+    float totalMs      = 0.0f;
+    std::vector<ViewChannelClip> viewClips;
+    std::vector<AppearanceTransition> layerClips;
 };
 
 // 控件的盒模型/布局样式：和 layers 一样写在控件外观 JSON 里（顶层 `"box"` 段）。
@@ -179,6 +266,11 @@ class Appearance
     const std::vector<std::string>& getStateNames() const { return this->stateNames; }
     const std::vector<AppearanceTransition>& getTransitions(const std::string& state) const;
 
+    // 视图过渡：外观里有没有写 transitions / 取某个事件的描述
+    bool hasTransitions() const;
+    const TransitionEventSpec& getTransition(TransitionEvent event) const;
+    TransitionEventSpec& transitionsFor(TransitionEvent event);
+
     // 层索引；找不到返回 -1
     int indexOfLayer(const std::string& layerId) const;
 
@@ -187,6 +279,8 @@ class Appearance
     AppearanceBox box;
     std::vector<std::string> stateNames;
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
+    // 四个生命周期事件（外观 JSON 的 transitions 段）；没写就是 defined=false
+    std::array<TransitionEventSpec, (size_t)TransitionEvent::COUNT> transitions;
 };
 
 // 当前主题下某个控件的外观（带缓存）。主题里没有该文件时返回 nullptr。

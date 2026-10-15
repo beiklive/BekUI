@@ -366,6 +366,78 @@ const std::vector<AppearanceTransition>& Appearance::getTransitions(const std::s
     return empty;
 }
 
+const char* transitionEventName(TransitionEvent event)
+{
+    switch (event)
+    {
+        case TransitionEvent::ENTER: return "enter";
+        case TransitionEvent::EXIT: return "exit";
+        case TransitionEvent::SHOW: return "show";
+        case TransitionEvent::HIDE: return "hide";
+        default: return "enter";
+    }
+}
+
+bool transitionEventFromName(const std::string& name, TransitionEvent& out)
+{
+    if (enumMatches(name, "enter")) { out = TransitionEvent::ENTER; return true; }
+    if (enumMatches(name, "exit")) { out = TransitionEvent::EXIT; return true; }
+    if (enumMatches(name, "show")) { out = TransitionEvent::SHOW; return true; }
+    if (enumMatches(name, "hide")) { out = TransitionEvent::HIDE; return true; }
+    return false;
+}
+
+const char* viewChannelName(ViewChannel channel)
+{
+    switch (channel)
+    {
+        case ViewChannel::TRANSLATE_X: return "translateX";
+        case ViewChannel::TRANSLATE_Y: return "translateY";
+        case ViewChannel::SCALE_X: return "scaleX";
+        case ViewChannel::SCALE_Y: return "scaleY";
+        case ViewChannel::ALPHA: return "alpha";
+        default: return "alpha";
+    }
+}
+
+bool viewChannelFromName(const std::string& name, ViewChannel& out)
+{
+    for (int i = 0; i < (int)ViewChannel::COUNT; i++)
+    {
+        const ViewChannel channel = (ViewChannel)i;
+        if (enumMatches(name, viewChannelName(channel)))
+        {
+            out = channel;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool viewChannelIsScaled(ViewChannel channel)
+{
+    // 位移是像素量（跟随 720p 缩放）；缩放倍数与透明度是系数，不缩放
+    return channel == ViewChannel::TRANSLATE_X || channel == ViewChannel::TRANSLATE_Y;
+}
+
+bool Appearance::hasTransitions() const
+{
+    for (const TransitionEventSpec& spec : this->transitions)
+        if (spec.defined)
+            return true;
+    return false;
+}
+
+const TransitionEventSpec& Appearance::getTransition(TransitionEvent event) const
+{
+    return this->transitions[(size_t)event];
+}
+
+TransitionEventSpec& Appearance::transitionsFor(TransitionEvent event)
+{
+    return this->transitions[(size_t)event];
+}
+
 int Appearance::indexOfLayer(const std::string& layerId) const
 {
     for (size_t i = 0; i < this->layers.size(); i++)
@@ -519,6 +591,321 @@ bool resolveImports(const Json& doc, const ThemeData& theme, std::vector<std::st
 }
 
 } // namespace
+
+// 视图过渡（transitions）解析。写错一律报错（不静默降级）：
+//   · transitions 不是对象 / 事件名不认识（只支持 enter/exit/show/hide）
+//   · 不认识的视图级通道（顺带把 "type": "slideFade" 这类"预设写法"堵掉，并提示直接写通道）
+//   · 层 id 不存在 / 属性名不认识 / 颜色或数字解析失败 / 缺 to
+//   · when 不是 with/after（写 before 会明确说明为什么不行）
+//   · 时间与位移出现负数
+// 一条**警告**：出场/隐藏里写 when:after（那时已经看不见了），按 with 处理。
+//
+// 时间在解析期就算好：视图级总时长 → 给 when:after 的层内条目补 delay → 取全局最大
+// 得到 spec.totalMs（调用方拿它决定"这段动画播完"的时机）。
+bool parseTransitions(const Json& root, const Appearance& appearance, const ThemeData& theme,
+    Appearance& target, std::string& error)
+{
+    if (!root.contains("transitions"))
+        return true;
+    if (!root["transitions"].is_object())
+    {
+        error = "transitions 必须是对象";
+        return false;
+    }
+
+    const float defaultDuration = theme.number("metric.anim.normal", 150.0f);
+
+    for (auto eventIt = root["transitions"].begin(); eventIt != root["transitions"].end(); ++eventIt)
+    {
+        const std::string eventName = eventIt.key();
+        TransitionEvent event      = TransitionEvent::ENTER;
+        if (!transitionEventFromName(eventName, event))
+        {
+            error = "transitions 不认识的键 \"" + eventName
+                + "\"（只支持 enter / exit / show / hide）";
+            return false;
+        }
+        if (!eventIt.value().is_object())
+        {
+            error = "transitions." + eventName + " 必须是对象";
+            return false;
+        }
+
+        const Json& node        = eventIt.value();
+        const std::string where = "transitions." + eventName;
+        // 出场 / 隐藏没有"动画之后"这一段（那时视图已经看不见了）
+        const bool goneEvent    = (event == TransitionEvent::EXIT || event == TransitionEvent::HIDE);
+
+        TransitionEventSpec spec;
+        spec.defined    = true;
+        spec.durationMs = defaultDuration;
+        spec.easing     = "quadraticOut";
+
+        if (node.contains("duration"))
+        {
+            if (!node["duration"].is_number())
+            {
+                error = where + ".duration 必须是数字（毫秒）";
+                return false;
+            }
+            spec.durationMs = node["duration"].get<float>();
+        }
+        if (node.contains("delay"))
+        {
+            if (!node["delay"].is_number())
+            {
+                error = where + ".delay 必须是数字（毫秒）";
+                return false;
+            }
+            spec.delayMs = node["delay"].get<float>();
+        }
+        if (node.contains("easing"))
+        {
+            if (!node["easing"].is_string())
+            {
+                error = where + ".easing 必须是字符串";
+                return false;
+            }
+            spec.easing = node["easing"].get<std::string>();
+        }
+        if (spec.durationMs < 0.0f || spec.delayMs < 0.0f)
+        {
+            error = where + " 的 duration / delay 不能是负数（duration: 0 表示瞬变）";
+            return false;
+        }
+
+        // ---- 第一趟：视图级通道（整树一起动）----
+        for (auto keyIt = node.begin(); keyIt != node.end(); ++keyIt)
+        {
+            const std::string key = keyIt.key();
+            if (key == "duration" || key == "delay" || key == "easing" || key == "layers")
+                continue;
+
+            ViewChannel channel = ViewChannel::ALPHA;
+            if (!viewChannelFromName(key, channel))
+            {
+                error = where + " 不认识的键 \"" + key
+                    + "\"：视图级通道只支持 translateX / translateY / scaleX / scaleY / alpha"
+                      "（过渡不做预设，效果直接写通道名；层内动画写在 layers 里）";
+                return false;
+            }
+            if (!keyIt.value().is_object() || !keyIt.value().contains("to"))
+            {
+                error = where + "." + key
+                    + " 必须写成 { \"from\": 起点, \"to\": 终点, \"duration\": 毫秒 }";
+                return false;
+            }
+
+            const Json& valueNode = keyIt.value();
+            for (auto valueIt = valueNode.begin(); valueIt != valueNode.end(); ++valueIt)
+            {
+                const std::string& valueKey = valueIt.key();
+                if (valueKey != "from" && valueKey != "to" && valueKey != "duration"
+                    && valueKey != "easing" && valueKey != "delay")
+                {
+                    error = where + "." + key + " 里不认识的键 \"" + valueKey
+                        + "\"（通道对象只支持 from / to / duration / easing / delay）";
+                    return false;
+                }
+            }
+
+            ViewChannelClip clip;
+            clip.channel    = channel;
+            clip.durationMs = valueNode.value("duration", spec.durationMs);
+            clip.delayMs    = valueNode.value("delay", spec.delayMs);
+            clip.easing     = valueNode.value("easing", spec.easing);
+            if (clip.durationMs < 0.0f || clip.delayMs < 0.0f)
+            {
+                error = where + "." + key + " 的 duration / delay 不能是负数";
+                return false;
+            }
+            if (!resolveNumber(valueNode["to"], theme, clip.target, error, where + "." + key + ".to"))
+                return false;
+            if (viewChannelIsScaled(channel))
+                clip.target = scalePixels(clip.target);
+            if (valueNode.contains("from"))
+            {
+                if (!resolveNumber(valueNode["from"], theme, clip.source, error,
+                        where + "." + key + ".from"))
+                    return false;
+                if (viewChannelIsScaled(channel))
+                    clip.source = scalePixels(clip.source);
+                clip.hasSource = true;
+            }
+            spec.viewClips.push_back(clip);
+        }
+
+        for (const ViewChannelClip& clip : spec.viewClips)
+            spec.viewTotalMs = std::max(spec.viewTotalMs, clip.delayMs + clip.durationMs);
+
+        // ---- 第二趟：层内动画（这时 viewTotalMs 已知，when:after 才能补 delay）----
+        if (node.contains("layers"))
+        {
+            if (!node["layers"].is_object())
+            {
+                error = where + ".layers 必须是对象";
+                return false;
+            }
+
+            for (auto layerIt = node["layers"].begin(); layerIt != node["layers"].end(); ++layerIt)
+            {
+                const std::string layerId = layerIt.key();
+                const std::string layerWhere = where + ".layers." + layerId;
+
+                if (appearance.indexOfLayer(layerId) < 0)
+                {
+                    error = layerWhere + " 引用了不存在的层 \"" + layerId + "\"";
+                    return false;
+                }
+                if (!layerIt.value().is_object())
+                {
+                    error = layerWhere + " 必须是对象";
+                    return false;
+                }
+
+                const Json& layerNode = layerIt.value();
+
+                std::string when = "with";
+                if (layerNode.contains("when"))
+                {
+                    if (!layerNode["when"].is_string())
+                    {
+                        error = layerWhere + ".when 必须是字符串";
+                        return false;
+                    }
+                    when = layerNode["when"].get<std::string>();
+                    if (enumMatches(when, "before"))
+                    {
+                        error = layerWhere
+                            + ".when: \"before\" 不支持 —— 出现之前 / 消失之后视图都看不见，"
+                              "那段时间做动画没有意义；想让内容先动、整页后动，用 delay 表达提前量";
+                        return false;
+                    }
+                    if (!enumMatches(when, "with") && !enumMatches(when, "after"))
+                    {
+                        error = layerWhere + ".when 只支持 \"with\" / \"after\"";
+                        return false;
+                    }
+                    if (goneEvent && enumMatches(when, "after"))
+                    {
+                        BKLV_LOG_WARNING("%s.when: 出场/隐藏没有 \"after\" 段（那时已经看不见了），按 with 处理",
+                            layerWhere.c_str());
+                        when = "with";
+                    }
+                }
+
+                float entryDelay    = layerNode.value("delay", 0.0f);
+                float entryDuration = layerNode.value("duration", spec.durationMs);
+                std::string entryEasing = layerNode.value("easing", spec.easing);
+                if (entryDelay < 0.0f || entryDuration < 0.0f)
+                {
+                    error = layerWhere + " 的 delay / duration 不能是负数";
+                    return false;
+                }
+                if (enumMatches(when, "after"))
+                    entryDelay += spec.viewTotalMs;
+
+                for (auto propIt = layerNode.begin(); propIt != layerNode.end(); ++propIt)
+                {
+                    const std::string propName = propIt.key();
+                    if (propName == "when" || propName == "delay" || propName == "duration"
+                        || propName == "easing")
+                        continue;
+
+                    AppearanceProp prop = AppearanceProp::FILL;
+                    if (!appearancePropFromName(propName, prop))
+                    {
+                        error = layerWhere + " 不认识的属性 \"" + propName
+                            + "\"（和 states 一样写层的属性名）";
+                        return false;
+                    }
+                    if (!propIt.value().is_object() || !propIt.value().contains("to"))
+                    {
+                        error = layerWhere + "." + propName
+                            + " 必须写成 { \"from\": 起点, \"to\": 终点, \"duration\": 毫秒 }";
+                        return false;
+                    }
+
+                    const Json& valueNode = propIt.value();
+                    for (auto valueIt = valueNode.begin(); valueIt != valueNode.end(); ++valueIt)
+                    {
+                        const std::string& valueKey = valueIt.key();
+                        if (valueKey != "from" && valueKey != "to" && valueKey != "duration"
+                            && valueKey != "easing" && valueKey != "delay")
+                        {
+                            error = layerWhere + "." + propName + " 里不认识的键 \"" + valueKey
+                                + "\"（通道对象只支持 from / to / duration / easing / delay）";
+                            return false;
+                        }
+                    }
+
+                    AppearanceTransition clip;
+                    clip.layerId    = layerId;
+                    clip.prop       = prop;
+                    // 通道对象里的写法优先于层条目级（层条目级又优先于事件默认）
+                    clip.durationMs = valueNode.value("duration", entryDuration);
+                    clip.easing     = valueNode.value("easing", entryEasing);
+                    clip.delayMs    = entryDelay + valueNode.value("delay", 0.0f);
+                    if (clip.durationMs < 0.0f || clip.delayMs < 0.0f)
+                    {
+                        error = layerWhere + "." + propName + " 的 duration / delay 不能是负数";
+                        return false;
+                    }
+
+                    if (appearancePropIsColor(prop))
+                    {
+                        ImU32 toColor = 0;
+                        if (!resolveColor(valueNode["to"], theme, toColor, error,
+                                layerWhere + "." + propName + ".to"))
+                            return false;
+                        splitColor(toColor, clip.target);
+
+                        if (valueNode.contains("from"))
+                        {
+                            ImU32 fromColor = 0;
+                            if (!resolveColor(valueNode["from"], theme, fromColor, error,
+                                    layerWhere + "." + propName + ".from"))
+                                return false;
+                            splitColor(fromColor, clip.source);
+                            clip.hasSource = true;
+                        }
+                    }
+                    else
+                    {
+                        if (!resolveNumber(valueNode["to"], theme, clip.target[0], error,
+                                layerWhere + "." + propName + ".to"))
+                            return false;
+                        if (prop != AppearanceProp::OPACITY)
+                            clip.target[0] = scalePixels(clip.target[0]);
+
+                        if (valueNode.contains("from"))
+                        {
+                            if (!resolveNumber(valueNode["from"], theme, clip.source[0], error,
+                                    layerWhere + "." + propName + ".from"))
+                                return false;
+                            if (prop != AppearanceProp::OPACITY)
+                                clip.source[0] = scalePixels(clip.source[0]);
+                            clip.hasSource = true;
+                        }
+                    }
+
+                    spec.layerClips.push_back(clip);
+                }
+            }
+        }
+
+        // ---- 事件总时长 = max(事件时长, 每条条目 delay + duration) ----
+        spec.totalMs = spec.durationMs;
+        for (const ViewChannelClip& clip : spec.viewClips)
+            spec.totalMs = std::max(spec.totalMs, clip.delayMs + clip.durationMs);
+        for (const AppearanceTransition& clip : spec.layerClips)
+            spec.totalMs = std::max(spec.totalMs, clip.delayMs + clip.durationMs);
+
+        target.transitionsFor(event) = std::move(spec);
+    }
+
+    return true;
+}
 
 std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, const ThemeData& theme,
     std::string& error)
@@ -1015,6 +1402,10 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             appearance->states.emplace_back(stateName, std::move(transitions));
         }
     }
+
+    // 视图过渡（enter / exit / show / hide）
+    if (!parseTransitions(doc, *appearance, theme, *appearance, error))
+        return nullptr;
 
     return appearance;
 }
