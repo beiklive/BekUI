@@ -22,7 +22,8 @@
         0,
         4
       ],
-      "radius": 14
+      "radius": 14,
+      "cutout": true
     },
     {
       "op": "rect",
