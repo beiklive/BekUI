@@ -35,7 +35,8 @@ bklv/core/                        ← 运行时与数据模型（tweeny 只出�
   json_view.hpp / theme_data.hpp         公开头（实现已搬去 compile/，头原地不动）
 
 bklv/widgets/                     ← 看图、建视图
-  appearance_view.cpp                    绘制（EXTENSION 走注册表的 draw 钩子）
+  appearance_view.cpp       610 行        绘制：只做"查注册表 + 调 draw 钩子"
+    layer_draw_rect/shadow/glass/text/image/custom.cpp   各一种 op 一个绘制文件（≤92 行）
   appearance_children.cpp                按 children 建子视图
 ```
 
@@ -176,5 +177,6 @@ align/valign/offset/opacity`）会在注册时被拒绝并告诉你改名。
 ## 5. 还剩什么
 
 1. ~~`parseStates` 87 -> ≤80~~ **已完成**（拆成三个函数、12/23/67 行）
-2. ③ 内置 6 种绘制仍走枚举分支（扩展 op 已经走注册表 draw 钩子）—— 这是最后一块
-3. ~~收尾截图对比~~ **已完成**（无回归：整图 JPEG 差 0.08%）
+2. ~~③ 内置 6 种绘制仍走枚举分支~~ **已完成**：6 种都搬进 widgets/layer_draw_<op>.cpp，
+   appearance_view.cpp 只剩注册表分派（710 -> 610 行）
+3. ~~收尾截图对比~~ **已完成**（无回归：整图 JPEG 差 0.08%；绘制全换钩子后又复查一次，画面一致）

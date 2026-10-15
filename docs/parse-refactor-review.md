@@ -779,3 +779,23 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 改成 `view->appearance`（私有成员，编译报错）。
 
 剩余：GLASS / TEXT / IMAGE（一刀）-> CUSTOM -> 删 switch 与兜底。
+
+### 12.22 全部完成（第 66 轮）：六项 + 可扩展性验收
+
+| 目标 | 结果 | 证据 |
+|---|---|---|
+| ① 解析助手进 `compile/json_util` | ✓ | 4 套 JSON 共用；`check.sh` 3422 项全过 |
+| ② 解析函数 ≤80 行 + 注册表 | ✓ | `compile` 501->53、`parseLayers` 382->30、`parseStates` 87->12（+23/67）；注册表无宏显式注册、6 种内置全在册 |
+| ③ 绘制走注册表、不再 if(op==) 链 | ✓ | `appearance_view.cpp` 710->**610**；6 种内置绘制各一个 `widgets/layer_draw_<op>.cpp` |
+| ④ view/theme 解析搬进 `compile/` | ✓ | `core/json_view.cpp`->`compile/view_parse.cpp`、`theme_data.cpp`->`theme_parse.cpp`、`mergeJson/resolveImports`->`appearance_imports.cpp`；`core/appearance.cpp` 1906->**1354**，tweeny 只在这里 |
+| ⑤ `appearance.children` 三档 | ✓ | 数据模型/解析/实例化/循环检测 + 31+19 项测试 + 主题示例 + 截图 + 使用者文档 |
+| ⑥ 设计器读注册表 | ✓ | 加层菜单/中文名/候选键自动认新 op；顺手修掉"设计器里切不到 glass"的 bug |
+| 第三方加 op（`stripe`）| ✓ | `bklv/` 之外 1 文件 + 1 行注册 -> 主题可用 -> 绘制出条纹（截图确认）；另加保留键防呆 |
+
+**最终验收**：全新构建（`rm -rf build/fresh` 从零）**总告警 0**；`check.sh` **3422 项全过**；
+GL/VK/Switch 退出码 0 且本仓告警 0；命名 196 文件全过；绘制路径全换后截图复查画面一致。
+
+**过程复盘（可复用的三条）**
+1. **先量/先看再改**：几何问题打日志量真实值（§12.9/§12.14）、切片前先 `sed` 看清边界（§12.10/§12.15/§12.18）
+2. **写入 -> 构建 -> 失败自动回滚**：整场重构用这个形态试切大文件，拦下 **7 次**错误切片，`main` 全程没坏
+3. **机械改代码必须带断言**：切完要 grep/计数确认"真的改上了"（有一次没加断言、`pop_back` 静默没插进去）
