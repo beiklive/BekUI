@@ -161,6 +161,12 @@ class RecyclerDataSource
     static constexpr const char* DEFAULT_CELL_ID = "default";
 };
 
+// 复用池的入池判定（纯函数，可单测）：limit == 0 表示"从不复用"，超出上限就销毁。
+inline bool shouldPoolCell(size_t pooledCount, size_t limit)
+{
+    return limit > 0 && pooledCount < limit;
+}
+
 class RecyclerFrame : public ScrollingFrame
 {
   public:
@@ -222,11 +228,19 @@ class RecyclerFrame : public ScrollingFrame
 
     // 加载/回收的行为旋钮（可 JSON 可 C++ 设置；默认值见 RecyclerLoadConfig）。
     // 第 1 刀只存不接：行为在后续刀里接上，这样每一刀都能单独验收。
-    void setLoadConfig(const RecyclerLoadConfig& config) { this->loadConfig = config; }
+    void setLoadConfig(const RecyclerLoadConfig& config)
+    {
+        this->loadConfig = config;
+        this->poolLimitPerIdentifier = config.maxPoolPerIdentifier; // 上限跟着配置走
+    }
     const RecyclerLoadConfig& getLoadConfig() const { return this->loadConfig; }
 
     // 当前正在显示的 cell 数量（调试用）。
     size_t getVisibleCellCount() const { return this->activeCells.size(); }
+
+    // 池子里现在留着多少 cell（诊断/测试用：上限生效时它不该无限涨）
+    size_t getPooledCellCount() const;
+    size_t getPooledCellCount(const std::string& identifier) const;
 
     // 行号 -> 当前显示的 cell（调试与测试用；正常业务代码用不到）
     const std::map<size_t, RecyclerCell*>& getActiveCellsForTest() const
@@ -279,6 +293,7 @@ class RecyclerFrame : public ScrollingFrame
 
     int columns = 1;
     RecyclerLoadConfig loadConfig;
+    size_t poolLimitPerIdentifier = 32;
     std::vector<float> visualTops; // columns > 1 时每个 item 的视觉纵向位置
     void rebuildVisualTops();
     RecyclerDataSource* dataSource = nullptr;

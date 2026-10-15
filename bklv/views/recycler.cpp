@@ -248,6 +248,20 @@ void RecyclerFrame::buildRowOffsets()
     this->rebuildVisualTops(); // 行高算完 -> 同步视觉行顶（多列用）
 }
 
+size_t RecyclerFrame::getPooledCellCount() const
+{
+    size_t total = 0;
+    for (const auto& entry : this->cellPool)
+        total += entry.second.size();
+    return total;
+}
+
+size_t RecyclerFrame::getPooledCellCount(const std::string& identifier) const
+{
+    const auto it = this->cellPool.find(identifier);
+    return it == this->cellPool.end() ? 0 : it->second.size();
+}
+
 float RecyclerFrame::getSectionHeaderHeight(size_t section) const
 {
     const float fromSource = this->dataSource->getSectionHeaderHeight(section);
@@ -408,7 +422,12 @@ void RecyclerFrame::recycleCell(size_t index)
     if (this->contentBox != nullptr)
         this->contentBox->removeView(cell, false);
 
-    this->cellPool[cell->reuseIdentifier].push_back(cell);
+    // 池上限：超出就**真正销毁**（内存有上限，不会滑过千行后堆上千个 cell）
+    std::vector<RecyclerCell*>& pool = this->cellPool[cell->reuseIdentifier];
+    if (shouldPoolCell(pool.size(), this->poolLimitPerIdentifier))
+        pool.push_back(cell);
+    else
+        delete cell;
 }
 
 size_t RecyclerFrame::getReusableCellCount() const
