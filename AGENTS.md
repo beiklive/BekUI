@@ -319,6 +319,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   「Recycler」一节；增量追加/预加载/缓存销毁的设计见 `docs/list-incremental-loading-design.md`。
   段头 cell 继承 `RecyclerSectionHeader`，标题通过虚函数 `onSectionTitle` 下发
   （Switch 带 `-fno-rtti`，不许用 `dynamic_cast`）。
+  **C++ 侧的 cell 也必须重写 `setSectionIndex(section, index)`**：回收器的分段路径走它，
+  只重写 `setIndex(index)` 的话绑定**永远不会被调用**（现象是列表项只有构造时的空控件）。
+  这条已经在两个地方各踩过一次（JSON 建的 `RecyclerItemCell`、demo 手写的 `ListCell`/`DexCell`），
+  所以两个入口都实现、共用一个 `applyIndex` 是标准写法。
+  另外：recycler 的 cell 是**绝对定位**的（`layoutCell` 手动摆位置、跳过 Yoga），
+  给它塞子节点时尺寸/内缩要用显式值或 `setPadding`，别指望 `setMargin` 生效。
   增量加载的旋钮（`RecyclerLoadConfig` → JSON 键 `pageSize` / `loadThreshold` /
   `maxPerIdentifier` / `estimatedItemHeight` / `preFetchLine`）都有安全默认值，
   **不写也能跑**；数值一律夹到 >= 0。
