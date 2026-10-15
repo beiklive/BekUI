@@ -133,3 +133,27 @@ virtual void   onWindowReleased(size_t from, size_t to) { }          // 库告�
   只在"可见 + prefetchLines"范围发起；队列按离视口距离排序；主线程**每帧最多上传 N 张**。
 - **配置**（与加载旋钮同风格，全部有安全默认值）：`decodeConcurrency` / `maxUploadsPerFrame` /
   `textureBudgetMB` / `poolLimitPerIdentifier`。
+
+### 11.2 待办：绑定函数的「段内下标」契约（5b 收尾的卡点）
+
+现状：`binding::ItemBinder` 是 `void(View& item, size_t index)`。而回收器**分段**路径走
+`RecyclerCell::setSectionIndex(section, indexInSection)`、单段路径走 `setIndex(index)` ——
+所以绑定函数拿到的"下标"在分段时是**段内下标**，它**不知道是哪一段**，无法索引正确的数据。
+
+**已定契约（下一步照此实现）**：把签名扩展为
+
+```cpp
+using ItemBinder = std::function<void(View& item, size_t section, size_t indexInSection)>;
+```
+
+理由：
+- 显式传段号，**不需要**让使用者 `static_cast` 到某个 cell 具体类（也就不会重犯那一轮的 UB）
+- 单段列表里 section 恒为 0，语义不变（迁移成本只是多一个参数）
+- `RecyclerItemCell` 的两个入口都天然有段号（`setSectionIndex` 直接给；`setIndex` 补 0）
+
+影响面（都在本仓库内，一次改完）：`views/item_binder.{hpp,cpp}`（类型与测试）、
+`widgets/recycler_view.{hpp,cpp}`（两个索引入口）、`demo/app/pages/page_pokedex.cpp`（绑定函数）、
+`tests/item_binder_test.cpp` 与 `tests/recycler_json_test.cpp`。
+
+之后再做：夹具换成**分段 + 分页**的数据源 + `sectionHeaderAppearance`，图鉴页即可恢复
+「两段 + 段头」的原样，并仍然是"JSON 只描述结构与规则、数据与行为在 C++"。
