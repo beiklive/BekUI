@@ -60,12 +60,15 @@ const char* helpTextFor(const char* key)
         { "alignItems", "交叉轴对齐：flexStart / center / flexEnd / stretch / baseline" },
         { "backgroundColor", "底色，@theme/color.x.y 或 #RRGGBB[AA]" },
         { "layers", "绘制结构，顺序就是绘制顺序：hlBg 在内容层前，shadow 在底色前，hlGlow/hlBorder 最后" },
-        { "op", "层类型：rect / text / image / shadow / custom（custom 的语义绘制在 C++ 里）" },
+        { "op", "层类型：rect / text / image / shadow / glass / custom（custom 的语义绘制在 C++ 里）" },
         { "fill", "填充色（shadow 层里是阴影浓度）" },
         { "inset", "[上,右,下,左] 相对控件范围的收缩；负数=向外扩" },
         { "shadow", "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空" },
         { "cutout", "挖空：只画外圈，内圈一个顶点都不落，后面加半透明底也不会透出阴影" },
         { "states", "状态动效：通道写 <层id>.<属性名>，to/duration(ms)/easing" },
+        { "glass", "玻璃层：fill 是染色（也是后端不可用时的降级底），stroke/strokeWidth 是内缘高光" },
+        { "gradient", "rect 的渐变（type/angle/center/stops）：嵌套对象在 JSON 文本里编辑" },
+        { "transitions", "视图过渡 enter/exit/show/hide：结构与通道在 JSON 文本里编辑" },
     };;
     for (const auto& entry : help)
         if (std::strcmp(entry.first, key) == 0)
@@ -94,6 +97,7 @@ const char* layerOpLabel(const std::string& op)
     if (op == "text") return "文字";
     if (op == "image") return "图片";
     if (op == "shadow") return "阴影";
+    if (op == "glass") return "玻璃";
     if (op == "custom") return "自定义";
     return op.c_str();
 }
@@ -2035,7 +2039,7 @@ void DesignerWindow::drawTree()
                         ImGui::Separator();
                         if (ImGui::BeginMenu("增加层"))
                         {
-                            for (const char* leftOp : { "rect", "text", "image", "shadow", "custom" })
+                            for (const char* leftOp : { "rect", "text", "image", "shadow", "glass", "custom" })
                             {
                                 if (ImGui::MenuItem(layerOpLabel(leftOp)))
                                 {
@@ -4045,7 +4049,7 @@ void DesignerWindow::drawProps()
 
             // op 可切换（以前只能改 JSON 文本）
             {
-                const char* ops[] = { "rect", "text", "image", "shadow", "custom" };
+                const char* ops[] = { "rect", "text", "image", "shadow", "glass", "custom" };
                 std::string current = this->doc.layerOp(this->selection.index);
                 int opIndex         = 0;
                 for (int i = 0; i < 5; i++)
@@ -4198,6 +4202,9 @@ void DesignerWindow::drawProps()
                 else if (op == "shadow")
                     candidates.insert(candidates.end(),
                         { "fill", "feather", "spread", "cutout" });
+                else if (op == "glass")
+                    candidates.insert(candidates.end(),
+                        { "fill", "stroke", "strokeWidth", "radius", "opacity" });
                 else
                     candidates.insert(candidates.end(), { "fill", "stroke", "strokeWidth" });
 

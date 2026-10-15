@@ -231,6 +231,13 @@ int AppearanceDoc::addLayer(const std::string& op)
         item["offset"] = Json::array({ 0, 4 });
         item["cutout"] = false;
     }
+    else if (op == "glass")
+    {
+        // 玻璃层：fill 是染色（同时是后端不可用时的降级底），stroke/strokeWidth 是内缘高光
+        item["fill"] = "#FFFFFF33";
+        item["stroke"] = "#FFFFFF3D";
+        item["strokeWidth"] = 1;
+    }
     else if (op == "custom")
     {
         item["fill"] = "#00000000";
@@ -407,15 +414,18 @@ bool AppearanceDoc::reorderLayersByConvention()
         const std::string id = layer.value("id", std::string());
         if (op == "shadow")
             return 0;
+        // 玻璃在解析期被排到"阴影之后、其余之前"（引擎里 hoistGlassLayers 就是这三档）
+        if (op == "glass")
+            return 1;
         if (id == "hlBg")
-            return 2;
-        if (id == "hlGlow" || id == "hlBorder")
-            return 5;
-        if (op == "text" || op == "image" || op == "custom")
             return 3;
+        if (id == "hlGlow" || id == "hlBorder")
+            return 6;
+        if (op == "text" || op == "image" || op == "custom")
+            return 4;
         if (op == "rect")
-            return 1; // 自己的底色
-        return 4;
+            return 2; // 自己的底色
+        return 5;
     };
 
     std::vector<Json> sorted = original;
@@ -457,6 +467,10 @@ std::vector<std::string> AppearanceDoc::layerOrderWarnings() const
     const int bg     = firstOpIndex({ "rect" });
     if (shadow >= 0 && bg >= 0 && shadow > bg)
         warnings.push_back("shadow 排在底色之后：阴影会被底色盖住");
+
+    const int glass = firstOpIndex({ "glass" });
+    if (glass >= 0 && bg >= 0 && glass > bg)
+        warnings.push_back("glass 排在底色之后：玻璃会被底色盖住");
 
     const int glow = indexOfId("hlGlow");
     if (glow >= 0 && content >= 0 && glow < content)
