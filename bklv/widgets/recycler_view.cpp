@@ -82,6 +82,9 @@ void RecyclerItemCell::prepareForReuse() { }
 
 RecyclerView::RecyclerView()
 {
+    // 与 demo 里 C++ 搭列表的用法保持一致（不然"看着一样、行为不一样"）
+    this->setPreFetchLine(1);
+    this->setShowScrollingIndicator(true);
     this->rebuildItemCells();
 }
 
@@ -174,6 +177,15 @@ const AttributeTable& RecyclerView::attributes() const
          }, nullptr },
         { "itemBinder", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setItemBinderName(r.text);
+         }, nullptr },
+        { "itemHeight", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerFrame*>(v)->setItemHeight(r.number);
+         }, nullptr },
+        { "preFetchLine", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerFrame*>(v)->setPreFetchLine((size_t)r.number);
+         }, nullptr },
+        { "showScrollingIndicator", AttributeKind::BOOL, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerFrame*>(v)->setShowScrollingIndicator(r.boolean);
          }, nullptr },
         { "count", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              // v1：只认 "infinite"（表示"总数由数据源决定、可能无限"），别的值警告
