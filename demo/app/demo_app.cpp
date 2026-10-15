@@ -10,8 +10,6 @@
 
 using namespace bklv;
 
-// TMP-SHOT
-static const char* const TMP_SHOT = "/tmp/grid_fix1.png";
 
 namespace demo
 {
@@ -141,7 +139,7 @@ DemoApp::DemoApp()
     // 起始页**推迟到第一帧**再选（见 update()）：视图树是在 App::run() 之前建的，
     // 而字体（含两套图标字体）要等 App::run() 建好图集才装载。页面若在这之前构建，
     // 取到的是"字体还没有"的空表（图标总览页会整页空白），所以统一等第一帧再选页。
-    this->pendingStartPage = 3; // TMP-SHOT
+    this->pendingStartPage = 0;
 
     // F1 开关日志窗口：面板在**所有层之上**，视觉上会盖住右上角那排按钮
     // （但调试层不吃输入，按钮照样点得到），所以给一个随时能按的快捷键。
@@ -444,14 +442,6 @@ void DemoApp::update()
     // 页面记忆里的滚动位置要等布局算完才落得下去
     this->pager->update();
 
-    // TMP-SHOT
-    {
-        static int shotFrame = 0;
-        shotFrame++;
-        if (shotFrame == 50)
-            if (App* app = App::getCurrent())
-                app->requestScreenshot(TMP_SHOT, 3);
-    }
 
     this->updateBars();
 }
