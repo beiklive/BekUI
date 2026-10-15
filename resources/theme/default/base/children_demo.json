@@ -1,0 +1,40 @@
+{
+  "box": {
+    "axis": "row",
+    "gap": 10,
+    "padding": 12
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "radius": 12
+    }
+  ],
+  "children": [
+    {
+      "appearance": "base/tab_cell.sidebar",
+      "box": {
+        "width": 36,
+        "height": 36
+      }
+    },
+    {
+      "box": {
+        "gap": 4,
+        "grow": 1
+      },
+      "children": [
+        {
+          "appearance": "base/label",
+          "text": "标题"
+        },
+        {
+          "appearance": "base/label",
+          "text": "副标题"
+        }
+      ]
+    }
+  ]
+}
