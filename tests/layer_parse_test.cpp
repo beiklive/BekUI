@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <string>
 
+#include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -17,7 +18,7 @@ using namespace bklv;
 namespace
 {
 
-std::shared_ptr<const Appearance> compile(const std::string& layers, std::string& error)
+std::shared_ptr<const Appearance> compileLayers(const std::string& layers, std::string& error)
 {
     return Appearance::compile("{ \"layers\": [" + layers + "] }", getTheme(), error);
 }
@@ -38,7 +39,7 @@ int main()
     {
         std::string error;
 
-        const auto rect = compile(R"({ "op": "rect", "id": "bg", "fill": "#112233FF",
+        const auto rect = compileLayers(R"({ "op": "rect", "id": "bg", "fill": "#112233FF",
             "radius": 8, "stroke": "#445566FF", "strokeWidth": 2 })", error);
         check(rect != nullptr, "rect 能编译");
         if (rect != nullptr)
@@ -54,7 +55,7 @@ int main()
         }
 
         error.clear();
-        const auto text = compile(R"({ "op": "text", "id": "title", "source": "text",
+        const auto text = compileLayers(R"({ "op": "text", "id": "title", "source": "text",
             "color": "#FFFFFFFF", "fontSize": 20, "align": "left" })", error);
         check(text != nullptr, "text 能编译");
         if (text != nullptr)
@@ -66,7 +67,7 @@ int main()
         }
 
         error.clear();
-        const auto image = compile(R"({ "op": "image", "id": "pic", "source": "image",
+        const auto image = compileLayers(R"({ "op": "image", "id": "pic", "source": "image",
             "scaling": "fill" })", error);
         check(image != nullptr, "image 能编译");
         if (image != nullptr)
@@ -78,7 +79,7 @@ int main()
         }
 
         error.clear();
-        const auto shadow = compile(R"({ "op": "shadow", "id": "shadow",
+        const auto shadow = compileLayers(R"({ "op": "shadow", "id": "shadow",
             "fill": "@theme/color.common.shadow", "feather": 16, "spread": 2,
             "offset": [0, 4], "cutout": true })", error);
         check(shadow != nullptr, "shadow 能编译");
@@ -95,7 +96,7 @@ int main()
         }
 
         error.clear();
-        const auto glass = compile(R"({ "op": "glass", "id": "glass", "fill": "#FFFFFF33",
+        const auto glass = compileLayers(R"({ "op": "glass", "id": "glass", "fill": "#FFFFFF33",
             "stroke": "#FFFFFF3D", "strokeWidth": 1 })", error);
         check(glass != nullptr, "glass 能编译");
         if (glass != nullptr)
@@ -110,7 +111,7 @@ int main()
         }
 
         error.clear();
-        const auto custom = compile(R"({ "op": "custom", "id": "body", "fill": "#00000000" })", error);
+        const auto custom = compileLayers(R"({ "op": "custom", "id": "body", "fill": "#00000000" })", error);
         check(custom != nullptr, "custom 能编译");
         if (custom != nullptr)
         {
@@ -122,7 +123,7 @@ int main()
     std::printf("\n== 2. 没写 id 时按 op 生成默认 id（这是层序校验与 states 寻址的基础）==\n");
     {
         std::string error;
-        const auto appearance = compile(R"({ "op": "rect", "fill": "#00000000" },
+        const auto appearance = compileLayers(R"({ "op": "rect", "fill": "#00000000" },
             { "op": "text", "source": "text" })", error);
         check(appearance != nullptr, "不写 id 也能编译");
         if (appearance != nullptr)
@@ -136,7 +137,7 @@ int main()
     std::printf("\n== 2b. 已知 quirk：shadow / glass 没写 id 时会被叫成 custom<N> ==\n");
     {
         std::string error;
-        const auto appearance = compile(R"({ "op": "shadow", "fill": "#00000040" },
+        const auto appearance = compileLayers(R"({ "op": "shadow", "fill": "#00000040" },
             { "op": "glass", "fill": "#FFFFFF33" })", error);
         check(appearance != nullptr, "shadow/glass 不写 id 也能编译");
         if (appearance != nullptr)
@@ -152,18 +153,68 @@ int main()
     std::printf("\n== 3. 写错要报错（不静默降级）==\n");
     {
         std::string error;
-        check(compile(R"({ "op": "不存在的类型" })", error) == nullptr, "op 不认识 -> 失败");
+        check(compileLayers(R"({ "op": "不存在的类型" })", error) == nullptr, "op 不认识 -> 失败");
         check(!error.empty(), "错误串非空");
 
         error.clear();
-        check(compile(R"({ "op": "rect", "radius": "abc" })", error) == nullptr, "radius 类型不对 -> 失败");
+        check(compileLayers(R"({ "op": "rect", "radius": "abc" })", error) == nullptr, "radius 类型不对 -> 失败");
 
         error.clear();
-        check(compile(R"({ "op": "rect", "fill": "@theme/color.不存在.键" })", error) == nullptr,
+        check(compileLayers(R"({ "op": "rect", "fill": "@theme/color.不存在.键" })", error) == nullptr,
             "颜色引用不存在的键 -> 失败");
 
         error.clear();
-        check(compile(R"("不是对象")", error) == nullptr, "层不是对象 -> 失败");
+        check(compileLayers(R"("不是对象")", error) == nullptr, "层不是对象 -> 失败");
+    }
+
+    std::printf("\n== 4. 图层类型注册表（单一事实来源）==\n");
+    {
+        using namespace bklv::compile;
+
+        check(registeredLayers().size() >= 6, "内置 6 种 op 已注册（惰性注册）");
+        for (const char* name : { "rect", "text", "image", "shadow", "glass", "custom" })
+        {
+            const LayerType* type = findLayer(name);
+            check(type != nullptr, name);
+            if (type != nullptr)
+            {
+                check(!type->idPrefix.empty(), std::string(name) + " 有默认 id 前缀");
+                check(!type->keys.empty(), std::string(name) + " 有键表");
+            }
+        }
+
+        // 注册表 vs 解析器：注册表里的每个 op，解析器都必须真的认识
+        for (const LayerType& type : registeredLayers())
+        {
+            std::string error;
+            const auto appearance = compileLayers("{ \"op\": \"" + type.name
+                    + "\", \"fill\": \"#00000000\", \"source\": \"text\" }",
+                error);
+            check(appearance != nullptr, "注册表里的 op 解析器都认识：" + type.name);
+        }
+
+        // 层序档位：引擎排的是 阴影 -> 玻璃 -> 底色
+        check(layerOrderRank(LayerOrder::SHADOW) < layerOrderRank(LayerOrder::GLASS),
+            "阴影在玻璃之前");
+        check(layerOrderRank(LayerOrder::GLASS) < layerOrderRank(LayerOrder::BACKGROUND),
+            "玻璃在底色之前");
+
+        // 重复注册 / 空名字 / 空前缀都要报错
+        std::string error;
+        LayerType duplicate = *findLayer("rect");
+        check(!registerLayer(duplicate, error), "重复注册 -> 失败");
+        check(!error.empty(), "重复注册有错误串");
+
+        error.clear();
+        LayerType noName = duplicate;
+        noName.name.clear();
+        check(!registerLayer(noName, error), "空 name -> 失败");
+
+        error.clear();
+        LayerType noPrefix = duplicate;
+        noPrefix.name = "rect_copy";
+        noPrefix.idPrefix.clear();
+        check(!registerLayer(noPrefix, error), "空 idPrefix -> 失败");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

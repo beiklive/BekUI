@@ -349,6 +349,7 @@ set(BKLV_CORE_SOURCES
     core/ui_scale.cpp
     core/appearance.cpp
     compile/json_util.cpp
+    compile/layer_registry.cpp
     core/audio.cpp
     core/platform.cpp
     core/gamepad.cpp
