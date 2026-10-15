@@ -74,19 +74,11 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
 // 一个 header：标题 + 数量
 Box* makeSectionHeader(const std::string& title, size_t count)
 {
-    const ThemeData& theme = getTheme();
-
-    Box* header = new Box(Axis::COLUMN);
-    header->setAlignItems(AlignItems::FLEX_START);
-    header->setPadding(theme.number("metric.spacing.sm", 8.0f),
-        theme.number("metric.spacing.md", 16.0f), theme.number("metric.spacing.sm", 8.0f),
-        theme.number("metric.spacing.md", 16.0f));
-
-    header->addView(makeText(title, theme.number("metric.font.size.lg", 20.0f),
-        theme.color("color.text.primary")));
-    header->addView(makeHint(getStr("icons/count", static_cast<int>(count))));
-
-    return header;
+    // 同一个 section 外观：标题走 text 层，数量走右侧 info 层（borealis 的 Header 也是这个结构）
+    AppearanceView* section = new AppearanceView("base/section", false);
+    section->setText(title);
+    section->setInfoText(getStr("icons/count", static_cast<int>(count)));
+    return section;
 }
 
 // 网格：一排 10 个，格子等宽（10 × 10% = 100%，间距靠格子自己的 padding）

@@ -76,12 +76,12 @@ Box* makeItemRow(View* item)
 // 小节 = 卡片 + header（控件名）。一个基础控件一节。
 // 卡片用**半透明玻璃卡**：页面壁纸透出来，节里的"玻璃版本"控件才有背景可采、糊得出效果
 //（不透明深色底上玻璃只能糊自己，看着就是块纯色 —— 设计器那边同样踩过）。
-Rectangle* makeSection(const char* titleKey)
+// 小节标题（section）：左竖条 + 标题 + 底部线，结构在主题 base/section.json
+Box* makeSection(const char* titleKey)
 {
-    Rectangle* card = makeCard("card.glass");
-    card->addView(makeText(getStr(titleKey), getTheme().number("metric.font.size.md", 18.0f),
-        getTheme().color("color.text.primary")));
-    return card;
+    AppearanceView* section = new AppearanceView("base/section", false);
+    section->setText(getStr(titleKey));
+    return section;
 }
 
 // 状态行：左边是状态名（固定宽度，保证右边的控件纵向对齐），右边是"那个状态下的控件"。
@@ -117,7 +117,7 @@ Button* makeStateButton(const char* variant, const std::string& text, const char
 }
 
 // 按钮一族：本体（默认）+ 各状态。状态名照主题 JSON 里的 state 写。
-void addButtonStates(Rectangle* section, const char* variant, const std::string& text,
+void addButtonStates(Box* section, const char* variant, const std::string& text,
     const char* iconName, bool stretch = true)
 {
     struct StateSpec
@@ -143,7 +143,7 @@ void addButtonStates(Rectangle* section, const char* variant, const std::string&
 
 // 开关一族：开 / 关两行（on / off 本身就是它的状态）
 void addSwitchStates(
-    Rectangle* section, const char* variant, const std::string& text, const char* iconName)
+    Box* section, const char* variant, const std::string& text, const char* iconName)
 {
     Button* on = makeStateButton(variant, text, "", iconName);
     on->setSwitched(true);
@@ -196,7 +196,7 @@ Box* buildBaseWidgetsPage()
 
     // 基本盒：唯一"有底有框"的基础容器
     {
-        Rectangle* section = makeSection("base_widgets/sec_box");
+        Box* section = makeSection("base_widgets/sec_box");
         Rectangle* box    = new Rectangle();
         box->setAppearanceName("base/box");
         box->addView(bodyText(getStr("base_widgets/box_inner")));
@@ -218,7 +218,7 @@ Box* buildBaseWidgetsPage()
 
     // 布局容器：只负责摆位置（横排 + 居中），自己不带底
     {
-        Rectangle* section = makeSection("base_widgets/sec_layout");
+        Box* section = makeSection("base_widgets/sec_layout");
         Rectangle* layout  = makeLayoutBox();
         layout->setAxis(Axis::ROW);
         layout->setAlignItems(AlignItems::CENTER);
@@ -238,7 +238,7 @@ Box* buildBaseWidgetsPage()
 
     // 组件容器：它 import 了 base/box，改 base 这里一起变
     {
-        Rectangle* section = makeSection("base_widgets/sec_component");
+        Box* section = makeSection("base_widgets/sec_component");
         Rectangle* box     = makeComponentBox();
         box->addView(bodyText(getStr("base_widgets/component_inner")));
         section->addView(makeItemRow(box));
@@ -254,7 +254,7 @@ Box* buildBaseWidgetsPage()
 
     // 文本：普通 / 次级 / 单行截断
     {
-        Rectangle* section = makeSection("base_widgets/sec_label");
+        Box* section = makeSection("base_widgets/sec_label");
         section->addView(makeItemRow(bodyText(getStr("base_widgets/label_body"))));
         section->addView(makeItemRow(makeHint(getStr("base_widgets/label_dim"))));
         Label* truncated = makeText(getStr("base_widgets/label_long"),
@@ -268,7 +268,7 @@ Box* buildBaseWidgetsPage()
 
     // 图片：解码后上传成纹理，尺寸由布局决定
     {
-        Rectangle* section = makeSection("base_widgets/sec_image");
+        Box* section = makeSection("base_widgets/sec_image");
         Image* image       = new Image();
         image->setImageFromFileAsync("resources/testcard.png");
         image->setWidth(120.0f);
@@ -288,7 +288,7 @@ Box* buildBaseWidgetsPage()
 
     // 滑块：进度决定几何（语义绘制），颜色/圆角/粗细来自 JSON
     {
-        Rectangle* section = makeSection("base_widgets/sec_slider");
+        Box* section = makeSection("base_widgets/sec_slider");
         Label* value       = makeHint(getStr("base_widgets/slider_value", 40));
         Slider* slider     = new Slider();
         slider->setProgress(0.4f);
@@ -307,7 +307,7 @@ Box* buildBaseWidgetsPage()
 
     // 进度圈：ImDrawList 没有旋转 API，自己在 C++ 里拼四边形
     {
-        Rectangle* section = makeSection("base_widgets/sec_spinner");
+        Box* section = makeSection("base_widgets/sec_spinner");
         Box* row           = makeRow(getTheme().number("metric.spacing.lg", 16.0f));
         row->addView(new ProgressSpinner());
         ProgressSpinner* slow = new ProgressSpinner();
@@ -327,7 +327,7 @@ Box* buildBaseWidgetsPage()
 
     // 纯文字：最普通的按钮，四种状态都摆出来
     {
-        Rectangle* section = makeSection("base_widgets/sec_btn_text");
+        Box* section = makeSection("base_widgets/sec_btn_text");
         addButtonStates(section, "text", getStr("base_widgets/btn_text"), nullptr);
         section->addView(makeHint(getStr("base_widgets/states_hint")));
         page->addView(section);
@@ -335,7 +335,7 @@ Box* buildBaseWidgetsPage()
 
     // 纯图标：两款 —— 正方形（icon）与圆形（icon_circle），图标都完全居中
     {
-        Rectangle* section = makeSection("base_widgets/sec_btn_icon");
+        Box* section = makeSection("base_widgets/sec_btn_icon");
         section->addView(makeHint(getStr("base_widgets/shape_square")));
         addButtonStates(section, "icon", "", "star", false);
         section->addView(makeHint(getStr("base_widgets/shape_circle")));
@@ -346,14 +346,14 @@ Box* buildBaseWidgetsPage()
 
     // 图标 + 文字
     {
-        Rectangle* section = makeSection("base_widgets/sec_btn_icon_text");
+        Box* section = makeSection("base_widgets/sec_btn_icon_text");
         addButtonStates(section, "icon_text", getStr("base_widgets/btn_icon_text"), "save");
         page->addView(section);
     }
 
     // 列表按钮：普通按钮的"列表元素"款 —— 没有边框，文字正常左对齐
     {
-        Rectangle* section = makeSection("base_widgets/sec_btn_list");
+        Box* section = makeSection("base_widgets/sec_btn_list");
         addButtonStates(section, "list", getStr("base_widgets/btn_list"), nullptr);
         section->addView(makeHint(getStr("base_widgets/list_hint")));
         page->addView(section);
@@ -361,7 +361,7 @@ Box* buildBaseWidgetsPage()
 
     // 信息按钮：右侧信息文字由程序决定
     {
-        Rectangle* section = makeSection("base_widgets/sec_btn_info");
+        Box* section = makeSection("base_widgets/sec_btn_info");
         addButtonStates(section, "info", getStr("base_widgets/btn_info"), "home");
         Button* live = makeVariantButton("info", getStr("base_widgets/btn_info"));
         live->setIcon(glyph("home"));
@@ -378,7 +378,7 @@ Box* buildBaseWidgetsPage()
 
     // 文字开关：开 / 关两个状态（信息文字跟着变）
     {
-        Rectangle* section = makeSection("base_widgets/sec_switch_text");
+        Box* section = makeSection("base_widgets/sec_switch_text");
         addSwitchStates(section, "switch_text", getStr("base_widgets/btn_switch_text"), "info");
         Button* live = makeVariantButton("switch_text", getStr("base_widgets/btn_switch_text"));
         live->setIcon(glyph("info"));
@@ -395,7 +395,7 @@ Box* buildBaseWidgetsPage()
 
     // 图案开关：轨道 + 滑块，切换有过渡动画（补间写在 on/off 状态里）
     {
-        Rectangle* section = makeSection("base_widgets/sec_switch_icon");
+        Box* section = makeSection("base_widgets/sec_switch_icon");
         addSwitchStates(section, "switch_icon", getStr("base_widgets/btn_switch_icon"), "settings");
         Button* live = makeVariantButton("switch_icon", getStr("base_widgets/btn_switch_icon"));
         live->setIcon(glyph("settings"));
@@ -410,7 +410,7 @@ Box* buildBaseWidgetsPage()
 
     // 下拉触发器：点它弹遮罩列表（弹层复用 Dropdown）
     {
-        Rectangle* section = makeSection("base_widgets/sec_dropdown");
+        Box* section = makeSection("base_widgets/sec_dropdown");
         Dropdown* dropdown = new Dropdown();
         dropdown->setOptions({ getStr("base_widgets/option_a"), getStr("base_widgets/option_b"),
             getStr("base_widgets/option_c") }, 0);
@@ -440,7 +440,7 @@ Box* buildBaseWidgetsPage()
 
     // 选择器（数值模式）：进入设置态后焦点钉住，LR / 方向键调值，长按连发
     {
-        Rectangle* section = makeSection("base_widgets/sec_selector_number");
+        Box* section = makeSection("base_widgets/sec_selector_number");
         SelectorButton* number = new SelectorButton(getStr("base_widgets/btn_selector_number"));
         number->setIcon(glyph("palette"));
         number->setNumberRange(0.0f, 100.0f, 5.0f, 1, 40.0f);
@@ -459,7 +459,7 @@ Box* buildBaseWidgetsPage()
 
     // 选择器（列表模式）：LR 切换选项，越界环绕
     {
-        Rectangle* section = makeSection("base_widgets/sec_selector_list");
+        Box* section = makeSection("base_widgets/sec_selector_list");
         SelectorButton* list = new SelectorButton(getStr("base_widgets/btn_selector_list"));
         list->setIcon(glyph("list"));
         list->setOptions({ getStr("base_widgets/option_a"), getStr("base_widgets/option_b"),

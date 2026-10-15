@@ -226,5 +226,13 @@
     "switchKnob": 18,
     "switchTravel": 22,
     "arrowSize": 22
+  },
+  "section": {
+    "barWidth": 4,
+    "barMargin": 12,
+    "titleInset": 16,
+    "fontSize": 18,
+    "subtitleSize": 15,
+    "paddingTopBottom": 10
   }
 }

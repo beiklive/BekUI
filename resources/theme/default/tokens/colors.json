@@ -152,10 +152,10 @@
     "mark": "#1a1c21"
   },
   "sidebar": {
-    "background": "#1F2227E0",
+    "background": "#FFFFFF33",
     "activeItem": "#00ffcc",
     "separator": "#515151",
-    "border": "#FFFFFF1F",
+    "border": "#FFFFFF3D",
     "selected": "#00FFCC26"
   },
   "tabCell": {

@@ -24,13 +24,13 @@ namespace
 // 样例外观与它的逐层变体都在主题里（base/json_demo*.json）
 constexpr const char* kDemoAppearance = "base/json_demo";
 
-// 步骤 header：一张卡片 + 强调色标题
-Rectangle* makeStepHeader(const char* titleKey)
+// 小节标题（section）：照 borealis 的 Header —— 左边竖条 + 标题 + 底部 1px 线，
+// 结构写在主题的 base/section.json 里（不是卡片）
+Box* makeStepHeader(const char* titleKey)
 {
-    Rectangle* card = makeCard();
-    card->addView(makeText(getStr(titleKey), getTheme().number("metric.font.size.md", 18.0f),
-        getTheme().color("color.accent.base", 0)));
-    return card;
+    AppearanceView* section = new AppearanceView("base/section", false);
+    section->setText(getStr(titleKey));
+    return section;
 }
 
 // JSON 片段按列宽硬换行（Label 只在空格处折行，长片段不折会把整页撑宽）

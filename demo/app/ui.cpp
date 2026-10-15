@@ -69,8 +69,8 @@ namespace demo
 namespace
 {
 
-// 玻璃背景：渐变 + 斜条纹 + 两个柔光圆。
-// 斜条纹是必须的 —— 只铺渐变时模糊几乎看不出来；纯色深底上玻璃等于没效果。
+// 玻璃背景：深色底 + 彩色线网格。
+// 网格线是必须的 —— 纯色深底上玻璃模糊看不出来。
 class GlassWallpaperView : public View
 {
   public:
@@ -91,26 +91,39 @@ class GlassWallpaperView : public View
         if (width <= 0.0f || height <= 0.0f)
             return;
 
-        drawList->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + width, y + height),
-            IM_COL32(58, 96, 200, 255), IM_COL32(120, 70, 190, 255),
-            IM_COL32(170, 60, 150, 255), IM_COL32(40, 110, 190, 255));
+        // 深色底 + 彩色线网格。
+        // 玻璃要能被看出"磨砂"，底下就得有细结构：纯色深底上模糊等于没效果（踩过），
+        // 所以网格线不是装饰，是让玻璃有效果的必要条件。
+        drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height),
+            IM_COL32(11, 14, 20, 255));
 
-        const float stripe = 5.0f;
+        static const ImU32 kGridColors[4] = {
+            IM_COL32(0, 255, 204, 46),   // 青
+            IM_COL32(130, 90, 255, 42),  // 紫
+            IM_COL32(255, 90, 190, 36),  // 粉
+            IM_COL32(70, 150, 255, 42),  // 蓝
+        };
+
+        const float cell = 46.0f;
         drawList->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
-        for (float offset = -height; offset < width; offset += stripe * 2.0f)
-        {
-            drawList->AddQuadFilled(ImVec2(x + offset, y + height),
-                ImVec2(x + offset + stripe, y + height),
-                ImVec2(x + offset + stripe + height, y), ImVec2(x + offset + height, y),
-                IM_COL32(255, 255, 255, 26));
-        }
+
+        int column = 0;
+        for (float gx = x; gx <= x + width; gx += cell, column++)
+            drawList->AddLine(ImVec2(gx, y), ImVec2(gx, y + height),
+                kGridColors[column % 4], 1.0f);
+
+        int row = 0;
+        for (float gy = y; gy <= y + height; gy += cell, row++)
+            drawList->AddLine(ImVec2(x, gy), ImVec2(x + width, gy),
+                kGridColors[(row + 2) % 4], 1.0f);
+
+        // 中间一层很淡的柔光，让网格有纵深（网格本身仍清楚）
+        const float radius = std::min(width, height) * 0.55f;
+        drawList->AddCircleFilled(ImVec2(x + width * 0.5f, y + height * 0.45f), radius,
+            IM_COL32(90, 130, 220, 26), 64);
+
         drawList->PopClipRect();
 
-        const float radius = std::min(width, height) * 0.42f;
-        drawList->AddCircleFilled(ImVec2(x + width * 0.28f, y + height * 0.55f), radius,
-            IM_COL32(90, 190, 255, 90), 64);
-        drawList->AddCircleFilled(ImVec2(x + width * 0.72f, y + height * 0.40f), radius * 0.8f,
-            IM_COL32(255, 120, 220, 90), 64);
     }
 };
 
