@@ -249,7 +249,21 @@ struct AppearanceLayer {
 | ①b-2 | `layers` 段抽成 `parseLayers()` | `ee04bd4` | `compile` 423 → **49 行**（达标 <80） |
 | ①b-预备 | 图层解析行为基线 `tests/layer_parse_test.cpp`（拆之前的保险） | `5f5e94e` | 33 项；立刻抓出"默认 id 是 `rect0` 而非 `rect`"与 `shadow/glass → custom<N>` 的 quirk |
 | ①c-1 | 图层类型注册表（名字/默认 id 前缀/层序档位/键表/help；无宏显式注册；内置 6 种惰性注册） | `ee50139` | 注册表测试 + **注册表 vs 解析器交叉校验**（64 项） |
-| ①c-2 | 默认 id 前缀改由注册表提供 | `c6fa9f6` | **修掉 quirk**：`shadow`/`glass` 从 `custom<N>` → `shadow0`/`glass1`；基线翻断言，变化显式可见 |
+| ①c-2 | 默认 id 前缀改由注册表提供 | `c6fa9f6` |
+| ⑥-a | 设计器 op 列表/中文名改读注册表 | `c5d9503` | **修掉"设计器里切不到 glass"的 bug**（下拉框写死 5 项 ✗） |
+| ⑥-b | 检查器候选属性并入注册表键表（取并集） | `d1f32ed` | 第三方新 op 不改设计器就能编自己的字段 |
+| ①c-3-pre | `Op::EXTENSION` + `extensionType` 扩展槽 | `b30bc77` | 解决"第三方 op 无法表示"的硬缺口；未注册的 op 仍报错 |
+| 验收-样例 | `demo/contrib/stripe_layer.cpp`（`bklv/` 之外加一个 op） | `6957538` | 注册 + 解析路径端到端通过；主题侧样例**主动撤回**（见下） | **修掉 quirk**：`shadow`/`glass` 从 `custom<N>` → `shadow0`/`glass1`；基线翻断言，变化显式可见 |
+
+**两件要紧的遗留**（别忘）
+
+1. **clean 构建审计**：`gradient_test.cpp` 里那个未使用函数（`b30bc77` 删掉）说明
+   **增量构建不足以保证零告警** —— 有的 TU 长期没被重编，告警一直潜伏。
+   需要挑一次做 `rm -rf` 全新构建 + 三平台各数一次告警（并把它写进验收流程）。
+2. **"主题里直接用扩展 op"还缺一环**：`theme_test` 会编译主题 `files[]` 里的所有外观，
+   而测试进程里没人注册第三方 op → 会以"不认识的 op"失败。
+   所以主题侧样例（`base/stripe_demo.json`）这轮**主动撤回**了，等 ③（绘制读注册表）时
+   一并解决"主题加载/测试如何看到第三方注册"。
 
 **还剩**（按顺序）
 
