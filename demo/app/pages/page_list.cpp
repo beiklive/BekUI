@@ -22,6 +22,21 @@ ListPageResult buildListPage()
 
     page->addView(makeHint(getStr("list/hint")));
 
+    // —— 网格区块（RecyclerFrame 的多列模式；Grid 不另设类型）——
+    RecyclerFrame* grid = new RecyclerFrame();
+    grid->setWidthPercentage(100.0f);
+    grid->setHeight(210.0f); // 固定高度：上面网格、下面列表
+    grid->setItemHeight(140.0f);
+    grid->setColumns(3); // 多列模式
+    grid->setPreFetchLine(1);
+    grid->setShowScrollingIndicator(false);
+    grid->registerCell(RecyclerDataSource::DEFAULT_CELL_ID, [] { return new GridCell(); });
+
+    static ListSource gridSource(24, 140.0f); // 数据源要活到列表销毁
+    grid->setDataSource(&gridSource);
+    page->addView(grid);
+
+
     RecyclerFrame* list = new RecyclerFrame();
     list->setWidthPercentage(100.0f);
     list->setGrow(1.0f);

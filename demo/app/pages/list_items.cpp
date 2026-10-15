@@ -114,6 +114,83 @@ void ListCell::onFocusLost()
 }
 
 // ---------------------------------------------------------------------------
+// GridCell：网格单元（方形图 + 标题，玻璃卡片）
+// ---------------------------------------------------------------------------
+
+GridCell::GridCell()
+{
+    // cell 高度由数据源给（固定），宽度由回收器的列数平分
+    this->setAlignItems(AlignItems::CENTER);
+
+    this->card = new AppearanceView(std::string("base/glass_surface"), false);
+    this->card->setAxis(Axis::COLUMN); // 上图下文
+    this->card->setAlignItems(AlignItems::CENTER);
+    this->card->setGrow(1.0f);
+    this->card->setMarginTop(4.0f);
+    this->card->setMarginBottom(4.0f);
+    this->card->setMarginLeft(4.0f);
+    this->card->setMarginRight(4.0f);
+    this->card->setPaddingTop(10.0f);
+    this->card->setPaddingBottom(8.0f);
+    this->card->setGap(6.0f);
+    this->addView(this->card);
+
+    this->image = new Image();
+    this->image->setDimensions(88.0f, 88.0f); // 方形
+    this->image->setCornerRadius(8.0f);
+    this->image->setScalingType(ImageScalingType::FIT); // 按最长边完整显示
+    this->card->addView(this->image);
+
+    this->caption = makeText("", 13.0f, rgb(220, 226, 235), true);
+    this->card->addView(this->caption);
+}
+
+void GridCell::setIndex(size_t value)
+{
+    this->applyIndex(0, value);
+}
+
+void GridCell::setSectionIndex(size_t sectionValue, size_t indexValue)
+{
+    RecyclerCell::setSectionIndex(sectionValue, indexValue);
+    this->applyIndex(sectionValue, indexValue);
+}
+
+void GridCell::applyIndex(size_t section, size_t index)
+{
+    (void)section;
+    RecyclerCell::setIndex(index);
+
+    static const char* const kThumbs[8] = {
+        "resources/img/demo/pokemon_001.png", "resources/img/demo/pokemon_004.png",
+        "resources/img/demo/pokemon_007.png", "resources/img/demo/pokemon_011.png",
+        "resources/img/demo/pokemon_014.png", "resources/img/demo/pokemon_017.png",
+        "resources/img/demo/pokemon_021.png", "resources/img/demo/pokemon_024.png",
+    };
+    const size_t pick = index % 8;
+    this->image->setImageFromFile(kThumbs[pick]);
+
+    char caption[16] = { 0 };
+    std::snprintf(caption, sizeof(caption), "No.%03d", (int)pick * 3 + 1);
+    this->caption->setText(caption);
+}
+
+void GridCell::onFocusGained()
+{
+    if (this->card != nullptr)
+    {
+        this->card->setBorderColor(rgb(90, 170, 245));
+        this->card->setBorderThickness(2.0f);
+    }
+}
+
+void GridCell::onFocusLost()
+{
+    if (this->card != nullptr)
+        this->card->setBorderThickness(0.0f);
+}
+
+// ---------------------------------------------------------------------------
 // SimpleCell：单行
 // ---------------------------------------------------------------------------
 
