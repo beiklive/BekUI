@@ -215,6 +215,15 @@ Box* buildJsonPage()
   "fill": "@theme/color.accent.base" })",
         makeDemoCard("base/stripe_demo")));
 
+    // children：**一份外观 = 一个完整控件**。base/children_demo 自己声明了子节点
+    // （图标块 + 一列"标题/副标题"），页面这边只是把它当普通外观用，没有一行 C++ 描述结构。
+    page->addView(makeSplitRow("json/children_row",
+        R"({ "box": { "axis": "row", "gap": 10, "padding": 12 },
+  "children": [
+    { "appearance": "…", "box": { "width": 36, "height": 36 } },
+    { "box": { "grow": 1 }, "children": [ … ] } ] })",
+        makeDemoCard("base/children_demo")));
+
     // ---- ③ 动画逐个演示 ----
     page->addView(makeStepHeader("json/anim_title"));
     page->addView(makeHint(getStr("json/anim_hint")));
