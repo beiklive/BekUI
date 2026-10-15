@@ -322,9 +322,17 @@ Box* buildPokedexPage()
     // 数据源要活到列表销毁
     static DexSource source;
 
-    // 列表整块交给 **JSON 描述**（容器类型 + 一份 item 模板 + 数据源名字 + 绑定函数名字）
-    // 注：图鉴原有的分段（starter/wild）与自定义绘制暂未进 JSON（见 docs/parse-refactor-review.md 13.1）
-    bklv::View* list = bklv::createViewFromTheme("page_pokedex_json");
+    RecyclerFrame* list = new RecyclerFrame();
+    list->setWidthPercentage(100.0f);
+    list->setGrow(1.0f);
+    list->setItemHeight(getTheme().number("metric.pokedex.cellHeight", 72.0f));
+    list->setPreFetchLine(1);
+    list->setShowScrollingIndicator(true);
+    list->registerCell("starter", [] { return new DexCell(); });
+    list->registerCell("wild", [] { return new DexCell(); });
+    list->registerCell("section_header", [] { return new DexHeaderCell(); });
+    list->setSectionHeaderIdentifier("section_header");
+    list->setDataSource(&source);
 
     // 选中条目 → 下钻一层（B 返回：Shell 的 onBackRequested → popContentView）
     list->registerAction(ControllerButton::A, getStr("pokedex/open"), [](View* focused) {
