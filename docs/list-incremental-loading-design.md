@@ -204,9 +204,17 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 **进度**：
 | 小步 | 内容 | 状态 |
 |---|---|---|
-| 1 | **预算账目 + 可配置旋钮**：`setTextureBudget(0=不限)` / `getTextureBudget` / `getTextureCount` / `isTextureBudgetExceeded`，超预算只警告**不淘汰** | ✅ `9ba9409`（9 项测试）|
-| 2 | **引用计数 + LRU 淘汰**（正在被 cell 用着的不淘汰；淘汰即释放 GPU 纹理）| ⬜ 待做 |
-| 3 | **背压**：解码并发上限 + 主线程每帧上传配额 + 按离视口距离排优先级 | ⬜ 待做 |
+| 1 | 预算账目 + 可配置旋钮（`setTextureBudget(0=不限)` / `getTextureBudget` / `getTextureCount` / `isTextureBudgetExceeded`，超预算只警告**不淘汰**）| ✅ `9ba9409` |
+| 2a | 只读观察：`getTextureCacheCount()` | ✅ `bab8f38` |
+| 2b | LRU 使用序记账（`g_useTick` / `g_pathLastUse` / `getLeastRecentlyUsedPath()`，只记录不淘汰）| ✅ `d38b16a` |
+| 2c | 引用计数存储与 API（`TextureEntry.refCount/lastUseTick` + `retainTexture`/`releaseTexture`/`getTextureRefCount`，越界 no-op、release 不下溢）| ✅ `080c2f5` |
+| 2d | **接线 + 淘汰**：把 `retain/release` 接进 `Image` 的加载/换图/析构三处，实现 `trimTextureCache()`（候选 = `refCount==0` 的 LRU；淘汰时**同步删 `g_pathCache`** 并释放 GPU 纹理）| ⬜ **只剩这一步** |
+| 3 | 背压：解码并发上限 + 每帧上传配额 + 优先级（协议见下）| ⬜ 待做 |
+
+**为什么把 2 拆成 2a~2d**：每一块都是**纯加法、零行为变化、可独立测试与回滚**（`check.sh` 从 3591 -> 3599 项）。
+到最后一步 2d 时，需要动的只有 `Image` 里三处成对的 `retain/release` 加一个 `trimTextureCache()`，
+风险被压到最小 —— 这一步**必须在余量充足时做**，因为它决定了"纹理何时真正释放"，
+写错会得到"引用漏减（永不释放）"或"淘汰了在用的纹理（use-after-free）"。
 
 **为什么小步 1 只记账不淘汰**：淘汰的前提是"知道谁还在用" —— 没有引用计数就淘汰，
 会把正在被 cell 使用的纹理释放掉（use-after-free）。所以先把账目与旋钮做出来（零风险、
