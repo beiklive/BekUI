@@ -1859,6 +1859,43 @@ ImU32 AppearanceInstance::getColor(int layer, AppearanceProp prop) const
     return joinColor(this->impl->values[layer][propIndex(prop)].channel);
 }
 
+void AppearanceInstance::cancelTween(int layer, AppearanceProp prop)
+{
+    auto& tweens = this->impl->tweens;
+    tweens.erase(std::remove_if(tweens.begin(), tweens.end(),
+                     [layer, prop](const Impl::ActiveTween& tween) {
+                         return tween.layer == layer && tween.prop == (int)prop;
+                     }),
+        tweens.end());
+}
+
+void AppearanceInstance::setNumber(int layer, AppearanceProp prop, float value)
+{
+    if (layer < 0)
+        return;
+    if ((size_t)layer >= this->impl->values.size())
+        return;
+    if ((size_t)prop >= this->impl->values[(size_t)layer].size())
+        return;
+
+    this->cancelTween(layer, prop);
+    this->impl->values[(size_t)layer][(size_t)prop].channel[0] = value;
+}
+
+void AppearanceInstance::setColor(int layer, AppearanceProp prop, const float rgba[4])
+{
+    if (layer < 0 || rgba == nullptr)
+        return;
+    if ((size_t)layer >= this->impl->values.size())
+        return;
+    if ((size_t)prop >= this->impl->values[(size_t)layer].size())
+        return;
+
+    this->cancelTween(layer, prop);
+    for (int i = 0; i < 4; i++)
+        this->impl->values[(size_t)layer][(size_t)prop].channel[i] = rgba[i];
+}
+
 float AppearanceInstance::getNumber(int layer, AppearanceProp prop) const
 {
     if (layer < 0 || (size_t)layer >= this->impl->values.size())

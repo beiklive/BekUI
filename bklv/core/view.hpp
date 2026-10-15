@@ -29,6 +29,9 @@
 
 namespace bklv
 {
+class Appearance;
+class AppearanceInstance;
+
 
 class Box;
 class InputManager;
@@ -244,6 +247,11 @@ class View
     float getRotate() const { return this->transform.rotation; }
     const Transform2D& getTransform() const { return this->transform; }
     void resetTransform() { this->transform.reset(); }
+
+    // 视图过渡（transitions）的取用点：有外观的视图返回自己的外观/实例，基类返回 nullptr
+    //（前向声明，避免 core 头文件互相包含）。
+    virtual AppearanceInstance* getAppearanceInstance() { return nullptr; }
+    virtual const Appearance* getTransitionAppearance() const { return nullptr; }
 
     // ---- 手势（指针事件由 InputManager 派发过来）----
     //

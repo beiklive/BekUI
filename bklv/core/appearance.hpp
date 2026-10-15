@@ -342,6 +342,13 @@ class AppearanceInstance
     ImU32 getColor(int layer, AppearanceProp prop) const;
     float getNumber(int layer, AppearanceProp prop) const;
 
+    // ---- 视图过渡（transitions）用 ----
+    // 直接写某条通道的当前值。状态动效和过渡不能同时对同一条通道下手，
+    // 所以过渡开始时调用方先 cancelTween() 接管这条通道。
+    void setNumber(int layer, AppearanceProp prop, float value);
+    void setColor(int layer, AppearanceProp prop, const float rgba[4]);
+    void cancelTween(int layer, AppearanceProp prop);
+
   private:
     struct Impl;
     std::unique_ptr<Impl> impl;
