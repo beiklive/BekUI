@@ -4,5 +4,7 @@
   "itemAppearance": "base/tab_cell.sidebar",
   "itemBinder": "pokedexCell",
   "columns": 1,
-  "count": "infinite"
+  "count": "infinite",
+  "grow": 1,
+  "width": "100%"
 }
