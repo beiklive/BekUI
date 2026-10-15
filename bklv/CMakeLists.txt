@@ -368,6 +368,7 @@ set(BKLV_CORE_SOURCES
     views/json_cell.cpp
     views/recycler.cpp
     views/data_source.cpp
+    views/item_binder.cpp
     views/debug_layer.cpp
     views/image.cpp
     views/padding.cpp

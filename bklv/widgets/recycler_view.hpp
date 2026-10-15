@@ -35,13 +35,17 @@ class RecyclerItemCell : public RecyclerCell
     void setIndex(size_t value) override;
     void prepareForReuse() override;
 
-    // 数据绑定挂点（② 的接缝）：JSON 建出来的 item 由 C++ 在这里套数据
+    // 数据绑定挂点：JSON 只写**名字**，实现由 C++ 注册（views/item_binder）
+    void setItemBinderName(const std::string& name);
     void setBinder(std::function<void(View&, size_t)> binder) { this->binder = std::move(binder); }
 
     View* getContent() const { return (View*)this->content; }
 
   private:
+    void ensureContent(const std::string& appearanceFallback);
+
     AppearanceView* content = nullptr;
+    View* templateContent = nullptr;
     std::string appearanceName;
     std::string viewTemplateName;
     std::function<void(View&, size_t)> binder;
@@ -63,11 +67,13 @@ class RecyclerView : public RecyclerFrame
     void setSlotLoading(const std::string& name);    // "slotLoading": 具名槽位（视图模板）
     void setSlotEmpty(const std::string& name);      // "slotEmpty"
     void setOnEndName(const std::string& name);      // "onEnd": 只存名字（行为在 ② 接）
+    void setItemBinderName(const std::string& name); // "itemBinder": 只写名字
 
     int getColumns() const { return this->columns; }
     float getMinItemWidth() const { return this->minItemWidth; }
     const std::string& getDataSourceName() const { return this->dataSourceName; }
     const std::string& getOnEndName() const { return this->onEndName; }
+    const std::string& getItemBinderName() const { return this->itemBinderName; }
 
     // 建 item cell（registerCell 的工厂）；由属性表在设置模板后自动调用一次
     void rebuildItemCells();
@@ -79,6 +85,7 @@ class RecyclerView : public RecyclerFrame
     std::string slotLoading;
     std::string slotEmpty;
     std::string onEndName;
+    std::string itemBinderName;
     int columns = 1;
     float minItemWidth = 0.0f;
 };

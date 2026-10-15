@@ -3,6 +3,7 @@
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/views/data_source.hpp"
+#include "bklv/views/item_binder.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
 namespace bklv
@@ -13,9 +14,22 @@ namespace bklv
 RecyclerItemCell::RecyclerItemCell()
     : RecyclerCell(true)
 {
-    // 外观要靠 AppearanceView 画（RecyclerCell 是 Box 派生），所以内部持有一个
-    this->content = new AppearanceView("base/rectangle.card", false);
+    // 内容**惰性创建**：模板由 setAppearanceName / setViewTemplateName 决定
+    // （都没有时用默认外观兜底）。外观要靠 AppearanceView 画，而 RecyclerCell 是 Box 派生，
+    // 所以内部持有一个 AppearanceView。
+}
+
+void RecyclerItemCell::ensureContent(const std::string& appearanceFallback)
+{
+    if (this->content != nullptr)
+        return;
+    this->content = new AppearanceView(appearanceFallback, false);
     this->addView((View*)this->content);
+}
+
+void RecyclerItemCell::setItemBinderName(const std::string& name)
+{
+    this->binder = binding::findItemBinder(name); // 没注册过会警告并给空 function
 }
 
 RecyclerItemCell::~RecyclerItemCell() = default;
@@ -23,21 +37,43 @@ RecyclerItemCell::~RecyclerItemCell() = default;
 void RecyclerItemCell::setAppearanceName(const std::string& name)
 {
     this->appearanceName = name;
-    if (this->content != nullptr)
+    this->ensureContent(name.empty() ? "base/rectangle.card" : name);
+    if (this->content != nullptr && !name.empty())
         this->content->setAppearanceName(name);
 }
 
 void RecyclerItemCell::setViewTemplateName(const std::string& name)
 {
-    // v1：记下来（模板实例化接在 ② 的绑定挂点里，和 bindItem 一起做）
     this->viewTemplateName = name;
+    if (name.empty() || this->content != nullptr)
+        return;
+
+    // 视图模板：复用现成机制（可缓存、与语言无关），名字用主题里的视图名（不带 view/ 前缀）
+    std::shared_ptr<const ViewTemplate> tmpl = loadViewTemplateFromTheme(name);
+    if (tmpl == nullptr)
+    {
+        BKLV_LOG_WARNING("itemTemplate \"%s\" 找不到视图模板，回退到默认外观", name.c_str());
+        this->ensureContent("base/rectangle.card");
+        return;
+    }
+    View* view = tmpl->instantiate();
+    if (view == nullptr)
+    {
+        BKLV_LOG_WARNING("itemTemplate \"%s\" 实例化失败，回退到默认外观", name.c_str());
+        this->ensureContent("base/rectangle.card");
+        return;
+    }
+    this->addView(view);
+    this->templateContent = view;
 }
 
 void RecyclerItemCell::setIndex(size_t value)
 {
     RecyclerCell::setIndex(value);
-    if (this->binder && this->content != nullptr)
-        this->binder(*(View*)this->content, value);
+    this->ensureContent("base/rectangle.card"); // 没设模板时的兜底
+    View* target = this->content != nullptr ? (View*)this->content : this->templateContent;
+    if (this->binder && target != nullptr)
+        this->binder(*target, value);
 }
 
 void RecyclerItemCell::prepareForReuse() { }
@@ -88,16 +124,25 @@ void RecyclerView::setSlotLoading(const std::string& name) { this->slotLoading =
 void RecyclerView::setSlotEmpty(const std::string& name) { this->slotEmpty = name; }
 void RecyclerView::setOnEndName(const std::string& name) { this->onEndName = name; }
 
+void RecyclerView::setItemBinderName(const std::string& name)
+{
+    this->itemBinderName = name;
+    this->rebuildItemCells();
+}
+
 void RecyclerView::rebuildItemCells()
 {
     const std::string appearance = this->itemAppearance;
     const std::string viewTemplate = this->itemTemplate;
-    this->registerCell(RecyclerDataSource::DEFAULT_CELL_ID, [appearance, viewTemplate] {
+    const std::string binderName = this->itemBinderName;
+    this->registerCell(RecyclerDataSource::DEFAULT_CELL_ID, [appearance, viewTemplate, binderName] {
         RecyclerItemCell* cell = new RecyclerItemCell();
         if (!appearance.empty())
             cell->setAppearanceName(appearance);
         if (!viewTemplate.empty())
             cell->setViewTemplateName(viewTemplate);
+        if (!binderName.empty())
+            cell->setItemBinderName(binderName);
         return cell;
     });
 }
@@ -129,6 +174,9 @@ const AttributeTable& RecyclerView::attributes() const
          }, nullptr },
         { "onEnd", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setOnEndName(r.text);
+         }, nullptr },
+        { "itemBinder", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             static_cast<RecyclerView*>(v)->setItemBinderName(r.text);
          }, nullptr },
         { "count", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              // v1：只认 "infinite"（表示"总数由数据源决定、可能无限"），别的值警告
