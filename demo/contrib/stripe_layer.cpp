@@ -32,15 +32,18 @@ bool parseStripe(const nlohmann::json& node, const bklv::ThemeData& theme,
                                    where + ".fill"))
         return false;
 
-    float width = 2.0f;
-    if (node.contains("width") && !bklv::compile::resolveNumber(node["width"], theme, width, error,
-                                      where + ".width"))
+    // 注意：**不要用 width/height/inset/align/valign/offset/opacity 这些引擎保留键**当自己的参数
+    // —— 那些是"层几何"，引擎会先拿去算矩形（踩过：用 width 表示线宽，整层被做成了 3px 宽的条，
+    // 看着像"只剩左边缘几个毛刺"）。所以自己的参数一律起独立名字。
+    float lineWidth = 2.0f;
+    if (node.contains("lineWidth") && !bklv::compile::resolveNumber(node["lineWidth"], theme,
+                                          lineWidth, error, where + ".lineWidth"))
         return false;
 
     // 这一层暂时借用库里现成的两个通用字段：feather 存角度、spread 存线宽。
     // （等 `AppearanceLayer` 给扩展 op 提供自己的参数槽后换掉 —— 那样才彻底不借用。）
     out.feather = angle;
-    out.spread  = width;
+    out.spread  = lineWidth;
     return true;
 }
 
@@ -92,8 +95,8 @@ void registerStripeLayer()
     stripe.label    = "斜条纹";
     stripe.idPrefix = "stripe";
     stripe.order    = bklv::compile::LayerOrder::DECORATION;
-    stripe.help     = "斜条纹：angle 角度 / width 线宽 / gap 间距（第三方扩展层样例）";
-    stripe.keys     = { "angle", "width", "gap", "fill", "radius" };
+    stripe.help     = "斜条纹：angle 角度 / lineWidth 线宽 / gap 间距（第三方扩展层样例）";
+    stripe.keys     = { "angle", "lineWidth", "gap", "fill", "radius" };
     stripe.parse    = parseStripe;
     stripe.draw     = drawStripe;
 

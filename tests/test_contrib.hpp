@@ -23,7 +23,7 @@ inline void registerStripe()
     stripe.idPrefix = "stripe";
     stripe.order    = bklv::compile::LayerOrder::DECORATION;
     stripe.help     = "测试用第三方扩展层（真实样例见 demo/contrib/stripe_layer.cpp）";
-    stripe.keys     = { "angle", "width", "gap", "fill", "radius" };
+    stripe.keys     = { "angle", "lineWidth", "gap", "fill", "radius" };
     stripe.parse    = [](const nlohmann::json& node, const bklv::ThemeData& theme,
                           bklv::AppearanceLayer& out, std::string& error, const std::string& where) {
         if (node.contains("fill"))
