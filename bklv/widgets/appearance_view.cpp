@@ -580,6 +580,17 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
             case AppearanceLayer::Op::SHADOW:
             {
+                // ③：走注册表钩子（原地实现留作兜底）
+                if (const compile::LayerType* shadowType = compile::findLayer("shadow");
+                    shadowType != nullptr && shadowType->draw)
+                {
+                    shadowType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
+                        drawList,
+                        { rect[0], rect[1], rect[2], rect[3],
+                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                        this });
+                    break;
+                }
                 if (alphaScale <= 0.001f || (fill >> 24) == 0)
                     break;
 

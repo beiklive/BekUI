@@ -758,3 +758,24 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 **顺序**：RECT（已备好配方）-> SHADOW -> GLASS/TEXT/IMAGE -> CUSTOM -> 删 switch。
 每刀都在 `appearance_view.cpp` 里**保留原地实现做兜底**（有钩子走钩子、没有走老代码），
 行为零风险；6 种都搬完后再删兜底与 switch，那时 ③ 达成。
+
+### 12.21 ③ 第二、三刀落地：RECT ✓ / SHADOW ✓（补齐两条变换规则）
+
+- **RECT** 已搬进 `widgets/layer_draw_rect.cpp`，并**截图确认**画面无变化（JSON 页的
+  `bg · 填色` 深色圆角卡片、`bg · 描边` 行都正常）
+- **SHADOW** 已搬进 `widgets/layer_draw_shadow.cpp`
+- 两次都走「写入 -> 构建 -> 失败自动回滚」：RECT 失败 3 次、SHADOW 失败 2 次，**每次都树零改动**
+
+搬 case 时**除 §12.20 的表**之外，还必须做两条替换（都是编译器当场指出来的）：
+
+| 原文 | 钩子里 |
+|---|---|
+| `this->appearance`（**私有成员**，钩子访问不到） | `ctx.instance` |
+| `this->xxx()`（视图的方法，如 getHighlightShakeOffset） | `view->xxx()`（`view = static_cast<AppearanceView*>(ctx.view)`） |
+| `break;`（case 内多段提前退出） | `return;` |
+| `case ...:` / `{` / 收尾 `break;` / `}` 包装 | 全部剥掉 |
+
+**顺序很重要**：先替 `this->appearance`、再替 `this->`，否则 `this->appearance` 会被后一条规则
+改成 `view->appearance`（私有成员，编译报错）。
+
+剩余：GLASS / TEXT / IMAGE（一刀）-> CUSTOM -> 删 switch 与兜底。
