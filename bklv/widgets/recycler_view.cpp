@@ -1,5 +1,8 @@
 #include "bklv/widgets/recycler_view.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/views/data_source.hpp"
@@ -90,6 +93,20 @@ void RecyclerItemCell::setSectionIndex(size_t sectionValue, size_t indexValue)
 }
 
 void RecyclerItemCell::prepareForReuse() { }
+
+
+namespace
+{
+
+// JSON 里的数值 -> 配置字段：先夹到 >= 0（负数/NaN 都不落到 size_t 上）
+size_t clampToSize(const ResolvedValue& value)
+{
+    if (!std::isfinite(value.number) || value.number <= 0.0f)
+        return 0;
+    return (size_t)value.number;
+}
+
+} // namespace
 
 // ---------------- RecyclerHeaderCell ----------------
 
@@ -317,11 +334,40 @@ const AttributeTable& RecyclerView::attributes() const
         { "sectionHeaderAppearance", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setSectionHeaderAppearance(r.text);
          }, nullptr },
+        { "pageSize", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
+             RecyclerLoadConfig config = frame->getLoadConfig();
+             config.pageSize = clampToSize(r);
+             frame->setLoadConfig(config);
+         }, nullptr },
+        { "loadThreshold", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
+             RecyclerLoadConfig config = frame->getLoadConfig();
+             config.loadThreshold = clampToSize(r);
+             frame->setLoadConfig(config);
+         }, nullptr },
+        { "maxPoolPerIdentifier", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
+             RecyclerLoadConfig config = frame->getLoadConfig();
+             config.maxPoolPerIdentifier = clampToSize(r);
+             frame->setLoadConfig(config);
+         }, nullptr },
+        { "estimatedItemHeight", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
+             RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
+             RecyclerLoadConfig config = frame->getLoadConfig();
+             config.estimatedItemHeight = std::isfinite(r.number) && r.number > 0.0f ? r.number : 0.0f;
+             frame->setLoadConfig(config);
+         }, nullptr },
         { "itemHeight", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerFrame*>(v)->setItemHeight(r.number);
          }, nullptr },
         { "preFetchLine", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
-             static_cast<RecyclerFrame*>(v)->setPreFetchLine((size_t)r.number);
+             RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
+             const size_t lines = clampToSize(r);
+             frame->setPreFetchLine(lines);
+             RecyclerLoadConfig config = frame->getLoadConfig(); // 别两处各存一份
+             config.prefetchLines = lines;
+             frame->setLoadConfig(config);
          }, nullptr },
         { "showScrollingIndicator", AttributeKind::BOOL, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerFrame*>(v)->setShowScrollingIndicator(r.boolean);

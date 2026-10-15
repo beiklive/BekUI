@@ -87,6 +87,27 @@ int main()
         check(list.getDataSourceName() == "不存在的数据源", "名字仍记下来（便于排查）");
     }
 
+    std::printf("\n== 4. 加载/回收旋钮也能从 JSON 设（且负值被夹到 0）==\n");
+    {
+        RecyclerView list;
+        check(applyViewAttribute(&list, "pageSize", "20"), "pageSize 属性被认");
+        check(applyViewAttribute(&list, "loadThreshold", "5"), "loadThreshold 属性被认");
+        check(applyViewAttribute(&list, "maxPoolPerIdentifier", "8"), "maxPoolPerIdentifier 属性被认");
+        check(applyViewAttribute(&list, "estimatedItemHeight", "64"), "estimatedItemHeight 属性被认");
+
+        const RecyclerLoadConfig& config = list.getLoadConfig();
+        checkEqualInt((int)config.pageSize, 20, "pageSize 落到配置");
+        checkEqualInt((int)config.loadThreshold, 5, "loadThreshold 落到配置");
+        checkEqualInt((int)config.maxPoolPerIdentifier, 8, "池上限落到配置");
+        checkFloat(config.estimatedItemHeight, 64.0f, "估算高度落到配置");
+
+        // 边界：负值/0 都不该把 size_t 写坏
+        check(applyViewAttribute(&list, "pageSize", "-5"), "负值也能被处理（不崩）");
+        checkEqualInt((int)list.getLoadConfig().pageSize, 0, "负值被夹到 0");
+        check(applyViewAttribute(&list, "estimatedItemHeight", "-1"), "负的估算高度不崩");
+        checkFloat(list.getLoadConfig().estimatedItemHeight, 0.0f, "负的估算高度夹到 0（回落到平均值）");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }
