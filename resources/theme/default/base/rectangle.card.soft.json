@@ -21,10 +21,11 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.surface.card",
+      "fill": "#00000000",
       "stroke": "@theme/color.border.subtle",
       "strokeWidth": 1,
       "radius": "@theme/metric.radius.lg"
     }
-  ]
+  ],
+  "import": "base/glass_surface"
 }

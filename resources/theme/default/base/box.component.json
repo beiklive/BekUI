@@ -1,9 +1,16 @@
 {
-  "import": "base/box",
+  "import": [
+    "base/box",
+    "base/glass_surface"
+  ],
   "box": {
     "measureContent": "sum",
-    "padding": ["@theme/metric.component.paddingY", "@theme/metric.component.paddingX",
-                "@theme/metric.component.paddingY", "@theme/metric.component.paddingX"]
+    "padding": [
+      "@theme/metric.component.paddingY",
+      "@theme/metric.component.paddingX",
+      "@theme/metric.component.paddingY",
+      "@theme/metric.component.paddingX"
+    ]
   },
   "layers": [
     {
@@ -13,13 +20,16 @@
       "feather": "@theme/metric.component.shadowFeather",
       "spread": "@theme/metric.component.shadowSpread",
       "radius": "@theme/metric.component.radius",
-      "offset": ["@theme/metric.component.shadowOffsetX", "@theme/metric.component.shadowOffsetY"],
+      "offset": [
+        "@theme/metric.component.shadowOffsetX",
+        "@theme/metric.component.shadowOffsetY"
+      ],
       "cutout": true
     },
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.common.transparent",
+      "fill": "#00000000",
       "stroke": "@theme/color.common.white",
       "strokeWidth": "@theme/metric.component.borderWidth",
       "radius": "@theme/metric.component.radius"

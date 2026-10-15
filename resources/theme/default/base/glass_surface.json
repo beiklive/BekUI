@@ -1,0 +1,9 @@
+{
+  "layers": [
+    {
+      "id": "glass",
+      "op": "glass",
+      "fill": "#0E1626C4"
+    }
+  ]
+}

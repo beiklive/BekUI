@@ -4,6 +4,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/shadow.hpp"
+#include "bklv/glass/glass_service.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
@@ -127,6 +128,34 @@ void Sidebar::addSeparator()
 void Sidebar::draw(ImDrawList* drawList, float x, float y, float width, float height,
     FrameContext*)
 {
+    // 面板底 = 玻璃（和内容卡片同一个观感；tint 与降级底都用主题里的 sidebar.background）
+    if (drawList != nullptr && width > 0.0f && height > 0.0f)
+    {
+        const ImU32 fill   = getTheme().color("color.sidebar.background", 0x1F2227E0);
+        const float radius = this->getCornerRadius();
+
+        glass::GlassService& service = glass::getGlassService();
+        bool submitted               = false;
+        if (service.isEnabled() && service.isSupported())
+        {
+            const ImVec2 scale = ImGui::GetIO().DisplayFramebufferScale;
+            const float density = scale.x > 0.0f ? scale.x : 1.0f;
+
+            glass::GlassLayerOptions options;
+            options.hasTint = true;
+            options.tint    = ImGui::ColorConvertU32ToFloat4(fill);
+            submitted       = service.submitBackdrop(drawList,
+                ImVec4(x * density, y * density, (x + width) * density, (y + height) * density),
+                glass::CornerRadii::all(radius), glass::GlassShapeKind::ROUNDED_RECT, density,
+                &options);
+        }
+        if (!submitted && (fill >> 24) != 0)
+        {
+            // 玻璃不可用（后端没起来 / 关掉了）：退回普通半透明底，面板照样看得清
+            drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height), fill, radius);
+        }
+    }
+
     const float feather = getTheme().number("metric.sidebar.shadowFeather", 0.0f);
     if (drawList == nullptr || feather <= 0.0f || width <= 0.0f || height <= 0.0f)
         return;

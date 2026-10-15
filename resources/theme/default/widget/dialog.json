@@ -81,5 +81,6 @@
         "duration": 140
       }
     }
-  }
+  },
+  "import": "base/glass_surface"
 }

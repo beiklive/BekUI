@@ -78,7 +78,8 @@
     "base/glass_plate.json",
     "base/rectangle.card.gradient.json",
     "view/json_include_main.json",
-    "view/json_include_part.json"
+    "view/json_include_part.json",
+    "base/glass_surface.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -56,8 +56,8 @@
     "paddingSides": 30,
     "contentTop": 12,
     "separatorThickness": 1,
-    "contentPaddingSides": 60,
-    "contentPaddingTopBottom": 42
+    "contentPaddingSides": 16,
+    "contentPaddingTopBottom": 16
   },
   "sidebar": {
     "width": 300,
@@ -73,7 +73,7 @@
     "accentMarginX": 8,
     "separatorHeight": 18,
     "radius": 14,
-    "margin": 8,
+    "margin": 12,
     "iconSize": 22,
     "iconInset": 22,
     "titleInset": 54,

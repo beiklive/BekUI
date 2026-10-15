@@ -246,9 +246,19 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
 // 不用关心书写位置（否则玻璃会盖住内容 —— 这是最容易犯的错）。
 void hoistGlassLayers(std::vector<AppearanceLayer>& layers)
 {
+    // 顺序固定成：阴影（0）-> 玻璃（1）-> 其余（2）。
+    // 玻璃不能真的排到"第一个"：阴影层是半透明的一整块（不是 cutout 时连面板底下也铺），
+    // 排到玻璃后面会把玻璃压暗。
+    auto rank = [](AppearanceLayer::Op op) {
+        if (op == AppearanceLayer::Op::SHADOW)
+            return 0;
+        if (op == AppearanceLayer::Op::GLASS)
+            return 1;
+        return 2;
+    };
     std::stable_sort(layers.begin(), layers.end(),
-        [](const AppearanceLayer& a, const AppearanceLayer& b) {
-            return a.op == AppearanceLayer::Op::GLASS && b.op != AppearanceLayer::Op::GLASS;
+        [&rank](const AppearanceLayer& a, const AppearanceLayer& b) {
+            return rank(a.op) < rank(b.op);
         });
 }
 

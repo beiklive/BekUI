@@ -25,5 +25,6 @@
       "height": 1,
       "valign": "bottom"
     }
-  ]
+  ],
+  "import": "base/glass_surface"
 }

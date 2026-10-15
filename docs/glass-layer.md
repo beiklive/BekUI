@@ -89,6 +89,34 @@ class GlassPanelView : public AppearanceView
 3. **关掉玻璃时**玻璃层什么都不画（不退回自算的颜色）—— 想让面板在这种时候仍可读，
    在视图的 `draw()` 里补一块回退底色（`demo/app/pages/page_glass.cpp` 就是这么做的）。
 
+## 2b. 容器统一玻璃面（`base/glass_surface`）
+
+**所有"容器 box"（卡片、面板、对话框、下拉弹窗、状态栏、页头/底栏、侧栏）共用一份玻璃面**，
+观感只在一个文件里调：
+
+```json
+// resources/theme/default/base/glass_surface.json
+{ "layers": [ { "id": "glass", "op": "glass", "fill": "#0E1626C4" } ] }
+```
+
+容器外观只要 `"import": "base/glass_surface"` + 把自己的底改透明即可
+（玻璃画在**阴影之后、内容之前**，所以自定义的底会盖住玻璃）：
+
+```json
+{ "import": "base/glass_surface",
+  "box": { "cornerRadius": "@theme/metric.component.radius" },
+  "layers": [ { "id": "bg", "fill": "#00000000" } ] }
+```
+
+- `fill` 就是**染色**，同时是**玻璃不可用时的降级底**（后端没起来 / `setGlassEnabled(false)`
+  时控件不会消失 —— 见 §5 的降级逻辑）
+- 想整体换观感：改这一个文件的 `fill`；想整体关掉：去掉各容器的 `import`（或关 Shell 开关）
+- 侧栏面板不是 `AppearanceView`（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里
+  用同一个 `color.sidebar.background` 当染色 —— 行为与上面一致
+
+**层序（解析期固定）**：`shadow`(0) → `glass`(1) → 其余(2)。玻璃**不能**排到真正的第一个：
+阴影层是半透明的一整块，排到玻璃后面会把玻璃压暗（踩过）。
+
 ## 3. 后端矩阵
 
 | 后端 | 实现 | 取舍 |

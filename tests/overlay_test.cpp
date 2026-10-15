@@ -207,17 +207,22 @@ int main()
             DropdownPopup* popup = dropdown->getPopupForTest();
             const Appearance& panelAppearance = popup->getPanel()->getActiveAppearance();
 
-            // 面板底是 layers 里那个 rect（本项目的写法：底色走层而不是 box.backgroundColor）
+            // 面板必须是"有面的"：底来自 layers 里的 bg 层，或者来自统一的玻璃面
+            //（容器统一 import base/glass_surface 之后，bg 的 fill 是透明的、可见的底是玻璃染色）
             bool hasPanelFill = false;
             bool hasShadow    = false;
             for (const AppearanceLayer& layer : panelAppearance.getLayers())
             {
-                if (layer.op == AppearanceLayer::Op::RECT && layer.id == "bg")
-                    hasPanelFill = layer.fill != 0;
+                // 注意是"或"不是"赋值"：bg 层现在是透明的（fill=0），
+                // 用赋值会把前面玻璃层判出来的 true 又冲掉
+                if (layer.op == AppearanceLayer::Op::RECT && layer.id == "bg" && layer.fill != 0)
+                    hasPanelFill = true;
+                if (layer.op == AppearanceLayer::Op::GLASS && layer.fill != 0)
+                    hasPanelFill = true;
                 if (layer.op == AppearanceLayer::Op::SHADOW)
                     hasShadow = true;
             }
-            check(hasPanelFill, "弹窗面板有底色（主题里的 dropdown_popup 真被用上了）");
+            check(hasPanelFill, "弹窗面板有可见的底（bg 层或玻璃染色，说明主题里的 dropdown_popup 真被用上了）");
             check(hasShadow, "弹窗面板有投影层");
             check(!popup->isFocusable(), "弹层不可聚焦（不吃焦点只吃空白点击）");
             check(!popup->getPanel()->isFocusable(), "面板也不可聚焦");

@@ -20,10 +20,11 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.surface.raised",
+      "fill": "#00000000",
       "stroke": "@theme/color.common.divider",
       "strokeWidth": 1,
       "radius": "@theme/metric.radius.md"
     }
-  ]
+  ],
+  "import": "base/glass_surface"
 }

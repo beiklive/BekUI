@@ -26,7 +26,7 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "@theme/color.notification.background",
+      "fill": "#00000000",
       "radius": "@theme/metric.notification.radius"
     },
     {
@@ -75,5 +75,6 @@
         "duration": 150
       }
     }
-  }
+  },
+  "import": "base/glass_surface"
 }

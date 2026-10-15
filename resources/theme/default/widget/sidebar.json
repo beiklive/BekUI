@@ -14,7 +14,7 @@
     "cornerRadius": "@theme/metric.sidebar.radius",
     "borderThickness": 1,
     "borderColor": "@theme/color.sidebar.border",
-    "backgroundColor": "@theme/color.sidebar.background"
+    "backgroundColor": "#00000000"
   },
   "layers": []
 }

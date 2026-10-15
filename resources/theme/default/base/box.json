@@ -3,5 +3,6 @@
     "axis": "column",
     "height": "auto"
   },
-  "layers": []
+  "layers": [],
+  "import": "base/glass_surface"
 }

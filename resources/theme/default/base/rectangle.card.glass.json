@@ -22,12 +22,13 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "#1f2227b3",
+      "fill": "#00000000",
       "stroke": "@theme/color.border.subtle",
       "strokeWidth": 1,
       "radius": "@theme/metric.radius.lg",
       "borderThickness": 1,
       "borderColor": "@theme/color.common.white"
     }
-  ]
+  ],
+  "import": "base/glass_surface"
 }
