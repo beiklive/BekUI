@@ -111,7 +111,9 @@ void HScrollingFrame::update()
         }
     }
 
-    if (this->scrollingEnabled)
+    // io 可能是 nullptr（没有 ImGui 上下文：无窗口测试 / 宿主程序），这一条必须和纵向那份
+    // scrolling_frame.cpp 的写法一致 —— 漏掉就是空指针解引用（复制粘贴时丢过一次）。
+    if (io != nullptr && this->scrollingEnabled)
     {
         const bool mouseDown = io->MouseDown[0];
 
