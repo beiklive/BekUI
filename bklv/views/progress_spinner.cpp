@@ -10,8 +10,10 @@ namespace bklv
 
 ProgressSpinner::ProgressSpinner()
 {
-    this->setWidth(32.0f);
-    this->setHeight(32.0f);
+    // 尺寸从主题来（按 720p 写、取值时乘 uiScale）：写死 32 的话既不随画布缩放，
+    // 也换肤改不动（"尺寸一律从主题来"这条约定）。
+    const float size = getTheme().number("metric.progressSpinner.size", 32.0f);
+    this->setDimensions(size, size);
 }
 
 void ProgressSpinner::update()

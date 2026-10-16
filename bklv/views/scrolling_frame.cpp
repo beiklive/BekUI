@@ -6,6 +6,7 @@
 
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/core/theme_data.hpp"
 
 namespace bklv
 {
@@ -31,8 +32,10 @@ ScrollingFrame::ScrollingFrame()
     // 基准尺寸设 0：滚动器只按"剩余空间"定高，不拿内容高度当基准。
     // 否则内容一大，Yoga 会按比例压缩同一列里的其它节点（按钮行被压矮就是这么来的）。
     this->setFlexBasis(0.0f);
-    // 内边距设置
-    this->setPadding(5.0f, 15.0f, 5.0f, 15.0f);
+    // 内边距（给滚动条留位）：从主题来，写死的话不随 uiScale 缩放、换肤也改不动
+    const float paddingV = getTheme().number("metric.scroll.paddingV", 5.0f);
+    const float paddingH = getTheme().number("metric.scroll.paddingH", 15.0f);
+    this->setPadding(paddingV, paddingH, paddingV, paddingH);
 }
 
 ScrollingFrame::~ScrollingFrame()

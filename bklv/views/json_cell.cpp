@@ -46,10 +46,17 @@ void JSONRecyclerCell::applyFocusLook(bool focused)
     if (this->content == nullptr)
         return;
 
-    // 走属性系统设底色，和 JSON 里写 backgroundColor 是同一条路
+    // 走属性系统设底色，和 JSON 里写 backgroundColor 是同一条路。
+    //
+    // 颜色取自主题，**别写字面量**（这里原来是 "#30568c" / "#262a32" 两个写死的色值，
+    // 全库唯一一处 —— 换肤时这两个颜色永远不跟着变）。聚焦底对齐 Cell 家族的
+    // `color.highlight.background`，常态底用卡片面色。
+    // 写法必须是 `@theme/color.a.b`（少了前缀会被容错成点分并警告，key 不存在则报错）。
+    const std::string color =
+        focused ? "@theme/color.highlight.background" : "@theme/color.surface.card";
     std::string error;
-    this->content->applyAttribute("backgroundColor",
-        Value(focused ? "#30568c" : "#262a32"), error);
+    if (this->content->applyAttribute("backgroundColor", Value(color), error) == ApplyResult::FAILED)
+        BKLV_LOG_WARNING("列表项底色设置失败（主题里缺这个颜色？）：%s", error.c_str());
 }
 
 void JSONRecyclerCell::setIndex(size_t value)

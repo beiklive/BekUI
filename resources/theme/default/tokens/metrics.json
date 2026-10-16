@@ -72,6 +72,7 @@
     "accentMarginY": 9,
     "accentMarginX": 8,
     "separatorHeight": 18,
+    "separatorThickness": 1,
     "radius": 14,
     "margin": 12,
     "iconSize": 22,
@@ -102,7 +103,8 @@
   },
   "editTextDialog": {
     "width": 560,
-    "fieldTop": 16
+    "fieldTop": 16,
+    "caretWidth": 2
   },
   "button": {
     "textSize": 18,
@@ -134,6 +136,7 @@
   "status": {
     "fontSize": 18.0,
     "itemSpacing": 10,
+    "itemMarginTop": 8,
     "batteryLowThreshold": 0.2
   },
   "cell": {
@@ -186,7 +189,12 @@
     "liveWidth": 320
   },
   "scroll": {
-    "demoHeight": 220
+    "demoHeight": 220,
+    "paddingV": 5,
+    "paddingH": 15
+  },
+  "progressSpinner": {
+    "size": 32
   },
   "pokedex": {
     "cellHeight": 72,

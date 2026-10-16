@@ -296,8 +296,11 @@ class TextField : public AppearanceView
         const float size     = fontSize > 0.0f ? fontSize : 15.0f;
         const float offsetX  = font->CalcTextSizeA(size, FLT_MAX, 0.0f, before.c_str()).x;
         const ImU32 color    = appearance.getColor(layerIndex, AppearanceProp::FILL);
+        // 光标签宽从主题来（写死的话不随 uiScale 缩放）
+        const float caretWidth = getTheme().number("metric.editTextDialog.caretWidth", 2.0f);
 
-        drawList->AddRectFilled(ImVec2(x + offsetX, y), ImVec2(x + offsetX + 2.0f, y + height), color);
+        drawList->AddRectFilled(ImVec2(x + offsetX, y),
+            ImVec2(x + offsetX + caretWidth, y + height), color);
     }
 };
 

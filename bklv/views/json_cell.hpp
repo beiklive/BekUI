@@ -31,6 +31,8 @@ namespace bklv
 class JSONRecyclerCell : public RecyclerCell
 {
   public:
+    std::string getClassString() const override { return "bklv::JSONRecyclerCell"; }
+
     // 给字段名与序号，返回该格子该字段要显示的值。
     using Binder = std::function<std::string(const std::string& field, size_t index)>;
 

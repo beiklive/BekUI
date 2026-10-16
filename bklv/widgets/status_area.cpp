@@ -240,16 +240,19 @@ StatusArea::StatusArea()
     this->battery = new BatteryIcon();
     this->addView(this->battery);
 
+    // 文字底边与图标对齐用的微调量：从主题来（写死的话不随 uiScale 缩放）
+    const float labelTop = getTheme().number("metric.status.itemMarginTop", 8.0f);
+
     this->batteryLabel = new Label();
     this->batteryLabel->setSingleLine(true);
-    this->batteryLabel->setMarginTop(8.f);
+    this->batteryLabel->setMarginTop(labelTop);
     this->addView(this->batteryLabel);
 
     this->wireless = new WirelessIcon();
     this->addView(this->wireless);
 
     this->clockLabel = new Label();
-    this->clockLabel->setMarginTop(8.f);
+    this->clockLabel->setMarginTop(labelTop);
     this->clockLabel->setSingleLine(true);
     this->addView(this->clockLabel);
 

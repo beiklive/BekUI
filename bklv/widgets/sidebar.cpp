@@ -4,7 +4,7 @@
 
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/shadow.hpp"
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
@@ -115,7 +115,7 @@ void Sidebar::addSeparator()
     if ((color >> 24) != 0)
     {
         Box* line = new Box(Axis::ROW);
-        line->setHeight(1.0f);
+        line->setHeight(getTheme().number("metric.sidebar.separatorThickness", 1.0f));
         line->setWidthPercentage(60.0f);
         line->setBackgroundColor(color);
         spacer->addView(line);

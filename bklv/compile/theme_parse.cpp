@@ -430,8 +430,14 @@ float ThemeData::number(const std::string& key, float fallback) const
     if (fallbackIt != this->defaultNumbers.end())
         return isScalableMetricKey(key) ? fallbackIt->second * getUiScale() : fallbackIt->second;
 
+    // key 两处都没有：退化成调用方给的兜底值。
+    //
+    // 兜底值也要按同一套缩放规则处理 —— 调用方写的是"按 720p 想的那个数"
+    // （`metric.x` 一律如此），而这条路径原来直接 `return fallback`、**不乘缩放**，
+    // 于是"主题里没这个 key"和"主题里有"在非 720p 画布上表现不一致。
+    // 非像素量的 key（metric.anim.* / font.lineHeight / 不带 metric. 前缀的）不缩放。
     warnMissingKeyOnce(key, "数值");
-    return fallback;
+    return isScalableMetricKey(key) ? fallback * getUiScale() : fallback;
 }
 
 std::vector<std::string> ThemeData::getColorKeys() const
