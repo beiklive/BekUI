@@ -46,7 +46,7 @@ class Button : public AppearanceView
     std::function<void()> onClick;
     bool switched = false;
     bool enabled          = true;
-    float pressedUntil    = 0.0f; // 按下反馈的结束时刻（ImGui 时间）
+    double pressedUntil   = 0.0; // 按下反馈的结束时刻（秒；时间基是 getCPUTimeUsec()，不依赖 ImGui 上下文）
 };
 
 } // namespace bklv

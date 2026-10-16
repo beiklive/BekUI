@@ -64,9 +64,13 @@ void Button::trigger()
 
     // 按下反馈：打开 pressed 状态，过一小段时间由 update() 关掉。
     // 外观 JSON 里可以给 pressed 定义颜色/位移等动效。
+    //
+    // 时间基统一用 getCPUTimeUsec()（steady_clock，自进程启动）：
+    // 以前"设置"走 ImGui::GetTime()、"清除"在没有上下文时走一个函数级 static 累加器，
+    // 两条时间基不同源（一个 0 起点、一个进程累计），无窗口下 pressed 会被立刻清掉；
+    // 而且那个 static 是所有 Button 实例共享的。
     this->setAppearanceState("pressed", true);
-    const double now = ImGui::GetCurrentContext() != nullptr ? ImGui::GetTime() : 0.0;
-    this->pressedUntil = now + (double)getTheme().number("metric.anim.fast", 90.0f) / 1000.0;
+    this->pressedUntil = getSecondsNow() + (double)getTheme().number("metric.anim.fast", 90.0f) / 1000.0;
 
     if (this->onClick)
         this->onClick();
@@ -76,11 +80,7 @@ void Button::update()
 {
     AppearanceView::update();
 
-    static double clock = 0.0; // 没有 ImGui 上下文时自己累计（测试用）
-    clock += getFrameDeltaSeconds();
-
-    const double now = ImGui::GetCurrentContext() != nullptr ? ImGui::GetTime() : clock;
-    if (this->isAppearanceStateActive("pressed") && now >= this->pressedUntil)
+    if (this->isAppearanceStateActive("pressed") && getSecondsNow() >= this->pressedUntil)
         this->setAppearanceState("pressed", false);
 }
 

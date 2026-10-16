@@ -20,6 +20,16 @@ float getFrameDeltaSeconds();
 // 返回自进程启动以来的微秒数，对应 borealis 的 getCPUTimeUsec()。
 uint64_t getCPUTimeUsec();
 
+// 自进程启动以来的秒数（double）。**不依赖 ImGui 上下文**，所以无窗口测试里也能用。
+//
+// 需要"过一个时间点"这类判断时用它，别用 ImGui::GetTime()：后者的时间基是 ImGui
+// 上下文创建时刻，和这里的进程启动时刻不同源，混用会出现"设了一个未来时刻、却立刻过期"
+// （Button 的按下反馈踩过：设置走 ImGui::GetTime()、清除走自累计时钟）。
+inline double getSecondsNow()
+{
+    return (double)getCPUTimeUsec() / 1000000.0;
+}
+
 // 缓动曲线。对齐 borealis 用的 tweeny::easing::enumerated（他们的 EasingFunction
 // 就是那个枚举），所以 In/Out/InOut 三挡在 9 种曲线上都齐。
 enum class EasingFunction
