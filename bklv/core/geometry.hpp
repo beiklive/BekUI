@@ -134,6 +134,9 @@ inline ImU32 rgbaf(float r, float g, float b, float a)
 }
 
 // 把颜色整体乘以一个透明度系数，用于 View 的 alpha 继承。
+//
+// **唯一实现**：以前各图层绘制文件里还各写了一份 `scaleAlpha` lambda（6 处逐字重复），
+// 而且那份是四舍五入、这份是截断 —— 同一个透明度能差 1/255。现在统一走这里，取更准的舍入。
 inline ImU32 colorWithAlpha(ImU32 color, float alpha)
 {
     if (alpha >= 1.0f)
@@ -142,7 +145,7 @@ inline ImU32 colorWithAlpha(ImU32 color, float alpha)
         return color & ~IM_COL32_A_MASK;
 
     unsigned a = (color >> IM_COL32_A_SHIFT) & 0xFF;
-    a          = static_cast<unsigned>(a * alpha);
+    a          = static_cast<unsigned>((float)a * alpha + 0.5f);
     return (color & ~IM_COL32_A_MASK) | (a << IM_COL32_A_SHIFT);
 }
 

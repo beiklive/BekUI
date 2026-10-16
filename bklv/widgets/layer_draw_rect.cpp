@@ -23,20 +23,13 @@ void drawRect(const compile::LayerDrawContext& ctx)
 
     const ImU32 fill        = ctx.instance.getColor(index, AppearanceProp::FILL);
     const ImU32 stroke      = ctx.instance.getColor(index, AppearanceProp::STROKE);
-    const ImU32 textColor   = ctx.instance.getColor(index, AppearanceProp::TEXT_COLOR);
     const float strokeWidth = ctx.instance.getNumber(index, AppearanceProp::STROKE_WIDTH);
     const float radius      = ctx.instance.getNumber(index, AppearanceProp::RADIUS);
     const float opacity     = ctx.instance.getNumber(index, AppearanceProp::OPACITY);
-    const float fontSize    = ctx.instance.getNumber(index, AppearanceProp::FONT_SIZE);
     const float rect[4]     = { ctx.rect.minX, ctx.rect.minY, ctx.rect.maxX, ctx.rect.maxY };
-    const float alphaScale  = std::max(0.0f, std::min(1.0f, opacity)) * view->getAlpha();
-    auto scaleAlpha         = [alphaScale](ImU32 color) {
-        const unsigned int a      = (color >> 24) & 0xFFu;
-        const unsigned int scaled = (unsigned int)std::round((float)a * alphaScale);
-        return (color & 0x00FFFFFFu) | ((scaled & 0xFFu) << 24);
-    };
-    (void)fill; (void)stroke; (void)textColor; (void)strokeWidth; (void)radius;
-    (void)fontSize; (void)scaleAlpha;
+    // 逐层透明度 = 层 opacity × 控件 alpha；着色统一走 core/geometry.hpp 的 colorWithAlpha
+    // （以前每个 layer_draw_*.cpp 里各写一个 scaleAlpha lambda，6 份逐字重复）
+    const float alphaScale = std::max(0.0f, std::min(1.0f, opacity)) * view->getAlpha();
 
     if (alphaScale <= 0.001f)
         return;
@@ -49,11 +42,11 @@ void drawRect(const compile::LayerDrawContext& ctx)
     else if ((fill >> 24) != 0)
     {
         drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
-            scaleAlpha(fill), radius);
+            colorWithAlpha(fill, alphaScale), radius);
     }
     if (strokeWidth > 0.0f && (stroke >> 24) != 0)
         drawList->AddRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
-            scaleAlpha(stroke), radius, 0, strokeWidth);
+            colorWithAlpha(stroke, alphaScale), radius, 0, strokeWidth);
 }
 
 void ensureLayerDrawsRegistered()

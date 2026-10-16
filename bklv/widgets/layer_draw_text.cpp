@@ -24,12 +24,8 @@ void drawText(const compile::LayerDrawContext& ctx)
     const float fontSize    = ctx.instance.getNumber(index, AppearanceProp::FONT_SIZE);
     const float opacity     = ctx.instance.getNumber(index, AppearanceProp::OPACITY);
     const float rect[4]     = { ctx.rect.minX, ctx.rect.minY, ctx.rect.maxX, ctx.rect.maxY };
-    const float alphaScale  = std::max(0.0f, std::min(1.0f, opacity)) * view->getAlpha();
-    auto scaleAlpha         = [alphaScale](ImU32 color) {
-        const unsigned int a      = (color >> 24) & 0xFFu;
-        const unsigned int scaled = (unsigned int)std::round((float)a * alphaScale);
-        return (color & 0x00FFFFFFu) | ((scaled & 0xFFu) << 24);
-    };
+    // 透明度与着色的统一实现见 core/geometry.hpp（各层曾经各写一份 scaleAlpha lambda）
+    const float alphaScale = std::max(0.0f, std::min(1.0f, opacity)) * view->getAlpha();
     // 内容槽由调用方（AppearanceView::draw）用虚函数算好放进 ctx，行为与原来一致
     ImFont* font              = static_cast<ImFont*>(ctx.font);
     const std::string content = ctx.text != nullptr ? *ctx.text : std::string();
@@ -52,7 +48,8 @@ void drawText(const compile::LayerDrawContext& ctx)
     else if (enumMatches(layer.valign, "bottom"))
         textY = rect[3] - textSize.y;
 
-    drawList->AddText(font, size, ImVec2(textX, textY), scaleAlpha(textColor), content.c_str());
+    drawList->AddText(font, size, ImVec2(textX, textY), colorWithAlpha(textColor, alphaScale),
+        content.c_str());
 }
 
 } // namespace layers
