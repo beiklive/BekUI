@@ -23,6 +23,8 @@ class FocusRingView : public View
     FocusRingView();
     ~FocusRingView() override;
 
+    std::string getClassString() const override { return "bklv::FocusRingView"; }
+
     // 全局开关（由外壳转发）
     void setRingEnabled(bool enabled) { this->ringEnabled = enabled; }
     bool isRingEnabled() const { return this->ringEnabled; }

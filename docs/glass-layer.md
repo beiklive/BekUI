@@ -193,9 +193,9 @@ VK 那条路没有 `App::requestScreenshot`（截图是 GL 侧实现的），所
 
 | 文件 | 作用 |
 |---|---|
-| `bklv/glass/glass_style.hpp` / `glass_request.hpp` / `glass_blur_plan.*` / `glass_tuning.*` / `glass_geometry.*` | 思路层：参数、请求、模糊计划、形状解析（纯逻辑，无平台依赖） |
-| `bklv/glass/glass_queue.*` | 一帧的请求队列（只收 opt-in 的声明，不做裁剪） |
-| `bklv/glass/glass_service.*` | 服务：帧首/提交/注入/帧末；`submitBackdrop`；能力与开关 |
+| `bklv/core/glass/glass_style.hpp` / `glass_request.hpp` / `glass_blur_plan.*` / `glass_tuning.*` / `glass_geometry.*` | 思路层：参数、请求、模糊计划、形状解析（纯逻辑，无平台依赖） |
+| `bklv/core/glass/glass_queue.*` | 一帧的请求队列（只收 opt-in 的声明，不做裁剪） |
+| `bklv/core/glass/glass_service.*` | 服务：帧首/提交/注入/帧末；`submitBackdrop`；能力与开关 |
 | `bklv/backends/gl_glass.{hpp,cpp}` + `gl_glass_procs.*` + `gl_glass_shaders.*` | GL / GLES3 后端（抓帧 + 高斯 + 合成） |
 | `bklv/backends/vk_glass.{hpp,cpp}` | Vulkan 路线 A（mip 链模糊 + ImGui 叠染色） |
 | `bklv/core/focus_ring.*` | **无关**，但形状表达（圆角矩形 + 半径钳制）与玻璃共用同一套思路 |

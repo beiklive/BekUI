@@ -25,16 +25,7 @@ Box* makeLayer()
     return layer;
 }
 
-// 居中类的角落：内容要"在这条带上居中"，用一层铺满的包装盒 + 对齐实现；
-// 真角落（四个角）直接给两条边偏移，不需要包装盒。
-Box* makeCenteringWrapper(Axis axis, JustifyContent justify, AlignItems align)
-{
-    Box* wrapper = makeLayer();
-    wrapper->setAxis(axis);
-    wrapper->setJustifyContent(justify);
-    wrapper->setAlignItems(align);
-    return wrapper;
-}
+// 居中类角落的包装盒已经挪到 widgets/placement.cpp（和摆放规则放一起，只有一份）。
 
 } // namespace
 
@@ -59,6 +50,13 @@ Shell::Shell()
     // 它自己每帧去问"当前焦点是谁、你是什么形状"，控件侧不需要任何登记。
     this->focusRingView = new FocusRingView();
     this->hudLayer->addView(this->focusRingView);
+
+    // 按页背景挂背景层；登记与交叉淡入的逻辑在 BackdropManager 里
+    this->backdropManager.setHostLayer(this->backdropLayer);
+
+    // 内容栈挂内容层；"交焦点"这一步由外壳注入（ContentStack 不认识 InputManager）
+    this->contentStack.setHostLayer(this->contentLayer);
+    this->contentStack.setFocusSink([](View* view) { getInputManager().giveFocus(view); });
 }
 
 void Shell::setGlassEnabled(bool enabled)
@@ -199,124 +197,21 @@ void Shell::applySafeAreaToLayers()
     }
 }
 
+// 角落 / 贴边 / 铺满：实现在 widgets/placement.cpp（自由函数，任何容器都能用），
+// 这里只把外壳自己的覆盖层传进去。
 void Shell::addToCorner(View* view, Corner corner, float insetX, float insetY)
 {
-    if (view == nullptr)
-        return;
-
-    switch (corner)
-    {
-        case Corner::TOP_LEFT:
-            this->overlayLayer->addView(view);
-            view->setPositionType(PositionType::ABSOLUTE);
-            view->setPositionTop(insetY);
-            view->setPositionLeft(insetX);
-            break;
-        case Corner::TOP_RIGHT:
-            this->overlayLayer->addView(view);
-            view->setPositionType(PositionType::ABSOLUTE);
-            view->setPositionTop(insetY);
-            view->setPositionRight(insetX);
-            break;
-        case Corner::BOTTOM_LEFT:
-            this->overlayLayer->addView(view);
-            view->setPositionType(PositionType::ABSOLUTE);
-            view->setPositionBottom(insetY);
-            view->setPositionLeft(insetX);
-            break;
-        case Corner::BOTTOM_RIGHT:
-            this->overlayLayer->addView(view);
-            view->setPositionType(PositionType::ABSOLUTE);
-            view->setPositionBottom(insetY);
-            view->setPositionRight(insetX);
-            break;
-        case Corner::TOP_CENTER:
-        {
-            Box* wrapper = makeCenteringWrapper(Axis::ROW, JustifyContent::CENTER, AlignItems::FLEX_START);
-            wrapper->setPositionTop(insetY);
-            wrapper->setPaddingTop(0.0f);
-            this->overlayLayer->addView(wrapper);
-            wrapper->addView(view);
-            break;
-        }
-        case Corner::BOTTOM_CENTER:
-        {
-            Box* wrapper = makeCenteringWrapper(Axis::ROW, JustifyContent::CENTER, AlignItems::FLEX_END);
-            wrapper->setPositionBottom(insetY);
-            this->overlayLayer->addView(wrapper);
-            wrapper->addView(view);
-            break;
-        }
-        case Corner::CENTER_LEFT:
-        {
-            Box* wrapper = makeCenteringWrapper(Axis::COLUMN, JustifyContent::CENTER, AlignItems::FLEX_START);
-            wrapper->setPositionLeft(insetX);
-            this->overlayLayer->addView(wrapper);
-            wrapper->addView(view);
-            break;
-        }
-        case Corner::CENTER_RIGHT:
-        {
-            Box* wrapper = makeCenteringWrapper(Axis::COLUMN, JustifyContent::CENTER, AlignItems::FLEX_END);
-            wrapper->setPositionRight(insetX);
-            this->overlayLayer->addView(wrapper);
-            wrapper->addView(view);
-            break;
-        }
-        case Corner::CENTER:
-        {
-            Box* wrapper = makeCenteringWrapper(Axis::COLUMN, JustifyContent::CENTER, AlignItems::CENTER);
-            this->overlayLayer->addView(wrapper);
-            wrapper->addView(view);
-            break;
-        }
-    }
+    placeInCorner(this->overlayLayer, view, corner, insetX, insetY);
 }
 
 void Shell::addToEdge(View* view, Edge edge, float inset)
 {
-    if (view == nullptr)
-        return;
-
-    this->overlayLayer->addView(view);
-    view->setPositionType(PositionType::ABSOLUTE);
-    switch (edge)
-    {
-        case Edge::TOP:
-            view->setPositionTop(inset);
-            view->setPositionLeft(0.0f);
-            view->setPositionRight(0.0f);
-            break;
-        case Edge::RIGHT:
-            view->setPositionRight(inset);
-            view->setPositionTop(0.0f);
-            view->setPositionBottom(0.0f);
-            break;
-        case Edge::BOTTOM:
-            view->setPositionBottom(inset);
-            view->setPositionLeft(0.0f);
-            view->setPositionRight(0.0f);
-            break;
-        case Edge::LEFT:
-            view->setPositionLeft(inset);
-            view->setPositionTop(0.0f);
-            view->setPositionBottom(0.0f);
-            break;
-    }
+    placeOnEdge(this->overlayLayer, view, edge, inset);
 }
 
-// 铺满指定层（先加进该层再四边归零）：全屏遮罩、loading
 void Shell::fillLayer(View* view)
 {
-    if (view == nullptr)
-        return;
-
-    this->overlayLayer->addView(view);
-    view->setPositionType(PositionType::ABSOLUTE);
-    view->setPositionTop(0.0f);
-    view->setPositionRight(0.0f);
-    view->setPositionBottom(0.0f);
-    view->setPositionLeft(0.0f);
+    fillLayerArea(this->overlayLayer, view);
 }
 
 // ---- 内容层的层级下钻（同级换页是 Pager 的事）----
@@ -324,127 +219,41 @@ void Shell::fillLayer(View* view)
 Shell::~Shell()
 {
     // 内容栈里"脱离树"的那几层归 Shell 所有（挂在树里的那个会随 Box 析构回收）
-    for (View* view : this->contentStack)
-        if (view != nullptr && view != this->contentView && view->getParent() == nullptr)
-            delete view;
+    this->contentStack.releaseDetached();
 }
+
+// 转场与栈操作全部转发给 ContentStack（widgets/content_stack.*）：
+// 入场/出场两段、出场播完才摘/删、焦点交接这一串顺序敏感的逻辑都在那边，只有一份。
 
 void Shell::playEnterTransition(View* view)
 {
-    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
-    this->transition.playEnter(view, width);
+    this->contentStack.playEnter(view);
 }
 
 void Shell::playExitTransition(View* view, std::function<void()> onFinished)
 {
-    const float width = this->contentLayer != nullptr ? this->contentLayer->getWidth() : 0.0f;
-    this->transition.playExit(view, width, std::move(onFinished));
+    this->contentStack.playExit(view, std::move(onFinished));
 }
 
 void Shell::stepContentTransition(float deltaSeconds)
 {
-    this->transition.step(deltaSeconds);
+    this->contentStack.step(deltaSeconds);
 }
 
-// 把 view 挂到内容层里，并把上一任从树上摘下来（**不删**：它还在栈里）
-void Shell::attachContentView(View* view)
-{
-    if (view == nullptr)
-        return;
-
-    if (this->contentView != nullptr && this->contentView->getParent() == this->contentLayer)
-        this->contentLayer->removeView(this->contentView, false);
-
-    this->contentView = view;
-    this->contentLayer->addView(view);
-}
-
-View* Shell::detachContentView()
-{
-    View* leaving = this->contentView;
-    if (leaving != nullptr && leaving->getParent() == this->contentLayer)
-        this->contentLayer->removeView(leaving, false);
-
-    this->contentView = nullptr;
-    return leaving;
-}
+// 往下钻一层 / 退回上一层：全部转发给 ContentStack（widgets/content_stack.*）。
+// 那串"旧层先出场 → 出场播完才摘它并挂新层 → 交焦点 → 新层入场 → 弹层释放与回调"
+// 的顺序逻辑在那边，只有一份。
 
 void Shell::pushContentView(View* view)
 {
-    if (view == nullptr)
-        return;
-
-    // 上一段转场还没播完：先落位（否则栈与画面会对不上）
-    this->transition.finishNow();
-
-    View* outgoing = this->contentView;
-    this->contentStack.push_back(view);
-
-    // 首屏：没有旧层可让位，直接挂上（也不做入场：刚起界面就滑一下很怪）
-    if (outgoing == nullptr)
-    {
-        this->attachContentView(view);
-        return;
-    }
-
-    // **旧层先出场**（它还挂在树上，所以看得到），出场播完再摘它、挂新层、新层入场。
-    // 旧层不删：下钻时它留在栈里，返回时还要用。
-    this->playExitTransition(outgoing, [this, view] {
-        this->detachContentView();
-
-        this->attachContentView(view);
-
-        // 焦点落到新层里的第一个可聚焦项
-        if (View* inner = this->contentLayer->getDefaultFocus())
-            getInputManager().giveFocus(inner);
-
-        this->playEnterTransition(view);
-    });
+    this->contentStack.push(view);
 }
 
 void Shell::popContentView(std::function<void()> callback)
 {
-    if (this->contentStack.size() <= 1)
-    {
-        if (callback)
-            callback();
-        return;
-    }
-
-    this->transition.finishNow();
-
-    View* outgoing = this->contentStack.back();
-    this->contentStack.pop_back();
-
-    View* incoming = this->contentStack.back();
-    this->pendingPopCallback = callback;
-
-    // **被弹出的临时页先出场**，出场播完再释放它、挂回上一层、让上一层入场。
-    // 注意顺序：先把它从内容层摘下来再 delete，不能让 contentView 指着已释放的对象。
-    this->playExitTransition(outgoing, [this, incoming, outgoing] {
-        View* leaving = outgoing;
-        if (this->contentView == leaving)
-            this->detachContentView();
-
-        if (leaving->getParent() == this->contentLayer)
-            this->contentLayer->removeView(leaving, true);
-        else
-            delete leaving;
-
-        this->attachContentView(incoming);
-
-        if (View* inner = this->contentLayer->getDefaultFocus())
-            getInputManager().giveFocus(inner);
-
-        this->playEnterTransition(incoming);
-
-        // pop 的回调等**出场**播完才跑（此时被弹出的页已经可以释放了）
-        std::function<void()> done = this->pendingPopCallback;
-        this->pendingPopCallback   = nullptr;
-        if (done)
-            done();
-    });
+    this->contentStack.pop(std::move(callback));
 }
+
 
 
 
@@ -559,96 +368,28 @@ void Shell::popDialog(View* dialog, bool free)
 }
 
 // ---- 按页背景（切页淡入）----
+//
+// 全部转发给 BackdropManager（widgets/backdrop_manager.*）。外壳只负责"背景挂在背景层"，
+// 登记、可见性、交叉淡入的补间都在那边 —— 那部分逻辑与外壳无关，拆出去才读得动。
 
 void Shell::setBackdropFor(const std::string& pageId, View* backdrop)
 {
-    if (backdrop == nullptr)
-        return;
-
-    this->backdrops[pageId] = backdrop;
-    this->backdropLayer->addView(backdrop);
-    backdrop->setVisibility(Visibility::GONE);
-
-    // 第一份背景直接当当前背景（否则"切页前"什么都没有）
-    if (this->currentBackdrop == nullptr)
-    {
-        this->currentBackdrop   = backdrop;
-        this->currentBackdropId = pageId;
-        backdrop->setVisibility(Visibility::VISIBLE);
-        backdrop->setAlpha(1.0f);
-    }
+    this->backdropManager.add(pageId, backdrop);
 }
 
 View* Shell::getBackdropFor(const std::string& pageId) const
 {
-    auto it = this->backdrops.find(pageId);
-    return it == this->backdrops.end() ? nullptr : it->second;
+    return this->backdropManager.get(pageId);
 }
 
 void Shell::showBackdropFor(const std::string& pageId)
 {
-    if (pageId == this->currentBackdropId)
-        return;
-
-    auto it = this->backdrops.find(pageId);
-    if (it == this->backdrops.end() || it->second == nullptr)
-    {
-        BKLV_LOG_WARNING("Shell::showBackdropFor: 页面 %s 没有注册背景", pageId.c_str());
-        return;
-    }
-
-    View* next = it->second;
-
-    // 新的移到背景层末尾：子节点顺序 = 绘制顺序，淡入的那份要画在旧背景之上
-    if (next->getParent() == this->backdropLayer)
-        this->backdropLayer->removeView(next, false);
-    this->backdropLayer->addView(next);
-
-    // 旧的先留着垫在下面，补间结束再 GONE（否则淡入期间会露出画布底色）
-    this->previousBackdrop = this->currentBackdrop;
-    if (this->previousBackdrop != nullptr)
-        this->previousBackdrop->setAlpha(1.0f);
-
-    next->setVisibility(Visibility::VISIBLE);
-    next->setAlpha(0.0f);
-
-    this->currentBackdrop   = next;
-    this->currentBackdropId = pageId;
-
-    if (this->backdropDuration <= 0.0f)
-    {
-        next->setAlpha(1.0f);
-        if (this->previousBackdrop != nullptr)
-            this->previousBackdrop->setVisibility(Visibility::GONE);
-        this->previousBackdrop = nullptr;
-        return;
-    }
-
-    this->backdropAnim.stop();
-    this->backdropAnim.reset(0.0f);
-    this->backdropAnim.addStep(1.0f, this->backdropDuration, EasingFunction::CUBIC_OUT);
-    this->backdropAnim.start();
+    this->backdropManager.show(pageId);
 }
 
 void Shell::stepBackdropTransition(float deltaSeconds)
 {
-    if (this->backdropAnim.isStopped())
-        return;
-
-    this->backdropAnim.update(deltaSeconds);
-
-    const float alpha = (float)this->backdropAnim;
-    if (this->currentBackdrop != nullptr)
-        this->currentBackdrop->setAlpha(alpha);
-
-    if (alpha >= 1.0f)
-    {
-        if (this->previousBackdrop != nullptr)
-        {
-            this->previousBackdrop->setVisibility(Visibility::GONE);
-            this->previousBackdrop = nullptr;
-        }
-    }
+    this->backdropManager.step(deltaSeconds);
 }
 
 // ---- 过渡层（仅动画期间存在）----
@@ -703,7 +444,7 @@ void Shell::update()
     Box::update();
 
     this->stepBackdropTransition(getFrameDeltaSeconds());
-    this->transition.step(getFrameDeltaSeconds());
+    this->stepContentTransition(getFrameDeltaSeconds());
     this->releaseTransitionHostIfEmpty();
 }
 

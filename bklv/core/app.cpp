@@ -1,7 +1,7 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/decode_queue.hpp"
 
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/core/image_writer.hpp"
 #include "bklv/core/audio.hpp"
 #include "bklv/core/task.hpp"
@@ -352,8 +352,9 @@ void App::frame()
         //    触发条件只有三个：
         //      - 画布尺寸变了（resize 这类外部原因不经过 invalidate）
         //      - requestLayout() / 首帧
-        //      - 视图自己改了：那些 setter 内部会 invalidate()，冒泡到根**立即**重算
-        //        （所以不在这里排队，也就不会重复算）
+        //      - 视图自己改了：那些 setter 内部会 invalidate()，它**只把根标脏**
+        //        （App::g_layoutDirty），真正那一次由这里做 —— 所以本帧后面还有改动时，
+        //        第 4b 步会再补一次（见那里的注释）
         App::lastLayoutWidth  = width;
         App::lastLayoutHeight = height;
 
@@ -370,20 +371,21 @@ void App::frame()
             g_layoutDirty = true;
         }
 
-        if (forceRelayout() || g_layoutDirty || canvasChanged)
-        {
-            g_layoutDirty         = false;
-            this->lastCanvasWidth = width;
+        // 一次布局 = 算 Yoga + 计数 + 通知子树。抽成 lambda 是因为一帧里可能要跑两次
+        // （第 4b 步的补算）。
+        auto layoutPass = [&]() {
+            g_layoutDirty          = false;
+            this->lastCanvasWidth  = width;
             this->lastCanvasHeight = height;
 
             YGNodeCalculateLayout(this->root->getYGNode(), width, height, YGDirectionLTR);
             App::noteLayoutPerformed();
             // 布局变化要通知子树（滚动条夹取、tab 栏反推内容宽等都挂在这里）
             this->root->notifyLayout();
-        }
+        };
 
-
-
+        if (forceRelayout() || g_layoutDirty || canvasChanged)
+            layoutPass();
 
         // 2. 动画与视图逐帧逻辑（滚动等）。
         Ticking::updateTickings();
@@ -395,6 +397,16 @@ void App::frame()
         // 4. 业务帧回调。
         if (this->onUpdate)
             this->onUpdate();
+
+        // 4b. 补一次布局：上面 2/3/4 任何一步都可能**新建或改动视图树** ——
+        //     切页（Pager 现建整棵新页子树并挂进槽）、弹层、回收列表重建都属于这条。
+        //     它们的 invalidate() 只是标脏，而第 1 步的布局已经过去了；不补的话这些视图
+        //     会在**没有任何布局结果**的状态下被第 5 步画出来：节点都在默认位置(0,0)，
+        //     现象就是"切 tab 的瞬间所有文字堆在页面顶部，下一帧才排好"（观感很糟）。
+        //     代价可控：只在"这一帧真的动过树"的帧多算一次（静态页面仍然 0 次）。
+        //     验收看 App::getLayoutCount()：切页那帧是 2，静止帧仍是 0。
+        if (g_layoutDirty)
+            layoutPass();
 
         // 5. 绘制视图树。
         this->root->frame(&ctx);

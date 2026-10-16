@@ -1,4 +1,4 @@
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 
 #include "bklv/core/logger.hpp"
 
@@ -134,10 +134,18 @@ void GlassService::submit(GlassRequest request)
     if (request.density <= 0.0f)
         request.density = this->density;
 
-    // 全局 tuning 是**默认值**：外观层（阶段 4 的 op）将来在它之上覆盖单个字段
-    if (request.style.tint.w <= 0.0f)
-        request.style = makeGlassStyle(this->tuning);
-    request.blurMix = 1.0f;
+    // 全局 tuning 是**底**：外观层（op: glass）在它之上覆盖**单个**字段。
+    //
+    // 这里曾经写的是 `if (request.style.tint.w <= 0.0f) request.style = makeGlassStyle(tuning);`
+    // —— 拿"有没有染色"当"整份要不要用 tuning"的判断。而外观只要写了带 alpha 的 fill 就带
+    // tint（layer_draw_glass.cpp），条件永不成立 → makeGlassStyle(tuning) 从不执行 →
+    // **设计器的「折射高度/折射强度/深度效果/色散」滑块在任何 op: glass 层上零像素变化**
+    // （观感一直是 GlassStyle 的硬编码默认值）。踩过，别再退回整份覆盖。
+    GlassStyle style = makeGlassStyle(this->tuning);
+    if (request.style.tint.w > 0.0f)
+        style.tint = request.style.tint; // 外观写了 fill 就只换染色，折射/光照仍跟 tuning
+    request.style   = style;
+    request.blurMix = this->tuning.blurMix; // 帧级旋钮：1 = 纯模糊底，调小让折射透出细节
 
     // 没给裁剪矩形就按整帧：空的 clipRect 会让合成那步什么都不画
     //（设计器那边一直显式填整帧，库这边替调用方兜住默认值）

@@ -11,10 +11,10 @@
 //   3. 每条玻璃命令 → composite() 合成那一块
 //   4. 帧末 → finishFrame()
 
-#include "bklv/glass/glass_blur_plan.hpp"
-#include "bklv/glass/glass_geometry.hpp"
-#include "bklv/glass/glass_request.hpp"
-#include "bklv/glass/glass_queue.hpp"
+#include "bklv/core/glass/glass_blur_plan.hpp"
+#include "bklv/core/glass/glass_geometry.hpp"
+#include "bklv/core/glass/glass_request.hpp"
+#include "bklv/core/glass/glass_queue.hpp"
 
 #include <memory>
 

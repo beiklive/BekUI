@@ -1,4 +1,4 @@
-#include "bklv/glass/glass_queue.hpp"
+#include "bklv/core/glass/glass_queue.hpp"
 
 namespace bklv::glass
 {

@@ -5,13 +5,13 @@
 #include "bklv/core/logger.hpp"
 
 #if defined(BKLV_OPENGL) || defined(BKLV_GLES3)
-#include "bklv/glass/glass_blur_plan.hpp"
-#include "bklv/glass/glass_geometry.hpp"
-#include "bklv/glass/glass_request.hpp"
+#include "bklv/core/glass/glass_blur_plan.hpp"
+#include "bklv/core/glass/glass_geometry.hpp"
+#include "bklv/core/glass/glass_request.hpp"
 #include "bklv/backends/gl_glass.hpp"
 
 
-#include "bklv/glass/glass_blur_plan.hpp"
+#include "bklv/core/glass/glass_blur_plan.hpp"
 #include "bklv/backends/gl_glass_procs.hpp"
 #include "bklv/backends/gl_glass_shaders.hpp"
 

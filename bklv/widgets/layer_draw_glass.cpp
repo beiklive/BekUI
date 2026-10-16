@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include "bklv/3rd/imgui/imgui.h"
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
 namespace bklv

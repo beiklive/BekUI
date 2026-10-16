@@ -11,7 +11,7 @@
 | Switch | **支持**（更正上一轮"不支持"的结论，见第八节第 1 条） |
 | 参数优先级 | **外观 JSON（每层）> Shell 的 `GlassTuning`（全局默认）** |
 | 默认档位 | 半分辨率 + 均衡质量（`quality = 1`）+ `blurRadius = 32` |
-| 归属 | 库内 `bklv/glass/`（思路层）+ `bklv/backends/*`（后端实现）；**所有者是 Shell** |
+| 归属 | 库内 `bklv/core/glass/`（思路层）+ `bklv/backends/*`（后端实现）；**所有者是 Shell** |
 
 不在本次范围：玻璃的"新形状"（多边形/自定义轮廓，先只做矩形/圆角矩形/胶囊/圆）；玻璃上的动画；
 Android/iOS（库里本来就没有这两个平台）。
@@ -20,8 +20,8 @@ Android/iOS（库里本来就没有这两个平台）。
 
 ```
 外观层 op "glass"     →  控件只声明"我这一层是玻璃 + 形状(矩形/圆角半径)"
-bklv/glass/*          →  纯数据：Style / Request / Queue / BlurPlan / Tuning / Capabilities
-bklv/glass/glass_service.*  →  每帧收集请求 → 排模糊计划 → onPrepareDrawData 时交后端注入
+bklv/core/glass/*          →  纯数据：Style / Request / Queue / BlurPlan / Tuning / Capabilities
+bklv/core/glass/glass_service.*  →  每帧收集请求 → 排模糊计划 → onPrepareDrawData 时交后端注入
 bklv/backends/{gl,gles,vk}_glass.*  →  抓帧 / 模糊 / 合成（能力不足则整层关闭）
 Shell                 →  所有者：全局开关 / 质量档位 / 默认参数 / 能力查询
 ```
@@ -60,7 +60,7 @@ virtual glass::GlassRequest View::getGlassBackdrop() const;   // 默认无效 = 
 ### 阶段 0：思路层入库（零渲染风险）
 | 任务 | 文件 |
 |---|---|
-| 把 Style / Request / Queue / BlurPlan / Tuning / Capabilities 搬进库（去 `designer::` 命名空间） | `bklv/glass/*.{hpp,cpp}` |
+| 把 Style / Request / Queue / BlurPlan / Tuning / Capabilities 搬进库（去 `designer::` 命名空间） | `bklv/core/glass/*.{hpp,cpp}` |
 | 单元测试：队列顺序与去重、模糊计划（对数/降采样级数/上限）、形状（半径钳制/周长） | `tests/glass_core_test.cpp` |
 
 **验收**：`check.sh` 全过；新测试覆盖纯逻辑；设计器仍能编（先把设计器的那份改成 include 库版本）。
@@ -129,7 +129,7 @@ virtual glass::GlassRequest View::getGlassBackdrop() const;   // 默认无效 = 
 | 6 | 性能（全屏模糊 ×N 块） | 默认半分辨率 + 均衡档；每帧最多抓一次；`maxGlassRegions` 上限；能力位可关 |
 | 7 | 玻璃糊到"必须原像素"的区域 | opt-in 设计从根上避免；再加一条：不透明画布区域所在的视图不声明玻璃 |
 | 8 | 一次改太多、回归难查 | 严格按阶段提交，每阶段独立验收；阶段 0/1 不碰 VK/Switch |
-| 9 | SPIR-V 嵌字节数组可读性差 | 只在选路线 B 时做：`.spv` 保留在 `bklv/glass/shaders/vulkan/`，附生成命令与校验（哈希）在 README |
+| 9 | SPIR-V 嵌字节数组可读性差 | 只在选路线 B 时做：`.spv` 保留在 `bklv/core/glass/shaders/vulkan/`，附生成命令与校验（哈希）在 README |
 
 ## 七、时间/工作量估算
 

@@ -2,8 +2,11 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/focus_ring.hpp"
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
+#include "bklv/widgets/backdrop_manager.hpp" // 按页背景 + 交叉淡入（原来是外壳的成员）
+#include "bklv/widgets/content_stack.hpp"     // 内容层下钻 + 入场/出场（原来是外壳的成员）
 #include "bklv/widgets/focus_ring_view.hpp"
+#include "bklv/widgets/placement.hpp" // Corner / Edge + 角落与贴边摆放（原来是外壳的成员）
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/input.hpp"
 // 转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里
@@ -18,30 +21,8 @@
 namespace bklv
 {
 
-// 角落（九个方位）。角落定位用绝对定位实现：真角落直接给两条边偏移；
-// 居中类（*_CENTER / CENTER_* / CENTER）套一层铺满的包装盒，用 justifyContent/alignItems 居中。
-enum class Corner
-{
-    TOP_LEFT,
-    TOP_CENTER,
-    TOP_RIGHT,
-    CENTER_LEFT,
-    CENTER,
-    CENTER_RIGHT,
-    BOTTOM_LEFT,
-    BOTTOM_CENTER,
-    BOTTOM_RIGHT,
-};
-
-// 贴哪条边
-enum class Edge
-{
-    TOP,
-    RIGHT,
-    BOTTOM,
-    LEFT,
-};
-
+// 角落 / 边缘的枚举与摆放规则在 widgets/placement.hpp（`Corner` / `Edge` 仍在 bklv 命名空间下，
+// 所以调用方写 `Shell::addToCorner(v, Corner::TOP_LEFT)` 不受影响）。
 
 // 弹窗选项。放在类外：C++ 不允许把"带默认成员初值的嵌套类型"用作同类内的默认实参。
 struct DialogOptions
@@ -71,6 +52,9 @@ class Shell : public Box
   public:
     Shell();
     ~Shell() override;
+
+    // 调试层按这个显示类型名（不重写就只剩基类的 "bklv::View"）。
+    std::string getClassString() const override { return "bklv::Shell"; }
 
     Box* getBackdropLayer() const { return this->backdropLayer; }
     Box* getContentLayer() const { return this->contentLayer; }
@@ -167,13 +151,20 @@ class Shell : public Box
     //
     // 每个页面 id 一份背景视图，全部挂在背景层里，只有当前那份是 VISIBLE。
     // 切页时新的从 0 淡入、旧的垫在下面，补间结束才把旧的 GONE 掉。
+    // 实现在 widgets/backdrop_manager.*（外壳只做转发，逻辑只有一份）。
     void setBackdropFor(const std::string& pageId, View* backdrop);
     void showBackdropFor(const std::string& pageId);
     View* getBackdropFor(const std::string& pageId) const;
-    View* getCurrentBackdrop() const { return this->currentBackdrop; }
-    const std::string& getCurrentBackdropId() const { return this->currentBackdropId; }
-    void setBackdropTransitionDuration(float seconds) { this->backdropDuration = seconds; }
-    float getBackdropTransitionDuration() const { return this->backdropDuration; }
+    View* getCurrentBackdrop() const { return this->backdropManager.getCurrent(); }
+    const std::string& getCurrentBackdropId() const { return this->backdropManager.getCurrentId(); }
+    void setBackdropTransitionDuration(float seconds)
+    {
+        this->backdropManager.setTransitionDuration(seconds);
+    }
+    float getBackdropTransitionDuration() const
+    {
+        return this->backdropManager.getTransitionDuration();
+    }
 
     // ---- 过渡层（**仅动画期间存在**）----
     //
@@ -186,7 +177,7 @@ class Shell : public Box
     // 立刻清空并释放过渡层（动画被打断/切页时用）
     void clearTransitionHost();
 
-    // 角落 / 边缘定位（内部即绝对定位 + 边偏移；居中类会用一层铺满的包装盒）
+    // 角落 / 边缘定位（实现在 widgets/placement.cpp：绝对定位 + 居中类套一层包装盒）
     void addToCorner(View* view, Corner corner, float insetX, float insetY);
     void addToEdge(View* view, Edge edge, float inset);
     void fillLayer(View* view); // 四边 0，铺满该层（全屏遮罩/loading）
@@ -202,41 +193,30 @@ class Shell : public Box
     // 弹出栈顶并**释放**它（下钻出来的详情页是临时页）。转场播完才真正摘/删。
     // 已经在最外层时什么都不做，只执行回调。
     void popContentView(std::function<void()> callback = nullptr);
-    View* getContentView() const
-    {
-        return this->contentStack.empty() ? nullptr : this->contentStack.back();
-    }
+    View* getContentView() const { return this->contentStack.getTop(); }
     size_t getContentStackSize() const { return this->contentStack.size(); }
 
     // ---- 内容栈的转场：**入场 / 出场分开**（时间单位是秒）----
     //
     // 入场 = 新层滑入/淡入；出场 = 旧层滑出/淡出，**出场播完才摘/删它**
     // （所以下钻/返回都能看到两层各动一次，不再是"旧层瞬间消失"）。
-    void setEnterTransition(ContentTransition value)
-    {
-        this->transition.setEnter(value, this->transition.getEnterDuration());
-    }
-    ContentTransition getEnterTransition() const { return this->transition.getEnter(); }
-    void setExitTransition(ContentTransition value)
-    {
-        this->transition.setExit(value, this->transition.getExitDuration());
-    }
-    ContentTransition getExitTransition() const { return this->transition.getExit(); }
+    // 实现在 widgets/content_stack.*（外壳只做转发，逻辑只有一份）
+    void setEnterTransition(ContentTransition value) { this->contentStack.setEnter(value); }
+    ContentTransition getEnterTransition() const { return this->contentStack.getEnter(); }
+    void setExitTransition(ContentTransition value) { this->contentStack.setExit(value); }
+    ContentTransition getExitTransition() const { return this->contentStack.getExit(); }
 
     // 入场/出场各一段时长
-    void setTransitionDuration(float seconds)
-    {
-        this->transition.setBoth(this->transition.getEnter(), seconds);
-    }
+    void setTransitionDuration(float seconds) { this->contentStack.setDuration(seconds); }
     // 报**实际**时长：外观里写了 transitions 时是 spec 的总时长（出场播完才摘页靠它）
-    float getTransitionDuration() const { return this->transition.getActiveDuration(); }
+    float getTransitionDuration() const { return this->contentStack.getDuration(); }
 
     // 旧的"一个开关"写法：两边都设成同一个（保留给已有调用方/测试）
     void setContentTransition(ContentTransition value)
     {
-        this->transition.setBoth(value, this->transition.getEnterDuration());
+        this->contentStack.setBoth(value, this->contentStack.getEnterDuration());
     }
-    ContentTransition getContentTransition() const { return this->transition.getEnter(); }
+    ContentTransition getContentTransition() const { return this->contentStack.getEnter(); }
     void setContentTransitionDuration(float seconds) { this->setTransitionDuration(seconds); }
     float getContentTransitionDuration() const { return this->getTransitionDuration(); }
 
@@ -244,19 +224,19 @@ class Shell : public Box
     void playEnterTransition(View* view);
     void playExitTransition(View* view, std::function<void()> onFinished = nullptr);
 
-    bool isEntering() const { return this->transition.isEntering(); }
-    bool isExiting() const { return this->transition.isExiting(); }
-    bool isTransitioning() const { return this->transition.isActive(); }
+    bool isEntering() const { return this->contentStack.isEntering(); }
+    bool isExiting() const { return this->contentStack.isExiting(); }
+    bool isTransitioning() const { return this->contentStack.isActive(); }
     // 正在转场？（转场期间焦点先不挪，等落位再给新页）
-    bool isContentTransitioning() const { return this->transition.isActive(); }
+    bool isContentTransitioning() const { return this->contentStack.isActive(); }
 
     // 推进转场：update() 内部按帧间隔调；测试可以直接喂固定 dt（确定性）
     void stepContentTransition(float deltaSeconds);
     // 立刻落位（把正在跑的那段收尾，含出场回调）
-    void finishContentTransition() { this->transition.finishNow(); }
+    void finishContentTransition() { this->contentStack.finishNow(); }
 
     // 正在出场的那个视图（入场期间是 nullptr；调试/测试用）
-    View* getOutgoingContentView() const { return this->transition.getOutgoing(); }
+    View* getOutgoingContentView() const { return this->contentStack.getOutgoing(); }
 
     void update() override;
 
@@ -277,11 +257,6 @@ class Shell : public Box
     // 过渡层空了就摘掉释放（仅动画期存在）
     void releaseTransitionHostIfEmpty();
 
-    // 内容栈内部：把 view 挂到内容层、并把上一任摘下来（不删）
-    void attachContentView(View* view);
-    // 摘掉当前挂着的层（不删），把 contentView 置空 —— 出场结束后的收尾
-    View* detachContentView();
-
     Box* backdropLayer = nullptr;
     Box* contentLayer  = nullptr;
     Box* overlayLayer  = nullptr;
@@ -291,14 +266,10 @@ class Shell : public Box
 
     std::vector<View*> dialogStack;
     std::vector<View*> dimStack;
-    // 内容层的下钻栈（栈底是基础内容，栈顶是当前显示的层）
-    std::vector<View*> contentStack;
-    // 当前**挂在树里**的那一层（== contentStack.back()；转场期间旧层已脱离）
-    View* contentView = nullptr;
 
-    // 内容栈转场（入场/出场两个方向；一次只跑一段）
-    ViewTransition transition;
-    std::function<void()> pendingPopCallback;
+    // 内容层的下钻栈 + 入场/出场转场：实现在 widgets/content_stack.*
+    ContentStack contentStack;
+
     // 与 dialogStack 一一对应的选项（closeOnBack 的读取点在这里）
     std::vector<DialogOptions> dialogOptionStack;
 
@@ -318,13 +289,8 @@ class Shell : public Box
     float safeBottom = 0.0f;
     float safeLeft   = 0.0f;
 
-    // 按页背景：id → 视图；只有 currentBackdrop 是 VISIBLE
-    std::map<std::string, View*> backdrops;
-    View* currentBackdrop    = nullptr;
-    View* previousBackdrop   = nullptr; // 淡入期间垫在下面的旧背景
-    std::string currentBackdropId;
-    float backdropDuration   = 0.22f;    // 秒
-    Animatable backdropAnim{ 1.0f };
+    // 按页背景（登记 + 交叉淡入）：实现在 widgets/backdrop_manager.*
+    BackdropManager backdropManager;
 
     // 过渡层（懒创建；空了就释放）
     Box* transitionHost = nullptr;

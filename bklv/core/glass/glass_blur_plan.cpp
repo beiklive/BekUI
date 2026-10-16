@@ -1,4 +1,4 @@
-#include "bklv/glass/glass_blur_plan.hpp"
+#include "bklv/core/glass/glass_blur_plan.hpp"
 
 #include <algorithm>
 #include <cmath>

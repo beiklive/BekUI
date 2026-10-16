@@ -6,12 +6,12 @@
 #include <cmath>
 #include <cstdio>
 
-#include "bklv/glass/glass_blur_plan.hpp"
-#include "bklv/glass/glass_geometry.hpp"
-#include "bklv/glass/glass_queue.hpp"
-#include "bklv/glass/glass_request.hpp"
-#include "bklv/glass/glass_style.hpp"
-#include "bklv/glass/glass_tuning.hpp"
+#include "bklv/core/glass/glass_blur_plan.hpp"
+#include "bklv/core/glass/glass_geometry.hpp"
+#include "bklv/core/glass/glass_queue.hpp"
+#include "bklv/core/glass/glass_request.hpp"
+#include "bklv/core/glass/glass_style.hpp"
+#include "bklv/core/glass/glass_tuning.hpp"
 
 using namespace bklv;
 

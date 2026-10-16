@@ -10,8 +10,8 @@
 // 开关：环境变量 BKLV_DESIGNER_GLASS=0 关掉（默认开）。
 
 #include "designer/glass/glass_lib.hpp"
-#include "bklv/glass/glass_queue.hpp"
-#include "bklv/glass/glass_tuning.hpp"
+#include "bklv/core/glass/glass_queue.hpp"
+#include "bklv/core/glass/glass_tuning.hpp"
 #include "bklv/backends/gl_glass.hpp"
 
 #include <string>
@@ -93,7 +93,7 @@ class DesignerGlass
         const glass::GlassStyle& style, ImDrawList* list, int commandOffset);
 
     // 禁区（预览区）由设计器自己维护：库侧的队列只有 opt-in，不含裁剪机制
-    // （见 bklv/glass/glass_queue.hpp 的说明）。这里是**物理像素**坐标。
+    // （见 bklv/core/glass/glass_queue.hpp 的说明）。这里是**物理像素**坐标。
     bool clipAgainstForbidden(ImVec4& rect) const;
 
     std::vector<ImVec4> forbiddenRects;

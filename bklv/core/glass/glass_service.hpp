@@ -19,8 +19,8 @@
 #if defined(BKLV_VULKAN)
 #include "bklv/backends/vk_glass.hpp"
 #endif
-#include "bklv/glass/glass_queue.hpp"
-#include "bklv/glass/glass_tuning.hpp"
+#include "bklv/core/glass/glass_queue.hpp"
+#include "bklv/core/glass/glass_tuning.hpp"
 
 namespace bklv::glass
 {

@@ -29,6 +29,8 @@ class RecyclerCell : public Box
     // 子类如果拿它当普通流式控件用（而不是放进 RecyclerFrame），传 false。
     explicit RecyclerCell(bool absolutePosition = true);
 
+    std::string getClassString() const override { return "bklv::RecyclerCell"; }
+
     // 这个 cell 当前承载的数据：段号 + 段内下标。
     // 单段列表里段号恒为 0，getIndex() 就是行号（老用法不变）。
     size_t getIndex() const { return this->index; }
@@ -68,6 +70,8 @@ class RecyclerSectionHeader : public RecyclerCell
 {
   public:
     RecyclerSectionHeader();
+
+    std::string getClassString() const override { return "bklv::RecyclerSectionHeader"; }
 
     size_t getSection() const { return this->headerSection; }
 

@@ -4,7 +4,7 @@
 //
 // 放在 core 是为了能测：以前 load/save 直接写在 UI 文件里，等于没有回归保护。
 
-#include "bklv/glass/glass_tuning.hpp"
+#include "bklv/core/glass/glass_tuning.hpp"
 
 #include <string>
 

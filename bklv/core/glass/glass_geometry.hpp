@@ -11,7 +11,7 @@
 //   CIRCLE        短边的一半（配合正方形就是正圆）
 // 最后统一钳到短边的一半：超过就退化成胶囊/正圆，不会出现"半径比控件还大"的怪形状。
 
-#include "bklv/glass/glass_style.hpp"
+#include "bklv/core/glass/glass_style.hpp"
 
 namespace bklv::glass
 {

@@ -316,11 +316,11 @@ set(BKLV_CORE_SOURCES
     core/focus_ring.cpp
     core/gradient.cpp
     core/transition_player.cpp
-    glass/glass_blur_plan.cpp
-    glass/glass_geometry.cpp
-    glass/glass_queue.cpp
-    glass/glass_tuning.cpp
-    glass/glass_service.cpp
+    core/glass/glass_blur_plan.cpp
+    core/glass/glass_geometry.cpp
+    core/glass/glass_queue.cpp
+    core/glass/glass_tuning.cpp
+    core/glass/glass_service.cpp
     backends/gl_glass.cpp
     backends/vk_glass.cpp
     backends/gl_glass_procs.cpp
@@ -401,6 +401,9 @@ set(BKLV_CORE_SOURCES
     widgets/dialog.cpp
     widgets/dropdown.cpp
     widgets/focus_ring_view.cpp
+    widgets/placement.cpp
+    widgets/backdrop_manager.cpp
+    widgets/content_stack.cpp
     widgets/shell.cpp
     widgets/pager.cpp
     widgets/edit_text_dialog.cpp

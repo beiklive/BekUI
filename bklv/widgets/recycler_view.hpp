@@ -29,6 +29,8 @@ class RecyclerItemCell : public RecyclerCell
     RecyclerItemCell();
     ~RecyclerItemCell() override;
 
+    std::string getClassString() const override { return "bklv::RecyclerItemCell"; }
+
     // 模板的两种写法：外观名（"itemAppearance"）或视图模板名（"itemTemplate"）
     void setAppearanceName(const std::string& name);
     void setViewTemplateName(const std::string& name);
@@ -60,6 +62,7 @@ class RecyclerHeaderCell : public RecyclerSectionHeader
   public:
     RecyclerHeaderCell();
     ~RecyclerHeaderCell() override;
+    std::string getClassString() const override { return "bklv::RecyclerHeaderCell"; }
     void setAppearanceName(const std::string& name);
     void onSectionTitle(size_t section, const std::string& title) override;
 
@@ -71,6 +74,8 @@ class RecyclerView : public RecyclerFrame
 {
   public:
     RecyclerView();
+
+    std::string getClassString() const override { return "bklv::RecyclerView"; }
 
     const AttributeTable& attributes() const override;
 

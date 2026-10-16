@@ -6,7 +6,7 @@
 // 没声明就没有玻璃，从根上不会糊到不该动的地方。宿主若确实要保护某块区域，
 // 应在**提交之前**自己裁（设计器就是这么做的：预览区不入队）。
 
-#include "bklv/glass/glass_request.hpp"
+#include "bklv/core/glass/glass_request.hpp"
 
 #include <vector>
 

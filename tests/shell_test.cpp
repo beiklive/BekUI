@@ -33,6 +33,11 @@ int main()
     check(shell->getBackdropLayer() != shell->getContentLayer(), "背景层与内容层不是同一个");
     check(shell->getOverlayLayer() != shell->getHudLayer(), "覆盖层与浮层不是同一个");
 
+    // 调试层靠 getClassString() 显示类型名：不重写就只剩基类的 "bklv::View"，
+    // 排查视图树（尤其是 Shell 这种多职责巨型类）时没有类型信息。
+    checkEqual(shell->getClassString(), "bklv::Shell", "Shell 报告自己的类型名");
+    checkEqual(shell->getContentLayer()->getClassString(), "bklv::Box", "内层是普通 Box");
+
     // 2) 页头 / 底栏是普通视图，交给覆盖层；显隐走 GONE（不占位）
     View* header = new Box(Axis::COLUMN);
     View* footer = new Box(Axis::COLUMN);
