@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -46,6 +47,10 @@ bool registerItemBinder(const std::string& name, ItemBinder binder, std::string&
     }
 
     registry().push_back({ name, std::move(binder) });
+
+    // 注册表的状态是自己的静态表，按 core/globals.hpp 的约定登记重置钩子
+    // （名字去重，随手调没有副作用）
+    globals::getGlobalStore().addResetHook("itemBinders", &clearItemBindersForTest);
     return true;
 }
 

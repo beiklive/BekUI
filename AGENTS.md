@@ -856,6 +856,38 @@ views   → widgets
 ③ 头文件级**没有环**（102 个头 / 206 条 include 边，实测），上面这些环都在
    `.cpp → 对方模块头` 这一层，所以不阻塞编译；代价是模块无法独立编译/分发/测试。
 
+## 全局状态（`core/globals.hpp`）
+
+进程级状态**只有一处登记**：`bklv::globals::getGlobalStore()`。它解决的是"列举不出、
+重置不掉、交代不清"三个问题（评审 §4.2 P0②）。
+
+```cpp
+auto& store = bklv::globals::getGlobalStore();
+bklv::EventBus& bus = *store.obtain<bklv::EventBus>("eventBus"); // 懒创建（store 拥有）
+store.set<bklv::App>("app", app, false);                         // 借来的指针
+store.setNumber("myApp.uiScale", 1.5);                           // 数值槽（number/flag/text）
+bklv::globals::resetGlobals();                                   // 一轮结束：全清
+```
+
+三条约定：
+
+① **新增进程级状态一律登记到这里**，别再写 `static X instance;` —— 那种东西列举不出来、
+   `resetAll()` 也清不掉，"换一个 App / 测试之间复位"就永远做不到。
+   子系统自己的静态表（纹理仓库的映射表、四个注册表）搬不进表里，就登记**重置钩子**：
+   `store.addResetHook("textureStore", &resetTextureStoreForGlobals);`（`resetAll()` 逆序调用）。
+② **清空注册表必须连"已注册"标志一起翻回来**：注册表都是"惰性注册内置项"的写法，
+   只 `clear()` 不翻标志的话，重置之后内置的 `Box` / `rect` / `text` 会**静默消失**
+   （JSON 报"未知 type/op"，比崩更难查）。现有的 `clearXxxForTest()` 都做了这件事。
+③ **`resetAll()` 只析构"拥有"的对象**；借用指针（`App` / 平台 / 图形后端 / 玻璃服务）
+   只丢引用 —— 谁借的谁保证它活到最后。进程退出时 `GlobalStore` 的析构**刻意不做清理**
+   （它最后析构，那时别的 TU 的静态可能已经先没了：踩过 `json_test` 退出即 abort，
+   而检查项是全绿的）。要干净收尾就在一切还活着时显式调 `resetGlobals()`。
+   时机上注意：纹理仓库的钩子要在**图形后端还活着**时跑（`App::run` 的收尾已经保证了这点）。
+
+现状（别当成"多实例已完成"）：库仍然是"一个进程一套界面"（全局 ImGui 上下文）。
+这一层换来的是**可列举 / 可重置 / 可交代**；真要同时跑两个 App 得先定 App 边界的形态，
+见 `docs/architecture-review.html` §0 的 §4.2 P0② 一行。
+
 ## 截图（离屏，不用系统录屏权限）
 
 `App::requestScreenshot(path, delayFrames)` 会把"再渲染 N 帧之后"的那一帧从后缓冲读出来

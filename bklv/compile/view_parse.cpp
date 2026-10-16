@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -41,14 +42,21 @@ std::unordered_map<std::string, std::function<View*()>>& viewRegistry()
     return registry;
 }
 
+// 内置类型是否已经注册过。放**命名空间作用域**（不是函数内 static）：
+// clearViewTypesForTest() / resetGlobals() 要把它一起翻回来 —— 只清表不翻标志的话，
+// 重置之后 "Box" / "Label" 这些类型会静默失效（JSON 报"未知 type"，比崩更难查）。
+bool g_builtinsRegistered = false;
+
 // 内置类型注册。放在函数里而不是散在各个 .cpp 的静态初始化里：
 // 静态初始化顺序不可控，而这里只在第一次用到时注册，顺序天然安全。
 void registerBuiltinViewTypes()
 {
-    static bool done = false;
-    if (done)
+    if (g_builtinsRegistered)
         return;
-    done = true;
+    g_builtinsRegistered = true;
+
+    // 注册表的状态是自己的静态表（搬不进全局表），按 core/globals.hpp 的约定登记重置钩子
+    globals::getGlobalStore().addResetHook("viewTypes", &clearViewTypesForTest);
 
     registerViewType("Box", [] { return (View*)new Box(Axis::COLUMN); });
     registerViewType("Row", [] { return (View*)new Box(Axis::ROW); });
@@ -403,6 +411,13 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
 void registerViewType(const std::string& name, std::function<View*()> creator)
 {
     viewRegistry()[name] = std::move(creator);
+}
+
+void clearViewTypesForTest()
+{
+    viewRegistry().clear();
+    // 一并翻回"没注册过"：下一次用到时会重新注册内置类型（否则内置类型会静默失效）
+    g_builtinsRegistered = false;
 }
 
 bool isViewTypeRegistered(const std::string& name)

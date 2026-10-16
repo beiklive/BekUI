@@ -10,6 +10,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/gamepad.hpp"
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/view.hpp"
 
@@ -22,8 +23,9 @@ namespace bklv
 
 InputManager& getInputManager()
 {
-    static InputManager manager;
-    return manager;
+    // 登记在全局表里（core/globals.hpp）：可列举、可随 resetGlobals() 一起重置。
+    // 它握着焦点/模态这类指着视图的状态，重置必须发生在视图销毁之前（App 的收尾就是这么做的）。
+    return *globals::getGlobalStore().obtain<InputManager>("inputManager");
 }
 
 // 码位取自 borealis 的 views/hint.cpp（Switch 图标字体）

@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -88,6 +89,14 @@ std::map<std::string, uint64_t> g_pathLastUse;
 
 } // namespace
 
+namespace
+{
+
+// resetGlobals() 用的收尾钩子（定义在 shutdownTextureStore 之后）
+void resetTextureStoreForGlobals();
+
+} // namespace
+
 bool isTextureStoreReady()
 {
     return g_backend != nullptr;
@@ -101,6 +110,11 @@ void initTextureStore(RenderBackend* backend)
         g_pathCache.clear();
 
     g_backend = backend;
+
+    // 纹理仓库的状态是文件级 static（映射表 + 句柄表），搬不进全局表；
+    // 按 core/globals.hpp 的约定登记一个重置钩子，resetGlobals() 时会被调到。
+    // 注意语义：shutdownTextureStore() 要在后端销毁上下文**之前**跑（resetGlobals 由宿主决定时机）。
+    globals::getGlobalStore().addResetHook("textureStore", &resetTextureStoreForGlobals);
 }
 
 void shutdownTextureStore()
@@ -121,6 +135,19 @@ void shutdownTextureStore()
 }
 
 void trimTextureCache(); // 前置声明（实现在下方）
+
+namespace
+{
+
+// resetGlobals() 用的收尾钩子：除了清表，还把后端指针摘掉 ——
+// 只清表的话 isTextureStoreReady() 在"后端已经销毁"之后仍然报 true（老问题，一起收掉）。
+void resetTextureStoreForGlobals()
+{
+    shutdownTextureStore();
+    g_backend = nullptr;
+}
+
+} // namespace
 
 void setTextureBudget(size_t maxTextures)
 {

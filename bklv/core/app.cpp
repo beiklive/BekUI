@@ -2,6 +2,7 @@
 #include "bklv/core/decode_queue.hpp"
 
 #include "bklv/core/glass/glass_service.hpp"
+#include "bklv/core/globals.hpp"
 #include "bklv/core/image_writer.hpp"
 #include "bklv/core/audio.hpp"
 #include "bklv/core/task.hpp"
@@ -30,11 +31,9 @@
 namespace bklv
 {
 
-namespace
-{
-// 当前进程里的 App 实例（弹窗这类控件要挂到根视图上就得找到它）
-App* g_currentApp = nullptr;
-} // namespace
+// 当前进程里的 App 实例（弹窗这类控件要挂到根视图上就得找到它）。
+// 不在这里放 static：登记进全局表（core/globals.hpp），于是它也能被列举与重置。
+constexpr const char* kAppGlobalSlot = "app";
 
 // 最近一次布局使用的画布尺寸。
 float App::lastLayoutWidth  = 0.0f;
@@ -55,8 +54,8 @@ App::~App()
     task::shutdown();
     audio::shutdown();
 
-    if (g_currentApp == this)
-        g_currentApp = nullptr;
+    if (globals::getGlobalStore().find<App>(kAppGlobalSlot) == this)
+        globals::getGlobalStore().reset(kAppGlobalSlot);
 
     // 先清掉输入层的焦点与模态栈：模态栈是进程级的静态，
     // 根视图一删，里面的指针就是野指针了（再导航/命中就踩崩）。
@@ -161,7 +160,7 @@ unsigned int App::getLayoutCount()
 
 App* App::getCurrent()
 {
-    return g_currentApp;
+    return globals::getGlobalStore().find<App>(kAppGlobalSlot);
 }
 
 NotificationManager* App::getNotifications()
@@ -305,7 +304,7 @@ App::App()
     // 让页面 JSON 也能用外观驱动的控件（Button / Rectangle / Shell …）
     registerWidgetViewTypes();
 
-    g_currentApp = this;
+    globals::getGlobalStore().set<App>(kAppGlobalSlot, this, false); // 借用指针：App 自己拥有自己
     // 框架里最早能执行的用户代码。Switch 上没有终端，先把日志落到 SD 卡，
     // 这样后面任何一步失败（甚至崩溃）都能留下线索。
     enablePlatformLog();

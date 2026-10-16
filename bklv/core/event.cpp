@@ -1,5 +1,7 @@
 #include "bklv/core/event.hpp"
 
+#include "bklv/core/globals.hpp"
+
 namespace bklv
 {
 
@@ -60,8 +62,9 @@ void EventBus::clear()
 
 EventBus& getEventBus()
 {
-    static EventBus bus;
-    return bus;
+    // 登记在全局表里（core/globals.hpp）：可列举、可随 resetGlobals() 一起重置。
+    // 重置之后拿到的是**新对象**，旧订阅自然作废 —— 这是"换一个 App 从干净状态开始"的前提。
+    return *globals::getGlobalStore().obtain<EventBus>("eventBus");
 }
 
 } // namespace bklv

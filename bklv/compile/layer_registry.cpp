@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -19,15 +20,22 @@ std::vector<LayerType>& registry()
     return layers;
 }
 
+// 内置层是否已经注册过。刻意放**命名空间作用域**而不是函数内 static：
+// clearLayersForTest() / resetGlobals() 要把这个标志一起翻回来 —— 只清 vector 不翻标志的话，
+// 重置之后内置的 rect / text / glass 会静默消失（外表全报"未知 op"，比崩更难查）。
+bool g_builtinsRegistered = false;
+
 // 内置层惰性注册一次：调用方不用关心初始化顺序，
 // 第三方仍然可以在自己的初始化里提前 registerLayer（重复会报错，不会互相覆盖）
 void ensureBuiltins()
 {
-    static bool done = false;
-    if (done)
+    if (g_builtinsRegistered)
         return;
-    done = true;
+    g_builtinsRegistered = true;
     registerBuiltinLayers();
+
+    // 注册表的状态是自己的静态表（搬不进全局表），按 core/globals.hpp 的约定登记重置钩子
+    globals::getGlobalStore().addResetHook("layers", &clearLayersForTest);
 }
 
 } // namespace
@@ -342,6 +350,8 @@ const std::vector<LayerType>& registeredLayers()
 void clearLayersForTest()
 {
     registry().clear();
+    // 一并翻回"没注册过"：下一次用到时会重新注册内置层（否则内置 op 会静默失效）
+    g_builtinsRegistered = false;
 }
 
 int layerSortRank(LayerOrder order)

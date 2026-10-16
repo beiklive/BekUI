@@ -313,6 +313,7 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 # ImGui 静态初始化的问题。
 
 set(BKLV_CORE_SOURCES
+    core/globals.cpp
     core/focus_ring.cpp
     core/gradient.cpp
     core/transition_player.cpp

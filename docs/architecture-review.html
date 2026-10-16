@@ -196,8 +196,16 @@
     </tr>
     <tr>
       <td>§4.2 P0②：进程级单例</td>
-      <td><span class="tag bad">未做</span></td>
-      <td>要先定"App 边界"的形态（注册表按实例，还是"可重置 + 进程内单实例"），是本次风险最高的一项，建议单独一轮并配测试。</td>
+      <td><span class="tag warn">部分完成</span></td>
+      <td>走了评审建议的"先可重置、别一步到多实例"：新增 <code>core/globals.*</code>
+        （全局变量管理器）—— 对象槽（<code>obtain</code> / <code>set</code>，区分"拥有"与"借用"）、
+        数值槽（number / flag / text）、重置钩子、<code>describe()</code> 列举。已登记进来的：
+        <code>EventBus</code>、<code>InputManager</code>（懒创建，重置后是干净的新对象）、
+        <code>App</code> 当前实例、玻璃服务，以及四条注册表的重置钩子
+        （纹理仓库、视图类型、图层类型、数据源 / 绑定函数；清表时把"已注册"标志一并翻回来，
+        否则内置项会静默消失）。测试：<code>tests/globals_test.cpp</code>（49 项）。
+        <b>仍未做</b>：多实例（同一进程跑两个 App）—— 那要先定 App 边界的形态，
+        仍是 P0② 剩下的部分；当下换来的是"可列举 / 可重置 / 可交代"。</td>
     </tr>
     <tr>
       <td>§4.2 P0④：默认主题依赖 demo 的 <code>stripe</code> op</td>

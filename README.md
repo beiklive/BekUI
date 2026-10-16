@@ -26,7 +26,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 
 | 目录 | 文件数 | 内容 |
 |---|---|---|
-| `core/` | 78 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger`；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
+| `core/` | 79 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger` / 全局状态登记表（`globals.*`，可列举·可重置）；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
 | `views/` | 24 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
 | `widgets/` | 53 | **外观驱动的控件**：`AppearanceView`（基类）、`Shell`（四层外壳）、`Pager`、`Header`/`BottomBar`/`Sidebar`/`TabFrame`、`Button`/`SelectorButton`/`Slider`、Cell 家族（6 种）、`Dialog`/`Dropdown`/`EditTextDialog`/`Notification`、`HintsBar`/`StatusArea`/`AccountWidget`、`RecyclerView`（JSON 桥接）、六个 `layer_draw_*` 绘制钩子 |
 | `compile/` | 18 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |
@@ -276,6 +276,23 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 
 `-DBKLV_GRAPHICS=gl|vk` 选图形后端；它不设默认值时会自己判成 `gl`。
 图形后端是**编译期**决定的，所以同一个工程要出两版就是两个构建目录。
+
+### 全局状态
+
+库里的进程级状态（事件总线、输入管理器、纹理仓库、几个注册表、当前 `App`）都登记在
+一张表里：`bklv::globals::getGlobalStore()`（见 `bklv/core/globals.hpp`）。三件事因此可做：
+
+```cpp
+auto& store = bklv::globals::getGlobalStore();
+store.setNumber("myApp.uiScale", 1.5f);      // 放自己的全局变量，省一个没人管的 static
+for (const std::string& line : store.describe())  // 列举：这台进程里都有什么
+    BKLV_LOG_INFO("%s", line.c_str());
+bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App / 测试之间）
+```
+
+约定是"新增进程级状态一律登记到这里"，细节与三条注意事项见 `AGENTS.md` 的「全局状态」。
+库本身仍是**单实例**（一个进程一套界面，有全局 ImGui 上下文）；`resetGlobals()` 解决的是
+"状态能清干净"，不是"同时跑两个"。
 
 ### 分层
 

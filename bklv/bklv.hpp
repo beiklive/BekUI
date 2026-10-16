@@ -24,6 +24,7 @@
 #include "bklv/core/event.hpp"
 #include "bklv/core/geometry.hpp"
 #include "bklv/core/gesture.hpp"
+#include "bklv/core/globals.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/image_decoder.hpp"

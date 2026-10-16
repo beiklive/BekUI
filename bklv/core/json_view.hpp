@@ -49,6 +49,11 @@ struct Binding
 void registerViewType(const std::string& name, std::function<View*()> creator);
 bool isViewTypeRegistered(const std::string& name);
 
+// 清空视图类型注册表（内置的那几个也一起清，并把"已注册"标志翻回来 ——
+// 下一次用到时会重新注册内置类型）。测试用；库的 resetGlobals() 也走这里
+// （见 core/globals.hpp 的"重置钩子"）。
+void clearViewTypesForTest();
+
 // 已注册的类型名（错误提示与文档用）。
 std::string getViewTypeNames();
 

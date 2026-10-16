@@ -1,13 +1,34 @@
 #include "bklv/core/glass/glass_service.hpp"
 
+#include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv::glass
 {
 
+namespace
+{
+
+// 把服务登记进全局表（借用指针：服务活到进程结束）。
+// 只登记一次 —— getGlassService() 在绘制路径上会被反复调用，不该每次都查表。
+bool registerGlassServiceOnce(GlassService& service)
+{
+    static bool registered = false;
+    if (!registered)
+    {
+        registered = true;
+        globals::getGlobalStore().set<GlassService>("glassService", &service, false);
+    }
+    return true;
+}
+
+} // namespace
+
 GlassService& GlassService::getInstance()
 {
     static GlassService instance;
+    static const bool registered = registerGlassServiceOnce(instance);
+    (void)registered;
     return instance;
 }
 

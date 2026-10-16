@@ -392,6 +392,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 | 8 | ~~`src/app` 是 demo 代码却在库源码树里~~ | 已解决：库在 `bklv/`，demo 在 `demo/` | — |
 | 9 | 库里的 `bklv_app` 层已经搬走，但 `demo/app` 仍然耦合在根 `CMakeLists.txt` 里 | 加第二个示例程序时要复制一遍源文件列表 | 等真有第二个示例时再抽成 `demo/CMakeLists.txt` |
 | 10 | 多后端产物目录靠不同构建目录区分 | 两个构建目录若指向同一输出目录，会互相覆盖同名文件，而 CMake 认为目标最新不会重链，得到「另一个后端编出来的程序」且无提示 | 现在是 `dist/`、`dist/vk/`、`dist/switch/` 三份；加新构建配置时注意别和已有的合并 |
+| 11 | 进程级状态仍是「一个进程一套界面」 | 已经集中到 `core/globals.*`（可列举 / 可重置：`EventBus`、`InputManager`、`App` 当前实例、玻璃服务 + 四条注册表的重置钩子），但**多实例做不到** —— 全局 ImGui 上下文、`App::getCurrent()`、玻璃服务都假定单实例 | 真要同进程跑两个 App，先定「App 边界」的形态（注册表按实例传入 + 上下文按实例），再逐个子系统搬；见 `docs/architecture-review.html` §0 的 §4.2 P0② |
 
 ---
 
