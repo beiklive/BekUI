@@ -137,12 +137,29 @@ void addGradientRectMesh(ImDrawList* drawList, const Gradient& gradient, const I
     const ImVec2 center(min.x + width * 0.5f, min.y + height * 0.5f);
     const int boundaryCount = (int)boundary.size();
 
-    // 扇形本体：中心 + 边界，末点回到起点闭合
-    drawList->PrimReserve(boundaryCount + 2, boundaryCount + 2);
-    drawList->PrimVtx(center, whiteUv, colorAt(center));
-    for (const ImVec2& point : boundary)
-        drawList->PrimVtx(point, whiteUv, colorAt(point));
-    drawList->PrimVtx(boundary[0], whiteUv, colorAt(boundary[0]));
+    // 扇形本体：每个三角形 = 中心 + 相邻的两个边界点。
+    //
+    // 索引必须**按 3 成组**发出。原因：ImGui 把一条 draw list 的**所有**图元合并进一个
+    // ImDrawCmd，渲染时一次 `glDrawElementsBaseVertex(GL_TRIANGLES, ElemCount, …)`，
+    // 索引按连续三元组消费 —— 只要有一段图元发出的索引不是 3 的倍数，**它之后的所有三角形
+    // 都会整体错位**、顶点配错。踩过：这里原本是 `PrimReserve(boundaryCount + 2, …)` +
+    // 逐点 PrimVtx（PrimVtx = 写一个索引 + 一个顶点），总索引 = 36 + 2 = 38，38 % 3 == 2，
+    // 症状是渐变卡所在滚动区里的**文字被切成横条 + 斜向短划**；
+    // 而且那 38 个索引里只有第一个三角形是对的，其余是边界点之间的碎片 —— 渐变内部其实
+    // 没填满（卡片内部偏暗）。
+    //
+    // 现在每个三角形的三个点都现写（边界点会重复写，多几十个顶点）：换来实现简单、
+    // 天然 3 对齐，代价可忽略（斜角网格那条路径本来就发 384 个顶点）。
+    const ImU32 centerColor = colorAt(center);
+    drawList->PrimReserve(boundaryCount * 3, boundaryCount * 3);
+    for (int i = 0; i < boundaryCount; i++)
+    {
+        const ImVec2& a = boundary[i];
+        const ImVec2& b = boundary[(i + 1) % boundaryCount];
+        drawList->PrimVtx(center, whiteUv, centerColor);
+        drawList->PrimVtx(a, whiteUv, colorAt(a));
+        drawList->PrimVtx(b, whiteUv, colorAt(b));
+    }
 
     // 抗锯齿：每个边界点沿"远离中心"的方向外扩一个羽边，alpha = 0
     drawList->PrimReserve(boundaryCount * 6, boundaryCount * 6);

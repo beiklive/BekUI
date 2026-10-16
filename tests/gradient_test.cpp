@@ -240,6 +240,42 @@ int main()
                     transparentFringe++;
             check(transparentFringe > 0, "羽边顶点（alpha=0）存在");
 
+            // 回归：索引必须按 3 对齐、圆角必须真的发扇形。
+            //
+            // 为什么钉这条：ImGui 把一条 draw list 的**所有**图元合并进一个 ImDrawCmd，
+            // 渲染时按连续三元组消费索引（glDrawElementsBaseVertex(GL_TRIANGLES, ElemCount, …)）。
+            // 只要有一段图元发出的索引不是 3 的倍数，**它之后的所有三角形都会整体错位**、
+            // 顶点配错 —— 真实症状是渐变卡所在滚动区里的文字被切成横条 + 斜向短划。
+            // 踩过：圆角扇形写成 `PrimReserve(boundaryCount + 2, …)` = 38 个索引（38 % 3 == 2），
+            // 而且那 38 个索引只有第一个三角形是对的（碎片），渐变内部其实没填满。
+            {
+                ImDrawList local(ImGui::GetDrawListSharedData());
+                local._ResetForNewFrame();
+                local._FringeScale    = 1.0f;
+                local._InvFringeScale = 1.0f;
+
+                const int idxBefore = local.IdxBuffer.Size;
+                addGradientRectMesh(&local, straight, ImVec2(0.0f, 0.0f), ImVec2(100.0f, 50.0f),
+                    12.0f, 1.0f);
+
+                checkEqualInt((local.IdxBuffer.Size - idxBefore) % 3, 0,
+                    "圆角渐变发出的索引数是 3 的倍数");
+
+                bool everyCommandAligned = !local.CmdBuffer.empty();
+                for (const ImDrawCmd& command : local.CmdBuffer)
+                    if (command.ElemCount % 3 != 0)
+                        everyCommandAligned = false;
+                check(everyCommandAligned,
+                    "每条绘制命令的 ElemCount 都是 3 的倍数（否则同命令里后续图元整体错位）");
+
+                // 真扇形：每个三角形都带中心点（中心 = 矩形中心）。碎片写法里中心只出现一次。
+                int centerVerts = 0;
+                for (int i = idxBefore; i < local.VtxBuffer.Size; i++)
+                    if (local.VtxBuffer[i].pos.x == 50.0f && local.VtxBuffer[i].pos.y == 25.0f)
+                        centerVerts++;
+                check(centerVerts >= 3, "圆角渐变发的是真扇形（中心点出现在每个三角形里）");
+            }
+
             const int beforeScale = list.VtxBuffer.Size;
             addGradientRectMesh(&list, straight, ImVec2(0.0f, 0.0f), ImVec2(100.0f, 50.0f),
                 0.0f, 0.5f);
