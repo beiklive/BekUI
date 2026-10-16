@@ -1,6 +1,6 @@
 #include "bklv/widgets/appearance_view.hpp"
 
-#include "bklv/glass/glass_service.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/widgets/appearance_children.hpp"
 #include "bklv/widgets/layer_draw.hpp"
 #include "bklv/compile/layer_registry.hpp"
@@ -476,131 +476,60 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         // 逐层透明度：和控件自身的 alpha 相乘
         const float alphaScale = std::max(0.0f, std::min(1.0f, opacity)) * this->getAlpha();
 
+        // 这一层是哪个类型：内置走**数组下标查表**，扩展按名字查注册表。
+        // 以前每个 case 里都写 `compile::findLayer("rect")` —— 每层每帧都要构造一次
+        // std::string 再做哈希查找；现在内置只剩一次数组索引。
+        const compile::LayerType* layerType = layer.op == AppearanceLayer::Op::EXTENSION
+            ? compile::findLayer(layer.extensionType)
+            : compile::builtinLayer(layer.op);
+
+        // 钩子上下文：内容槽（文字 / 字体 / 图）由各分支按层填。
+        // type 一起带进去 —— 扩展层靠它把 layer.params[i] 对应回参数名与类型。
+        auto hookContext = [&](const std::string* text, void* font, void* image) {
+            return compile::LayerDrawContext{ layer, this->appearance, index, drawList,
+                { rect[0], rect[1], rect[2], rect[3],
+                    this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
+                this, text, font, image, nullptr, layerType };
+        };
+
+        // 没有钩子就什么都不画：注册表是绘制层的**唯一出口**。唯一例外是 CUSTOM ——
+        // 控件可以自己实现 drawCustomLayer（原地兜底，见下面的分支）。
+        if (layerType == nullptr || !layerType->draw)
+        {
+            if (layer.op == AppearanceLayer::Op::CUSTOM)
+                this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
+                    rect[3] - rect[1], this->appearance);
+            continue;
+        }
+
         switch (layer.op)
         {
-            case AppearanceLayer::Op::RECT:
-            {
-                // ③：内置层走注册表钩子（原地实现保留为兜底，全部搬完后再删）
-                if (const compile::LayerType* rectType = compile::findLayer("rect");
-                    rectType != nullptr && rectType->draw)
-                {
-                    rectType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this });
-                    break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
-            }
-
-            case AppearanceLayer::Op::GLASS:
-            {
-                // ③：走注册表钩子（原地实现留作兜底）
-                if (const compile::LayerType* glassType = compile::findLayer("glass");
-                    glassType != nullptr && glassType->draw)
-                {
-                    glassType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this });
-                    break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
-            }
-
-            case AppearanceLayer::Op::SHADOW:
-            {
-                // ③：走注册表钩子（原地实现留作兜底）
-                if (const compile::LayerType* shadowType = compile::findLayer("shadow");
-                    shadowType != nullptr && shadowType->draw)
-                {
-                    shadowType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this });
-                    break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
-            }
-
             case AppearanceLayer::Op::TEXT:
             {
-                // ③：走注册表钩子（原地实现留作兜底）。内容槽在这里现算，行为与原来一致
-                if (const compile::LayerType* textType = compile::findLayer("text");
-                    textType != nullptr && textType->draw)
-                {
-                    const std::string textContent = this->getLayerText(layer.source);
-                    ImFont* layerFont = this->getLayerFont(layer);
-                    textType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this, &textContent, layerFont, nullptr, nullptr });
-                    break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
+                // 内容槽在这里现算：getLayerText 返回 std::string，要活到钩子调用结束
+                const std::string textContent = this->getLayerText(layer.source);
+                layerType->draw(hookContext(&textContent, this->getLayerFont(layer), nullptr));
+                break;
             }
 
             case AppearanceLayer::Op::IMAGE:
             {
-                // ③：走注册表钩子（原地实现留作兜底）。图与有效性在这里现算，行为与原来一致
-                if (const compile::LayerType* imageType = compile::findLayer("image");
-                    imageType != nullptr && imageType->draw)
-                {
-                    const TextureRef layerImage = this->getLayerImage(layer.source);
-                    imageType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this, nullptr, nullptr,
-                        layerImage.isValid() ? (void*)layerImage.texture : nullptr, nullptr });
-                    break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
-            }
-
-            case AppearanceLayer::Op::EXTENSION:
-            {
-                // 扩展 op：绘制交给**注册表里的 draw 钩子**（第三方注册时提供）。
-                // 引擎这里不写任何 `if (op == ...)`，所以别人加新层级不用改这个文件。
-                const compile::LayerType* type = compile::findLayer(layer.extensionType);
-                if (type == nullptr || !type->draw)
-                    break;
-                if (alphaScale <= 0.001f)
-                    break;
-
-                compile::LayerRect hookRect;
-                hookRect.minX   = rect[0];
-                hookRect.minY   = rect[1];
-                hookRect.maxX   = rect[2];
-                hookRect.maxY   = rect[3];
-                hookRect.radius = this->appearance.getNumber(index, AppearanceProp::RADIUS);
-                hookRect.alpha  = alphaScale;
-
-                compile::LayerDrawContext ctx{ layer, this->appearance, (int)index, drawList,
-                    hookRect, this };
-                type->draw(ctx);
+                // 图与"是否有效"在这里现算；TextureRef 同样要活到调用之后
+                const TextureRef layerImage = this->getLayerImage(layer.source);
+                layerType->draw(hookContext(nullptr, nullptr,
+                    layerImage.isValid() ? (void*)layerImage.texture : nullptr));
                 break;
             }
 
-            case AppearanceLayer::Op::CUSTOM:
-                // ③：走注册表钩子（原地实现留作兜底）
-                if (const compile::LayerType* customType = compile::findLayer("custom");
-                    customType != nullptr && customType->draw)
-                {
-                    customType->draw(compile::LayerDrawContext{ layer, this->appearance, (int)index,
-                        drawList,
-                        { rect[0], rect[1], rect[2], rect[3],
-                            this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                        this, nullptr, nullptr, nullptr, nullptr });
+            case AppearanceLayer::Op::EXTENSION:
+                // 扩展层先替它确认这一层可见：第三方钩子不一定会查 alpha
+                if (alphaScale <= 0.001f)
                     break;
-                }
-                break; // 没有钩子时也要断住，别贯穿到下一条 case
-                this->drawCustomLayer(drawList, layer, rect[0], rect[1], rect[2] - rect[0],
-                    rect[3] - rect[1], this->appearance);
+                layerType->draw(hookContext(nullptr, nullptr, nullptr));
+                break;
+
+            default: // RECT / SHADOW / GLASS / CUSTOM
+                layerType->draw(hookContext(nullptr, nullptr, nullptr));
                 break;
         }
     }

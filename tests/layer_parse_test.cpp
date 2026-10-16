@@ -7,9 +7,13 @@
 #include <cstdio>
 #include <string>
 
+#include "bklv/compile/layer_register.hpp" // registerLayer<T>() 模板
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/core/ui_scale.hpp"
+
+#include "test_contrib.hpp" // 共享的第三方层桩（stripe）
 
 using namespace bklv;
 
@@ -31,10 +35,36 @@ const AppearanceLayer* layerOf(const Appearance& appearance, const std::string& 
     return nullptr;
 }
 
+// "只用注册模板"的层：不写 parse 钩子、不写 kIdPrefix / kHelp —— 全部走模板兜底。
+// 定义在文件作用域（不能放在函数里：C++ 不允许局部 struct 有 static constexpr 数据成员）。
+struct ParamLayer
+{
+    static constexpr const char* kName  = "param_test";
+    static constexpr const char* kLabel = "参数测试";
+    static constexpr bklv::compile::LayerOrder kOrder = bklv::compile::LayerOrder::DECORATION;
+
+    static std::vector<bklv::compile::LayerParam> params()
+    {
+        using bklv::compile::LayerParam;
+        return {
+            LayerParam::number("strength", 0.5f, "强度"),
+            LayerParam::pixels("lineWidth", 3.0f, "线宽"),
+            LayerParam::color("tint", IM_COL32(1, 2, 3, 255), "染色"),
+            LayerParam::boolean("mono", true, "单色"),
+            LayerParam::enumeration("mode", { "horizontal", "vertical", "diagonal" }, 1, "方向"),
+        };
+    }
+    static void draw(const bklv::compile::LayerDrawContext&) { }
+};
+
 } // namespace
 
 int main()
 {
+    // 主题里随包发布的 base/stripe_demo.json 用的是扩展 op "stripe"，
+    // 所以整主题相关的断言前必须先注册一次（第 7 节会编译那段 JSON）
+    test_contrib::registerStripe();
+
     std::printf("== 1. 六种 op 都能解析，且各自的键落到该落的字段 ==\n");
     {
         std::string error;
@@ -194,11 +224,28 @@ int main()
             check(appearance != nullptr, "注册表里的 op 解析器都认识：" + type.name);
         }
 
-        // 层序档位：引擎排的是 阴影 -> 玻璃 -> 底色
-        check(layerOrderRank(LayerOrder::SHADOW) < layerOrderRank(LayerOrder::GLASS),
+        // 层序：阴影最先、玻璃紧随其后；**内置层共用同一档**（保持 JSON 书写顺序，
+        // 不按"rect 就是 BACKGROUND"重排 —— 那会让 121 份发布外观里的 hlGlow/hlBorder
+        // 掉到文字下面，见 layerSortRank 的注释）；DECORATION / OVERLAY 供扩展层往后排。
+        check(layerSortRank(LayerOrder::SHADOW) < layerSortRank(LayerOrder::GLASS),
             "阴影在玻璃之前");
-        check(layerOrderRank(LayerOrder::GLASS) < layerOrderRank(LayerOrder::BACKGROUND),
-            "玻璃在底色之前");
+        check(layerSortRank(LayerOrder::GLASS) < layerSortRank(LayerOrder::BACKGROUND),
+            "玻璃在其余层之前");
+        check(layerSortRank(LayerOrder::BACKGROUND) == layerSortRank(LayerOrder::CONTENT),
+            "内置各档共用同一 rank（保持 JSON 顺序）");
+        check(layerSortRank(LayerOrder::DECORATION) > layerSortRank(LayerOrder::CONTENT),
+            "DECORATION 排在其余层之后");
+        check(layerSortRank(LayerOrder::OVERLAY) > layerSortRank(LayerOrder::DECORATION),
+            "OVERLAY 排在最后");
+
+        // 内置 op 的类型查表：数组索引（绘制分派每层每帧都调它）
+        check(builtinLayer(AppearanceLayer::Op::RECT) != nullptr, "builtinLayer(RECT) 有值");
+        check(builtinLayer(AppearanceLayer::Op::RECT)->name == "rect", "查回来的是 rect");
+        check(builtinLayer(AppearanceLayer::Op::EXTENSION) == nullptr,
+            "EXTENSION 没有内置类型（要走 findLayer(extensionType)）");
+
+        // 引擎自己读的键：设计器候选与"参数名撞车"提示都用它
+        check(!engineLayerKeys().empty(), "引擎键表非空");
 
         // 扩展层不许用引擎保留键（踩过的坑，见 layer_registry.hpp 的注释）
         {
@@ -278,6 +325,134 @@ int main()
         error.clear();
         check(compileLayers(R"({ "op": "没注册过的类型" })", error) == nullptr,
             "没注册过的 op 仍然报错（不静默放过）");
+    }
+
+    std::printf("\n== 6. 参数模式：声明一次，解析 / 缩放 / 校验全部自动 ==\n");
+    {
+        using namespace bklv::compile;
+
+        // 参数解析要乘 uiScale，这里先把基准钉成 1.0（前面的小节可能改过）
+        setUiScale(1.0f);
+
+        // 用的层类型 ParamLayer 定义在文件顶部的匿名命名空间里
+        // （C++ 不允许函数内的局部 struct 有 static constexpr 数据成员）
+        check(registerLayer<ParamLayer>(), "用模板注册参数层成功");
+
+        const LayerType* type = findLayer("param_test");
+        check(type != nullptr, "注册表里能查到");
+        if (type != nullptr)
+        {
+            checkEqual(type->idPrefix, "param_test", "kIdPrefix 没写就用 kName 兜底");
+            checkEqual(type->label, "参数测试", "中文名来自 kLabel");
+            check(type->help.empty(), "kHelp 没写就是空串");
+            check(!type->parse, "没写 parse 钩子就留空（标量参数不需要它）");
+            checkEqualSize(type->keys.size(), 5, "keys 由 params 派生（设计器候选自动跟上）");
+        }
+
+        // 只写一部分键：其余落到模式里的默认值
+        std::string error;
+        auto appearance = compileLayers(
+            R"({ "op": "param_test", "strength": 0.25, "mono": false })", error);
+        check(appearance != nullptr, "只写部分参数也能编译");
+        if (appearance != nullptr)
+        {
+            const AppearanceLayer& layer = appearance->getLayers()[0];
+            checkEqualInt((int)layer.paramCount, 5, "参数槽个数 = 声明个数");
+            checkFloat(layer.params[0].number, 0.25f, "NUMBER 按 JSON 解析");
+            checkFloat(layer.params[1].number, 3.0f, "PIXELS 没写就用默认值（乘 uiScale=1）");
+            checkColor(layer.params[2].color, IM_COL32(1, 2, 3, 255), "COLOR 没写就用默认值");
+            check(!layer.params[3].boolean, "BOOL 按 JSON 解析");
+            checkFloat(layer.params[4].number, 1.0f, "ENUM 没写就用默认下标（第 2 个候选）");
+        }
+
+        // ENUM：宽容匹配；拼错只警告并保持默认值
+        appearance = compileLayers(R"({ "op": "param_test", "mode": "VERTICAL" })", error);
+        check(appearance != nullptr, "ENUM 大小写不敏感");
+        if (appearance != nullptr)
+            checkFloat(appearance->getLayers()[0].params[4].number, 1.0f, "VERTICAL 命中 vertical");
+        appearance = compileLayers(R"({ "op": "param_test", "mode": "斜着" })", error);
+        check(appearance != nullptr, "ENUM 拼错不打断编译");
+        if (appearance != nullptr)
+            checkFloat(appearance->getLayers()[0].params[4].number, 1.0f, "拼错保持默认值");
+
+        // 类型写错是硬错误
+        error.clear();
+        check(compileLayers(R"({ "op": "param_test", "mono": "yes" })", error) == nullptr,
+            "BOOL 给了字符串 -> 编译失败");
+        error.clear();
+        check(compileLayers(R"({ "op": "param_test", "strength": "#ffffff" })", error) == nullptr,
+            "NUMBER 给了颜色串 -> 编译失败");
+
+        // 参数模式本身的注册期校验
+        LayerType tooMany;
+        tooMany.name     = "too_many";
+        tooMany.idPrefix = "too_many";
+        for (size_t i = 0; i <= kMaxLayerParams; i++)
+            tooMany.params.push_back(LayerParam::number("p" + std::to_string(i), 0.0f));
+        check(!registerLayer(std::move(tooMany), error), "参数超过上限 -> 注册失败");
+
+        LayerType reservedParam;
+        reservedParam.name     = "reserved_param";
+        reservedParam.idPrefix = "reserved_param";
+        reservedParam.params.push_back(LayerParam::number("width", 1.0f)); // 引擎几何键
+        check(!registerLayer(std::move(reservedParam), error), "参数占用引擎保留键 -> 注册失败");
+
+        LayerType dupParam;
+        dupParam.name     = "dup_param";
+        dupParam.idPrefix = "dup_param";
+        dupParam.params.push_back(LayerParam::number("a", 1.0f));
+        dupParam.params.push_back(LayerParam::number("a", 2.0f));
+        check(!registerLayer(std::move(dupParam), error), "参数名重复 -> 注册失败");
+
+        LayerType badEnum;
+        badEnum.name     = "bad_enum";
+        badEnum.idPrefix = "bad_enum";
+        badEnum.params.push_back(LayerParam::enumeration("mode", {}, 0));
+        check(!registerLayer(std::move(badEnum), error), "ENUM 没有候选值 -> 注册失败");
+    }
+
+    std::printf("\n== 7. 实物验收：随仓库发布的 stripe_demo.json 参数落到正确的地方 ==\n");
+    {
+        using namespace bklv::compile;
+
+        // 这一层的注册在 tests/test_contrib.hpp（和 demo/contrib/stripe_layer.cpp 同构）。
+        // 断言的是"主题 JSON 里的值 → 绘制钩子读到的位置"这条链：
+        // 角度是 NUMBER（**不缩放**）、间距/线宽是 PIXELS（乘 uiScale）、
+        // 而 fill/radius/inset 是引擎字段（和参数槽互不干扰）。
+        setUiScale(2.0f); // 故意非 1：才看得出哪个缩放了
+
+        std::string error;
+        auto appearance = compileLayers(
+            R"({ "op": "stripe", "id": "stripes", "angle": 45, "gap": 16, "lineWidth": 3,
+                 "fill": "#112233FF", "radius": 12, "inset": [6, 6, 6, 6] })",
+            error);
+        check(appearance != nullptr, "stripe_demo 那一段 JSON 能编译");
+        if (appearance != nullptr)
+        {
+            const AppearanceLayer* layer = layerOf(*appearance, "stripes");
+            check(layer != nullptr, "按 id 找得到这一层");
+            if (layer != nullptr)
+            {
+                checkEqualInt((int)layer->paramCount, 3, "三个声明参数都在");
+                checkFloat(layer->params[0].number, 45.0f, "angle 不缩放（角度不是像素量）");
+                checkFloat(layer->params[1].number, 6.0f, "lineWidth 3 × uiScale 2 = 6");
+                checkFloat(layer->params[2].number, 32.0f, "gap 16 × uiScale 2 = 32");
+                // 引擎字段照常解析（扩展层能直接白拿）
+                checkColor(layer->fill, IM_COL32(0x11, 0x22, 0x33, 0xFF), "fill 走引擎字段");
+                checkFloat(layer->radius, 24.0f, "radius 走引擎字段（也乘了缩放）");
+                checkFloat(layer->inset[0], 12.0f, "inset 走引擎字段（6 × 2）");
+            }
+        }
+
+        // 参数名撞上引擎会解析的键：注册成功（不致命）但会警告 —— 这里只确认它仍然可用
+        LayerType collide;
+        collide.name     = "collide";
+        collide.idPrefix = "collide";
+        collide.params.push_back(LayerParam::color("fill", 0)); // fill 引擎已经解析过
+        collide.draw     = [](const LayerDrawContext&) { };
+        check(registerLayer(std::move(collide), error), "参数撞引擎键：注册仍成功（只警告）");
+
+        setUiScale(1.0f);
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

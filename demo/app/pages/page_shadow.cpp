@@ -63,6 +63,24 @@ Box* buildShadowPage()
     paramsCard->addView(makeHint(getStr("shadow/params_hint")));
     page->addView(paramsCard);
 
+    // ---- 内阴影（同一个 op，`inner: true`）----
+    //
+    // 内阴影和外投影是**同一个 shadow 层**，只是一个布尔开关：
+    //   · 外投影垫在控件下面（解析期提到最前），内阴影压在底色上面（按书写顺序画）
+    //   · 内阴影**没有方向**：贴内缘最暗、往内渐透，四周对称（offset 对它无效）
+    //   · 它永远不会超出形状（顶点级验证见 tests/shadow_test.cpp 第 6 节）
+    // 做成参数而不是新 op 的理由：它是同一种"柔和投影"，只是方向朝内；
+    // 想同时要内外两层就写两个 shadow 层，表达能力并不少。
+    Rectangle* innerCard = makeCard();
+    innerCard->addView(makeText(getStr("shadow/inner_title"),
+        getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
+    Box* innerRow = makeRow(getTheme().number("metric.spacing.md", 12.0f), AlignItems::STRETCH);
+    innerRow->addView(makeShadowCard("inner", getStr("shadow/card_inner")));
+    innerRow->addView(makeShadowCard("innerglow", getStr("shadow/card_inner_glow")));
+    innerCard->addView(innerRow);
+    innerCard->addView(makeHint(getStr("shadow/inner_hint")));
+    page->addView(innerCard);
+
     // 半透明底色才看得出 cutout 的差别：不开时阴影会从透明底里透出来
     Rectangle* cutCard = makeCard();
     cutCard->addView(makeText(getStr("shadow/cutout_title"),

@@ -122,24 +122,38 @@ const PropName PROP_NAMES[] = {
 // 数值项：数字 或 `"@theme/metric.x.y"`
 
 
-// `op: "glass"` 表达的是"这个控件的底是玻璃"，所以**永远排在最前**（早于 bg/阴影/内容）。
-// 解析期排一次序，这样主题里可以用 `import` 基外观 + 追加一层 glass 的写法做玻璃变体，
-// 不用关心书写位置（否则玻璃会盖住内容 —— 这是最容易犯的错）。
-void hoistGlassLayers(std::vector<AppearanceLayer>& layers)
+// 绘制顺序：解析期排一次（stable_sort，同档内保持 JSON 书写顺序）。
+//
+//   · 阴影（rank 0）必须最先：它是半透明的一整块（非 cutout 时连面板底下也铺），
+//     排到玻璃后面会把玻璃压暗。
+//   · 玻璃（rank 1）紧随其后：`op: "glass"` 表达的是"这个控件的底是玻璃"，
+//     所以主题里可以用 `import` 基外观 + 追加一层 glass 的写法做玻璃变体，
+//     不用关心书写位置（否则玻璃会盖住内容 —— 最容易犯的错）。
+//   · 其余按各层**注册时声明的层序**（compile::layerSortRank）：内置层统一落在 rank 2，
+//     也就是保持 JSON 顺序（改这个会动到 121 份发布外观的像素，见 layerSortRank 的注释）；
+//     扩展层声明 DECORATION / OVERLAY 就能画在所有内置层之上。
+void sortLayers(std::vector<AppearanceLayer>& layers)
 {
-    // 顺序固定成：阴影（0）-> 玻璃（1）-> 其余（2）。
-    // 玻璃不能真的排到"第一个"：阴影层是半透明的一整块（不是 cutout 时连面板底下也铺），
-    // 排到玻璃后面会把玻璃压暗。
-    auto rank = [](AppearanceLayer::Op op) {
-        if (op == AppearanceLayer::Op::SHADOW)
-            return 0;
-        if (op == AppearanceLayer::Op::GLASS)
-            return 1;
-        return 2;
+    // 取一层声明的层序：内置按 op 名查表，扩展按 extensionType；查不到当 rank 2
+    auto rankOf = [](const AppearanceLayer& layer) {
+        // 内阴影**不参与"阴影提到最前"**：它画的是形状内缘，必须落在底色**之上**
+        // （提到最前的话会被后面的底色整块盖住，等于没画）。所以它和常规内置层同档，
+        // 按 JSON 书写顺序 —— 作者把 bg 写在 inner shadow 之前就行。
+        // 外投影相反：必须在底色之前（垫在控件下面），所以照旧吃 SHADOW 档。
+        if (layer.op == AppearanceLayer::Op::SHADOW && layer.inner)
+            return compile::layerSortRank(compile::LayerOrder::CONTENT);
+
+        const compile::LayerType* type = layer.op == AppearanceLayer::Op::EXTENSION
+            ? compile::findLayer(layer.extensionType)
+            : compile::builtinLayer(layer.op);
+        if (type == nullptr)
+            return 2;
+        return compile::layerSortRank(type->order);
     };
+
     std::stable_sort(layers.begin(), layers.end(),
-        [&rank](const AppearanceLayer& a, const AppearanceLayer& b) {
-            return rank(a.op) < rank(b.op);
+        [&rankOf](const AppearanceLayer& a, const AppearanceLayer& b) {
+            return rankOf(a) < rankOf(b);
         });
 }
 
@@ -354,9 +368,14 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
             const std::string where = "layers[" + std::to_string(i) + "]";
 
             AppearanceLayer layer; // 由 parseLayerMeta 造出来（元信息 + 默认 id）
-            if (!parseLayerMeta(node, i, theme, layer, error))
+            const compile::LayerType* layerType = nullptr;
+            if (!parseLayerMeta(node, i, theme, layer, layerType, error))
                 return false;
             if (!parseLayerFields(node, theme, layer, error))
+                return false;
+            // 扩展层自己声明的参数（按注册时的参数模式自动解析；内置层直接返回 true）
+            if (layerType != nullptr
+                && !parseDeclaredParams(node, *layerType, theme, layer, error, where))
                 return false;
     if (!parseGradient(node, theme, layer, error))
         return false;
@@ -364,8 +383,8 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
             layers.push_back(layer);
         }
 
-        // 玻璃层一律提到最前（见 hoistGlassLayers 的注释）
-        hoistGlassLayers(layers);
+        // 阴影提到最前、玻璃紧随其后（见 sortLayers 的注释）
+        sortLayers(layers);
 
         // ---- 盒模型/布局（顶层 "box" 段）----
     // box 段：交给 compile/appearance_box.cpp（children 里也用同一份）

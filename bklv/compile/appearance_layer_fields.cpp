@@ -7,6 +7,20 @@ namespace bklv
 namespace compile
 {
 
+namespace
+{
+
+// 候选值拼成 "a|b|c"：报错与警告里都要用（和手写枚举字段的提示格式一致）
+std::string joinEnumValues(const std::vector<std::string>& values)
+{
+    std::string joined;
+    for (size_t i = 0; i < values.size(); i++)
+        joined += (i == 0 ? "" : "|") + values[i];
+    return joined;
+}
+
+} // namespace
+
 bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer& layer,
     std::string& error)
 {
@@ -51,6 +65,8 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
     };
     if (node.contains("cutout") && node["cutout"].is_boolean())
         layer.cutout = node["cutout"].get<bool>();
+    if (node.contains("inner") && node["inner"].is_boolean())
+        layer.inner = node["inner"].get<bool>();
 
     for (const NumberField& field : numberFields)
     {
@@ -81,6 +97,101 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
         }
 
     // RECT 层的渐变：交给 compile/appearance_gradient.cpp（校验从严，见那边注释）
+
+    return true;
+}
+
+// 扩展层自己声明的参数：按模式解析。五种类型全自动，第三方零代码。
+bool parseDeclaredParams(const Json& node, const LayerType& type, const ThemeData& theme,
+    AppearanceLayer& layer, std::string& error, const std::string& where)
+{
+    if (type.params.empty())
+        return true; // 内置 6 种：字段是 AppearanceLayer 上的具名成员，不走参数槽
+
+    layer.paramCount = (uint8_t)type.params.size();
+
+    for (size_t i = 0; i < type.params.size(); i++)
+    {
+        const LayerParam& param   = type.params[i];
+        LayerValue& out           = layer.params[i];
+        const std::string at      = where + "." + param.name;
+
+        // JSON 里没写：用模式里的默认值（**不是 0** —— 没写和写 0 是两件事）
+        if (!node.contains(param.name))
+        {
+            switch (param.type)
+            {
+                case LayerParamType::PIXELS:
+                    out.number = scalePixels(param.numberDefault);
+                    break;
+                case LayerParamType::NUMBER:
+                case LayerParamType::ENUM: // ENUM 默认值是候选下标
+                    out.number = param.numberDefault;
+                    break;
+                case LayerParamType::COLOR: out.color = param.colorDefault; break;
+                case LayerParamType::BOOL: out.boolean = param.boolDefault; break;
+            }
+            continue;
+        }
+
+        const Json& value = node[param.name];
+        switch (param.type)
+        {
+            case LayerParamType::NUMBER:
+                if (!resolveNumber(value, theme, out.number, error, at))
+                    return false;
+                break;
+
+            case LayerParamType::PIXELS:
+                if (!resolveNumber(value, theme, out.number, error, at))
+                    return false;
+                out.number = scalePixels(out.number);
+                break;
+
+            case LayerParamType::COLOR:
+                if (!resolveColor(value, theme, out.color, error, at))
+                    return false;
+                break;
+
+            case LayerParamType::BOOL:
+                if (!value.is_boolean())
+                {
+                    error = at + " 需要 true / false";
+                    return false;
+                }
+                out.boolean = value.get<bool>();
+                break;
+
+            case LayerParamType::ENUM:
+            {
+                if (!value.is_string())
+                {
+                    error = at + " 需要字符串（可选值：" + joinEnumValues(param.enumValues) + "）";
+                    return false;
+                }
+                const std::string text = value.get<std::string>();
+                int matched            = -1;
+                for (size_t k = 0; k < param.enumValues.size(); k++)
+                {
+                    if (enumMatches(text, param.enumValues[k].c_str()))
+                    {
+                        matched = (int)k;
+                        break;
+                    }
+                }
+                if (matched < 0)
+                {
+                    // 拼错只警告、保持默认值（和外观 JSON 里其它枚举字段一致，不打断编译）
+                    warnUnknownEnumValue(at.c_str(), text,
+                        joinEnumValues(param.enumValues).c_str());
+                    out.number = param.numberDefault;
+                }
+                else
+                    out.number = (float)matched;
+                break;
+            }
+        }
+    }
 
     return true;
 }

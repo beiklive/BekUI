@@ -1068,11 +1068,22 @@ void DesignerWindow::drawGlassTuningPanel()
             | ImGuiColorEditFlags_AlphaPreviewHalf);
 
     ImGui::SeparatorText("折射 / 色散");
+    // 能力位在这里**真的被读**：当前后端不做折射/色散时把滑块禁用并说明原因
+    //（Vulkan 走路线 A：mip 链模糊，没有折射 —— 以前滑块照样能动、却零像素变化，
+    //  和"调参没接线"那个 bug 叠在一起，最难查）。
+    const bklv::glass::EffectCapabilities capabilities
+        = bklv::glass::getGlassService().getCapabilities();
+    if (!capabilities.refraction)
+        ImGui::TextColored(mutedColor(), "当前后端不做折射/色散（Vulkan 路线 A），下面几项不生效");
+    ImGui::BeginDisabled(!capabilities.refraction);
     ImGui::SliderFloat("折射高度", &tuning.refractionHeight, 0.0f, 60.0f, "%.0f px");
     ImGui::SliderFloat("折射强度", &tuning.refractionAmount, -240.0f, 0.0f, "%.0f");
     ImGui::SliderFloat("深度效果", &tuning.depthEffect, 0.0f, 2.0f, "%.2f");
     ImGui::SliderFloat("色散", &tuning.chromaticAberration, 0.0f, 1.0f, "%.2f");
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(!capabilities.refraction && !capabilities.blur);
     ImGui::SliderFloat("对比", &tuning.contrast, -1.0f, 1.0f, "%.2f");
+    ImGui::EndDisabled();
 
     ImGui::SeparatorText("光照");
     ImGui::SliderFloat("内阴影", &tuning.innerShadow, 0.0f, 1.0f, "%.2f");
@@ -2345,9 +2356,39 @@ void DesignerWindow::drawAddFieldCombo(const char* id, const std::vector<std::st
     ImGui::EndCombo();
 }
 
+bool DesignerWindow::drawEnumCombo(const char* id, const std::vector<std::string>& values,
+    const std::string& label, std::string& value)
+{
+    if (values.empty())
+        return false;
+
+    int index = 0;
+    for (size_t i = 0; i < values.size(); i++)
+        if (value == values[i])
+            index = (int)i;
+
+    const std::string current = value.empty() ? values[0] : value;
+    propLabel(label.c_str());
+    ImGui::PushID(id);
+    if (ImGui::BeginCombo("##enum", current.c_str()))
+    {
+        for (size_t i = 0; i < values.size(); i++)
+            if (ImGui::Selectable(values[i].c_str(), (int)i == index))
+            {
+                value = values[i];
+                ImGui::PopID();
+                return true;
+            }
+        ImGui::EndCombo();
+    }
+    ImGui::PopID();
+    return false;
+}
+
 bool DesignerWindow::drawEnumCombo(const char* id, const std::string& key, std::string& value)
 {
-    // 这几个字段就那么几个合法取值，文本框写错了要等编译报错才知道
+    // 这几个字段就那么几个合法取值，文本框写错了要等编译报错才知道。
+    // 扩展层的参数是 ENUM 时走上面那个重载（候选值来自注册时的参数模式）。
     static const std::pair<const char*, const std::vector<std::string>> tables[] = {
         { "align", { "left", "center", "right" } },
         { "valign", { "top", "center", "bottom" } },
@@ -2360,28 +2401,7 @@ bool DesignerWindow::drawEnumCombo(const char* id, const std::string& key, std::
     {
         if (key != entry.first)
             continue;
-
-        int index = 0;
-        for (size_t i = 0; i < entry.second.size(); i++)
-            if (value == entry.second[i])
-                index = (int)i;
-
-        const std::string current = value.empty() ? entry.second[0] : value;
-        propLabel(fieldLabel(key.c_str()));
-        ImGui::PushID(id);
-        if (ImGui::BeginCombo("##enum", current.c_str()))
-        {
-            for (size_t i = 0; i < entry.second.size(); i++)
-                if (ImGui::Selectable(entry.second[i].c_str(), (int)i == index))
-                {
-                    value = entry.second[i];
-                    ImGui::PopID();
-                    return true;
-                }
-            ImGui::EndCombo();
-        }
-        ImGui::PopID();
-        return false;
+        return this->drawEnumCombo(id, entry.second, fieldLabel(key.c_str()), value);
     }
     return false;
 }
@@ -4073,6 +4093,20 @@ void DesignerWindow::drawProps()
                 }
             }
 
+            // 这一层的 op：字段中文名与"参数是不是 ENUM"都要问它的注册类型
+            const std::string layerOp = this->doc.layerOp(this->selection.index);
+            const bklv::compile::LayerType* layerType = bklv::compile::findLayer(layerOp);
+
+            // 某字段对应的参数模式（不是参数就返回 nullptr）
+            auto paramOf = [layerType](const std::string& name) -> const bklv::compile::LayerParam* {
+                if (layerType == nullptr)
+                    return nullptr;
+                for (const bklv::compile::LayerParam& param : layerType->params)
+                    if (param.name == name)
+                        return &param;
+                return nullptr;
+            };
+
             for (auto it = layer->begin(); it != layer->end(); ++it)
             {
                 const std::string key = it.key();
@@ -4097,6 +4131,26 @@ void DesignerWindow::drawProps()
 
                 const std::string kind = valueKind(it.value());
                 bool changed = false;
+
+                // 扩展层声明成 ENUM 的参数：候选值来自注册时的参数模式，直接给下拉
+                // （第三方不用改设计器，写错也不会等到编译才被发现）
+                const bklv::compile::LayerParam* declared = paramOf(key);
+                if (kind == "string" && declared != nullptr
+                    && declared->type == bklv::LayerParamType::ENUM)
+                {
+                    std::string text = it.value().get<std::string>();
+                    const std::string label =
+                        declared->label.empty() ? key : declared->label;
+                    if (this->drawEnumCombo(key.c_str(), declared->enumValues, label, text))
+                    {
+                        it.value() = text;
+                        changed    = true;
+                    }
+                    if (changed)
+                        edited();
+                    ImGui::PopID();
+                    continue;
+                }
 
                 // 枚举字段给下拉（align / valign / scaling / axis / direction）
                 if (kind == "string" && (key == "align" || key == "valign" || key == "scaling"
@@ -4133,7 +4187,9 @@ void DesignerWindow::drawProps()
                     std::string value;
                     if (it.value().size() > 0)
                         value = compactValue(it.value());
-                    propLabel(fieldLabel(key.c_str()));
+                    const bklv::compile::LayerParam* param = paramOf(key);
+                    propLabel(param != nullptr && !param->label.empty() ? param->label.c_str()
+                                                                       : fieldLabel(key.c_str()));
                     if (inputString((std::string("##") + key).c_str(), value) && !value.empty())
                     {
                         // 允许 [1,2] / 数字 两种写法，解析失败就原样留着
@@ -4202,30 +4258,19 @@ void DesignerWindow::drawProps()
             // 按 op 给"可加的字段"清单（字段表不再只是"文件里写了什么"）
             {
                 const std::string op = this->doc.layerOp(this->selection.index);
-                std::vector<std::string> candidates = { "inset", "offset", "width", "height",
-                    "opacity", "align", "valign", "radius" };
-                if (op == "text")
-                    candidates.insert(candidates.end(),
-                        { "source", "text", "color", "fontSize", "wrap", "singleLine" });
-                else if (op == "image")
-                    candidates.insert(candidates.end(), { "source", "scaling", "tint" });
-                else if (op == "shadow")
-                    candidates.insert(candidates.end(),
-                        { "fill", "feather", "spread", "cutout" });
-                else if (op == "glass")
-                    candidates.insert(candidates.end(),
-                        { "fill", "stroke", "strokeWidth", "radius", "opacity" });
-                else
-                    candidates.insert(candidates.end(), { "fill", "stroke", "strokeWidth" });
+                std::vector<std::string> candidates;
 
-                // 再把注册表里的键并进来（**取并集，不替换**）：注册表是"这种 op 能写什么"的
-                // 单一事实来源，所以第三方新增的 op 不用改这里，检查器就能编它自己的字段。
+                // 候选键 = **引擎键 ∪ 该类型声明的参数名**（两边都从注册表/引擎拿，
+                // 所以这里不再按 op 手写清单 —— 以前手写过一份，结果漏了 glass 的键）。
+                auto mergeCandidate = [&candidates](const std::string& key) {
+                    if (std::find(candidates.begin(), candidates.end(), key) == candidates.end())
+                        candidates.push_back(key);
+                };
+                for (const std::string& key : bklv::compile::engineLayerKeys())
+                    mergeCandidate(key);
                 if (const bklv::compile::LayerType* type = bklv::compile::findLayer(op))
-                {
                     for (const std::string& key : type->keys)
-                        if (std::find(candidates.begin(), candidates.end(), key) == candidates.end())
-                            candidates.insert(candidates.end(), key);
-                }
+                        mergeCandidate(key);
 
             }
 

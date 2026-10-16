@@ -264,7 +264,10 @@ class DesignerWindow
     bklv::View* buildPreviewView(const std::string& jsonOverride);
     void drawProps();
     void drawTableProps();
-    bool drawEnumCombo(const char* id, const std::string& key, std::string& value);          // 主题表：键列表 + 颜色/数值编辑
+    bool drawEnumCombo(const char* id, const std::string& key, std::string& value);
+    // 显式给候选值的版本：扩展层的 ENUM 参数用它（候选来自注册时的参数模式）
+    bool drawEnumCombo(const char* id, const std::vector<std::string>& values,
+        const std::string& label, std::string& value);          // 主题表：键列表 + 颜色/数值编辑
     void drawAddFieldCombo(const char* id, const std::vector<std::string>& candidates,
         const std::function<void(const std::string&)>& onPick);
     bool colorPickerPopup(const char* id, std::string& value); // 取色器（写回字面量）

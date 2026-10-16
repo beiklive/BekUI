@@ -34,9 +34,10 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
 }
 
 bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, AppearanceLayer& out,
-    std::string& error)
+    const LayerType*& outType, std::string& error)
 {
     const std::string where = "layer"; // 原来用循环里的 where，抽出来后自己提供
+    outType                 = nullptr;
 
     if (!node.is_object())
     {
@@ -48,17 +49,19 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
     const std::string opName = node.value("op", "rect");
     bool opOk               = false;
     out.op                = parseOp(opName, opOk);
+
+    // 注册表里的类型：默认 id 前缀、参数模式、绘制上下文都要用它，所以查一次带出去
+    outType = compile::findLayer(opName);
+
     if (out.op == AppearanceLayer::Op::EXTENSION)
     {
         out.extensionType = opName;
 
-        // 扩展 op 自己的键交给**注册表里的 parse 钩子**（第三方注册时提供）。
-        // 之前只记了类型名、没调钩子 —— 样例的 angle/lineWidth 其实一直没生效
-        // （条纹是靠默认值碰巧画对的）。失败按硬错误处理，和内置 op 一致。
-        const compile::LayerType* extType = compile::findLayer(opName);
-        if (extType != nullptr && extType->parse)
+        // 扩展 op 自己的**结构**参数（数组/对象）交给注册表里的 parse 钩子。
+        // 标量参数不用它：引擎按参数模式自动解析（见 parseDeclaredParams）。
+        if (outType != nullptr && outType->parse)
         {
-            if (!extType->parse(node, theme, out, error,
+            if (!outType->parse(node, theme, out, error,
                     "layers[" + std::to_string(index) + "] (" + opName + ")"))
                 return false; // parseLayers 的失败约定是 false（compile 才转成 nullptr）
         }
@@ -74,8 +77,7 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
     // 被叫成 custom0 / custom1（tests/layer_parse_test.cpp 里把这个 quirk 钉成了基线，
     // 现在按注册表修掉）。
     // （opName 是上面已经取好的 op 字符串）
-    const compile::LayerType* layerType = compile::findLayer(opName);
-    const std::string idPrefix = layerType != nullptr ? layerType->idPrefix : opName;
+    const std::string idPrefix = outType != nullptr ? outType->idPrefix : opName;
     out.id     = node.value("id", idPrefix + std::to_string(index));
     out.source = node.value("source", "");
     out.align  = node.value("align", "left");

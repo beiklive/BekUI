@@ -49,6 +49,18 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
     float radius, ImU32 color, float alphaScale, float feather, float spread,
     bool cutout = false);
 
+// 画一圈**内阴影**：贴着形状内缘最暗、往内渐透的内侧渐变带。
+//
+// **没有方向**：它不以"某个方向的光"为模型，就是"从边缘向内扩散"——四周对称，
+// 四个角由圆角矩形 SDF 保证等宽内缩（不是"到最近边的距离"，那样四角会叠得更黑）。
+// 想做出"某一侧更重"的凹陷感，叠加两层（其中一层用 inset 只占半边）比给内阴影加方向参数更直白。
+//
+// 带子宽度 = spread + feather（两者都算"往内伸多远"），最宽夹到短边的一半。
+// 顶点按"离轮廓多远"逐点算 alpha，所以整条带子始终待在形状内部 —— ImGui 的裁剪只有矩形，
+// 靠几何内缩才不会有溢出（圆角处尤其明显）。
+void drawInnerSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY,
+    float radius, ImU32 color, float alphaScale, float feather, float spread);
+
 // 清掉"已经读过环境变量"的标记（测试用：改完环境变量再读一次）
 void resetEnvironmentProbeForTest();
 

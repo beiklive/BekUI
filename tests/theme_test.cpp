@@ -4,10 +4,12 @@
 // 用来验证「换肤 = 复制 default 改名改 JSON」与「缺 key 回退 default」，
 // 不往仓库里塞测试专用资源。
 
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -320,20 +322,137 @@ int main()
                         std::string("  ") + themeName + " / " + widget
                             + "：hlBg 在内容层之前（否则聚焦会把内容盖住）");
 
-                    // 阴影同理：必须画在自己的底色**之前**，画在后面会被不透明的底盖掉
-                    int shadowIndex = -1, bgFillIndex = -1;
+                    // 阴影的层序要分内外（两者要求**相反**）：
+                    //   · 外投影：画在底色**之前**（垫在控件下面），画在后面会被不透明的底盖掉
+                    //   · 内阴影：画在底色**之后**（它画的是内缘，被底盖住就等于没画）
+                    // 解析期会对这两类分别处理（见 core/appearance.cpp 的 rankOf），
+                    // 所以这里断言的是**排序之后**的结果，作者按书写顺序写对即可。
+                    int shadowIndex = -1, innerShadowIndex = -1, bgFillIndex = -1;
                     for (size_t i = 0; i < layers.size(); i++)
                     {
-                        if (layers[i].op == AppearanceLayer::Op::SHADOW && shadowIndex < 0)
-                            shadowIndex = (int)i;
+                        if (layers[i].op == AppearanceLayer::Op::SHADOW)
+                        {
+                            if (layers[i].inner)
+                            {
+                                if (innerShadowIndex < 0)
+                                    innerShadowIndex = (int)i;
+                            }
+                            else if (shadowIndex < 0)
+                                shadowIndex = (int)i;
+                        }
                         else if (bgFillIndex < 0 && layers[i].op == AppearanceLayer::Op::RECT)
                             bgFillIndex = (int)i;
                     }
                     check(shadowIndex < 0 || bgFillIndex < 0 || shadowIndex < bgFillIndex,
                         std::string("  ") + themeName + " / " + widget
-                            + "：shadow 层在底色之前（否则会被底盖住）");
+                            + "：外投影在底色之前（否则会被底盖住）");
+                    check(innerShadowIndex < 0 || bgFillIndex < 0 || innerShadowIndex > bgFillIndex,
+                        std::string("  ") + themeName + " / " + widget
+                            + "：内阴影在底色之后（它画的是内缘，被底盖住等于没画）");
                 }
             }
+        }
+        setTheme("default");
+    }
+
+    std::printf("\n== 9. 主题清单反向校验：磁盘上的 .json 必须都登记在 files[] 里 ==\n");
+    {
+        // 第 8 节是「清单 → 编译」（files[] 里登记的都要能编译），缺的是反方向
+        // 「磁盘 → 清单」：主题的 files[] 是**显式清单**（romfs 上不列目录，见 AGENTS.md），
+        // 所以"文件写好了但忘了登记"不会报错 —— 运行时会以"主题里没有这份外观"的形式
+        // 静默回退到 default，改了半天不生效；少写 `.json` 后缀也是同一个现象。
+        // CMake 侧的源清单漏项在 configure 期就会失败，主题侧原来没有对应物，这里补上。
+        for (const char* themeName : { "default", "ocean", "my-skin" })
+        {
+            const std::string themeDir = std::string("resources/theme/") + themeName;
+
+            std::ifstream in(resourcePath(themeDir + "/theme.json"), std::ios::binary);
+            if (!in)
+            {
+                check(false, std::string(themeName) + " 有 theme.json");
+                continue;
+            }
+            const nlohmann::json doc = nlohmann::json::parse(in, nullptr, false);
+            check(!doc.is_discarded(), std::string(themeName) + " 的 theme.json 语法合法");
+            if (doc.is_discarded())
+                continue;
+
+            // 登记项：原样比较（**带 .json 后缀**，名字 = 相对主题根的路径）
+            std::vector<std::string> listed;
+            for (const auto& item : doc.value("files", nlohmann::json::array()))
+                if (item.is_string())
+                    listed.push_back(item.get<std::string>());
+
+            // 磁盘上的全部 .json（theme.json 自己是元信息，不登记）
+            //
+            // **只走清单用到的四个目录**（tokens / base / widget / view）：dist/resources 是
+            // `copy_directory` 拷出来的，主题目录改过布局（旧的扁平 `colors.json` / `metrics.json`
+            // / `widgets/` → 现在的 `tokens/ base/ widget/ view/`），残留文件属于"复制的卫生问题"
+            // （已改成先删后拷），不该在这里判成清单错误 —— 否则换台机器跑就是一堆假失败。
+            std::vector<std::string> onDisk;
+            std::error_code ec;
+            const std::filesystem::path root = resourcePath(themeDir);
+            for (const char* sub : { "tokens", "base", "widget", "view" })
+            {
+                const std::filesystem::path dir = root / sub;
+                if (!std::filesystem::exists(dir, ec))
+                    continue;
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(dir, ec))
+                {
+                    if (!entry.is_regular_file() || entry.path().extension() != ".json")
+                        continue;
+                    const std::string rel =
+                        std::filesystem::relative(entry.path(), root, ec).generic_string();
+                    if (!rel.empty())
+                        onDisk.push_back(rel);
+                }
+            }
+
+            for (const std::string& file : onDisk)
+            {
+                const bool found = std::find(listed.begin(), listed.end(), file) != listed.end();
+                check(found, std::string(themeName) + " / " + file + " 已登记进 files[]");
+            }
+            // 反方向也查：登记了但磁盘上没有（清单里留了已删文件的名字）
+            for (const std::string& file : listed)
+            {
+                const bool found = std::find(onDisk.begin(), onDisk.end(), file) != onDisk.end();
+                check(found, std::string(themeName) + " / " + file + " 在磁盘上存在");
+            }
+            check(listed.size() == onDisk.size(),
+                std::string(themeName) + " files[] 条数与磁盘 .json 数一致（"
+                    + std::to_string(listed.size()) + " vs " + std::to_string(onDisk.size()) + "）");
+        }
+    }
+
+    std::printf("\n== 10. 代码里直接引用的主题 key 必须存在 ==\n");
+    {
+        // 外观 JSON 里的 @theme/ 引用写错会**编译失败**（第 8 节兜住）；但 C++ 里
+        // `getTheme().color(key)` / `.number(key)` 直接引用的 key 少了不会编译失败，
+        // 只在运行期记一条日志然后不给颜色/不给尺寸（"代码里写死的尺寸"往往就是这么来的）。
+        // 这里把代码里直接引用的 key 钉住：改名或换主题时立刻失败，而不是界面上悄悄少一块。
+        const char* colors[] = {
+            "color.highlight.background", // Cell 家族与 JSONRecyclerCell 的聚焦底
+            "color.surface.card",         // JSONRecyclerCell 的常态底
+            "color.cell.background",      // Cell 家族底色
+            "color.sidebar.separator",    // 侧栏分组分隔线
+        };
+        const char* numbers[] = {
+            "metric.progressSpinner.size",
+            "metric.scroll.paddingV",
+            "metric.scroll.paddingH",
+            "metric.status.itemMarginTop",
+            "metric.editTextDialog.caretWidth",
+            "metric.sidebar.separatorThickness",
+            "metric.sidebar.separatorHeight",
+        };
+        for (const char* themeName : { "default", "ocean", "my-skin" })
+        {
+            check(setTheme(themeName), std::string("切到主题 ") + themeName);
+            for (const char* key : colors)
+                check(getTheme().hasColor(key), std::string(themeName) + " 有颜色 " + key);
+            for (const char* key : numbers)
+                check(getTheme().hasNumber(key), std::string(themeName) + " 有数值 " + key);
         }
         setTheme("default");
     }

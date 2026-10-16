@@ -72,6 +72,44 @@ enum class AppearanceProp
 bool appearancePropFromName(const std::string& name, AppearanceProp& out);
 bool appearancePropIsColor(AppearanceProp prop);
 
+// ---------------------------------------------------------------------------
+// 图层参数（扩展层的"自己的字段"）
+// ---------------------------------------------------------------------------
+//
+// 背景：内置 6 种层的字段是**引擎级**的（要参与几何计算与补间），所以它们是
+// `AppearanceLayer` 上的具名成员。第三方注册的新层没有具名成员可用 —— 之前只能
+// 借引擎字段放自己的参数（`demo/contrib/stripe_layer.cpp` 把角度存进 feather、
+// 线宽存进 spread），既容易撞车也读不懂。
+//
+// 现在注册时声明一份**参数模式**（`compile::LayerParam`），引擎按它自动解析 / 缩放 / 校验，
+// 值落在这里的参数槽里。加一个层自己的参数不需要改引擎任何代码。
+
+// 参数取值类型（决定怎么解析、要不要按 720p 缩放、设计器给什么控件）
+//
+// 没有 STRING：参数槽是定长 POD（`LayerValue` 只有数值/颜色/布尔），塞 std::string
+// 会让每一层都带一次堆分配（layer 是热路径数据）。需要"模式"这类字符串语义时声明成
+// ENUM —— 解析后存的是**候选值下标**，绘制钩子用 `enumParam(ctx, "名字")` 取回字符串。
+enum class LayerParamType
+{
+    NUMBER, // 数字（不缩放：系数、角度、比例这类）
+    PIXELS, // 像素量（乘 uiScale，和主题 metric 一致）
+    COLOR,  // "#RRGGBB" 或 "@theme/color.a.b"
+    BOOL,   // true / false
+    ENUM,   // 候选取值之一（存下标；拼错只警告并保持默认值）
+};
+
+// 一个参数槽的当前值。哪个成员有意义由参数模式里的 type 决定
+// （定长结构 + 成员常驻，换来热路径零分配、零变体访问开销）。
+struct LayerValue
+{
+    float number = 0.0f;  // NUMBER / PIXELS；ENUM 时是 enumValues 的下标
+    ImU32 color  = 0;     // COLOR
+    bool boolean = false; // BOOL
+};
+
+// 每层参数上限：定长存放。超了在**注册期**报错（不是运行期静默丢弃）。
+constexpr size_t kMaxLayerParams = 8;
+
 // 一个绘制层。op 决定用到哪些字段。
 struct AppearanceLayer
 {
@@ -115,6 +153,10 @@ struct AppearanceLayer
     // 关掉时阴影是一整块（垫在控件下面），如果底色是半透明的会透出阴影；
     // 打开后内圈不画，后面加的层即使是透明色也不会叠出阴影。
     bool cutout       = false;
+    // SHADOW 层：画**内阴影**（贴着内缘最暗、往内渐透的一圈带子）而不是外投影。
+    // **没有方向**：`offset` 对内阴影无效（它不是投影，是内侧渐变）；
+    // 它也不吃 `cutout`（本来就是空心的）—— 带子始终待在形状内部。
+    bool inner        = false;
     // 显式宽高（0 表示用 inset 收缩后的整个范围）。
     // 装饰件要用：色条（width 4）、下边线（height 1）。给定后按 align/valign 摆放。
     float width       = 0.0f;
@@ -122,6 +164,12 @@ struct AppearanceLayer
     std::string align     = "left";
     std::string valign    = "center";
     std::string scaling   = "fit";
+
+    // 扩展层的参数槽：下标与注册时声明的参数模式（compile::LayerType::params）**一一对应**。
+    // 绘制钩子按 `LayerDrawContext::type->params[i].name` 取名字、按 `layer.params[i]` 取值。
+    // 内置 6 种不用它（它们有上面的具名成员）。
+    std::array<LayerValue, kMaxLayerParams> params{};
+    uint8_t paramCount = 0;
 };
 
 // 状态切换时对某个属性的目标描述。property 写成 "<layerId>.<属性名>"。

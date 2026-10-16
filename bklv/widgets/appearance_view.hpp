@@ -34,6 +34,9 @@ enum class IconFontKind
 class AppearanceView : public Box
 {
   public:
+    // 调试层按这个显示类型名；不重写就只剩基类的 "bklv::View"，排查视图树时没有类型信息。
+    std::string getClassString() const override { return "bklv::AppearanceView"; }
+
     // 语义绘制交给控件自己（CUSTOM 层）；**public** 是为了让注册表里的绘制钩子能调它
     virtual void drawCustomLayer(ImDrawList*, const AppearanceLayer&, float, float, float, float,
         const AppearanceInstance&)

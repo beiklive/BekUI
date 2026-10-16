@@ -11,6 +11,7 @@
 #include "bklv/3rd/imgui/imgui.h"
 #include "bklv/3rd/imgui/imgui_internal.h"
 
+#include "bklv/compile/layer_registry.hpp" // findLayer（断言 inner 在设计器候选键里）
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/resource.hpp"
@@ -236,8 +237,182 @@ int main()
         }
         // 故意不 DestroyContext：没有平台/渲染后端的上下文在 Shutdown 里会踩空
         // （"Forgot to shutdown Platform backend?" 那条路径）。进程马上就退出了。
-        // 故意不 DestroyContext：没有平台/渲染后端的上下文在 Shutdown 里会踩空
-        // （"Forgot to shutdown Platform backend?" 那条路径）。进程马上就退出了。
+    }
+
+    std::printf("\n== 6. 内阴影：解析、没有方向（四周对称）、始终在形状内 ==\n");
+    {
+        // 解析：inner 是 shadow 层上的布尔字段（默认 false = 外投影）
+        std::string error;
+        auto inner = Appearance::compile(
+            R"({"layers": [{"op": "shadow", "id": "in", "inner": true, "fill": "#00000099",
+                 "feather": 10, "spread": 2, "offset": [0, 6], "radius": 8}]})",
+            getTheme(), error);
+        check(inner != nullptr, "能编译带 inner 的 shadow 层");
+        if (inner != nullptr)
+        {
+            const AppearanceLayer& layer = inner->getLayers()[0];
+            check(layer.inner, "inner 解析为 true");
+            check(!layer.cutout, "cutout 没写就是 false（两者互不干扰）");
+            checkFloat(layer.offset[1], 6.0f,
+                "offset 照常解析（对 inner 无效，但外投影要用它）");
+        }
+        error.clear();
+        auto outer = Appearance::compile(
+            R"({"layers": [{"op": "shadow", "fill": "#00000099", "feather": 10}]})",
+            getTheme(), error);
+        check(outer != nullptr && !outer->getLayers()[0].inner, "不写 inner = 外投影（默认）");
+
+        // 设计器候选键里要有 inner（不然属性表里加不出来）
+        {
+            const compile::LayerType* type = compile::findLayer("shadow");
+            bool hasInner = false;
+            if (type != nullptr)
+                for (const std::string& key : type->keys)
+                    if (key == "inner")
+                        hasInner = true;
+            check(hasInner, "注册表把 inner 列为 shadow 的候选键");
+        }
+
+        // 层序：内阴影**不**参与"阴影提到最前"，否则会被后面的底色整块盖住。
+        // 外投影必须提前（垫在控件下面），内阴影必须留在书写位置（压在底色上面）。
+        {
+            std::string orderError;
+            auto outerFirst = Appearance::compile(
+                R"({"layers": [{"op": "rect", "id": "bg", "fill": "#112233FF"},
+                     {"op": "shadow", "id": "s", "fill": "#00000099"}]})",
+                getTheme(), orderError);
+            check(outerFirst != nullptr, "外投影 + 底色能编译");
+            if (outerFirst != nullptr)
+                checkEqual(outerFirst->getLayers()[0].id, "s",
+                    "外投影被提到最前（垫在底色下面）");
+
+            orderError.clear();
+            auto innerKept = Appearance::compile(
+                R"({"layers": [{"op": "rect", "id": "bg", "fill": "#112233FF"},
+                     {"op": "shadow", "id": "s", "inner": true, "fill": "#00000099"}]})",
+                getTheme(), orderError);
+            check(innerKept != nullptr, "内阴影 + 底色能编译");
+            if (innerKept != nullptr)
+            {
+                checkEqual(innerKept->getLayers()[0].id, "bg",
+                    "内阴影**不**被提前：底色还在它前面");
+                checkEqual(innerKept->getLayers()[1].id, "s",
+                    "内阴影按书写顺序落在底色之后（压在底色上）");
+            }
+        }
+
+        // 绘制：内阴影的关键性质是"永远待在形状内部"（外阴影会外扩）
+        ImGui::CreateContext();
+        {
+            auto makeList = [] {
+                ImDrawList* list = new ImDrawList(ImGui::GetDrawListSharedData());
+                list->_ResetForNewFrame();
+                list->_FringeScale    = 1.0f;
+                list->_InvFringeScale = 1.0f;
+                return list;
+            };
+
+            const float minX = 100.0f, minY = 50.0f, maxX = 300.0f, maxY = 150.0f;
+            const float radius = 12.0f;
+            const float feather = 14.0f;
+            const ImU32 color = IM_COL32(0, 0, 0, 200);
+
+            // 顶点 + alpha 加权重心（重心在哪一侧 = 哪一侧更暗）
+            struct Stats
+            {
+                int   vertices = 0;
+                float centroidX = 0.0f;
+                float centroidY = 0.0f;
+                float minX = 1e9f, minY = 1e9f, maxX = -1e9f, maxY = -1e9f;
+            };
+            // 内阴影**没有方向参数**了（就是"从边缘向内扩散"）：这里量的是贴内缘那一带的分布
+            auto measure = [&](float bandFeather) {
+                ImDrawList* list = makeList();
+                shadow::drawInnerSoft(list, minX, minY, maxX, maxY, radius, color, 1.0f,
+                    bandFeather, 0.0f);
+
+                Stats stats;
+                float weightSum = 0.0f;
+                for (int i = 0; i < list->VtxBuffer.Size; i++)
+                {
+                    const ImVec2 p = list->VtxBuffer[i].pos;
+                    const float a  = (float)((list->VtxBuffer[i].col >> 24) & 0xFFu);
+                    stats.vertices++;
+                    stats.minX = std::min(stats.minX, p.x);
+                    stats.maxX = std::max(stats.maxX, p.x);
+                    stats.minY = std::min(stats.minY, p.y);
+                    stats.maxY = std::max(stats.maxY, p.y);
+                    stats.centroidX += p.x * a;
+                    stats.centroidY += p.y * a;
+                    weightSum += a;
+                }
+                if (weightSum > 0.0f)
+                {
+                    stats.centroidX /= weightSum;
+                    stats.centroidY /= weightSum;
+                }
+                return stats;
+            };
+
+            const Stats band = measure(feather);
+            check(band.vertices > 0, "内阴影画出了顶点");
+            // ⚠️ "在形状内"就是它和外阴影的分界：外阴影最外圈到 minX-feather，内阴影一个顶点都不许出去
+            check(band.minX >= minX - 1.0f && band.maxX <= maxX + 1.0f
+                    && band.minY >= minY - 1.0f && band.maxY <= maxY + 1.0f,
+                "所有顶点都在形状内部（不外扩）");
+            check(band.minX > minX - 1.0f && band.maxX < maxX + 1.0f,
+                "确实贴着内缘画（不是空实现）");
+
+            // 没有方向：左右对称、上下对称（重心都在形状中心）
+            checkFloat(band.centroidX, (minX + maxX) * 0.5f, "左右对称（重心在中间）");
+            checkFloat(band.centroidY, (minY + maxY) * 0.5f, "上下对称（重心在中间）");
+
+            // 四边等宽：四个方向各取一条贴边的窄带，alpha 之和应当互相接近
+            //（直边中点附近是等宽的；圆角在角上，不参与这个比较）
+            auto bandWeight = [&](float x0, float y0, float x1, float y1) {
+                ImDrawList* list = makeList();
+                shadow::drawInnerSoft(list, minX, minY, maxX, maxY, radius, color, 1.0f,
+                    feather, 0.0f);
+                float sum = 0.0f;
+                for (int i = 0; i < list->VtxBuffer.Size; i++)
+                {
+                    const ImVec2 p = list->VtxBuffer[i].pos;
+                    if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1)
+                        continue;
+                    sum += (float)((list->VtxBuffer[i].col >> 24) & 0xFFu);
+                }
+                return sum;
+            };
+            const float midX = (minX + maxX) * 0.5f;
+            const float midY = (minY + maxY) * 0.5f;
+            const float top    = bandWeight(minX, minY, maxX, minY + 6.0f);
+            const float bottom = bandWeight(minX, maxY - 6.0f, maxX, maxY);
+            const float left   = bandWeight(minX, minY, minX + 6.0f, maxY);
+            const float right  = bandWeight(maxX - 6.0f, minY, maxX, maxY);
+            check(top > 0.0f && bottom > 0.0f && left > 0.0f && right > 0.0f,
+                "四条边都画了（不是只画一侧）");
+            check(std::fabs(top - bottom) < std::max(top, bottom) * 0.05f, "上下的暗度基本相等");
+            check(std::fabs(left - right) < std::max(left, right) * 0.05f, "左右的暗度基本相等");
+            // 上下是 200px 宽、左右是 100px 高，绝对量不同，但"贴边宽度"应该一致 ——
+            // 用同样面积取样后比值接近 1 就说明没有方向性
+            (void)midX;
+            (void)midY;
+
+            // 带子越宽，参与的点越多（单调性）
+            const Stats wide = measure(feather * 2.0f);
+            check(wide.vertices >= band.vertices, "带子越宽覆盖的点越多");
+
+            // 退化输入不许崩：带子为 0 / 形状比带子还小 / 空列表
+            ImDrawList* tiny = makeList();
+            shadow::drawInnerSoft(tiny, 0.0f, 0.0f, 4.0f, 4.0f, 2.0f, color, 1.0f, 40.0f, 40.0f);
+            check(true, "形状比带子还小：安全返回");
+            ImDrawList* zeroBand = makeList();
+            shadow::drawInnerSoft(zeroBand, 0.0f, 0.0f, 100.0f, 100.0f, 0.0f, color, 1.0f, 0.0f,
+                0.0f);
+            checkEqualInt(zeroBand->VtxBuffer.Size, 0, "带子宽度为 0：一个顶点都不画");
+            shadow::drawInnerSoft(nullptr, 0.0f, 0.0f, 10.0f, 10.0f, 0.0f, color, 1.0f, 4.0f, 0.0f);
+            check(true, "drawList 为空时安全返回");
+        }
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
