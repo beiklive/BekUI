@@ -61,8 +61,7 @@ struct ParamLayer
 
 int main()
 {
-    // 主题里随包发布的 base/stripe_demo.json 用的是扩展 op "stripe"，
-    // 所以整主题相关的断言前必须先注册一次（第 7 节会编译那段 JSON）
+    // 扩展 op 必须先注册才能编译（第 7 节要编译一段 stripe 的 JSON）
     test_contrib::registerStripe();
 
     std::printf("== 1. 六种 op 都能解析，且各自的键落到该落的字段 ==\n");
@@ -411,7 +410,7 @@ int main()
         check(!registerLayer(std::move(badEnum), error), "ENUM 没有候选值 -> 注册失败");
     }
 
-    std::printf("\n== 7. 实物验收：随仓库发布的 stripe_demo.json 参数落到正确的地方 ==\n");
+    std::printf("\n== 7. 实物验收：stripe 样例的参数落到正确的地方 ==\n");
     {
         using namespace bklv::compile;
 
@@ -426,7 +425,7 @@ int main()
             R"({ "op": "stripe", "id": "stripes", "angle": 45, "gap": 16, "lineWidth": 3,
                  "fill": "#112233FF", "radius": 12, "inset": [6, 6, 6, 6] })",
             error);
-        check(appearance != nullptr, "stripe_demo 那一段 JSON 能编译");
+        check(appearance != nullptr, "stripe 那一段 JSON 能编译");
         if (appearance != nullptr)
         {
             const AppearanceLayer* layer = layerOf(*appearance, "stripes");

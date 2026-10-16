@@ -199,8 +199,12 @@
     </tr>
     <tr>
       <td>§4.2 P0④：默认主题依赖 demo 的 <code>stripe</code> op</td>
-      <td><span class="tag bad">未做</span></td>
-      <td>属产品决策而非机械修复。三条路线：① 把 <code>base/stripe_demo.json</code> 从 default 的 <code>files[]</code> 摘掉并移出主题目录（样例改用页面内联 JSON，demo 本来就在这么做）；② 让库侧注册一个同名"示例层"（等于把扩展样例塞进库，不推荐）；③ 保持现状，但把"宿主必须自己注册 stripe"写进文档。现状：<code>theme_test:41</code> 与 <code>designer_core_test:81</code> 都要先注册一份桩才能过。</td>
+      <td><span class="tag ok">已做</span></td>
+      <td>走路线 ①：<code>base/stripe_demo.json</code> 已从仓库删除、并从 default 的 <code>files[]</code> 摘掉，
+        库的随包资源不再依赖任何由调用方注册的 op；demo 的 JSON 页改成把这段外观**内联**在页面里
+        （<code>makeInlineCard</code>），i18n 文案跟着改。副作用是 <code>theme_test</code> 与
+        <code>designer_core_test</code> 里那两份"为了整主题校验而注册的 stripe 桩"一起删掉了 ——
+        现在只有专门验扩展层的 <code>layer_parse_test</code> 还需要注册。</td>
     </tr>
     <tr>
       <td>§4.3 ②（玻璃边界）、§4.3 ⑦（扩展参数槽）</td>

@@ -652,7 +652,7 @@ static std::vector<bklv::compile::LayerParam> params()
   属于控件级扩展（外观 JSON 的 `children`），不是 `op`。
 - **别把用了扩展 op 的外观放进 `resources/theme/default/`**：那是随库发布的默认主题，
   而扩展 op 由**调用方**注册 —— 库的随包资源依赖 demo/第三方代码是本末倒置
-  （`base/stripe_demo.json` 就是这么留下的，测试只能靠注册一个同名桩来兜）。
+  （默认主题里曾留下的 `base/stripe_demo.json` 就是这个反例，已按评审 §4.2 P0④ 撤掉）。
   演示/一次性外观直接在页面里**内联**：`AppearanceView::applyAppearanceJson(json, error)`
   就地编译一份（demo 的 JSON 页就是这么显示 quad 的）；换主题时若要让内联外观跟着重解析
   `@theme/`，在自己的子类里重写 `applyTheme()` 再套一次。

@@ -90,7 +90,7 @@
     "anim_after": "layer + when: after - the title surfaces only after the card lands (offsetY + opacity)",
     "anim_default": "Nothing written - the default fade",
     "card_text": "Sample content",
-    "extension_row": "Extension layer: the op is registered by a third party (see demo/contrib/stripe_layer.cpp); the theme just writes it",
+    "extension_row": "Extension layer: the op is registered by a third party (see demo/contrib/stripe_layer.cpp); the appearance is inlined here",
     "quad_row": "Second extension layer: four vertices wander independently (demo/contrib/quad_layer.cpp; all 7 params come from the declared schema)",
     "children_row": "children: one appearance is a complete control (the structure lives in JSON, zero C++)"
   },

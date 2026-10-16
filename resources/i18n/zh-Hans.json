@@ -90,7 +90,7 @@
     "anim_after": "层内 + when: after · 整卡淡入后标题才浮现（offsetY + opacity）",
     "anim_default": "什么都没写 · 默认淡入淡出",
     "card_text": "示例内容",
-    "extension_row": "扩展层：op 由第三方注册（演示里在 demo/contrib/stripe_layer.cpp），主题里直接写",
+    "extension_row": "扩展层：op 由第三方注册（demo/contrib/stripe_layer.cpp），外观内联在这一页",
     "quad_row": "第二个扩展层：四顶点各自随机游走（demo/contrib/quad_layer.cpp，7 个参数全由注册时的参数模式解析）",
     "children_row": "children：一份外观就是一个完整控件（结构写在 JSON 里，C++ 一行都不用写）"
   },

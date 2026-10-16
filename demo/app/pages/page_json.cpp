@@ -250,12 +250,20 @@ Box* buildJsonPage()
 { "import": "base/json_demo" })",
         makeDemoCard(kDemoAppearance)));
 
-    // 第三方扩展层：`op` 是 demo/contrib/stripe_layer.cpp 注册的（bklv/ 里没有这个类型），
-    // 主题里直接写就行 —— 这条是"可扩展性"的实物：加层不用改库，也不用改这一页。
-    page->addView(makeSplitRow("json/extension_row",
-        R"({ "op": "stripe", "angle": 45, "lineWidth": 3, "gap": 16,
-  "fill": "@theme/color.accent.base" })",
-        makeDemoCard("base/stripe_demo")));
+    // 第三方扩展层：`op` 是 demo/contrib/stripe_layer.cpp 注册的（bklv/ 里没有这个类型）。
+    // 这条是"可扩展性"的实物：加层不用改库，也不用改这一页。
+    //
+    // 外观**内联在这一页**，不放 resources/theme/default —— 库的随包资源不该依赖
+    // 由调用方注册的 op（评审 §4.2 P0④；`base/stripe_demo.json` 就是这么撤掉的）。
+    const std::string stripeJson = R"({
+  "box": { "width": "100%", "height": 64 },
+  "layers": [
+    { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 12 },
+    { "op": "stripe", "id": "stripes", "angle": 45, "lineWidth": 3, "gap": 16,
+      "fill": "@theme/color.accent.base", "radius": 12, "inset": [6, 6, 6, 6] }
+  ]
+})";
+    page->addView(makeSplitRow("json/extension_row", stripeJson, makeInlineCard(stripeJson)));
 
     // 第二个扩展层：四个顶点各自随机游走（`op` 由 demo/contrib/quad_layer.cpp 注册）。
     // 注意这一行的 JSON 里有 **7 个**自定义参数 —— 它们不需要库认识，解析/缩放/校验
