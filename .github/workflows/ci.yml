@@ -1,0 +1,88 @@
+name: ci
+
+# 本地门禁是 scripts/check.sh（命名 → 分层 → GL/VK 双后端零警告构建 → 全部测试）。
+# 这里把它拆成 CI 能并行的几块：静态检查一份，构建+测试按 {OS × 后端} 分四份。
+#
+# 明确的现状（别把这份文件当成"已经全绿"的承诺）：
+#   · Windows 还没接 —— 项目的 Windows 路径是 build.bat + MSYS2 MINGW64 工具链
+#     （见 AGENTS.md「Windows」），要在 CI 里复现得先装 MSYS2 与那套包，
+#     并且要确认 build.bat 在非交互环境下能跑完。
+#   · macOS 的 Vulkan 走 brew 的 molten-vk + vulkan-headers/loader；
+#     Linux 的 Vulkan 只需 libvulkan-dev（测试是无窗口的，不建设备、不跑 ICD）。
+#   · 构建产物分目录（GL → dist/、VK → dist/vk/），所以两个后端可以在同一台机器上
+#     并行走；但**不要**让两个 job 共用同一个工作目录，那会互相覆盖 dist/。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static:
+    name: 静态检查（命名 / 分层）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 接口命名约定
+        run: python3 scripts/check_naming.py
+      - name: 分层依赖方向 + 伞头可达范围
+        run: python3 scripts/check_layers.py
+
+  build:
+    name: ${{ matrix.os }} · ${{ matrix.graphics }}
+    needs: static
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, graphics: gl }
+          - { os: ubuntu-latest, graphics: vk }
+          - { os: macos-latest, graphics: gl }
+          - { os: macos-latest, graphics: vk }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # SDL3 / Yoga / imgui / json / webp / lunasvg 都是 submodule，
+      # 下面这些是 SDL3 在 Linux 上静态构建时要的系统开发包。
+      - name: Linux 依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxext-dev libxrandr-dev libxfixes-dev libxi-dev libxcursor-dev \
+            libxinerama-dev libwayland-dev wayland-protocols libxkbcommon-dev \
+            libasound2-dev libpulse-dev libdrm-dev libgbm-dev \
+            libegl1-mesa-dev libgl1-mesa-dev
+
+      - name: Linux · Vulkan 头与 loader
+        if: runner.os == 'Linux' && matrix.graphics == 'vk'
+        run: sudo apt-get install -y libvulkan-dev
+
+      - name: macOS · Vulkan（MoltenVK + 头 + loader）
+        if: runner.os == 'macOS' && matrix.graphics == 'vk'
+        run: brew install molten-vk vulkan-headers vulkan-loader
+
+      - name: 配置
+        run: >
+          cmake -S . -B build/${{ matrix.graphics }}
+          -DBKLV_GRAPHICS=${{ matrix.graphics }}
+          -DBKLV_BUILD_TESTS=ON
+
+      # 约定是零警告（AGENTS.md「代码」）：构建输出里出现一个 warning 就算失败。
+      # 用 tee + grep 而不是 `| grep -c`：并行构建失败时计数会是 0，被当成成功（踩过）。
+      - name: 构建（零警告）
+        run: |
+          set -o pipefail
+          cmake --build build/${{ matrix.graphics }} -j 4 2>&1 | tee /tmp/bklv_build.log
+          if grep -qE "warning:" /tmp/bklv_build.log; then
+            echo "::error::构建出现警告（约定是零警告）"
+            grep -E "warning:" /tmp/bklv_build.log | head -20
+            exit 1
+          fi
+
+      - name: 测试（无窗口，ctest）
+        run: ctest --test-dir build/${{ matrix.graphics }} --output-on-failure

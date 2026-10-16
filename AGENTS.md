@@ -1066,6 +1066,11 @@ cmake --build build/gl -j 8
 `dist/`，测试开头要调 `initResources()`——不调的话路径按工作目录解析，
 写出来的 fixture 会落进仓库树（还会被打进 romfs）。
 
+CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，
+`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建 + `ctest`，构建出现 warning 即失败。
+**Windows 还没接**（那条路要 `build.bat` + MSYS2，见上面「Windows」）。
+本机验收仍然是 `bash scripts/check.sh` —— CI 是它的并行拆版，不是替代品。
+
 ## 目录
 
 ```

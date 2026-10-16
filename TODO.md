@@ -351,9 +351,12 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 ## P3 —— 平台与工程
 
 - [ ] **CI**
-      GitHub Actions 矩阵：{macOS, Ubuntu, Windows} × {GL, Vulkan}，
-      加上 `-DBKLV_TARGETS=main` 的快速通道。目标是零警告 + 全部目标能链接。
-      *验收*：PR 上能看到矩阵全绿。
+      GitHub Actions 矩阵：{macOS, Ubuntu, Windows} × {GL, Vulkan}。
+      当前状态：`.github/workflows/ci.yml` 已有第一版 —— 静态检查（命名 + 分层/伞头）
+      一份，{Ubuntu, macOS} × {GL, Vulkan} 四份构建 + `ctest`，构建出现 warning 即失败。
+      **还没接**：Windows（要先在 CI 里复现 `build.bat` + MSYS2 MINGW64 那套，见 AGENTS.md）。
+      第一版没在 CI 上跑过（本机只有 macOS），首次 push 之后可能要调依赖（SDL3 在
+      Linux/macOS 上的系统包、MoltenVK 的路径）。*验收*：PR 上能看到矩阵全绿。
 - [ ] **单元测试**
       现在没有测试，验证全靠手动跑 demo。优先给纯逻辑的部分加：
       `RecyclerFrame` 的可见区间与回收、`Label` 的断行、焦点导航的几何打分、
