@@ -12,13 +12,13 @@
 //   · 样式参数的优先级：**外观层 JSON 写了就用 JSON，没写才用这里的 GlassTuning**
 //   · `enabled` / `quality` / 能力只由这里（也就是 Shell）决定 —— 是开关与性能，不是样式
 //
+// 后端从哪来：服务**不拥有**后端，只拿一个由图形后端交出来的 `GlassBackend*`
+// （`App::run` 把它从 `RenderBackend::getGlassBackend()` 转交过来，退出前摘掉）。
+// 所以 core 不认识任何图形 API：GL / Vulkan 的实现都在 `backends/` 里。
+//
 // 默认**关闭**：库不主动改变宿主观感，宿主显式 `setEnabled(true)` 才生效。
 
-#include "bklv/backends/gl_glass.hpp"
-
-#if defined(BKLV_VULKAN)
-#include "bklv/backends/vk_glass.hpp"
-#endif
+#include "bklv/core/glass/glass_backend.hpp"
 #include "bklv/core/glass/glass_queue.hpp"
 #include "bklv/core/glass/glass_tuning.hpp"
 
@@ -38,6 +38,11 @@ class GlassService
   public:
     // 单例（进程级）。取名沿库里的约定：getInputManager() / getEventBus() 那一套。
     static GlassService& getInstance();
+
+    // ---- 后端注入（由 App::run 从 RenderBackend::getGlassBackend() 转交）----
+    // 传 nullptr = 摘掉（后端要销毁了）。非拥有指针：后端活多久，它就有效多久。
+    void setBackend(GlassBackend* value) { this->backend = value; }
+    GlassBackend* getBackend() const { return this->backend; }
 
     // ---- 开关 / 档位 / 参数（Shell 转发到这里）----
     void setEnabled(bool value) { this->tuning.enabled = value; }
@@ -88,12 +93,8 @@ class GlassService
 
     GlassTuning tuning{};
     GlassRequestQueue queue;
-    GlGlassBackend backend;
-#if defined(BKLV_VULKAN)
-    // 路线 A：模糊底交给 Vulkan（mip 链 blit），圆角/染色/高光由 ImGui 叠在上面
-    VkGlass vkGlass;
-    bool vkHooked = false;
-#endif
+    // 非拥有：GL / Vulkan 的玻璃实现分别由对应的图形后端持有（见 getGlassBackend）
+    GlassBackend* backend = nullptr;
     EffectCapabilities capabilities{};
     int frameWidth   = 0;
     int frameHeight  = 0;

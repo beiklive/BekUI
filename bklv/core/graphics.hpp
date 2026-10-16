@@ -28,6 +28,11 @@
 namespace bklv
 {
 
+namespace glass
+{
+class GlassBackend;
+}
+
 // ---------------------------------------------------------------------------
 // 纹理句柄
 // ---------------------------------------------------------------------------
@@ -42,6 +47,18 @@ struct TextureHandle
     int height          = 0;
 
     bool isValid() const { return this->texture != ImTextureID_Invalid && this->width > 0 && this->height > 0; }
+};
+
+// ---------------------------------------------------------------------------
+// UI 通道钩子
+// ---------------------------------------------------------------------------
+
+// 抓帧类效果（玻璃）要在后端的 UI 通道前后各插一脚，而这两个时机只有后端自己知道。
+// core 只认这个空接口：具体到 Vulkan 是 `bklv::VulkanUiPassHook`（那个头带 vulkan.h，
+// 见 `backends/vulkan_ui_pass.hpp`），所以本文件里不出现任何图形 API 类型。
+struct UiPassHook
+{
+    virtual ~UiPassHook() = default;
 };
 
 // ---------------------------------------------------------------------------
@@ -84,6 +101,31 @@ class RenderBackend
 
     // 交换缓冲。
     virtual void present() = 0;
+
+    // ---- 可选能力：UI 通道钩子（抓帧类效果要用）----
+
+    // 这个后端有没有"UI 通道前 / 通道后"这两个时机（目前只有 Vulkan 的动态渲染路径有）。
+    // 默认没有：不支持的实现不要谎报，否则宿主既挂不上钩子、又白白关掉了自己的壁纸。
+    virtual bool isUiPassHookSupported() const { return false; }
+
+    // 挂/摘一个钩子（传 nullptr 摘掉）。返回是否真的挂上了。
+    // 只接受由 `UiPassHook` 派生、且该后端自己解释得了的对象
+    // （Vulkan 把 `VkGlass` 解释成 `VulkanUiPassHook`）。
+    virtual bool installUiPassHook(UiPassHook* hook)
+    {
+        (void)hook;
+        return false;
+    }
+
+    // 当前是否已经挂着钩子（宿主据此避免每帧重复 attach/configure）
+    virtual bool hasUiPassHook() const { return false; }
+
+    // ---- 可选能力：玻璃 ----
+    //
+    // 玻璃后端（背景模糊 + 合成）由具体的图形后端持有；没有这个能力的实现返回 nullptr，
+    // 玻璃服务随即整层关闭。交出的是 core 的抽象接口（`core/glass/glass_backend.hpp`），
+    // 所以调用方与公开伞头都不会因此认识图形 API。
+    virtual glass::GlassBackend* getGlassBackend() { return nullptr; }
 
     // ---- 帧读回 ----
     //

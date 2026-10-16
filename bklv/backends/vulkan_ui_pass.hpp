@@ -16,12 +16,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include "bklv/core/graphics.hpp"
+
 namespace bklv
 {
 
-struct VulkanUiPassHook
+// 继承 core 的 UiPassHook：`RenderBackend::installUiPassHook(UiPassHook*)` 只认那个基类，
+// 后端再 static_cast 回本类型（传进来的对象一定是 VkGlass，见 vk_glass.hpp）。
+struct VulkanUiPassHook : public UiPassHook
 {
-    virtual ~VulkanUiPassHook() = default;
+    ~VulkanUiPassHook() override = default;
 
     // 后端把创建资源需要的东西交出来（注册钩子时调一次）。
     // commandPool 是后端自用的池子，钩子可以在里面分配一次性命令（用完自己还回去）。

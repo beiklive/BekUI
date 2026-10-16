@@ -6,11 +6,14 @@
 // 以及 texture.cpp 里的 glGenTextures/glTexImage2D 全部收进这一个类。
 
 #include "bklv/core/graphics.hpp"
+#include "bklv/backends/gl_glass.hpp"
 
 // 桌面 OpenGL 后端（依赖 SDL3）。Switch 用 gles3_backend。
 #if !defined(BKLV_SWITCH)
 
 #include <SDL3/SDL.h>
+
+#include <memory>
 
 namespace bklv
 {
@@ -40,6 +43,11 @@ class OpenGLBackend : public RenderBackend
     bool readPixels(int x, int y, int width, int height,
         std::vector<unsigned char>& outRgba) override;
 
+    // ---- 可选能力：玻璃 ----
+    // GL 3.2 Core 有玻璃实现（core 的 GlassBackend 抽象接口，实现见 gl_glass.*）。
+    // 惰性创建：服务不用玻璃就不建任何 GL 资源。
+    glass::GlassBackend* getGlassBackend() override;
+
     // ---- 纹理 ----
     TextureHandle createTexture(const unsigned char* pixels, int width, int height) override;
     bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
@@ -53,6 +61,8 @@ class OpenGLBackend : public RenderBackend
 
     SDL_Window* window       = nullptr;
     SDL_GLContext glContext  = nullptr;
+    // GL 玻璃后端持有 GL 资源，必须在上下文销毁之前 reset（见 ~OpenGLBackend）
+    std::unique_ptr<glass::GlGlassBackend> glassBackend;
 };
 
 } // namespace bklv

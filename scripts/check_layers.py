@@ -4,7 +4,7 @@
     python3 scripts/check_layers.py          # 有新增反向依赖时退出码 1
     python3 scripts/check_layers.py --list   # 打印当前全部跨层依赖（含计数），总是 0
 
-**为什么需要它**：bklv 的 core / views / widgets / compile / glass / backends / platforms
+**为什么需要它**：bklv 的 core / views / widgets / compile / backends / platforms
 全部编进同一个 OBJECT 库、共用一个 include 根，所以"分层"目前只是目录约定 ——
 编译器不会因为 `core/app.cpp` 反向 include 了 `widgets/` 而报错。
 命名规范有 check_naming.py 兜着，"依赖方向"这一条一直没有对应的检查，于是它只能靠评审维持。
@@ -12,21 +12,28 @@
 
 禁止的方向（左侧的层不许 include 右侧的层）：
 
-    core    → widgets / views / compile / glass / backends
+    core    → widgets / views / compile / backends
     compile → views / widgets
     views   → widgets
-    glass   → backends
 
 允许的方向（不在检查范围，属正常分层）：
 
-    widgets → views / core / compile / glass    视图与外观驱动的控件在下游
-    views → core                                语义控件只认 ImDrawList 与 core 接口
-    compile → core                              解析实现用到 core 的数据类型
-    glass → core                                玻璃服务用 logger 等
-    backends → core / glass                     后端实现 core 的接口、glass 的层类型
-    platforms → core / backends                 平台创建并持有后端
-    core → platforms                            工厂：方向由"编译期裁剪 + 工厂"反转，属预期
-    任何一层 → 3rd                              第三方是叶子
+    widgets → views / core / compile              视图与外观驱动的控件在下游
+    views → core                                  语义控件只认 ImDrawList 与 core 接口
+    compile → core                                解析实现用到 core 的数据类型
+    backends → core                               后端实现 core 的接口（含 core/glass）
+    platforms → core / backends                   平台创建并持有后端
+    core → platforms                              工厂：方向由"编译期裁剪 + 工厂"反转，属预期
+    任何一层 → 3rd                                第三方是叶子
+
+注意"层"是 `bklv/` 下的第一级目录：玻璃子系统在 `core/glass/`，算 core 而不是独立一层
+（它曾经在根路径的 `glass/` 下，那次搬家把 `core → glass` 与 `glass → backends` 两条
+同层/反向依赖一起消化掉了）。
+
+另外还查一条伞头可达范围（见 `check_umbrella()`）：使用者的入口 `bklv/bklv.hpp`
+不许间接碰到 `backends/` / `platforms/` 或 `<vulkan/vulkan.h>` —— 曾经
+`bklv.hpp → shell.hpp → glass_service.hpp → vk_glass.hpp → <vulkan/vulkan.h>` 让每个
+包含伞头的翻译单元都被拖进 Vulkan 头（评审 §4.2 P1）。
 """
 
 import re
@@ -41,12 +48,10 @@ FORBIDDEN = {
     ("core", "widgets"),
     ("core", "views"),
     ("core", "compile"),
-    ("core", "glass"),
     ("core", "backends"),
     ("compile", "views"),
     ("compile", "widgets"),
     ("views", "widgets"),
-    ("glass", "backends"),
 }
 
 # 存量白名单：(源层, 目标层, 相对仓库路径)。
@@ -61,11 +66,12 @@ BASELINE = {
     ("core", "compile", "bklv/core/appearance.cpp"),
     # 解析层为了注册 8 个内置视图类型而认识具体 views 实现。
     ("compile", "views", "bklv/compile/view_parse.cpp"),
-    # 玻璃服务层按值持有两个后端实现（应抽成玻璃侧的纯虚接口，见评审 §4.2 P1）。
-    # 玻璃现在在 core/glass/ 下，所以这条是 core → backends（原来记作 glass → backends）。
-    ("core", "backends", "bklv/core/glass/glass_service.hpp"),
-    ("core", "backends", "bklv/core/glass/glass_service.cpp"),
 }
+
+# 伞头（使用者入口）不许间接碰到的目录 / 头文件
+UMBRELLA = ROOT / "bklv" / "bklv.hpp"
+UMBRELLA_FORBIDDEN_DIRS = ("backends", "platforms")
+UMBRELLA_FORBIDDEN_HEADERS = ("<vulkan/vulkan.h>", "vulkan/vulkan.h")
 
 INCLUDE_RE = re.compile(r'#include\s+"(bklv/[^"]+)"')
 
@@ -107,9 +113,52 @@ def collect():
     return edges, counts, len(files)
 
 
+def check_umbrella():
+    """伞头可达范围：bklv/bklv.hpp 顺着 `#include "bklv/..."` 能走到的头，
+    不许落在 backends/ 或 platforms/ 里，也不许出现 Vulkan 头。
+
+    返回 [(可达文件, 原因)]，空表示通过。第三方（bklv/3rd/）是叶子，不再往下走。
+    """
+    problems = []
+    seen = {UMBRELLA.resolve()}
+    queue = [UMBRELLA]
+
+    while queue:
+        path = queue.pop()
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+
+        for header in UMBRELLA_FORBIDDEN_HEADERS:
+            if f"#include <{header}>" in text or f'#include "{header}"' in text:
+                problems.append((path.relative_to(ROOT).as_posix(), f"include 了 {header}"))
+
+        for match in INCLUDE_RE.finditer(text):
+            target = LIB / match.group(1)[len("bklv/"):]
+            if not target.exists():
+                continue
+            rel = target.relative_to(LIB).as_posix()
+            if rel.startswith("3rd/"):
+                continue
+            if rel.split("/")[0] in UMBRELLA_FORBIDDEN_DIRS:
+                problems.append(
+                    (path.relative_to(ROOT).as_posix(), f"可达 {target.relative_to(ROOT).as_posix()}")
+                )
+                continue
+            resolved = target.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            queue.append(target)
+
+    return problems
+
+
 def main():
     argv = sys.argv[1:]
     edges, counts, file_count = collect()
+    umbrella = check_umbrella()
 
     if "--list" in argv:
         print(f"跨层依赖（扫描 {file_count} 个文件；同层 include 不计；★ = 被禁止的方向）")
@@ -124,13 +173,22 @@ def main():
             print(f"  [{tag}] {src} → {dst}  {rel}")
             for t in sorted(set(targets)):
                 print(f"           bklv/{t}")
+        print("\n伞头可达范围：bklv/bklv.hpp")
+        if umbrella:
+            for rel, why in umbrella:
+                print(f"  ✗ {rel}：{why}")
+        else:
+            print("  ✓ 没有可达的 backends/ platforms/ 或 Vulkan 头")
         return 0
 
     current = set(edges.keys())
     added = sorted(current - BASELINE)
     stale = sorted(BASELINE - current)
 
+    failed = False
+
     if added or stale:
+        failed = True
         if added:
             print(f"分层依赖检查：新增 {len(added)} 条反向依赖")
             for src, dst, rel in added:
@@ -143,9 +201,20 @@ def main():
             print(f"分层依赖检查：白名单有 {len(stale)} 条已过期（依赖已经消解）")
             for src, dst, rel in stale:
                 print(f"  ✗ {rel}：{src} → {dst} 已不存在，请从 BASELINE 删掉这一条")
+
+    if umbrella:
+        failed = True
+        print(f"伞头可达范围检查：bklv/bklv.hpp 碰到了不该碰的头（{len(umbrella)} 处）")
+        for rel, why in umbrella:
+            print(f"  ✗ {rel}：{why}")
+        print("  改法：让 core 只认抽象接口，具体实现由上层（平台 / 后端）注入；")
+        print("        图形 API 头（vulkan.h 这类）不许出现在伞头可达的头文件里。")
+
+    if failed:
         return 1
 
-    print(f"分层依赖检查：{len(current)} 条存量反向依赖（白名单内），无新增")
+    print(f"分层依赖检查：{len(current)} 条存量反向依赖（白名单内），无新增；"
+          f"伞头可达范围内没有 backends/ platforms/ 或 Vulkan 头")
     return 0
 
 

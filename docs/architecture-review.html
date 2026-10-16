@@ -103,7 +103,7 @@
   <div><b>≈40k</b><span>库代码行数</span></div>
   <div><b>63</b><span>无窗口测试可执行（ctest，双后端各一份）</span></div>
   <div><b>99</b><span>default 主题 JSON（57 base / 32 widget / 7 view）</span></div>
-  <div><b>6</b><span>存量反向依赖（已记账进 check_layers 白名单）</span></div>
+  <div><b>4</b><span>存量反向依赖（已记账进 check_layers 白名单）</span></div>
 </div>
 
 <h2 id="progress">0. 修复进度（评审之后）</h2>
@@ -125,7 +125,8 @@
     <tr>
       <td>§4.2 P0①：分层没有机械保障</td>
       <td><span class="tag ok">已加门禁</span></td>
-      <td>新增 <code>scripts/check_layers.py</code>：禁止新增反向依赖，存量 7 条记在 <code>BASELINE</code> 里（消解后要删行，否则报"白名单已过期"），<code>--list</code> 看全量；已接进 <code>scripts/check.sh</code> 第二步，规则写进 <code>AGENTS.md</code> 的「分层依赖方向」。<b>环本身仍未消</b>（core↔compile、glass⇄backends）。</td>
+      <td>新增 <code>scripts/check_layers.py</code>：禁止新增反向依赖，存量记在 <code>BASELINE</code> 里（消解后要删行，否则报"白名单已过期"），<code>--list</code> 看全量；已接进 <code>scripts/check.sh</code> 第二步，规则写进 <code>AGENTS.md</code> 的「分层依赖方向」。脚本后来又加了一条**伞头可达范围**检查（<code>bklv/bklv.hpp</code> 不许间接碰到 <code>backends/</code> / <code>platforms/</code> / <code>&lt;vulkan/vulkan.h&gt;</code>）。
+        <b>环消掉了一组</b>：<code>core ⇄ backends</code>（玻璃）已收口，白名单 6 → 4 条；<code>core ↔ compile</code> 仍在。</td>
     </tr>
     <tr>
       <td>§4.2 P1：横向滚动器空指针解引用</td>
@@ -190,7 +191,8 @@
         README / AGENTS / 本页路径全部跟着改。副作用是分层账本变简单了 ——
         <code>glass</code> 这一层消失，原 <code>glass → backends</code> 记为
         <code>core → backends</code>，白名单从 7 条降到 <b>6 条</b>（<code>core → glass</code>
-        这条同层依赖自然消解）。</td>
+        这条同层依赖自然消解）。后来那条 <code>core → backends</code> 也收口了（见上面
+        §4.3 ② 一行），现在 <b>4 条</b>。</td>
     </tr>
     <tr>
       <td>§4.2 P0②：进程级单例</td>
@@ -207,9 +209,25 @@
         现在只有专门验扩展层的 <code>layer_parse_test</code> 还需要注册。</td>
     </tr>
     <tr>
-      <td>§4.3 ②（玻璃边界）、§4.3 ⑦（扩展参数槽）</td>
+      <td>§4.3 ②：玻璃边界（core ⇄ backends）</td>
+      <td><span class="tag ok">已做</span></td>
+      <td>新增 <code>core/glass/glass_backend.hpp</code>（纯虚 <code>GlassBackend</code>）：服务只认接口，
+        GL / Vulkan 的实现（<code>GlGlassBackend</code> / <code>VkGlass</code>）分别由
+        <code>OpenGLBackend</code> / <code>GLES3Backend</code> / <code>VulkanBackend</code> 持有，
+        <code>App::run</code> 用 <code>RenderBackend::getGlassBackend()</code> 转交给服务
+        （<code>setBackend</code>，非拥有指针，退出前摘掉）。顺带解决三件事：
+        ① <code>activeVulkanBackend()</code> 这个进程级全局删掉了（改由 <code>App::getRenderBackend()</code>
+        + <code>RenderBackend::installUiPassHook</code> 给设计器用），不再有"析构不置空"的野指针；
+        ② <code>README/bklv.hpp</code> 那条 <code>&lt;vulkan/vulkan.h&gt;</code> 污染链断了；
+        ③ 玻璃的 <code>#if BKLV_VULKAN</code> 服务层分支没了 —— 能力差异变成
+        <code>getCapabilities()</code> 查询。验收：<code>check.sh</code> 双后端零警告 + 4 条白名单；
+        <code>tests/glass_core_test.cpp</code> 新增第 6 节（假后端跑完"注入 / 补 density / 能力门禁 /
+        每帧顺序"），另用一个临时 GL 探针跑真窗口截图确认出图。</td>
+    </tr>
+    <tr>
+      <td>§4.3 ⑦：扩展参数槽</td>
       <td><span class="tag bad">本轮不动</span></td>
-      <td>按约定玻璃相关先不处理；扩展 op 的参数槽要动 <code>AppearanceLayer</code> 的数据模型（<code>ALL_PROPS</code> 五处同步），收益与风险都需再评估。</td>
+      <td>扩展 op 的参数槽要动 <code>AppearanceLayer</code> 的数据模型（<code>ALL_PROPS</code> 五处同步），收益与风险都需再评估。</td>
     </tr>
     <tr>
       <td><code>install()</code> / <code>find_package()</code></td>
@@ -249,7 +267,7 @@
 
 <h2 id="diagrams">2. 架构图</h2>
 
-<h3>2.1 图 1 —— 分层与依赖方向（含 5 条反向依赖边）</h3>
+<h3>2.1 图 1 —— 分层与依赖方向（评审时的 5 条反向依赖边；其中 ④ 见下方"已消解"）</h3>
 <figure class="fig">
 <svg viewBox="0 0 1120 840" role="img" aria-label="bklv 分层与依赖图">
   <defs>
@@ -356,7 +374,7 @@
     <tr><td>①</td><td><code>core → widgets</code></td><td><code>core/app.cpp:10,17,18</code> include notification / appearance_view / widget_types</td><td><b>真环</b>（widgets 大量反向依赖 core）</td><td><code>core</code> 不是叶子层，“分层”只剩目录约定；单独复用 core 不可能</td></tr>
     <tr><td>②</td><td><code>core → compile</code></td><td><code>core/appearance.cpp:17-24</code> include 8 个 compile 头</td><td><b>真环</b>（compile 29 处依赖 core）</td><td>外观模型的“解析”与“运行时”无法分开编译；layout/属性定义两处漂移风险</td></tr>
     <tr><td>③</td><td><code>compile → views</code></td><td><code>compile/view_parse.cpp:18-23</code> include 6 个 views 头</td><td>单向（views 不依赖 compile）</td><td>解析层认识具体控件类型；加视图类型要同时改 views 与 compile 的注册表</td></tr>
-    <tr><td>④</td><td><code>core → backends</code><br><span class="tag">原 glass → backends</span></td><td><code>core/glass/glass_service.hpp:17,20</code> 直接 include <code>gl_glass.hpp</code> / <code>vk_glass.hpp</code></td><td><b>真环</b></td><td>唯一的抽象穿刺：玻璃子系统本应不认识图形 API，却静态依赖两个后端实现</td></tr>
+    <tr><td>④</td><td><code>core → backends</code><br><span class="tag">原 glass → backends</span></td><td>原先 <code>core/glass/glass_service.hpp:17,20</code> 直接 include <code>gl_glass.hpp</code> / <code>vk_glass.hpp</code></td><td><b>真环</b><br><span class="tag ok">已消解</span></td><td>唯一的抽象穿刺：玻璃子系统本应不认识图形 API，却静态依赖两个后端实现。<b>已按 §4.3 ② 收口</b>：服务只认 <code>glass_backend.hpp</code> 的纯虚接口，实现由各图形后端持有并注入。</td>
     <tr><td>⑤</td><td><code>backends → glass</code></td><td><code>backends/gl_glass.hpp:14-17</code> include 4 个 glass 头</td><td>同 ④ 的返程</td><td>玻璃的后端实现与调度逻辑交织，无法单独替换</td></tr>
   </tbody>
 </table>

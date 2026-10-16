@@ -2,10 +2,6 @@
 
 #include "bklv/core/logger.hpp"
 
-#if defined(BKLV_VULKAN)
-#include "bklv/backends/vulkan_backend.hpp"
-#endif
-
 namespace bklv::glass
 {
 
@@ -20,47 +16,24 @@ GlassService& getGlassService()
     return GlassService::getInstance();
 }
 
+// 后端由图形后端注入（App::run 从 RenderBackend::getGlassBackend() 转交）。
+// 没注入 = 这个后端没有玻璃能力，整层静默关闭。
 bool GlassService::ensureBackend()
 {
-    if (this->frameWidth <= 0 || this->frameHeight <= 0)
+    if (this->backend == nullptr || this->frameWidth <= 0 || this->frameHeight <= 0)
         return false;
 
-#if defined(BKLV_VULKAN)
-    // 路线 A：玻璃挂在 UI 通道的前/后钩子上（抓帧与模糊都在通道外做）
-    if (VulkanBackend* backend = activeVulkanBackend())
-    {
-        if (!this->vkHooked)
-        {
-            if (!backend->isUiPassHookActive())
-                backend->setUiPassHook(&this->vkGlass);
-            this->vkHooked = true;
-        }
-        EffectCapabilities caps;
-        caps.backdropCapture    = true;
-        caps.blur               = true;
-        caps.refraction         = false;   // 路线 A 不做折射
-        caps.dispersion         = false;   // 也不做色散
-        caps.maxGlassRegions    = 32;
-        this->capabilities      = caps;
-        const bool ready        = this->vkGlass.isReady();
-        if (ready && !this->supported)
-            Logger::info("[玻璃] Vulkan 后端就绪（路线 A：mip 链模糊，无折射/色散）");
-        return ready;
-    }
-    return false;
-#else
-
     // 尺寸变了会重建资源；失败会被记住（这个尺寸下不再每帧重试），所以这里可以每帧调。
-    this->backend.ensure(this->frameWidth, this->frameHeight);
-    this->capabilities = this->backend.getCapabilities();
+    // 顺序要紧：**先 ensure 再读能力** —— GL 实现的能力是建资源时填的，
+    // 反过来的话第一帧会读到"没有能力"，白报一次不可用。
+    const bool ensured = this->backend->ensure(this->frameWidth, this->frameHeight);
+    this->capabilities = this->backend->getCapabilities();
 
-    const bool ready = this->backend.isReady() && this->capabilities.backdropCapture
-        && this->capabilities.blur;
+    const bool ready = ensured && this->capabilities.backdropCapture && this->capabilities.blur;
     if (ready && !this->supported)
         Logger::info("[玻璃] 后端就绪：" + std::to_string(this->frameWidth) + "x"
             + std::to_string(this->frameHeight));
     return ready;
-#endif // BKLV_VULKAN
 }
 
 void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float frameDensity)
@@ -76,10 +49,8 @@ void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float
     style.quality    = this->getQuality();
     this->queue.beginFrame(style, this->density);
 
-#if defined(BKLV_VULKAN)
-    if (activeVulkanBackend() != nullptr)
-        this->vkGlass.beginFrame(this->tuning.blurRadius, false);
-#endif
+    if (this->backend != nullptr)
+        this->backend->beginFrame(this->tuning);
 
     this->supported = this->isEnabled() && this->ensureBackend();
     if (this->isEnabled() && !this->supported && !this->warnedUnsupported)
@@ -92,68 +63,15 @@ void GlassService::beginFrame(int framebufferWidth, int framebufferHeight, float
 
 void GlassService::submit(GlassRequest request)
 {
-    if (!this->isEnabled())
-        return;
-
-#if defined(BKLV_VULKAN)
-    if (activeVulkanBackend() != nullptr)
-    {
-        VkGlassRect rect;
-        rect.minX      = request.minMax.x;
-        rect.minY      = request.minMax.y;
-        rect.maxX      = request.minMax.z;
-        rect.maxY      = request.minMax.w;
-        rect.blurScale = std::min(this->tuning.blurRadius / 48.0f, 1.0f);
-        this->vkGlass.addRect(rect);
-
-        // 模糊只有形状没有颜色：圆角、染色、描边高光由 ImGui 叠在它上面
-        //（VK 这条路的取舍：不做折射/色散）
-        if (request.drawList != nullptr)
-        {
-            const float radius = std::min(
-                (request.minMax.z - request.minMax.x) * 0.5f, request.radii.topLeft * request.density);
-            const ImU32 tint = ImGui::ColorConvertFloat4ToU32(ImVec4(this->tuning.tintR,
-                this->tuning.tintG, this->tuning.tintB,
-                std::max(this->tuning.tintA, 0.35f)));
-            const ImU32 rim = ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 1.0f, 1.0f,
-                0.10f + this->tuning.rimGlow * 0.35f));
-            const float density = request.density > 0.0f ? request.density : this->density;
-            const ImVec2 min(request.minMax.x / density, request.minMax.y / density);
-            const ImVec2 max(request.minMax.z / density, request.minMax.w / density);
-            request.drawList->AddRectFilled(min, max, tint, radius / density);
-            request.drawList->AddRect(min, max, rim, radius / density, 0, 1.0f);
-        }
-        return;
-    }
-#endif
-
-    // 后端起不来时静默丢弃：视图不需要知道玻璃有没有生效（它只是"声明"）
-    if (!this->backend.isReady())
+    if (!this->isEnabled() || this->backend == nullptr)
         return;
 
     if (request.density <= 0.0f)
         request.density = this->density;
 
-    // 全局 tuning 是**底**：外观层（op: glass）在它之上覆盖**单个**字段。
-    //
-    // 这里曾经写的是 `if (request.style.tint.w <= 0.0f) request.style = makeGlassStyle(tuning);`
-    // —— 拿"有没有染色"当"整份要不要用 tuning"的判断。而外观只要写了带 alpha 的 fill 就带
-    // tint（layer_draw_glass.cpp），条件永不成立 → makeGlassStyle(tuning) 从不执行 →
-    // **设计器的「折射高度/折射强度/深度效果/色散」滑块在任何 op: glass 层上零像素变化**
-    // （观感一直是 GlassStyle 的硬编码默认值）。踩过，别再退回整份覆盖。
-    GlassStyle style = makeGlassStyle(this->tuning);
-    if (request.style.tint.w > 0.0f)
-        style.tint = request.style.tint; // 外观写了 fill 就只换染色，折射/光照仍跟 tuning
-    request.style   = style;
-    request.blurMix = this->tuning.blurMix; // 帧级旋钮：1 = 纯模糊底，调小让折射透出细节
-
-    // 没给裁剪矩形就按整帧：空的 clipRect 会让合成那步什么都不画
-    //（设计器那边一直显式填整帧，库这边替调用方兜住默认值）
-    if (request.clipRect.z <= request.clipRect.x || request.clipRect.w <= request.clipRect.y)
-    {
-        request.clipRect = ImVec4(0.0f, 0.0f, (float)this->frameWidth, (float)this->frameHeight);
-    }
-    this->queue.submit(request);
+    // GL 与 Vulkan 的收法完全不同（排进队列等注入 vs. 当场记进自己的通道），
+    // 由实现自己决定 —— 服务只负责补齐 density 与把请求转手。
+    this->backend->submit(this->queue, request, this->tuning, this->frameWidth, this->frameHeight);
 }
 
 bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBounds,
@@ -197,21 +115,18 @@ bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBound
 
 void GlassService::prepareDrawData(ImDrawData& drawData)
 {
-    if (this->injected || !this->supported || this->queue.isEmpty())
+    if (this->injected || this->backend == nullptr || !this->supported || this->queue.isEmpty())
         return;
 
     this->injected = true;
-    this->backend.inject(drawData, this->queue);
+    this->backend->prepareDrawData(drawData, this->queue);
 }
 
 void GlassService::finishFrame()
 {
     this->queue.seal();
-    this->backend.finishFrame();
-#if defined(BKLV_VULKAN)
-    if (activeVulkanBackend() != nullptr)
-        this->vkGlass.endFrame();
-#endif
+    if (this->backend != nullptr)
+        this->backend->finishFrame();
 }
 
 EffectCapabilities GlassService::getCapabilities() const

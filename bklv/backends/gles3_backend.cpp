@@ -34,6 +34,9 @@ GLES3Backend::GLES3Backend()
 
 GLES3Backend::~GLES3Backend()
 {
+    // 玻璃后端持有 GL 资源（程序、纹理、FBO）：必须在 EGL 上下文还活着时先释放
+    this->glassBackend.reset();
+
     if (this->impl != nullptr)
     {
         if (this->impl->display != EGL_NO_DISPLAY)
@@ -53,6 +56,13 @@ GLES3Backend::~GLES3Backend()
     }
 
     this->ready = false;
+}
+
+glass::GlassBackend* GLES3Backend::getGlassBackend()
+{
+    if (this->glassBackend == nullptr)
+        this->glassBackend = std::make_unique<glass::GlGlassBackend>();
+    return this->glassBackend.get();
 }
 
 bool GLES3Backend::initContext(void* /*nativeWindow*/)

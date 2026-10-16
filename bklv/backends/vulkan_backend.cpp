@@ -2,6 +2,7 @@
 #if !defined(BKLV_SWITCH) && defined(BKLV_VULKAN)
 
 #include "bklv/backends/vulkan_backend.hpp"
+#include "bklv/backends/vk_glass.hpp"
 
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
@@ -17,12 +18,6 @@
 
 namespace bklv
 {
-namespace
-{
-// 活跃实例：给宿主（设计器）挂 UI 通道钩子用
-VulkanBackend* gActiveBackend = nullptr;
-} // namespace
-
 
 namespace
 {
@@ -113,23 +108,22 @@ VkExtent2D clampExtent(const VkSurfaceCapabilitiesKHR& caps, int width, int heig
 
 VulkanBackend::VulkanBackend()
 {
-    gActiveBackend = this;
-}
-
-VulkanBackend* activeVulkanBackend()
-{
-    return gActiveBackend;
+    // 库自己的玻璃后端（懒挂 UI 通道钩子：真的要用玻璃那几帧才挂，见 VkGlass::ensure）
+    this->glassBackend = std::make_unique<glass::VkGlass>();
+    this->glassBackend->bind(*this);
 }
 
 VulkanBackend::~VulkanBackend()
 {
-    // 宿主钩子（设计器的玻璃）的资源也是用这个 device 建的：必须在销毁设备前让它释放，
-    // 否则它自己的析构里会对着死设备调 vkDestroyImage（踩过：Abort trap: Invalid device）
+    // 宿主钩子（设计器的玻璃）与库自己的玻璃，资源都是用这个 device 建的：
+    // 必须在销毁设备前让它们释放，否则析构里会对着死设备调 vkDestroyImage
+    //（踩过：Abort trap: Invalid device）
     if (this->uiPassHook != nullptr)
     {
         this->uiPassHook->detach();
         this->uiPassHook = nullptr;
     }
+    this->glassBackend.reset();
 
     // 正常路径下 App 已经按 "纹理 -> ImGui 渲染后端 -> 平台" 的顺序清理过，
     // 这里兜底，避免异常退出时泄漏 Vulkan 对象。
@@ -1088,29 +1082,42 @@ bool VulkanBackend::prepareFrame()
     return true;
 }
 
-void VulkanBackend::setUiPassHook(bklv::VulkanUiPassHook* hook)
+bool VulkanBackend::isUiPassHookSupported() const
 {
-    this->uiPassHook     = hook;
+    return this->blendDynamic;
+}
+
+bool VulkanBackend::installUiPassHook(UiPassHook* hook)
+{
+    // 传进来的只可能是 VkGlass（库自己的或设计器的），它两个基类都在，所以这个向下转型是安全的
+    this->uiPassHook     = static_cast<bklv::VulkanUiPassHook*>(hook);
     this->uiPassPreserve = false;
-    if (hook == nullptr)
-        return;
+    if (this->uiPassHook == nullptr)
+        return true;
 
     if (!this->blendDynamic)
     {
         // 传统 render pass 路径做不到"不清屏"，直接告诉宿主：钩子用不了
         BKLV_LOG_WARNING("[UI 钩子] 当前走的是传统 render pass，做不到保留画面，钩子不生效");
         this->uiPassHook = nullptr;
-        return;
+        return false;
     }
 
-    hook->attach(this->instance, this->physical, this->device, this->queue, this->queueFamily,
+    this->uiPassHook->attach(this->instance, this->physical, this->device, this->queue,
+        this->queueFamily,
         this->commandPools.empty() ? VK_NULL_HANDLE : this->commandPools[0]);
-    hook->configure(this->imageFormat, this->extent);
+    this->uiPassHook->configure(this->imageFormat, this->extent);
+    return true;
 }
 
-bool VulkanBackend::isUiPassHookActive() const
+bool VulkanBackend::hasUiPassHook() const
 {
     return this->uiPassHook != nullptr;
+}
+
+glass::GlassBackend* VulkanBackend::getGlassBackend()
+{
+    return this->glassBackend.get();
 }
 
 bool VulkanBackend::beginRendering()

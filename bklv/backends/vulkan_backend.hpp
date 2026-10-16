@@ -26,10 +26,17 @@
 #include <SDL3/SDL.h>
 #include <vulkan/vulkan.h>
 
+#include <memory>
 #include <vector>
 
 namespace bklv
 {
+
+namespace glass
+{
+class GlassBackend;
+class VkGlass;
+}
 
 class VulkanBackend : public RenderBackend
 {
@@ -37,13 +44,17 @@ class VulkanBackend : public RenderBackend
     VulkanBackend();
     ~VulkanBackend() override;
 
-    // 宿主钩子（设计器的玻璃用）：UI 通道前/后各一次机会。
-    // 传 nullptr 取消。**只在动态渲染路径下生效**（传统 render pass 的 loadOp
-    // 是在 VkRenderPass 里烘死的，做不到"不清屏"，所以那条路径不调用钩子）。
-    void setUiPassHook(bklv::VulkanUiPassHook* hook);
-    bool isUiPassHookActive() const;
-
     const char* getName() const override { return "Vulkan"; }
+
+    // ---- 可选能力：UI 通道钩子 + 玻璃（见 core/graphics.hpp）----
+
+    // 只有动态渲染路径做得到"UI 通道不清屏"，传统 VkRenderPass 的 loadOp 是烘死的
+    bool isUiPassHookSupported() const override;
+    // hook 只接受 VkGlass（core 那边给的是 UiPassHook*，这里转成 VulkanUiPassHook*）
+    bool installUiPassHook(UiPassHook* hook) override;
+    bool hasUiPassHook() const override;
+    // 库自己的玻璃后端（VkGlass，本后端持有）
+    glass::GlassBackend* getGlassBackend() override;
 
     // ---- 窗口 ----
     unsigned long long getWindowFlags() const override;
@@ -68,6 +79,8 @@ class VulkanBackend : public RenderBackend
     bklv::VulkanUiPassHook* uiPassHook = nullptr;
     // 这一帧钩子是否已经铺好底（true 时 ImGui 通道用 LOAD 不清屏）
     bool uiPassPreserve = false;
+    // 库自己的玻璃后端：本后端持有，通过 getGlassBackend() 借给玻璃服务
+    std::unique_ptr<glass::VkGlass> glassBackend;
 
     // 一张上传好的纹理。userData 指向它，销毁时才能找回 image/view/memory。
     struct TextureRecord
@@ -140,10 +153,6 @@ class VulkanBackend : public RenderBackend
     bool recreateSwapchain     = false;
     bool imguiRendererInited   = false;
 };
-
-// 当前活着的 Vulkan 后端（设计器要把 UI 通道钩子挂上去）。
-// 没创建过时返回 nullptr。GL 构建里不存在这个声明。
-VulkanBackend* activeVulkanBackend();
 
 } // namespace bklv
 

@@ -26,7 +26,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 
 | 目录 | 文件数 | 内容 |
 |---|---|---|
-| `core/` | 78 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger`；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*` |
+| `core/` | 78 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger`；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
 | `views/` | 24 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
 | `widgets/` | 53 | **外观驱动的控件**：`AppearanceView`（基类）、`Shell`（四层外壳）、`Pager`、`Header`/`BottomBar`/`Sidebar`/`TabFrame`、`Button`/`SelectorButton`/`Slider`、Cell 家族（6 种）、`Dialog`/`Dropdown`/`EditTextDialog`/`Notification`、`HintsBar`/`StatusArea`/`AccountWidget`、`RecyclerView`（JSON 桥接）、六个 `layer_draw_*` 绘制钩子 |
 | `compile/` | 18 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |

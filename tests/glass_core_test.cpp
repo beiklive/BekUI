@@ -5,11 +5,14 @@
 
 #include <cmath>
 #include <cstdio>
+#include <string>
 
+#include "bklv/core/glass/glass_backend.hpp"
 #include "bklv/core/glass/glass_blur_plan.hpp"
 #include "bklv/core/glass/glass_geometry.hpp"
 #include "bklv/core/glass/glass_queue.hpp"
 #include "bklv/core/glass/glass_request.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/core/glass/glass_style.hpp"
 #include "bklv/core/glass/glass_tuning.hpp"
 
@@ -26,6 +29,53 @@ glass::GlassRequest makeRequest(float minX, float minY, float maxX, float maxY)
     request.minMax = ImVec4(minX, minY, maxX, maxY);
     return request;
 }
+
+// 只记调用顺序的假玻璃后端。
+// 玻璃服务只认 `GlassBackend` 抽象接口 —— 这正是"core 不认识 backends"的验收方式：
+// 用假后端就能把"注入 / 补齐 / 能力门禁 / 每帧顺序"全部跑一遍，不需要窗口与图形 API。
+class RecordingBackend : public glass::GlassBackend
+{
+  public:
+    bool ensure(int framebufferWidth, int framebufferHeight) override
+    {
+        this->width  = framebufferWidth;
+        this->height = framebufferHeight;
+        this->calls += "E";
+        return this->ready;
+    }
+
+    bool isReady() const override { return this->ready; }
+    glass::EffectCapabilities getCapabilities() const override { return this->caps; }
+
+    void beginFrame(const glass::GlassTuning& tuning) override
+    {
+        this->calls += "B";
+        this->blurRadius = tuning.blurRadius;
+    }
+
+    void submit(glass::GlassRequestQueue& queue, const glass::GlassRequest& request,
+        const glass::GlassTuning&, int frameWidth, int frameHeight) override
+    {
+        this->calls += "S";
+        this->lastDensity = request.density;
+        this->frameWidth  = frameWidth;
+        this->frameHeight = frameHeight;
+        queue.submit(request);
+    }
+
+    void prepareDrawData(ImDrawData&, const glass::GlassRequestQueue&) override { this->calls += "P"; }
+    void finishFrame() override { this->calls += "F"; }
+
+    bool ready = true;
+    glass::EffectCapabilities caps{};
+    std::string calls;
+    float lastDensity = -1.0f;
+    int width        = 0;
+    int height       = 0;
+    int frameWidth   = 0;
+    int frameHeight  = 0;
+    float blurRadius = 0.0f;
+};
 
 float weightSum(const glass::GlassBlurPlan& plan)
 {
@@ -175,6 +225,67 @@ int main()
         checkFloat(request.opacity, 1.0f, "默认不透明");
         checkFloat(request.blurMix, 1.0f, "默认全模糊");
         check(request.drawList == nullptr, "默认没有注入点（由宿主填）");
+    }
+
+    std::printf("\n== 6. 玻璃服务：后端由宿主注入，服务只认抽象接口 ==\n");
+    {
+        glass::GlassService& service = glass::getGlassService();
+
+        // 没注入后端（没有玻璃能力的图形后端就是这个样子）：整层关闭，submit 不炸也不排队
+        service.setBackend(nullptr);
+        service.setEnabled(true);
+        service.beginFrame(1280, 720, 1.0f);
+        check(!service.isSupported(), "没注入后端 -> 不支持");
+        service.submit(makeRequest(0, 0, 10, 10));
+        checkEqualInt((int)service.getRequestCount(), 0, "没后端时不排队");
+
+        RecordingBackend backend;
+        backend.caps.backdropCapture = true;
+        backend.caps.blur            = true;
+
+        service.setBackend(&backend);
+        service.beginFrame(1280, 720, 2.0f);
+        check(service.isSupported(), "注入了可用后端 -> 支持");
+        checkEqualInt(backend.width, 1280, "ensure 拿到帧缓冲宽（物理像素）");
+        checkEqualInt(backend.height, 720, "ensure 拿到帧缓冲高（物理像素）");
+        check(backend.calls == "BE", "帧首顺序：先 beginFrame 再 ensure（和旧 VK 路径一致）");
+
+        glass::GlassRequest request = makeRequest(10.0f, 20.0f, 110.0f, 60.0f);
+        request.density = 0.0f; // 没填：由服务补帧密度
+        service.submit(request);
+        check(backend.calls == "BES", "提交被转给了后端");
+        checkFloat(backend.lastDensity, 2.0f, "density 为 0 时服务补上帧密度 2");
+        checkEqualInt((int)service.getRequestCount(), 1, "请求进了服务持有的队列");
+        checkEqualInt(backend.frameWidth, 1280, "后端拿到帧宽（兜住空的裁剪矩形要用）");
+        checkEqualInt(backend.frameHeight, 720, "后端拿到帧高");
+
+        ImDrawData drawData{};
+        service.prepareDrawData(drawData);
+        check(backend.calls == "BESP", "注入点在 draw data 那一趟");
+        service.prepareDrawData(drawData);
+        check(backend.calls == "BESP", "同一帧只注入一次（避免重复插命令）");
+
+        service.finishFrame();
+        check(backend.calls == "BESPF", "帧末收口并转给后端");
+        service.submit(makeRequest(0, 0, 5, 5));
+        checkEqualInt((int)service.getRequestCount(), 1, "收口之后再交也不收");
+
+        // 能力不足的后端（例如只有对象、没有实现模糊）：下一帧就不算支持
+        backend.calls = "";
+        backend.caps.blur = false;
+        service.beginFrame(1280, 720, 2.0f);
+        check(!service.isSupported(), "后端能力不足（blur=false）-> 不支持");
+
+        // 关掉开关：不该再去问后端要资源（ensure 不会发生）
+        backend.calls = "";
+        backend.caps.blur = true;
+        service.setEnabled(false);
+        service.beginFrame(1280, 720, 2.0f);
+        check(!service.isSupported(), "开关关着 -> 不支持");
+        check(backend.calls.find('E') == std::string::npos, "开关关着时不 ensure（不白建资源）");
+
+        // 单例不能留着指向栈上的假后端
+        service.setBackend(nullptr);
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

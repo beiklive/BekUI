@@ -1,10 +1,8 @@
 #include "designer/ui/designer_glass.hpp"
 
+#include "bklv/core/app.hpp"
 #include "bklv/core/graphics.hpp"
 
-#if defined(BKLV_VULKAN)
-#include "bklv/backends/vulkan_backend.hpp"
-#endif
 #include "bklv/core/logger.hpp"
 
 #include "bklv/3rd/imgui/imgui.h"
@@ -28,16 +26,20 @@ void DesignerGlass::beginFrame(int framebufferWidth, int framebufferHeight, floa
 {
 #if defined(BKLV_VULKAN)
     // Vulkan：ImGui 的绘制回调在渲染通道里，抓帧/模糊必须在通道外，
-    // 所以走"UI 通道前铺底 + 通道后存档"这条路（见 vk_glass.hpp）
-    if (bklv::activeVulkanBackend() != nullptr)
+    // 所以走"UI 通道前铺底 + 通道后存档"这条路（见 vk_glass.hpp）。
+    // 后端从 App 拿（库侧不再有"当前 Vulkan 后端"这种全局指针）。
+    bklv::RenderBackend* backend = bklv::App::getCurrent() != nullptr
+        ? bklv::App::getCurrent()->getRenderBackend()
+        : nullptr;
+    if (backend != nullptr && backend->isUiPassHookSupported())
     {
         if (this->vk == nullptr)
             this->vk = std::make_unique<glass::VkGlass>();
         // 只挂一次（每帧重挂会重复 attach/configure，日志刷屏也没必要）
-        if (!bklv::activeVulkanBackend()->isUiPassHookActive())
-            bklv::activeVulkanBackend()->setUiPassHook(this->vk.get());
+        if (!backend->hasUiPassHook())
+            backend->installUiPassHook(this->vk.get());
 
-        this->vulkanActive     = true;
+        this->vulkanActive     = backend->hasUiPassHook();
         this->vulkanDensity    = density > 0.0f ? density : 1.0f;
         this->injectedThisFrame = false;
         this->width  = framebufferWidth;

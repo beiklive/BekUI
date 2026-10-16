@@ -7,6 +7,9 @@
 // 其余职责（ImGui 渲染后端、纹理创建与销毁）完全一致。
 
 #include "bklv/core/graphics.hpp"
+#include "bklv/backends/gl_glass.hpp"
+
+#include <memory>
 
 #if defined(BKLV_SWITCH)
 
@@ -33,6 +36,11 @@ class GLES3Backend : public RenderBackend
     void renderDrawData(ImDrawData* drawData) override;
     void present() override;
 
+    // ---- 可选能力：玻璃 ----
+    // Switch 用的是 GLES3 + 桌面 GL 那份玻璃实现（见 gl_glass.*，差异在着色器版本头）。
+    // 惰性创建：服务不用玻璃就不建任何 GL 资源。
+    glass::GlassBackend* getGlassBackend() override;
+
     TextureHandle createTexture(const unsigned char* pixels, int width, int height) override;
     bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
         int height) override;
@@ -41,6 +49,8 @@ class GLES3Backend : public RenderBackend
   private:
     struct Impl;
     Impl* impl = nullptr;
+    // GL 玻璃后端持有 GL 资源，必须在 EGL 上下文销毁之前 reset（见 ~GLES3Backend）
+    std::unique_ptr<glass::GlGlassBackend> glassBackend;
 };
 
 } // namespace bklv

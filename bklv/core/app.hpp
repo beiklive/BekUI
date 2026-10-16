@@ -48,6 +48,11 @@ class App
     // 当前编入的图形后端名，日志用。
     static const char* getGraphicsBackendName();
 
+    // 当前帧循环用的图形后端（`run()` 期间有效，退出时置空）。
+    // 给需要后端可选能力的宿主用：UI 通道钩子（设计器的玻璃）、
+    // getGlassBackend()（库的玻璃服务由 App::run 转交，不需要宿主操心）。
+    RenderBackend* getRenderBackend() const { return this->renderBackend; }
+
     // 创建窗口并进入帧循环，窗口关闭后返回退出码。
     int run(const std::string& title, int width = 1280, int height = 800);
 
@@ -127,6 +132,8 @@ class App
     View* root = nullptr;
     NotificationManager* notifications = nullptr;
     DebugLayer* debugLayer = nullptr;
+    // 帧循环里的图形后端（非拥有：由平台持有）。run() 期间有效，退出前置空。
+    RenderBackend* renderBackend = nullptr;
     std::string screenshotPath;      // 非空表示要截图
     int screenshotDelay = 0;         // 还要等几帧
     bool quitRequested  = false;

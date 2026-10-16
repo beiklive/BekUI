@@ -15,6 +15,9 @@ namespace bklv
 
 OpenGLBackend::~OpenGLBackend()
 {
+    // 玻璃后端持有 GL 资源（程序、纹理、FBO）：必须在上下文还活着时先释放
+    this->glassBackend.reset();
+
     // 正常路径下 App 已经调过 shutdownImGuiRenderer，
     // 这里只兜底销毁上下文，避免异常退出时泄漏。
     if (this->glContext != nullptr)
@@ -22,6 +25,13 @@ OpenGLBackend::~OpenGLBackend()
         SDL_GL_DestroyContext(this->glContext);
         this->glContext = nullptr;
     }
+}
+
+glass::GlassBackend* OpenGLBackend::getGlassBackend()
+{
+    if (this->glassBackend == nullptr)
+        this->glassBackend = std::make_unique<glass::GlGlassBackend>();
+    return this->glassBackend.get();
 }
 
 unsigned long long OpenGLBackend::getWindowFlags() const

@@ -545,6 +545,50 @@ void GlGlassBackend::finishFrame()
     this->impl->prepared = false;
 }
 
+void GlGlassBackend::beginFrame(const GlassTuning& tuning)
+{
+    // 这一帧的模糊参数由 GlassService 通过 queue.beginFrame(style, density) 下发，
+    // GL 这条路没有按帧要准备的资源（Vulkan 那条路在这里开录）。
+    (void)tuning;
+}
+
+void GlGlassBackend::submit(GlassRequestQueue& queue, const GlassRequest& request,
+    const GlassTuning& tuning, int frameWidth, int frameHeight)
+{
+    // 后端起不来时静默丢弃：视图不需要知道玻璃有没有生效（它只是"声明"）
+    if (!this->isReady())
+        return;
+
+    GlassRequest prepared = request;
+
+    // 全局 tuning 是**底**：外观层（op: glass）在它之上覆盖**单个**字段。
+    //
+    // 这里曾经写的是 `if (request.style.tint.w <= 0.0f) request.style = makeGlassStyle(tuning);`
+    // —— 拿"有没有染色"当"整份要不要用 tuning"的判断。而外观只要写了带 alpha 的 fill 就带
+    // tint（layer_draw_glass.cpp），条件永不成立 → makeGlassStyle(tuning) 从不执行 →
+    // **设计器的「折射高度/折射强度/深度效果/色散」滑块在任何 op: glass 层上零像素变化**
+    // （观感一直是 GlassStyle 的硬编码默认值）。踩过，别再退回整份覆盖。
+    GlassStyle style = makeGlassStyle(tuning);
+    if (prepared.style.tint.w > 0.0f)
+        style.tint = prepared.style.tint; // 外观写了 fill 就只换染色，折射/光照仍跟 tuning
+    prepared.style   = style;
+    prepared.blurMix = tuning.blurMix; // 帧级旋钮：1 = 纯模糊底，调小让折射透出细节
+
+    // 没给裁剪矩形就按整帧：空的 clipRect 会让合成那步什么都不画
+    //（设计器那边一直显式填整帧，库这边替调用方兜住默认值）
+    if (prepared.clipRect.z <= prepared.clipRect.x || prepared.clipRect.w <= prepared.clipRect.y)
+    {
+        prepared.clipRect = ImVec4(0.0f, 0.0f, (float)frameWidth, (float)frameHeight);
+    }
+
+    queue.submit(prepared);
+}
+
+void GlGlassBackend::prepareDrawData(ImDrawData& drawData, const GlassRequestQueue& queue)
+{
+    this->inject(drawData, queue);
+}
+
 void GlGlassBackend::shutdown()
 {
     if (this->impl != nullptr && this->impl->blurProgram != 0)
@@ -709,6 +753,9 @@ GlGlassBackend::~GlGlassBackend() = default;
 bool GlGlassBackend::ensure(int, int) { return false; }
 bool GlGlassBackend::isReady() const { return false; }
 EffectCapabilities GlGlassBackend::getCapabilities() const { return EffectCapabilities{}; }
+void GlGlassBackend::beginFrame(const GlassTuning&) { }
+void GlGlassBackend::submit(GlassRequestQueue&, const GlassRequest&, const GlassTuning&, int, int) { }
+void GlGlassBackend::prepareDrawData(ImDrawData&, const GlassRequestQueue&) { }
 bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue&) { return false; }
 void GlGlassBackend::composite(const GlassRequest&) { }
 void GlGlassBackend::finishFrame() { }

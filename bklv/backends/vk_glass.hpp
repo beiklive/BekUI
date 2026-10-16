@@ -24,6 +24,12 @@
 #include <vulkan/vulkan.h>
 
 #include "bklv/backends/vulkan_ui_pass.hpp"
+#include "bklv/core/glass/glass_backend.hpp"
+
+namespace bklv
+{
+class VulkanBackend;
+}
 
 namespace bklv::glass
 {
@@ -38,11 +44,16 @@ struct VkGlassRect
     float blurScale = 0.5f;
 };
 
-class VkGlass : public bklv::VulkanUiPassHook
+class VkGlass : public bklv::VulkanUiPassHook, public GlassBackend
 {
   public:
     VkGlass();
     ~VkGlass() override;
+
+    // 谁持有我（Vulkan 后端）：ensure() 第一次要用它把 UI 通道钩子挂上。
+    // 钩子是**懒挂**的 —— 没挂时 ImGui 通道照常清屏，挂上才改成保留画面，
+    // 所以"没有玻璃可画"的帧不会被改变渲染语义。
+    void bind(bklv::VulkanBackend& owner) { this->owner = &owner; }
 
     void attach(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device,
         VkQueue queue, uint32_t queueFamily, VkCommandPool commandPool) override;
@@ -53,7 +64,20 @@ class VkGlass : public bklv::VulkanUiPassHook
         VkExtent2D extent) override;
     void detach() override;
 
-    bool isReady() const { return this->ready; }
+    // ---- GlassBackend（core/glass/glass_backend.hpp）----
+
+    // 第一次调用时把 UI 通道钩子挂到宿主后端上（挂不上就一直是"不可用"）
+    bool ensure(int framebufferWidth, int framebufferHeight) override;
+    bool isReady() const override { return this->ready; }
+    EffectCapabilities getCapabilities() const override;
+    void beginFrame(const GlassTuning& tuning) override;
+    // Vulkan 这条路：矩形记进自己的通道，染色/描边当场叠成 ImGui 图元（不走队列）
+    void submit(GlassRequestQueue& queue, const GlassRequest& request, const GlassTuning& tuning,
+        int frameWidth, int frameHeight) override;
+    // 模糊与合成都发生在 UI 通道外，绘制数据不需要动
+    void prepareDrawData(ImDrawData& drawData, const GlassRequestQueue& queue) override;
+    void finishFrame() override { this->endFrame(); }
+
     const std::string& getStatus() const { return this->status; }
 
     // 一帧的请求：beginFrame → addRect… → endFrame
@@ -93,6 +117,10 @@ class VkGlass : public bklv::VulkanUiPassHook
     bool recording = false;
     float blurRadius = 32.0f;
     std::vector<VkGlassRect> pending;
+
+    // 宿主后端（由它创建并持有本对象）与"钩子是否已经挂上"
+    bklv::VulkanBackend* owner = nullptr;
+    bool hooked = false;
 };
 
 } // namespace bklv::glass

@@ -477,6 +477,11 @@ int App::run(const std::string& title, int width, int height)
     // 到这里上下文与渲染后端都就绪了，图片可以上传纹理了。
     initTextureStore(backend);
 
+    // 玻璃服务要后端交出来的玻璃实现（没有玻璃能力的后端给 nullptr = 整层关闭）。
+    // 两边都是非拥有指针：退出前摘掉，见函数末尾。
+    this->renderBackend = backend;
+    glass::getGlassService().setBackend(backend->getGlassBackend());
+
     const float clearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
 
     // 平台自己的循环包装：Switch 上需要先做 applet / EGL 初始化。
@@ -537,6 +542,10 @@ int App::run(const std::string& title, int width, int height)
 
     // 释放顺序很重要：先释放纹理（还要用上下文），再关渲染后端，最后销毁平台。
     shutdownTextureStore();
+
+    // 玻璃服务与宿主持的都是后端的非拥有指针：后端随平台一起销毁，先把它们摘掉。
+    glass::getGlassService().setBackend(nullptr);
+    this->renderBackend = nullptr;
 
     backend->shutdownImGuiRenderer();
     platform->shutdownImGuiPlatformBackend();

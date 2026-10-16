@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "bklv/backends/vulkan_backend.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv::glass
@@ -41,6 +42,84 @@ VkGlass::VkGlass() = default;
 VkGlass::~VkGlass()
 {
     this->destroyBackdrop();
+}
+
+// ---------------------------------------------------------------------------
+// GlassBackend：给玻璃服务用的那几个入口
+// ---------------------------------------------------------------------------
+
+bool VkGlass::ensure(int framebufferWidth, int framebufferHeight)
+{
+    (void)framebufferWidth;
+    (void)framebufferHeight;
+
+    // 钩子是懒挂的：只有真的要用玻璃（服务调到这里）才挂，
+    // 否则"钩子在 = ImGui 通道不清屏"会改变没有玻璃那些帧的语义。
+    if (this->owner != nullptr && !this->hooked)
+    {
+        if (!this->owner->hasUiPassHook())
+            this->owner->installUiPassHook(this);
+        this->hooked = true;
+    }
+    return this->isReady();
+}
+
+EffectCapabilities VkGlass::getCapabilities() const
+{
+    // 路线 A：只做模糊 + 抓背景，圆角/染色/描边由 ImGui 叠
+    EffectCapabilities caps;
+    caps.backdropCapture = true;
+    caps.blur            = true;
+    caps.refraction      = false;
+    caps.dispersion      = false;
+    caps.maxGlassRegions = 32;
+    return caps;
+}
+
+void VkGlass::beginFrame(const GlassTuning& tuning)
+{
+    this->beginFrame(tuning.blurRadius, false);
+}
+
+void VkGlass::submit(GlassRequestQueue& queue, const GlassRequest& request,
+    const GlassTuning& tuning, int frameWidth, int frameHeight)
+{
+    // Vulkan 这条路不走队列：模糊由 UI 通道外的 mip 链做，染色/描边当场叠成 ImGui 图元
+    (void)queue;
+    (void)frameWidth;
+    (void)frameHeight;
+
+    VkGlassRect rect;
+    rect.minX      = request.minMax.x;
+    rect.minY      = request.minMax.y;
+    rect.maxX      = request.minMax.z;
+    rect.maxY      = request.minMax.w;
+    rect.blurScale = std::min(tuning.blurRadius / 48.0f, 1.0f);
+    this->addRect(rect);
+
+    // 模糊只有形状没有颜色：圆角、染色、描边高光由 ImGui 叠在它上面
+    //（VK 这条路的取舍：不做折射/色散）
+    if (request.drawList != nullptr)
+    {
+        const float radius = std::min(
+            (request.minMax.z - request.minMax.x) * 0.5f, request.radii.topLeft * request.density);
+        const ImU32 tint = ImGui::ColorConvertFloat4ToU32(
+            ImVec4(tuning.tintR, tuning.tintG, tuning.tintB, std::max(tuning.tintA, 0.35f)));
+        const ImU32 rim = ImGui::ColorConvertFloat4ToU32(
+            ImVec4(1.0f, 1.0f, 1.0f, 0.10f + tuning.rimGlow * 0.35f));
+        const float density = request.density > 0.0f ? request.density : 1.0f;
+        const ImVec2 min(request.minMax.x / density, request.minMax.y / density);
+        const ImVec2 max(request.minMax.z / density, request.minMax.w / density);
+        request.drawList->AddRectFilled(min, max, tint, radius / density);
+        request.drawList->AddRect(min, max, rim, radius / density, 0, 1.0f);
+    }
+}
+
+void VkGlass::prepareDrawData(ImDrawData& drawData, const GlassRequestQueue& queue)
+{
+    // 抓帧与合成都发生在 UI 通道之外（beforeUiPass / afterUiPass），绘制数据不用动
+    (void)drawData;
+    (void)queue;
 }
 
 void VkGlass::attach(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device,

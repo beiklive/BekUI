@@ -828,23 +828,29 @@ OBJECT 库、共用一个 include 根**，所以"分层"是目录约定而不是
 不是独立一层 —— 脚本按第一级目录归类，所以 `core/glass/*` 算 core）：
 
 ```
-core    → widgets / views / compile / backends
+core    → widgets / views / compile
 compile → views / widgets
 views   → widgets
 ```
 
 允许的方向：`widgets → views/core/compile`、`views → core`、`compile → core`、
-`backends → core`、`platforms → core/backends`、
+`backends → core`（含 `core/glass/`：后端实现玻璃的抽象接口）、`platforms → core/backends`、
 `core → platforms`（工厂：方向由「编译期裁剪 + 工厂」反转，属预期）、任何一层 → `3rd`。
+脚本另外还查一条**伞头可达范围**：`bklv/bklv.hpp` 顺着 include 不许碰到
+`backends/` / `platforms/` 或 `<vulkan/vulkan.h>`（曾经 GlassService 直接 include
+`vk_glass.hpp`，于是每个包含伞头的翻译单元都被拖进 Vulkan 头）。
 
 三条约定：
 
 ① **加依赖先问方向**：需要下层能力时，由上层注入（接口/回调/注册表），不要让下层认识上层。
    `App::App()` 调 `registerWidgetViewTypes()`（注册表在 core、类型在 widgets）就是标准写法；
    `platforms/*.cpp` 的 `createBackend()` 是工厂式反转。
-   反例是液态玻璃：`core/glass/glass_service.hpp` 按值持有两个后端实现（值成员），
-   所以 core 反向认识了 backends —— 这就是它一直挂在白名单里的原因。
-② **存量违规记账在脚本的 `BASELINE` 里**（目前 6 条，逐条写了原因与消解方向，见
+   两个"曾经违规、现已收口"的范例，改的时候照着走：
+   · 液态玻璃：core 只认 `core/glass/glass_backend.hpp` 的纯虚接口，GL / Vulkan 的实现
+     分别由 `OpenGLBackend` / `GLES3Backend` / `VulkanBackend` 持有，`App::run` 用
+     `RenderBackend::getGlassBackend()` 转交给服务（`setBackend`，非拥有指针，退出前摘掉）。
+   · 视图类型注册：注册表在 core，具体类型在 widgets，由 `App` 组合根注册。
+② **存量违规记账在脚本的 `BASELINE` 里**（目前 4 条，逐条写了原因与消解方向，见
    `docs/architecture-review.html` §2.1）。**消解掉一条就要删掉对应行** ——
    留着不删脚本会报"白名单已过期"，和 CMake 源清单漏项检查同一个取向：记账必须精确。
 ③ 头文件级**没有环**（102 个头 / 206 条 include 边，实测），上面这些环都在
