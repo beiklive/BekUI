@@ -91,6 +91,7 @@
     "anim_default": "什么都没写 · 默认淡入淡出",
     "card_text": "示例内容",
     "extension_row": "扩展层：op 由第三方注册（演示里在 demo/contrib/stripe_layer.cpp），主题里直接写",
+    "quad_row": "第二个扩展层：四顶点各自随机游走（demo/contrib/quad_layer.cpp，7 个参数全由注册时的参数模式解析）",
     "children_row": "children：一份外观就是一个完整控件（结构写在 JSON 里，C++ 一行都不用写）"
   },
   "theme": {
@@ -280,7 +281,11 @@
     "cutout_title": "阴影裁剪（cutout）",
     "card_glass": "不裁：半透明底透出阴影",
     "card_glasscut": "裁：内圈不留阴影",
-    "cutout_hint": "shadow 层写 \"cutout\": true 后只画外圈（挖掉控件自身矩形），后面加的层哪怕设成透明色也不会叠出阴影。左边两张卡片底色同样半透明，只是 cutout 不同。"
+    "cutout_hint": "shadow 层写 \"cutout\": true 后只画外圈（挖掉控件自身矩形），后面加的层哪怕设成透明色也不会叠出阴影。左边两张卡片底色同样半透明，只是 cutout 不同。",
+    "inner_title": "内阴影：shadow 层加 \"inner\": true",
+    "card_inner": "内阴影（贴内缘最暗、往内渐透，四周对称）",
+    "card_inner_glow": "换个亮色就是内发光",
+    "inner_hint": "内阴影和外投影是同一个 shadow 层，只差一个布尔开关。区别：外投影垫在控件下面（解析期提到最前），内阴影压在底色上面（按书写顺序画）；内阴影没有方向（offset 对它无效），就是贴着内缘往内渐透的一圈，而且永远不会超出形状。"
   },
   "icons": {
     "title": "图标总览",
@@ -314,11 +319,8 @@
     "option_c": "选项 C",
     "sec_box": "容器 · 基本盒",
     "box_inner": "基本盒：有底、有边框、有圆角",
-    "box_hint": "base/box.json 决定它的底、边框、圆角与内边距；后面所有按钮都 import 它。",
     "sec_layout": "容器 · 布局",
-    "layout_hint": "base/box.layout.json：无底无框，只有默认内边距；横排 + 居中靠代码设 axis/alignItems。",
     "sec_component": "容器 · 组件内嵌",
-    "component_hint": "base/box.component.json 自己 import 了 base/box —— 改 base，组件容器一起变。",
     "sec_label": "元素 · 文本 Label",
     "label_body": "正文：跟随主题的 color.text.primary 与字号",
     "label_dim": "次级文字：color.text.dim，用来写说明",

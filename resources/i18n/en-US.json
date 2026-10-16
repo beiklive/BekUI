@@ -91,6 +91,7 @@
     "anim_default": "Nothing written - the default fade",
     "card_text": "Sample content",
     "extension_row": "Extension layer: the op is registered by a third party (see demo/contrib/stripe_layer.cpp); the theme just writes it",
+    "quad_row": "Second extension layer: four vertices wander independently (demo/contrib/quad_layer.cpp; all 7 params come from the declared schema)",
     "children_row": "children: one appearance is a complete control (the structure lives in JSON, zero C++)"
   },
   "theme": {
@@ -280,7 +281,11 @@
     "cutout_title": "Shadow cutout",
     "card_glass": "No cutout: shadow bleeds through",
     "card_glasscut": "Cutout: clean inside",
-    "cutout_hint": "With \"cutout\": true on a shadow layer, only the outer ring is drawn (the widget rect is punched out), so a translucent background will not reveal the shadow. The two cards share the same translucent fill."
+    "cutout_hint": "With \"cutout\": true on a shadow layer, only the outer ring is drawn (the widget rect is punched out), so a translucent background will not reveal the shadow. The two cards share the same translucent fill.",
+    "inner_title": "Inner shadow: add \"inner\": true to a shadow layer",
+    "card_inner": "Inner shadow (darkest at the edge, fading inward, symmetric)",
+    "card_inner_glow": "A light color turns it into an inner glow",
+    "inner_hint": "Inner and outer shadows are the same shadow layer, just a boolean apart. Outer shadows sit behind the control (hoisted to the front while parsing); inner shadows paint above the fill in written order, have no direction (offset does not apply), fade inward from the edge, and never leave the shape."
   },
   "icons": {
     "title": "Icons",
@@ -314,11 +319,8 @@
     "option_c": "Option C",
     "sec_box": "Container · basic box",
     "box_inner": "Basic box: fill, border, radius",
-    "box_hint": "base/box.json defines fill, border, radius and padding; every button below imports it.",
     "sec_layout": "Container · layout",
-    "layout_hint": "base/box.layout.json: no fill, no border, default padding only; row + center is set in code.",
     "sec_component": "Container · component box",
-    "component_hint": "base/box.component.json imports base/box — edit base and this follows.",
     "sec_label": "Element · Label",
     "label_body": "Body text: follows color.text.primary and the theme font size",
     "label_dim": "Secondary text: color.text.dim, used for hints",
