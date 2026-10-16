@@ -45,6 +45,7 @@ void setPageDeps(const PageDeps& deps);
 // 第三方扩展层样例（见 demo/contrib/stripe_layer.cpp）
 void registerStripeLayer();
 
+
 // 图鉴的数据源（JSON 里写 data: "@data/pokedex" 就能用）
 void registerPokedexDataSource();
 

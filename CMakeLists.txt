@@ -140,11 +140,23 @@ function(bklv_copy_resources target_name)
     set(resource_target "bklv_copy_resources_${dir_id}")
 
     if(NOT TARGET ${resource_target})
+        # 目标目录必须和源码目录分开：这条规则会**先删后拷**。
+        if(out_dir STREQUAL "${CMAKE_SOURCE_DIR}"
+            OR "${out_dir}/resources" STREQUAL "${CMAKE_SOURCE_DIR}/resources")
+            message(FATAL_ERROR "bklv_copy_resources: 输出目录不能是仓库源码目录（${out_dir}）")
+        endif()
+
+        # 先删后拷，不是只 copy_directory：copy_directory **只加不删**，主题目录改布局之后
+        # 旧布局的文件会一直留在 dist/resources 里（实测留了 45 个：根级 colors.json /
+        # metrics.json 与整个 widgets/ 目录）。这些残留会骗过"磁盘 vs theme.json 的 files[]
+        # 清单"这类校验（theme_test 第 9 节被它们报了 138 个假失败），也让 dist 里的资源
+        # 和仓库不一致（2.4M vs 1.8M）。删的只是构建产物目录，仓库 resources/ 不动。
         add_custom_target(${resource_target}
+            COMMAND ${CMAKE_COMMAND} -E remove_directory "${out_dir}/resources"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${CMAKE_SOURCE_DIR}/resources"
                 "${out_dir}/resources"
-            COMMENT "复制 resources/ 到 ${out_dir}"
+            COMMENT "同步 resources/ 到 ${out_dir}（先删后拷，清掉已删除的文件）"
             VERBATIM
         )
     endif()
@@ -174,6 +186,7 @@ set(BKLV_APP_SOURCES
     app/pages/page_settings.cpp
     app/pages/page_shell.cpp
     contrib/stripe_layer.cpp
+    contrib/quad_layer.cpp
     app/pages/page_shadow.cpp
     app/pages/page_icons.cpp
     app/pages/page_base_widgets.cpp
@@ -341,6 +354,14 @@ if(BKLV_BUILD_TESTS)
 
         add_executable(${test_name} "${test_src}")
         target_link_libraries(${test_name} PRIVATE bklv::bklv)
+
+        # 有一个测试要验"第三方扩展层"这条路径，它**直接编 demo 里那份样例源码**：
+        # 在测试里复制一份会慢慢漂移（stripe 的测试桩与样例就漂过），
+        # 所以这里让测试编真源码，而不是再写一份仿制品。
+        if(${test_name} STREQUAL "quad_layer_test")
+            target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo/contrib/quad_layer.cpp")
+            target_include_directories(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo")
+        endif()
         if(TARGET designer_core)
             target_link_libraries(${test_name} PRIVATE designer_core)
         endif()

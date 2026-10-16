@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "app/ui.hpp"
+#include "contrib/quad_layer.hpp" // 不规则四边形扩展层样例（注册入口在它自己的头里）
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
 
@@ -92,8 +93,9 @@ DemoApp::DemoApp()
     this->shell->pushContentView(this->contentRoot);
 
     // 内容避让是**显式**的：内容层按页头/底栏高度留白
-    // 第三方扩展层：注册一次（不注册的话主题里写 stripe 会报错）
-    registerStripeLayer();
+    // 第三方扩展层：注册一次（不注册的话主题里写 stripe / quad 会报错）
+    registerStripeLayer(); // 声明在 app/pages.hpp（这个样例没有自己的头）
+    registerQuadLayer();   // 声明在 contrib/quad_layer.hpp（样例是"头 + 实现"的完整模块）
     registerPokedexDataSource();
     registerPokedexJsonBindings();
 

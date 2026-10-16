@@ -124,6 +124,48 @@ AppearanceView* makeDemoCard(const std::string& appearanceName)
     return card;
 }
 
+// 一张卡片，但外观来自**内联 JSON**（不是主题里的某一份）。
+//
+// 扩展层的演示用它：默认主题**不该**依赖 demo 注册的 op —— 所以这个层只出现在这一页，
+// 不进 resources/theme/default（`base/stripe_demo.json` 那种做法会带来"库的随包资源依赖
+// demo 代码"的问题，评审 §4.2 P0④ 记过）。
+class InlineAppearanceCard : public AppearanceView
+{
+  public:
+    InlineAppearanceCard(std::string appearanceJson)
+        : AppearanceView("base/json_demo", false) // 兜底外观：内联那份编译失败也不至于空白
+        , appearanceJson(std::move(appearanceJson))
+    {
+        this->applyInline();
+    }
+
+    // 换肤时**重新编译内联 JSON**（用新主题解析 @theme/ 引用）。
+    // 不重写的话 applyTheme() 只会按名字取兜底外观，切完主题这张卡片就"变回"普通卡片了。
+    void applyTheme() override
+    {
+        AppearanceView::applyTheme();
+        this->applyInline();
+    }
+
+  private:
+    void applyInline()
+    {
+        std::string error;
+        if (!this->applyAppearanceJson(this->appearanceJson, error))
+            BKLV_LOG_WARNING("内联外观编译失败（先用兜底外观显示）：%s", error.c_str());
+    }
+
+    std::string appearanceJson;
+};
+
+AppearanceView* makeInlineCard(const std::string& appearanceJson)
+{
+    InlineAppearanceCard* card = new InlineAppearanceCard(appearanceJson);
+    card->setIcon(icon::glyphByName("category"));
+    card->setText(getStr("json/card_text"));
+    return card;
+}
+
 // 会自己重播 enter 的卡片：步进同一个 ViewTransition（改的都是绘制期变换 → 零重排）
 class AnimDemo : public AppearanceView
 {
@@ -214,6 +256,23 @@ Box* buildJsonPage()
         R"({ "op": "stripe", "angle": 45, "lineWidth": 3, "gap": 16,
   "fill": "@theme/color.accent.base" })",
         makeDemoCard("base/stripe_demo")));
+
+    // 第二个扩展层：四个顶点各自随机游走（`op` 由 demo/contrib/quad_layer.cpp 注册）。
+    // 注意这一行的 JSON 里有 **7 个**自定义参数 —— 它们不需要库认识，解析/缩放/校验
+    // 全由注册时声明的参数模式负责。
+    page->addView(makeSplitRow("json/quad_row",
+        R"({ "op": "quad", "amplitude": 10, "speed": 1.2, "seed": 7,
+  "gain0": 1.0, "gain1": 0.6, "gain2": 1.3, "gain3": 0.8,
+  "fill": "@theme/color.accent.base", "stroke": "@theme/color.text.primary",
+  "strokeWidth": 2, "inset": 6 })",
+        makeInlineCard(R"({ "box": { "width": 160, "height": 90 },
+  "layers": [
+    { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 10 },
+    { "op": "quad", "id": "blob", "amplitude": 10, "speed": 1.2, "seed": 7,
+      "gain0": 1.0, "gain1": 0.6, "gain2": 1.3, "gain3": 0.8,
+      "fill": "@theme/color.accent.base", "stroke": "@theme/color.text.primary",
+      "strokeWidth": 2, "inset": 6 }
+  ] })")));
 
     // children：**一份外观 = 一个完整控件**。base/children_demo 自己声明了子节点
     // （图标块 + 一列"标题/副标题"），页面这边只是把它当普通外观用，没有一行 C++ 描述结构。
