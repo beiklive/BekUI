@@ -17,6 +17,7 @@
 
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
+#include "bklv/core/frame_stats.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/platform.hpp"
 #include "bklv/core/view.hpp"
@@ -124,6 +125,20 @@ class App
     void setIniPersistenceEnabled(bool enabled) { this->iniPersistenceEnabled = enabled; }
     bool isIniPersistenceEnabled() const { return this->iniPersistenceEnabled; }
 
+    // ---- 帧预算与帧时间统计（"界面永不卡，任务可以晚"）----
+
+    // 每帧留给**可延后工作**的时间预算（毫秒）：后台任务投回主线程的回调、纹理上传、
+    // 动图换帧、SVG 栅格化、纹理缓存淘汰。用完之后这些活自动推迟到下一帧，
+    // 布局 / update / 输入 / 绘制**不吃预算**（它们是这一帧必须做的）。
+    // 默认 4ms；传 0 表示不限制（回到老行为）。细节见 core/frame_budget.hpp。
+    void setFrameBudgetMs(double milliseconds) { this->frameBudgetMs = milliseconds; }
+    double getFrameBudgetMs() const { return this->frameBudgetMs; }
+
+    // 最近若干帧的时间样本（整循环迭代，含 present）：p50 / p95 / p99 / 最坏帧 / 掉帧数。
+    // 见 core/frame_stats.hpp；调试窗口与验收用它，而不是靠"看着不卡"。
+    const FrameStats& getFrameStats() const { return this->frameStats; }
+    FrameStats& getFrameStats() { return this->frameStats; }
+
   private:
     void saveScreenshot(class RenderBackend* backend, float width, float height);
 
@@ -157,6 +172,10 @@ class App
     static float lastLayoutHeight;
     // 默认关闭：io.IniFilename 置空后 ImGui 不会加载也不会保存 .ini
     bool iniPersistenceEnabled = false;
+
+    // 可延后工作的每帧预算（毫秒，0 = 不限制）与帧时间样本（见 core/frame_budget.hpp）
+    double frameBudgetMs = 4.0;
+    FrameStats frameStats;
 };
 
 // 最简用法：创建窗口，把 root 塞进 App 跑起来。

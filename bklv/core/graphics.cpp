@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "bklv/core/frame_budget.hpp"
 #include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
 
@@ -236,6 +237,14 @@ void trimTextureCache()
 
     while (getTextureCount() > g_textureBudget)
     {
+        // 帧预算用完就停手：剩下的下一帧继续（App::frame 每帧会再调一次）。
+        // 每次淘汰都要调后端的 destroyTexture，是实打实的主线程开销。
+        if (budget::isExhausted())
+        {
+            budget::noteDeferred();
+            break;
+        }
+
         // 找最旧的、且没人在用的那张
         size_t victim = (size_t)-1;
         uint64_t oldest = 0;

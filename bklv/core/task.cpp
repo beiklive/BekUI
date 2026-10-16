@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include "bklv/core/frame_budget.hpp"
 #include "bklv/core/logger.hpp"
 
 namespace bklv
@@ -199,10 +200,19 @@ void pumpMainThread()
             }
         }
 
+        size_t executed = 0;
         for (Delay& item : due)
         {
             if (item.callback == nullptr)
+            {
+                executed++;
                 continue;
+            }
+
+            // 帧预算用完了就停手：剩下的下一帧继续（它们已经到期，下一帧立刻会被捡起来）
+            if (budget::isExhausted())
+                break;
+
             try
             {
                 item.callback();
@@ -215,20 +225,43 @@ void pumpMainThread()
             {
                 BKLV_LOG_ERROR("延迟任务抛出未知异常");
             }
+            executed++;
+        }
+
+        // 没轮到的放回延迟表里，别丢（到期时间已经过了，下一帧一定会再被摘出来）
+        if (executed < due.size())
+        {
+            budget::noteDeferred();
+            std::lock_guard<std::mutex> lock(g_delayMutex);
+            for (size_t i = executed; i < due.size(); i++)
+                g_delays.push_back(std::move(due[i]));
         }
     }
 
-    // 2. 再跑投递到主线程的回调（一次把这批取出来执行，执行期间新投进来的留到下一帧）
+    // 2. 再跑投递到主线程的回调（一次把这批取出来执行，执行期间新投进来的留到下一帧；
+    //    预算用完就把没跑的放回队列**头部** —— 它们本来就是更早排进来的）
     std::deque<std::function<void()>> batch;
     {
         std::lock_guard<std::mutex> lock(g_mainMutex);
         batch.swap(g_mainQueue);
     }
 
-    for (std::function<void()>& callback : batch)
+    for (size_t i = 0; i < batch.size(); i++)
     {
+        std::function<void()>& callback = batch[i];
         if (callback == nullptr)
             continue;
+
+        if (budget::isExhausted())
+        {
+            // 剩下的（含当前这个）放回队首，下一帧先跑它们
+            budget::noteDeferred();
+            std::lock_guard<std::mutex> lock(g_mainMutex);
+            g_mainQueue.insert(g_mainQueue.begin(),
+                std::make_move_iterator(batch.begin() + (long)i),
+                std::make_move_iterator(batch.end()));
+            break;
+        }
 
         try
         {

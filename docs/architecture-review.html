@@ -118,6 +118,22 @@
   <thead><tr><th>评审条目</th><th>状态</th><th>落地内容</th></tr></thead>
   <tbody>
     <tr>
+      <td>需求追加：UI 线程永不卡顿（任务可以晚）</td>
+      <td><span class="tag ok">已做</span></td>
+      <td>新增 <code>core/frame_budget.*</code>：每帧给"可延后工作"一个时间预算
+        （<code>App::setFrameBudgetMs</code>，默认 <b>4ms</b>），用完就停手、下一帧继续 ——
+        吃预算的是「主线程回调 + delay 到期的任务（<code>task::pumpMainThread</code>）、
+        纹理上传（<code>pumpUploads</code>）、动图换帧、SVG 栅格化、纹理缓存淘汰」；
+        「布局 / 视图 update 的业务逻辑 / 输入 / 绘制」不吃。新增 <code>core/frame_stats.*</code>：
+        p50 / p95 / p99 / 最坏帧 / 掉帧数，<code>App::run()</code> 退出时自动打一行帧时间流水。
+        <b>推迟不丢活</b>（没跑的回调放回队首、到期的延迟放回表里）。顺手把
+        <code>Image::update()</code> 里那条<b>同步补加载</b>改成重新排异步队列
+        （旧同步路正是"帧内卡住"的来源），并给帧内 <code>setImageFromFile()</code> 加节流警告。
+        测试：<code>tests/frame_budget_test.cpp</code>（39 项）。
+        <b>边界</b>：预算的粒度是工作单元，不能打断正在跑的那一个（超大图上传 / 宿主自己的重活）；
+        要更硬的保证得先把这类单元切细。</td>
+    </tr>
+    <tr>
       <td>§4.2「已核验的 4 个具体缺陷」</td>
       <td><span class="tag ok">已修</span></td>
       <td>① <code>h_scrolling_frame.cpp:116</code> 补上 <code>io != nullptr</code>；② <code>appearance_view.cpp</code> 的 custom 层兜底改成 <code>else</code> 分支（不再是 <code>break;</code> 之后的死代码）；③ <code>button.cpp</code> 的时间基准统一到 <code>core/time.hpp</code> 新增的 <code>getSecondsNow()</code>，去掉了跨实例共享的 <code>static clock</code>；④ <code>OpenGLBackend::getName()</code> 与编译期表对齐成 <code>"OpenGL 3.2 Core"</code>，由新测试 <code>tests/backend_name_test.cpp</code> 钉住两处一致。</td>

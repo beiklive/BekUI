@@ -1,6 +1,7 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/decode_queue.hpp"
 
+#include "bklv/core/frame_budget.hpp"
 #include "bklv/core/glass/glass_service.hpp"
 #include "bklv/core/globals.hpp"
 #include "bklv/core/image_writer.hpp"
@@ -318,11 +319,16 @@ App::App()
 
 void App::frame()
 {
-    // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
+    // 帧预算：只管"可以延后"的活（后台回调、上传、动图换帧、SVG 栅格化、缓存淘汰）。
+    // 用完之后它们自己停手、留给下一帧；布局 / update / 输入 / 绘制不吃预算。
+    // 这一帧的预算在函数末尾 endFrame()（动图与 SVG 发生在 root->update() 里，也在预算内）。
+    budget::beginFrame(this->frameBudgetMs);
 
+    // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
     task::pumpMainThread();
     pumpDecodeQueue(); // 背压：按并发上限启动解码
-    pumpUploads();     // 背压：按每帧配额执行上传
+    pumpUploads();     // 背压：按每帧配额 + 帧预算执行上传
+    trimTextureCache(); // 2d：超预算时每帧收一点（预算用完就停，下一帧继续）
 
     ImGui::NewFrame();
 
@@ -426,6 +432,9 @@ void App::frame()
     }
 
     ImGui::Render();
+
+    // 预算在这一帧结束（它覆盖了 root->update() 里的动图换帧与 SVG 栅格化）
+    budget::endFrame();
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +502,9 @@ int App::run(const std::string& title, int width, int height)
     platform->runLoop([&]() {
         while (!this->quitRequested && platform->mainLoopIteration())
         {
+            // 帧时间统计：量整个迭代（含 present），"卡不卡"看它的 p99 / 最坏帧
+            const double frameStart = getSecondsNow();
+
             backend->newFrame();
 
             // 玻璃：帧首清队列并记下帧缓冲尺寸（物理像素）与密度。
@@ -541,12 +553,27 @@ int App::run(const std::string& title, int width, int height)
             }
 
             backend->present();
+
+            this->frameStats.record(getSecondsNow() - frameStart);
         }
         return true;
     });
 
     // 释放顺序很重要：先释放纹理（还要用上下文），再关渲染后端，最后销毁平台。
     shutdownTextureStore();
+
+    // 退出一条帧时间流水：每个程序都自动有一条"卡不卡"的验收数据（没有帧就没这行）
+    {
+        const FrameTimeSummary summary = this->frameStats.getSummary();
+        if (summary.count > 0)
+        {
+            Logger::info("帧时间：" + std::to_string((int)summary.p50Ms) + "ms(p50) / "
+                + std::to_string((int)summary.p99Ms) + "ms(p99) / 最坏 "
+                + std::to_string((int)summary.worstMs) + "ms；掉帧 "
+                + std::to_string(summary.droppedCount) + "/" + std::to_string(summary.count)
+                + "（60Hz 一帧 16.7ms 为线）");
+        }
+    }
 
     // 玻璃服务与宿主持的都是后端的非拥有指针：后端随平台一起销毁，先把它们摘掉。
     glass::getGlassService().setBackend(nullptr);

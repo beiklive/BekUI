@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 
+#include "bklv/core/frame_budget.hpp"
 #include "bklv/core/graphics.hpp"
 
 namespace bklv
@@ -72,6 +73,13 @@ void pumpUploads()
     size_t done = 0;
     while (!g_uploads.empty() && (quota == 0 || done < quota))
     {
+        // 帧预算用完了就停：剩下的上传下一帧继续（配额与预算谁先到就以谁为准）
+        if (budget::isExhausted())
+        {
+            budget::noteDeferred();
+            break;
+        }
+
         auto it = g_uploads.begin();
         std::function<void()> upload = std::move(it->second);
         g_uploads.erase(it);

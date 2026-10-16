@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
+#include "bklv/core/frame_budget.hpp"
 #include "bklv/core/image_decoder.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/decode_queue.hpp"
@@ -138,6 +139,14 @@ void Image::rasterizeSvg()
         && this->texture.isValid())
         return; // 尺寸没变，不用重来
 
+    // 帧预算用完就推迟：栅格化（lunasvg）+ 上传都在主线程，改一次窗口尺寸会一次撞上所有 SVG。
+    // 尺寸不匹配的条件还在，下一帧会自己重来；这一帧先显示旧纹理。
+    if (budget::isExhausted())
+    {
+        budget::noteDeferred();
+        return;
+    }
+
     DecodedImage rasterized = decodeSvgMemory(this->svgData.data(), this->svgData.size(), width, height);
     if (!rasterized.isValid())
     {
@@ -198,6 +207,14 @@ void Image::uploadAnimationFrame()
     if (this->animation.frames.empty() || !isTextureStoreReady())
         return;
 
+    // 帧预算用完就推迟这一帧的动图上传：`animationPendingUpload`（或换帧标记）还在，
+    // 下一帧会自己重来 —— 帧率掉了不好看，总比整帧被上传拖住好。
+    if (budget::isExhausted())
+    {
+        budget::noteDeferred();
+        return;
+    }
+
     const size_t index = std::min(this->animationFrame, this->animation.frames.size() - 1);
     const std::vector<unsigned char>& frame = this->animation.frames[index];
 
@@ -257,17 +274,35 @@ void Image::setImageFromFileAsync(const std::string& path)
         [this, generation, guard, resolved](DecodedImage image) {
             // 背压 3-4：解码一完成只登记"待上传"，真正的上传交给 pumpUploads()
             // 按 getMaxUploadsPerFrame() 每帧消费 -> 20 张完成会摊到多帧，不会一帧传 20 张
-            notifyDecodeFinished(resolved, [this, generation, guard, image]() {
+            notifyDecodeFinished(resolved, [this, generation, guard, image, resolved]() {
                 if (guard.expired() || !guard.lock()->isAlive())
                     return; // 视图已经销毁，别再碰它
 
                 if (generation != this->loadGeneration)
                     return; // 已经发起了更新的加载，这个结果丢掉
 
-                if (!image.isValid() || !isTextureStoreReady())
-                    return; // 仓库还没好：保留 pendingPath，交给 update() 的重试逻辑
+                if (!isTextureStoreReady())
+                {
+                    // 仓库还没就绪（视图树建得比 App::run 早）：让 update() 下一帧重新排队
+                    this->asyncPending = false;
+                    return;
+                }
+                if (!image.isValid())
+                {
+                    // 解码失败：允许有限次重试。以前同步那条路是每帧重试一次、每帧卡一次；
+                    // 现在放开 asyncPending 让 update() 重新排队，超过次数就放弃并说清原因。
+                    this->asyncPending = false;
+                    this->loadRetries++;
+                    if (this->loadRetries > kMaxLoadRetries)
+                    {
+                        Logger::warning("图片加载失败，放弃重试：" + resolved);
+                        this->pendingPath.clear();
+                    }
+                    return;
+                }
 
                 this->asyncPending = false;
+                this->loadRetries = 0;
 
                 const TextureRef loaded =
                     loadTextureFromPixels(image.pixels.data(), image.width, image.height);
@@ -293,8 +328,22 @@ void Image::setImageFromFileAsync(const std::string& path)
 
 bool Image::setImageFromFile(const std::string& path)
 {
-    // 记下路径：仓库没就绪时这一句会失败，但要留着让 update() 重试。
+    // 记下路径：仓库没就绪时这一句会失败，但要留着让 update() 重新排队。
     this->pendingPath = path;
+
+    // 护栏：帧内同步加载会把这一帧直接卡住（IO + 解码 + 上传全在主线程）。
+    // 批量/滚动场景请用 setImageFromFileAsync()；警告做节流，免得刷屏。
+    if (budget::isFrameActive())
+    {
+        static double lastWarnSeconds = -1000.0;
+        const double now = getSecondsNow();
+        if (now - lastWarnSeconds > 2.0)
+        {
+            lastWarnSeconds = now;
+            Logger::warning("在帧内同步加载图片（" + path
+                + "）：这一帧会被 IO + 解码 + 上传卡住；批量/滚动场景请用 setImageFromFileAsync()");
+        }
+    }
 
     const TextureRef loaded = loadTexture(resourcePath(path));
     if (!loaded.isValid())
@@ -334,30 +383,14 @@ void Image::update()
     }
 
     // 视图树通常在 App::run() 之前就建好了，那时图形后端还没创建、纹理传不上去。
-    // 这里在仓库就绪后补加载一次；成功后不再重试。
+    // 仓库就绪后**重新排一次异步加载**，而不是当场 loadTexture ——
+    // 那条同步路正是"帧内卡住"的来源（评审"UI 永不卡"那一轮改掉的）。
     if (this->texture.isValid() || this->pendingPath.empty() || !isTextureStoreReady())
         return;
+    if (this->asyncPending)
+        return; // 已经在队列里：等解码完成后的上传回调即可
 
-    const std::string loading = this->pendingPath;
-    const TextureRef loaded   = loadTexture(resourcePath(loading));
-    if (!loaded.isValid())
-        return;
-
-    releaseTexture(this->texture.index); // 换图：先放掉旧的（无效下标是安全 no-op）
-
-
-    this->texture = loaded;
-
-
-    retainTexture(loaded.index); // 静态图由路径缓存持有，这里只登记"有人在用"
-    this->pendingPath.clear();
-
-    if (this->getWidth() <= 0.0f)
-        this->setWidth(static_cast<float>(loaded.width));
-    if (this->getHeight() <= 0.0f)
-        this->setHeight(static_cast<float>(loaded.height));
-
-    this->invalidate();
+    this->setImageFromFileAsync(this->pendingPath);
 }
 
 void Image::setImage(const TextureRef& ref)

@@ -314,6 +314,8 @@ target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
 
 set(BKLV_CORE_SOURCES
     core/globals.cpp
+    core/frame_budget.cpp
+    core/frame_stats.cpp
     core/focus_ring.cpp
     core/gradient.cpp
     core/transition_player.cpp

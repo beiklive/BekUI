@@ -20,6 +20,8 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/box.hpp"
 #include "bklv/core/font.hpp"
+#include "bklv/core/frame_budget.hpp"
+#include "bklv/core/frame_stats.hpp"
 #include "bklv/core/gamepad.hpp"
 #include "bklv/core/event.hpp"
 #include "bklv/core/geometry.hpp"

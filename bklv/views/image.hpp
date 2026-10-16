@@ -106,9 +106,12 @@ class Image : public View
     int decodePriority = 0; // 背压：解码优先级（越小越优先）
     bool asyncPending = false;   // 正在后台解码
     uint64_t loadGeneration = 0; // 代数：只接受最新一次的异步结果
+    // 加载失败重试次数：超过上限就放弃并清 pendingPath（否则每帧重排一次解码白烧 CPU）
+    static constexpr int kMaxLoadRetries = 2;
+    int loadRetries = 0;
     // 异步解码回调的生命周期护栏：Image 先被销毁时回调直接放弃（否则是 use-after-free）
     AliveFlag alive;
-    std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重试
+    std::string pendingPath; // 还没加载成功的资源路径，等着 update() 重新排队
     // SVG：原始文档字节（栅格化时机由尺寸决定，所以留着源数据）
     std::vector<unsigned char> svgData;
     int svgRasterWidth  = 0;

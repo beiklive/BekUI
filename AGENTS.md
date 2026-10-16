@@ -888,6 +888,44 @@ bklv::globals::resetGlobals();                                   // 一轮结束
 这一层换来的是**可列举 / 可重置 / 可交代**；真要同时跑两个 App 得先定 App 边界的形态，
 见 `docs/architecture-review.html` §0 的 §4.2 P0② 一行。
 
+## 帧预算：UI 线程永不卡顿（`core/frame_budget.hpp` + `core/frame_stats.hpp`）
+
+目标（用户拍板）：**界面不能卡，任务可以晚**。做法是给"可延后工作"一个每帧时间预算
+（`App::setFrameBudgetMs`，默认 **4ms**），用完之后这些活自己停手、留给下一帧：
+
+| 吃预算（可延后） | 不吃预算（这一帧必须做） |
+|---|---|
+| 后台任务投回主线程的回调、`task::delay` 到期的任务 | 布局（Yoga） |
+| 纹理上传、动图换帧、SVG 栅格化 | 视图 `update()` 里的业务逻辑 |
+| 纹理缓存淘汰（`trimTextureCache`） | 输入处理与命中、绘制与提交 |
+
+四条约定：
+
+① **可延后的活先问 `budget::isExhausted()`**：超了就 `budget::noteDeferred()` 再 return。
+   已经做完的单元不回滚，没做的单元下一帧自然会被重新捡起来。
+② **推迟不能丢活**：`pumpMainThread()` 会把没跑的回调放回队首、把到期的延迟任务放回延迟表。
+   新加的"可延后"路径必须同样保证"下一帧还会再来一次"——丢了就是丢事件，不是延迟。
+③ **别用 `sleep` 或"每 N 帧做一次"来凑**：预算是时间量；`frameskip` 那类做法在掉帧时更糟
+   （同一帧里一次做更多）。要限流就限时间。
+④ **帧内同步 API 算违规**：`Image::setImageFromFile()` 在帧内被调用会打一条节流警告
+   （它把 IO + 解码 + 上传全压在主线程）。批量 / 滚动场景用 `setImageFromFileAsync()`；
+   新增耗时入口照这个做法加护栏。
+
+观测（`App::getFrameStats()`）：
+
+```cpp
+const FrameTimeSummary s = app.getFrameStats().getSummary();
+// p50 / p95 / p99 / 最坏帧；droppedCount = 超过 16.67ms（60Hz 一帧）的帧数
+```
+
+每个用 `App::run()` 的程序**退出时自动打一行帧时间流水**（`帧时间：x(p50) / y(p99) / 最坏 z；掉帧 n/m`），
+不用自己加统计。`budget::getDeferredCount()` 是这一帧被推迟的工作单元数：长期为 0 说明没有可延后的活
+（或预算给太大），长期大于 0 而 p99 仍然好，说明预算正在起作用。
+
+边界（别误解成硬实时）：预算的粒度是"一个工作单元"，**不能打断**正在跑的那一个（一张超大图的
+上传、宿主回调里自己做的重活）。单帧仍可能被不可分的单元拖长；要更硬的保证得先把这类单元切细。
+`tests/frame_budget_test.cpp` 钉住状态机、分位数与"推迟不丢活"。
+
 ## 截图（离屏，不用系统录屏权限）
 
 `App::requestScreenshot(path, delayFrames)` 会把"再渲染 N 帧之后"的那一帧从后缓冲读出来
