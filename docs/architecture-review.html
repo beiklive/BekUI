@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>bklv 架构评审（图 + 点评）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg:#f6f8fb; --card:#ffffff; --ink:#1f2430; --muted:#5b6472; --line:#dbe1e8;
+    --accent:#0e639c; --code:#eef2f7; --ok:#2f7d32; --warn:#b35c00; --bad:#b3261e;
+    --okbg:#e6f4e6; --warnbg:#fdf1e0; --badbg:#fdeceb; --head:#eef2f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12161d; --card:#1a1f28; --ink:#e7ecf3; --muted:#9aa4b2; --line:#2c3441;
+            --accent:#5aa9e6; --code:#222833; --ok:#7bc47f; --warn:#e0a458; --bad:#f0837a;
+            --okbg:#1d2a1e; --warnbg:#2b2318; --badbg:#2b1d1d; --head:#232b36; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.68 ui-sans-serif,-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Helvetica,Arial; }
+  .wrap { max-width:1240px; margin:0 auto; padding:0 26px 90px; }
+  header { padding:38px 0 16px; }
+  h1 { margin:0 0 8px; font-size:28px; letter-spacing:.2px; }
+  h2 { margin:52px 0 14px; font-size:21px; padding-bottom:8px; border-bottom:2px solid var(--line); }
+  h3 { margin:30px 0 10px; font-size:16.5px; color:var(--ink); }
+  h4 { margin:20px 0 8px; font-size:14.5px; color:var(--muted); text-transform:none; }
+  p, li { color:var(--ink); }
+  .sub { color:var(--muted); margin:2px 0; }
+  code, kbd { background:var(--code); border-radius:4px; padding:1px 5px;
+    font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  a { color:var(--accent); }
+  table { border-collapse:collapse; width:100%; margin:12px 0 18px; font-size:13.4px; }
+  th, td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--head); font-weight:600; }
+  tbody tr:nth-child(even) td { background:color-mix(in srgb, var(--card) 60%, var(--bg)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:16px 20px; margin:16px 0; }
+  .grid { display:grid; gap:14px; }
+  .g2 { grid-template-columns:1fr 1fr; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  @media (max-width:900px){ .g2,.g3 { grid-template-columns:1fr; } }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0; }
+  .kpi div { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .kpi b { display:block; font-size:23px; line-height:1.3; }
+  .kpi span { color:var(--muted); font-size:12.5px; }
+  .tag { display:inline-block; font-size:11.5px; padding:1px 8px; border-radius:20px;
+    border:1px solid var(--line); background:var(--code); color:var(--muted); margin-right:6px; }
+  .tag.ok { background:var(--okbg); color:var(--ok); border-color:transparent; }
+  .tag.warn { background:var(--warnbg); color:var(--warn); border-color:transparent; }
+  .tag.bad { background:var(--badbg); color:var(--bad); border-color:transparent; }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:12px; margin:18px 0; overflow-x:auto; }
+  .fig figcaption { color:var(--muted); font-size:12.8px; padding:8px 6px 2px; }
+  svg { max-width:100%; height:auto; display:block; }
+  svg text { font-family:ui-sans-serif,-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Helvetica,Arial; }
+  .lbl { fill:var(--ink); }
+  .mut { fill:var(--muted); }
+  .t { font-size:13px; } .ts { font-size:11.5px; } .tm { font-size:12px; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px; }
+  .band { fill:var(--card); stroke:var(--line); stroke-width:1.2; }
+  .bandh { fill:var(--head); }
+  .iface { fill:var(--okbg); stroke:var(--ok); stroke-width:1.2; }
+  .proc { fill:var(--card); stroke:var(--accent); stroke-width:1.2; }
+  .ext { fill:var(--warnbg); stroke:var(--warn); stroke-width:1.2; stroke-dasharray:5 3; }
+  .badbox { fill:var(--badbg); stroke:var(--bad); stroke-width:1.2; }
+  .flow { stroke:var(--accent); stroke-width:1.6; fill:none; }
+  .flowd { stroke:var(--muted); stroke-width:1.4; fill:none; stroke-dasharray:5 4; }
+  .badflow { stroke:var(--bad); stroke-width:1.6; fill:none; stroke-dasharray:6 4; }
+  .life { stroke:var(--line); stroke-width:1.2; stroke-dasharray:4 4; }
+  .call { stroke:var(--ink); stroke-width:1.4; fill:none; }
+  .ret { stroke:var(--muted); stroke-width:1.2; fill:none; stroke-dasharray:5 4; }
+  ul.tight li { margin:3px 0; }
+  .ev { font-size:12.6px; color:var(--muted); }
+  .num { display:inline-block; width:20px; height:20px; line-height:20px; text-align:center;
+    border-radius:50%; background:var(--accent); color:#fff; font-size:11.5px; margin-right:6px; }
+  .verdict { border-left:4px solid var(--accent); background:var(--card); border-radius:8px;
+    padding:14px 18px; margin:18px 0; }
+  .lead { font-size:15px; color:var(--ink); }
+  hr { border:0; border-top:1px solid var(--line); margin:34px 0; }
+  .anchor { color:var(--muted); font-size:12.5px; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>bklv 架构评审</h1>
+  <p class="lead">跨平台 C++17 界面库 · Yoga 算 Flexbox 布局 · ImGui <code>ImDrawList</code> 负责绘制 · 从 borealis 按需移植</p>
+  <p class="sub">评审对象：<code>bklv/</code>（库，203 文件）、<code>demo/</code>、<code>designer/</code>、<code>tests/</code>、构建脚本与 <code>resources/</code>。</p>
+  <p class="sub">评审方式：读代码 + 脚本统计依赖边与规模，结论逐条附证据（<code>file:line</code>）。未在本机重新构建，故“可构建/可运行”类结论沿用仓库现状描述，不做新断言。</p>
+  <p class="anchor">生成时间：2026-10 · 对照提交：<code>975b190</code>（纹理缓存 / 异步解码背压流水线）</p>
+</header>
+
+<div class="verdict">
+  <b>一句话结论：</b>这是一份<b>工程质量明显高于同类学习项目</b>的代码库 —— 边界意识、约定文档、测试密度、踩坑记录都在专业水准；
+  它当前最大的架构风险不是“写错了”，而是<b>分层没有机械保障</b>（门禁已补、环本身还没消，见 §0）：<code>core</code> 不是叶子、<code>compile</code> 与 <code>glass</code> 各有一处反向依赖，
+  全靠约定与代码评审维持；其次是 <b>进程级单例遍布核心</b>，与 TODO 里“能被别人 <code>add_subdirectory</code> 引入”的库化目标直接冲突。
+</div>
+
+<div class="kpi">
+  <div><b>203</b><span>库源文件（不含 3rd）</span></div>
+  <div><b>≈40k</b><span>库代码行数</span></div>
+  <div><b>63</b><span>无窗口测试可执行（ctest，双后端各一份）</span></div>
+  <div><b>99</b><span>default 主题 JSON（57 base / 32 widget / 7 view）</span></div>
+  <div><b>6</b><span>存量反向依赖（已记账进 check_layers 白名单）</span></div>
+</div>
+
+<h2 id="progress">0. 修复进度（评审之后）</h2>
+
+<p>下面这张表记录评审提出的问题<b>哪些已落地、哪些还是空的</b>，避免把评审里的问题清单当成现状。
+验证方式：两个后端各配一次并构建（<code>build/gl</code> 与 <code>build/vk</code>，都要求零警告），
+再跑全部测试可执行 —— 当前 <b>63 个可执行 / 4093 项检查 / GL 与 VK 各一遍全通过</b>，
+外加 <code>scripts/check_naming.py</code> 与本次新增的 <code>scripts/check_layers.py</code>。</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>评审条目</th><th>状态</th><th>落地内容</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>§4.2「已核验的 4 个具体缺陷」</td>
+      <td><span class="tag ok">已修</span></td>
+      <td>① <code>h_scrolling_frame.cpp:116</code> 补上 <code>io != nullptr</code>；② <code>appearance_view.cpp</code> 的 custom 层兜底改成 <code>else</code> 分支（不再是 <code>break;</code> 之后的死代码）；③ <code>button.cpp</code> 的时间基准统一到 <code>core/time.hpp</code> 新增的 <code>getSecondsNow()</code>，去掉了跨实例共享的 <code>static clock</code>；④ <code>OpenGLBackend::getName()</code> 与编译期表对齐成 <code>"OpenGL 3.2 Core"</code>，由新测试 <code>tests/backend_name_test.cpp</code> 钉住两处一致。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P0①：分层没有机械保障</td>
+      <td><span class="tag ok">已加门禁</span></td>
+      <td>新增 <code>scripts/check_layers.py</code>：禁止新增反向依赖，存量 7 条记在 <code>BASELINE</code> 里（消解后要删行，否则报"白名单已过期"），<code>--list</code> 看全量；已接进 <code>scripts/check.sh</code> 第二步，规则写进 <code>AGENTS.md</code> 的「分层依赖方向」。<b>环本身仍未消</b>（core↔compile、glass⇄backends）。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P1：横向滚动器空指针解引用</td>
+      <td><span class="tag ok">已修 + 回归测试</span></td>
+      <td>新增 <code>tests/scrolling_frame_test.cpp</code>（此前 HScrollingFrame <b>零覆盖</b>）。已反向验证：把守卫去掉立刻 <code>Segmentation fault</code>（退出码 139），说明这条测试真能抓住它。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P2：主题 <code>files[]</code> 缺少反向校验</td>
+      <td><span class="tag ok">已加</span></td>
+      <td><code>theme_test</code> 第 9 节：磁盘上的 <code>.json</code> 必须都在 <code>files[]</code> 里、反之亦然、条数一致。<b>顺带查出一个真问题</b>：<code>copy_directory</code> 只加不删，<code>dist/resources</code> 里积了 45 个旧布局残留（根级 <code>colors.json</code>/<code>metrics.json</code> + 整个 <code>widgets/</code> 目录，2.4 MB vs 仓库 1.8 MB），校验一上来被它们报了 138 个假失败。资源复制已改成"先删后拷"，并加了"目标目录不能是源码目录"的兜底检查。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P2：代码里写死的尺寸/颜色</td>
+      <td><span class="tag ok">已收敛 6 处</span></td>
+      <td>新增主题键 <code>metric.progressSpinner.size</code> / <code>metric.scroll.paddingV|paddingH</code> / <code>metric.status.itemMarginTop</code> / <code>metric.editTextDialog.caretWidth</code> / <code>metric.sidebar.separatorThickness</code>；<code>json_cell.cpp</code> 的两个字面色值改成 <code>@theme/color.highlight.background</code> 与 <code>@theme/color.surface.card</code>。另外 <code>ThemeData::number()</code> 的<b>兜底值原来不乘 uiScale</b>（只有 key 存在时才缩放），已统一。图形比例类常数（电池/信号/对勾）保留在代码里 —— 它们随图标尺寸走，不是主题尺寸。<code>theme_test</code> 第 10 节把"代码里直接引用的 key"钉住。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P2：重复的 <code>scaleAlpha</code> 与死变量块</td>
+      <td><span class="tag ok">已统一（glass 除外）</span></td>
+      <td>5 个 <code>layer_draw_*.cpp</code> 里的局部 lambda 与 <code>(void)</code> 死变量块删除，统一走 <code>core/geometry.hpp</code> 的 <code>colorWithAlpha()</code>；顺手把它的舍入从截断改成四舍五入（两份实现原来差 1/255，现在只有一份语义）。<code>layer_draw_glass.cpp</code> 那一处按约定本轮不动。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P2：9 个类缺 <code>getClassString()</code></td>
+      <td><span class="tag ok">已补</span></td>
+      <td><code>Shell</code> / <code>AppearanceView</code> / <code>FocusRingView</code> / <code>RecyclerView</code> / <code>RecyclerItemCell</code> / <code>RecyclerHeaderCell</code> / <code>JSONRecyclerCell</code> / <code>RecyclerCell</code> / <code>RecyclerSectionHeader</code>；<code>shell_test</code> 里加了断言。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P1：README 结构说明漏 41% 的库代码</td>
+      <td><span class="tag ok">已补</span></td>
+      <td>「仓库里有什么」表补上 <code>widgets/</code>(53) <code>compile/</code>(18) <code>glass/</code>(12) 并标出文件数；「分层」图重画成完整栈，写明依赖方向与检查脚本。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P1：测试盲区（<code>ui_scale</code> / <code>time</code> / 滚动器）</td>
+      <td><span class="tag ok">已补 3 个测试</span></td>
+      <td>新增 <code>tests/ui_scale_test.cpp</code>（缩放系数、非法值防御、<b>兜底值也随缩放</b>这条本次改动）、<code>tests/time_test.cpp</code>（无上下文帧间隔、单调时钟、<code>getSecondsNow</code> 与 <code>getCPUTimeUsec</code> 同源、补间步进）、<code>tests/scrolling_frame_test.cpp</code>（两个滚动器的无窗口安全）。仍未覆盖：三个后端本体、<code>platforms/*</code>、<code>gamepad</code>、<code>focus_ring_view</code>、<code>layer_draw_*</code>、demo 页面与设计器界面。</td>
+    </tr>
+    <tr>
+      <td>§4.3 ③：拆 <code>Shell</code></td>
+      <td><span class="tag warn">部分完成</span></td>
+      <td>抽出三个模块：<code>widgets/placement.*</code>（<code>Corner</code>/<code>Edge</code> + 角落/贴边/铺满摆放）、<code>widgets/backdrop_manager.*</code>（按页背景 + 交叉淡入）、<code>widgets/content_stack.*</code>（内容层下钻 + 入场/出场 + 焦点交接）。<code>shell.cpp</code> <b>710 → 451 行</b>（<code>shell.hpp</code> 333 → 299），公开 API 不变（方法转发，调用方零改动）：<code>backdrop_test</code>(32) / <code>shell_content_test</code>(65) / <code>transition_test</code>(66) / <code>pager_test</code>(90) 全部原样通过。<b>仍未拆</b>：焦点框配置、页头/底栏与 insets、弹窗栈、玻璃配置（这四块分别依赖 <code>App</code>、外观 JSON 与 <code>InputManager</code>，抽出来要新增注入点，收益不如前三块）。</td>
+    </tr>
+    <tr>
+      <td>§4.3 ⑦：扩展层没有自己的参数槽</td>
+      <td><span class="tag ok">已做</span></td>
+      <td>参数模式（<code>LayerParam</code> + <code>AppearanceLayer::params</code>）与注册模板
+        <code>compile/layer_register.hpp</code> 落地：<code>registerLayer&lt;T&gt;()</code> 一行注册，
+        参数由引擎按模式自动解析（NUMBER / PIXELS / COLOR / BOOL / ENUM，含 720p 缩放与枚举校验），
+        <code>keys</code> 由参数派生（设计器候选键/中文名/ENUM 下拉自动跟上）。
+        样例 <code>demo/contrib/stripe_layer.cpp</code> 已不再借用 <code>feather</code>/<code>spread</code>
+        —— 还顺手修掉"角度被当成像素量缩放"的 bug。第二个样例
+        <code>demo/contrib/quad_layer.cpp</code>（不规则四边形，四顶点各自随机游走）演示了
+        "7 个参数 + 钩子自己算动画"这条路，并已用库自己的离屏截图目视验收过。层序也真正生效了：扩展层可声明
+        <code>DECORATION</code>/<code>OVERLAY</code> 画在所有内置层之上（内置层保持 JSON 顺序，
+        理由见 <code>layerSortRank</code>：168 份发布外观里 121 份依赖这个顺序）。
+        <b>参数补间没做</b>（仍是固定 15 个 <code>AppearanceProp</code> 通道）。</td>
+    </tr>
+    <tr>
+      <td>目录结构：<code>glass/</code> 在仓库根路径</td>
+      <td><span class="tag ok">已移动</span></td>
+      <td>移到 <b><code>bklv/core/glass/</code></b>（core 的子系统，不再是独立一层）：
+        26 处 include、CMake 源清单、Switch 收集脚本、<code>check_layers.py</code> 基线、
+        README / AGENTS / 本页路径全部跟着改。副作用是分层账本变简单了 ——
+        <code>glass</code> 这一层消失，原 <code>glass → backends</code> 记为
+        <code>core → backends</code>，白名单从 7 条降到 <b>6 条</b>（<code>core → glass</code>
+        这条同层依赖自然消解）。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P0②：进程级单例</td>
+      <td><span class="tag bad">未做</span></td>
+      <td>要先定"App 边界"的形态（注册表按实例，还是"可重置 + 进程内单实例"），是本次风险最高的一项，建议单独一轮并配测试。</td>
+    </tr>
+    <tr>
+      <td>§4.2 P0④：默认主题依赖 demo 的 <code>stripe</code> op</td>
+      <td><span class="tag bad">未做</span></td>
+      <td>属产品决策而非机械修复。三条路线：① 把 <code>base/stripe_demo.json</code> 从 default 的 <code>files[]</code> 摘掉并移出主题目录（样例改用页面内联 JSON，demo 本来就在这么做）；② 让库侧注册一个同名"示例层"（等于把扩展样例塞进库，不推荐）；③ 保持现状，但把"宿主必须自己注册 stripe"写进文档。现状：<code>theme_test:41</code> 与 <code>designer_core_test:81</code> 都要先注册一份桩才能过。</td>
+    </tr>
+    <tr>
+      <td>§4.3 ②（玻璃边界）、§4.3 ⑦（扩展参数槽）</td>
+      <td><span class="tag bad">本轮不动</span></td>
+      <td>按约定玻璃相关先不处理；扩展 op 的参数槽要动 <code>AppearanceLayer</code> 的数据模型（<code>ALL_PROPS</code> 五处同步），收益与风险都需再评估。</td>
+    </tr>
+    <tr>
+      <td><code>install()</code> / <code>find_package()</code></td>
+      <td><span class="tag bad">未做</span></td>
+      <td>仍与 <code>TODO.md</code> 的 P0 一致；它依赖单例问题的结论（INTERFACE 目标如何导出 OBJECT 库目标文件）。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="scope">1. 项目定位与规模</h2>
+
+<p>定位在 <code>TODO.md</code> 里写得比 README 更准：<b>“跨平台 C++17 界面库，目标形态是可被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入”</b>，
+本仓库同时提供 demo 与设计器。也就是说它同时承担三个身份：<span class="tag">界面库</span><span class="tag">应用示范</span><span class="tag">可视化编辑器</span>。</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>目录</th><th>文件</th><th>行数</th><th>职责（读代码归纳）</th><th>README 是否提及</th></tr></thead>
+  <tbody>
+    <tr><td><code>bklv/core/</code></td><td>66</td><td>15 919</td><td>视图基类与 Flexbox、帧循环、焦点输入、外观/主题模型、图形与平台抽象、解码、i18n、任务与事件；<br><b><code>core/glass/</code></b>（12 文件）是其中的液态玻璃子系统：请求、模糊计划、几何、队列、调参、服务</td><td>是</td></tr>
+    <tr><td><code>bklv/widgets/</code></td><td>53</td><td>8 813</td><td>外观驱动控件：Shell 外壳、Pager、Button、Cell 家族、Dialog/Dropdown、Recycler 桥接、图层绘制实现</td><td>是（本次补上）</td></tr>
+    <tr><td><code>bklv/views/</code></td><td>24</td><td>4 439</td><td>语义控件：Label、Image、ScrollingFrame、RecyclerFrame、Padding、DebugLogView</td><td>是</td></tr>
+    <tr><td><code>bklv/compile/</code></td><td>18</td><td>—</td><td>解析层：JSON → 外观 / 主题 / 视图模板；图层类型注册表</td><td>是（本次补上）</td></tr>
+    <tr><td><code>bklv/backends/</code></td><td>21</td><td>4 946</td><td>OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 运行时 GL 加载、玻璃后端实现</td><td>是</td></tr>
+    <tr><td><code>bklv/platforms/</code></td><td>9</td><td>1 099</td><td>SDL3（macOS/Linux/Windows）、libnx（Switch）、两套手柄与 IME</td><td>是</td></tr>
+    <tr><td><code>demo/</code></td><td>25</td><td>4 134</td><td>能力总览：外壳 + Pager + 侧栏导航 + 15 个页面</td><td>是</td></tr>
+    <tr><td><code>designer/</code></td><td>42</td><td>11 435</td><td>设计器：逻辑层 <code>core/</code> 可无窗口测，界面用 ImGui，预览用 bklv 真实视图</td><td>是</td></tr>
+    <tr><td><code>tests/</code></td><td>61</td><td>13 099</td><td>59 个无窗口可执行测试，<code>ctest</code> 驱动，GL/VK 各跑一遍</td><td>是</td></tr>
+    <tr><td><code>resources/</code></td><td>225</td><td>1.8 MB</td><td>主题 JSON、i18n、字体、图片、focus ring LUT</td><td>是</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><b>已确认的文档漂移</b>：README「仓库里有什么」表只列了 <code>core/views/backends/platforms</code> 四行，
+「分层」图同样只有这四层 —— <code>widgets/</code>（53 文件，与 core 同量级）、<code>compile/</code> 两个目录<b>完全没有出现在 README 的结构说明里</b>（当时 <code>glass/</code> 也在根路径下没被写上），
+合计 83 个文件（约占库的 41%）。新读者按 README 建立的模型与仓库实际结构不一致。</p>
+
+<h2 id="diagrams">2. 架构图</h2>
+
+<h3>2.1 图 1 —— 分层与依赖方向（含 5 条反向依赖边）</h3>
+<figure class="fig">
+<svg viewBox="0 0 1120 840" role="img" aria-label="bklv 分层与依赖图">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e639c"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker>
+  </defs>
+  <rect class="band" x="30" y="30" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="30" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="47">应用层 · demo/ (25) + designer/ (42)</text>
+  <text class="mut ts" x="46" y="74">demo：DemoApp = Shell(四层) + Pager + Sidebar；15 个页面各一个 .cpp</text>
+  <text class="mut ts" x="46" y="89">designer：core/(逻辑,可测) + ui/(ImGui 面板) + glass/ + mockup/</text>
+
+  <rect class="band" x="30" y="122" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="122" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="139">控件层 · widgets/ (53)</text>
+  <text class="mut ts" x="46" y="166">AppearanceView（外观容器，一切控件的基类）+ Shell / Pager / Header / BottomBar / Sidebar</text>
+  <text class="mut ts" x="46" y="181">Button / SelectorButton / Cell 家族 / Dialog / Dropdown / Recycler 桥接 / layer_draw_* 六层</text>
+
+  <rect class="band" x="30" y="214" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="214" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="231">视图层 · views/ (24)</text>
+  <text class="mut ts" x="46" y="258">Label（换行/省略号/测量）· Image（缩放/动图/异步）· ScrollingFrame / HScrollingFrame</text>
+  <text class="mut ts" x="46" y="273">RecyclerFrame（对象池虚拟列表）· data_source / item_binder · DebugLogView / DebugLayer</text>
+
+  <rect class="band" x="30" y="306" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="306" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="323">解析层 · compile/ (18)</text>
+  <text class="mut ts" x="46" y="350">view_parse（JSON → 视图树，两段式模板）· theme_parse（JSON → ThemeData）</text>
+  <text class="mut ts" x="46" y="365">appearance_box / imports / layer_fields / layer_meta / children + layer_registry</text>
+
+  <rect class="band" x="30" y="398" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="398" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="415">核心层 · core/ (66)</text>
+  <text class="mut ts" x="46" y="442">View（一视图一 YGNode）· Box · App（帧循环/弹层/截图）· InputManager（焦点/模态/导航）</text>
+  <text class="mut ts" x="46" y="457">Appearance / AppearanceInstance · ThemeData · graphics.hpp · platform.hpp · 解码 / i18n / task</text>
+
+  <rect class="band" x="30" y="490" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="490" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="507">后端层 · backends/ (21)</text>
+  <text class="mut ts" x="46" y="534">OpenGLBackend（GL 3.2 Core）· VulkanBackend（1837 行）· GLES3Backend（Switch）</text>
+  <text class="mut ts" x="46" y="549">gl_loader（Windows 运行时取地址）· gl_glass / vk_glass（玻璃的后端私有实现）</text>
+
+  <rect class="band" x="30" y="582" width="700" height="64" rx="8"/>
+  <rect class="bandh" x="30" y="582" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="599">平台层 · platforms/ (9)</text>
+  <text class="mut ts" x="46" y="626">PlatformSDL3（桌面三平台，窗口/事件/系统能力）· PlatformSwitch（libnx + EGL）</text>
+  <text class="mut ts" x="46" y="641">sdl3_gamepad / switch_gamepad · switch_ime（swkbd）· createBackend() 在这里编译期选后端</text>
+
+  <rect class="band" x="30" y="674" width="700" height="56" rx="8"/>
+  <rect class="bandh" x="30" y="674" width="700" height="24" rx="8"/>
+  <text class="lbl t" x="46" y="691">第三方 · bklv/3rd/（submodule，9 个）</text>
+  <text class="mut ts" x="46" y="716">imgui · yoga v3.2.1 · SDL3 3.4.16 · stb · webp v1.5.0 · lunasvg+plutovg · tweeny · json v3.11.3</text>
+
+  <rect class="ext" x="770" y="122" width="320" height="112" rx="8"/>
+  <text class="lbl t" x="786" y="142">玻璃子系统 · core/glass/ (12)</text>
+  <text class="mut ts" x="786" y="163">glass_service（能力查询/开关）· glass_request</text>
+  <text class="mut ts" x="786" y="179">glass_blur_plan / glass_geometry / queue</text>
+  <text class="mut ts" x="786" y="195">glass_tuning / glass_style</text>
+  <text class="mut ts" x="786" y="211">GL/GLES3 共用 gl_glass.cpp；Vulkan 走 mip 链</text>
+  <text fill="#b3261e" font-size="11.5px" x="786" y="227">④⑤ 与 backends 双向依赖 → 见 §2.1</text>
+
+  <rect class="band" x="770" y="252" width="320" height="96" rx="8"/>
+  <text class="lbl t" x="786" y="272">数据 · resources/ (225 文件, 1.8 MB)</text>
+  <text class="mut ts" x="786" y="293">theme/&lt;主题&gt;/ tokens base widget view</text>
+  <text class="mut ts" x="786" y="309">theme.json 里 files[] 是显式清单（不扫目录）</text>
+  <text class="mut ts" x="786" y="325">i18n/ · font/ · img/ · focus_ring LUT</text>
+  <text class="mut ts" x="786" y="341">default 99 个 JSON；ocean / my-skin 各 46</text>
+
+  <rect class="band" x="770" y="370" width="320" height="104" rx="8"/>
+  <text class="lbl t" x="786" y="390">验证 · tests/ (61 文件)</text>
+  <text class="mut ts" x="786" y="411">59 个独立可执行，无窗口，ctest 双后端各跑一遍</text>
+  <text class="mut ts" x="786" y="427">scripts/check.sh：命名检查 → 双后端零警告构建</text>
+  <text class="mut ts" x="786" y="443">→ 全部测试（GL + VK）→ 任一步失败即停</text>
+  <text class="mut ts" x="786" y="459">check_naming.py 机械校验接口命名约定</text>
+
+  <path class="flow" d="M380 94 L380 122" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 186 L380 214" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 278 L380 306" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 370 L380 398" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 462 L380 490" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 554 L380 582" marker-end="url(#ar)"/>
+  <path class="flow" d="M380 646 L380 674" marker-end="url(#ar)"/>
+
+  <path class="badflow" d="M660 430 C 726 430, 726 150, 660 154" marker-end="url(#arr)"/>
+  <text fill="#b3261e" font-size="11.5px" x="618" y="300">① core → widgets</text>
+  <path class="badflow" d="M600 430 C 646 430, 646 340, 600 338" marker-end="url(#arr)"/>
+  <text fill="#b3261e" font-size="11.5px" x="596" y="392">② core → compile</text>
+  <path class="badflow" d="M520 338 C 560 338, 560 250, 520 246" marker-end="url(#arr)"/>
+  <text fill="#b3261e" font-size="11.5px" x="452" y="300">③ compile → views</text>
+  <path class="badflow" d="M752 500 L752 224" marker-start="url(#arr)" marker-end="url(#arr)"/>
+
+  <text class="mut ts" x="30" y="756">实线 = 相邻层的依赖方向 · 红色虚线 = 反向依赖（应消除）· views 也直接依赖 core（合法捷径，未画出）</text>
+  <text class="mut ts" x="30" y="776">① core → widgets（core/app.cpp）  ② core → compile（core/appearance.cpp）  ③ compile → views（view_parse.cpp）</text>
+  <text class="mut ts" x="30" y="796">④⑤ core ⇄ backends（右侧竖线）：core/glass/glass_service.hpp 按值持有两个后端 + activeVulkanBackend() 进程级全局指针</text>
+  <text class="mut ts" x="30" y="816">注：平台层通过 createPlatform / createBackend 工厂被 core 调用，方向由“编译期裁剪 + 工厂”反转，属正常做法</text>
+</svg>
+<figcaption>图 1 · bklv 分层与依赖方向。红色虚线为实测的反向依赖边，逐条证据见下表。</figcaption>
+</figure>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>#</th><th>边</th><th>证据（file:line）</th><th>性质</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr><td>①</td><td><code>core → widgets</code></td><td><code>core/app.cpp:10,17,18</code> include notification / appearance_view / widget_types</td><td><b>真环</b>（widgets 大量反向依赖 core）</td><td><code>core</code> 不是叶子层，“分层”只剩目录约定；单独复用 core 不可能</td></tr>
+    <tr><td>②</td><td><code>core → compile</code></td><td><code>core/appearance.cpp:17-24</code> include 8 个 compile 头</td><td><b>真环</b>（compile 29 处依赖 core）</td><td>外观模型的“解析”与“运行时”无法分开编译；layout/属性定义两处漂移风险</td></tr>
+    <tr><td>③</td><td><code>compile → views</code></td><td><code>compile/view_parse.cpp:18-23</code> include 6 个 views 头</td><td>单向（views 不依赖 compile）</td><td>解析层认识具体控件类型；加视图类型要同时改 views 与 compile 的注册表</td></tr>
+    <tr><td>④</td><td><code>core → backends</code><br><span class="tag">原 glass → backends</span></td><td><code>core/glass/glass_service.hpp:17,20</code> 直接 include <code>gl_glass.hpp</code> / <code>vk_glass.hpp</code></td><td><b>真环</b></td><td>唯一的抽象穿刺：玻璃子系统本应不认识图形 API，却静态依赖两个后端实现</td></tr>
+    <tr><td>⑤</td><td><code>backends → glass</code></td><td><code>backends/gl_glass.hpp:14-17</code> include 4 个 glass 头</td><td>同 ④ 的返程</td><td>玻璃的后端实现与调度逻辑交织，无法单独替换</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><b>一个必要的精度</b>：上面的“环”全部发生在<b>编译单元（.cpp）→ 对方模块头</b>这一层，<b>头文件图本身是无环的</b>。
+实测扫 102 个 <code>bklv/**.hpp</code>、206 条 include 边，头文件级跨目录边为：<code>widgets→core</code> 30、<code>views→core</code> 16、<code>widgets→views</code> 10、<code>compile→core</code> 9（反向 <code>core→compile</code> 为 <b>0</b>）、<code>platforms→core</code> 4、<code>backends→glass</code> 4、<code>glass→backends</code> 2。
+也就是说：<code>core/appearance.cpp</code> include 了 compile 的头，但 <code>core/*.hpp</code> 一个都没 include compile —— 所以它<b>不阻塞编译</b>，也不会造成头文件互相包含的老问题。
+代价在另外两处：模块无法独立编译 / 分发 / 测试，且反向依赖可以继续增长而编译器不会提醒一句。</p>
+
+<p><b>为什么这些边没被拦住</b>：<code>bklv/CMakeLists.txt</code> 把 core / views / widgets / compile / glass / backends / platforms 的源文件<b>全部编进同一个 <code>bklv_core</code> OBJECT 库</b>
+（<code>bklv/CMakeLists.txt:315-421</code>），只有一个 include 根目录。没有 per-layer target、没有 header 可见性约束、也没有一个“禁止反向 include”的检查脚本。
+<code>scripts/check_naming.py</code> 管住了命名，但一直没有同类工具管依赖方向。
+<b>本次已补上 <code>scripts/check_layers.py</code></b>（禁止新增反向依赖、存量 7 条记账在白名单里、已接进 <code>check.sh</code>）：
+下面的环还在，但从此不会再无声地长出新的一条。</p>
+
+<h3>2.2 图 2 —— 帧循环（<code>App::frame()</code>，<code>core/app.cpp:320-412</code>）</h3>
+<figure class="fig">
+<svg viewBox="0 0 1120 730" role="img" aria-label="App::frame 帧循环时序图">
+  <defs>
+    <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f2430"/></marker>
+    <marker id="m2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/></marker>
+  </defs>
+  <rect class="proc" x="30" y="20" width="160" height="42" rx="7"/>
+  <text class="lbl t" x="110" y="46" text-anchor="middle">Platform</text>
+  <rect class="proc" x="212" y="20" width="160" height="42" rx="7"/>
+  <text class="lbl t" x="292" y="46" text-anchor="middle">App::frame</text>
+  <rect class="proc" x="394" y="20" width="160" height="42" rx="7"/>
+  <text class="lbl t" x="474" y="46" text-anchor="middle">task / decode / upload</text>
+  <rect class="proc" x="576" y="20" width="160" height="42" rx="7"/>
+  <text class="lbl t" x="656" y="46" text-anchor="middle">View 树 + Yoga</text>
+  <rect class="proc" x="758" y="20" width="160" height="42" rx="7"/>
+  <text class="lbl t" x="838" y="46" text-anchor="middle">InputManager</text>
+  <rect class="proc" x="940" y="20" width="150" height="42" rx="7"/>
+  <text class="lbl t" x="1015" y="46" text-anchor="middle">ImGui / Backend</text>
+
+  <line class="life" x1="110" y1="62" x2="110" y2="706"/>
+  <line class="life" x1="292" y1="62" x2="292" y2="706"/>
+  <line class="life" x1="474" y1="62" x2="474" y2="706"/>
+  <line class="life" x1="656" y1="62" x2="656" y2="706"/>
+  <line class="life" x1="838" y1="62" x2="838" y2="706"/>
+  <line class="life" x1="1015" y1="62" x2="1015" y2="706"/>
+
+  <text class="tm lbl" x="118" y="92">每帧一次（mainLoopIteration 之后）</text>
+  <path class="call" d="M110 104 L286 104" marker-end="url(#m2)"/>
+
+  <rect x="212" y="122" width="460" height="112" rx="7" style="fill:none;stroke:#0e639c;stroke-width:1.2;stroke-dasharray:4 4"/>
+  <text font-size="11.5px" fill="#0e639c" x="222" y="140">步骤 0 · 主线程泵（必须在 ImGui::NewFrame 之前）</text>
+  <text class="tm lbl" x="302" y="164">task::pumpMainThread() 执行到期回调与延迟任务</text>
+  <path class="call" d="M292 172 L468 172" marker-end="url(#m2)"/>
+  <text class="tm lbl" x="302" y="192">pumpDecodeQueue() 按并发上限启动后台解码</text>
+  <path class="call" d="M292 200 L468 200" marker-end="url(#m2)"/>
+  <text class="tm lbl" x="302" y="220">pumpUploads() 按每帧配额上传纹理（背压）</text>
+  <path class="call" d="M292 228 L468 228" marker-end="url(#m2)"/>
+
+  <text class="tm mut" x="302" y="256">回调在主线程执行；调用方用 AliveFlag（weak_ptr）护栏挡住已析构的 this</text>
+  <path class="ret" d="M474 266 L298 266" marker-end="url(#m2b)"/>
+
+  <text class="tm lbl" x="302" y="298">步骤 1 · 字体版本变了 → refreshFontDependentLayout()</text>
+  <path class="call" d="M292 310 L650 310" marker-end="url(#m2)"/>
+
+  <text class="tm lbl" x="302" y="342">步骤 2 · 布局延迟触发：forceRelayout ‖ 脏标记 ‖ 画布尺寸变</text>
+  <text class="tm lbl" x="302" y="362">→ YGNodeCalculateLayout + root-&gt;notifyLayout()（静止页面 0 次/秒）</text>
+  <path class="call" d="M292 374 L650 374" marker-end="url(#m2)"/>
+
+  <text class="tm lbl" x="302" y="406">步骤 3 · Ticking::updateTickings() + root-&gt;update()（递归整棵树）</text>
+  <path class="call" d="M292 418 L650 418" marker-end="url(#m2)"/>
+
+  <text class="tm lbl" x="302" y="450">步骤 4 · getInputManager().update() —— 读的是上一帧的命中结果</text>
+  <path class="call" d="M292 462 L832 462" marker-end="url(#m2)"/>
+  <text class="tm mut" x="302" y="488">giveFocus / triggerAction（沿父链冒泡）/ dispatchGesture / 模态栈命中</text>
+  <path class="ret" d="M838 498 L298 498" marker-end="url(#m2b)"/>
+
+  <text class="tm lbl" x="302" y="530">步骤 5 · onUpdate() 宿主回调（demo 在这里刷新统计）</text>
+
+  <text class="tm lbl" x="302" y="562">步骤 6 · root-&gt;frame(&amp;ctx) 递归绘制，ctx.drawList = GetForegroundDrawList()</text>
+  <path class="call" d="M292 574 L650 574" marker-end="url(#m2)"/>
+  <text class="tm mut" x="302" y="592">绘制期变换在这里生效：translate / scale / rotate / alpha，零重排</text>
+
+  <text class="tm lbl" x="302" y="622">步骤 7 · onDrawWindows()（只有设计器还在用 ImGui 窗口）</text>
+  <path class="call" d="M292 634 L1009 634" marker-end="url(#m2)"/>
+
+  <text class="tm lbl" x="302" y="662">步骤 8 · ImGui::Render() → onPrepareDrawData(ImDrawData*) 钩子</text>
+  <path class="call" d="M292 674 L1009 674" marker-end="url(#m2)"/>
+  <text class="tm lbl" x="302" y="696">backend: newFrame / clear / renderDrawData / present</text>
+  <path class="call" d="M292 704 L1009 704" marker-end="url(#m2)"/>
+</svg>
+<figcaption>图 2 · 帧循环顺序。注意三点：输入读上一帧命中（隐含一帧延迟）、布局是条件触发而非每帧、绘制全部走 viewport 前景绘制列表而非 ImGui 窗口。</figcaption>
+</figure>
+
+<h3>2.3 图 3 —— 外观与主题数据流（JSON → 像素）</h3>
+<figure class="fig">
+<svg viewBox="0 0 1120 400" role="img" aria-label="外观与主题数据流">
+  <defs>
+    <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0e639c"/>
+    </marker>
+    <marker id="m3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/>
+    </marker>
+  </defs>
+
+  <rect class="band" x="20" y="40" width="180" height="120" rx="8"/>
+  <text class="lbl t" x="34" y="60">resources/theme/&lt;t&gt;/</text>
+  <text class="mut ts" x="34" y="80">tokens/colors.json</text>
+  <text class="mut ts" x="34" y="96">tokens/metrics.json</text>
+  <text class="mut ts" x="34" y="116">base/*.json (57)</text>
+  <text class="mut ts" x="34" y="132">widget/*.json (32)</text>
+  <text class="mut ts" x="34" y="148">view/*.json (7)</text>
+
+  <rect class="proc" x="240" y="40" width="170" height="70" rx="8"/>
+  <text class="lbl t" x="254" y="60">compile/theme_parse</text>
+  <text class="mut ts" x="254" y="80">@theme/metric.* 求值</text>
+  <text class="mut ts" x="254" y="96">720p → uiScale 缩放</text>
+
+  <rect class="iface" x="240" y="130" width="170" height="90" rx="8"/>
+  <text class="lbl t" x="254" y="150">compile/appearance_*</text>
+  <text class="mut ts" x="254" y="168">imports（逐字段合并）</text>
+  <text class="mut ts" x="254" y="184">box / layer_fields</text>
+  <text class="mut ts" x="254" y="200">layer_meta + layer_registry</text>
+  <text class="mut ts" x="254" y="216">children / gradient</text>
+
+  <rect class="iface" x="450" y="40" width="170" height="80" rx="8"/>
+  <text class="lbl t" x="464" y="60">ThemeData</text>
+  <text class="mut ts" x="464" y="80">不可变 · color./metric.</text>
+  <text class="mut ts" x="464" y="96">key 不存在 → 报错</text>
+  <text class="mut ts" x="464" y="112">（不回退洋红）</text>
+
+  <rect class="iface" x="450" y="130" width="170" height="90" rx="8"/>
+  <text class="lbl t" x="464" y="150">Appearance</text>
+  <text class="mut ts" x="464" y="168">编译结果 · 不可变 · 共享</text>
+  <text class="mut ts" x="464" y="184">按（主题, 名字）缓存</text>
+  <text class="mut ts" x="464" y="200">layers[] + states{} +</text>
+  <text class="mut ts" x="464" y="216">transitions{} + box</text>
+
+  <rect class="proc" x="660" y="130" width="180" height="90" rx="8"/>
+  <text class="lbl t" x="674" y="150">AppearanceInstance</text>
+  <text class="mut ts" x="674" y="168">每个 View 一份</text>
+  <text class="mut ts" x="674" y="184">各属性当前值</text>
+  <text class="mut ts" x="674" y="200">每通道一个 tween（tweeny</text>
+  <text class="mut ts" x="674" y="216">藏在 .cpp，pimpl）</text>
+
+  <rect class="proc" x="880" y="130" width="220" height="90" rx="8"/>
+  <text class="lbl t" x="894" y="150">AppearanceView::draw</text>
+  <text class="mut ts" x="894" y="168">switch(op) 内置 6 种</text>
+  <text class="mut ts" x="894" y="184">EXTENSION → findLayer(name)</text>
+  <text class="mut ts" x="894" y="200">→ layer_draw_rect/text/image</text>
+  <text class="mut ts" x="894" y="216">/ shadow / glass / custom</text>
+
+  <rect class="iface" x="880" y="270" width="220" height="60" rx="8"/>
+  <text class="lbl t" x="894" y="290">ImDrawList（唯一绘制目标）</text>
+  <text class="mut ts" x="894" y="310">上层不认识 OpenGL / Vulkan</text>
+
+  <path class="flow" d="M200 90 L234 90" marker-end="url(#m3)"/>
+  <path class="flow" d="M200 170 L234 170" marker-end="url(#m3)"/>
+  <path class="flow" d="M410 75 L444 75" marker-end="url(#m3)"/>
+  <path class="flow" d="M410 170 L444 170" marker-end="url(#m3)"/>
+  <path class="flowd" d="M535 120 L535 130" marker-end="url(#m3g)"/>
+  <text class="mut ts" x="546" y="136">@theme/ 取值</text>
+  <path class="flow" d="M620 175 L654 175" marker-end="url(#m3)"/>
+  <text class="mut ts" x="622" y="165">实例化</text>
+  <path class="flow" d="M840 175 L874 175" marker-end="url(#m3)"/>
+  <path class="flow" d="M990 220 L990 264" marker-end="url(#m3)"/>
+
+  <!-- 状态反馈回路 -->
+  <path class="flowd" d="M750 220 C 750 300, 600 300, 560 226" marker-end="url(#m3g)"/>
+  <text class="mut ts" x="300" y="316">setState("focused") → 先撤掉该通道旧补间，再按 states/transitions 建新 tween（从当前值补起）</text>
+  <text class="mut ts" x="20" y="360">换肤路径：App::setTheme(name) → 重载 ThemeData → applyThemeRecursive() → 重排一次。绘制里不查主题，只读实例值。</text>
+  <text class="mut ts" x="20" y="380">回退链：当前主题 → default 主题 → 控件空外观（警告，不崩）；主题 theme.json 的 files[] 是显式清单，不扫目录（romfs 上目录迭代未验证）。</text>
+</svg>
+<figcaption>图 3 · 外观/主题数据流。核心是两级编译：<code>Appearance</code>（跨视图共享、不可变）与 <code>AppearanceInstance</code>（每视图一份、持有补间）。</figcaption>
+</figure>
+
+<h3>2.4 图 4 —— 渲染 / 平台抽象边界（唯一的穿刺点）</h3>
+<figure class="fig">
+<svg viewBox="0 0 1120 470" role="img" aria-label="渲染与平台抽象边界">
+  <defs>
+    <marker id="m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e639c"/></marker>
+    <marker id="m4r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker>
+    <marker id="m4m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b6472"/></marker>
+  </defs>
+
+  <rect class="band" x="20" y="30" width="330" height="164" rx="8"/>
+  <rect class="bandh" x="20" y="30" width="330" height="26" rx="8"/>
+  <text class="lbl t" x="36" y="48">上层：views / widgets / 使用者代码</text>
+  <text class="mut ts" x="36" y="76">只允许出现：</text>
+  <text class="mut mono" x="36" y="96">ImDrawList*  ImTextureID  ImFont*</text>
+  <text class="mut ts" x="36" y="120">实测 core+views：19 处 ImGui:: 调用点</text>
+  <text class="mut ts" x="36" y="138">集中在 input / font / time / gradient 与</text>
+  <text class="mut ts" x="36" y="154">DebugLogView / ScrollingFrame / Label</text>
+  <text class="mut ts" x="36" y="178">View::draw(ImDrawList*, ...) 是唯一绘制入口</text>
+
+  <rect class="iface" x="395" y="30" width="330" height="164" rx="8"/>
+  <rect class="bandh" x="395" y="30" width="330" height="26" rx="8"/>
+  <text class="lbl t" x="411" y="48">core 抽象接口</text>
+  <text class="mut mono" x="411" y="74">RenderBackend（graphics.hpp）</text>
+  <text class="mut ts" x="411" y="94">11 个纯虚 + 3 个可选（默认实现）</text>
+  <text class="mut ts" x="411" y="112">getName / getWindowFlags / initContext /</text>
+  <text class="mut ts" x="411" y="128">newFrame / clear / renderDrawData / present</text>
+  <text class="mut ts" x="411" y="144">createTexture / destroyTexture / shutdown</text>
+  <text class="mut ts" x="411" y="162">readPixels / updateTexture 默认 false</text>
+  <text class="mut mono" x="411" y="184">Platform（platform.hpp）· InputManager</text>
+
+  <rect class="proc" x="770" y="30" width="330" height="164" rx="8"/>
+  <rect class="bandh" x="770" y="30" width="330" height="26" rx="8"/>
+  <text class="lbl t" x="786" y="48">实现（编译期各选一份）</text>
+  <text class="mut ts" x="786" y="74">OpenGLBackend · VulkanBackend · GLES3</text>
+  <text class="mut ts" x="786" y="94">PlatformSDL3 · PlatformSwitch · switch_ime</text>
+  <text class="mut ts" x="786" y="118">选择点：platforms/*.cpp 的 createBackend()</text>
+  <text class="mut ts" x="786" y="138">双后端 = 两个构建目录 build/gl · build/vk</text>
+  <text class="mut ts" x="786" y="158">产物：dist/ 与 dist/vk/，不覆盖</text>
+  <text class="mut ts" x="786" y="180">平台层里没有一行 GL / VK 调用</text>
+
+  <path class="flow" d="M350 112 L389 112" marker-end="url(#m4)"/>
+  <text class="mut ts" x="352" y="104">依赖接口</text>
+  <path class="flowd" d="M725 112 L764 112" marker-end="url(#m4m)"/>
+  <text class="mut ts" x="727" y="104">实现</text>
+
+  <rect class="ext" x="20" y="230" width="330" height="130" rx="8"/>
+  <text class="lbl t" x="36" y="250">玻璃（core/glass/）：抽象被穿刺的地方</text>
+  <text class="mut ts" x="36" y="272">glass_service.hpp:17,20 直接</text>
+  <text class="mut mono" x="36" y="290">#include backends/gl_glass.hpp</text>
+  <text class="mut mono" x="36" y="306">#include backends/vk_glass.hpp</text>
+  <text class="mut ts" x="36" y="328">→ core/glass 编译期就知道有哪两个后端</text>
+  <text class="mut ts" x="36" y="348">服务层还按值持有这两个后端（:91,:94）</text>
+
+  <rect class="badbox" x="395" y="230" width="330" height="130" rx="8"/>
+  <text fill="#b3261e" font-size="13" x="411" y="250">后果（均已核验）</text>
+  <text class="mut ts" x="411" y="272">① 加后端要动 glass 公共头 + 值成员</text>
+  <text class="mut ts" x="411" y="290">② VK 构建下 &lt;vulkan/vulkan.h&gt; 进公开头：</text>
+  <text class="mut ts" x="411" y="308">bklv.hpp → shell.hpp → glass_service.hpp</text>
+  <text class="mut ts" x="411" y="328">③ 能力差异（Vulkan 不做折射/色散）</text>
+  <text class="mut ts" x="411" y="346">只能运行时问，不能靠编译期</text>
+
+  <rect class="band" x="770" y="230" width="330" height="130" rx="8"/>
+  <text class="lbl t" x="786" y="250">建议的边界</text>
+  <text class="mut ts" x="786" y="272">在 RenderBackend 上加可选能力接口：</text>
+  <text class="mut ts" x="786" y="292">virtual GlassBackend* getEffects() = 0;</text>
+  <text class="mut ts" x="786" y="314">core/glass/ 只依赖这个接口，</text>
+  <text class="mut ts" x="786" y="332">后端在 createBackend() 里注入实现</text>
+  <text class="mut ts" x="786" y="352">顺带删掉 activeVulkanBackend() 全局</text>
+
+  <path class="badflow" d="M350 295 L389 295" marker-end="url(#m4r)"/>
+
+  <text class="mut ts" x="20" y="396">另一处同类问题：core/platform.cpp 工厂 include 了两个平台头。这一处可接受 —— 它是工厂，方向由“编译期裁剪 + 工厂”反转；</text>
+  <text class="mut ts" x="20" y="416">但 glass 那处不是工厂：服务层按值持有具体后端，并用进程级全局指针选路，所以是真正的抽象穿刺。</text>
+  <text class="mut ts" x="20" y="436">另注：readPixels 只有 GL 后端实现 → 帧读回/截图在 Vulkan 与 Switch 上是空操作。</text>
+</svg>
+<figcaption>图 4 · 抽象边界。框架主体（View / 控件 / 绘制）确实做到了“不认图形 API”；唯一的例外是液态玻璃。</figcaption>
+</figure>
+<p>四条边界的干净度排序（从好到差）：<b>平台层最干净</b> —— <code>platforms/</code> 里没有一行 GL/VK 调用，后端由各平台的 <code>createBackend()</code> 编译期选；
+<b>RenderBackend 接口本身成立，但有一个真实空洞</b> —— <code>readPixels</code> 三个后端里只有 GL 实现；
+<b>compile 的图层注册表是真扩展点，但内置路径仍是 6 份手写表</b>；
+<b>glass 最脏</b> —— 值成员 + 进程级全局指针 + 公开头污染。</p>
+
+<h2 id="mechanics">3. 关键机制（读代码归纳）</h2>
+
+<div class="grid g2">
+  <div class="card">
+    <h4>一视图一 YGNode，没有渲染树</h4>
+    <p><code>View</code> 持有 <code>YGNode*</code>，通过 <code>YGNodeSetContext</code> 反查 <code>View*</code>；布局靠 Yoga 递归，绘制靠 <code>View::frame</code> 递归，两者共用同一棵树。
+    这是 borealis 的核心选择，bklv 完整保留 —— 好处是不存在“布局树与渲染树不同步”这类 bug，代价是 <code>View</code> 必须同时承载布局、外观、焦点、手势、动作、变换、属性表七类职责。</p>
+  </div>
+  <div class="card">
+    <h4>延迟布局，一帧最多一次</h4>
+    <p><code>invalidate()</code> 只冒泡置脏，真正的 <code>YGNodeCalculateLayout</code> 在 <code>App::frame</code> 里按三条件触发（首帧 / 画布尺寸变 / 有人置脏）。
+    静态页面布局次数为 0/帧。<code>BKLV_FORCE_RELAYOUT=1</code> 可退回每帧全量以排查漏置脏。</p>
+  </div>
+  <div class="card">
+    <h4>四级注册表（真正的扩展机制）</h4>
+    <ul class="tight">
+      <li>图层类型 <code>compile::registerLayer()</code> —— parse + draw 双钩子，设计器菜单自动跟随</li>
+      <li>视图类型 <code>registerViewType()</code> —— <code>compile</code> 注册内置，<code>widgets/widget_types.cpp</code> 注册控件，<code>App::App()</code> 调一次</li>
+      <li>数据源 <code>data::registerSource()</code>、绑定器 <code>binding::registerItemBinder()</code></li>
+    </ul>
+    <p>全部显式注册、重名报错、拒绝静态初始化魔法，且有实物证据：<code>demo/contrib/stripe_layer.cpp</code> 仅新增一个文件就加出了 <code>"op": "stripe"</code> 图层。</p>
+  </div>
+  <div class="card">
+    <h4>外观 JSON 驱动的样式系统</h4>
+    <p>控件在 C++ 里只写行为与结构，尺寸/颜色/圆角/状态动效/转场全部来自主题 JSON；代码里显式设过的值不可被主题覆盖（<code>explicit</code> 标志）。
+    四类 JSON（视图描述 / 控件外观 / 主题 / 文案）都有完整键表文档 <code>docs/json-syntax.md</code>（35 KB）。</p>
+  </div>
+</div>
+
+<h3>3.1 组件清单（widgets / views）</h3>
+<div class="scroll">
+<table>
+  <thead><tr><th>族</th><th>组件</th><th>职责</th><th>证据</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="5">机制/基类</td><td><code>AppearanceView</code></td><td>外观驱动控件基类：解释外观 layers + 状态补间 + 固有尺寸测量</td><td><code>appearance_view.hpp:34</code></td></tr>
+    <tr><td><code>layer_draw_*.cpp</code></td><td>rect / shadow / glass / text / image / custom 六个内置层的绘制钩子</td><td><code>layer_draw.hpp:13</code></td></tr>
+    <tr><td><code>appearance_children</code></td><td>按外观 <code>children</code> 段建子视图（含循环引用检测）</td><td><code>appearance_children.cpp:33,124</code></td></tr>
+    <tr><td><code>widget_types</code></td><td>把 widgets 的类注册成 JSON 视图类型（<code>App::App()</code> 调一次）</td><td><code>widget_types.cpp:21-55</code></td></tr>
+    <tr><td><code>Rectangle</code></td><td>纯装饰矩形，外观机制的最小示例</td><td><code>rectangle.hpp:15</code></td></tr>
+    <tr><td rowspan="6">外壳类</td><td><code>Shell</code></td><td>四层（backdrop/content/overlay/hud）+ 调试层 + 模态 + 内容栈 + 转场 + 玻璃 + 焦点框所有者</td><td><code>shell.hpp:69</code></td></tr>
+    <tr><td><code>Header</code> / <code>BottomBar</code></td><td>页头 <code>[图标][标题][Padding][右侧区]</code>；底栏 = 左提示 + Padding + 右状态</td><td><code>header.cpp:49</code>、<code>bottom_bar.cpp:9</code></td></tr>
+    <tr><td><code>HintsBar</code> / <code>HintItemView</code></td><td>把当前焦点的动作渲染成 <code>[按键图标] 说明</code></td><td><code>hints_bar.hpp:21,40</code></td></tr>
+    <tr><td><code>StatusArea</code> / <code>BatteryIcon</code> / <code>WirelessIcon</code></td><td>电池+百分比+网络+时钟；两个图标矢量自绘</td><td><code>status_area.hpp:38,67,92</code></td></tr>
+    <tr><td><code>Sidebar</code> / <code>TabFrame</code>+<code>TabCell</code></td><td>竖排导航（分组分隔线）；横向 tab 栏，内容不销毁</td><td><code>sidebar.hpp:22</code>、<code>tab_frame.hpp:22,52</code></td></tr>
+    <tr><td><code>Pager</code></td><td><b>唯一的非 View 类</b>：页面栈 / 同级换页 + 预加载 + 状态记忆</td><td><code>pager.hpp:58</code></td></tr>
+    <tr><td rowspan="2">Cell 家族</td><td><code>Cell</code> + Detail/Boolean/Radio/Selector/Slider/Input</td><td>列表一行：左标题 + 右内容区，六个变体共用基类</td><td><code>cell.hpp:42,90-268</code></td></tr>
+    <tr><td><code>RecyclerView</code> 等三个 cell</td><td>JSON 可描述的回收列表项（属性表 + 模板实例化 + binder）</td><td><code>recycler_view.hpp:26,58,70</code></td></tr>
+    <tr><td rowspan="4">弹层类</td><td><code>Dialog</code> + Backdrop/Panel</td><td>全屏遮罩 + 面板 + 按钮行，动效播完再摘</td><td><code>dialog.hpp:28,36,58</code></td></tr>
+    <tr><td><code>Dropdown</code> + Popup/Panel/Option</td><td>触发器 + 遮罩 + 锚定弹窗（<code>fitToSpace</code> 自动翻边）</td><td><code>dropdown.hpp:25,50,65,109</code></td></tr>
+    <tr><td><code>EditTextDialog</code> + <code>TextEditModel</code></td><td>IME 文本输入弹窗；<b>编辑逻辑在纯数据模型里</b>，所以能无窗口测</td><td><code>edit_text_dialog.hpp:34,69</code></td></tr>
+    <tr><td><code>Notification(Manager)</code> / <code>FocusRingView</code></td><td>Toast；聚焦流光框（每帧拉当前焦点的 <code>getFocusOutline()</code>）</td><td><code>notification.hpp:27,53</code>、<code>focus_ring_view.hpp:20</code></td></tr>
+    <tr><td rowspan="2">按钮类</td><td><code>Button</code> / <code>SelectorButton</code></td><td>语义按钮（外观与状态全在 JSON）；数值/LIST 选择器，进设置态后钉住焦点</td><td><code>button.hpp:17</code>、<code>selector_button.hpp:37</code></td></tr>
+    <tr><td><code>Slider</code></td><td>滑块，track/fill/knob 三段层按 id 从外观取</td><td><code>slider.hpp:18</code></td></tr>
+    <tr><td rowspan="4">views · 内容/容器</td><td><code>Label</code> / <code>Image</code></td><td>文本（换行/截断/对齐/自研测量缓存）；图片与动图（缩放模式 + 自带纹理所有权）</td><td><code>label.hpp:34</code>、<code>image.hpp:26</code></td></tr>
+    <tr><td><code>ScrollingFrame</code> / <code>HScrollingFrame</code></td><td>滚动：缓动 + 惯性 + 拖拽 + 焦点跟随（两份约 90% 同构，见 §4.2）</td><td><code>scrolling_frame.hpp:30</code>、<code>h_scrolling_frame.hpp:11</code></td></tr>
+    <tr><td><code>Padding</code> / <code>ProgressSpinner</code></td><td>占位挤压（auto + grow=1）；自算旋转四点的转圈</td><td><code>padding.hpp:17</code>、<code>progress_spinner.hpp:14</code></td></tr>
+    <tr><td><code>RecyclerFrame</code> + Cell/Header/DataSource</td><td>虚拟列表：对象池 + 复用标识 + 预取 + 分段 + 列</td><td><code>recycler.hpp:25,67,105,170</code></td></tr>
+    <tr><td rowspan="3">views · 数据/调试</td><td><code>data_source</code> / <code>item_binder</code></td><td>「名字 → 工厂 / 绑定函数」纯数据注册表（不认识 JSON、ImGui）</td><td><code>data_source.hpp:19-38</code>、<code>item_binder.hpp:28</code></td></tr>
+    <tr><td><code>JSONRecyclerCell</code></td><td>用 JSON 模板 + 字段绑定驱动的列表项</td><td><code>json_cell.hpp:31</code></td></tr>
+    <tr><td><code>DebugLayer</code> / <code>DebugLogView</code></td><td>框出全部视图边界 + 类名；日志面板（直接 ImDrawList 画，不为每条日志建 View）</td><td><code>debug_layer.hpp:34</code>、<code>debug_log_view.hpp:43</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p>继承深度控制得很好：主轴 <code>View → Box → AppearanceView</code>，<b>最深 5 层</b>（如 <code>Cell → DetailCell</code>），没有深继承。
+依赖方向在 <code>widgets → views → core</code> 这条链上是<b>严格单向</b>的：<code>grep -rn '#include "bklv/widgets/' bklv/views/</code> 无匹配；
+<code>widgets</code> 只用了 views 的 7 个头（label / padding / scrolling_frame / recycler / item_binder / image / data_source）。
+反过来的反向依赖全部集中在 <code>core</code> 这一个节点上（见 §2.1）。</p>
+
+<h3>3.2 进程级单例清单（库化目标的直接障碍）</h3>
+<p>下面的状态都是函数内 <code>static</code> 或进程级单例，意味着<b>一个进程只能有一个 App / 一套主题 / 一个后端 / 一份注册表</b>：</p>
+<div class="scroll">
+<table>
+  <thead><tr><th>状态</th><th>位置</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr><td>事件总线</td><td><code>core/event.cpp:63</code> <code>static EventBus bus</code></td><td>跨 App 串台；测试之间需要显式清理</td></tr>
+    <tr><td>输入管理器</td><td><code>core/input.cpp:25</code> <code>static InputManager manager</code></td><td>焦点/模态栈是进程级；多窗口不可能</td></tr>
+    <tr><td>纹理仓库 + 解码队列 + 预算</td><td><code>core/graphics.cpp</code>、<code>core/decode_queue.cpp</code> 全局自由函数</td><td>后端切换要 <code>shutdownTextureStore()</code> 手工收尾</td></tr>
+    <tr><td>图层 / 视图类型 / 数据源 / 绑定器注册表</td><td><code>compile/layer_registry.cpp</code>、<code>compile/view_parse.cpp:39</code>、<code>views/data_source.cpp:24</code>、<code>views/item_binder.cpp:24</code></td><td>宿主程序无法为“自己的这套”注册并隔离</td></tr>
+    <tr><td>Yoga 配置、字体与图标字形缓存、Ticking 注册表</td><td><code>core/view.cpp:24</code>、<code>core/font.cpp:178</code>、<code>core/icon_font.cpp:152</code>、<code>core/time.cpp:24</code></td><td>正常（性能缓存），但生命周期与 App 不绑定</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="review">4. 评审意见</h2>
+
+<h3>4.1 做得好的地方（按价值排序，均附证据）</h3>
+
+<table>
+  <thead><tr><th>#</th><th>优点</th><th>证据</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><b>抽象边界在“绝大多数地方”真的成立</b>，而且是被机械验证过的：<code>core</code>+<code>views</code>（不含 <code>app.cpp</code>）只有 19 处 <code>ImGui::</code> 调用点，且无窗口会走到的路径都带 <code>GetCurrentContext()</code> 保护（无窗口测试因此能跑）；唯一没加保护的是 <code>core/gradient.cpp:60</code>，但它要求调用方先传入有效 <code>ImDrawList</code>，实际等价于已有上下文。<code>RenderBackend</code> 的 11 个纯虚方法三个后端都实现，可选能力用“默认返回 false”表达而不是崩溃（代价见 §4.2 的 readPixels 一行）。</td>
+      <td><code>core/graphics.hpp:51-129</code>；<code>core/time.cpp:14</code>、<code>views/scrolling_frame.cpp:184</code>、<code>views/label.cpp:32</code>、<code>views/debug_log_view.cpp:192</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><b>“结构归 JSON、行为归 C++”这条线守得很干净</b>，而且没有滑向“用 JSON 写解释器”。语义绘制（文本换行、进度弧、滑块轨道）留在 <code>drawCustomLayer</code>，装饰层（底/边框/阴影/玻璃/渐变）才进 JSON。这个边界判断在同类项目里很少见。</td>
+      <td><code>core/appearance.hpp:76-125</code>（层字段）；<code>AGENTS.md</code>「装饰层走 JSON，语义绘制留 C++」</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><b>扩展机制有两级，且配了实物证据与设计说明</b>：图层用注册表（唯一事实来源，设计器菜单/键校验/层序全从它读），视图类型用注册表，数据源/绑定器也是注册表。第三方样例明确写了“不改 bklv 任何文件”。</td>
+      <td><code>compile/layer_registry.hpp:1-122</code>；<code>demo/contrib/stripe_layer.cpp:1-108</code>；<code>widgets/widget_types.cpp:21-56</code>；设计器的加层菜单/中文名/候选键也直接读注册表（<code>designer/ui/designer_window.cpp:4052-4062,4223-4231</code>，注释明确“取并集，不替换”）—— 这是“唯一事实来源”真正兑现的地方</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><b>测试策略与工程约束是成体系的，不是零散补测</b>：59 个无窗口可执行 + 双后端各跑一遍 + 命名规范机械检查 + 零警告门禁，全部由一个 <code>check.sh</code> 串起来且“以退出码为准”（脚本注释里明确写了为什么不用 grep 判断构建结果）。</td>
+      <td><code>scripts/check.sh:1-60</code>；<code>scripts/check_naming.py</code>；<code>tests/</code> 61 文件</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><b>踩过的坑被写进代码与文档，而不是靠口口相传</b>。<code>AGENTS.md</code>（85 KB）逐条记录了成因、现象与验收方式（如 Vulkan 必须选 UNORM 否则整屏发灰、Yoga 不能 <code>add_subdirectory</code>、OBJECT 库目标文件不透过 INTERFACE 传递）。这类知识资产是本项目最贵的部分。</td>
+      <td><code>AGENTS.md</code>；<code>bklv/CMakeLists.txt:423-441</code>（源码清单漏项在 configure 期报错）</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><b>性能敏感路径是被实测约束过的</b>：延迟布局把静态页面从 60 次/秒降到 0 次；<code>DebugLogView</code> 的绘制开销有硬指标（30 条与 1000 条日志顶点数/命令数完全相同，一帧约 2 微秒），且由测试钉住。</td>
+      <td><code>core/app.cpp:349-383</code>；<code>tests/log_view_draw_test.cpp</code>；<code>AGENTS.md</code>「日志面板四条约束」</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><b>依赖方向与继承形状本身是健康的</b>：<code>widgets → views → core</code> 严格单向（<code>views</code> 里没有一处 include widgets）；继承最深 5 层、无深继承；<code>Pager</code> 是唯一“控制器不是视图”的例外且理由明确。反向依赖只集中在 <code>core</code> 这唯一一个节点，因此治理面很小。<b>命名规范有机械校验</b>：<code>scripts/check_naming.py</code> 实跑输出“命名检查：204 个文件全部符合约定”，枚举抽查全为 UPPER_SNAKE。</td>
+      <td><code>grep -rn '#include "bklv/widgets/' bklv/views/</code> 无匹配；<code>shell.hpp:23-42</code>、<code>cell.hpp:99-103</code>、<code>pager.hpp:41-45</code>；<code>scripts/check_naming.py</code></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><b>失败路径设计得比多数库认真</b>：解析错误返回 <code>nullptr</code> + 日志而不 fatal；未知属性只警告并提示最接近的名字；可选解码器缺子模块不影响 configure，只返回一句人话错误。</td>
+      <td><code>core/json_view.hpp:20-22</code>；<code>compile/layer_registry.hpp:16</code>；<code>core/image_decoder.hpp</code> 与 README「两个可选解码器都不许让配置失败」</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>4.2 风险与问题</h3>
+
+<h4>P0 —— 与“可被外部项目引入”的库化目标冲突</h4>
+<table>
+  <thead><tr><th>问题</th><th>证据</th><th>为什么是 P0</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>分层没有机械保障，已存在 2 组真实环</b></td>
+      <td>①<code>core → widgets</code>（<code>core/app.cpp:10,17,18</code>）；②<code>core → compile</code>（<code>core/appearance.cpp:17-24</code>）；③<code>core ⇄ backends</code>（<code>core/glass/glass_service.hpp:17,20</code> ↔ <code>backends/gl_glass.hpp:14-17</code>）。全部源文件编进同一个 OBJECT 库（<code>bklv/CMakeLists.txt:315-421</code>）。</td>
+      <td>“core / views / widgets / compile / glass”目前只是<b>目录命名</b>，不是可编译单元。任何重构都无法靠构建系统兜底；新贡献者也无法从构建文件里读出分层意图。</td>
+    </tr>
+    <tr>
+      <td><b>进程级单例遍布核心</b></td>
+      <td>见 §3.1 表：<code>EventBus</code>、<code>InputManager</code>、纹理仓库、四个注册表、Yoga 配置。</td>
+      <td>宿主程序（例如一个已有自己 ImGui 上下文的模拟器）接入时，无法隔离状态、无法开两个实例、测试之间要手工清理。<code>TODO.md</code> P0 想要的 <code>find_package</code> 即使做了，这一层仍会挡住真实接入。</td>
+    </tr>
+    <tr>
+      <td><b>没有 <code>install()</code> / <code>find_package()</code>，<code>bklv::bklv</code> 是 INTERFACE 目标</b></td>
+      <td><code>bklv/CMakeLists.txt:312</code> 注释自认“见 TODO.md 的 P0”；<code>grep install( CMakeLists.txt bklv/CMakeLists.txt</code> 无结果。</td>
+      <td>库化是 TODO 自己列的“做别的事之前的前提”，但当前所有外部接入只能靠拷贝目录 + <code>add_subdirectory</code>。</td>
+    </tr>
+    <tr>
+      <td><b>随包发布的默认主题依赖 demo 代码</b>（已核验）</td>
+      <td><code>resources/theme/default/theme.json:98</code> 登记了 <code>base/stripe_demo.json</code>，该文件写 <code>"op": "stripe"</code>；这个 op <b>不属于库</b>，只由 <code>demo/contrib/stripe_layer.cpp:91</code> 注册；测试另有一份桩 <code>tests/test_contrib.hpp:19</code>，<code>tests/theme_test.cpp:41</code> 与 <code>tests/designer_core_test.cpp:81</code> 都必须先注册它才能通过。而未知 op 是<b>硬错误</b>：<code>compile/appearance_layer_meta.cpp:76-80</code> <code>return false</code>。</td>
+      <td>库的随包资源依赖了 demo 的实现，并且存在<b>两份会漂移的 stripe 解析</b>（demo 读 <code>angle/lineWidth/gap</code>，测试桩只认 <code>fill</code>）。任何不带 demo 注册代码的宿主（设计器也没注册）编译这份外观都会失败 —— 这直接违反“库自包含”的前提。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>P1 —— 结构性问题，影响可维护性</h4>
+<table>
+  <thead><tr><th>问题</th><th>证据</th><th>影响</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>上帝类：<code>View</code> / <code>Shell</code> / <code>InputManager</code></b></td>
+      <td><code>core/view.hpp</code> 479 行 / 约 70 个公开方法，覆盖布局、外观、焦点、动作、手势、变换、属性表、过渡钩子；<code>widgets/shell.hpp</code> 333 行 / 约 60 个方法，同时是图层容器 + 焦点框所有者 + 玻璃配置者 + 对话框管理器 + 导航栈 + 背景动画器 + 角落定位工具；<code>core/input.cpp</code> 1056 行。</td>
+      <td><code>View</code> 的宽度是 borealis 的既定代价（可接受），但 <code>Shell</code> 把六件不相关的事塞进一个类，是<b>本项目自己长出来的</b>，拆分收益高、风险低。</td>
+    </tr>
+    <tr>
+      <td><b>扩展点“半开”：<code>AppearanceLayer</code> 没有扩展参数槽</b></td>
+      <td><code>demo/contrib/stripe_layer.cpp:38-47</code> 注释直言“这一层暂时借用库里现成的两个通用字段：feather 存角度、spread 存线宽”；<code>core/appearance.hpp:52-69</code> 的 <code>AppearanceProp</code> 是固定枚举，<code>ALL_PROPS</code> 长度推导 <code>PROP_COUNT</code>。</td>
+      <td>第三方能注册图层，但<b>不能给自己的层定义可动画、可被状态引用的参数</b>，只能借字段或写死。同时内置 6 种仍是 <code>switch(op)</code>（<code>widgets/appearance_view.cpp:479-600</code>），只有 <code>EXTENSION</code> 分支走注册表 —— 注册表声称的“唯一事实来源”对内置层并未完全兑现。</td>
+    </tr>
+    <tr>
+      <td><b>README 的结构说明漏了 41% 的库代码</b></td>
+      <td>README「仓库里有什么」表与「分层」图只有 core / views / backends / platforms；<code>widgets/</code>（53 文件）、<code>compile/</code>（18）未出现。</td>
+      <td>文档是外部读者的唯一入口，当前模型与实际结构不一致；而 <code>AGENTS.md</code> 里这层信息是有的 —— 属于“知识在，但放错了读者面前”。</td>
+    </tr>
+    <tr>
+      <td><b>主题清单 <code>files[]</code> 缺少与 CMake 同级的校验</b></td>
+      <td><code>tests/theme_test.cpp:285-290</code> 注释写明“名单直接用主题清单（files[]），不再手抄” —— 测试遍历的是清单本身，所以<b>存在但漏登记</b>的文件既不会被测到，运行时也会静默回退；<code>AGENTS.md</code> 已记录“少写 <code>.json</code> 后缀会以『主题里没有控件外观』的形式静默回退”。</td>
+      <td>CMake 侧同类风险已经用 configure 期检查解决（<code>bklv/CMakeLists.txt:423-441</code>），主题侧还没有对应物。加一个“目录里的 <code>.json</code> 是否都在 <code>files[]</code> 中”的测试即可闭环。</td>
+    </tr>
+    <tr>
+      <td><b>输入读上一帧命中结果</b></td>
+      <td><code>core/app.cpp:392-393</code> 注释：“输入与焦点（必须在绘制前，读取的是上一帧的命中结果）”。</td>
+      <td>理论上存在一帧输入延迟。当前观察不到问题（命中基于布局结果，而布局在输入之前已更新），但这是隐性耦合：一旦有人把 <code>InputManager::update()</code> 挪到绘制后或改成两遍，就会变成真实的延迟 bug。至少应有测试钉住输入→响应同帧生效。</td>
+    </tr>
+    <tr>
+      <td><b>液态玻璃破坏了公开头的“不认图形 API”承诺</b>（已核验）</td>
+      <td><code>core/glass/glass_service.hpp:17,20</code> 无条件 include <code>gl_glass.hpp</code>、VK 构建再 include <code>vk_glass.hpp</code>；<code>:91,94</code> 把两个后端作为<b>值成员</b>持有。而 <code>vk_glass.hpp:24</code> 是实打实的 <code>#include &lt;vulkan/vulkan.h&gt;</code>。依赖链：<code>bklv/bklv.hpp:71</code> → <code>widgets/shell.hpp:5</code> → <code>glass_service.hpp:20</code> → <code>vk_glass.hpp:24</code>。第二处：<code>glass_service.cpp:30,80,99,204</code> 用全局 <code>activeVulkanBackend()</code> 选路，该指针在 <code>vulkan_backend.cpp:116</code> 由构造函数置位，<b>析构函数（<code>:124-190</code>）从不置回 nullptr</b>。</td>
+      <td>① VK 构建下<b>任何</b> include 公开伞头 <code>bklv.hpp</code> 的翻译单元都会被拖进 Vulkan 头（<code>demo/app/ui.cpp:3</code> 就是）；② 服务层无法脱离具体后端编译，玻璃也就无法作为可选组件裁剪；③ 指针不清零是潜在 use-after-free，当前只是靠“App 的清理顺序恰好把玻璃放在设备之前”侥幸不触发。</td>
+    </tr>
+    <tr>
+      <td><b>横向滚动器有空指针解引用</b>（已核验，可直接修）</td>
+      <td><code>views/h_scrolling_frame.cpp:114-116</code>：第 114 行只判 <code>if (this->scrollingEnabled)</code>，116 行直接 <code>io->MouseDown[0]</code>；<code>io</code> 来自第 83 行 <code>GetCurrentContext() != nullptr ? &amp;ImGui::GetIO() : nullptr</code>，可以是 <code>nullptr</code>。对照纵向那份 <code>views/scrolling_frame.cpp:218</code> 写的是 <code>if (io != nullptr &amp;&amp; this->scrollingEnabled)</code> —— 判断在复制粘贴时丢了。而且 <code>tests/</code> 里没有 HScrollingFrame 的任何测试。</td>
+      <td>无 ImGui 上下文时（无窗口测试 / 宿主程序）只要 <code>scrollingEnabled</code> 为真就崩。这正是 AGENTS.md 记录“先后踩过三次”的那类崩溃点，说明该约定目前只靠自觉、没有测试兜底。</td>
+    </tr>
+    <tr>
+      <td><b>两组高重复实现，且已因复制粘贴产生 bug</b></td>
+      <td><code>views/scrolling_frame.cpp:169-305</code> 与 <code>views/h_scrolling_frame.cpp:74-190</code> 约 90% 逐行同构（4 个常量各写一份，值完全相同）；<code>widgets/sidebar.cpp:74-101,211-219</code> 与 <code>widgets/tab_frame.cpp:80-104,113-126</code> 是同一段“加格子 + 选中态”逻辑；<code>widgets/layer_draw_*.cpp</code> 与 <code>appearance_view.cpp:477</code> 有 6 处逐字相同的 <code>scaleAlpha</code>，而库里早有 <code>colorWithAlpha()</code>（<code>core/geometry.hpp:137</code>）。</td>
+      <td>上一个问题就是这组重复的直接产物。修一处必须记得改另一处，是典型的技术债利滚利。</td>
+    </tr>
+    <tr>
+      <td><b>测试覆盖有明显盲区，且测试构建默认关闭</b></td>
+      <td>无直接覆盖：三个后端（GL/VK/GLES3）、<code>platforms/*</code>、<code>gamepad</code>、<code>ui_scale</code>、<code>time</code>、<code>h_scrolling_frame</code>、<code>progress_spinner</code>、<code>focus_ring_view</code>、<code>layer_draw_*</code>；<code>demo/</code> 的 15 个页面与 <code>designer/ui/</code> 全部无测试。另：59 个测试可执行<b>每个都链接 <code>designer_core</code></b>（根 <code>CMakeLists.txt:344-346</code>），测试目标默认 OFF，要显式 <code>-DBKLV_BUILD_TESTS=ON</code>。</td>
+      <td>测试集中在“能无窗口跑的纯逻辑与布局/焦点/解析”，这本身是正确取舍；但渲染路径与两端的 UI 层完全靠人工验收，“零警告 + 59 个测试通过”给不了这两层的信心。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>P2 —— 一致性与体量</h4>
+<table>
+  <thead><tr><th>问题</th><th>证据</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>巨型文件待拆</td>
+      <td><code>backends/vulkan_backend.cpp</code> 1837 行；<code>core/appearance.cpp</code> 1353；<code>core/view.cpp</code> 1212；<code>designer/ui/designer_window.cpp</code> 6117（占设计器 53%）</td>
+      <td>Vulkan 后端与设计器主窗口都是“一件事但步骤极长”，可按阶段/面板拆文件而不改接口。设计器 6117 行的单文件是最该先动的。</td>
+    </tr>
+    <tr>
+      <td>两套并行的“类型知识”</td>
+      <td><code>compile/view_parse.cpp:180-183</code> 按字符串比较 <code>"Label"</code>/<code>"Image"</code> 决定主属性；<code>widgets/widget_types.cpp</code> 又注册一份类型名。</td>
+      <td>视图类型<b>确实</b>是注册表（<code>view_parse.cpp:38-42,403-406</code>，分发在 <code>:271-277</code>），但价值只有 <code>std::function&lt;View*()&gt;</code> 一个构造器，<b>没有 keys / label / order 这些元数据</b>，所以：① <code>primaryBindAttribute</code> 只能写死 if 链，第三方视图类型没有默认绑定属性、必须显式写 <code>bindTo</code>（<code>view_parse.cpp:317-322</code> 报错）；② 设计器拿不到视图类型元数据。图层侧已用注册表消灭了这类散落（<code>layer_registry.hpp:5-10</code> 记录了当年的四处漂移），视图侧只走到一半。</td>
+    </tr>
+    <tr>
+      <td>新增控件的改动点数偏多</td>
+      <td>一个控件要动：<code>bklv/CMakeLists.txt</code> 源列表、<code>widgets/widget_types.cpp</code> 注册、主题 <code>base/</code>+<code>widget/</code> 两个 JSON、<code>theme.json</code> 的 <code>files[]</code>、<code>tests/</code>；若涉及外观层字段还要动 <code>core/appearance.hpp</code>、<code>compile/appearance_layer_fields.cpp</code>、<code>designer/core/appearance_doc.cpp</code>。</td>
+      <td>这是“确定性清单”策略的必然成本（换来的是 romfs 上可用、无目录扫描）。可在 <code>scripts/</code> 加一个 <code>new_widget.py</code> 脚手架把这批改动变成一条命令。</td>
+    </tr>
+    <tr>
+      <td>三后端能力不对等且靠运行时判定</td>
+      <td>玻璃只有 GL 与 Vulkan 实现（<code>backends/gl_glass.*</code>、<code>vk_glass.*</code>），GLES3 没有；<code>Shell::getGlassCapabilities()</code> / <code>isGlassSupported()</code> 因此必须运行时问。</td>
+      <td>本身合理，但与 P1 的“扩展点半开”叠加后，Switch 上玻璃相关 UI 只能靠查询屏蔽，容易漏。</td>
+    </tr>
+    <tr>
+      <td>死代码：custom 层的原地兜底永不执行</td>
+      <td><code>widgets/appearance_view.cpp:601-604</code>：<code>break;</code>（注释“没有钩子时也要断住”）之后紧跟的 <code>this->drawCustomLayer(...)</code> 不可达。custom 层现在完全依赖注册表钩子（<code>layer_draw_custom.cpp:13</code> 是唯一实现），注册失败即静默不画。</td>
+      <td>已核验。注释描述的行为与实际行为不一致，是“注释比代码更可信”的典型反例。</td>
+    </tr>
+    <tr>
+      <td>代码里写死的尺寸/颜色违反本项目自己的约定</td>
+      <td><code>views/progress_spinner.cpp:13-14</code>（32×32，无主题键、不随 uiScale）；<code>views/scrolling_frame.cpp:35</code> <code>setPadding(5,15,5,15)</code>；<code>widgets/status_area.cpp:245,252</code> <code>setMarginTop(8)</code>；<code>views/json_cell.cpp:52</code> 字面色值 <code>"#30568c"</code>/<code>"#262a32"</code>（全库唯一一处）；<code>widgets/sidebar.cpp:118</code>、<code>widgets/cell.cpp:305-308</code>、<code>widgets/slider.cpp:128,130</code>。另有一处更隐蔽：<code>ThemeData::number()</code> 在 key 完全找不到时<b>直接返回 fallback、不乘 <code>getUiScale()</code></b>（<code>compile/theme_parse.cpp:433-434</code>），所以 <code>theme.number("metric.x", 52.0f)</code> 这类兜底在非 720p 画布上不缩放。</td>
+      <td>主题约定是“尺寸/颜色/圆角一律从 JSON 来”，这些例外使换肤与缩放对它们无效。数量不多（约 10 处），可一次性收敛。</td>
+    </tr>
+    <tr>
+      <td>调试与类型信息缺口</td>
+      <td>64 个类声明里 <b>9 个没重写 <code>getClassString()</code></b>：<code>Shell</code>、<code>AppearanceView</code>、<code>FocusRingView</code>、<code>RecyclerView</code>、<code>RecyclerItemCell</code>、<code>RecyclerHeaderCell</code>、<code>JSONRecyclerCell</code>、<code>RecyclerCell</code>、<code>RecyclerSectionHeader</code>；默认实现返回 <code>"bklv::View"</code>（<code>core/view.cpp:472-475</code>）。</td>
+      <td>调试层（<code>DebugLayer</code> 框边界 + 类名）对最复杂的那个类只显示基类名，恰好削弱了排查巨型类树结构时最需要的工具。</td>
+    </tr>
+    <tr>
+      <td>弹层机制三份实现</td>
+      <td>Dialog 用 <code>DialogBackdrop</code>（<code>dialog.cpp:13-14,71</code>）；Dropdown 手搓绝对定位 Box 当遮罩（<code>dropdown.cpp:104-110</code>）；EditTextDialog 用裸 <code>AppearanceView("base/dialog_backdrop")</code>（<code>edit_text_dialog.cpp:314</code>）。“动效播完再 popOverlay”的时机判断也是三份（<code>dialog.cpp:165</code>、<code>dropdown.cpp:226</code>、<code>edit_text_dialog.cpp:540</code>）。</td>
+      <td>这类“同一约定写三遍”的地方最容易出现“改了两个、漏了第三个”。</td>
+    </tr>
+    <tr>
+      <td>抽象接口有一个真实空洞：<code>readPixels</code></td>
+      <td>3 个后端里只有 <code>opengl_backend.cpp:107</code> 实现了它；<code>vulkan_backend.cpp</code> 与 <code>gles3_backend.cpp</code> 都用默认实现返回 false（<code>core/graphics.hpp:92-101</code>）。于是 <code>core/app.cpp:217</code> 直接失败 —— <code>App::requestScreenshot</code> 在 Vulkan 与 Switch 上是空操作，设计器的截图自查（<code>designer/main.cpp:212</code>）只在桌面 GL 可用。</td>
+      <td>降级方式本身是对的（返回 false + 一行日志，不崩），但“能不能截图”这件事目前没有写进任何接口文档，只有读代码才知道。</td>
+    </tr>
+    <tr>
+      <td>同一份知识存在第 3、4、5 份表</td>
+      <td>内置 op 的“名字 → 枚举”写在 <code>compile/appearance_layer_meta.cpp:13-25</code> 的 if 链、<code>layer_registry.cpp:104-117</code> 的 switch、<code>:168-188</code> 的注册表条目，键表另在 <code>appearance_layer_fields.cpp:19-52</code>（不读注册表的 <code>keys</code>）；<b>层序有两张表</b>：<code>layer_registry.cpp:130-144</code> 与 <code>core/appearance.cpp:129-145</code>（后者把 SHADOW=0/GLASS=1 硬编码）。后端名也有第二处：<code>core/graphics.cpp:268-278</code> 的 <code>getGraphicsBackendName()</code> 与实际自报名已经不一致（GL 下 <code>"OpenGL 3.2 Core"</code> vs <code>opengl_backend.hpp:20</code> 的 <code>"OpenGL"</code>，同一次运行会出现两个名字）。</td>
+      <td>加一个<b>内置</b> op 要改 5-6 处，加一个<b>扩展</b> op 改 0 处库文件 —— 成本差一个数量级，说明注册表对第三方兑现了、对内置尚未兑现。</td>
+    </tr>
+    <tr>
+      <td>平台层后端创建时机不一致</td>
+      <td>SDL3 在构造函数里建后端（<code>platforms/sdl3_platform.cpp:27</code>），Switch 在 <code>createWindow</code> 里建（<code>platforms/switch_platform.cpp:106</code>，<code>createBackend()</code> 定义在 <code>:60</code>）。同一接口两种生命周期；Switch 路径下 <code>createWindow</code> 重入会重建后端。</td>
+      <td>平台层本身最干净（无一行 GL/VK 调用），这条是它唯一的不一致点。</td>
+    </tr>
+    <tr>
+      <td>构建中后端归属不可见</td>
+      <td><code>bklv/CMakeLists.txt:324-327</code> 把 <code>gl_glass.cpp</code> / <code>vk_glass.cpp</code> 等 4 个后端专属文件<b>无条件</b>编进 <code>BKLV_CORE_SOURCES</code>（GL 构建下 <code>vk_glass.cpp</code> 整体被 <code>#if</code> 包住 = 空 TU）；Switch 脚本又要手列一遍（<code>scripts/build_switch.sh:144-146</code>）。另：GLES3 的玻璃复用的是桌面 GL 的实现，其中 READ/DRAW framebuffer 绑定语义在 ES3 里本不保证，Switch 能编过是因为 devkitPro 的 <code>GLES3/gl3.h</code> 恰好定义了那几个枚举。</td>
+      <td>“一个后端一个构建目录”的约定在源码清单这一层看不出来；GLES3 那条属于依赖工具链巧合，换工具链或升级头文件就会断。</td>
+    </tr>
+    <tr>
+      <td>命名/包含风格有两处不一致</td>
+      <td>同一概念两个类名：<code>views/JSONRecyclerCell</code>（<code>json_cell.hpp:31</code>）与 <code>widgets/RecyclerItemCell</code>（<code>recycler_view.hpp:26</code>）；<code>imgui.h</code> 的 include 混用两种写法（<code>bklv/3rd/imgui/imgui.h</code> 6 处 vs 裸 <code>"imgui.h"</code>，如 <code>views/label.hpp:15</code>）。</td>
+      <td><code>scripts/check_naming.py</code> 报“204 个文件全部符合约定”（已实跑），说明这类问题在现有检查范围之外 —— 属人工统一即可。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>4.3 建议的改进顺序</h3>
+<div class="scroll">
+<table>
+  <thead><tr><th>顺序</th><th>动作</th><th>理由</th><th>工作量</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td><b>先修已核验的四个具体缺陷</b>：① <code>h_scrolling_frame.cpp:114</code> 补上 <code>io != nullptr</code> 判断（一行）；② <code>appearance_view.cpp:601-604</code> 的死代码要么删、要么把兜底挪到 <code>break</code> 之前；③ <code>sidebar.cpp:141</code> 与 <code>layer_draw_glass.cpp:66</code> 的 <code>GetIO()</code> 补上下文判空；④ <code>button.cpp:79</code> 的共享 <code>static clock</code> 与 <code>ImGui::GetTime()</code> 统一成一个时间源。顺手把 custom 层的兜底补一条测试。</td><td>都是几行的改动，风险极低，且 ① 是真实崩溃点。先做这批可以立刻让“已核验”清单归零。</td><td>S</td></tr>
+    <tr><td>1</td><td><b>加一个依赖方向检查脚本</b>（<code>scripts/check_layers.py</code>），把图 1 的红色边写成禁止规则，接进 <code>check.sh</code>；先只做“禁止新增”，允许存量 5 条以白名单形式存在。</td><td>成本最低、收益最直接：把“分层”从约定变成门禁，且能阻止问题继续增长。与既有 <code>check_naming.py</code> 同一套路，不引入新概念。</td><td>S</td></tr>
+    <tr><td>2</td><td><b>消除 <code>core ⇄ backends</code>（玻璃）</b>：在 <code>RenderBackend</code> 上开一个可选能力接口（返回 <code>GlassEffect*</code>，默认 <code>nullptr</code>），<code>core/glass/</code> 只依赖该接口，两个后端在自己的 <code>createBackend()</code> 路径里注入实现。</td><td>这是唯一穿刺框架主体的抽象，且它已经造成了公开头污染（VK 构建下 <code>&lt;vulkan/vulkan.h&gt;</code> 会进每个使用方）。做法：glass 侧定义纯虚 <code>GlassBackend</code>（签名照抄现成的 <code>gl_glass.hpp:34-46</code>），服务层只持指针，由各平台的 <code>createBackend()</code> 注册实现，同时删掉 <code>activeVulkanBackend()</code> 这个全局。修好后“上层不认图形 API”才没有例外，能力差异（Vulkan 不做折射/色散）也变成接口查询而不是编译期分支。</td><td>M</td></tr>
+    <tr><td>3</td><td><b>拆分 <code>Shell</code></b>：把焦点框配置、玻璃配置（对外开关）、角落定位工具、背景动画各自挪出，<code>Shell</code> 只留图层容器 + 内容栈 + 弹窗。</td><td>六件不相关的事挤在一个类里，是本项目自产的最大单点复杂度；拆完 <code>widgets/</code> 的可读性提升最明显。</td><td>M</td></tr>
+    <tr><td>4</td><td><b>主题 <code>files[]</code> 补一条反向校验测试</b>：遍历主题目录，断言每个 <code>.json</code> 都在 <code>files[]</code> 里（或对未登记项显式放行）。</td><td>把 AGENTS.md 里已知的“静默回退”陷阱闭环，与 CMake 侧已有的清单检查对齐。</td><td>S</td></tr>
+    <tr><td>5</td><td><b>为单例补生命周期接口</b>：至少让 <code>EventBus</code>、<code>InputManager</code>、纹理仓库与四个注册表能被显式 reset / 绑定到 App 实例；注册表可先做成“可传入实例”而不强求去掉全局。</td><td>这是通往 <code>find_package</code> 与“被宿主程序嵌入”的必经之路；先做“可重置”比一步到“可多实例”现实得多。</td><td>L</td></tr>
+    <tr><td>6</td><td><b>更新 README 结构说明</b>：补上 <code>widgets/</code>、<code>compile/</code> 两层与依赖方向（可直接引用本文图 1）。</td><td>零风险、立竿见影，让新读者第一眼看到的结构与仓库一致。</td><td>S</td></tr>
+    <tr><td>7</td><td>给 <code>AppearanceLayer</code> 加扩展参数槽（按名字索引的小 map 或 <code>extra[]</code>），并把内置 6 种也改成从注册表取绘制钩子。</td><td>让注册表真正成为“唯一事实来源”，第三方层不用再借 <code>feather</code>/<code>spread</code> 存自己的参数。</td><td>M-L</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4.4 对 demo 与 designer 的评价</h3>
+<div class="grid g2">
+  <div class="card">
+    <h4>demo —— 合格的“能力总览”，但承担了部分库职责</h4>
+    <p>结构清晰：<code>demo_app.cpp</code> 负责外壳组装（Shell 四层 + Pager 懒加载 + Sidebar 导航 + Header/BottomBar），页面由 <code>Pager::setPageFactory</code> 注册成<b>工厂</b>（切页现建、旧页现删，见 <code>demo/app/pages.hpp:1-13</code>），<code>pages/</code> 每页一个 <code>.cpp</code>（共 15 页），<code>ui.cpp</code> 是排版小工具（<code>makeText/makeHint/…</code>），<code>contrib/</code> 放第三方扩展样例（<code>stripe_layer.cpp</code>）。<code>main.cpp</code> 只有 44 行，是很好的接入示范。
+    Tab 导航（<code>TabFrame</code>/<code>TabCell</code>）本身是<b>库里的控件</b>，demo 只在导航页与基础控件页演示它 —— 这一点分层是干净的。</p>
+    <p><b>问题</b>：页头/底栏的折叠补间留在 demo（<code>demo/app/demo_app.cpp:343-351</code> 的 <code>headerAnim</code>/<code>footerAnim</code> + 逐帧 <code>App::requestLayout()</code>），<code>AGENTS.md</code> 明确写“库侧不再提供”——这是有意决定，但结果是任何想复现“顶栏可折叠外壳”的项目都必须抄这段代码。建议把“外壳栏折叠动画 + 内容避让”收进库（<code>Shell</code> 已经有 insets 接口，缺的只是补间），demo 只留装配。</p>
+  </div>
+  <div class="card">
+    <h4>designer —— 定位正确，但体量失衡</h4>
+    <p>分层是对的：<code>designer/core/</code>（逻辑层，不含界面代码，可由 <code>tests/designer_core_test.cpp</code> 无窗口测）+ <code>ui/</code>（ImGui 面板）+ <code>glass/</code> + <code>mockup/</code>。用 ImGui 做编辑器界面、用 bklv 真实视图做预览，是这类工具的正确技术选型（编辑器 UI 与产品 UI 需求完全不同）。</p>
+    <p><b>问题</b>：<code>ui/designer_window.cpp</code> <b>6117 行 / 77 个方法 / 977 处 <code>ImGui::</code> 调用 / 头文件 234 个成员</b>，占设计器代码 53%；其中 5 个函数就占 41%（<code>drawProps</code> 724 行、<code>drawModals</code> 644、<code>drawPreview</code> 428、<code>draw()</code> 348、<code>drawTree</code> 347）。它是标准的 God Object，且 <code>ui/</code> 层零测试（<code>designer_core_test.cpp</code> 只覆盖 <code>core/</code> 的 16 个文件）。逻辑/界面分层已经做对了，下一步应按面板拆文件（属性检查器 / 预览 / 文件树 / 弹窗），否则这个文件会持续吸引“顺手加一个按钮”的改动。</p>
+    <p>另外两点：<code>designer/main.cpp</code> 里有约 30 处 <code>getenv</code> 自查开关（<code>:44-243</code>）—— 与项目“demo 里不要加环境变量调试开关”的约定方向相反，虽在 designer 上仍属同一条理由；<code>mockup/index.html</code> 是 HTML 样板房、<b>不进构建</b>，不会造成污染。demo 与 designer <b>零互相 include</b>，两端都只依赖库，这条边界是干净的。</p>
+  </div>
+</div>
+
+<h2 id="appendix">5. 附录 · 证据与复现方式</h2>
+<p>本文所有依赖边与规模数字由只读脚本得出，可复现：</p>
+<ul class="tight">
+  <li>目录规模：<code>find bklv/&lt;dir&gt; -name '*.cpp' -o -name '*.hpp' | wc -l</code>，行数用 <code>wc -l</code> 求和</li>
+  <li>依赖边：解析 <code>#include "bklv/..."</code>，按 <code>bklv/&lt;子目录&gt;</code> 归并成 dir→dir 计数（结果见 §2.1 表）</li>
+  <li>抽象穿刺：<code>grep -rn '#include "bklv/\(backends\|platforms\|widgets\|compile\)' bklv/core bklv/glass</code></li>
+  <li>ImGui 全局调用：<code>grep -rn 'ImGui::' bklv/core bklv/views</code>（合计 6 处非 <code>app.cpp</code> 调用点）</li>
+  <li>单例：<code>grep -rn '^    static \|^        static ' bklv/core/*.cpp bklv/views/*.cpp bklv/widgets/*.cpp</code></li>
+  <li>头文件级环检测：对 102 个 <code>bklv/**.hpp</code> 建 include 图做 DFS 染色 → 无跨模块环（详见 §2.1）</li>
+  <li>后端能力矩阵：<code>grep -n 'readPixels\|updateTexture' bklv/backends/*.cpp</code> → 仅 <code>opengl_backend.cpp:107</code> 覆盖 <code>readPixels</code></li>
+  <li>公开头污染链：<code>grep -n 'glass_service.hpp\|shell.hpp' bklv/bklv.hpp</code> + <code>grep -n 'vulkan.h' bklv/backends/vk_glass.hpp</code></li>
+  <li>RTTI：<code>grep -rn 'dynamic_cast\|typeid' bklv demo designer</code> → 只在注释里出现，实现零使用（Switch <code>-fno-rtti</code> 约束被遵守）</li>
+</ul>
+
+<hr>
+<p class="sub">本页零外部依赖，可离线打开。配图与表格均由内联 SVG / HTML 手写，未使用 CDN 资源。
+相关文档：<a href="../README.md">README</a> · <a href="README.md">文档索引</a> · <a href="../TODO.md">TODO</a> · <a href="../AGENTS.md">AGENTS.md</a> · <a href="uml.html">uml.html（类图/包图）</a> · <a href="bklv-api.md">bklv-api.md</a> · <a href="json-syntax.md">json-syntax.md</a></p>
+
+</div>
+</body>
+</html>

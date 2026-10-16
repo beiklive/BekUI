@@ -577,6 +577,21 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   做同一件事），内圈一个顶点都不落 → 后面加的层即使是**半透明底色也不会透出阴影**。
   实现是沿中线描一圈（`PathRect` + `PathStroke`），`shadow::drawSoft(..., cutout)`。
   默认关，按需在 shadow 层写 `"cutout": true`。
+- **`shadow` 的 `inner`**：同一个 `op`、同一个 `fill`，`"inner": true` 就从外投影变成**内阴影**
+  （`shadow::drawInnerSoft`）。四条与"另一种做法"有关的约定：
+  ① **不做成新 op**：它是同一种柔和投影、只是方向朝内；想同时要内外两层写两个 shadow 层即可，
+     而新 op 会牵动 `Op` 枚举 / 注册表 / 文档里的"内置 6 种"口径，收益为零。
+  ② **层序与外投影相反**：外投影吃 `LayerOrder::SHADOW` 档、解析期被提到最前（垫在控件下面）；
+     内阴影画的是**内缘**，被底盖住就等于没画，所以 `sortLayers` 里按"常规内置层"处理，
+     保持 JSON 书写顺序 —— 作者把 `bg` 写在它前面就行。`theme_test` 对两者分别有断言。
+  ③ **内阴影没有方向**：它就是"从边缘向内扩散"的一圈带子（贴内缘最暗、往内渐透），
+     所以 **`offset` 对它无效** —— 别再给它加方向语义（试过 Figma/PS 那套"offset 反侧最暗"，
+     用户明确要的是无方向）。想做出某一侧更重的凹陷感就叠两层、其中一层用 `inset` 收窄。
+     四角由圆角矩形 SDF 保证**等宽内缩**，不是"到最近边的距离"（后者四角会叠得更黑）。
+  ④ **实现是逐顶点算 alpha 的网格**（不是描边）：`PathStroke` 一个路径只有一个颜色，
+     而内阴影的 alpha 要按"离轮廓多远"逐点算（圆角上各点不同、直边上相同）。
+     顶点 alpha 用圆角矩形 SDF 精确算、圈间线性插值（和 `core/gradient.cpp` 的网格同套路），
+     所以它天然待在形状内部、不需要裁剪（ImGui 的裁剪只有矩形，圆角处会漏）。
 - **测试里要画东西就用真 ImGui 上下文**，三件事缺一不可（shadow_test 三个坑都踩过）：
   ① `ImGui::CreateContext()` 要有；
   ② 自建列表必须紧跟 `list._ResetForNewFrame()`，否则内部没有 draw cmd，
@@ -740,6 +755,100 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 
 例外只有两种，都写进注释：① STL 风格的 `std::string::empty()` 这类**标准库**成员照旧；
 ② 数据取值用 `get*`（`getBool`），即使返回 bool 也不算状态查询。
+
+## 加一种图层效果（外观层的扩展机制）
+
+外观是由一层层 `op` 拼出来的，内置只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` /
+`custom`。**加自己的层不用改库任何文件**：写一个文件 + 注册一行。
+
+可执行检查：`tests/layer_parse_test.cpp` 第 6/7 节（参数模式与实物验收）、第 5 节（parse 钩子）、
+`tests/quad_layer_test.cpp`（多参数 + 每帧自己算位置的层）。
+两个完整样例：`demo/contrib/stripe_layer.cpp`（最小：3 个参数 + 静态绘制）、
+`demo/contrib/quad_layer.cpp`（多参数 + 按 `getSecondsNow()` 每帧算顶点位置，
+是"钩子自己做动画"的参考）。语法面向使用者的说明：`docs/json-syntax.md` 的「扩展图层类型」一节。
+
+```cpp
+// 1) 声明这个层是什么（静态成员 + 参数模式 + 绘制）
+struct StripeLayer
+{
+    static constexpr const char* kName  = "stripe";   // JSON 里的 op
+    static constexpr const char* kLabel = "斜条纹";    // 设计器显示名
+    static constexpr auto kOrder = bklv::compile::LayerOrder::DECORATION;
+    // kIdPrefix / kHelp 可省（默认 kName / 空串）
+
+    // 参数模式：引擎按它解析（类型 / 720p 缩放 / 枚举校验），设计器候选键也由它派生
+    static std::vector<bklv::compile::LayerParam> params()
+    {
+        return { bklv::compile::LayerParam::number("angle", 45.0f, "角度"),
+                 bklv::compile::LayerParam::pixels("lineWidth", 2.0f, "线宽") };
+    }
+    static void draw(const bklv::compile::LayerDrawContext& ctx);
+};
+
+// 2) 注册（无宏、无静态初始化魔法；时机由调用方决定）
+bklv::compile::registerLayer<StripeLayer>();
+```
+
+五条约定：
+
+① **参数一律走参数模式**（`LayerParam::number/pixels/color/boolean/enumeration`），
+   别再把自定义字段硬塞进引擎字段 —— 样例当初把角度存进 `feather`、线宽存进 `spread`，
+   既容易撞车也读不懂，而且 `feather` 是像素量，角度被顺手缩放了（bug）。
+   JSON 里没写参数 = 用模式里的默认值（**不是 0**）。每层上限 `kMaxLayerParams`(8)，超了注册期报错。
+② **参数名不许占用引擎保留键**（`op`/`id`/`width`/`height`/`inset`/`align`/`valign`/`offset`/`opacity`）
+   —— 引擎会先拿它们算矩形，参数永远收不到值，注册时**直接报错**。
+   撞上引擎**会解析**的键（`fill`/`radius`/`angle` 那类，见 `engineLayerKeys()`）只警告：
+   那会有两份值，直接用 `ctx.layer.fill` 就好。
+③ **标量参数不写 parse 钩子**：引擎按模式全自动解析。只有数组/对象这类结构参数
+   （像 `rect` 的 `gradient`）才写 `static parse`（有就自动挂上，检测惯用法）。
+④ **`draw` 里只读解析结果**（`ctx.layer` / `ctx.rect` / `ctx.type`），不查 JSON、不查主题 ——
+   与内置层同一条约定。取参数用 `numberParam(ctx, "名字")` / `enumParam(ctx, "名字")` 这类
+   按名字的访问器，别自己记下标（参数名就是契约）。
+   **参数补间目前没有**（补间通道是固定的 `AppearanceProp` 枚举），所以"要动起来"的层得自己算：
+   时间用 `core/time.hpp` 的 `getSecondsNow()`（单调、无窗口安全），随机用纯哈希/值噪声
+   （同输入同输出，可测）—— 参考 `demo/contrib/quad_layer.cpp`。
+   别用 `ImGui::GetTime()`：无窗口时会踩空（见上面"update() 路径不许读 GetIO"那条）。
+   自己算出来的位移最好再夹一次边界（`gain` 这类"乘在后面的系数"能绕过前面的夹取）。
+⑤ **`void*` 别拆**：`LayerDrawContext` 里的 `drawList` / `view` 是不透明指针，
+   为的是让 `compile/` 不依赖 ImGui 与 widgets（`ctx.type` 是唯一例外：它是 compile 自己的类型）。
+
+层序要注意：内置层之间**按 JSON 书写顺序**画（只有阴影、玻璃被提到最前），
+声明 `DECORATION` / `OVERLAY` 的扩展层画在所有内置层之上。
+**不要**把内置层改成按七档阶梯重排 —— 实测 168 份发布外观里有 121 份把 rect
+（`hlGlow`/`hlBorder` 聚焦描边）写在 text 之后，重排会让这些描边掉到文字下面。
+
+## 分层依赖方向
+
+`core` / `views` / `widgets` / `compile` / `backends` / `platforms` **全部编进同一个
+OBJECT 库、共用一个 include 根**，所以"分层"是目录约定而不是编译单元边界 ——
+编译器不会因为 `core/app.cpp` 反向 include 了 `widgets/` 而报错。
+可执行检查：`python3 scripts/check_layers.py`（有新增反向依赖时退出码 1，`--list` 看全量）。
+
+**层 = `bklv/` 下的第一级目录**，一共六个（`core` 里的 `glass/` 是 core 的子系统，
+不是独立一层 —— 脚本按第一级目录归类，所以 `core/glass/*` 算 core）：
+
+```
+core    → widgets / views / compile / backends
+compile → views / widgets
+views   → widgets
+```
+
+允许的方向：`widgets → views/core/compile`、`views → core`、`compile → core`、
+`backends → core`、`platforms → core/backends`、
+`core → platforms`（工厂：方向由「编译期裁剪 + 工厂」反转，属预期）、任何一层 → `3rd`。
+
+三条约定：
+
+① **加依赖先问方向**：需要下层能力时，由上层注入（接口/回调/注册表），不要让下层认识上层。
+   `App::App()` 调 `registerWidgetViewTypes()`（注册表在 core、类型在 widgets）就是标准写法；
+   `platforms/*.cpp` 的 `createBackend()` 是工厂式反转。
+   反例是液态玻璃：`core/glass/glass_service.hpp` 按值持有两个后端实现（值成员），
+   所以 core 反向认识了 backends —— 这就是它一直挂在白名单里的原因。
+② **存量违规记账在脚本的 `BASELINE` 里**（目前 6 条，逐条写了原因与消解方向，见
+   `docs/architecture-review.html` §2.1）。**消解掉一条就要删掉对应行** ——
+   留着不删脚本会报"白名单已过期"，和 CMake 源清单漏项检查同一个取向：记账必须精确。
+③ 头文件级**没有环**（102 个头 / 206 条 include 边，实测），上面这些环都在
+   `.cpp → 对方模块头` 这一层，所以不阻塞编译；代价是模块无法独立编译/分发/测试。
 
 ## 截图（离屏，不用系统录屏权限）
 

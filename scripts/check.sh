@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一次跑完该跑的全部检查：命名规范 → GL/VK 构建 → 全部测试 → 命名检查。
+# 一次跑完该跑的全部检查：命名规范 → 分层依赖方向 → GL/VK 构建 → 全部测试。
 #
 # 存在的理由：以前用 `cmake --build ... | grep -c " error|warning:"` 判断构建结果，
 # 并行构建失败时（例如资源复制的竞态）grep 数到 0，就被当成"构建成功"，
@@ -14,6 +14,11 @@ die() { printf '✗ %s\n' "$1" >&2; exit 1; }
 
 step "接口命名检查"
 python3 scripts/check_naming.py || die "命名检查未通过"
+
+# 分层是目录约定（所有层编进同一个 OBJECT 库），编译器管不了，只能靠这个脚本兜住：
+# core / views / widgets / compile / glass 之间的反向依赖禁止新增。
+step "分层依赖方向检查"
+python3 scripts/check_layers.py || die "出现新的反向依赖（改法见脚本头部注释）"
 
 for backend in gl vk; do
     step "构建 $backend"

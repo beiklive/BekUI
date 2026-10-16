@@ -8,6 +8,7 @@
 | 文档 | 内容 |
 |---|---|
 | [uml.html](uml.html) | bklv 库结构与 UML 图（自包含 HTML，离线可看；由 `scripts/gen_uml.py` 生成） |
+| [architecture-review.html](architecture-review.html) | **架构评审**：分层与依赖图（含实测的 5 条反向依赖边）、帧循环时序、外观数据流、后端/平台抽象边界；组件清单、进程级单例清单、优点与风险（逐条附 `file:line`）与改进顺序 |
 | [`bklv-api.md`](bklv-api.md) | bklv 移植层速查：文件职责表、Box 布局调用、交互与内容控件、imgui.ini 开关、日志约定、已知的坑、分层约定 |
 | [`icon-fonts.md`](icon-fonts.md) | **图标字体规则**：两套字体（Material / switch_icons）、码位必须与字体配对、按层指定与运行时切换、三种典型写错方式 |
 | [`json-syntax.md`](json-syntax.md) | **JSON 语法速查**：视图描述 / 控件外观 / 主题 / 文案 四类 JSON 的完整键表、取值形式、枚举拼写与报错行为 |

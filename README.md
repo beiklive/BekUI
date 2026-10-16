@@ -24,12 +24,18 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 都在这一层。把 `bklv/` 整个目录拷到别的项目里 `add_subdirectory` 就能用
 （见「[用到自己的项目里](#用到自己的项目里)」）。
 
-| 目录 | 内容 |
-|---|---|
-| `core/` | `View` / `Box`（Flexbox 与节点管理）/ `Style`·`Theme` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / `Logger` |
-| `views/` | `Label`（换行·省略号·对齐）、`Image`、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`ProgressSpinner`、`Hints`、`DebugLogView`（日志面板） |
-| `backends/` | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
-| `platforms/` | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现 |
+| 目录 | 文件数 | 内容 |
+|---|---|---|
+| `core/` | 78 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger`；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*` |
+| `views/` | 24 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
+| `widgets/` | 53 | **外观驱动的控件**：`AppearanceView`（基类）、`Shell`（四层外壳）、`Pager`、`Header`/`BottomBar`/`Sidebar`/`TabFrame`、`Button`/`SelectorButton`/`Slider`、Cell 家族（6 种）、`Dialog`/`Dropdown`/`EditTextDialog`/`Notification`、`HintsBar`/`StatusArea`/`AccountWidget`、`RecyclerView`（JSON 桥接）、六个 `layer_draw_*` 绘制钩子 |
+| `compile/` | 18 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |
+| `backends/` | 21 | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
+| `platforms/` | 9 | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现与 IME |
+
+目录之间的依赖方向有约定、也有机械检查（`python3 scripts/check_layers.py`，见
+[`AGENTS.md`](AGENTS.md) 的「分层依赖方向」）；`docs/architecture-review.html` 里有完整的
+分层图与实测的反向依赖清单。
 
 ### demo：`demo/`
 
@@ -274,20 +280,35 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 ### 分层
 
 ```
-bklv/views/*               Image / Label / ScrollingFrame / RecyclerFrame
-                           只认 ImDrawList 和 ImTextureID
+demo/  designer/                       应用与工具（都用库，互不依赖）
         ↓
-bklv/core/graphics.hpp     RenderBackend 接口 + 纹理管理
-bklv/core/platform.hpp     Platform 接口（窗口 / 事件循环 / 系统能力）
+bklv/widgets/*                          外观驱动控件：Shell / Pager / Button / Cell / Dialog
+        ↓                               （样式来自主题 JSON，代码只写行为）
+bklv/views/*                            Image / Label / ScrollingFrame / RecyclerFrame
+                                        只认 ImDrawList 和 ImTextureID
         ↓
-bklv/backends/*            OpenGLBackend / VulkanBackend / GLES3Backend
-bklv/platforms/*           PlatformSDL3 / PlatformSwitch
+bklv/compile/*                          解析层：JSON → 外观 / 主题 / 视图模板
+        ↓
+bklv/core/*                             View / Box / App / 外观与主题 / 输入 / 解码 / i18n
+  ├ graphics.hpp                        RenderBackend 接口 + 纹理管理
+  ├ platform.hpp                        Platform 接口（窗口 / 事件循环 / 系统能力）
+  └ glass/                              液态玻璃子系统（服务 + 请求队列 + 模糊计划 + 调参）
+        ↓
+bklv/backends/*                         OpenGLBackend / VulkanBackend / GLES3Backend
+                                        （玻璃的模糊实现在 backends/gl_glass.* 与 vk_glass.*）
+bklv/platforms/*                        PlatformSDL3 / PlatformSwitch
 ```
+
+**依赖方向是单向的、并且有检查脚本**：`widgets → views → core`、
+`compile → core`、`backends → core`、`platforms → core/backends`。
+反过来（例如 `core` include `widgets`）属于违规，`scripts/check_layers.py` 会拦下来 ——
+因为所有层都编进同一个 OBJECT 库，编译器管不了这件事，只能靠脚本兜住。
+规则、允许方向与存量清单见 [`AGENTS.md`](AGENTS.md) 的「分层依赖方向」。
 
 **view 层不接触图形 API**，所以「换后端」和「换平台」都是加一个子类、
 在 `createBackend()` 里多一个分支，业务代码不用动：
 
-- **换后端**：实现 `RenderBackend` 的那十个方法。步骤和三个后端都踩过的坑见
+- **换后端**：实现 `RenderBackend` 的那 11 个纯虚方法。步骤和三个后端都踩过的坑见
   [`notes/adding-render-backend.md`](notes/adding-render-backend.md)。
 - **换平台**：实现 `Platform` 子类。Switch 那份（`bklv/platforms/switch_platform.*`）
   是最小参考实现——没有 SDL3，窗口、事件循环、电源/网络/语言能力都自己接。

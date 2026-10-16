@@ -226,6 +226,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `valign` | 全部 | `center`(默认) / `top` / `bottom` |
 | `feather` `spread` | shadow | 羽化半径 / 额外外扩 |
 | `cutout` | shadow | BOOL：挖空控件自身圆角形状，只画外圈（这样后面加的层即使半透明也不会透出阴影） |
+| `inner` | shadow | BOOL：改成**内阴影** —— 贴内缘最暗、往内渐透的一圈带子，**没有方向**（`offset` 对它无效）。它画在底色**之后**（外投影在底色之前），且永远不会超出形状。与 `cutout` 互斥（内阴影本来就是空心的） |
 | `fill` | glass | 染色（带 alpha）。写了就覆盖 `Shell` 的 `GlassTuning` 染色；不写就用 Shell 的 |
 | `opacity` | glass | 这块玻璃的整体不透明度 |
 | `radius` | glass | 圆角（半径等于短边一半时就是胶囊/正圆） |
@@ -384,7 +385,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 | 日志 `控件外观编译失败：… 缺少 layers 数组` | `layers` 是必填，纯 box 的外观写 `"layers": []` |
 | 日志 `引用了主题里不存在的颜色/数值` | key 拼错；写法是 `@theme/color.a.b`，不是 `@theme/color/a.b`（后者会被容错成点分并警告） |
 | 聚焦后控件里的图形消失 | 外观层序反了：`hlBg` 排到了内容层之后 |
-| 阴影被底色盖住 / 透出来 | `shadow` 层要在底色之前；不透明底用不上 `cutout`，半透明底要 `"cutout": true` |
+| 阴影被底色盖住 / 透出来 | **外投影**要写在底色之前（不透明底用不上 `cutout`，半透明底要 `"cutout": true`）；**内阴影相反**，要写在底色之后（`"inner": true`，解析期不会把它提前） |
 | 圆角变成直角 | 自己拼矩形带子会被 `AddRectFilled` 把圆角钳到边长一半；用现成的 `radius` / shadow 实现 |
 | `"50%"` 没效果 | 百分比只对 `width` / `height` 与绝对定位的四边偏移（`top` / `left` / `right` / `bottom`）有效；其它 NUMBER 属性要绝对像素 |
 | 枚举写错 | 视图描述 JSON 会**建不出控件**并在日志里列可选值；外观 JSON 只警告并保持原值（见第 6 节） |
@@ -495,73 +496,170 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 ## 扩展图层类型（第三方）
 
-内置的 `op` 只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` / `custom`。
+内置 `op` 只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` / `custom`。
 **别人可以加自己的**，而且**不需要改 `bklv/` 里任何文件**：写一个文件 + 注册一行，
-主题里就能写 `"op": "你的名字"`。
+主题里就能写 `"op": "你的名字"`。完整可运行的样例在 `demo/contrib/stripe_layer.cpp`。
 
-完整可运行的样例在 `demo/contrib/stripe_layer.cpp`（斜条纹）。下面是契约。
-
-### 注册
+### 推荐写法：注册模板 + 参数模式
 
 ```cpp
-#include "bklv/compile/json_util.hpp"      // 取值/报错的共享工具
-#include "bklv/compile/layer_registry.hpp" // 注册表
+#include "bklv/compile/layer_register.hpp" // registerLayer<T>() 模板
+
+struct StripeLayer
+{
+    static constexpr const char* kName     = "stripe";   // JSON 里的 op 值
+    static constexpr const char* kLabel    = "斜条纹";    // 设计器显示名
+    static constexpr const char* kIdPrefix = "stripe";   // 可省，默认用 kName
+    static constexpr const char* kHelp     = "斜条纹：angle / lineWidth / gap";
+    static constexpr auto kOrder = bklv::compile::LayerOrder::DECORATION;
+
+    // 参数模式：声明一次，引擎负责解析（类型 / 720p 缩放 / 拼错提示），
+    // 设计器的候选键、中文名与 ENUM 下拉都由它派生 —— 不用手写 keys，也不用写 parse。
+    static std::vector<bklv::compile::LayerParam> params()
+    {
+        return {
+            bklv::compile::LayerParam::number("angle", 45.0f, "角度"),
+            bklv::compile::LayerParam::pixels("lineWidth", 2.0f, "线宽"),
+            bklv::compile::LayerParam::pixels("gap", 16.0f, "间距"),
+        };
+    }
+
+    static void draw(const bklv::compile::LayerDrawContext& ctx);
+};
 
 // 在你自己的初始化里调一次（第三方程序就是在 main 里调）
-void registerMyLayer()
-{
-    std::string error;
-    bklv::compile::LayerType type;
-    type.name     = "stripe";                 // JSON 里的 op 值
-    type.label    = "斜条纹";                  // 设计器里显示的名字
-    type.idPrefix = "stripe";                 // 不写 id 时 -> stripe0 / stripe1
-    type.order    = bklv::compile::LayerOrder::DECORATION;
-    type.help     = "斜条纹：angle / lineWidth / gap";
-    type.keys     = { "angle", "lineWidth", "gap", "fill" };
-    type.parse    = myParse;                  // 可选：把该层自己的键读进 AppearanceLayer
-    type.draw     = myDraw;                   // 可选：绘制（引擎会调）
+bklv::compile::registerLayer<StripeLayer>();
+```
 
-    if (!bklv::compile::registerLayer(std::move(type), error))
-        BKLV_LOG_WARNING("注册失败：%s", error.c_str());
+### 参数类型（五种）
+
+| 工厂 | JSON 写法 | 说明 |
+|---|---|---|
+| `LayerParam::number(name, def, label)` | `0.5` | 数字，**不缩放**（系数 / 角度 / 比例） |
+| `LayerParam::pixels(name, def, label)` | `16` / `"@style/metric.x"` | 像素量，按 720p 乘 `uiScale` |
+| `LayerParam::color(name, def, label)` | `"#RRGGBB"` / `"@theme/color.a.b"` | 颜色 |
+| `LayerParam::boolean(name, def, label)` | `true` / `false` | 布尔 |
+| `LayerParam::enumeration(name, values, defIndex, label)` | `"vertical"` | 候选取值；拼错**只警告**并保持默认 |
+
+**JSON 里没写 = 用模式里的默认值**（不是 0）—— "没写"和"写 0"是两件事。
+参数值按声明顺序存在 `AppearanceLayer::params`（每层上限 8 个，超了注册期报错），
+绘制钩子**按名字取**：
+
+```cpp
+static void draw(const bklv::compile::LayerDrawContext& ctx)
+{
+    const float angle = bklv::compile::numberParam(ctx, "angle", 45.0f);
+    const float gap   = bklv::compile::numberParam(ctx, "gap", 16.0f);
+    const bool  mono  = bklv::compile::boolParam(ctx, "mono", false);
+    const char* mode  = bklv::compile::enumParam(ctx, "mode");  // 枚举值翻回字符串
+
+    ImDrawList* drawList = static_cast<ImDrawList*>(ctx.drawList); // 不透明指针，见下
+    // ctx.rect 已含这一层的矩形、圆角与有效 alpha；
+    // ctx.layer.fill / .radius / .inset … 是引擎白送的通用字段（见下）
 }
 ```
 
-两个钩子的签名：
+**`void*` 是有意的**：`compile/` 不认识 ImGui 与 widgets，所以上下文里的
+`drawList`（= `ImDrawList*`）与 `view`（= `AppearanceView*`）用不透明指针传，
+扩展层自己转回去。
+
+### 引擎白送的字段（任何 op 都能用）
+
+`fill` / `stroke` / `color`(`textColor`) / `strokeWidth` / `radius` / `opacity` / `fontSize` /
+`width` / `height` / `feather` / `spread` / `cutout` / `inner` / `inset` / `offset` / `gradient`，
+外加元信息 `op` / `id` / `source` / `align` / `valign` / `scaling` —— 全都解析好放在
+`ctx.layer` 上，绘制钩子直接读。完整清单见 `compile::engineLayerKeys()`。
+
+**别把这些名字再声明成参数**：那样同一层会有两份值（引擎一份、参数槽一份）。注册时会警告。
+
+### 需要自己的结构参数时（可选 parse 钩子）
+
+标量 / 颜色 / 枚举都不用写解析代码；只有数组、对象这类结构（像内置 `rect` 的 `gradient`）
+才要自己写。`T` 里写了 `static parse` 就自动挂上（检测惯用法，不用手动赋给 `LayerType::parse`）：
 
 ```cpp
-bool parse(const Json& node, const ThemeData& theme, AppearanceLayer& out,
-           std::string& error, const std::string& where);   // 返回 false = 整体编译失败
-void draw (const AppearanceLayer& layer, void* drawList,   // drawList 就是 ImDrawList*
-           const LayerRect& rect);                          // rect 已含矩形/圆角/有效 alpha
+static bool parse(const Json& node, const ThemeData& theme, AppearanceLayer& out,
+                  std::string& error, const std::string& where); // false = 整份外观编译失败
 ```
+
+### 样例二：不规则四边形（多参数 + 钩子自己算动画）
+
+`demo/contrib/quad_layer.cpp` 是第二个样例：**四个顶点各自随时间随机游走**，
+演示"多参数 + 每帧自己算位置"的写法（`stripe` 那三个参数是静态的）。
+
+```cpp
+static std::vector<bklv::compile::LayerParam> params()
+{
+    return {
+        bklv::compile::LayerParam::pixels("amplitude", 8.0f, "幅度"),   // 顶点最大位移
+        bklv::compile::LayerParam::number("speed", 1.5f, "速度"),       // 每秒几个时间片
+        bklv::compile::LayerParam::number("seed", 1.0f, "种子"),        // 同种子同画面
+        bklv::compile::LayerParam::number("gain0", 1.0f, "左上幅度"),   // 每顶点幅度系数
+        bklv::compile::LayerParam::number("gain1", 1.0f, "右上幅度"),
+        bklv::compile::LayerParam::number("gain2", 1.0f, "右下幅度"),
+        bklv::compile::LayerParam::number("gain3", 1.0f, "左下幅度"),
+    };
+}
+```
+
+主题里这样用（`amplitude` 会按 720p 缩放，`speed`/`seed` 不缩放）：
+
+```json
+{ "op": "quad", "id": "blob",
+  "amplitude": 10, "speed": 1.2, "seed": 7,
+  "gain0": 1.0, "gain1": 0.6, "gain2": 1.3, "gain3": 0.8,
+  "fill": "@theme/color.accent.base",
+  "stroke": "@theme/color.text.primary", "strokeWidth": 2,
+  "inset": 6 }
+```
+
+**参数补间目前没有**（补间通道是固定的 `AppearanceProp` 枚举），所以"要动起来"的层
+在绘制钩子里自己算时间与随机：
+
+- 时间用 `bklv::getSecondsNow()`（`core/time.hpp`，单调、无窗口安全）；
+  **不要**用 `ImGui::GetTime()` 或 `ImGui::GetIO()` —— 无窗口时没有 ImGui 上下文。
+- 随机用**纯哈希 / 值噪声**（同输入同输出），把它放在一个纯函数里，就能无窗口测
+  （见 `tests/quad_layer_test.cpp`：确定性、取值有界、相邻时刻连续、四顶点互不相同）。
+- 幅度夹取要夹**最终位移**：`gain` 这种"乘在后面的系数"能绕过对 `amplitude` 的夹取
+  （写 `gain0: 9` 时顶点会飞到层外面）。
 
 ### 三条硬规则
 
-1. **不许用引擎保留键**：`op` / `id` / `width` / `height` / `inset` / `align` / `valign` /
-   `offset` / `opacity` 是**层几何与通用属性**，引擎会先拿去算矩形。注册时会**直接报错**
-   拒绝（内置 6 种豁免）。用保留键的后果很隐蔽：样例曾用 `width` 表示线宽，整个层被做成
-   3px 宽的条，画面上只剩左边缘几个毛刺。
-2. **失败要报错，不要静默降级**：`parse` 返回 false 会让整份外观编译失败（和内置 op 一致）。
-3. **只在 `parse` 里读自己的键**：`draw` 里不要再查 JSON、不要再查主题 —— 外观值在编译期
-   就定下来，绘制只读 `AppearanceLayer` / `LayerRect`（和内置层同一条约定）。
+1. **参数名不许占用引擎保留键**：`op` / `id` / `width` / `height` / `inset` / `align` / `valign` /
+   `offset` / `opacity` 是层几何与通用属性，引擎会先拿它们算矩形 —— 注册时**直接报错**
+   （内置 6 种豁免）。踩过的后果很隐蔽：样例曾用 `width` 表示线宽，整个层被做成 3px 宽的条，
+   画面上只剩左边缘几个毛刺。
+2. **失败要报错，不要静默降级**：参数类型不符、ENUM 没给候选、参数超过 8 个、参数名重复，
+   都在注册期或解析期报清楚（解析失败 = 整份外观编译失败并记日志）。
+3. **draw 里不要再查 JSON、不要再查主题**：外观值在编译期就定下来，绘制只读
+   `ctx.layer` / `ctx.rect` / `ctx.type`（和内置层同一条约定）。
 
 ### 注册之后免费得到
 
 - **解析**：主题里写 `"op": "stripe"` 就能编译，落到 `Op::EXTENSION` + `extensionType`；
-  **没注册过的 op 仍然报错**（不会静默放过）
-- **默认 id**：用你的 `idPrefix`（`stripe0` / `stripe1`），所以 `states` / `transitions`
-  能直接按 id 寻址这层
-- **设计器**：加层菜单、中文名、检查器候选键全部从注册表读 → 第三方不用改设计器
+  **没注册过的 op 仍然报错**（不静默放过）
+- **默认 id**：用你的 `idPrefix`（`stripe0` / `stripe1`），`states` / `transitions` 能按 id 寻址
+- **设计器**：加层菜单、中文名、检查器候选键、参数中文名、ENUM 下拉全部从注册表与参数模式读
+  → 第三方不用改设计器
 - **绘制**：引擎的 `EXTENSION` 分支查注册表调你的 `draw`，并把"矩形 + 圆角 + 有效 alpha"给你
-- **层序**：由 `order` 档位决定（阴影 → 玻璃 → 底色 → 高亮底 → 内容 → 装饰 → 覆盖），
-  不用自己决定先后
+- **层序**：内置层之间按 **JSON 书写顺序**（只有阴影、玻璃被提到最前）；声明
+  `DECORATION` / `OVERLAY` 的扩展层会画在所有内置层之上。**不按七档阶梯重排内置层**
+  —— 那会让 121 份发布外观里的 `hlGlow` / `hlBorder` 掉到文字下面（见 `layerSortRank` 的注释）
 
 ### 注意
 
-- 扩展层**只画，不参与布局**（不能改变控件尺寸或让兄弟节点移动）—— 要"能装子节点"的组合
-  属于控件级扩展（`children`），不是 `op`。
+- 扩展层**只画，不参与布局**（不能改变控件尺寸或推动兄弟节点）—— 要"能装子节点"的组合
+  属于控件级扩展（外观 JSON 的 `children`），不是 `op`。
+- **别把用了扩展 op 的外观放进 `resources/theme/default/`**：那是随库发布的默认主题，
+  而扩展 op 由**调用方**注册 —— 库的随包资源依赖 demo/第三方代码是本末倒置
+  （`base/stripe_demo.json` 就是这么留下的，测试只能靠注册一个同名桩来兜）。
+  演示/一次性外观直接在页面里**内联**：`AppearanceView::applyAppearanceJson(json, error)`
+  就地编译一份（demo 的 JSON 页就是这么显示 quad 的）；换主题时若要让内联外观跟着重解析
+  `@theme/`，在自己的子类里重写 `applyTheme()` 再套一次。
 - 主题里用扩展 op 时，**主题加载前必须已经注册**（调用方的初始化里注册）。
   测试侧要整主题校验的话，注册要放在测试开头（见 `tests/test_contrib.hpp`）。
+- 参数**目前不参与 `states` / `transitions` 补间**（补间通道是固定的 `AppearanceProp` 枚举）；
+  需要动起来就画在 `custom` 层里、由控件自己按时间算。
 
 ## 外观里的子节点（`children`）
 
