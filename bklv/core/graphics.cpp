@@ -269,8 +269,12 @@ const char* getTextureBackendName()
 
 const char* getGraphicsBackendName()
 {
-    // 必须和 platforms/*.cpp 的 createBackend() 保持同样的分支，
-    // 否则日志里报的后端名会和真正跑的那个对不上。
+    // 编译期表：图形上下文就绪之前（App 构造期就会打日志）也要能回答，所以不能转发给
+    // 后端对象。三个分支必须同时满足两点：
+    //   ① 和 platforms/*.cpp 的 createBackend() 分支一致（否则报的不是真正跑的那个后端）；
+    //   ② 和对应后端 getName() 的字面量完全一致（否则一次运行里出现两个名字，
+    //      历史上 GL 就是 "OpenGL 3.2 Core" vs "OpenGL"）。
+    // ②由 tests/backend_name_test.cpp 钉住；改这里的字符串要同步改后端头文件。
 #if defined(BKLV_SWITCH)
     return "OpenGL ES 3";
 #elif defined(BKLV_VULKAN)

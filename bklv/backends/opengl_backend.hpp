@@ -20,7 +20,10 @@ class OpenGLBackend : public RenderBackend
   public:
     ~OpenGLBackend() override;
 
-    const char* getName() const override { return "OpenGL"; }
+    // 这个名字必须和 core/graphics.cpp 的 getGraphicsBackendName() 一致：
+    // 后者在图形上下文就绪之前（App 构造期就会打日志）返回的就是这里的字面量。
+    // 改这里要同步改那一处，tests/backend_name_test.cpp 会钉住这条一致性。
+    const char* getName() const override { return "OpenGL 3.2 Core"; }
 
     // ---- 窗口 ----
     unsigned long long getWindowFlags() const override;

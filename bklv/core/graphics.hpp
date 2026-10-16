@@ -53,7 +53,7 @@ class RenderBackend
   public:
     virtual ~RenderBackend() = default;
 
-    // 后端名字，日志与调试层展示用（"OpenGL" / "OpenGL ES 3" / "none"）。
+    // 后端名字，日志与调试层展示用（"OpenGL 3.2 Core" / "Vulkan" / "OpenGL ES 3" / "none"）。
     virtual const char* getName() const = 0;
 
     // ---- 窗口 ----
