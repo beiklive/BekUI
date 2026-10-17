@@ -958,7 +958,8 @@ void DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
     }
     this->options.themeDir  = dir;
     this->options.themeName = name;
-    this->themeTitle        = bklv::getTheme().getName();
+    // 标题用我们打开时给的名字：库的 getName() 在"非内置目录"时可能还是 default
+    this->themeTitle        = name.empty() ? bklv::getTheme().getName() : name;
     this->currentFile.clear();
     this->currentText.clear();
     this->appearanceLoaded = false;
@@ -973,6 +974,8 @@ void DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
     if (this->canvasView != nullptr)
         this->canvasView->setVisibility(bklv::Visibility::GONE);
     this->scanTheme();
+    BKLV_LOG_INFO("切换主题：%s（目录 %s），%zu 个文件", this->themeTitle.c_str(),
+        this->options.themeDir.c_str(), this->files.size());
     this->lastError.clear();
 }
 
