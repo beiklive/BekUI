@@ -147,6 +147,12 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 - 能跳过的只有**字段级**错误。文件级（JSON 语法、缺 `layers`、`import`/`vars` 循环、
   渐变那五类结构校验）一律失败，`FALLBACK_DEFAULT` 只能"整份退 default"。
 - **枚举拼错不受策略影响**：一直是"警告 + 保持原值"（它已等价于跳过；改成致命会破坏第三方主题）。
+- 两处以前**静默忽略**、现在会报出来的地方：
+  ① **外观顶层键白名单**：`vars` / `import` / `box` / `layers` / `states` / `transitions` /
+     `children`（`$` 开头的键当注释放过）。拼错成 `state` / `layer` 会在 STRICT 下失败并提示
+     "是否想写 states"；SKIP 下忽略该键 + 留诊断。
+  ② **`theme.json` 的 `files[]` 条目少了 `.json` 后缀**：这是**清单写错**（不是缺项），
+     打 `error` 并留诊断，该项按缺项回退到 default。后缀齐全但文件真的不在，仍是 warning + 回退。
 
 ## 二、视图描述 JSON
 

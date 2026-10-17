@@ -1,3 +1,4 @@
+#include "bklv/compile/json_policy.hpp"
 #include "bklv/core/appearance.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -254,9 +255,34 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
         std::string text;
         if (!readText(dir + relative, text))
         {
-            if (!isDefault)
-                BKLV_LOG_WARNING("主题 %s 缺少清单里的 %s，该项回退到 default", themeName.c_str(),
-                    relative.c_str());
+            // 两种原因分开报：少了 .json 是**写错了**（清单格式约定），文件真的不在是"缺项"。
+            // 以前都只打一条 warning，结果整份外观静默回退成空外观，很难追。
+            const bool lacksSuffix = relative.size() < 5
+                || relative.compare(relative.size() - 5, 5, ".json") != 0;
+            if (lacksSuffix)
+            {
+                std::string message = "主题 " + themeName + " 的 files[] 条目 \"" + relative
+                    + "\" 少了 .json 后缀（清单条目要带后缀，例如 \"" + relative + ".json\"）";
+                BKLV_LOG_ERROR("%s", message.c_str());
+                compile::JsonDiagnostic diagnostic;
+                diagnostic.file      = "theme/" + themeName + "/theme.json";
+                diagnostic.path      = "files[]";
+                diagnostic.message   = message;
+                diagnostic.recovered = true; // 该项回退到 default，主题仍可用
+                compile::pushJsonDiagnostic(diagnostic);
+            }
+            else if (!isDefault)
+            {
+                std::string message = "主题 " + themeName + " 缺少清单里的 " + relative
+                    + "（该项回退到 default）";
+                BKLV_LOG_WARNING("%s", message.c_str());
+                compile::JsonDiagnostic diagnostic;
+                diagnostic.file      = "theme/" + themeName + "/theme.json";
+                diagnostic.path      = "files[]";
+                diagnostic.message   = message;
+                diagnostic.recovered = true;
+                compile::pushJsonDiagnostic(diagnostic);
+            }
             continue;
         }
 

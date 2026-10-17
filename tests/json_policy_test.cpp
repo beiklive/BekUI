@@ -270,6 +270,45 @@ int main()
         }
     }
 
+    std::printf("\n== 11. 外观顶层键白名单：$ 开头的键放过，拼错的键报出来 ==\n");
+    {
+        compile::setJsonErrorPolicy(compile::JsonErrorPolicy::STRICT);
+        compile::clearJsonDiagnostics();
+
+        // $comment（元数据）与已知键组合不报错
+        std::string okError;
+        const auto okAppearance = Appearance::compile(R"({
+            "$comment": "只给注释用",
+            "layers": [ { "op": "rect", "id": "bg", "fill": "#112233" } ]
+        })",
+            theme, okError, "test/comment-key");
+        check(okAppearance != nullptr, "$comment 不算未知键（" + okError + "）");
+
+        // 拼错的顶层键（state 少个 s）：STRICT 直接失败，并给拼写提示
+        std::string badError;
+        const auto badAppearance = Appearance::compile(R"({
+            "state": { "focused": {} },
+            "layers": [ { "op": "rect", "id": "bg", "fill": "#112233" } ]
+        })",
+            theme, badError, "test/bad-top-key");
+        check(badAppearance == nullptr, "STRICT：未知顶层键 -> 失败");
+        check(badError.find("state") != std::string::npos, "错误信息点到那个键（" + badError + "）");
+        check(badError.find("states") != std::string::npos, "给出\"是否想写 states\"的提示");
+
+        // SKIP_FIELD：忽略这个键、照常编译，诊断里留一条
+        compile::setJsonErrorPolicy(compile::JsonErrorPolicy::SKIP_FIELD);
+        compile::clearJsonDiagnostics();
+        std::string skipError;
+        const auto skipAppearance = Appearance::compile(R"({
+            "state": { "focused": {} },
+            "layers": [ { "op": "rect", "id": "bg", "fill": "#112233" } ]
+        })",
+            theme, skipError, "test/bad-top-key");
+        check(skipAppearance != nullptr, "SKIP：未知顶层键被忽略（" + skipError + "）");
+        checkEqualInt(countRecovered(true), 1, "记了一条已恢复诊断");
+        check(anyDiagnosticPathContains("state"), "诊断里带那个键名");
+    }
+
     compile::setJsonErrorPolicy(compile::JsonErrorPolicy::STRICT);
     compile::clearJsonDiagnostics();
 

@@ -859,7 +859,55 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         doc = std::move(resolved);
     }
 
-    if (!doc.is_object() || !doc.contains("layers") || !doc["layers"].is_array())
+    if (!doc.is_object())
+    {
+        error = "外观 JSON 顶层必须是对象";
+        return nullptr;
+    }
+
+    // 顶层键白名单：拼错 `layer` / `state` 这类键，以前是**静默忽略**
+    // （只查 layers 必需，其余键没人看），改了也没反应、很难查。
+    // 现在按错误策略处理：STRICT 报错（带拼错提示），SKIP_FIELD 记诊断后忽略。
+    {
+        static const char* kKnownKeys[] = { "vars", "import", "box", "layers", "states",
+            "transitions", "children" };
+        std::string unknownKey;
+        for (auto it = doc.begin(); it != doc.end(); ++it)
+        {
+            const std::string& key = it.key();
+            if (!key.empty() && key[0] == '$')
+                continue; // $comment 这类元数据键，约定忽略
+            bool known = false;
+            for (const char* candidate : kKnownKeys)
+                known = known || key == candidate;
+            if (!known)
+            {
+                unknownKey = key;
+                break;
+            }
+        }
+        if (!unknownKey.empty())
+        {
+            std::string message = "外观 JSON 顶层有未知键 \"" + unknownKey
+                + "\"（合法：vars / import / box / layers / states / transitions / children，"
+                  "$ 开头的键当注释忽略）";
+            // 拼错提示：找"包含关系"最接近的那个（state -> states、layer -> layers）
+            for (const char* candidate : kKnownKeys)
+            {
+                const std::string name(candidate);
+                if (name.rfind(unknownKey, 0) == 0 || unknownKey.rfind(name, 0) == 0)
+                {
+                    message += "，是否想写 \"" + name + "\"？";
+                    break;
+                }
+            }
+            if (handleFieldFailure(unknownKey, message, error) == FieldResult::FAILED)
+                return nullptr;
+            // SKIP_FIELD：忽略这个键往下走（后面各段只找自己认识的键，本来也会忽略它）
+        }
+    }
+
+    if (!doc.contains("layers") || !doc["layers"].is_array())
     {
         error = "外观 JSON 缺少 layers 数组";
         return nullptr;

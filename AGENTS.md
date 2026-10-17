@@ -261,6 +261,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （`getJsonDiagnostics()`：file/path/message/recovered），`skip` 不是"没发生"；
   ③ 枚举拼错仍是"警告 + 保持原值"，不受策略影响（改成致命会破坏第三方主题）。
   环境变量 `BKLV_JSON_POLICY=strict|skip|fallback`，显式 API 优先；`tests/json_policy_test.cpp` 钉住。
+  同一套策略还兜住两处以前**静默忽略**的写法：外观**顶层键白名单**
+  （`vars`/`import`/`box`/`layers`/`states`/`transitions`/`children`，`$` 开头放过；拼错 `state`
+  会报"是否想写 states"）与 **`theme.json` 的 `files[]` 少了 `.json`**（打 error + 诊断，
+  该项回退 default —— 以前只一条 warning，整份外观静默变空）。
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，
   对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 会被容错成点分
   （带一条警告提示正确写法），
