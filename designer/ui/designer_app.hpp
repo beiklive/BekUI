@@ -8,6 +8,7 @@
 
 #include "bklv/core/app.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/views/label.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/layer_fields.hpp"
 #include "designer/core/tokens_doc.hpp"
@@ -15,7 +16,7 @@
 #include "designer/core/autosave.hpp"
 #include "designer/core/undo_stack.hpp"
 
-namespace bklv { class Header; class View; class AppearanceView; }
+namespace bklv { class View; class AppearanceView; }
 
 namespace designer
 {
@@ -70,6 +71,8 @@ class DesignerApp
     void drawQuickOpen();
     void drawOpenTheme();
     void syncCanvasSelection(); // 点选层 → 画布上的选中框
+    void updateCanvasTitle();   // 画板标题（画布上方的 muted 小字）
+    bklv::Label* canvasTitle = nullptr;
     void openThemeDir(const std::string& dir, const std::string& name);
     std::vector<std::string> listThemes() const;
     void drawDiagnostics();

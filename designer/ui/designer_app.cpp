@@ -172,6 +172,15 @@ bool DesignerApp::init(const Options& options, std::string& error)
     // 与画布上看到的卡片范围对不上（卡片另有自己的背景层）。选中框不受影响，先用它。
 
     this->canvasView = canvas;
+    // 画板标题：必须由 bklv 画（ImGui 画在它下面，会被画布盖住）
+    auto title = new bklv::Label();
+    title->setText("");
+    title->setFontSize(12.0f);                        // 设计单位，随 uiScale 缩放
+    title->setTextColor(IM_COL32(0x9A, 0xA0, 0xAF, 0xFF));
+    title->setAlignSelf(bklv::AlignSelf::CENTER);
+    canvasHost->addView(title);
+    this->canvasTitle = title;
+
     canvasHost->addView(canvas);
     this->canvasHost = canvasHost.get();
     row->addView(canvasHost.release());
@@ -294,6 +303,7 @@ bool DesignerApp::openFile(const std::string& relPath)
         if (this->viewDoc.fromText(this->currentText, viewError))
         {
             this->viewLoaded     = true;
+            this->updateCanvasTitle();
             this->selectedNode   = 0;
             this->rebuildViewPreview();
         }
@@ -408,7 +418,10 @@ void DesignerApp::update()
 
     // 画布缩放：首次布局完成后套一次；改缩放后套一次（不在每帧重设，避免无谓重排）
     if (this->canvasZoom != this->appliedZoom)
+    {
         this->applyCanvasZoom();
+        this->updateCanvasTitle();
+    }
 
     this->maybeAutosave();
     this->syncCanvasSelection(); // 选中层变化 → 画布选中框（setter 很便宜，每帧设一次即可）
@@ -1466,6 +1479,28 @@ void DesignerApp::drawViewPanel()
         ImGui::PopID();
     }
     ImGui::EndChild();
+}
+
+void DesignerApp::updateCanvasTitle()
+{
+    if (this->canvasTitle == nullptr)
+        return;
+    if (this->currentFile.empty())
+    {
+        this->canvasTitle->setText("");
+        return;
+    }
+
+    char buffer[256];
+    if (this->appearanceLoaded)
+        std::snprintf(buffer, sizeof(buffer), "%s  ·  320 × 88  ·  %d%%",
+            this->currentFile.c_str(), (int)(this->canvasZoom * 100.0f + 0.5f));
+    else if (this->viewLoaded)
+        std::snprintf(buffer, sizeof(buffer), "%s  ·  %d%%", this->currentFile.c_str(),
+            (int)(this->canvasZoom * 100.0f + 0.5f));
+    else
+        std::snprintf(buffer, sizeof(buffer), "%s", this->currentFile.c_str());
+    this->canvasTitle->setText(buffer);
 }
 
 void DesignerApp::syncCanvasSelection()
