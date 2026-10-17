@@ -337,6 +337,23 @@ const bklv::AttributeTable& AppearanceView::attributes() const
     return appearanceAttributes();
 }
 
+bool AppearanceView::getLayerRect(
+    int index, float x, float y, float width, float height, float outRect[4]) const
+{
+    const std::vector<AppearanceLayer>& layers = this->getActiveAppearance().getLayers();
+    if (layers.empty())
+        return false;
+    if (index < 0 || index >= (int)layers.size())
+        return false;
+
+    const AppearanceLayer& layer = layers[(size_t)index];
+    float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    this->layerRect(layer, x, y, width, height, rect);
+    for (int i = 0; i < 4; i++)
+        outRect[i] = rect[i];
+    return true;
+}
+
 void AppearanceView::setIcon(const std::string& glyph)
 {
     if (this->icon == glyph)

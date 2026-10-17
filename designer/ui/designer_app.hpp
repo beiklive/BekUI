@@ -11,7 +11,7 @@
 #include "designer/core/layer_fields.hpp"
 #include "designer/core/undo_stack.hpp"
 
-namespace bklv { class Header; }
+namespace bklv { class Header; class View; class AppearanceView; }
 
 namespace designer
 {
@@ -48,6 +48,8 @@ class DesignerApp
     void drawFileList();
     void drawJsonView();
     void drawInspector();
+    void applyToCanvas();
+    void handleCanvasClick();
     void saveCurrent();
     void applyFieldEdit(const std::string& key, const designer::Json& value);
     void drawStatusBar();
@@ -70,7 +72,9 @@ class DesignerApp
     UndoStack        undo;
     std::string      saveStatus;
     long long        fileMtimeAtLoad = 0;
-    bool             lastErrorEnabled = false;
+    bklv::View*      canvasHost = nullptr; // 中间那块画布（库的视图树负责画）
+    bklv::AppearanceView* canvasView = nullptr;
+    float            inspectorWidth = 430.0f;
 };
 
 } // namespace designer

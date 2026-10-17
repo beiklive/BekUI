@@ -14,6 +14,8 @@
 #include "bklv/core/ui_scale.hpp"
 #include "bklv/views/label.hpp"
 #include "bklv/widgets/header.hpp"
+#include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/rectangle.hpp"
 
 namespace designer
 {
@@ -54,6 +56,31 @@ bool DesignerApp::init(const Options& options, std::string& error)
     header->setSubtitle(this->options.themeDir);
     this->header = header;
     root->addView(header);
+
+    // 中间一行：左让位（文件面板）+ 画布 + 右让位（检视器）。
+    // 三栏宽度与 ImGui 面板一致（都乘 uiScale），所以画布刚好夹在中间、不会重叠。
+    auto row = std::make_unique<bklv::Box>(bklv::Axis::ROW);
+    auto leftSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
+    leftSpacer->setWidth(this->fileFilterWidth * bklv::getUiScale());
+    row->addView(leftSpacer.release());
+
+    auto canvasHost = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
+    canvasHost->setGrow(1.0f);
+    canvasHost->setBackgroundColor(IM_COL32(0x16, 0x1a, 0x22, 0xFF));
+    auto canvas = new bklv::AppearanceView(std::string(), false);
+    canvas->setGrow(1.0f);                              // 填满画布区的高度
+    canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
+    this->canvasView = canvas;
+    canvasHost->addView(canvas);
+    this->canvasHost = canvasHost.get();
+    row->addView(canvasHost.release());
+
+    auto rightSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
+    rightSpacer->setWidth(this->inspectorWidth * bklv::getUiScale());
+    row->addView(rightSpacer.release());
+    row->setGrow(1.0f);
+    root->addView(row.release());
+
     this->app.setRootView(root.release());
 
     this->app.onDrawWindows = [this]() { this->drawPanels(); };
@@ -126,6 +153,7 @@ bool DesignerApp::openFile(const std::string& relPath)
             this->selectedLayer    = 0; // 直接落到第一层，省一次点击
             this->fileMtimeAtLoad  = fileMtime(path);
             this->currentText      = this->appearance.serialize();
+            this->applyToCanvas();
         }
         else
         {
@@ -187,28 +215,66 @@ void DesignerApp::update()
 
 void DesignerApp::drawPanels()
 {
-    const float top = 96.0f * bklv::getUiScale();
+    const float top   = 96.0f * bklv::getUiScale();
+    const float scale = bklv::getUiScale();
+    const float leftW = this->fileFilterWidth * scale;
+    const float rightW = this->inspectorWidth * scale;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float panelH = viewport->WorkSize.y - top - 12.0f;
+
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + top), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(
-        ImVec2(this->fileFilterWidth, viewport->WorkSize.y - top - 12.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(leftW, panelH), ImGuiCond_Always);
     ImGui::Begin("文件", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoBringToFrontOnFocus);
     this->drawFileList();
     ImGui::End();
 
-    ImGui::SetNextWindowPos(
-        ImVec2(viewport->WorkPos.x + this->fileFilterWidth, viewport->WorkPos.y + top), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(
-        ImVec2(viewport->WorkSize.x - this->fileFilterWidth, viewport->WorkSize.y - top - 12.0f),
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - rightW,
+                              viewport->WorkPos.y + top),
         ImGuiCond_Always);
-    ImGui::Begin("内容", nullptr,
+    ImGui::SetNextWindowSize(ImVec2(rightW, panelH), ImGuiCond_Always);
+    ImGui::Begin("检视器", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoBringToFrontOnFocus);
-    this->drawJsonView();
+    if (this->appearanceLoaded)
+    {
+        ImGui::TextDisabled("%s.json%s", this->currentFile.c_str(),
+            this->appearance.isDirty() ? "  ●" : "");
+        if (!this->lastError.empty())
+            ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
+        if (!this->saveStatus.empty())
+            ImGui::TextDisabled("%s", this->saveStatus.c_str());
+        ImGui::Separator();
+        ImGui::BeginChild("##layers", ImVec2(0, 130), true);
+        const std::vector<LayerInfo> layers = this->appearance.getLayers();
+        for (int i = 0; i < (int)layers.size(); i++)
+        {
+            char label[160];
+            std::snprintf(label, sizeof(label), "%s  %s", layers[(size_t)i].op.c_str(),
+                layers[(size_t)i].id.c_str());
+            if (ImGui::Selectable(label, this->selectedLayer == i))
+                this->selectedLayer = i;
+        }
+        ImGui::EndChild();
+        ImGui::BeginChild("##fields", ImVec2(0, 0), false);
+        this->drawInspector();
+        ImGui::EndChild();
+    }
+    else
+    {
+        ImGui::TextDisabled("%s", this->currentFile.empty() ? "左侧选一个文件" : this->currentFile.c_str());
+        if (!this->lastError.empty())
+            ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
+        ImGui::Separator();
+        ImGui::TextDisabled("非外观文件（P5 起可编辑）");
+        ImGui::BeginChild("##raw", ImVec2(0, 0), true);
+        ImGui::TextUnformatted(this->currentText.c_str());
+        ImGui::EndChild();
+    }
     ImGui::End();
 
+    this->handleCanvasClick();
 }
 
 void DesignerApp::drawMenuBar()
@@ -267,6 +333,56 @@ void DesignerApp::drawFileList()
     }
 }
 
+void DesignerApp::applyToCanvas()
+{
+    if (this->canvasView == nullptr)
+        return;
+    if (!this->appearanceLoaded)
+    {
+        this->canvasView->setVisibility(bklv::Visibility::GONE);
+        return;
+    }
+    std::string error;
+    // **不走库的外观缓存**：直接编译这份 JSON 换进画布那个实例，所以未保存的改动立刻可见
+    if (!this->canvasView->applyAppearanceJson(this->appearance.serialize(), error))
+        this->lastError = "画布预览失败：" + error;
+    this->canvasView->setVisibility(bklv::Visibility::VISIBLE);
+}
+
+void DesignerApp::handleCanvasClick()
+{
+    if (!this->appearanceLoaded || this->canvasView == nullptr)
+        return;
+    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::GetIO().WantCaptureMouse)
+        return;
+
+    const float x  = this->canvasView->getX();
+    const float y  = this->canvasView->getY();
+    const float w  = this->canvasView->getWidth();
+    const float h  = this->canvasView->getHeight();
+    if (w <= 0.0f || h <= 0.0f)
+        return;
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    if (mouse.x < x || mouse.x > x + w || mouse.y < y || mouse.y > y + h)
+        return;
+
+    // 命中最上层的层（绘制顺序的最后一层压在最上面）
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    int hit = -1;
+    for (int i = 0; i < (int)layers.size(); i++)
+    {
+        float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (!this->canvasView->getLayerRect(i, x, y, w, h, rect))
+            continue;
+        const bool inside = mouse.x >= rect[0] && mouse.x <= rect[0] + rect[2]
+            && mouse.y >= rect[1] && mouse.y <= rect[1] + rect[3];
+        if (inside)
+            hit = i;
+    }
+    if (hit >= 0)
+        this->selectedLayer = hit;
+}
+
 void DesignerApp::applyFieldEdit(const std::string& key, const designer::Json& value)
 {
     if (this->selectedLayer < 0)
@@ -284,6 +400,7 @@ void DesignerApp::applyFieldEdit(const std::string& key, const designer::Json& v
         this->undo.record(before, "改 " + layerId + "." + key, layerId + "." + key,
             (int64_t)(ImGui::GetTime() * 1000.0));
         this->currentText = this->appearance.serialize();
+        this->applyToCanvas();
         this->lastError.clear();
     }
     else
@@ -425,6 +542,8 @@ void DesignerApp::drawInspector()
 
 void DesignerApp::drawJsonView()
 {
+    return; // 面板已合并进 drawPanels（检视器右栏）
+
     if (this->currentFile.empty())
     {
         ImGui::TextDisabled("左侧选一个文件");

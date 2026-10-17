@@ -112,6 +112,10 @@ class AppearanceView : public Box
     // 失败返回 false + error（原外观不变），成功时也会套用其中的 box 段。
     bool applyAppearanceJson(const std::string& json, std::string& error);
 
+    // 第 index 层在"按 inset 收缩后的控件盒"里的矩形（相对盒子左上角）。工具/编辑器做点选时用；
+    // 返回 false = 下标越界。x/y/width/height 传盒子的绝对位置与尺寸。
+    bool getLayerRect(int index, float x, float y, float width, float height, float outRect[4]) const;
+
   protected:
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
