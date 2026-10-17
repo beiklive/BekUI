@@ -21,6 +21,7 @@
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/icon_font.hpp"
 #include "designer/core/view_fields.hpp"
+#include "designer/core/name_table.hpp"
 #include "designer/core/autosave.hpp"
 
 namespace designer
@@ -244,6 +245,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     if (this->options.openPalette)
         this->wantPalette = true;
+
+    if (!this->options.initialFile.empty())
+        this->welcomeVisible = false; // 命令行直接指定了文件：跳过欢迎页
 
     if (this->options.clickX >= 0.0f)
         this->pendingClick = true; // 第一帧后再点（此时布局已算完）
@@ -627,8 +631,10 @@ void DesignerApp::drawPanels()
         for (int i = 0; i < (int)layers.size(); i++)
         {
             char label[160];
-            std::snprintf(label, sizeof(label), "%s  %s", layers[(size_t)i].op.c_str(),
-                layers[(size_t)i].id.c_str());
+            const std::string partName = designer::segmentName(layers[(size_t)i].id);
+            std::snprintf(label, sizeof(label), "%s  %s",
+                partName.empty() ? layers[(size_t)i].id.c_str() : partName.c_str(),
+                designer::opTitle(layers[(size_t)i].op).c_str());
             if (ImGui::Selectable(label, this->selectedLayer == i))
                 this->selectedLayer = i;
         }
@@ -779,9 +785,17 @@ void DesignerApp::drawFileList()
             if (!this->groupOpen[groupIndex])
                 continue; // 该分组被折叠
         }
-        const std::string labelText = slash == std::string::npos
-            ? entry.relPath
-            : "  " + entry.relPath.substr(slash + 1);
+        // 中文优先：条目显示中文名，技术名与说明放在悬停提示里
+        const std::string title = fileTitle(entry.relPath);
+        const std::string hint  = fileHint(entry.relPath);
+        const std::string labelText = "  " + (title.empty() ? entry.relPath : title);
+        if (ImGui::IsItemHovered())
+        {
+            if (hint.empty())
+                ImGui::SetTooltip("%s.json", entry.relPath.c_str());
+            else
+                ImGui::SetTooltip("%s\n%s.json", hint.c_str(), entry.relPath.c_str());
+        }
         if (ImGui::Selectable(labelText.c_str(), selected))
         {
             this->selectedIndex = i;
@@ -1857,7 +1871,7 @@ void DesignerApp::addLayerOp(const std::string& op)
     std::string       newId, error;
     if (this->appearance.addLayer(op, newId, error))
     {
-        this->undo.record(before, "加层 " + newId);
+        this->undo.record(before, "添加组成部分 " + newId);
         this->currentText   = this->appearance.serialize();
         this->selectedLayer = (int)this->appearance.getLayers().size() - 1;
         this->applyToCanvas();
@@ -1949,7 +1963,7 @@ void DesignerApp::drawLayerOps()
 
     static const char* kOps[] = { "rect", "text", "image", "shadow", "glass", "custom" };
     ImGui::SetNextItemWidth(90.0f * bklv::getUiScale());
-    if (ImGui::BeginCombo("##newLayerOp", "＋ 加层", ImGuiComboFlags_HeightLarge))
+    if (ImGui::BeginCombo("##newLayerOp", "＋ 添加组成部分", ImGuiComboFlags_HeightLarge))
     {
         for (const char* op : kOps)
             if (ImGui::Selectable(op))
@@ -1988,7 +2002,7 @@ void DesignerApp::drawInspector()
     }
     if (ImGui::BeginPopupModal("重命名 id", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextUnformatted("层 id（同层不能重名）");
+        ImGui::TextUnformatted("标识（同一外观内不能重名，如 bg / text）");
         ImGui::InputText("##id", this->renameBuffer, sizeof(this->renameBuffer));
         if (ImGui::Button("确定"))
         {
@@ -2037,7 +2051,13 @@ void DesignerApp::drawInspector()
     const std::string& op      = layers[(size_t)this->selectedLayer].op;
     const std::string  base    = "/layers/" + std::to_string(this->selectedLayer);
 
-    ImGui::Text("层 %s（%s）", layerId.c_str(), op.c_str());
+    // 统一叫"组成部分"；悬停给出概念解释
+    ImGui::Text("%s", designer::segmentName(layerId).empty() ? layerId.c_str()
+                                                            : designer::segmentName(layerId).c_str());
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", designer::opTitle(op).c_str());
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", designer::layerConceptHint());
     ImGui::Separator();
 
     const std::vector<FieldDesc> fields = layerFields(op);
@@ -2209,13 +2229,17 @@ void DesignerApp::drawJsonView()
 
     const float half = ImGui::GetContentRegionAvail().x * 0.42f;
     ImGui::BeginChild("##layers", ImVec2(half, 0), true);
-    ImGui::TextDisabled("层（绘制顺序见 DESIGN §4.2）");
+    ImGui::TextDisabled("组成部分");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", designer::layerConceptHint());
     const std::vector<LayerInfo> layers = this->appearance.getLayers();
     for (int i = 0; i < (int)layers.size(); i++)
     {
         char label[160];
-        std::snprintf(label, sizeof(label), "%s  %s", layers[(size_t)i].op.c_str(),
-            layers[(size_t)i].id.c_str());
+        const std::string partName = designer::segmentName(layers[(size_t)i].id);
+        std::snprintf(label, sizeof(label), "%s  %s",
+            partName.empty() ? layers[(size_t)i].id.c_str() : partName.c_str(),
+            designer::opTitle(layers[(size_t)i].op).c_str());
         if (ImGui::Selectable(label, this->selectedLayer == i))
             this->selectedLayer = i;
     }

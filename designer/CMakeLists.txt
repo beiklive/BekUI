@@ -15,6 +15,7 @@ set(DESIGNER_CORE_SOURCES
     core/view_doc.cpp
     core/view_fields.cpp
     core/autosave.cpp
+    core/name_table.cpp
 )
 
 set(DESIGNER_CORE_ABS "")

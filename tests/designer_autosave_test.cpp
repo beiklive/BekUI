@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <cstdlib>
+
+#include <unistd.h> // getpid（每个进程用不同草稿 key）
 #include <string>
 
 #include "designer/core/autosave.hpp"
@@ -46,7 +48,9 @@ int main()
     std::printf("\n== 2. 用户目录：写资源里的主题也不会失败（实测 bug）==\n");
     {
         // 主题目录在 dist/resources 下通常是只读的 —— 草稿必须落到用户目录
-        const std::string path = autosavePath("resources/theme/default");
+        // 每个进程用不同的 key：check.sh 会跑 GL/VK 两份测试，固定 key 会互相删同一份草稿（踩过）
+        const std::string key = "resources/theme/default#" + std::to_string(::getpid());
+        const std::string path = autosavePath(key);
         const char* home = std::getenv("HOME");
         const char* appdata = std::getenv("APPDATA");
         const std::string expectedRoot = appdata != nullptr ? std::string(appdata)
@@ -56,9 +60,9 @@ int main()
             check(path.rfind(expectedRoot, 0) == 0, "草稿落在用户目录下：" + path);
         // 目录会被自动创建，写一次应成功
         std::string error;
-        check(writeAutosave("resources/theme/default", "widget/button.text", "{}", error),
+        check(writeAutosave(key, "widget/button.text", "{}", error),
             "写资源主题的草稿能成功（" + error + "）");
-        check(clearAutosave("resources/theme/default"), "清掉");
+        check(clearAutosave(key), "清掉");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
