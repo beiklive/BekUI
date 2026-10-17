@@ -235,10 +235,10 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 ## 主题与外观
 
 换肤不需要改代码：复制 `resources/theme/default/` 改名，改里面的 JSON，再在
-`themes.json` 里登记，就多了一套皮肤。桌面用 `BKLV_THEME=ocean ./dist/demo` 直接看效果。
+`themes.json` 里登记，就多了一套皮肤。桌面用 `BKLV_THEME=ios ./dist/demo` 直接看效果。
 
 ```json
-// resources/theme/ocean/widgets/button.json
+// resources/theme/ios/widgets/button.json
 // box 段管盒模型（尺寸/内边距/圆角/底色…），layers 管绘制结构，states 管状态动效
 { "box": { "height": "@theme/metric.control.height", "padding": [15, 25, 15, 25] },
   "layers": [
@@ -259,7 +259,7 @@ button->setOnClick([] { /* ... */ });
 bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
 bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button.ghost.json
 
-app.setTheme("ocean");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
+app.setTheme("ios");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
 ```
 
 ### 常用色（`color.common.*`）

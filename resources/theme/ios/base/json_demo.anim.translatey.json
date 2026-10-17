@@ -1,0 +1,13 @@
+{
+  "import": "base/json_demo",
+  "transitions": {
+    "enter": {
+      "duration": 420,
+      "easing": "quadraticOut",
+      "translateY": {
+        "from": -70,
+        "to": 0
+      }
+    }
+  }
+}

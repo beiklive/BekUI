@@ -954,7 +954,7 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 - 预览是"手动驱动一棵不在 App 视图树里的视图"：`YGNodeCalculateLayout` → `notifyLayout`
   → `update` → `setTranslation(画布原点)` → `frame(ctx)`；`View::draw` 是 protected，
   别想直接调它。
-- `readOnly` 的基准主题（default / ocean）只能浏览，编辑请走"模板新建"。
+- `readOnly` 的基准主题（default / ios）只能浏览，编辑请走"模板新建"。
 - **ImGui 的默认字体必须显式设**（`setDefaultFont` 里设 `io.FontDefault`）：不设就用
   字体表第 0 个，而那可能是先加载的图标字体（只有私用区字形）→ `ImGui::Text` 全画不出来。
 - **截图按帧缓冲读**（`App::saveScreenshot` 乘 `io.DisplayFramebufferScale`）：Retina 上

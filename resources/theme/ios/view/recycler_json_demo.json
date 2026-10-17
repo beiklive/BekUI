@@ -1,0 +1,11 @@
+{
+  "type": "Recycler",
+  "data": "@data/recycler_demo",
+  "itemAppearance": "base/rectangle.card",
+  "columns": 1,
+  "minItemWidth": 180,
+  "slotLoading": "view/children_ref_demo",
+  "slotEmpty": "view/children_ref_demo",
+  "onEnd": "loadMore",
+  "count": "infinite"
+}

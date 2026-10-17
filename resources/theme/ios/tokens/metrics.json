@@ -1,0 +1,246 @@
+{
+  "$comment": "尺寸对齐 borealis 的 style.cpp（header/applet_frame/sidebar/button 那几组）。",
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24
+  },
+  "radius": {
+    "sm": 4,
+    "md": 5,
+    "lg": 8,
+    "round": 999
+  },
+  "font": {
+    "size": {
+      "xs": 12,
+      "sm": 15,
+      "md": 18,
+      "lg": 22,
+      "title": 28
+    },
+    "lineHeight": 1.4
+  },
+  "border": {
+    "thickness": 2
+  },
+  "anim": {
+    "fast": 90,
+    "normal": 150,
+    "slow": 260
+  },
+  "control": {
+    "height": 48,
+    "minWidth": 120
+  },
+  "header": {
+    "height": 55,
+    "titleFontSize": 18,
+    "paddingSides": 0,
+    "paddingTopBottom": 11,
+    "imageSpacing": 18,
+    "titleTopOffset": 7,
+    "separatorThickness": 1,
+    "rectangleWidth": 5,
+    "rectangleMargin": 10,
+    "fontSize": 18
+  },
+  "bottomBar": {
+    "height": 73
+  },
+  "appletFrame": {
+    "headerHeight": 55,
+    "footerHeight": 73,
+    "paddingSides": 30,
+    "contentTop": 12,
+    "separatorThickness": 1,
+    "contentPaddingSides": 16,
+    "contentPaddingTopBottom": 16
+  },
+  "sidebar": {
+    "width": 300,
+    "itemHeight": 52,
+    "itemFontSize": 22,
+    "gap": 2,
+    "paddingTop": 12,
+    "paddingBottom": 12,
+    "paddingLeft": 20,
+    "paddingRight": 20,
+    "accentWidth": 4,
+    "accentMarginY": 9,
+    "accentMarginX": 8,
+    "separatorHeight": 18,
+    "separatorThickness": 1,
+    "radius": 14,
+    "margin": 12,
+    "iconSize": 22,
+    "iconInset": 22,
+    "titleInset": 54,
+    "shadowFeather": 14
+  },
+  "tabCell": {
+    "height": 40,
+    "fontSize": 22
+  },
+  "slider": {
+    "height": 32
+  },
+  "dialog": {
+    "width": 520,
+    "height": 220
+  },
+  "dropdown": {
+    "height": 70,
+    "itemHeight": 60,
+    "itemTextSize": 20,
+    "popupWidth": 280,
+    "popupMinWidth": 180
+  },
+  "textField": {
+    "height": 48
+  },
+  "editTextDialog": {
+    "width": 560,
+    "fieldTop": 16,
+    "caretWidth": 2
+  },
+  "button": {
+    "textSize": 18,
+    "borderThickness": 2
+  },
+  "highlight": {
+    "radius": 6,
+    "strokeWidth": 5
+  },
+  "hintItem": {
+    "paddingX": 16,
+    "paddingY": 4
+  },
+  "card": {
+    "padding": 16
+  },
+  "list": {
+    "itemHeight": 64,
+    "sectionHeaderHeight": 36
+  },
+  "hintsBar": {
+    "paddingX": 25
+  },
+  "hints": {
+    "footerMarginSides": 30,
+    "footerPaddingSides": 25,
+    "footerPaddingTopBottom": 8
+  },
+  "status": {
+    "fontSize": 18.0,
+    "itemSpacing": 10,
+    "itemMarginTop": 8,
+    "batteryLowThreshold": 0.2
+  },
+  "cell": {
+    "height": 70,
+    "paddingX": 16,
+    "paddingY": 12.5,
+    "gap": 12,
+    "titleFontSize": 22,
+    "detailFontSize": 22,
+    "detailWidth": 50,
+    "sliderWidth": 240
+  },
+  "switch": {
+    "width": 52,
+    "height": 26,
+    "knob": 20
+  },
+  "radio": {
+    "size": 22,
+    "stroke": 2
+  },
+  "notification": {
+    "width": 360,
+    "paddingX": 20,
+    "paddingY": 14,
+    "radius": 8,
+    "fontSize": 18,
+    "gap": 8,
+    "duration": 3.0,
+    "marginTop": 16,
+    "marginRight": 16
+  },
+  "transform": {
+    "stageHeight": 300,
+    "captionSize": 20
+  },
+  "account": {
+    "height": 44,
+    "gap": 10,
+    "avatarSize": 32,
+    "avatarRadius": 16,
+    "initialFontSize": 16,
+    "nameFontSize": 17,
+    "subtitleFontSize": 14,
+    "width": 200,
+    "shrink": 0
+  },
+  "label": {
+    "alignDemoWidth": 200,
+    "liveWidth": 320
+  },
+  "scroll": {
+    "demoHeight": 220,
+    "paddingV": 5,
+    "paddingH": 15
+  },
+  "progressSpinner": {
+    "size": 32
+  },
+  "pokedex": {
+    "cellHeight": 72,
+    "detailAvatarSize": 120,
+    "statBarHeight": 10,
+    "statRowGap": 6
+  },
+  "checkbox": {
+    "radius": 15
+  },
+  "shadow": {
+    "feather": 12,
+    "radius": 12,
+    "offsetX": 0,
+    "offsetY": 4,
+    "spread": 0
+  },
+  "component": {
+    "borderWidth": 1,
+    "radius": 6,
+    "shadowOffsetX": 2,
+    "shadowOffsetY": 2,
+    "shadowFeather": 10,
+    "shadowSpread": 0,
+    "paddingX": 16,
+    "paddingY": 10
+  },
+  "layout": {
+    "padding": 12
+  },
+  "buttonVariant": {
+    "gap": 10,
+    "iconSize": 26,
+    "infoFontSize": 16,
+    "switchWidth": 46,
+    "switchHeight": 24,
+    "switchKnob": 18,
+    "switchTravel": 22,
+    "arrowSize": 22
+  },
+  "section": {
+    "barWidth": 4,
+    "barMargin": 12,
+    "titleInset": 16,
+    "fontSize": 18,
+    "subtitleSize": 15,
+    "paddingTopBottom": 10
+  }
+}

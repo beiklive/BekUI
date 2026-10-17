@@ -517,7 +517,7 @@ def sequence_theme():
                         ("td", "ThemeData", "主题数据"),
                         ("view", "View 树", "控件"),
                         ("back", "RenderBackend", "纹理 / 绘制")],
-                 [("user", "app", "setTheme(\"ocean\")", "call"),
+                 [("user", "app", "setTheme(\"ios\")", "call"),
                   ("app", "td", "loadFromDirectory()：清单驱动，不扫目录", "call"),
                   ("td", "app", "111 色 / 143 数值 / 54 份外观", "ret"),
                   ("app", "view", "applyThemeRecursive()：重新取外观值", "call"),

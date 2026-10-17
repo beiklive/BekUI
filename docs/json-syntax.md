@@ -289,7 +289,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 ### `resources/theme/themes.json`
 
 ```json
-{ "default": "default", "available": ["default", "ocean"] }
+{ "default": "default", "available": ["default", "ios"] }
 ```
 
 ### `<主题>/theme.json`

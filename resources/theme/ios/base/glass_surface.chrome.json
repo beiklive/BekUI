@@ -1,0 +1,9 @@
+{
+  "import": "base/glass_surface",
+  "layers": [
+    {
+      "id": "glass",
+      "fill": "#FFFFFF1F"
+    }
+  ]
+}

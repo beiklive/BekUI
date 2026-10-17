@@ -1,0 +1,23 @@
+{
+  "box": {
+    "axis": "column",
+    "padding": 8
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "radius": 8
+    }
+  ],
+  "children": [
+    {
+      "ref": "view/children_ref_demo"
+    },
+    {
+      "appearance": "base/json_demo.title",
+      "text": "ref 的兄弟"
+    }
+  ]
+}

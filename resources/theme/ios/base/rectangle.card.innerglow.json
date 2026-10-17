@@ -1,0 +1,29 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.card.padding",
+    "gap": "@theme/metric.spacing.sm"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.accent.base",
+      "radius": "@theme/metric.radius.lg"
+    },
+    {
+      "op": "shadow",
+      "id": "innerGlow",
+      "inner": true,
+      "fill": "#FFFFFFCC",
+      "feather": 18,
+      "spread": 0,
+      "offset": [
+        0,
+        -4
+      ],
+      "radius": "@theme/metric.radius.lg"
+    }
+  ]
+}

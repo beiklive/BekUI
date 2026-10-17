@@ -280,7 +280,7 @@ int main()
         check(pinned.getTextColor() == IM_COL32(1, 2, 3, 255), "显式设过的颜色不被主题覆盖");
 
         // 换一次主题再看
-        setTheme("ocean");
+        setTheme("ios");
         pinned.applyTheme();
         follows.applyTheme();
         checkFloat(pinned.getFontSize(), 33.0f, "换主题后显式值仍然保持");

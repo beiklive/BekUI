@@ -26,7 +26,7 @@ bool Project::hasResourcesOutside(const std::string& ownResourcesDir) const
 
 bool isBaseTheme(const std::string& themeName)
 {
-    return themeName == "default" || themeName == "ocean";
+    return themeName == "default" || themeName == "ios";
 }
 
 bool createProjectFromTemplate(const std::string& themeRoot, const std::string& templateName,
@@ -39,7 +39,7 @@ bool createProjectFromTemplate(const std::string& themeRoot, const std::string& 
     }
     if (isBaseTheme(newName))
     {
-        error = "主题名不能占用基准主题名（default / ocean）";
+        error = "主题名不能占用基准主题名（default / ios）";
         return false;
     }
 
@@ -93,7 +93,7 @@ bool openProjectInPlace(const std::string& themeRoot, const std::string& themeNa
 {
     if (isBaseTheme(themeName))
     {
-        error = "default / ocean 是基准主题，请用「模板新建」改出一份自己的主题";
+        error = "default / ios 是基准主题，请用「模板新建」改出一份自己的主题";
         return false;
     }
     if (!directoryExists(themeRoot + "/" + themeName))

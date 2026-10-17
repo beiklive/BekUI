@@ -282,7 +282,7 @@ int main()
         // （不静默回退成洋红）。曾经因为把 @theme/color.a.b 写成 @theme/color/a.b，
         // 选中态整块变成洋红，就是这个错误。
         // 名单直接用主题清单（files[]），不再手抄：加/删外观文件时这条测试自动跟上
-        for (const char* themeName : { "default", "ocean" })
+        for (const char* themeName : { "default", "ios" })
         {
             check(setTheme(themeName), std::string("切到主题 ") + themeName);
 
@@ -359,7 +359,7 @@ int main()
         // 所以"文件写好了但忘了登记"不会报错 —— 运行时会以"主题里没有这份外观"的形式
         // 静默回退到 default，改了半天不生效；少写 `.json` 后缀也是同一个现象。
         // CMake 侧的源清单漏项在 configure 期就会失败，主题侧原来没有对应物，这里补上。
-        for (const char* themeName : { "default", "ocean", "my-skin" })
+        for (const char* themeName : { "default", "ios" })
         {
             const std::string themeDir = std::string("resources/theme/") + themeName;
 
@@ -443,7 +443,7 @@ int main()
             "metric.sidebar.separatorThickness",
             "metric.sidebar.separatorHeight",
         };
-        for (const char* themeName : { "default", "ocean", "my-skin" })
+        for (const char* themeName : { "default", "ios" })
         {
             check(setTheme(themeName), std::string("切到主题 ") + themeName);
             for (const char* key : colors)
@@ -500,10 +500,10 @@ int main()
                 std::string("common.") + hue.name + "Dark 存在且与 base 不同");
         }
 
-        // 换到 ocean 也必须有（调色板每套主题各一份）
-        setTheme("ocean");
+        // 换到 ios 也必须有（调色板每套主题各一份）
+        setTheme("ios");
         checkColor(getTheme().color("color.common.transparent", IM_COL32(1, 2, 3, 4)), 0,
-            "ocean 主题也有 common.transparent");
+            "ios 主题也有 common.transparent");
         setTheme("default");
     }
 

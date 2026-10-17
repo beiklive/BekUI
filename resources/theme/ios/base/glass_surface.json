@@ -1,0 +1,11 @@
+{
+  "layers": [
+    {
+      "id": "glass",
+      "op": "glass",
+      "fill": "#FFFFFF33",
+      "stroke": "#FFFFFF3D",
+      "strokeWidth": 1
+    }
+  ]
+}

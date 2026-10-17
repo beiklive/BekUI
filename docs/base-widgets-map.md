@@ -9,8 +9,8 @@
    变体用后缀拼：`base/box` + variant `component` → `base/box.component`。
 2. **外观只覆盖写了的字段**：没写的字段保留上一个值（换外观时旧值不会自动清掉，
    `widget/button.icon` 就得显式写 `minWidth: 0` 才能压掉 `base/button` 的 120）。
-3. **三套主题**：`default` / `ocean` / `my-skin`；清单在各自 `theme.json` 的 `files[]`。
-   ocean / my-skin 只覆盖了一部分文件，**缺的自动回退 default**（下面标了「缺」）。
+3. **两套主题**：`default`（扁平）与 `ios`（苹果风格）；清单在各自 `theme.json` 的 `files[]`。
+   两套都是整份清单；某一套没写的字段会**回退 default**（下面标了「缺」的只针对后来的精简主题）。
 
 ## 改哪里 → 改什么
 
@@ -36,8 +36,7 @@
 - default：`resources/theme/default/base/box.json`
   - 层：（没有层）
   - 状态 / box：（没有状态） box:axis, height
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -66,15 +65,13 @@
 - default：`resources/theme/default/base/box.json`
   - 层：（没有层）
   - 状态 / box：（没有状态） box:axis, height
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 **`base/box.layout`**
 - default：`resources/theme/default/base/box.layout.json`
   - 层：（没有层）
   - 状态 / box：（没有状态） import:base/box box:padding
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -108,8 +105,7 @@
 - default：`resources/theme/default/base/box.component.json`
   - 层：shadow / bg
   - 状态 / box：（没有状态） import:base/box box:measureContent, padding
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -188,10 +184,9 @@
 - default：`resources/theme/default/base/slider.json`
   - 层：track / fill / knob / geometry
   - 状态 / box：focused / disabled box:height, width
-- ocean：`resources/theme/ocean/base/slider.json`
+- ios：`resources/theme/ios/base/slider.json`
   - 层：track / fill / knob / geometry
   - 状态 / box：focused / disabled box:height, width
-- my-skin：`resources/theme/my-skin/base/slider.json`
   - 层：track / fill / knob / geometry
   - 状态 / box：focused / disabled box:height, width
 
@@ -252,8 +247,7 @@
 - default：`resources/theme/default/widget/button.text.json`
   - 层：hlBg / text / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, justifyContent
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -279,15 +273,13 @@
 - default：`resources/theme/default/widget/button.icon.json`
   - 层：hlBg / icon / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, height, justifyContent, minWidth, padding, width
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 **`widget/button.icon_circle`**
 - default：`resources/theme/default/widget/button.icon_circle.json`
   - 层：shadow / bg / hlBg / hlGlow / hlBorder
   - 状态 / box：（没有状态） import:widget/button.icon
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -316,8 +308,7 @@
 - default：`resources/theme/default/widget/button.icon_text.json`
   - 层：hlBg / icon / text / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -342,8 +333,7 @@
 - default：`resources/theme/default/widget/button.list.json`
   - 层：bg / text
   - 状态 / box：disabled import:widget/button.text
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -369,8 +359,7 @@
 - default：`resources/theme/default/widget/button.info.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -405,8 +394,7 @@
 - default：`resources/theme/default/widget/button.switch_text.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / on / off / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -441,8 +429,7 @@
 - default：`resources/theme/default/widget/button.switch_icon.json`
   - 层：hlBg / icon / text / track / knob / hlGlow / hlBorder
   - 状态 / box：focused / on / off / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -473,17 +460,15 @@
 - default：`resources/theme/default/widget/button.dropdown.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 **`base/dropdown_popup`**
 - default：`resources/theme/default/base/dropdown_popup.json`
   - 层：shadow / bg
   - 状态 / box：（没有状态） box:cornerRadius, padding, width
-- ocean：`resources/theme/ocean/base/dropdown_popup.json`
+- ios：`resources/theme/ios/base/dropdown_popup.json`
   - 层：shadow / bg
   - 状态 / box：（没有状态） box:cornerRadius, padding, width
-- my-skin：`resources/theme/my-skin/base/dropdown_popup.json`
   - 层：shadow / bg
   - 状态 / box：（没有状态） box:cornerRadius, padding, width
 
@@ -491,10 +476,9 @@
 - default：`resources/theme/default/base/dropdown_item.json`
   - 层：bg / label
   - 状态 / box：focused / selected box:height, padding, width
-- ocean：`resources/theme/ocean/base/dropdown_item.json`
+- ios：`resources/theme/ios/base/dropdown_item.json`
   - 层：bg / label
   - 状态 / box：focused / selected box:height, padding, width
-- my-skin：`resources/theme/my-skin/base/dropdown_item.json`
   - 层：bg / label
   - 状态 / box：focused / selected box:height, padding, width
 
@@ -533,8 +517,7 @@
 - default：`resources/theme/default/widget/button.selector.json`
   - 层：hlBg / icon / text / arrowLeft / info / arrowRight / hlGlow / hlBorder
   - 状态 / box：focused / editing / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 
@@ -565,8 +548,7 @@
 - default：`resources/theme/default/widget/button.selector.json`
   - 层：hlBg / icon / text / arrowLeft / info / arrowRight / hlGlow / hlBorder
   - 状态 / box：focused / editing / disabled import:base/box.component box:alignItems, axis, gap
-- ocean：缺（回退 default）
-- my-skin：缺（回退 default）
+- ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
 

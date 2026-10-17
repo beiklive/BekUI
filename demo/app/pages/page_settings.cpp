@@ -149,7 +149,7 @@ Box* buildSettingsPage()
         getTheme().number("metric.font.size.md", 18.0f), getTheme().color("color.text.primary")));
 
     SelectorCell* themeSelector = new SelectorCell(getStr("settings/theme_select"));
-    themeSelector->setOptions({ "default", "ocean" });
+    themeSelector->setOptions({ "default", "ios" });
     themeSelector->setOnChange([](int, const std::string& value) { setTheme(value); });
     selectors->addView(themeSelector);
 

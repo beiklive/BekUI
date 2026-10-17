@@ -55,7 +55,7 @@ designer/                    设计器（独立可执行，不依赖 demo/）
 
 | 模式 | 行为 | 产物 |
 |---|---|---|
-| **① 模板新建** | 选一个已有主题当模板（`default` / `ocean` / 任意 `themes.json` 里的），起个新主题名 → 复制整个主题目录到 `resources/theme/<新名>/`，并把名字加进 `themes.json` 的 `available` | 全新主题，原主题**只读不动** |
+| **① 模板新建** | 选一个已有主题当模板（`default` / `ios` / 任意 `themes.json` 里的），起个新主题名 → 复制整个主题目录到 `resources/theme/<新名>/`，并把名字加进 `themes.json` 的 `available` | 全新主题，原主题**只读不动** |
 | **② 直接编辑** | 选一个已有主题目录 → 之后所有编辑**直接写回该主题的文件** | 就地修改（每次保存前自动备份） |
 
 两种模式在编辑阶段的行为完全一样，区别只在**写到哪里**、以及要不要动 `themes.json`。
@@ -67,7 +67,7 @@ designer/                    设计器（独立可执行，不依赖 demo/）
   "mode": "fork",                 // fork | inplace
   "theme": "my-skin",             // 当前编辑的主题名
   "template": "default",          // fork 时记来源；inplace 时为 null
-  "recent": ["my-skin", "ocean"]  // 最近打开（可选）
+  "recent": ["my-skin", "ios"]  // 最近打开（可选）
 }
 ```
 

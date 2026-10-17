@@ -1,0 +1,16 @@
+{
+  "type": "Recycler",
+  "data": "@data/pokedex_paged",
+  "itemAppearance": "base/tab_cell.sidebar",
+  "itemBinder": "pokedexCell",
+  "columns": 1,
+  "count": "infinite",
+  "grow": 1,
+  "width": "100%",
+  "itemHeight": 72,
+  "showScrollingIndicator": true,
+  "preFetchLine": 1,
+  "pageSize": 2,
+  "loadThreshold": 1,
+  "sectionHeaderAppearance": "base/section"
+}

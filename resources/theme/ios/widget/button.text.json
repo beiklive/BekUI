@@ -1,0 +1,24 @@
+{
+  "import": "base/box.component",
+  "box": {
+    "axis": "row", "alignItems": "center", "justifyContent": "center"
+  },
+  "layers": [
+    { "op": "rect", "id": "hlBg", "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] },
+    { "op": "text", "id": "text", "source": "text", "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.md", "align": "center", "valign": "center" },
+    { "op": "rect", "id": "hlGlow", "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius", "inset": [-6.5, -6.5, -6.5, -6.5] },
+    { "op": "rect", "id": "hlBorder", "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] }
+  ],
+  "states": {
+    "focused": {
+    },
+    "disabled": {
+      "text.color": { "to": "@theme/color.text.disabled", "duration": 150 },
+      "bg.stroke": { "to": "@theme/color.text.disabled", "duration": 150 }
+    }
+  }
+}

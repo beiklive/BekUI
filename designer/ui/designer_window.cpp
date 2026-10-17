@@ -277,7 +277,7 @@ void DesignerWindow::switchTheme(const std::string& name)
     if (name == this->project.name)
         return;
 
-    // 切主题：基准主题（default/ocean）只读浏览，自建主题可直接编辑
+    // 切主题：基准主题（default/ios）只读浏览，自建主题可直接编辑
     Project next;
     next.mode      = ProjectMode::INPLACE;
     next.name      = name;
@@ -1614,7 +1614,7 @@ void DesignerWindow::drawMenuBar()
                 - ImGui::CalcTextSize(shortName.c_str()).x - 22.0f);
             ImGui::TextColored(warningColor(), "%s", readOnlyText);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("default / ocean 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
+                ImGui::SetTooltip("default / ios 是基准主题，只读。\n改样式请用菜单「文件 → 打开项目」新建一个主题。");
         }
 
         if (!shortName.empty())
@@ -2284,7 +2284,7 @@ AppearanceView* DesignerWindow::createPreviewControlFor(const std::string& name)
     if (name == "cell_selector")
     {
         SelectorCell* cell = new SelectorCell("主题");
-        cell->setOptions({ "default", "ocean" });
+        cell->setOptions({ "default", "ios" });
         return cell;
     }
     if (name == "cell_input")
@@ -4568,7 +4568,7 @@ void DesignerWindow::requestSave()
     {
         // 按钮虽然是灰的，但 Ctrl+S / 冲突弹层会绕过它 —— 基准主题绝不能被写。
         // 页面视图不属于主题（在 resources/views/ 下），只读时照样能改。
-        this->errorMessage = "基准主题（default / ocean）只读：请先「新建项目」用模板建一份自己的主题";
+        this->errorMessage = "基准主题（default / ios）只读：请先「新建项目」用模板建一份自己的主题";
         BKLV_LOG_WARNING("拒绝写盘：%s 是只读的基准主题", this->project.name.c_str());
         return;
     }

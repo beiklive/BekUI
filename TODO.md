@@ -245,7 +245,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       13 个可插值属性，颜色 4 通道 + 标量 1 通道各自一个 tweeny tween，状态有优先级
 - [x] `View::applyTheme()` / `applyThemeRecursive()`；`App::setTheme()` 运行时换肤
 - [x] `bklv/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
-- [x] 第二套皮肤 `ocean`（复制 default 改出来的）用于验证换肤
+- [x] 第二套皮肤 `ios`（复制 default 改出来的）用于验证换肤
 - [x] 测试：`tests/theme_test.cpp`（44）+ `tests/widget_test.cpp`（24）
 - [x] `Header` / `BottomBar`（多文字层 + 显式宽高的装饰件）
 - [x] 外观层支持显式 `width`/`height` + `align`/`valign`（色条、下边线这类装饰件要用）

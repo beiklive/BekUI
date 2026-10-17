@@ -1,0 +1,74 @@
+{
+  "type": "Box",
+  "axis": "column",
+  "gap": 12,
+  "marginTop": 4,
+  "children": [
+    {
+      "type": "Box",
+      "axis": "row",
+      "alignItems": "center",
+      "gap": 12,
+      "padding": 12,
+      "cornerRadius": 10,
+      "backgroundColor": "#252a33",
+      "children": [
+        {
+          "type": "Image",
+          "src": "@res/testcard.png",
+          "width": 96,
+          "height": 54,
+          "cornerRadius": 8,
+          "scalingType": "fill"
+        },
+        {
+          "type": "Box",
+          "axis": "column",
+          "grow": 1,
+          "children": [
+            {
+              "type": "Label",
+              "text": "@i18n/json/card_title",
+              "fontSize": 16,
+              "singleLine": true,
+              "textColor": "#ebeef2"
+            },
+            {
+              "type": "Label",
+              "text": "@i18n/json/card_desc",
+              "fontSize": 13,
+              "lineHeight": 1.4,
+              "marginTop": 4,
+              "textColor": "#96a0af"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Box",
+      "axis": "row",
+      "gap": 8,
+      "children": [
+        {
+          "type": "Box",
+          "paddingTop": 6,
+          "paddingBottom": 6,
+          "paddingLeft": 10,
+          "paddingRight": 10,
+          "cornerRadius": 6,
+          "backgroundColor": "#2f4a6d",
+          "children": [
+            {
+              "type": "Label",
+              "text": "@i18n/json/badge",
+              "fontSize": 12,
+              "singleLine": true,
+              "textColor": "#dce9f7"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

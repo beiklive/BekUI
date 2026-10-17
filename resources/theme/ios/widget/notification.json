@@ -1,0 +1,80 @@
+{
+  "box": {
+    "width": "@theme/metric.notification.width",
+    "height": "auto",
+    "padding": [
+      "@theme/metric.notification.paddingY",
+      "@theme/metric.notification.paddingX",
+      "@theme/metric.notification.paddingY",
+      "@theme/metric.notification.paddingX"
+    ],
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.common.shadow",
+      "feather": "@theme/metric.shadow.feather",
+      "radius": "@theme/metric.shadow.radius",
+      "offset": [
+        "@theme/metric.shadow.offsetX",
+        "@theme/metric.shadow.offsetY"
+      ],
+      "spread": "@theme/metric.shadow.spread"
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.notification.radius"
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "source": "text",
+      "color": "@theme/color.notification.text",
+      "fontSize": "@theme/metric.notification.fontSize",
+      "valign": "center"
+    }
+  ],
+  "states": {
+    "hidden": {
+      "bg.opacity": {
+        "to": 0.0,
+        "duration": 150
+      },
+      "text.opacity": {
+        "to": 0.0,
+        "duration": 150
+      },
+      "bg.offsetY": {
+        "to": -12.0,
+        "duration": 150
+      },
+      "text.offsetY": {
+        "to": -12.0,
+        "duration": 150
+      }
+    },
+    "shown": {
+      "bg.opacity": {
+        "to": 1.0,
+        "duration": 150
+      },
+      "text.opacity": {
+        "to": 1.0,
+        "duration": 150
+      },
+      "bg.offsetY": {
+        "to": 0.0,
+        "duration": 150
+      },
+      "text.offsetY": {
+        "to": 0.0,
+        "duration": 150
+      }
+    }
+  },
+  "import": "base/glass_surface"
+}

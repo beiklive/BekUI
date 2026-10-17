@@ -123,7 +123,7 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 | 模式 | 行为 |
 |---|---|
 | 模板新建 | 复制模板主题成新主题 + 在目标仓库的 `themes.json` 里登记；原主题字节不变 |
-| 直接编辑 | 写回该主题（`default` / `ocean` 被拒绝，必须走模板新建） |
+| 直接编辑 | 写回该主题（`default` / `ios` 被拒绝，必须走模板新建） |
 
 项目里存的是**主题目录的绝对路径**，所以主题在别的仓库（自己的项目）也能编辑。
 
@@ -378,8 +378,8 @@ BKLV_DESIGNER_VIEW=page_json.json BKLV_DESIGNER_SHOT=/tmp/now.png \
 ## 自查开关（脚本 / CI 用）
 
 ```bash
-BKLV_DESIGNER_PROJECT=my-skin          # 直接打开仓库里的某个主题
-BKLV_DESIGNER_FORK=my-skin             # 先按模板新建一份再打开
+BKLV_DESIGNER_PROJECT=ios             # 直接打开仓库里的某个主题
+BKLV_DESIGNER_FORK=my-skin             # 先按模板新建一份再打开（名字随便起）
 BKLV_DESIGNER_FILE=button.primary      # 打开某个外观
 BKLV_DESIGNER_VIEW=page_json.json      # 打开某个页面视图
 BKLV_DESIGNER_TABLE=colors.json        # 打开主题表

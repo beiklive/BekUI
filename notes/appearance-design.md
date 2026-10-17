@@ -100,7 +100,7 @@ bklv/core/appearance.hpp/.cpp     外观编译 + 运行期补间（tweeny）
 bklv/widgets/appearance_view.*    外观驱动的控件基类（解释并绘制 layers）
 bklv/widgets/rectangle.*          纯装饰控件（示例：本身没有绘制代码）
 bklv/widgets/button.*             按钮（语义：文字/点击/禁用；外观全在 JSON）
-resources/theme/default|ocean/    两套皮肤（ocean 是复制 default 改出来的）
+resources/theme/default|ios/    两套皮肤（ios 是复制 default 改出来的）
 tests/theme_test.cpp              44 项：装载/回退/外观编译/状态动效/换肤
 tests/widget_test.cpp             24 项：外观绑定/状态/换肤对已建视图生效/显式值不被覆盖
 ```

@@ -315,7 +315,7 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
 
 bool ThemeData::load(const std::string& requested)
 {
-    // 环境变量优先：桌面调试与验证用（BKLV_THEME=ocean ./dist/demo）
+    // 环境变量优先：桌面调试与验证用（BKLV_THEME=ios ./dist/demo）
     std::string wanted = requested;
     if (wanted.empty())
     {

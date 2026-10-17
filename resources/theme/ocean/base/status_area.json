@@ -1,9 +1,0 @@
-{
-  "box": {
-    "height": "auto",
-    "axis": "row",
-    "alignItems": "center",
-    "justifyContent": "center"
-  },
-  "layers": []
-}

@@ -430,7 +430,7 @@ int main()
         checkEqual(Json::parse(themeText)["name"].get<std::string>(), "my-skin", "主题名已改");
 
         check(!designer::createProjectFromTemplate(themeRoot, "default", "my-skin", project, error), "重名会被拒绝");
-        check(!designer::createProjectFromTemplate(themeRoot, "default", "ocean", project, error), "不能占用基准名");
+        check(!designer::createProjectFromTemplate(themeRoot, "default", "ios", project, error), "不能占用基准名");
         check(!designer::openProjectInPlace(themeRoot, "default", project, error), "基准主题不许就地编辑");
         check(designer::openProjectInPlace(themeRoot, "my-skin", project, error), "自建主题可以就地编辑");
 

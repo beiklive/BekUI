@@ -1,0 +1,15 @@
+{
+  "import": "widget/button.info",
+  "layers": [
+    {
+      "id": "bg",
+      "fill": "#00000000",
+      "stroke": "#00000000"
+    },
+    {
+      "id": "glass",
+      "op": "glass",
+      "fill": "#10203A6E"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "import": "base/json_demo",
+  "transitions": {
+    "enter": {
+      "duration": 260,
+      "easing": "quadraticOut",
+      "alpha": {
+        "from": 0,
+        "to": 1
+      },
+      "layers": {
+        "title": {
+          "when": "after",
+          "duration": 260,
+          "offsetY": {
+            "from": 18,
+            "to": 0
+          },
+          "opacity": {
+            "from": 0,
+            "to": 1
+          }
+        }
+      }
+    }
+  }
+}
