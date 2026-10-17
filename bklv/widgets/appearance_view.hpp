@@ -37,6 +37,10 @@ class AppearanceView : public Box
     // 调试层按这个显示类型名；不重写就只剩基类的 "bklv::View"，排查视图树时没有类型信息。
     std::string getClassString() const override { return "bklv::AppearanceView"; }
 
+    // 内容槽（text / icon / info）也能从视图 JSON 写：图标字体那套的 `@icon/名字` 由
+    // core/attributes.cpp 的 TEXT 解析统一处理，子类不用各写一份。
+    const bklv::AttributeTable& attributes() const override;
+
     // 语义绘制交给控件自己（CUSTOM 层）；**public** 是为了让注册表里的绘制钩子能调它
     virtual void drawCustomLayer(ImDrawList*, const AppearanceLayer&, float, float, float, float,
         const AppearanceInstance&)
@@ -54,6 +58,8 @@ class AppearanceView : public Box
 
     // 文本层的数据（source = "text"）。也参与按钮这类控件的自动测量。
     void setText(const std::string& text);
+    static const bklv::AttributeTable& appearanceAttributes();
+
     const std::string& getText() const { return this->text; }
 
     // 换一份外观文件（如 "card" -> widgets/rectangle.card.json）。

@@ -399,6 +399,81 @@ void Image::setImage(const TextureRef& ref)
     this->invalidate();
 }
 
+ImagePlacement placeImage(ImageScalingType scaling, float imageWidth, float imageHeight, float boxWidth,
+    float boxHeight, float scale, float offsetX, float offsetY)
+{
+    ImagePlacement out;
+    if (imageWidth <= 0.0f || imageHeight <= 0.0f)
+        return out;
+
+    // 显示比例：默认 1.0（原比例）；非正数按 1.0 处理，别让图凭空消失
+    const float ratio = (scale > 0.0f) ? scale : 1.0f;
+
+    switch (scaling)
+    {
+        case ImageScalingType::STRETCH:
+            out.width  = boxWidth * ratio;
+            out.height = boxHeight * ratio;
+            out.x      = (boxWidth - out.width) * 0.5f;
+            out.y      = (boxHeight - out.height) * 0.5f;
+            break;
+
+        case ImageScalingType::FIT:
+        {
+            // 保持比例、完整放下（居中留边），再按显示比例放大/缩小
+            const float fit = std::min(boxWidth / imageWidth, boxHeight / imageHeight) * ratio;
+            out.width       = imageWidth * fit;
+            out.height      = imageHeight * fit;
+            out.x           = (boxWidth - out.width) * 0.5f;
+            out.y           = (boxHeight - out.height) * 0.5f;
+            break;
+        }
+
+        case ImageScalingType::FILL:
+        {
+            // 铺满 + 用 uv 裁切。缩放/平移在这里没有可解释的语义（裁切范围会跟着变），
+            // 所以忽略；传了非默认值就提醒一次（只报一次，别刷屏）
+            if (ratio != 1.0f || offsetX != 0.0f || offsetY != 0.0f)
+            {
+                static bool warned = false;
+                if (!warned)
+                {
+                    warned = true;
+                    BKLV_LOG_WARNING(
+                        "scalingType=fill 时 scale / offsetX / offsetY 不生效（fill 靠 uv 裁切，"
+                        "要缩放或平移请改用 fit / stretch / center）");
+                }
+            }
+            const float fill   = std::max(boxWidth / imageWidth, boxHeight / imageHeight);
+            const float shownW = boxWidth / (imageWidth * fill);
+            const float shownH = boxHeight / (imageHeight * fill);
+            out.width  = boxWidth;
+            out.height = boxHeight;
+            out.uvMinX = (1.0f - shownW) * 0.5f;
+            out.uvMinY = (1.0f - shownH) * 0.5f;
+            out.uvMaxX = 1.0f - out.uvMinX;
+            out.uvMaxY = 1.0f - out.uvMinY;
+            break;
+        }
+
+        case ImageScalingType::CENTER:
+            // 原尺寸居中（不放大），显示比例乘在原尺寸上
+            out.width  = imageWidth * ratio;
+            out.height = imageHeight * ratio;
+            out.x      = (boxWidth - out.width) * 0.5f;
+            out.y      = (boxHeight - out.height) * 0.5f;
+            break;
+    }
+
+    // 平移只对非 FILL 生效（FILL 的矩形就是整个盒子）
+    if (scaling != ImageScalingType::FILL)
+    {
+        out.x += offsetX;
+        out.y += offsetY;
+    }
+    return out;
+}
+
 void Image::draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext*)
 {
     if (width <= 0.0f || height <= 0.0f)
@@ -419,50 +494,12 @@ void Image::draw(ImDrawList* drawList, float x, float y, float width, float heig
     const float imageWidth  = static_cast<float>(this->texture.width);
     const float imageHeight = static_cast<float>(this->texture.height);
 
-    // 按缩放方式算出目标矩形与 uv。
-    ImVec2 destMin = min;
-    ImVec2 destMax = max;
-    ImVec2 uvMin(0.0f, 0.0f);
-    ImVec2 uvMax(1.0f, 1.0f);
-
-    switch (this->scalingType)
-    {
-        case ImageScalingType::STRETCH:
-            // 直接用整个矩形
-            break;
-
-        case ImageScalingType::FIT:
-        {
-            // 保持比例，取较小的缩放比，居中留边
-            const float scale = std::min(width / imageWidth, height / imageHeight);
-            const float drawW = imageWidth * scale;
-            const float drawH = imageHeight * scale;
-            destMin           = ImVec2(x + (width - drawW) * 0.5f, y + (height - drawH) * 0.5f);
-            destMax           = ImVec2(destMin.x + drawW, destMin.y + drawH);
-            break;
-        }
-
-        case ImageScalingType::FILL:
-        {
-            // 保持比例，铺满矩形，超出部分通过 uv 裁掉
-            const float scale = std::max(width / imageWidth, height / imageHeight);
-            const float shownW = width / (imageWidth * scale);
-            const float shownH = height / (imageHeight * scale);
-            uvMin = ImVec2((1.0f - shownW) * 0.5f, (1.0f - shownH) * 0.5f);
-            uvMax = ImVec2(1.0f - uvMin.x, 1.0f - uvMin.y);
-            break;
-        }
-
-        case ImageScalingType::CENTER:
-        {
-            // 原尺寸居中
-            const float drawW = std::min(imageWidth, width);
-            const float drawH = std::min(imageHeight, height);
-            destMin           = ImVec2(x + (width - drawW) * 0.5f, y + (height - drawH) * 0.5f);
-            destMax           = ImVec2(destMin.x + drawW, destMin.y + drawH);
-            break;
-        }
-    }
+    const ImagePlacement placement = placeImage(this->scalingType, imageWidth, imageHeight, width,
+        height, this->displayScale, this->offsetX, this->offsetY);
+    const ImVec2 destMin(x + placement.x, y + placement.y);
+    const ImVec2 destMax(destMin.x + placement.width, destMin.y + placement.height);
+    const ImVec2 uvMin(placement.uvMinX, placement.uvMinY);
+    const ImVec2 uvMax(placement.uvMaxX, placement.uvMaxY);
 
     const ImU32 tint = colorWithAlpha(IM_COL32_WHITE, this->getAlpha());
 
@@ -509,6 +546,23 @@ void setScalingTypeAttr(View* v, const ResolvedValue& r)
 
 } // namespace
 
+void setImageScaleAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Image*>(v)->setDisplayScale(r.number);
+}
+
+void setImageOffsetXAttr(View* v, const ResolvedValue& r)
+{
+    Image* image = static_cast<Image*>(v);
+    image->setOffset(r.number, image->getOffsetY());
+}
+
+void setImageOffsetYAttr(View* v, const ResolvedValue& r)
+{
+    Image* image = static_cast<Image*>(v);
+    image->setOffset(image->getOffsetX(), r.number);
+}
+
 const AttributeTable& Image::attributes() const
 {
     static const AttributeTable table = {
@@ -517,6 +571,10 @@ const AttributeTable& Image::attributes() const
         // 那个背景圆角），这才是 Image 上看得见的东西。
         { "cornerRadius", AttributeKind::NUMBER, setImageRadiusAttr, nullptr },
         { "scalingType", AttributeKind::ENUM, setScalingTypeAttr, "fit|fill|stretch|center" },
+        // 显示比例（默认 1.0 = 原比例）、平移（像素）；fill 模式下无效（见 placeImage）
+        { "scale", AttributeKind::NUMBER, setImageScaleAttr, nullptr },
+        { "offsetX", AttributeKind::NUMBER, setImageOffsetXAttr, nullptr },
+        { "offsetY", AttributeKind::NUMBER, setImageOffsetYAttr, nullptr },
         { "placeholderColor", AttributeKind::COLOR, setImagePlaceholderAttr, nullptr },
     };
     return table;

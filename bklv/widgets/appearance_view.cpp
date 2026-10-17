@@ -290,6 +290,53 @@ void AppearanceView::update()
     this->appearance.update(getFrameDeltaSeconds());
 }
 
+namespace
+{
+
+void setAppearanceTextAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<AppearanceView*>(v)->setText(r.text);
+}
+
+void setAppearanceIconAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<AppearanceView*>(v)->setIcon(r.text);
+}
+
+void setAppearanceInfoAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<AppearanceView*>(v)->setInfoText(r.text);
+}
+
+void setAppearanceIconFontAttr(View* v, const ResolvedValue& r)
+{
+    AppearanceView* view = static_cast<AppearanceView*>(v);
+    if (enumMatches(r.text, "material"))
+        view->setIconFontKind(IconFontKind::MATERIAL);
+    else if (enumMatches(r.text, "switch"))
+        view->setIconFontKind(IconFontKind::SWITCH);
+    else
+        warnUnknownEnumValue("iconFont", r.text, "material|switch");
+}
+
+} // namespace
+
+const bklv::AttributeTable& AppearanceView::appearanceAttributes()
+{
+    static const AttributeTable table = {
+        { "text", AttributeKind::TEXT, setAppearanceTextAttr, nullptr },
+        { "icon", AttributeKind::TEXT, setAppearanceIconAttr, nullptr },
+        { "info", AttributeKind::TEXT, setAppearanceInfoAttr, nullptr },
+        { "iconFont", AttributeKind::ENUM, setAppearanceIconFontAttr, "material|switch" },
+    };
+    return table;
+}
+
+const bklv::AttributeTable& AppearanceView::attributes() const
+{
+    return appearanceAttributes();
+}
+
 void AppearanceView::setIcon(const std::string& glyph)
 {
     if (this->icon == glyph)

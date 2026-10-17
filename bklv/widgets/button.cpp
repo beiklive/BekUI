@@ -98,10 +98,35 @@ void Button::setSwitched(bool on)
     this->invalidate();
 }
 
+namespace
+{
+
+void setButtonIconAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Button*>(v)->setIcon(r.text);
+}
+
+void setButtonIconFontAttr(View* v, const ResolvedValue& r)
+{
+    Button* button = static_cast<Button*>(v);
+    if (enumMatches(r.text, "material"))
+        button->setIconFontKind(IconFontKind::MATERIAL);
+    else if (enumMatches(r.text, "switch"))
+        button->setIconFontKind(IconFontKind::SWITCH);
+    else
+        warnUnknownEnumValue("iconFont", r.text, "material|switch");
+}
+
+} // namespace
+
 const AttributeTable& Button::attributes() const
 {
+    // Button 自己的 text 语义与基类不同（还要更新子 Label），所以 text 留在这儿；
+    // icon / iconFont 与基类同义，照抄表项（AttributeTable 只收 initializer_list，不能拼接）。
     static const AttributeTable table = {
         { "text", AttributeKind::TEXT, setButtonTextAttr, nullptr },
+        { "icon", AttributeKind::TEXT, setButtonIconAttr, nullptr },
+        { "iconFont", AttributeKind::ENUM, setButtonIconFontAttr, "material|switch" },
         { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
         { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
     };

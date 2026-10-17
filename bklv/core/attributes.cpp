@@ -1,5 +1,7 @@
 #include "bklv/core/attributes.hpp"
 
+#include "bklv/core/icon_font.hpp"
+
 #include <set>
 
 #include <cctype>
@@ -316,7 +318,35 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
         {
             out.text = raw;
             if (startsWith(raw, "@i18n/"))
+            {
                 out.text = getStr(raw.substr(6));
+                return true;
+            }
+            // `@icon/名字` 与 `@icon/U+E000`：图标控件要的是**字形**，字形只有 C++ 侧能查
+            // （名字表在 core/icon_font.cpp），所以在这里替使用者查一次。
+            // 查不到就报错 —— 静默给空串的话，界面上少一个图标很难查出来。
+            if (startsWith(raw, "@icon/"))
+            {
+                const std::string glyphRef = raw.substr(6);
+                std::string glyph;
+                if (glyphRef.rfind("U+", 0) == 0 || glyphRef.rfind("u+", 0) == 0)
+                {
+                    const unsigned long codepoint = std::strtoul(glyphRef.c_str() + 2, nullptr, 16);
+                    glyph = icon::utf8Glyph(static_cast<unsigned int>(codepoint));
+                }
+                else
+                {
+                    glyph = icon::glyphByName(glyphRef.c_str());
+                }
+                if (glyph.empty())
+                {
+                    error = "未知图标 \"" + glyphRef
+                        + "\"（按名字时用 @icon/star 这种写法，名字表见 core/icon_font.cpp；"
+                          "不确定就写码位 @icon/U+E000）";
+                    return false;
+                }
+                out.text = glyph;
+            }
             return true;
         }
 

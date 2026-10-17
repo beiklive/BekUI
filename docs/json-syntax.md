@@ -42,12 +42,14 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `@theme/color.a.b` | 主题颜色 | 实例化期 |
 | `@style/metric.a.b` | 主题数值 | 实例化期 |
 | `@res/x` | 文件路径，**相对 `resources/` 目录** | 使用处自己解析 |
+| `@icon/star` | **内置图标字形**（按名字，名字表见 `core/icon_font.cpp`） | 实例化期（TEXT 解析里换成 UTF-8 字形） |
+| `@icon/U+E000` | 同上，**按码位**（名字表是子集，码位能取到字体里的全部字形） | 同上 |
 
 ### 引用前缀：`@` 跨文件、`&` 同文件
 
 | 前缀 | 作用域 | 例子 |
 |---|---|---|
-| `@` | **别的文件**（主题 / 文案 / 资源） | `@theme/color.accent.base`、`@theme/metric.control.height`、`@i18n/xxx`、`@res/xxx` |
+| `@` | **别的文件**（主题 / 文案 / 资源 / 内置图标） | `@theme/color.accent.base`、`@theme/metric.control.height`、`@i18n/xxx`、`@res/xxx`、`@icon/star` |
 | `&` | **同一份文件**的 `vars` 块 | `&color.accent`、`&number.row` |
 
 `$` 前缀只出现在**键**上，表示"这不是数据"（`$comment` 写注释、`$files` 是 i18n 的文件清单）；
@@ -223,6 +225,15 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | `gap` `gapRow` `gapColumn` | NUMBER |
 | `padding` `paddingTop` `paddingRight` `paddingBottom` `paddingLeft` | NUMBER |
 
+### `AppearanceView` / `Button` 追加（内容槽）
+
+| 键 | 说明 |
+|---|---|
+| `text` | TEXT：文字（Button 用这个改按钮文字） |
+| `icon` | TEXT：**图标字形**，写 `@icon/star`（名字）或 `@icon/U+E000`（码位） |
+| `info` | TEXT：右侧信息文字 |
+| `iconFont` | ENUM：`material` / `switch` —— 图标字形跟哪套字体配套（同一码位在两套字体里是不同图标） |
+
 ### `Label` 追加
 
 | 键 | 说明 |
@@ -239,9 +250,15 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | 键 | 说明 |
 |---|---|
 | `src` | RESOURCE：图片路径（也可写 `@res/x`） |
-| `scalingType` | ENUM：`fit` / `fill` / `stretch` / `center` |
+| `scalingType` | ENUM：`fit` / `fill` / `stretch` / `center`，**默认 `fit` = 原比例** |
+| `scale` | NUMBER：**显示比例**，默认 `1`（原比例）；`fit`/`stretch` 在适配尺寸上再乘，`center` 乘在原尺寸上 |
+| `offsetX` `offsetY` | NUMBER：像素平移 |
 | `cornerRadius` | NUMBER |
 | `placeholderColor` | COLOR：加载中/失败时的底色 |
+
+`scale` / `offsetX` / `offsetY` 在 `scalingType: "fill"` 下**无效**（fill 靠自己铺满 + uv 裁切，
+没有可解释的缩放/平移语义），写了会打一条警告；要缩放/平移就改用 `fit` / `stretch` / `center`。
+平移可以把自己盒外的内容画出来，需要裁剪就套一层裁剪容器（`ScrollingFrame` / 带裁剪的容器）。
 
 > ✅ **枚举拼写已统一**：两套 JSON 都接受 camelCase 与 snake_case，**大小写、`_`、`-` 都不敏感**
 > （`flexEnd` == `flex_end` == `FLEX_END` == `Flex-End`）。下表列的是标准写法，随便挑一种写都行。

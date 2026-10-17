@@ -23,6 +23,24 @@ enum class ImageScalingType
     CENTER, // 原尺寸居中，不缩放
 };
 
+// 一张图在给定盒子里的目标矩形与 uv（**纯函数**，不碰纹理/后端，所以能直接测）。
+// scale = 显示比例（1.0 = 原比例）、offsetX/Y = 像素平移；FILL 模式下后三者被忽略
+// （那时靠 uv 裁切，缩放/平移没有可解释的语义）。
+struct ImagePlacement
+{
+    float x = 0.0f;     // 目标矩形（相对于盒左上角）
+    float y = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+    float uvMinX = 0.0f;
+    float uvMinY = 0.0f;
+    float uvMaxX = 1.0f;
+    float uvMaxY = 1.0f;
+};
+
+ImagePlacement placeImage(ImageScalingType scaling, float imageWidth, float imageHeight, float boxWidth,
+    float boxHeight, float scale = 1.0f, float offsetX = 0.0f, float offsetY = 0.0f);
+
 class Image : public View
 {
   public:
@@ -88,6 +106,23 @@ class Image : public View
     void setScalingType(ImageScalingType type) { this->scalingType = type; }
     ImageScalingType getScalingType() const { return this->scalingType; }
 
+    // ---- 显示比例 / 缩放大小 / 偏移（FILL 模式不用：那时图已经铺满并裁掉了）----
+    //
+    // displayScale：显示比例，**默认 1.0 = 原比例**（图按原始像素尺寸显示，不放大不缩小）。
+    //   FIT / STRETCH 下它是在"适配后的尺寸"上再乘一次；CENTER 下就是原尺寸乘它。
+    // offsetX / offsetY：像素平移（可以超出自己的盒；绘制不额外裁剪，需要裁剪就套在
+    //   父级 ScrollingFrame / 裁剪容器里）。
+    // FILL 模式下这三个值**无效**（会打一条警告，只报一次）。
+    void setDisplayScale(float scale) { this->displayScale = (scale > 0.0f) ? scale : 1.0f; }
+    float getDisplayScale() const { return this->displayScale; }
+    void setOffset(float x, float y)
+    {
+        this->offsetX = x;
+        this->offsetY = y;
+    }
+    float getOffsetX() const { return this->offsetX; }
+    float getOffsetY() const { return this->offsetY; }
+
     // 圆角。等于 min(width, height)/2 时就是圆形。
     void setCornerRadius(float radius) { this->imageCornerRadius = radius; }
     float getImageCornerRadius() const { return this->imageCornerRadius; }
@@ -133,7 +168,10 @@ class Image : public View
     bool applyAnimation(DecodedAnimation loaded);
     void uploadAnimationFrame();
 
-    ImageScalingType scalingType = ImageScalingType::FIT;
+    ImageScalingType scalingType = ImageScalingType::FIT; // 默认原比例（保比例、完整放下）
+    float displayScale = 1.0f;                            // 显示比例：1.0 = 原比例
+    float offsetX      = 0.0f;                            // 平移（像素）
+    float offsetY      = 0.0f;
     float imageCornerRadius      = 0.0f;
     ImU32 placeholderColor       = IM_COL32(45, 49, 56, 255);
 };
