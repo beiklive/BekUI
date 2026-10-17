@@ -222,6 +222,47 @@ void DesignerApp::saveCurrent()
 
 void DesignerApp::update()
 {
+    // 层快捷键：只在没有输入控件抢键盘时生效；调**操作本体**而不是界面函数
+    if (this->appearanceLoaded && !ImGui::GetIO().WantCaptureKeyboard)
+    {
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_D)
+            || ImGui::IsKeyChordPressed(ImGuiMod_Super | ImGuiKey_D))
+            this->duplicateSelected();
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete))
+            this->deleteSelected();
+        if (ImGui::IsKeyPressed(ImGuiKey_F2))
+            this->renameSelected();
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z))
+        {
+            std::string restored;
+            if (this->undo.redo(this->appearance.serialize(), restored))
+            {
+                std::string parseError;
+                if (this->appearance.fromText(restored, parseError))
+                {
+                    this->currentText = this->appearance.serialize();
+                    this->applyToCanvas();
+                }
+            }
+        }
+        else if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z))
+        {
+            std::string restored;
+            if (this->undo.undo(this->appearance.serialize(), restored))
+            {
+                std::string parseError;
+                if (this->appearance.fromText(restored, parseError))
+                {
+                    this->currentText = this->appearance.serialize();
+                    this->applyToCanvas();
+                }
+            }
+        }
+    }
+
+    if (!this->pendingFile.empty())
+        this->drawPendingSwitchPopup();
+
     if (this->header == nullptr)
         return;
     std::string subtitle = this->themeTitle + " · " + std::to_string(this->files.size()) + " 个文件";
@@ -288,7 +329,8 @@ void DesignerApp::drawPanels()
             return;
         }
 
-        ImGui::BeginChild("##layers", ImVec2(0, 130), true);
+        this->drawLayerOps();
+        ImGui::BeginChild("##layers", ImVec2(0, 110), true);
         const std::vector<LayerInfo> layers = this->appearance.getLayers();
         for (int i = 0; i < (int)layers.size(); i++)
         {
@@ -360,7 +402,8 @@ void DesignerApp::drawFileList()
         if (ImGui::Selectable(entry.relPath.c_str(), selected))
         {
             this->selectedIndex = i;
-            if (!this->openFile(entry.relPath))
+            this->confirmFileSwitch(entry.relPath);
+            if (!this->lastError.empty())
                 ImGui::OpenPopup("打开失败");
         }
     }
@@ -606,8 +649,229 @@ void DesignerApp::applyFieldEdit(const std::string& key, const designer::Json& v
     }
 }
 
+void DesignerApp::confirmFileSwitch(const std::string& relPath)
+{
+    if (this->appearanceLoaded && this->appearance.isDirty())
+    {
+        this->pendingFile = relPath;
+        return;
+    }
+    this->openFile(relPath);
+}
+
+void DesignerApp::drawPendingSwitchPopup()
+{
+    if (this->pendingFile.empty())
+        return;
+
+    ImGui::OpenPopup("未保存的改动");
+    if (ImGui::BeginPopupModal("未保存的改动", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("「%s」有未保存的改动，切走会丢掉它们。", this->currentFile.c_str());
+        if (ImGui::Button("保存并切换"))
+        {
+            this->saveCurrent();
+            if (!this->appearance.isDirty())
+            {
+                const std::string target = this->pendingFile;
+                this->pendingFile.clear();
+                this->openFile(target);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("丢弃并切换"))
+        {
+            const std::string target = this->pendingFile;
+            this->pendingFile.clear();
+            this->openFile(target);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消"))
+        {
+            this->pendingFile.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void DesignerApp::addLayerOp(const std::string& op)
+{
+    if (!this->appearanceLoaded)
+        return;
+    const std::string before = this->appearance.serialize();
+    std::string       newId, error;
+    if (this->appearance.addLayer(op, newId, error))
+    {
+        this->undo.record(before, "加层 " + newId);
+        this->currentText   = this->appearance.serialize();
+        this->selectedLayer = (int)this->appearance.getLayers().size() - 1;
+        this->applyToCanvas();
+    }
+    else
+        this->lastError = error;
+}
+
+void DesignerApp::duplicateSelected()
+{
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    if (!this->appearanceLoaded || this->selectedLayer < 0
+        || this->selectedLayer >= (int)layers.size())
+        return;
+    const std::string before = this->appearance.serialize();
+    const std::string id     = layers[(size_t)this->selectedLayer].id;
+    std::string       copyId, error;
+    if (this->appearance.duplicateLayer(id, copyId, error))
+    {
+        this->undo.record(before, "复制 " + id);
+        this->currentText   = this->appearance.serialize();
+        this->selectedLayer = this->appearance.findLayer(copyId);
+        this->applyToCanvas();
+    }
+    else
+        this->lastError = error;
+}
+
+void DesignerApp::deleteSelected()
+{
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    if (!this->appearanceLoaded || this->selectedLayer < 0
+        || this->selectedLayer >= (int)layers.size())
+        return;
+    const std::string before = this->appearance.serialize();
+    const std::string id     = layers[(size_t)this->selectedLayer].id;
+    std::string       error;
+    if (this->appearance.removeLayer(id, error))
+    {
+        this->undo.record(before, "删层 " + id);
+        this->currentText   = this->appearance.serialize();
+        this->selectedLayer = std::min(this->selectedLayer,
+            (int)this->appearance.getLayers().size() - 1);
+        this->applyToCanvas();
+    }
+    else
+        this->lastError = error;
+}
+
+void DesignerApp::moveSelected(int delta)
+{
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    if (!this->appearanceLoaded || this->selectedLayer < 0
+        || this->selectedLayer >= (int)layers.size())
+        return;
+    const int target = this->selectedLayer + delta;
+    if (target < 0 || target >= (int)layers.size())
+        return;
+
+    const std::string before = this->appearance.serialize();
+    const std::string id     = layers[(size_t)this->selectedLayer].id;
+    std::string       error;
+    if (this->appearance.moveLayer(id, (size_t)target, error))
+    {
+        this->undo.record(before, "移动 " + id);
+        this->currentText   = this->appearance.serialize();
+        this->selectedLayer = target;
+        this->applyToCanvas();
+    }
+    else
+        this->lastError = error;
+}
+
+void DesignerApp::renameSelected()
+{
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    if (!this->appearanceLoaded || this->selectedLayer < 0
+        || this->selectedLayer >= (int)layers.size())
+        return;
+    std::snprintf(this->renameBuffer, sizeof(this->renameBuffer), "%s",
+        layers[(size_t)this->selectedLayer].id.c_str());
+    this->wantRename = true;
+}
+
+void DesignerApp::drawLayerOps()
+{
+    if (!this->appearanceLoaded)
+        return;
+
+    static const char* kOps[] = { "rect", "text", "image", "shadow", "glass", "custom" };
+    ImGui::SetNextItemWidth(90.0f * bklv::getUiScale());
+    if (ImGui::BeginCombo("##newLayerOp", "＋ 加层"))
+    {
+        for (const char* op : kOps)
+            if (ImGui::Selectable(op))
+                this->addLayerOp(op);
+        ImGui::EndCombo();
+    }
+
+    const std::vector<LayerInfo> layers = this->appearance.getLayers();
+    const bool hasSelection
+        = this->selectedLayer >= 0 && this->selectedLayer < (int)layers.size();
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!hasSelection);
+    if (ImGui::Button("复制"))
+        this->duplicateSelected();
+    ImGui::SameLine();
+    if (ImGui::Button("删"))
+        this->deleteSelected();
+    ImGui::SameLine();
+    if (ImGui::ArrowButton("##up", ImGuiDir_Up))
+        this->moveSelected(-1);
+    ImGui::SameLine();
+    if (ImGui::ArrowButton("##down", ImGuiDir_Down))
+        this->moveSelected(1);
+    ImGui::EndDisabled();
+}
+
 void DesignerApp::drawInspector()
 {
+    if (this->wantRename)
+    {
+        ImGui::OpenPopup("重命名 id");
+        this->wantRename = false;
+    }
+    if (ImGui::BeginPopupModal("重命名 id", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("层 id（同层不能重名）");
+        ImGui::InputText("##id", this->renameBuffer, sizeof(this->renameBuffer));
+        if (ImGui::Button("确定"))
+        {
+            const std::vector<LayerInfo> layers = this->appearance.getLayers();
+            if (this->selectedLayer >= 0 && this->selectedLayer < (int)layers.size())
+            {
+                const std::string oldId = layers[(size_t)this->selectedLayer].id;
+                const std::string newId(this->renameBuffer);
+                std::string       error;
+                const bool conflict
+                    = newId != oldId && this->appearance.findLayer(newId) >= 0;
+                if (conflict)
+                {
+                    this->lastError = "id 已被占用：" + newId;
+                }
+                else
+                {
+                    const std::string before = this->appearance.serialize();
+                    if (this->appearance.setLayerField(
+                            oldId, "id", designer::Json(newId), error))
+                    {
+                        this->undo.record(before, "重命名 " + oldId + " -> " + newId);
+                        this->currentText = this->appearance.serialize();
+                        this->applyToCanvas();
+                    }
+                    else
+                        this->lastError = error;
+                }
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消"))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     const std::vector<LayerInfo> layers = this->appearance.getLayers();
     if (this->selectedLayer < 0 || this->selectedLayer >= (int)layers.size())
     {

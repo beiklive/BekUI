@@ -54,6 +54,16 @@ class DesignerApp
     void handleCanvasClick();
     void drawSourceTab();
     void drawTokenTable();
+    void drawLayerOps();
+    // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
+    // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
+    void addLayerOp(const std::string& op);
+    void duplicateSelected();
+    void deleteSelected();
+    void moveSelected(int delta);
+    void renameSelected();
+    void confirmFileSwitch(const std::string& relPath);
+    void drawPendingSwitchPopup();
     void applySource();
     void saveCurrent();
     void applyFieldEdit(const std::string& key, const designer::Json& value);
@@ -88,6 +98,9 @@ class DesignerApp
     bool              tokensLoaded = false;
     char              tokenFilter[64] = {0};
     std::vector<TokenRef> tokenRefs; // 当前选中 token 的引用（点"查引用"才扫）
+    std::string       pendingFile;   // 有未保存改动时等待确认切换的目标文件
+    char              renameBuffer[128] = {0};
+    bool              wantRename = false;
 };
 
 } // namespace designer
