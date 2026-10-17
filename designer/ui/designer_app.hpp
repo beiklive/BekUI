@@ -9,6 +9,7 @@
 #include "bklv/core/app.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/layer_fields.hpp"
+#include "designer/core/tokens_doc.hpp"
 #include "designer/core/undo_stack.hpp"
 
 namespace bklv { class Header; class View; class AppearanceView; }
@@ -52,6 +53,7 @@ class DesignerApp
     void applyToCanvas();
     void handleCanvasClick();
     void drawSourceTab();
+    void drawTokenTable();
     void applySource();
     void saveCurrent();
     void applyFieldEdit(const std::string& key, const designer::Json& value);
@@ -82,6 +84,10 @@ class DesignerApp
     std::string       sourceError;  // 上次"应用"失败的原因（带行列）
     std::string       sourceStatus; // 上次"应用"成功提示
     int               inspectorTab = 0; // 0 = 属性，1 = 源码
+    TokensDoc         tokens;
+    bool              tokensLoaded = false;
+    char              tokenFilter[64] = {0};
+    std::vector<TokenRef> tokenRefs; // 当前选中 token 的引用（点"查引用"才扫）
 };
 
 } // namespace designer

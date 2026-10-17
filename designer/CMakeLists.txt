@@ -11,6 +11,7 @@ set(DESIGNER_CORE_SOURCES
     core/save_transaction.cpp
     core/undo_stack.cpp
     core/layer_fields.cpp
+    core/tokens_doc.cpp
 )
 
 set(DESIGNER_CORE_ABS "")
