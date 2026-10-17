@@ -206,6 +206,13 @@ target_link_libraries(demo_app PUBLIC bklv::bklv)
 target_include_directories(demo_app PUBLIC "${CMAKE_SOURCE_DIR}/demo")
 
 # ---------------------------------------------------------------------------
+# 设计器（子工程）：代码、状态、预设都在 designer/ 下，链接 bklv，资源走 resources/ 原路径
+# ---------------------------------------------------------------------------
+if(EXISTS "${CMAKE_SOURCE_DIR}/designer/CMakeLists.txt")
+    add_subdirectory(designer)
+endif()
+
+# ---------------------------------------------------------------------------
 # 目标程序
 # ---------------------------------------------------------------------------
 
@@ -307,6 +314,9 @@ if(BKLV_BUILD_TESTS)
         if(${test_name} STREQUAL "quad_layer_test")
             target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo/contrib/quad_layer.cpp")
             target_include_directories(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo")
+        endif()
+        if(TARGET designer_core)
+            target_link_libraries(${test_name} PRIVATE designer_core)
         endif()
         bklv_copy_resources(${test_name})
         set_target_properties(${test_name} PROPERTIES
