@@ -655,7 +655,7 @@ void DesignerApp::drawPanels()
         if (!this->lastError.empty())
             ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
         ImGui::Separator();
-        ImGui::TextDisabled("非外观文件（P5 起可编辑）");
+        ImGui::TextDisabled("选中一个文件后，这里会显示它的可调项");
         ImGui::BeginChild("##raw", ImVec2(0, 0), true);
         ImGui::TextUnformatted(this->currentText.c_str());
         ImGui::EndChild();
@@ -742,10 +742,10 @@ void DesignerApp::drawFileList()
     {
         this->lastError = draftError;
     }
-    ImGui::TextDisabled("点名字打开");
+
     this->drawOpenTheme();
     ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint("##filter", "过滤文件名…", this->filter, sizeof(this->filter));
+    ImGui::InputTextWithHint("##filter", "搜索外观…", this->filter, sizeof(this->filter));
 
     ImGui::BeginChild("##list", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.68f), false);
     for (int i = 0; i < (int)this->files.size(); i++)
@@ -1371,7 +1371,7 @@ void DesignerApp::drawViewPanel()
         return;
     }
 
-    ImGui::TextDisabled("节点（点选同步画布预览）");
+    ImGui::TextDisabled("节点（点画布也能选中）");
     ImGui::BeginChild("##nodes", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.45f), true);
     const std::vector<ViewNodeInfo> nodes = this->viewDoc.listNodes();
     for (int i = 0; i < (int)nodes.size(); i++)
@@ -1999,8 +1999,14 @@ void DesignerApp::drawLayerOps()
     if (ImGui::BeginCombo("##newLayerOp", "＋ 添加组成部分", ImGuiComboFlags_HeightLarge))
     {
         for (const char* op : kOps)
-            if (ImGui::Selectable(op))
+        {
+            const std::string title = designer::opTitle(op);
+            const std::string label = title + "##" + op;
+            if (ImGui::Selectable(label.c_str()))
                 this->addLayerOp(op);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", op);
+        }
         ImGui::EndCombo();
     }
 
@@ -2010,10 +2016,10 @@ void DesignerApp::drawLayerOps()
 
     ImGui::SameLine();
     ImGui::BeginDisabled(!hasSelection);
-    if (iconButton("content_copy", "复制所选层（Cmd/Ctrl+D）"))
+    if (iconButton("content_copy", "复制所选组成部分（Cmd/Ctrl+D）"))
         this->duplicateSelected();
     ImGui::SameLine();
-    if (iconButton("delete", "删除所选层（Del）"))
+    if (iconButton("delete", "删除所选组成部分（Del）"))
         this->deleteSelected();
     ImGui::SameLine();
     if (ImGui::ArrowButton("##up", ImGuiDir_Up))

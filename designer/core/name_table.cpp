@@ -38,6 +38,11 @@ const Entry kSegments[] = {
     { "card", "卡片" }, { "avatar", "头像" }, { "page_json", "演示页" },
     { "scrolling", "滚动" }, { "frame", "框" }, { "applet", "小程序页" },
     { "colors", "调色板" }, { "metrics", "尺寸与间距" },
+    // 组成部分的 id（外观里的层名）
+    { "bg", "底色" }, { "hlBg", "高亮底" }, { "hlGlow", "高亮光晕" },
+    { "hlBorder", "高亮边框" }, { "knob", "滑块" }, { "track", "轨道" },
+    { "fill", "填充" }, { "stroke", "描边" }, { "glow", "光晕" },
+    { "shadow", "阴影" }, { "border", "边框" }, { "tint", "染色" },
 };
 
 const Entry kHints[] = {
