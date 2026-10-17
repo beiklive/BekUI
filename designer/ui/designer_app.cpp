@@ -1749,13 +1749,42 @@ void DesignerApp::applyToCanvas()
         return;
     }
     std::string error;
+
+    // 预览垫一张白底：很多外观（如 widget/button.text）本身**没有底色**、只有文字，
+    // 直接画在画布底上会看起来"什么都没渲染"。注入成第一个层，最稳（不依赖布局顺序）。
+    std::string json = this->appearance.serialize();
+    try
+    {
+        designer::Json document = designer::Json::parse(json);
+        if (document.contains("layers") && document["layers"].is_array())
+        {
+            designer::Json artboard;
+            artboard["op"]   = "rect";
+            artboard["id"]   = "__artboard";
+            // 画板色取主题的页面底色：深色主题上写死白色会让白字看不见（实测）
+            const ImU32 page = bklv::getTheme().color("color.common.background",
+                IM_COL32(0x1F, 0x22, 0x27, 0xFF));
+            char rgb[16];
+            std::snprintf(rgb, sizeof(rgb), "#%02X%02X%02X", (page >> 16) & 0xFF,
+                (page >> 8) & 0xFF, page & 0xFF);
+            artboard["fill"] = rgb;
+            document["layers"].insert(document["layers"].begin(), artboard);
+            json = document.dump(2);
+        }
+    }
+    catch (const std::exception&)
+    {
+        // 解析失败就按原样交给库，让库报出真正的错误
+    }
+
     // **不走库的外观缓存**：直接编译这份 JSON 换进画布那个实例，所以未保存的改动立刻可见
-    if (!this->canvasView->applyAppearanceJson(this->appearance.serialize(), error))
+    if (!this->canvasView->applyAppearanceJson(json, error))
     {
         this->lastError = "画布预览失败：" + error;
         BKLV_LOG_ERROR("画布预览失败：%s", error.c_str());
     }
     this->canvasView->setVisibility(bklv::Visibility::VISIBLE);
+
 
 }
 
