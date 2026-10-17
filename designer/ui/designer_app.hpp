@@ -37,6 +37,8 @@ class DesignerApp
         int         frames = 3;
         std::string initialFile; // --file：启动就直接打开这个文件（自动化验证用）
         bool        startOnSource = false; // --source：启动就切到源码页签
+        float       clickX = -1.0f;        // --click x,y：启动后模拟一次点击（自动化验证点选）
+        float       clickY = -1.0f;
     };
 
     bool init(const Options& options, std::string& error);
@@ -58,6 +60,8 @@ class DesignerApp
     void drawTokenTable();
     void rebuildViewPreview();
     void drawViewPanel();
+    // 画布点击 → 选中节点（预览树与文档按同一 DFS 序对齐；数量对不上就不选，宁可不动）
+    void selectNodeAt(float screenX, float screenY);
     void maybeAutosave();
     void drawRecoveryPopup();
     void drawLayerOps();
@@ -111,6 +115,9 @@ class DesignerApp
     bool              viewLoaded = false;
     bklv::View*       viewPreview = nullptr; // 视图文件的画布预览（与外观预览互斥）
     int               selectedNode = 0;
+    std::vector<bklv::View*> previewOrder; // 预览树的 DFS 序（与 viewDoc.listNodes 对齐）
+    bool              pendingClick = false;
+    int               clickDelayFrames = 0;
     long long         lastAutosaveMs = 0;
     AutosaveInfo      pendingDraft;   // 启动时发现的未保存草稿
     bool              hasPendingDraft = false;

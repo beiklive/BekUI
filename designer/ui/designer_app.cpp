@@ -87,6 +87,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     this->app.setRootView(root.release());
 
+    if (this->options.clickX >= 0.0f)
+        this->pendingClick = true; // 第一帧后再点（此时布局已算完）
+
     this->app.onDrawWindows = [this]() { this->drawPanels(); };
     this->app.onUpdate       = [this]() {
         // Cmd/Ctrl + S 保存（ImGui 输入在 update 里读没问题：无窗口测试不会走这条路）

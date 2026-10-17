@@ -37,6 +37,13 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; i++)
         if (std::strcmp(argv[i], "--source") == 0)
             options.startOnSource = true;
+    if (const char* click = argValue(argc, argv, "--click"))
+    {
+        options.clickX = (float)std::atof(click);
+        const char* comma = std::strchr(click, ',');
+        if (comma != nullptr)
+            options.clickY = (float)std::atof(comma + 1);
+    }
     if (const char* file = argValue(argc, argv, "--file"))
         options.initialFile = file;
     if (const char* frames = argValue(argc, argv, "--frames"))
