@@ -3,23 +3,35 @@
     "base/box",
     "base/glass_surface"
   ],
+  "vars": {
+    "colors": {
+      "none": "@theme/color.common.transparent",
+      "line": "@theme/color.common.white"
+    },
+    "numbers": {
+      "padY":  "@theme/metric.component.paddingY",
+      "padX":  "@theme/metric.component.paddingX",
+      "radius": "@theme/metric.component.radius",
+      "border": "@theme/metric.component.borderWidth"
+    }
+  },
   "box": {
     "measureContent": "sum",
     "padding": [
-      "@theme/metric.component.paddingY",
-      "@theme/metric.component.paddingX",
-      "@theme/metric.component.paddingY",
-      "@theme/metric.component.paddingX"
+      "$number.padY",
+      "$number.padX",
+      "$number.padY",
+      "$number.padX"
     ]
   },
   "layers": [
     {
       "op": "rect",
       "id": "bg",
-      "fill": "#00000000",
-      "stroke": "@theme/color.common.white",
-      "strokeWidth": "@theme/metric.component.borderWidth",
-      "radius": "@theme/metric.component.radius"
+      "fill": "$color.none",
+      "stroke": "$color.line",
+      "strokeWidth": "$number.border",
+      "radius": "$number.radius"
     }
   ]
 }

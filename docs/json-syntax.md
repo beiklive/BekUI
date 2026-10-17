@@ -43,6 +43,73 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `@style/metric.a.b` | 主题数值 | 实例化期 |
 | `@res/x` | 文件路径，**相对 `resources/` 目录** | 使用处自己解析 |
 
+### 引用前缀：`@` 跨文件、`$` 同文件
+
+| 前缀 | 作用域 | 例子 |
+|---|---|---|
+| `@` | **别的文件**（主题 / 文案 / 资源） | `@theme/color.accent.base`、`@theme/metric.control.height`、`@i18n/xxx`、`@res/xxx` |
+| `$` | **同一份文件**的 `vars` 块 | `$color.accent`、`$number.row` |
+
+### 变量块（`vars`）
+
+一份文件在**顶层**写一个 `vars`，把本文档反复用到的颜色/数值起个名字，下面用 `$` 引用：
+
+```json
+{
+  "vars": {
+    "colors":  { "clear": "@theme/color.common.transparent",
+                 "ring":  "#FF8800CC" },
+    "numbers": { "radius": "@theme/metric.component.radius",
+                 "row":    44,
+                 "inset":  -2.5 }
+  },
+  "layers": [
+    { "op": "rect", "id": "bg",   "fill": "$color.clear", "radius": "$number.radius" },
+    { "op": "rect", "id": "line", "fill": "$color.ring",  "radius": "$number.radius",
+      "inset": ["$number.inset", "$number.inset", "$number.inset", "$number.inset"] }
+  ]
+}
+```
+
+视图描述 JSON 里也一样，**`children` 里可以直接用**（`$` 绑的是文件级作用域，不需要在子节点里再写一遍 `vars`）：
+
+```json
+{
+  "vars": {
+    "colors":  { "accent": "@theme/color.accent.base" },
+    "numbers": { "row": 44, "gap": 8 }
+  },
+  "type": "Box", "axis": "column", "gap": "$number.gap",
+  "children": [
+    { "type": "Box", "height": "$number.row", "backgroundColor": "$color.accent" },
+    { "type": "Box", "height": "$number.row", "backgroundColor": "$color.accent" }
+  ]
+}
+```
+
+五条规则（**写错就报错，不静默降级**）：
+
+1. **一个文件只有一个 `vars`，必须在顶层**；嵌套出现 → 报错
+2. 只有 `colors` / `numbers` 两个子块；别的子块 → 报错
+3. 值可以是字面量（`"#RRGGBB[AA]"` / `12`），也可以是 `@theme/...` 引用
+4. `vars` 之间可以用 `$` 互相引用（链式，最多 4 层）；**循环 → 报错**
+5. `$` 的展开与"直接写那个值"**完全等价** —— 缩放（`uiScale`）、`opacity`/`duration` 不缩放、
+   报错口径都由 `resolveColor` / `resolveNumber` 决定，`vars` 这一层不加工数值
+
+`vars` 怎么和已有机制配合：
+
+| 机制 | 解决什么 |
+|---|---|
+| `@theme/...` | 同一份**跨文件**的全局 token（主题） |
+| `vars` + `$` | 同一份**文件内**的重复值（一眼看出这句话在说什么） |
+| `import` | 整份外观的复用（父外观的字段被当前文件覆盖） |
+
+`$` 绑的是"写它的那份文件"：A import B 时，B 里的 `$` 按 B 自己的 `vars` 展开，再合并。
+想让 A 调 B 的值，直接在 A 里覆盖那个字段（`import` 的"当前文件优先"）。
+
+**明确不做**：算式（`"$number.gap * 2"`、`"100% - $number.x"`）、结构复用（整组 `inset` / `states` /
+`layers`，那是 `import` 的活）、字符串/枚举变量、跨文件 `$`、子节点内的 `vars`。
+
 ### 缩放规则（记住这一条就不会算错）
 
 | 会乘 `uiScale` | 不乘 |

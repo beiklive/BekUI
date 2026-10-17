@@ -1,24 +1,41 @@
 {
   "import": "base/box.component",
+  "vars": {
+    "colors": {
+      "none":  "@theme/color.common.transparent",
+      "label": "@theme/color.text.primary",
+      "muted": "@theme/color.text.disabled"
+    },
+    "numbers": {
+      "radius": "@theme/metric.component.radius",
+      "font":   "@theme/metric.font.size.md",
+      "gap":    -2.5,
+      "glow":   -6.5,
+      "fade":   150
+    }
+  },
   "box": {
     "axis": "row", "alignItems": "center", "justifyContent": "center"
   },
   "layers": [
-    { "op": "rect", "id": "hlBg", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] },
-    { "op": "text", "id": "text", "source": "text", "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.md", "align": "center", "valign": "center" },
-    { "op": "rect", "id": "hlGlow", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-6.5, -6.5, -6.5, -6.5] },
-    { "op": "rect", "id": "hlBorder", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] }
+    { "op": "rect", "id": "hlBg", "fill": "$color.none",
+      "radius": "$number.radius",
+      "inset": ["$number.gap", "$number.gap", "$number.gap", "$number.gap"] },
+    { "op": "text", "id": "text", "source": "text", "color": "$color.label",
+      "fontSize": "$number.font", "align": "center", "valign": "center" },
+    { "op": "rect", "id": "hlGlow", "fill": "$color.none",
+      "radius": "$number.radius",
+      "inset": ["$number.glow", "$number.glow", "$number.glow", "$number.glow"] },
+    { "op": "rect", "id": "hlBorder", "fill": "$color.none",
+      "radius": "$number.radius",
+      "inset": ["$number.gap", "$number.gap", "$number.gap", "$number.gap"] }
   ],
   "states": {
     "focused": {
     },
     "disabled": {
-      "text.color": { "to": "@theme/color.text.disabled", "duration": 150 },
-      "bg.stroke": { "to": "@theme/color.text.disabled", "duration": 150 }
+      "text.color": { "to": "$color.muted", "duration": "$number.fade" },
+      "bg.stroke": { "to": "$color.muted", "duration": "$number.fade" }
     }
   }
 }

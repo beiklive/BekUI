@@ -10,6 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "bklv/compile/json_vars.hpp"
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
@@ -521,6 +522,18 @@ std::shared_ptr<const ViewTemplate> ViewTemplate::fromString(const std::string& 
         BKLV_LOG_ERROR("JSON 视图语法错误：%s:%zu  %s", source.c_str(), line, e.what());
         recordLoadError(source + ":" + std::to_string(line) + ": " + e.what());
         return nullptr;
+    }
+
+    // 变量块（$color.x / $number.y）：模板缓存的是展开后的结果（vars 与语言无关）。
+    // box 的 children 里也能直接用 $，因为它绑的是"文件级"作用域，不是块级。
+    {
+        std::string varError;
+        if (!compile::expandJsonVars(shared->document, varError))
+        {
+            BKLV_LOG_ERROR("视图 JSON 的变量块有问题：%s  %s", source.c_str(), varError.c_str());
+            recordLoadError(source + ": " + varError);
+            return nullptr;
+        }
     }
 
     return std::shared_ptr<const ViewTemplate>(new ViewTemplate(shared, source));

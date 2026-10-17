@@ -17,6 +17,7 @@
 #include "bklv/compile/json_util.hpp"
 #include "bklv/compile/appearance_box.hpp"
 #include "bklv/compile/appearance_gradient.hpp"
+#include "bklv/compile/json_vars.hpp"
 #include "bklv/compile/appearance_imports.hpp"
 #include "bklv/compile/appearance_layer_fields.hpp"
 #include "bklv/compile/appearance_layer_meta.hpp"
@@ -836,6 +837,13 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
             if (json[i] == '\n')
                 line++;
         error = "外观 JSON 语法错误（第 " + std::to_string(line) + " 行）：" + e.what();
+        return nullptr;
+    }
+
+    // 本文件的变量块（$color.x / $number.y）：**合并前**展开，所以 $ 永远绑"写它的那份文件"
+    if (!expandJsonVars(doc, error))
+    {
+        error = "外观 JSON 的变量块有问题：" + error;
         return nullptr;
     }
 

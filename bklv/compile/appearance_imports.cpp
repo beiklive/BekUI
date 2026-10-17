@@ -1,3 +1,4 @@
+#include "bklv/compile/json_vars.hpp"
 #include "bklv/compile/appearance_imports.hpp"
 
 #include "bklv/core/logger.hpp"
@@ -120,6 +121,13 @@ bool resolveImports(const Json& doc, const ThemeData& theme, std::vector<std::st
         catch (const Json::parse_error& e)
         {
             error = "import 的 " + name + " 语法错误：" + e.what();
+            return false;
+        }
+
+        // 被导入的文件可能有自己的 vars：先按**它自己的**变量展开，再合并（$ 不跨文件）
+        if (!expandJsonVars(importedDoc, error))
+        {
+            error = "import 的 " + name + " 的变量块有问题：" + error;
             return false;
         }
 
