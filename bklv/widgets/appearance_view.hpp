@@ -116,6 +116,15 @@ class AppearanceView : public Box
     // 返回 false = 下标越界。x/y/width/height 传盒子的绝对位置与尺寸。
     bool getLayerRect(int index, float x, float y, float width, float height, float outRect[4]) const;
 
+    // ---- 设计期叠加（默认关闭，运行时零影响）----
+    // 选中框：-1 = 不画；索引越界按"不画"处理（不崩）。
+    void setDesignSelection(int layerIndex, ImU32 color = 0xFFD9822B);
+    int  getDesignSelection() const { return this->designSelection; }
+    // 画板边框（沿控件外框描一圈）：设计器用它标出"这是一块画板"
+    void setDesignGuides(bool on, ImU32 color = 0x66FFFFFF);
+    bool getDesignGuides() const { return this->designGuides; }
+
+
   protected:
     void draw(ImDrawList* drawList, float x, float y, float width, float height, FrameContext* ctx) override;
 
@@ -169,6 +178,11 @@ class AppearanceView : public Box
   protected:
 
   private:
+    int   designSelection = -1;
+    ImU32 designSelectionColor = 0;
+    bool  designGuides = false;
+    ImU32 designGuidesColor = 0;
+
     // 聚焦放大：每帧按焦点变化推进一条补间
     void updateFocusScale();
 

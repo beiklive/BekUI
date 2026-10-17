@@ -567,7 +567,24 @@ designer/ui/
 ImGui 图集里，可用 `icon::font()`）、画板标题与**选中框**（选中框必须由 bklv 画，
 因为视图树在 foreground draw list 上，ImGui 盖不住它）。
 
-### ④ 画板标题 + 选中框：库侧方案（待实施）
+### ④ 画板标题 + 选中框：已实施"选中框"，"画板边框"暂不用
+
+按方案 A 落地（库侧，默认关闭、不参与布局）：
+```cpp
+void AppearanceView::setDesignSelection(int layerIndex, ImU32 color = 0xFFD9822B); // -1 = 不画
+void AppearanceView::setDesignGuides(bool on, ImU32 color = 0x66FFFFFF);
+```
+- 绘制位置：`draw()` 里**所有层之后**（标注不该被内容盖住）；选中框 = 层矩形外扩 1px 的
+  1.5px 描边 + 四角 4px 把手；层矩形复用 `getLayerRect()`。
+- 设计器：`syncCanvasSelection()` 每帧把 `selectedLayer` 同步给画布（setter 很便宜）。
+  实测截图：`base/button` 的 hlBg 层被选中时，卡片周围出现蓝色描边与四个角把手。
+- 测试 `tests/designer_overlay_test.cpp`（11 项）：默认 `-1`/关闭、设置读回、层矩形正常与
+  越界（`99` / `-1` 都返回 false）。
+- **画板边框暂不用**：截图里它按 `draw()` 收到的矩形画，范围与画布上看到的卡片对不上
+  （还发现一条横贯画布的细蓝线，疑似 `hlBorder`/`hlGlow` 层在"被拉伸的预览控件"上按整块
+  控件矩形描边；换成真实控件尺寸后应消失）。下一步：先查这条线的来源，再决定画板标题
+  怎么画（更可能是"画布区域内由 bklv 单独画一层"而不是叠在 AppearanceView 上）。
+
 
 **约束**：视图树画在 `ImGui::GetForegroundDrawList()` 上，ImGui 画的任何东西都被它盖住，
 所以画板边框/选中框**必须由 bklv 画**。

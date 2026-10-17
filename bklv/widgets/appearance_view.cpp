@@ -337,6 +337,18 @@ const bklv::AttributeTable& AppearanceView::attributes() const
     return appearanceAttributes();
 }
 
+void AppearanceView::setDesignSelection(int layerIndex, ImU32 color)
+{
+    this->designSelection      = layerIndex;
+    this->designSelectionColor = color;
+}
+
+void AppearanceView::setDesignGuides(bool on, ImU32 color)
+{
+    this->designGuides      = on;
+    this->designGuidesColor = color;
+}
+
 bool AppearanceView::getLayerRect(
     int index, float x, float y, float width, float height, float outRect[4]) const
 {
@@ -595,6 +607,34 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             default: // RECT / SHADOW / GLASS / CUSTOM
                 layerType->draw(hookContext(nullptr, nullptr, nullptr));
                 break;
+        }
+    }
+
+    // ---- 设计期叠加（默认关闭）：画板边框 + 选中层描边与四角把手 ----
+    // 放在**所有层之后**：它是"标注"，不该被内容盖住；也不参与布局、不影响运行期绘制。
+    if (this->designGuides)
+    {
+        const ImU32 color = this->designGuidesColor != 0 ? this->designGuidesColor : 0x66FFFFFF;
+        drawList->AddRect(ImVec2(x, y), ImVec2(x + width, y + height), color, 0.0f, 0, 1.0f);
+    }
+    if (this->designSelection >= 0)
+    {
+        float box[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (this->getLayerRect(this->designSelection, x, y, width, height, box))
+        {
+            const ImU32 color
+                = this->designSelectionColor != 0 ? this->designSelectionColor : 0xFFD9822B;
+            const ImVec2 min(box[0] - 1.0f, box[1] - 1.0f);
+            const ImVec2 max(box[0] + box[2] + 1.0f, box[1] + box[3] + 1.0f);
+            drawList->AddRect(min, max, color, 0.0f, 0, 1.5f);
+            // 四角把手：设计器里"这个层被选中了"的最直观标记
+            const float handle = 4.0f;
+            const ImVec2 corners[4] = { min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y) };
+            for (const ImVec2& corner : corners)
+            {
+                drawList->AddRectFilled(ImVec2(corner.x - handle, corner.y - handle),
+                    ImVec2(corner.x + handle, corner.y + handle), color);
+            }
         }
     }
 }

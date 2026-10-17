@@ -69,6 +69,7 @@ class DesignerApp
     void drawRecoveryPopup();
     void drawQuickOpen();
     void drawOpenTheme();
+    void syncCanvasSelection(); // 点选层 → 画布上的选中框
     void openThemeDir(const std::string& dir, const std::string& name);
     std::vector<std::string> listThemes() const;
     void drawDiagnostics();

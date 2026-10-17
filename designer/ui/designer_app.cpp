@@ -162,6 +162,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
     canvas->setGrow(1.0f);                              // 填满画布区的高度
     canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
     canvas->setText("示例文字"); // 外观预览给一段样例文字，否则按钮类外观只看得到一块底色
+    // 说明：`setDesignGuides` 这条画板边框先不用 —— 截图里它按 draw() 收到的矩形画，
+    // 与画布上看到的卡片范围对不上（卡片另有自己的背景层）。选中框不受影响，先用它。
+
     this->canvasView = canvas;
     canvasHost->addView(canvas);
     this->canvasHost = canvasHost.get();
@@ -402,6 +405,7 @@ void DesignerApp::update()
         this->applyCanvasZoom();
 
     this->maybeAutosave();
+    this->syncCanvasSelection(); // 选中层变化 → 画布选中框（setter 很便宜，每帧设一次即可）
 
     // 诊断收集：错误换了就记一条（不重复记同一个字符串）
     if (!this->lastError.empty() && this->lastError != this->lastSeenError)
@@ -1456,6 +1460,13 @@ void DesignerApp::drawViewPanel()
         ImGui::PopID();
     }
     ImGui::EndChild();
+}
+
+void DesignerApp::syncCanvasSelection()
+{
+    if (this->canvasView == nullptr)
+        return;
+    this->canvasView->setDesignSelection(this->selectedLayer);
 }
 
 void DesignerApp::applyToCanvas()
