@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "bklv/core/app.hpp"
+#include "bklv/core/resource.hpp"
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/layer_fields.hpp"
 #include "designer/core/tokens_doc.hpp"
@@ -67,6 +68,9 @@ class DesignerApp
     void maybeAutosave();
     void drawRecoveryPopup();
     void drawQuickOpen();
+    void drawOpenTheme();
+    void openThemeDir(const std::string& dir, const std::string& name);
+    std::vector<std::string> listThemes() const;
     void drawDiagnostics();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
@@ -127,6 +131,9 @@ class DesignerApp
     char              paletteFilter[64] = {0};
     int               paletteIndex = 0;
     std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
+    bool              wantOpenTheme = false;
+    bool              openThemeVisible = false;
+    char              themePathBuffer[512] = {0};
     float             canvasZoom = 1.0f;
     float             appliedZoom = -1.0f; // 上次套用的缩放（避免每帧重设尺寸）
     void applyCanvasZoom();

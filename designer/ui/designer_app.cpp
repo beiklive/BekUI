@@ -75,6 +75,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
     auto canvas = new bklv::AppearanceView(std::string(), false);
     canvas->setGrow(1.0f);                              // 填满画布区的高度
     canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
+    canvas->setText("示例文字"); // 外观预览给一段样例文字，否则按钮类外观只看得到一块底色
     this->canvasView = canvas;
     canvasHost->addView(canvas);
     this->canvasHost = canvasHost.get();
@@ -134,7 +135,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 void DesignerApp::scanTheme()
 {
     this->files.clear();
-    const fs::path root(this->options.themeDir);
+    // **必须走资源解析**：`resources/...` 是相对**可执行文件目录**的（resourcePath 负责），
+    // 直接用相对 CWD 的路径扫目录，从 Finder / 别的目录启动就是 0 个文件（实测踩到）。
+    const fs::path root(bklv::resourcePath(this->options.themeDir));
     std::error_code ec;
 
     auto addDir = [&](const char* dir, const char* kind) {
@@ -162,7 +165,8 @@ void DesignerApp::scanTheme()
 
 bool DesignerApp::openFile(const std::string& relPath)
 {
-    const std::string path = this->options.themeDir + "/" + relPath + ".json";
+    // 同 scanTheme：`resources/...` 要按**可执行文件目录**解析，不能用相对 CWD 的路径
+    const std::string path = bklv::resourcePath(this->options.themeDir + "/" + relPath + ".json");
     std::string       text = readWhole(path);
     if (text.empty())
     {
@@ -232,7 +236,7 @@ void DesignerApp::saveCurrent()
         return;
 
     const std::string text = this->appearance.serialize();
-    const std::string path = this->options.themeDir + "/" + this->currentFile + ".json";
+    const std::string path = bklv::resourcePath(this->options.themeDir + "/" + this->currentFile + ".json");
 
     // 校验先行：外观能编译才允许落盘
     std::string compileError;
@@ -352,12 +356,29 @@ void DesignerApp::update()
     if (!this->currentFile.empty())
         subtitle += " · " + this->currentFile;
     if (!this->lastError.empty())
-        subtitle += " · ⚠ " + this->lastError;
+        subtitle += " · 错误：" + this->lastError;
     this->header->setSubtitle(subtitle);
 }
 
 void DesignerApp::drawPanels()
 {
+    // 样式只能在**第一帧**设：init() 里 ImGui 还没有上下文，GetStyle() 会段错误（实测踩到）
+    static bool styleApplied = false;
+    if (!styleApplied)
+    {
+        styleApplied            = true;
+        ImGuiStyle& style       = ImGui::GetStyle();
+        style.WindowRounding    = 8.0f;
+        style.ChildRounding     = 6.0f;
+        style.FrameRounding     = 5.0f;
+        style.PopupRounding     = 6.0f;
+        style.WindowPadding     = ImVec2(10.0f, 8.0f);
+        style.FramePadding      = ImVec2(8.0f, 4.0f);
+        style.ItemSpacing       = ImVec2(8.0f, 6.0f);
+        style.WindowBorderSize  = 1.0f;
+        style.FrameBorderSize   = 0.0f;
+    }
+
     this->drawQuickOpen(); // 面板之前画浮层（它落在右栏空白区，不会被画布盖住）
 
     const float top   = 96.0f * bklv::getUiScale();
@@ -511,6 +532,9 @@ void DesignerApp::drawMenuBar()
 
 void DesignerApp::drawFileList()
 {
+    if (ImGui::Button("打开主题…"))
+        this->wantOpenTheme = true;
+    ImGui::SameLine();
     if (ImGui::Button("重新扫描"))
         this->scanTheme();
 
@@ -526,8 +550,8 @@ void DesignerApp::drawFileList()
     {
         this->lastError = draftError;
     }
-    ImGui::SameLine();
-    ImGui::TextDisabled("%zu 个文件", this->files.size());
+    ImGui::TextDisabled("%zu 个文件 · 点名字打开", this->files.size());
+    this->drawOpenTheme();
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "过滤文件名…", this->filter, sizeof(this->filter));
 
@@ -666,6 +690,106 @@ void DesignerApp::drawDiagnostics()
             this->diagnostics.clear();
     }
     ImGui::EndChild();
+}
+
+std::vector<std::string> DesignerApp::listThemes() const
+{
+    std::vector<std::string> out;
+    std::error_code          ec;
+    const fs::path           root(bklv::resourcePath("resources/theme"));
+    if (!fs::exists(root, ec))
+        return out;
+    for (const auto& entry : fs::directory_iterator(root, ec))
+    {
+        if (!entry.is_directory())
+            continue;
+        if (!fs::exists(entry.path() / "theme.json", ec))
+            continue;
+        out.push_back("resources/theme/" + entry.path().filename().string());
+    }
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+void DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
+{
+    if (!bklv::loadThemeIntoGlobalFromDirectory(dir, name))
+    {
+        this->lastError = "装载主题失败：" + dir;
+        return;
+    }
+    this->options.themeDir  = dir;
+    this->options.themeName = name;
+    this->themeTitle        = bklv::getTheme().getName();
+    this->currentFile.clear();
+    this->currentText.clear();
+    this->appearanceLoaded = false;
+    this->viewLoaded       = false;
+    this->tokensLoaded     = false;
+    this->previewOrder.clear();
+    if (this->viewPreview != nullptr)
+    {
+        this->canvasHost->asBox()->removeView(this->viewPreview, true);
+        this->viewPreview = nullptr;
+    }
+    if (this->canvasView != nullptr)
+        this->canvasView->setVisibility(bklv::Visibility::GONE);
+    this->scanTheme();
+    this->lastError.clear();
+}
+
+void DesignerApp::drawOpenTheme()
+{
+    if (this->wantOpenTheme)
+    {
+        this->wantOpenTheme    = false;
+        this->openThemeVisible = true;
+        std::snprintf(this->themePathBuffer, sizeof(this->themePathBuffer), "%s",
+            this->options.themeDir.c_str());
+    }
+    if (!this->openThemeVisible)
+        return;
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float          scale    = bklv::getUiScale();
+    const float          rightW   = this->inspectorWidth * scale;
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - rightW - 8.0f,
+                               viewport->WorkPos.y + 96.0f * scale + 8.0f),
+        ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(rightW - 16.0f, 380.0f), ImGuiCond_Appearing);
+    if (!ImGui::Begin("打开主题", &this->openThemeVisible,
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextDisabled("内置主题");
+    for (const std::string& theme : this->listThemes())
+    {
+        if (ImGui::Selectable(theme.c_str()))
+        {
+            this->openThemeDir(theme, fs::path(theme).filename().string());
+            this->openThemeVisible = false;
+        }
+    }
+    ImGui::Separator();
+    ImGui::TextDisabled("或手输主题目录（相对 resources/ 或绝对路径）");
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputText("##themePath", this->themePathBuffer, sizeof(this->themePathBuffer));
+    if (ImGui::Button("打开"))
+    {
+        const std::string dir(this->themePathBuffer);
+        if (!dir.empty())
+        {
+            this->openThemeDir(dir, fs::path(dir).filename().string());
+            this->openThemeVisible = false;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("取消"))
+        this->openThemeVisible = false;
+    ImGui::End();
 }
 
 void DesignerApp::drawQuickOpen()
@@ -932,16 +1056,25 @@ void DesignerApp::applyCanvasZoom()
     if (areaW <= 1.0f || areaH <= 1.0f)
         return; // 还没布局
 
-    auto apply = [&](bklv::View* view) {
-        if (view == nullptr)
-            return;
-        view->setGrow(0.0f);
-        view->setAlignSelf(bklv::AlignSelf::CENTER);
-        view->setWidth(areaW * this->canvasZoom);
-        view->setHeight(areaH * this->canvasZoom);
-    };
-    apply(this->canvasView);
-    apply(this->viewPreview);
+    const float scale = bklv::getUiScale();
+
+    // 外观预览：按"一个控件样例"的尺寸居中显示（铺满整个画布看起来像一块灰板，很丑）
+    if (this->canvasView != nullptr)
+    {
+        this->canvasView->setGrow(0.0f);
+        this->canvasView->setAlignSelf(bklv::AlignSelf::CENTER);
+        this->canvasView->setWidth(320.0f * scale * this->canvasZoom);
+        this->canvasView->setHeight(88.0f * scale * this->canvasZoom);
+    }
+
+    // 视图预览：页面类内容按画布区大小 × 缩放
+    if (this->viewPreview != nullptr)
+    {
+        this->viewPreview->setGrow(0.0f);
+        this->viewPreview->setAlignSelf(bklv::AlignSelf::CENTER);
+        this->viewPreview->setWidth(areaW * this->canvasZoom);
+        this->viewPreview->setHeight(areaH * this->canvasZoom);
+    }
     this->appliedZoom = this->canvasZoom;
 }
 
