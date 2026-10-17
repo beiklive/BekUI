@@ -78,7 +78,7 @@
     "iconSize": 22,
     "iconInset": 22,
     "titleInset": 54,
-    "shadowFeather": 14
+    "shadowFeather": 0
   },
   "tabCell": {
     "height": 40,

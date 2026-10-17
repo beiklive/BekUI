@@ -2,7 +2,7 @@
   "layers": [
     {
       "id": "glass",
-      "op": "glass",
+      "op": "rect",
       "fill": "#FFFFFF33",
       "stroke": "#FFFFFF3D",
       "strokeWidth": 1

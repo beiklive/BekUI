@@ -41,24 +41,15 @@ static void writeFile(const std::string& relativePath, const std::string& conten
     out << content;
 }
 
-// 数"装饰层"时跳过玻璃层：容器统一 import base/glass_surface 之后，
-// 页头/底栏会多一层 glass —— 它表达的是"这个控件的底是玻璃"，不是装饰线。
-// 取"那条边线"：按层类型找而不是按下标 —— 玻璃层被提到最前，下标 0 已经不是它了
-const AppearanceLayer* firstLineLayer(const Appearance& appearance)
+// 取"那条边线"：按**层 id** 找，不按层类型也不按下标。
+// 页头/底栏都 import base/glass_surface.chrome 当底：default（扁平）下它是实心 rect，
+// ios（苹果风）下它是 glass —— 数层数或找"第一个 rect"都会随主题变，只有 id 是契约。
+const AppearanceLayer* lineLayerById(const Appearance& appearance, const std::string& id)
 {
     for (const AppearanceLayer& layer : appearance.getLayers())
-        if (layer.op == AppearanceLayer::Op::RECT)
+        if (layer.id == id)
             return &layer;
     return nullptr;
-}
-
-size_t decorationLayerCount(const Appearance& appearance)
-{
-    size_t count = 0;
-    for (const AppearanceLayer& layer : appearance.getLayers())
-        if (layer.op != AppearanceLayer::Op::GLASS)
-            count++;
-    return count;
 }
 
 int main()
@@ -298,8 +289,9 @@ int main()
 
         // 页头按 borealis 的结构：图标 / 标题 / 右侧区 都是子节点，装饰只有下边线
         const Appearance& appearance = header.getActiveAppearance();
-        check(decorationLayerCount(appearance) == 1, "Header 只有一层装饰：下边线（玻璃层不算）");
-        if (const AppearanceLayer* line = firstLineLayer(appearance))
+        const AppearanceLayer* line = lineLayerById(appearance, "line");
+        check(line != nullptr, "Header 有下边线那一层（按 id 找，底是实心还是玻璃交给主题）");
+        if (line != nullptr)
         {
             checkFloat(line->height, 1.0f, "下边线 height=1");
             checkEqual(line->valign, "bottom", "下边线贴底");
@@ -320,10 +312,10 @@ int main()
         BottomBar bar;
         check(bar.getHints() != nullptr, "底栏里有提示栏");
         check(bar.getStatus() != nullptr, "底栏里有状态区");
-        check(decorationLayerCount(bar.getActiveAppearance()) == 1, "底栏一层：上边线（玻璃层不算）");
-        if (!bar.getActiveAppearance().getLayers().empty())
-            if (const AppearanceLayer* line = firstLineLayer(bar.getActiveAppearance()))
-                checkEqual(line->valign, "top", "上边线贴上");
+        const AppearanceLayer* barLine = lineLayerById(bar.getActiveAppearance(), "line");
+        check(barLine != nullptr, "底栏有上边线那一层（同样按 id 找）");
+        if (barLine != nullptr)
+            checkEqual(barLine->valign, "top", "上边线贴上");
         check(bar.getActiveAppearance().getBox().hasHeight, "底栏高度来自 box 段");
     }
 

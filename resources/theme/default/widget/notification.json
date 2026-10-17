@@ -12,22 +12,12 @@
   },
   "layers": [
     {
-      "op": "shadow",
-      "id": "shadow",
-      "fill": "@theme/color.common.shadow",
-      "feather": "@theme/metric.shadow.feather",
-      "radius": "@theme/metric.shadow.radius",
-      "offset": [
-        "@theme/metric.shadow.offsetX",
-        "@theme/metric.shadow.offsetY"
-      ],
-      "spread": "@theme/metric.shadow.spread"
-    },
-    {
       "op": "rect",
       "id": "bg",
       "fill": "#00000000",
-      "radius": "@theme/metric.notification.radius"
+      "radius": "@theme/metric.notification.radius",
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1
     },
     {
       "op": "text",

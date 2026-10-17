@@ -11,7 +11,7 @@
   "layers": [
     {
       "id": "glass",
-      "op": "glass",
+      "op": "rect",
       "fill": "#10203A6E"
     }
   ]

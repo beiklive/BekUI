@@ -7,21 +7,6 @@
   },
   "layers": [
     {
-      "op": "shadow",
-      "id": "sh",
-      "fill": "#00000080",
-      "opacity" : 22,
-      "feather": 10,
-      "radius": 40,
-      "inset": [
-        3,
-        -15,
-        3,
-        -15
-      ],
-      "offset": [1, 1], "cutout": true
-    },
-    {
       "op": "rect",
       "id": "border",
       "strokeWidth": 2,

@@ -245,9 +245,38 @@ Box* buildBaseWidgetsPage()
         glassBox->addView(bodyText(getStr("base_widgets/box_inner")));
         section->addView(makeGlassPlateRow(glassBox));
 
-        // 渐变底：同一个 rect 层，把 fill 换成 gradient{angle, stops}
+        // 渐变底：同一个 rect 层，把 fill 换成 gradient{angle, stops}。
+        // 这份外观**内联在页面里**，不进主题 —— 默认主题是纯扁平风格，渐变属于"能力演示"
+        //（和 stripe / quad 同一做法：能力示例不占随机发布的主题资源）
         Rectangle* gradientBox = new Rectangle();
-        gradientBox->setAppearanceName("base/rectangle.card.gradient");
+        gradientBox->setAppearanceName("base/box"); // 兜底：内联那份编译失败也不至于空白
+        std::string gradientError;
+        if (!gradientBox->applyAppearanceJson(R"({
+  "box": {
+    "width": "100%",
+    "height": "auto",
+    "padding": "@theme/metric.card.padding",
+    "gap": "@theme/metric.spacing.sm"
+  },
+  "layers": [
+    {
+      "id": "bg",
+      "fill": "#00000000",
+      "radius": "@theme/metric.radius.lg",
+      "gradient": {
+        "type": "linear",
+        "angle": 90,
+        "stops": [
+          { "at": 0.0, "color": "#2E4A9EFF" },
+          { "at": 1.0, "color": "#7B3FB0FF" }
+        ]
+      }
+    }
+  ]
+})", gradientError))
+        {
+            BKLV_LOG_WARNING("渐变示例外观编译失败：%s", gradientError.c_str());
+        }
         gradientBox->addView(bodyText(getStr("base_widgets/box_gradient")));
         section->addView(makeItemRow(gradientBox));
         page->addView(section);

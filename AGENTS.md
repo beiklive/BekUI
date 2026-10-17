@@ -405,10 +405,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      两个清单坑：`theme.json` 的 `files[]` 条目要**带 `.json` 后缀**（`base/glass_panel.json`，
      少了后缀会以"主题里没有控件外观"的形式静默回退）；`box.padding` 只接受**一个数**或
      **四个数**（`[上,右,下,左]`），写两个数会编译失败。
+
+     **主题分工（用户拍板，2026-10）**：只有两套主题 ——
+     · `default`：**纯扁平风格**。不再有 `shadow` / `glass` 层，玻璃变体（`widget/*.glass.json`、
+       `base/glass_*.json`）里的 `glass` 层已扁平化成实心/半透明 `rect`；
+       `color.common.shadow` 改成全透明（代码驱动的软阴影 —— 滑块把手、侧栏 —— 随之关掉），
+       渐变示例外观也从主题里撤出、改成 demo 页面内联（同 stripe / quad 的做法）。
+     · `ios`：苹果风（系统色、分组列表、玻璃上下栏）。`op: "glass"` 现在是"ios 在用"的能力。
+     原 `ocean` / `my-skin` 两套已删除，仓库里所有引用都改成了 `ios`。
   ⑦a2 **容器的玻璃统一走 `base/glass_surface`**（`docs/glass-layer.md` §2b）：
      容器外观 `"import": "base/glass_surface"`，自己的 `bg.fill` 改透明 —— 玻璃层的 `fill`
      既是染色、也是玻璃不可用时的降级底。**层序由解析期固定成 阴影(0) → 玻璃(1) → 其余(2)**：
      玻璃不能排到真正的第一个，否则半透明的阴影层会把玻璃压暗（踩过）。
+     `default`（扁平）主题里这一层已经扁平化成普通 `rect`（染色照旧），玻璃只在 `ios` 里出现。
      侧栏不是 AppearanceView（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里补，
      染色同样来自 `color.sidebar.background`。
      玻璃层的 **`stroke` / `strokeWidth` = 内缘高光**（沿内缘描一圈，半径跟控件走）——

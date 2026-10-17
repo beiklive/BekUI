@@ -14,19 +14,6 @@
   },
   "layers": [
     {
-      "op": "shadow",
-      "id": "shadow",
-      "fill": "@theme/color.common.shadow",
-      "feather": "@theme/metric.component.shadowFeather",
-      "spread": "@theme/metric.component.shadowSpread",
-      "radius": "@theme/metric.component.radius",
-      "offset": [
-        "@theme/metric.component.shadowOffsetX",
-        "@theme/metric.component.shadowOffsetY"
-      ],
-      "cutout": true
-    },
-    {
       "op": "rect",
       "id": "bg",
       "fill": "#00000000",

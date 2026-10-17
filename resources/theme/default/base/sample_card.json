@@ -7,21 +7,12 @@
   },
   "layers": [
     {
-      "op": "shadow",
-      "id": "shadow",
-      "fill": "@theme/color.common.shadow",
-      "feather": 16,
-      "offset": [
-        0,
-        4
-      ],
-      "cutout": true
-    },
-    {
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.surface.card",
-      "radius": 14
+      "radius": 14,
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1
     }
   ],
   "children": [

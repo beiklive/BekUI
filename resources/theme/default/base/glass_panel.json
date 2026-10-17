@@ -1,12 +1,17 @@
 {
   "box": {
     "radius": "@theme/metric.component.radius",
-    "padding": [14, 16, 14, 16]
+    "padding": [
+      14,
+      16,
+      14,
+      16
+    ]
   },
   "layers": [
     {
       "id": "glass",
-      "op": "glass",
+      "op": "rect",
       "radius": "@theme/metric.component.radius",
       "fill": "#0A0F1E57"
     },

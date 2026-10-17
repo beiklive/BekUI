@@ -137,7 +137,7 @@ float gradientParameter(const Gradient& gradient, const ImVec2& p, const ImVec2&
 - `docs/json-syntax.md` + `rect-gradient` 小节；`check.sh` 项数随之上涨
 
 **第二步（圆角 + AA 羽边 + 主题示例 + 像素验收）——约 200 行**
-- 圆角三角扇 + 羽边；主题加一份渐变卡外观（`base/rectangle.card.gradient`）
+- 圆角三角扇 + 羽边；demo 里加一份内联的渐变卡外观（`base/rectangle.card.gradient` 已按要求从主题撤出）
 - **像素验收**（GL，沿用现有套路）：90° 渐变卡上端像素 ≈ stop0、下端 ≈ stop1（容差 ≤2/255）、
   中间单调过渡；圆角处无锯齿（人眼+边缘像素检查）
 - Switch 顺带看一眼（同一份顶点，理论上不需要额外代码）
@@ -163,7 +163,7 @@ float gradientParameter(const Gradient& gradient, const ImVec2& p, const ImVec2&
 | `bklv/core/gradient.{hpp,cpp}` | `GradientStop` / `Gradient`、`sampleGradient`、`gradientParameter`、`gradientTypeFromName`、网格生成 `addGradientRectMesh` |
 | `bklv/core/appearance.{hpp,cpp}` | 层里加 `Gradient gradient`；解析 `gradient`（`type`/`angle`/`center`/`stops`，五类错误全部报错） |
 | `bklv/widgets/appearance_view.cpp` | `Op::RECT`：有渐变就走网格，没写仍是原来的单色 `AddRectFilled` |
-| `resources/theme/default/base/rectangle.card.gradient.json` | 示例外观（蓝→紫 90° 渐变卡）；demo 基础控件页「基本盒」小节加了一行 |
+| `demo/app/pages/page_base_widgets.cpp` | 示例外观**内联在页面里**（蓝→紫 90° 渐变卡，`applyAppearanceJson`）：默认主题是扁平风格，能力示例不占随机发布的主题资源 |
 | `tests/gradient_test.cpp` | **55 项**：采样（端点/中点/多段/钳制/无效）、参数（0°/90°/45°/径向）、枚举名、解析正例与五类反例、网格（顶点数/角点颜色/圆角/羽边/整体 alpha） |
 
 实测：GL / VK / Switch 三个构建退出码 0、本仓零警告；`check.sh` **3108** 项全过（+61）；

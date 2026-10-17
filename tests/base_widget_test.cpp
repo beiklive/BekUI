@@ -17,7 +17,7 @@ int main()
     std::printf("== 1. import：外观可以引用外观，字段逐条合并 ==\n");
     {
         // base/box.layout 与 base/box.component 都 import 了 base/box，
-        // 组件容器在此基础上加了 2px 白边 + 阴影层 + 自己的内边距。
+        // 组件容器在此基础上加了 1px 描边 + 自己的内边距（默认主题是扁平风格，不再有阴影层）。
         std::shared_ptr<const Appearance> layout = getWidgetAppearance("base/box.layout");
         check(layout != nullptr, "布局容器能编译");
         if (layout != nullptr)
@@ -32,31 +32,31 @@ int main()
         if (component != nullptr)
         {
             const auto& layers = component->getLayers();
-            check(layers.size() >= 2, "组件容器至少有阴影 + 底两层");
+            check(layers.size() >= 1, "组件容器至少有底那一层");
 
-            // 顺序：阴影必须在自己的底色之前（否则底色把阴影盖住/内圈透出阴影）
-            int shadowIndex = -1, bgIndex = -1;
+            int bgIndex = -1;
             for (size_t i = 0; i < layers.size(); i++)
             {
-                if (layers[i].id == "shadow" && shadowIndex < 0)
-                    shadowIndex = (int)i;
                 if (layers[i].id == "bg" && bgIndex < 0)
                     bgIndex = (int)i;
             }
-            check(shadowIndex >= 0, "组件容器有 shadow 层（2px 阴影）");
-            check(bgIndex > shadowIndex, "阴影层排在底色之前");
-            check(layers[(size_t)bgIndex].fill == IM_COL32(0, 0, 0, 0), "组件容器底是透明的");
-            check(layers[(size_t)bgIndex].strokeWidth > 0.0f, "组件容器有边框");
-            check(layers[(size_t)bgIndex].radius > 0.0f, "组件容器有圆角");
+            check(bgIndex >= 0, "组件容器有底（id=bg）");
+            if (bgIndex >= 0)
+            {
+                check(layers[(size_t)bgIndex].fill == IM_COL32(0, 0, 0, 0), "组件容器底是透明的");
+                check(layers[(size_t)bgIndex].strokeWidth > 0.0f,
+                    "组件容器有边框（扁平风格靠 1px 描边分面）");
+                check(layers[(size_t)bgIndex].radius > 0.0f, "组件容器有圆角");
+            }
         }
 
-        // 按钮变体 import 了组件容器：基底层（bg / shadow）继承过来，自己的内容层追加在后
+        // 按钮变体 import 了组件容器：基底层（bg）继承过来，自己的内容层追加在后
         std::shared_ptr<const Appearance> iconText = getWidgetAppearance("widget/button.icon_text");
         check(iconText != nullptr, "图标文字按钮能编译");
         if (iconText != nullptr)
         {
             check(iconText->indexOfLayer("bg") >= 0, "继承到了组件容器的底");
-            check(iconText->indexOfLayer("shadow") >= 0, "继承到了组件容器的阴影");
+            check(iconText->indexOfLayer("bg") >= 0, "继承到了组件容器的底（含描边与圆角）");
             check(iconText->indexOfLayer("icon") >= 0, "有自己的图标层");
             check(iconText->indexOfLayer("text") >= 0, "有自己的文字层");
             check(iconText->getBox().axis == "row", "自己的 box.axis=row 覆盖导入的 column");

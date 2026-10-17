@@ -35,7 +35,7 @@
     "transparent": "#00000000",
     "overlay": "#00000080",
     "divider": "#ffffff1f",
-    "shadow": "#00000073",
+    "shadow": "#00000000",
     "focusRing": "#00ffcc",
     "textMuted": "#8b929b"
   },

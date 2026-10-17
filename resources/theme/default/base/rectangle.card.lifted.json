@@ -7,18 +7,6 @@
   },
   "layers": [
     {
-      "op": "shadow",
-      "id": "shadow",
-      "fill": "@theme/color.common.shadow",
-      "feather": 10,
-      "radius": "@theme/metric.shadow.radius",
-      "offset": [
-        0,
-        14
-      ],
-      "spread": 0
-    },
-    {
       "op": "rect",
       "id": "bg",
       "fill": "#00000000",

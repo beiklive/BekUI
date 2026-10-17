@@ -78,7 +78,6 @@
     "widget/button.dropdown.glass.json",
     "widget/button.selector.glass.json",
     "base/glass_plate.json",
-    "base/rectangle.card.gradient.json",
     "view/json_include_main.json",
     "view/json_include_part.json",
     "base/glass_surface.json",

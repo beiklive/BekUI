@@ -294,6 +294,15 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 库本身仍是**单实例**（一个进程一套界面，有全局 ImGui 上下文）；`resetGlobals()` 解决的是
 "状态能清干净"，不是"同时跑两个"。
 
+### 主题（两套）
+
+- `default`：**纯扁平风格** —— 无阴影、无玻璃、无渐变，靠 1px 描边分面
+- `ios`：**苹果风** —— 系统色（#000 / #1C1C1E / 系统蓝）、分组列表、玻璃上下栏
+
+`resources/theme/themes.json` 的 `available` 列的就是这两套，`app.setTheme("ios")` 运行时切换。
+要做自己的皮肤：复制一套改名改 JSON、登记进 `themes.json`（名字 = 目录名，清单写在各自
+`theme.json` 的 `files[]` 里）。规矩见 `AGENTS.md` 的「主题 / 外观」与 `docs/base-widgets-map.md`。
+
 ### 帧预算（界面永不卡）
 
 `App::setFrameBudgetMs(4)`（默认 4ms）给"可以延后"的主线程工作一个每帧时间上限：后台回调、
