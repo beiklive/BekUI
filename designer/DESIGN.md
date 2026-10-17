@@ -611,6 +611,21 @@ ImGui 图集里，可用 `icon::font()`）、画板标题与**选中框**（选�
 `$comment`，需要维护映射表）；把"层"全面改称"组成部分"并在悬停时给出解释；
 操作项（加层/复制/删除…）的文案。
 
+### 画布预览"画了但看不见"的排查记录（第 24 轮）
+
+已排除：构造名（空名与 `base/box` 截图逐像素相同）、编译失败（`applyAppearanceJson` 返回 true，
+加了 `BKLV_LOG_ERROR` 也不打）、alpha（`getAlpha()` 实测 1.000）、序列化内容（1650 字节，
+`{` 开头，层数 > 0，因为叠加层能拿到选中层的 rect 并画出来）。
+
+已定位到的线索：`widget/button.text` **import 了 `base/box.component`**，而 `base/box.component`
+的 `bg` 层 `fill` 是 `&color.none`（透明）；也就是说按钮的底色来自 **box.backgroundColor**，
+不是层。`applyAppearanceJson` 里确实调了 `applyAppearanceBox(this, compiled->getBox())`，
+所以下一步要确认：编译后的 `box.backgroundColor` 到底解析成了什么（怀疑 `&`/`@theme` 在
+import 合并后丢了，或 `applyAppearanceBox` 被后面的 `setBackgroundColor` 覆盖）。
+
+**验证手段**：在 `applyToCanvas()` 之后打印 `canvasView->getBackgroundColor()`，
+与 `Appearance::compile(...)->getBox()` 的 backgroundColor 对比；两者不一致即可定位。
+
 ### 已知限制
 
 1. 视图文件带 `include` 时，节点树只显示本文档的节点（不展开被包含文件）—— `listNodes` 的工作方式；

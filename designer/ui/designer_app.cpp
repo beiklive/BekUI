@@ -1756,6 +1756,7 @@ void DesignerApp::applyToCanvas()
         BKLV_LOG_ERROR("画布预览失败：%s", error.c_str());
     }
     this->canvasView->setVisibility(bklv::Visibility::VISIBLE);
+
 }
 
 void DesignerApp::handleCanvasClick()
