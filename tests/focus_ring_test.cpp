@@ -39,14 +39,14 @@ TextureRef fakeLut()
     return lut;
 }
 
-// 每个 span 的顶点布局（focus_ring.cpp 的 addTexturedSpan 保证这个顺序）：
-//   [0..3]  贴图四边形（外起点 / 外终点 / 内终点 / 内起点，UV 的 v = 0,0,1,1，alpha 全实）
-//   [4..7]  外侧羽边（近起点 / 近终点 / 远起点 / 远终点；远侧 alpha = 0）
-//   [8..11] 内侧羽边（同上）
-// 所以"每段"固定 12 个顶点 —— 下面所有解析都按这个步长走。
-constexpr int kSpanVertices = 12;
+// 顶点布局（focus_ring.cpp 的条带发射保证这个顺序）：
+//   每个**横截面** 4 个顶点：farA(羽边外沿, alpha 0) / nearA(描边外缘, 实) /
+//                            nearB(描边另一侧外缘, 实) / farB(羽边外沿, alpha 0)
+// 相邻段**共用**同一个横截面（这是"连续条带"的关键），所以顶点数 = 横截面数 × 4，
+// 索引按"每段 3 条带 × 6 索引"铺开。
+constexpr int kVertsPerCross = 4;
 
-// 扫一遍 UV，看有没有哪个贴图四边形的 U 跨度不合理（跨过整张贴图 = 被拉花）。
+// 扫一遍 UV（按索引读每个四边形两个顶点的 U），看有没有哪个四边形的 U 跨度不合理。// 扫一遍 UV，看有没有哪个贴图四边形的 U 跨度不合理（跨过整张贴图 = 被拉花）。
 struct UvScan
 {
     int quads       = 0;
@@ -65,10 +65,16 @@ UvScan scanUv(const focus_ring::Outline& outline, const focus_ring::Style& style
     focus_ring::draw(&list, outline, style, phase);
 
     UvScan scan;
-    for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
+    // 每 6 个索引是一个四边形：取前两个索引对应的顶点 U 比较。
+    for (int i = 0; i + 5 < list.IdxBuffer.Size; i += 6)
     {
-        const float u0 = list.VtxBuffer[i].uv.x;
-        const float u1 = list.VtxBuffer[i + 1].uv.x;
+        const ImDrawIdx ia = list.IdxBuffer[i];
+        const ImDrawIdx ib = list.IdxBuffer[i + 1];
+        if (ia >= list.VtxBuffer.Size || ib >= list.VtxBuffer.Size)
+            continue;
+
+        const float u0 = list.VtxBuffer[ia].uv.x;
+        const float u1 = list.VtxBuffer[ib].uv.x;
         const float du = u1 - u0;
 
         scan.quads++;
@@ -111,10 +117,9 @@ int countVertices(const focus_ring::Outline& outline, const focus_ring::Style& s
     return list.VtxBuffer.Size;
 }
 
-// 画一圈，把每个四边形的外缘起点按顺序取出来（AddImageQuad 的顶点顺序：
-// 外起点、外终点、内终点、内起点）。用来验"相邻段共用同一条边"和"圆角够圆"。
-std::vector<ImVec2> ringOuterPolyline(const focus_ring::Outline& outline,
-    const focus_ring::Style& style, float phase)
+// 画一圈，重建中线折线：每个横截面的 (nearA + nearB) / 2。
+std::vector<ImVec2> ringCenterline(const focus_ring::Outline& outline,
+    const focus_ring::Style& style, float phase, std::vector<ImU32>* alphas = nullptr)
 {
     ImDrawList list(ImGui::GetDrawListSharedData());
     list._ResetForNewFrame();
@@ -124,14 +129,28 @@ std::vector<ImVec2> ringOuterPolyline(const focus_ring::Outline& outline,
     focus_ring::draw(&list, outline, style, phase);
 
     std::vector<ImVec2> points;
-    for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
-        points.push_back(list.VtxBuffer[i].pos);
+    for (int i = 0; i + kVertsPerCross - 1 < list.VtxBuffer.Size; i += kVertsPerCross)
+    {
+        const ImVec2& a = list.VtxBuffer[i + 1].pos; // nearA
+        const ImVec2& b = list.VtxBuffer[i + 2].pos; // nearB
+        points.push_back(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f));
+        if (alphas != nullptr)
+        {
+            alphas->push_back(list.VtxBuffer[i].col);     // farA
+            alphas->push_back(list.VtxBuffer[i + 1].col); // nearA
+            alphas->push_back(list.VtxBuffer[i + 2].col); // nearB
+            alphas->push_back(list.VtxBuffer[i + 3].col); // farB
+        }
+    }
     return points;
 }
 
-// 相邻两段的公共边是否**完全重合**（外终点 == 下一段外起点）。
-// 以前每段各自按自己的法线偏移，拐角处两段对不上，外侧就看出一排小缺口（锯齿）。
-int countJointGaps(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase)
+// 连续条带的两个结构不变量（以前"每段各自发四边形"时都不成立）：
+//   ① 每个四边形的两个端点 U 单调、跨度不超过一段；
+//   ② 同一个横截面只发一次（顶点不重复）—— 重复就意味着又回到了"每段封口"，
+//      封口叠在相邻段的斜坡上就是那圈毛刺。
+int countDuplicateCrossSections(const focus_ring::Outline& outline, const focus_ring::Style& style,
+    float phase)
 {
     ImDrawList list(ImGui::GetDrawListSharedData());
     list._ResetForNewFrame();
@@ -140,21 +159,32 @@ int countJointGaps(const focus_ring::Outline& outline, const focus_ring::Style& 
 
     focus_ring::draw(&list, outline, style, phase);
 
-    int gaps = 0;
-    for (int i = 0, quad = 0; i + 2 * kSpanVertices - 1 < list.VtxBuffer.Size;
-         i += kSpanVertices, quad++)
+    int duplicates = 0;
+    const int crosses = list.VtxBuffer.Size / kVertsPerCross;
+    for (int i = 0; i < crosses; i++)
     {
-        const ImVec2 end   = list.VtxBuffer[i + 1].pos;              // 本段外终点
-        const ImVec2 start = list.VtxBuffer[i + kSpanVertices].pos;  // 下一段外起点
-        // 阈值 0.05px：浮点噪声在 0.02px 量级；而"每段各自算法线"那种缺口是
-        // 2*half*tan(Δθ/2) —— 线宽 6 时圆角上是 0.6px、直角拐角上是 6px，差两个数量级。
-        const float dx = end.x - start.x;
-        const float dy = end.y - start.y;
-        (void)quad;
-        if (std::sqrt(dx * dx + dy * dy) > 0.05f)
-            gaps++;
+        const ImVec2& ai = list.VtxBuffer[i * kVertsPerCross + 1].pos;
+        for (int j = i + 1; j < crosses; j++)
+        {
+            const ImVec2& bj = list.VtxBuffer[j * kVertsPerCross + 1].pos;
+            const float dx = ai.x - bj.x, dy = ai.y - bj.y;
+            if (std::sqrt(dx * dx + dy * dy) < 0.01f)
+                duplicates++;
+        }
     }
-    return gaps;
+    return duplicates;
+}
+
+// 每个四边形铺出来的带子是否完整：索引数 / 6 应当等于"段数 × 3 条带"。
+int countQuads(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+    return list.IdxBuffer.Size / 6;
 }
 
 } // namespace
@@ -262,10 +292,10 @@ int main()
         // 注意：相位不同 -> 跨接缝的那一段落在不同位置，顶点数可能不同（拆分的后半段有时退化），
         // 所以只比公共前缀里"有没有 UV 变化"。
         const size_t flowCommon = std::min(uvsA.size(), uvsB.size());
-        bool flowUvChanged      = flowCommon > 0;
-        for (size_t i = 0; i < flowCommon && flowUvChanged; i++)
-            flowUvChanged = uvsA[i].x != uvsB[i].x;
-        check(flowUvChanged, "流光：相位改变采样位置（UV 变了）");
+        bool flowUvChanged      = false;
+        for (size_t i = 0; i < flowCommon; i++)
+            flowUvChanged = flowUvChanged || uvsA[i].x != uvsB[i].x;
+        check(flowCommon > 0 && flowUvChanged, "流光：相位改变采样位置（UV 变了）");
 
         // 静止：相位不影响 UV
         style.type = focus_ring::Type::SOLID;
@@ -286,7 +316,7 @@ int main()
         for (size_t i = 0; i < breathCommon && breathUvSame; i++)
             breathUvSame = uvsA[i].x == uvsB[i].x;
         check(breathUvSame, "呼吸：UV 不动（还是同一张贴图）");
-        check(!colorsA.empty() && !colorsB.empty() && colorsA[0] != colorsB[0],
+        check(colorsA.size() > 1 && colorsB.size() > 1 && colorsA[1] != colorsB[1],
             "呼吸：透明度在随时间起伏");
 
         // 三种类型画出来的顶点数一致（几何共用一条路径）
@@ -403,7 +433,7 @@ int main()
         delete row;
     }
 
-    std::printf("\n== 8. 几何精度：相邻段共用边（不开缝）、小半径圆角不被削平 ==\n");
+    std::printf("\n== 8. 几何精度：连续条带（无封口毛刺）、圆按转角细分 ==\n");
     {
         ImGui::CreateContext();
 
@@ -413,102 +443,109 @@ int main()
         style.lineWidth = 6.0f;
         style.expand    = 2.0f;
         style.alpha     = 1.0f;
+        const float band = 1.5f; // 测试里 _FringeScale = 1 -> 羽边每边 1.5px（kBandPhysicalPixels）
 
-        // ① 相邻段共享边：一圈下来**一处缺口都不许有**
-        //（以前每段按自己的法线偏移，拐角外侧是一排小三角缺口 —— 用户报的"精度有问题"）
-        for (const auto& shape : { makeOutline(0, 0, 200, 80, 14.0f),
-                 makeOutline(0, 0, 48, 48, 24.0f),   // 正圆
-                 makeOutline(0, 0, 300, 60, 0.0f) })  // 直角矩形（miter 拐角）
+        // ① 同一个横截面只发一次：连续条带的结构证明（"每段各自发四边形"必然产生重复顶点）
+        // ② 四边形数 = 横截面数 × 3（外羽边 / 实心 / 内羽边 三条都铺满）
+        // ③ 描边等宽、羽边固定 1px、羽边外沿 alpha = 0
+        for (const auto& shape : { makeOutline(0, 0, 200, 80, 14.0f), makeOutline(0, 0, 48, 48, 24.0f),
+                 makeOutline(0, 0, 300, 60, 0.0f) }) // 正圆 / 圆角矩形 / 直角矩形
         {
-            checkEqualInt(countJointGaps(shape, style, 0.0f), 0, "相邻段的外侧边完全重合（没有缺口）");
+            // 只有 U 接缝那一处会复制一份横截面（位置完全相同、只差 UV）——
+            // 那不是"段封口"：两段几何重合、都是不透明的，不会出现两条 alpha 斜坡叠加。
+            checkEqualInt(countDuplicateCrossSections(shape, style, 0.0f), 1,
+                "只有 U 接缝复制一次横截面（其余段全部共享）");
+
+            const int crosses = countVertices(shape, style, 0.0f) / kVertsPerCross;
+            check(crosses >= 12, "一圈至少 12 个横截面");
+            // 每段 3 条带（外羽边/实心/内羽边）；U 接缝那一处会多拆出一段，所以允许 +1
+            const int spans = countQuads(shape, style, 0.0f) / 3;
+            check(spans == crosses || spans == crosses + 1,
+                "三条带都铺满（条带数 = 横截面数，最多 +1 给 U 接缝拆段）");
         }
 
-        // ② 小半径（r=8，真实按钮那种）的圆角要有足够多的段，不能被"切角"成一根斜线。
-        //    判据：外缘折线上相邻两点的**转角**都不超过 16°（8 段/90° = 11.25°）。
-        const focus_ring::Outline small = makeOutline(0, 0, 160, 48, 8.0f);
-        const std::vector<ImVec2> outer = ringOuterPolyline(small, style, 0.0f);
-        check(outer.size() >= 20, "小半径也切出足够多的段");
-
-        float maxTurn = 0.0f;
-        for (size_t i = 0; i < outer.size(); i++)
+        // ④ 每个横截面的 4 个顶点：羽边外侧 alpha 0、描边两侧实心、描边等宽、羽边 1px
         {
-            const ImVec2& a = outer[(i + outer.size() - 1) % outer.size()];
-            const ImVec2& b = outer[i];
-            const ImVec2& c = outer[(i + 1) % outer.size()];
-            const float ax = b.x - a.x, ay = b.y - a.y;
-            const float bx = c.x - b.x, by = c.y - b.y;
-            const float la = std::sqrt(ax * ax + ay * ay);
-            const float lb = std::sqrt(bx * bx + by * by);
-            if (la < 1e-4f || lb < 1e-4f)
-                continue;
-            const float dot = (ax * bx + ay * by) / (la * lb);
-            const float turn = std::acos(std::max(-1.0f, std::min(1.0f, dot))) * 180.0f / 3.14159265f;
-            maxTurn = std::max(maxTurn, turn);
-        }
-        check(maxTurn <= 16.0f, "小半径圆角每段转角 <= 16°（够圆，不是几根折线）");
-
-        // ③ 描边宽度处处等于 lineWidth（拐角 miter 拉长后不能变宽/变窄）
-        bool uniform = true;
-        {
+            const focus_ring::Outline shape = makeOutline(0, 0, 160, 48, 8.0f);
             ImDrawList list(ImGui::GetDrawListSharedData());
             list._ResetForNewFrame();
             list._FringeScale    = 1.0f;
             list._InvFringeScale = 1.0f;
-            focus_ring::draw(&list, small, style, 0.0f);
-            for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
+            focus_ring::draw(&list, shape, style, 0.0f);
+
+            checkEqualInt(list.VtxBuffer.Size % kVertsPerCross, 0, "每个横截面固定 4 个顶点");
+
+            bool alphaOk  = true;
+            bool widthOk  = true;
+            bool bandOk   = true;
+            for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
             {
-                const ImVec2& outerFrom = list.VtxBuffer[i].pos;
-                const ImVec2& innerFrom = list.VtxBuffer[i + 3].pos;
-                const float width = std::sqrt((outerFrom.x - innerFrom.x) * (outerFrom.x - innerFrom.x)
-                    + (outerFrom.y - innerFrom.y) * (outerFrom.y - innerFrom.y));
+                const ImU32 a0 = (list.VtxBuffer[i].col >> 24) & 0xFFu;
+                const ImU32 a1 = (list.VtxBuffer[i + 1].col >> 24) & 0xFFu;
+                const ImU32 a2 = (list.VtxBuffer[i + 2].col >> 24) & 0xFFu;
+                const ImU32 a3 = (list.VtxBuffer[i + 3].col >> 24) & 0xFFu;
+                if (a0 != 0 || a3 != 0 || a1 == 0 || a2 == 0)
+                    alphaOk = false;
+
+                const ImVec2& nearA = list.VtxBuffer[i + 1].pos;
+                const ImVec2& nearB = list.VtxBuffer[i + 2].pos;
+                const ImVec2& farA  = list.VtxBuffer[i].pos;
+                const ImVec2& farB  = list.VtxBuffer[i + 3].pos;
+
+                const float width = std::sqrt((nearA.x - nearB.x) * (nearA.x - nearB.x)
+                    + (nearA.y - nearB.y) * (nearA.y - nearB.y));
                 if (std::fabs(width - style.lineWidth) > 0.05f)
-                    uniform = false;
+                    widthOk = false;
+
+                const float bandA = std::sqrt((farA.x - nearA.x) * (farA.x - nearA.x)
+                    + (farA.y - nearA.y) * (farA.y - nearA.y));
+                const float bandB = std::sqrt((farB.x - nearB.x) * (farB.x - nearB.x)
+                    + (farB.y - nearB.y) * (farB.y - nearB.y));
+                if (std::fabs(bandA - band) > 0.05f || std::fabs(bandB - band) > 0.05f)
+                    bandOk = false;
             }
+            check(alphaOk, "羽边外沿 alpha = 0、描边两侧实心");
+            check(widthOk, "描边宽度处处等于 lineWidth");
+            check(bandOk, "羽边宽度处处等于 1.5px");
         }
-        check(uniform, "描边宽度处处等于 lineWidth");
 
-        // ④ 羽边：每段 16 个顶点；羽边的外侧顶点正好在描边外缘再往外 1px，且 alpha = 0
-        //    （1px 之外 alpha 到 0，光栅化插值出抗锯齿；没有这层，斜向圆弧会露出台阶）
+        // ⑤ 圆按**转角**细分：中线每段转角 <= 6°，且每个中点都落在圆上（不是折线）
         {
-            ImDrawList list(ImGui::GetDrawListSharedData());
-            list._ResetForNewFrame();
-            list._FringeScale    = 1.0f;
-            list._InvFringeScale = 1.0f;
-            focus_ring::draw(&list, small, style, 0.0f);
+            const focus_ring::Outline circle = makeOutline(0, 0, 128, 128, 64.0f);
+            const std::vector<ImVec2> center = ringCenterline(circle, style, 0.0f);
+            check(center.size() >= 40, "128 圆切出足够多的段");
 
-            checkEqualInt(list.VtxBuffer.Size % kSpanVertices, 0, "每段固定 12 个顶点");
-
-            int farOffsetOk  = 0;
-            int nearOffsetOk = 0;
-            bool fringeIsClear = true;
-            for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
+            float maxTurn = 0.0f;
+            for (size_t i = 0; i < center.size(); i++)
             {
-                // 外侧羽边：near 在描边外缘内侧 _FringeScale、far 在外侧同样距离
-                const ImVec2& outerFrom = list.VtxBuffer[i].pos;
-                const ImVec2& nearV     = list.VtxBuffer[i + 4].pos;
-                const ImVec2& farV      = list.VtxBuffer[i + 6].pos;
-                const float nearD = std::sqrt((nearV.x - outerFrom.x) * (nearV.x - outerFrom.x)
-                    + (nearV.y - outerFrom.y) * (nearV.y - outerFrom.y));
-                const float farD = std::sqrt((farV.x - outerFrom.x) * (farV.x - outerFrom.x)
-                    + (farV.y - outerFrom.y) * (farV.y - outerFrom.y));
-                // list._FringeScale = 1.0 -> 两侧各 1px
-                if (std::fabs(farD - 1.0f) <= 0.05f)
-                    farOffsetOk++;
-                if (std::fabs(nearD - 1.0f) <= 0.05f)
-                    nearOffsetOk++;
-
-                // 远侧 alpha 必须是 0（渐变），近侧必须是实心
-                const ImU32 farAlpha  = (list.VtxBuffer[i + 6].col >> 24) & 0xFFu;
-                const ImU32 nearAlpha = (list.VtxBuffer[i + 4].col >> 24) & 0xFFu;
-                if (farAlpha != 0 || nearAlpha == 0)
-                    fringeIsClear = false;
+                const ImVec2& a = center[(i + center.size() - 1) % center.size()];
+                const ImVec2& b = center[i];
+                const ImVec2& c = center[(i + 1) % center.size()];
+                const float ax = b.x - a.x, ay = b.y - a.y;
+                const float bx = c.x - b.x, by = c.y - b.y;
+                const float la = std::sqrt(ax * ax + ay * ay);
+                const float lb = std::sqrt(bx * bx + by * by);
+                if (la < 1e-4f || lb < 1e-4f)
+                    continue;
+                const float dot = (ax * bx + ay * by) / (la * lb);
+                maxTurn = std::max(maxTurn,
+                    std::acos(std::max(-1.0f, std::min(1.0f, dot))) * 180.0f / 3.14159265f);
             }
-            check(farOffsetOk > 0, "羽边 far 侧在描边外缘外 1px");
-            check(nearOffsetOk > 0, "羽边 near 侧在描边外缘内 1px（以边缘为中心）");
-            check(fringeIsClear, "羽边 far 侧 alpha = 0、near 侧实心（是渐变而不是实色）");
+            check(maxTurn <= 6.0f, "圆上每段转角 <= 6°（看不到折线）");
+
+            // 圆度：所有中线点到圆心的距离都等于 半径 + 半个线宽（形状真的跟着控件走）
+            const float cx = 64.0f, cy = 64.0f;
+            // 中线半径 = 原半径 + (外扩缝 + 半个线宽)：draw() 里把形状整体外扩了这么多
+            const float expect = 64.0f + style.expand + style.lineWidth * 0.5f;
+            float maxError = 0.0f;
+            for (const ImVec2& p : center)
+            {
+                const float dx = p.x - cx, dy = p.y - cy;
+                maxError = std::max(maxError, std::fabs(std::sqrt(dx * dx + dy * dy) - expect));
+            }
+            check(maxError < 0.6f, "中线始终落在圆上（圆度误差 < 0.6px）");
         }
     }
-
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;

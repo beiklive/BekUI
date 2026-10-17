@@ -14,12 +14,12 @@ namespace
 
 constexpr float kPi    = 3.14159265358979f;
 
-// 中线每段的目标弧长（px）：和 segmentCount() 的"每 6px 一段"同口径。
-constexpr float kTargetSegmentPixels = 6.0f;
+// 中线每段的目标弧长（px）。4px 而不是 6px：圆是恒定曲率，段一长就看得见多边形。
+constexpr float kTargetSegmentPixels = 4.0f;
 
-// 一个圆角至少切几段（8 段 = 每段 11.25°）。半径很小时按"每 6px 一段"只会切出 3~4 段，
-// 圆角看着就是几根折线；固定下限让任何半径都圆。
-constexpr int kMinCornerSamples = 8;
+// 一个 90° 圆角至少切几段 = 15，也就是每段转角 <= 6°。
+// 半径很小时按弧长只会切出 3~4 段（圆角像折线）；圆是最吃这条的形状 —— 曲率恒定、段段有转角。
+constexpr int kMinCornerSpans = 15;
 constexpr float kHalfPi = 1.5707963267949f;
 
 // 半径钳到短边的一半：超过就退化成胶囊/正圆。
@@ -57,7 +57,7 @@ struct Sample
 //      圆角被"削平"成切角（用户报的"精度有问题"就是这个观感）；
 //   ② 采样点不一定落在"直边 ↔ 圆角"的交界上，交界处会多出一个不该有的折点。
 // 分开细分保证：每个圆角至少 kMinCornerSamples 段、采样点正好落在 8 个特征交界上。
-std::vector<Sample> buildSamples(const Outline& ring, float step)
+std::vector<Sample> buildSamples(const Outline& ring, float step, bool enforceMinimum)
 {
     const Rect& bounds = ring.bounds;
     const float r      = clampedRadius(ring);
@@ -76,199 +76,125 @@ std::vector<Sample> buildSamples(const Outline& ring, float step)
         return std::max(minimum, (int)std::ceil(length / std::max(step, 0.5f)));
     };
 
+    // 显式 style.segments 时把它当权威（那是高级覆盖）；自动档才套"每角至少 15 段"的地板。
+    const int cornerFloor = enforceMinimum ? kMinCornerSpans : 1;
     const int wSpans = spansFor(straightW, 1);
     const int hSpans = spansFor(straightH, 1);
-    const int aSpans = r > 0.01f ? spansFor(arcLen, kMinCornerSamples) : 0;
+    const int aSpans = r > 0.01f ? spansFor(arcLen, cornerFloor) : 0;
 
     // 每个特征只放"起点"，末点由下一个特征补上 —— 这样正好是闭环、没有重复点。
+    //
+    // 法线直接用**解析法线**（直边是轴对齐、圆角是径向），不用"相邻两条边法线的角平分线"：
+    // 角平分线在圆角上最多偏半个段角（3°），会让 AA 带的宽度沿着圆抖一个像素 —— 这正是
+    // 圆形焦点框边缘那层"毛边"的来源。解析法线没有这个误差，也不需要 miter 拉长。
     std::vector<Point> points;
+    std::vector<Point> normals;
     points.reserve((size_t)(2 * wSpans + 2 * hSpans + 4 * aSpans));
+    normals.reserve(points.capacity());
 
-    for (int i = 0; i < wSpans; i++) // 上边：左 → 右
-        points.push_back(Point(left + r + straightW * (float)i / (float)wSpans, top));
-    for (int i = 0; i < aSpans; i++) // 右上角
-        points.push_back(arcPoint(right - r, top + r, r, kHalfPi * (float)i / (float)aSpans));
-    for (int i = 0; i < hSpans; i++) // 右边：上 → 下
-        points.push_back(Point(right, top + r + straightH * (float)i / (float)hSpans));
-    for (int i = 0; i < aSpans; i++) // 右下角
-        points.push_back(
-            arcPoint(right - r, bottom - r, r, kHalfPi + kHalfPi * (float)i / (float)aSpans));
-    for (int i = 0; i < wSpans; i++) // 下边：右 → 左
-        points.push_back(Point(right - r - straightW * (float)i / (float)wSpans, bottom));
-    for (int i = 0; i < aSpans; i++) // 左下角
-        points.push_back(arcPoint(left + r, bottom - r, r, kPi + kHalfPi * (float)i / (float)aSpans));
-    for (int i = 0; i < hSpans; i++) // 左边：下 → 上
-        points.push_back(Point(left, bottom - r - straightH * (float)i / (float)hSpans));
-    for (int i = 0; i < aSpans; i++) // 左上角
-        points.push_back(
-            arcPoint(left + r, top + r, r, kPi + kHalfPi + kHalfPi * (float)i / (float)aSpans));
-
-    // 顶点法线 = 相邻两条边法线的角平分线，再按 1/cos(θ/2) 拉长（miter）。
-    // 不拉长的话拐角外侧会缺一块、描边在转角处变窄；半径 0 的直角最明显。
-    const size_t count = points.size();
-    std::vector<Sample> samples(count);
-    if (count == 0)
-        return samples;
-
-    auto edgeNormal = [&points, count](size_t i) {
-        const Point& a = points[i];
-        const Point& b = points[(i + 1) % count];
-        float nx = -(b.y - a.y);
-        float ny = b.x - a.x;
-        const float length = std::sqrt(nx * nx + ny * ny);
-        if (length > 1e-6f)
+    auto addStraight = [&points, &normals](float x0, float y0, float x1, float y1, float nx,
+                           float ny, int spans) {
+        for (int i = 0; i < spans; i++)
         {
-            nx /= length;
-            ny /= length;
+            const float t = spans > 0 ? (float)i / (float)spans : 0.0f;
+            points.push_back(Point(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t));
+            normals.push_back(Point(nx, ny));
         }
-        return Point(nx, ny);
+    };
+    auto addArc = [&points, &normals](float cx, float cy, float r, float from, float to, int spans) {
+        for (int i = 0; i < spans; i++)
+        {
+            const float t = spans > 0 ? (float)i / (float)spans : 0.0f;
+            const float angle = from + (to - from) * t;
+            points.push_back(arcPoint(cx, cy, r, angle));
+            normals.push_back(Point(std::sin(angle), -std::cos(angle))); // 径向朝外
+        }
     };
 
+    // 上边（左 → 右）、右上角、右边（上 → 下）、右下角、下边（右 → 左）、左下角、左边（下 → 上）、左上角
+    addStraight(left + r, top, right - r, top, 0.0f, -1.0f, wSpans);
+    addArc(right - r, top + r, r, 0.0f, kHalfPi, aSpans);
+    addStraight(right, top + r, right, bottom - r, 1.0f, 0.0f, hSpans);
+    addArc(right - r, bottom - r, r, kHalfPi, kPi, aSpans);
+    addStraight(right - r, bottom, left + r, bottom, 0.0f, 1.0f, wSpans);
+    addArc(left + r, bottom - r, r, kPi, kPi + kHalfPi, aSpans);
+    addStraight(left, bottom - r, left, top + r, -1.0f, 0.0f, hSpans);
+    addArc(left + r, top + r, r, kPi + kHalfPi, 2.0f * kPi, aSpans);
+
+    const size_t count = points.size();
+    std::vector<Sample> samples(count);
     float accumulated = 0.0f;
     for (size_t i = 0; i < count; i++)
     {
-        const Point prev = edgeNormal((i + count - 1) % count);
-        const Point next = edgeNormal(i);
-
-        float nx = prev.x + next.x;
-        float ny = prev.y + next.y;
-        float length = std::sqrt(nx * nx + ny * ny);
-        if (length <= 1e-6f) // 180° 折返（正常形状不会出现）：退回后一条边的法线
-        {
-            nx     = next.x;
-            ny     = next.y;
-            length = 1.0f;
-        }
-        nx /= length;
-        ny /= length;
-
-        // miter 拉长系数：夹角越尖越长，但夹到 4 倍，避免极端形状戳出尖刺
-        const float cosHalf = nx * next.x + ny * next.y;
-        const float miter   = 1.0f / std::max(0.25f, cosHalf);
-
         samples[i].point  = points[i];
-        samples[i].normal = Point(nx * std::min(miter, 4.0f), ny * std::min(miter, 4.0f));
+        samples[i].normal = normals[i];
 
-        // U：沿中线的累计弧长（最后归一化）
+        // U：这一段的**起点**在整圈里的位置（先记后累加 —— 记成"含终点"的话，
+        // 最后一个横截面会得到 1.0、wrap 成 0，于是最后一段的 UV 塌成常数、贴图在那儿不流动）
+        samples[i].u = accumulated;
         const Point& after = points[(i + 1) % count];
         accumulated += std::sqrt((after.x - points[i].x) * (after.x - points[i].x)
             + (after.y - points[i].y) * (after.y - points[i].y));
-        samples[i].u = accumulated;
     }
 
-    for (Sample& sample : samples)
-        sample.u = accumulated > 1e-6f ? sample.u / accumulated : 0.0f;
+    if (accumulated > 1e-6f)
+    {
+        for (Sample& sample : samples)
+            sample.u = sample.u / accumulated;
+    }
 
     return samples;
 }
 
-// 一个贴图片段：用**两个采样点各自的法线**算四个角，所以相邻段共用同一条边 —— 不会开缝。
+// 一圈的**横截面**：从中线往两侧各取"描边外缘"和"羽边外沿"。
 //
-// ⚠️ 这里全程手写顶点（PrimVtx），不用 AddImageQuad：AddImageQuad 内部是
-// `PushTexture(...) → 写 4 个顶点 → PopTexture()`，**它返回时"当前绘制命令"是 Pop 出来的那条**
-// （纹理已经换回原来那张）。之后再用 PrimVtx 写羽边，顶点就落到"别的纹理"的命令里，
-// 采出来全透明 —— 现象是几何完全正确、测试数得出 16 个顶点，但屏幕上一点痕迹都没有
-//（这个坑踩过，别改回去）。所以贴图由调用方在整圈外面统一 PushTexture/PopTexture。
+//   farA --- nearA ======= nearB --- farB
+//   α=0       α=实        中线段      α=实    α=0
 //
-// 每个 span 固定发 4 + 4 + 4 = 12 个顶点（tests/focus_ring_test.cpp 按这个布局解析）：
-//   [0..3]  贴图四边形（v0=外起点 v1=外终点 v2=内终点 v3=内起点）
-//   [4..7]  外侧羽边（near 起点/终点、far 起点/终点；far 侧 alpha = 0）
-//   [8..11] 内侧羽边（同上，朝内）
-void addTexturedSpan(ImDrawList* drawList, const Sample& from, const Sample& to, float half,
-    const TextureRef& lut, float u0, float u1, ImU32 tint, float fringe)
+// 整圈由这些横截面串成**连续条带**（3 条：外羽边 / 实心 / 内羽边），相邻段共用同一个横截面。
+// 所以段与段之间没有"封口"——以前每段自己发羽边，两条 alpha 斜坡在接缝处叠加（0.5+0.5=0.75
+// 偏亮）或者双双落空（偏暗），一圈多少段就有多少个亮暗点，圆形焦点框上那就是一圈毛刺。
+struct Cross
 {
-    (void)lut; // 纹理由调用方 push，这里只管顶点（见上面的说明）
+    Point farA;
+    Point nearA;
+    Point nearB;
+    Point farB;
+    float u = 0.0f; // 贴图 U（相邻段共用同一个值）
+};
 
-    const Point outerFrom(from.point.x + from.normal.x * half, from.point.y + from.normal.y * half);
-    const Point outerTo(to.point.x + to.normal.x * half, to.point.y + to.normal.y * half);
-    const Point innerTo(to.point.x - to.normal.x * half, to.point.y - to.normal.y * half);
-    const Point innerFrom(from.point.x - from.normal.x * half, from.point.y - from.normal.y * half);
-
-    const ImVec2 uvOuterFrom(u0, 0.0f);
-    const ImVec2 uvOuterTo(u1, 0.0f);
-    const ImVec2 uvInnerTo(u1, 1.0f);
-    const ImVec2 uvInnerFrom(u0, 1.0f);
-
-    const ImVec2 outerFromV(outerFrom.x, outerFrom.y);
-    const ImVec2 outerToV(outerTo.x, outerTo.y);
-    const ImVec2 innerToV(innerTo.x, innerTo.y);
-    const ImVec2 innerFromV(innerFrom.x, innerFrom.y);
-
-    // 4 个顶点 + 6 个索引（两个三角形共边）。**不能**用 6 次 PrimVtx 配 PrimReserve(6,4)：
-    // 那样写第 5、6 个顶点就越过了预留位置，_VtxCurrentIdx 与 VtxBuffer 从此错位，
-    // 后面的三角形会引用到别的段的顶点（现象：描边上出现一排黑三角）。
-    const ImVec2* corners[4] = { &outerFromV, &outerToV, &innerToV, &innerFromV };
-    const ImVec2* uvs[4]     = { &uvOuterFrom, &uvOuterTo, &uvInnerTo, &uvInnerFrom };
-    drawList->PrimReserve(6, 4);
-    const ImDrawIdx base = (ImDrawIdx)drawList->_VtxCurrentIdx;
-    for (int i = 0; i < 4; i++)
-        drawList->PrimWriteVtx(*corners[i], *uvs[i], tint);
-    drawList->PrimWriteIdx(base + 0);
-    drawList->PrimWriteIdx(base + 1);
-    drawList->PrimWriteIdx(base + 2);
-    drawList->PrimWriteIdx(base + 0);
-    drawList->PrimWriteIdx(base + 2);
-    drawList->PrimWriteIdx(base + 3);
-
-    if (fringe <= 0.0f)
-        return;
-
-    const ImU32 clear = tint & 0x00FFFFFFu; // 再往外：alpha 0（靠光栅化插值出羽边）
-
-    // 羽边**以描边边缘为中心**铺 1 个逻辑像素（=_FringeScale；Retina 上是 2 个物理像素，
-    // 每边各 1 个）。内侧一半压在实心描边上（同色、alpha 1），看不出来；外侧一半从实到透，
-    // 边缘那一两个像素就拿到部分覆盖 —— 斜的圆弧不再有台阶。
-    const float bandHalf = fringe;
-
-    // near = 描边边缘上的两个点；dir = +1 往外 / -1 往里；v 是贴图上的行（外缘 0、内缘 1）
-    auto emitFringe = [&](const Point& edgeFrom, const Point& edgeTo, float dir, float v) {
-        const ImVec2 nearA(edgeFrom.x - from.normal.x * bandHalf * dir,
-            edgeFrom.y - from.normal.y * bandHalf * dir);
-        const ImVec2 nearB(edgeTo.x - to.normal.x * bandHalf * dir,
-            edgeTo.y - to.normal.y * bandHalf * dir);
-        const ImVec2 farA(edgeFrom.x + from.normal.x * bandHalf * dir,
-            edgeFrom.y + from.normal.y * bandHalf * dir);
-        const ImVec2 farB(edgeTo.x + to.normal.x * bandHalf * dir,
-            edgeTo.y + to.normal.y * bandHalf * dir);
-
-        const ImVec2 uvNearA(u0, v), uvNearB(u1, v), uvFarA(u0, v), uvFarB(u1, v);
-
-        // 同样 4 顶点 + 6 索引：near 边 alpha = tint、far 边 alpha = 0，插值出羽边
-        drawList->PrimReserve(6, 4);
-        const ImDrawIdx fringeBase = (ImDrawIdx)drawList->_VtxCurrentIdx;
-        drawList->PrimWriteVtx(nearA, uvNearA, tint);
-        drawList->PrimWriteVtx(nearB, uvNearB, tint);
-        drawList->PrimWriteVtx(farA, uvFarA, clear);
-        drawList->PrimWriteVtx(farB, uvFarB, clear);
-        drawList->PrimWriteIdx(fringeBase + 2);
-        drawList->PrimWriteIdx(fringeBase + 3);
-        drawList->PrimWriteIdx(fringeBase + 1);
-        drawList->PrimWriteIdx(fringeBase + 2);
-        drawList->PrimWriteIdx(fringeBase + 1);
-        drawList->PrimWriteIdx(fringeBase + 0);
-    };
-
-    emitFringe(outerFrom, outerTo, 1.0f, 0.0f);  // 外侧
-    emitFringe(innerFrom, innerTo, -1.0f, 1.0f); // 内侧
-}
-
-// 在 from→to 之间按比例 ratio 插一个采样点（跨接缝时切开用）：位置与法线都插值再归一化。
-Sample lerpSample(const Sample& from, const Sample& to, float ratio)
+// 一个绘制单元：横截面 from -> to（UV 由两个横截面自己带，跨接缝时会被切成两段）
+struct RibbonSpan
 {
-    Sample out;
-    out.point  = Point(from.point.x + (to.point.x - from.point.x) * ratio,
-        from.point.y + (to.point.y - from.point.y) * ratio);
-    float nx = from.normal.x + (to.normal.x - from.normal.x) * ratio;
-    float ny = from.normal.y + (to.normal.y - from.normal.y) * ratio;
-    const float length = std::sqrt(nx * nx + ny * ny);
-    if (length > 1e-6f)
+    size_t from = 0;
+    size_t to   = 0;
+};
+
+std::vector<Cross> buildCrossSections(const std::vector<Sample>& samples, float half, float band,
+    float phase)
+{
+    std::vector<Cross> crosses(samples.size());
+    for (size_t i = 0; i < samples.size(); i++)
     {
-        nx /= length;
-        ny /= length;
+        const Sample& sample = samples[i];
+
+        // normal 已含 miter 拉长（保持描边等宽）；羽边再按单位方向往外铺固定宽度
+        const float length = std::sqrt(sample.normal.x * sample.normal.x
+            + sample.normal.y * sample.normal.y);
+        const float dirX = length > 1e-6f ? sample.normal.x / length : 0.0f;
+        const float dirY = length > 1e-6f ? sample.normal.y / length : 1.0f;
+
+        Cross& cross = crosses[i];
+        cross.nearA = Point(sample.point.x + sample.normal.x * half,
+            sample.point.y + sample.normal.y * half);
+        cross.nearB = Point(sample.point.x - sample.normal.x * half,
+            sample.point.y - sample.normal.y * half);
+        cross.farA  = Point(cross.nearA.x + dirX * band, cross.nearA.y + dirY * band);
+        cross.farB  = Point(cross.nearB.x - dirX * band, cross.nearB.y - dirY * band);
+        cross.u     = wrap01(sample.u + phase); // 相位直接烘焙进 UV（流光/静止的区别就在这里）
     }
-    out.normal = Point(nx, ny);
-    out.u      = from.u + (to.u - from.u) * ratio;
-    return out;
+
+    return crosses;
 }
 
 } // namespace
@@ -400,8 +326,12 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
 
     const float half = style.lineWidth * 0.5f;
 
-    // 羽边宽度：1 逻辑像素（和 core/gradient.cpp 同口径，跟着 _FringeScale 走）
-    const float fringe = drawList->_FringeScale > 0.0f ? drawList->_FringeScale : 1.0f;
+    // 羽边宽度：**每边 1.5 个物理像素**（_FringeScale 恰好是"1 个物理像素"的边长）。
+    // 1.0 太薄：像素中心常落在渐变的两端，实测整条圆角上只有 1~2 个像素拿到部分覆盖，
+    // 斜边就是台阶；1.5 每边正好落进 2 个像素，圆看起来才顺。再宽（2.0）就发虚了。
+    constexpr float kBandPhysicalPixels = 1.5f;
+    const float band = kBandPhysicalPixels
+        * (drawList->_FringeScale > 0.0f ? drawList->_FringeScale : 1.0f);
 
     // 段长：默认约 6px 一段；显式 segments 时按"总长 / segments"作为上限，
     // 保证每段的 U 跨度不超过 1/segments（tests/focus_ring_test.cpp 的接缝扫描依赖这条）。
@@ -410,7 +340,7 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
     const float step = std::max(0.5f,
         std::min(kTargetSegmentPixels, totalLength / (float)std::max(1, segmentBudget)));
 
-    const std::vector<Sample> samples = buildSamples(ring, step);
+    const std::vector<Sample> samples = buildSamples(ring, step, style.segments <= 0);
     if (samples.size() < 2)
         return;
 
@@ -431,33 +361,78 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
         segmentPhase = 0.0f;
     }
 
-    const ImU32 tint = colorWithAlpha(IM_COL32_WHITE, segmentAlpha);
+    // ---- 条带发射 ----
+    //
+    // 顶点按"每个横截面 4 个"共享（farA / nearA / nearB / farB），索引按"每段 3 条带 × 6 索引"
+    // 铺开：外羽边(farA→nearA)、实心(nearA→nearB)、内羽边(nearB→farB)。
+    // 全程手写 PrimWriteVtx/PrimWriteIdx —— 不能用 AddImageQuad：它内部是
+    // `PushTexture -> 写 4 个顶点 -> PopTexture`，返回时"当前命令"已经换回原纹理，
+    // 之后写的顶点会落到别人的纹理上（现象：几何全对、屏幕全无）。贴图在这里 push 一次。
+    std::vector<Cross> crosses = buildCrossSections(samples, half, band, segmentPhase);
 
-    // 整圈共用一条命令：贴图在这里 push 一次（addTexturedSpan 全程手写顶点）
-    drawList->PushTexture(style.lut.texture);
-
-    for (size_t i = 0; i < samples.size(); i++)
+    // 构造绘制单元。唯一需要"拆"的地方是 U 接缝：那一段的两侧 UV 必须分别是 1.0 和 u1，
+    // 而一个横截面只有一个 U —— 所以复制一份（位置完全相同、只差 UV），拆成两段。
+    // 注意这不是"段封口"：两段的几何完全重合、都是不透明的，不存在两条 alpha 斜坡叠加。
+    std::vector<RibbonSpan> spans;
+    const size_t crossCount = crosses.size(); // ⚠️ 循环里会往 crosses 追加接缝副本，
+    spans.reserve(crossCount + 1);            //    所以边界必须先取好（否则 size() 一直长 → 死循环）
+    for (size_t i = 0; i < crossCount; i++)
     {
-        const Sample& from = samples[i];
-        const Sample& to   = samples[(i + 1) % samples.size()];
-
-        const LutSpan span = lutSpanAt(from.u, to.u, segmentPhase);
-        if (!span.wrapped)
+        const size_t next = (i + 1) % crossCount;
+        if (crosses[next].u >= crosses[i].u)
         {
-            addTexturedSpan(drawList, from, to, half, style.lut, span.u0, span.u1, tint, fringe);
+            spans.push_back(RibbonSpan{ i, next });
             continue;
         }
 
-        // 跨接缝：按 U 的比例切开，画成两段，保证 UV 单调、不被拉花
-        const float length = 1.0f - span.u0 + span.u1;
-        const float ratio  = length > 1e-6f ? (1.0f - span.u0) / length : 0.5f;
-        const Sample mid   = lerpSample(from, to, ratio);
+        Cross seamEnd = crosses[next];
+        seamEnd.u     = 1.0f;
+        const size_t seamEndIndex = crosses.size();
+        crosses.push_back(seamEnd);
 
-        addTexturedSpan(drawList, from, mid, half, style.lut, span.u0, 1.0f, tint, fringe);
+        spans.push_back(RibbonSpan{ i, seamEndIndex });            // ... -> 1.0（接缝前）
+        spans.push_back(RibbonSpan{ next, (next + 1) % crossCount }); // u1 -> ...（接缝后）
+    }
 
-        // u1 正好是 0（最后一段的收尾）时后半段长度为 0，跳过它
-        if (span.u1 > 1e-4f)
-            addTexturedSpan(drawList, mid, to, half, style.lut, 0.0f, span.u1, tint, fringe);
+    // 循环里可能追加了接缝副本，顶点数按**最终**的横截面数算（用循环前的数量会漏写那几个顶点，
+    // 而索引已经指向它们 —— 越界索引会让 GPU 读到垃圾顶点）。
+    const size_t totalCrosses = crosses.size();
+    if (totalCrosses < 2 || spans.empty())
+        return;
+
+    const ImU32 tint  = colorWithAlpha(IM_COL32_WHITE, segmentAlpha);
+    const ImU32 clear = tint & 0x00FFFFFFu; // 羽边外沿：alpha 0
+
+    drawList->PushTexture(style.lut.texture);
+
+    drawList->PrimReserve((int)spans.size() * 18, (int)totalCrosses * 4);
+    const ImDrawIdx base = (ImDrawIdx)drawList->_VtxCurrentIdx;
+
+    for (size_t i = 0; i < totalCrosses; i++)
+    {
+        const Cross& cross = crosses[i];
+        const ImVec2 uv(cross.u, 0.0f);
+        const ImVec2 uvB(cross.u, 1.0f);
+        drawList->PrimWriteVtx(ImVec2(cross.farA.x, cross.farA.y), uv, clear);
+        drawList->PrimWriteVtx(ImVec2(cross.nearA.x, cross.nearA.y), uv, tint);
+        drawList->PrimWriteVtx(ImVec2(cross.nearB.x, cross.nearB.y), uvB, tint);
+        drawList->PrimWriteVtx(ImVec2(cross.farB.x, cross.farB.y), uvB, clear);
+    }
+
+    for (const RibbonSpan& span : spans)
+    {
+        const ImDrawIdx a = (ImDrawIdx)(base + span.from * 4);
+        const ImDrawIdx b = (ImDrawIdx)(base + span.to * 4);
+        // 三条带各自的顶点偏移：0=farA 1=nearA 2=nearB 3=farB
+        for (ImDrawIdx offset = 0; offset < 3; offset++)
+        {
+            drawList->PrimWriteIdx(a + offset);
+            drawList->PrimWriteIdx(b + offset);
+            drawList->PrimWriteIdx(b + offset + 1);
+            drawList->PrimWriteIdx(a + offset);
+            drawList->PrimWriteIdx(b + offset + 1);
+            drawList->PrimWriteIdx(a + offset + 1);
+        }
     }
 
     drawList->PopTexture();
