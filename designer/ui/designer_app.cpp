@@ -17,6 +17,8 @@
 #include "bklv/widgets/appearance_view.hpp"
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/core/json_view.hpp"
+#include "bklv/core/attributes.hpp"
+#include "designer/core/view_fields.hpp"
 
 namespace designer
 {
@@ -670,7 +672,7 @@ void DesignerApp::drawViewPanel()
     }
 
     ImGui::TextDisabled("节点（点选同步画布预览）");
-    ImGui::BeginChild("##nodes", ImVec2(0, 0), true);
+    ImGui::BeginChild("##nodes", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.45f), true);
     const std::vector<ViewNodeInfo> nodes = this->viewDoc.listNodes();
     for (int i = 0; i < (int)nodes.size(); i++)
     {
@@ -683,6 +685,124 @@ void DesignerApp::drawViewPanel()
         if (ImGui::Selectable(label, this->selectedNode == i))
             this->selectedNode = i;
         ImGui::Unindent((float)nodes[(size_t)i].depth * 12.0f);
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
+
+    // ---- 选中节点的属性（字段来自控件自己的属性表）----
+    if (this->selectedNode < 0 || this->selectedNode >= (int)nodes.size())
+        return;
+    const ViewNodeInfo& node = nodes[(size_t)this->selectedNode];
+    if (node.type.empty())
+    {
+        ImGui::TextDisabled("这个节点没写 type");
+        return;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("%s   %s", node.type.c_str(), node.pointer.empty() ? "/" : node.pointer.c_str());
+    ImGui::BeginChild("##nodeFields", ImVec2(0, 0), false);
+    const std::vector<ViewFieldDesc> fields = viewFields(node.type);
+    for (const ViewFieldDesc& field : fields)
+    {
+        const std::string current = this->viewDoc.attributeText(node.pointer, field.key);
+        ImGui::PushID(field.key.c_str());
+
+        char buffer[256];
+        std::snprintf(buffer, sizeof(buffer), "%s", current.c_str());
+        ImGui::SetNextItemWidth(-1);
+        bool committed = false;
+
+        using bklv::AttributeKind;
+        switch (field.kind)
+        {
+            case AttributeKind::BOOL:
+            {
+                bool value = current == "true";
+                if (ImGui::Checkbox((field.key + "##b").c_str(), &value))
+                {
+                    this->viewDoc.setAttribute(node.pointer, field.key, designer::Json(value),
+                        this->lastError);
+                    committed = true;
+                }
+                break;
+            }
+            case AttributeKind::ENUM:
+            {
+                // allowed 是 "a|b|c"
+                std::vector<std::string> options;
+                std::string              token;
+                for (char c : field.allowed)
+                {
+                    if (c == '|')
+                    {
+                        options.push_back(token);
+                        token.clear();
+                    }
+                    else
+                        token.push_back(c);
+                }
+                if (!token.empty())
+                    options.push_back(token);
+                if (ImGui::BeginCombo(field.key.c_str(), current.empty() ? "（未设）" : current.c_str()))
+                {
+                    for (const std::string& option : options)
+                    {
+                        if (ImGui::Selectable(option.c_str(), option == current))
+                        {
+                            this->viewDoc.setAttribute(
+                                node.pointer, field.key, designer::Json(option), this->lastError);
+                            committed = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
+            default:
+                if (ImGui::InputText(field.key.c_str(), buffer, sizeof(buffer),
+                        ImGuiInputTextFlags_EnterReturnsTrue))
+                {
+                    // 数字/布尔按字面量写，其余按字符串（"auto"/"50%"/"@res/…"都要原样保留）
+                    designer::Json value;
+                    try
+                    {
+                        value = designer::Json::parse(buffer, nullptr, true, true);
+                    }
+                    catch (...)
+                    {
+                        value = designer::Json(std::string(buffer));
+                    }
+                    this->viewDoc.setAttribute(node.pointer, field.key, std::move(value),
+                        this->lastError);
+                    committed = true;
+                }
+                break;
+        }
+
+        // `icon` 键给一排常用的内置图标（@icon/名字）—— 比手打字形可靠
+        if (field.key == "icon")
+        {
+            static const char* kIcons[] = { "star", "settings", "save", "search",
+                "add", "check", "close", "menu" };
+            for (const char* icon : kIcons)
+            {
+                if (ImGui::SmallButton(icon))
+                {
+                    this->viewDoc.setAttribute(node.pointer, field.key,
+                        designer::Json(std::string("@icon/") + icon), this->lastError);
+                    committed = true;
+                }
+                ImGui::SameLine();
+            }
+            ImGui::NewLine();
+        }
+
+        if (committed)
+        {
+            this->currentText = this->viewDoc.serialize();
+            this->rebuildViewPreview();
+        }
         ImGui::PopID();
     }
     ImGui::EndChild();

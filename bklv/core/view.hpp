@@ -123,6 +123,10 @@ enum class Visibility
 // 尺寸特例：AUTO 表示由内容决定，对应 Yoga 的 YGUndefined。
 constexpr float AUTO = NAN;
 
+// 公共属性表（所有控件都认的那些：width/height/margin/…）。
+// 工具/编辑器要枚举"这个控件接受哪些键"时用它；`View::applyAttribute` 的兜底也是它。
+const AttributeTable& commonAttributesTable();
+
 class View
 {
   public:

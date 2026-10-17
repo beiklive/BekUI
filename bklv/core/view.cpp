@@ -1199,6 +1199,12 @@ const AttributeTable& View::attributes() const
     return empty;
 }
 
+// 公开入口：内部那份在匿名命名空间里（工具/编辑器通过这个函数取）
+const AttributeTable& commonAttributesTable()
+{
+    return commonAttributes();
+}
+
 ApplyResult View::applyAttribute(const std::string& name, const Value& value, std::string& error)
 {
     // 子类表优先：子类可以覆盖公共属性的语义

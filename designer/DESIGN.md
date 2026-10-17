@@ -443,5 +443,13 @@ designer/ui/
   已实机截图：`view/page_json` 真实渲染出卡片（头像/标题/副标题/徽章）+ 节点树。
   **待补**：节点属性的表单（`ViewDoc::setAttribute` 已有并有测试，UI 尚未接）、
   `@res/` 与 `@icon/` 挑选器、画布点选节点（现在只能从节点树选）。
-- 状态：**P1–P6 完成，P7 完成第一切片 + 视图预览**；目标保持 active，下一轮继续。
+- **视图节点属性编辑器已完成**：`designer/core/view_fields.*` 从控件自己的属性表派生字段
+  （实例化一个只有 type 的最小节点，读 `attributes()` + 新公开的 `commonAttributesTable()`）；
+  右栏节点树下方按字段编辑（BOOL 勾选 / ENUM 下拉 / 其余文本回车提交，数字与布尔按字面量写、
+  `"auto"`/`"50%"`/`@res/` 原样保留），`icon` 键附一排常用图标按钮（写 `@icon/名字`）；
+  改完重建预览。`tests/designer_view_fields_test`（7 项）：24 种类型都有字段且都含 `width`、
+  Image 有 `src`、Button 有 `text`/`icon`。
+  **待打磨**：字段标签在 `SetNextItemWidth(-1)` 下被挤掉（截图可见，只显示组合框）；
+  `@res/` 文件挑选器；画布点选节点。
+- 状态：**P1–P6 完成，P7 完成第一切片；视图预览 + 节点属性编辑完成**。目标保持 active。
 - 明确不做：自由拖拽布局、关键帧/时间线、AI 辅助、协作、组件市场（理由见 §3）。

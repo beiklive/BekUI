@@ -13,6 +13,7 @@ set(DESIGNER_CORE_SOURCES
     core/layer_fields.cpp
     core/tokens_doc.cpp
     core/view_doc.cpp
+    core/view_fields.cpp
 )
 
 set(DESIGNER_CORE_ABS "")
