@@ -1204,6 +1204,22 @@ void DesignerApp::selectNodeAt(float screenX, float screenY)
         BKLV_LOG_INFO("点选：没有命中任何视图");
 }
 
+namespace
+{
+
+// 属性行：左边固定宽度的标签列、右边值区占满剩余宽度。
+// 以前是"标签一行 + 控件一行"（因为 SetNextItemWidth(-1) 会挤掉标签），信息密度太低。
+constexpr float kFieldLabelWidth = 96.0f;
+
+void fieldRowLabel(const char* label)
+{
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label);
+    ImGui::SameLine(kFieldLabelWidth * bklv::getUiScale());
+}
+
+} // namespace
+
 void DesignerApp::drawViewPanel()
 {
     ImGui::TextDisabled("%s.json%s", this->currentFile.c_str(),
@@ -1280,8 +1296,8 @@ void DesignerApp::drawViewPanel()
 
         char buffer[256];
         std::snprintf(buffer, sizeof(buffer), "%s", current.c_str());
-        // 标签单独一行：ImGui 的 SetNextItemWidth(-1) 会把"控件前的标签"挤出可视区
-        ImGui::TextUnformatted(field.key.c_str());
+        // 固定标签列 + 右侧值区（原来标签一行、控件一行，太松散）
+        fieldRowLabel(field.key.c_str());
         ImGui::SetNextItemWidth(-1.0f);
         bool committed = false;
 
@@ -1727,7 +1743,7 @@ void DesignerApp::drawInspector()
         const designer::Json* current = this->appearance.get(pointer);
 
         ImGui::PushID(field.key.c_str());
-        ImGui::TextUnformatted(field.label.empty() ? field.key.c_str() : field.label.c_str());
+        fieldRowLabel(field.label.empty() ? field.key.c_str() : field.label.c_str());
         if (!field.help.empty() && ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", field.help.c_str());
 
