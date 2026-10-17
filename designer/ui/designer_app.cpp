@@ -164,7 +164,8 @@ bool DesignerApp::init(const Options& options, std::string& error)
     auto canvasHost = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     canvasHost->setGrow(1.0f);
     canvasHost->setBackgroundColor(IM_COL32(0x1E, 0x1E, 0x1E, 0xFF)); // Figma 式中性画布底
-    auto canvas = new bklv::AppearanceView(std::string(), false);
+    // 名字不能给空：空名字会让库打「主题里没有控件外观 ""」的警告，而且画不出一笔
+    auto canvas = new bklv::AppearanceView("base/box", false);
     canvas->setGrow(1.0f);                              // 填满画布区的高度
     canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
     canvas->setText("示例文字"); // 外观预览给一段样例文字，否则按钮类外观只看得到一块底色
