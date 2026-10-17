@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>bklv JSON 审查（图文版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg:#f6f8fb; --card:#ffffff; --ink:#1f2430; --muted:#5b6472; --line:#dbe1e8;
+    --accent:#0e639c; --code:#eef2f7; --ok:#2f7d32; --warn:#b35c00; --bad:#b3261e;
+    --okbg:#e6f4e6; --warnbg:#fdf1e0; --badbg:#fdeceb; --head:#eef2f7;
+    --okline:#2f7d32; --warnline:#b35c00; --badline:#b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12161d; --card:#1a1f28; --ink:#e7ecf3; --muted:#9aa4b2; --line:#2c3441;
+            --accent:#5aa9e6; --code:#222833; --ok:#7bc47f; --warn:#e0a458; --bad:#f0837a;
+            --okbg:#1d2a1e; --warnbg:#2b2318; --badbg:#2b1d1d; --head:#232b36;
+            --okline:#4f8f53; --warnline:#8a6a34; --badline:#9c4a45; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.68 ui-sans-serif,-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Helvetica,Arial; }
+  .wrap { max-width:1200px; margin:0 auto; padding:0 26px 90px; }
+  header { padding:38px 0 10px; }
+  h1 { margin:0 0 8px; font-size:28px; letter-spacing:.2px; }
+  h2 { margin:50px 0 14px; font-size:21px; padding-bottom:8px; border-bottom:2px solid var(--line); }
+  h3 { margin:28px 0 10px; font-size:16.5px; }
+  h4 { margin:18px 0 8px; font-size:14.5px; color:var(--muted); }
+  .sub { color:var(--muted); margin:2px 0; }
+  code, kbd { background:var(--code); border-radius:4px; padding:1px 5px;
+    font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  a { color:var(--accent); }
+  table { border-collapse:collapse; width:100%; margin:12px 0 18px; font-size:13.3px; }
+  th, td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--head); font-weight:600; }
+  tbody tr:nth-child(even) td { background:color-mix(in srgb, var(--card) 60%, var(--bg)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:15px 18px; margin:14px 0; }
+  .grid { display:grid; gap:14px; }
+  .g2 { grid-template-columns:1fr 1fr; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
+  .g4 { grid-template-columns:repeat(4,1fr); }
+  @media (max-width:980px){ .g2,.g3,.g4 { grid-template-columns:1fr; } }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(142px,1fr)); gap:12px; margin:16px 0 6px; }
+  .kpi div { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .kpi b { display:block; font-size:22px; line-height:1.3; }
+  .kpi span { color:var(--muted); font-size:12.5px; }
+  .tag { display:inline-block; font-size:11.5px; padding:1px 8px; border-radius:20px;
+    border:1px solid var(--line); background:var(--code); color:var(--muted); margin-right:6px; white-space:nowrap; }
+  .tag.ok { background:var(--okbg); color:var(--ok); border-color:transparent; }
+  .tag.warn { background:var(--warnbg); color:var(--warn); border-color:transparent; }
+  .tag.bad { background:var(--badbg); color:var(--bad); border-color:transparent; }
+  .fig { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin:18px 0; overflow-x:auto; }
+  .fig figcaption { color:var(--muted); font-size:12.8px; padding:10px 4px 0; }
+  svg { max-width:100%; height:auto; display:block; }
+  svg text { font-family:ui-sans-serif,-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Helvetica,Arial; }
+  .lbl { fill:var(--ink); } .mut { fill:var(--muted); }
+  .t { font-size:13px; } .ts { font-size:11.5px; } .tm { font-size:12px; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px; }
+  .band { fill:var(--card); stroke:var(--line); stroke-width:1.2; }
+
+  /* 管线：编号步骤 + 箭头 */
+  .pipe { display:flex; flex-wrap:wrap; align-items:stretch; gap:8px; }
+  .step { flex:1 1 150px; min-width:130px; background:var(--card); border:1px solid var(--line);
+    border-radius:9px; padding:9px 11px; position:relative; }
+  .step .n { display:inline-block; font:600 11px/1.5 ui-monospace,Menlo,monospace; color:var(--accent);
+    border:1px solid var(--line); border-radius:20px; padding:0 7px; margin-bottom:4px; }
+  .step b { display:block; font-size:13px; }
+  .step span { color:var(--muted); font-size:11.8px; }
+  .step.key { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .arrow { align-self:center; color:var(--muted); font-size:16px; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px; margin:6px 0 2px; }
+  .legend span { font-size:12.6px; color:var(--muted); }
+  .prefix { display:inline-block; min-width:26px; text-align:center; font:600 12.5px/1.6 ui-monospace,Menlo,monospace;
+    border-radius:5px; padding:0 6px; margin-right:5px; }
+  .p-at { background:var(--badbg); color:var(--bad); }
+  .p-amp { background:var(--okbg); color:var(--ok); }
+  .p-dollar { background:var(--warnbg); color:var(--warn); }
+  /* 时间线 */
+  .tl { list-style:none; margin:8px 0 0; padding:0 0 0 8px; }
+  .tl li { position:relative; padding:7px 0 7px 62px; border-left:2px solid var(--line); }
+  .tl li:last-child { border-left-color:transparent; }
+  .tl li b { font-size:13.2px; }
+  .tl li span { color:var(--muted); font-size:12.3px; }
+  .tl .no { position:absolute; left:-19px; top:6px; width:38px; text-align:center;
+    font:600 11.5px/1.7 ui-monospace,Menlo,monospace; color:var(--accent);
+    background:var(--card); border:1px solid var(--line); border-radius:20px; }
+  .tl li.key .no { color:var(--card); background:var(--accent); border-color:var(--accent); }
+  .note { border-left:3px solid var(--accent); background:color-mix(in srgb, var(--accent) 7%, var(--card));
+    padding:9px 12px; border-radius:0 8px 8px 0; margin:12px 0; font-size:13.2px; }
+  footer { margin-top:56px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font-size:12.6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>bklv JSON 审查 · 图文版</h1>
+  <p class="sub">语法完备性 / 代码解析 / 页面与控件渲染　——　配套文字版：<a href="json-audit.md">docs/json-audit.md</a></p>
+  <div class="kpi">
+    <div><b>5</b><span>类 JSON（视图 / 外观 / 令牌 / 主题元信息 / 文案）</span></div>
+    <div><b>99</b><span>default 主题 JSON（files[] 全量）</span></div>
+    <div><b>113 / 164</b><span>颜色 / 数值令牌</span></div>
+    <div><b>90</b><span>控件外观</span></div>
+    <div><b>27</b><span>注册的视图类型</span></div>
+    <div><b>4264</b><span>项检查全过（GL+VK）</span></div>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<h2>一、语法完备性</h2>
+
+<h3>1.1 五类文件，各管一段</h3>
+<figure class="fig">
+  <svg viewBox="0 0 1140 300" role="img" aria-label="五类 JSON 与解析入口">
+    <!-- 输入 -->
+    <rect class="band" x="16" y="20" width="300" height="46" rx="8"/>
+    <text class="lbl t" x="30" y="42">视图描述 JSON</text>
+    <text class="mut ts" x="30" y="58">&lt;主题&gt;/view/*.json · 节点树</text>
+
+    <rect class="band" x="16" y="82" width="300" height="46" rx="8"/>
+    <text class="lbl t" x="30" y="104">控件外观 JSON</text>
+    <text class="mut ts" x="30" y="120">vars · import · box · layers · states · transitions</text>
+
+    <rect class="band" x="16" y="144" width="300" height="46" rx="8"/>
+    <text class="lbl t" x="30" y="166">主题令牌 JSON</text>
+    <text class="mut ts" x="30" y="182">tokens/colors.json · metrics.json</text>
+
+    <rect class="band" x="16" y="206" width="300" height="46" rx="8"/>
+    <text class="lbl t" x="30" y="228">文案 JSON</text>
+    <text class="mut ts" x="30" y="244">resources/i18n/&lt;locale&gt;.json</text>
+
+    <!-- 解析器 -->
+    <rect class="band" x="420" y="20" width="250" height="52" rx="8"/>
+    <text class="lbl t" x="434" y="42">view_parse.cpp</text>
+    <text class="mut ts" x="434" y="58">两段式：模板缓存 → 实例化</text>
+
+    <rect class="band" x="420" y="86" width="250" height="52" rx="8"/>
+    <text class="lbl t" x="434" y="108">appearance.cpp</text>
+    <text class="mut ts" x="434" y="124">vars → import → 10 步编译</text>
+
+    <rect class="band" x="420" y="152" width="250" height="52" rx="8"/>
+    <text class="lbl t" x="434" y="174">theme_parse.cpp</text>
+    <text class="mut ts" x="434" y="190">展平成 color.a.b / metric.a.b</text>
+
+    <rect class="band" x="420" y="218" width="250" height="52" rx="8"/>
+    <text class="lbl t" x="434" y="240">i18n.cpp</text>
+    <text class="mut ts" x="434" y="256">$files 清单 + 键展平</text>
+
+    <!-- 产物 -->
+    <rect class="band" x="788" y="20" width="336" height="52" rx="8"/>
+    <text class="lbl t" x="802" y="42">View 树（每节点 = 一个 Yoga 节点）</text>
+    <text class="mut ts" x="802" y="58">@i18n 在实例化期解析，不进模板缓存</text>
+
+    <rect class="band" x="788" y="86" width="336" height="52" rx="8"/>
+    <text class="lbl t" x="802" y="108">Appearance（不可变）</text>
+    <text class="mut ts" x="802" y="124">按 主题/名 缓存；层序见 图 4</text>
+
+    <rect class="band" x="788" y="152" width="336" height="52" rx="8"/>
+    <text class="lbl t" x="802" y="174">ThemeData（色板 / 数值）</text>
+    <text class="mut ts" x="802" y="190">取值时乘 uiScale；缺 key 报错</text>
+
+    <rect class="band" x="788" y="218" width="336" height="52" rx="8"/>
+    <text class="lbl t" x="802" y="240">getStr(key) 的字符串表</text>
+    <text class="mut ts" x="802" y="256">切语言不重译已有视图</text>
+
+    <!-- 箭头 -->
+    <g stroke="var(--muted)" stroke-width="1.3" fill="none">
+      <path d="M316 43 L416 43" marker-end="url(#ar)"/>
+      <path d="M316 105 L416 105" marker-end="url(#ar)"/>
+      <path d="M316 167 L416 167" marker-end="url(#ar)"/>
+      <path d="M316 229 L416 229" marker-end="url(#ar)"/>
+      <path d="M670 45 L784 45" marker-end="url(#ar)"/>
+      <path d="M670 111 L784 111" marker-end="url(#ar)"/>
+      <path d="M670 178 L784 178" marker-end="url(#ar)"/>
+      <path d="M670 244 L784 244" marker-end="url(#ar)"/>
+    </g>
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/>
+      </marker>
+    </defs>
+  </svg>
+  <figcaption>图 1　五类 JSON 各有唯一解析入口：视图 → View 树、外观 → Appearance、令牌 → ThemeData、文案 → 字符串表。</figcaption>
+</figure>
+
+<h3>1.2 三种引用前缀：<code>@</code> 跨文件、<code>&amp;</code> 同文件、<code>$</code> 只做键</h3>
+<div class="grid g3">
+  <div class="card">
+    <div><span class="prefix p-at">@</span><b>跨文件引用</b></div>
+    <p class="sub"><code>@theme/color.a.b</code> · <code>@theme/metric.a.b</code> · <code>@i18n/…</code> · <code>@res/…</code></p>
+    <p class="sub">指向别的文件；<code>@theme/</code> 的 key 不存在 → <b>报错</b>。</p>
+  </div>
+  <div class="card">
+    <div><span class="prefix p-amp">&amp;</span><b>同文件变量</b></div>
+    <p class="sub"><code>&amp;color.none</code> · <code>&amp;number.radius</code></p>
+    <p class="sub">绑"写它的那份文件"的 <code>vars</code>；可链式（≤4 层），循环报错。旧写法 <code>$color.x</code> → 报错并提示改 <code>&amp;</code>。</p>
+  </div>
+  <div class="card">
+    <div><span class="prefix p-dollar">$</span><b>只出现在键上</b></div>
+    <p class="sub"><code>$comment</code> 写注释 · <code>$files</code> 是 i18n 的补充文件清单</p>
+    <p class="sub">装载器按"跳过 <code>$</code> 开头的键"处理；值位置不认。</p>
+  </div>
+</div>
+
+<h3>1.3 完备性不是二值：闭合 / 半开 / 开放</h3>
+<figure class="fig">
+  <svg viewBox="0 0 1140 260" role="img" aria-label="完备性光谱">
+    <rect x="16" y="34" width="360" height="176" rx="10" fill="var(--okbg)" stroke="var(--okline)" stroke-width="1.2"/>
+    <rect x="392" y="34" width="360" height="176" rx="10" fill="var(--warnbg)" stroke="var(--warnline)" stroke-width="1.2"/>
+    <rect x="768" y="34" width="356" height="176" rx="10" fill="var(--badbg)" stroke="var(--badline)" stroke-width="1.2"/>
+
+    <text class="lbl t" x="32" y="60" font-weight="600">闭合（可穷举）</text>
+    <text class="ts" x="32" y="84" fill="var(--okline)">box 字段 · 6 种内置 op</text>
+    <text class="ts" x="32" y="104" fill="var(--okline)">states 通道 · transitions 四事件</text>
+    <text class="ts" x="32" y="124" fill="var(--okline)">gradient（type/angle/stops）</text>
+    <text class="ts" x="32" y="144" fill="var(--okline)">枚举拼写：大小写与 _ / - 不敏感</text>
+    <text class="ts" x="32" y="164" fill="var(--okline)">写错 → 报错或警告，行为单一</text>
+
+    <text class="lbl t" x="408" y="60" font-weight="600">半开（跟着 C++ 长）</text>
+    <text class="ts" x="408" y="84" fill="var(--warnline)">视图属性：27 种类型各自一张静态表</text>
+    <text class="ts" x="408" y="104" fill="var(--warnline)">未知属性 → 只警告</text>
+    <text class="ts" x="408" y="124" fill="var(--warnline)">⇒ "合法 JSON" 不可判定</text>
+
+    <text class="lbl t" x="784" y="60" font-weight="600">开放（静态不可穷举）</text>
+    <text class="ts" x="784" y="84" fill="var(--badline)">op: EXTENSION — 第三方运行期注册</text>
+    <text class="ts" x="784" y="104" fill="var(--badline)">op: custom — 像素由 C++ 画</text>
+    <text class="ts" x="784" y="124" fill="var(--badline)">import / include — 一份文件 ≠ 一个对象</text>
+    <text class="ts" x="784" y="144" fill="var(--badline)">vars — 值是引用还是字面量待展开</text>
+
+    <g stroke="var(--muted)" stroke-width="1.4">
+      <path d="M380 122 L390 122"/><path d="M756 122 L766 122"/>
+    </g>
+  </svg>
+  <figcaption>图 2　越往右越"只能运行期才知道"。任何静态工具都只能覆盖左两档。</figcaption>
+</figure>
+
+<h3>1.4 五个已知不完备</h3>
+<table>
+  <thead><tr><th style="width:34%">问题</th><th style="width:12%">严重度</th><th>后果</th></tr></thead>
+  <tbody>
+  <tr><td>视图未知属性只警告</td><td><span class="tag bad">高</span></td>
+      <td>拼错的属性名能存能跑、静默忽略；"合法 JSON" 不可判定 <span class="tag">attributes.cpp</span></td></tr>
+  <tr><td><code>theme.json</code> 的 <code>files[]</code> 少了 <code>.json</code></td><td><span class="tag bad">高</span></td>
+      <td>该外观静默回退成空外观，只有一条警告</td></tr>
+  <tr><td>外观对 <code>layers</code> 以外的顶层键不敏感</td><td><span class="tag warn">中</span></td>
+      <td>拼错 <code>state</code> / <code>layer</code> 不会被发现</td></tr>
+  <tr><td><code>colors.json</code> 不支持 key 间引用</td><td><span class="tag warn">中</span></td>
+      <td>语义色只能写字面量，改配色要一起改</td></tr>
+  <tr><td>数值有多种写法（<code>12</code> / <code>"12"</code> / <code>"50%"</code> / <code>@theme</code>）</td><td><span class="tag">低</span></td>
+      <td>做"原样回写"的工具必须保住原文，不能统一成 float</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>二、代码解析</h2>
+
+<h3>2.1 外观：一次编译，10 步</h3>
+<div class="pipe">
+  <div class="step"><span class="n">01</span><b>Json::parse</b><span>语法错误带行号</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">02</span><b>展开 vars</b><span>&amp;color / &amp;number，链式 ≤4 层</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">03</span><b>import 合并</b><span>对象递归、layers 按 id、当前文件优先；被导入者按自己的 vars 展开</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">04</span><b>校验 layers</b><span>缺数组直接失败</span></div>
+</div>
+<div class="pipe" style="margin-top:8px">
+  <div class="step"><span class="n">05</span><b>逐层解析</b><span>先按注册表参数模式（类型/缩放/枚举），再按 op 字段表</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">06</span><b>box</b><span>只覆盖写了的字段</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">07</span><b>states</b><span>通道 = 层id.属性名 → 目标值/时长/曲线</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="n">08</span><b>transitions</b><span>enter/exit/show/hide × 视图级 + 层内</span></div>
+</div>
+<div class="pipe" style="margin-top:8px">
+  <div class="step key"><span class="n">09</span><b>sortLayers</b><span>SHADOW(0) → GLASS(1) → 内置(2) → 装饰(3) → OVERLAY(4)；inner 阴影按内置层</span></div>
+  <div class="arrow">→</div>
+  <div class="step key"><span class="n">10</span><b>缓存</b><span>按 <code>主题名/外观名</code>，换主题或热重载时清空</span></div>
+</div>
+
+<h3>2.2 视图：两段式（这一步决定 <code>@i18n</code> 为什么不烤进缓存）</h3>
+<figure class="fig">
+  <svg viewBox="0 0 1140 240" role="img" aria-label="视图解析两段式">
+    <rect class="band" x="20" y="30" width="250" height="70" rx="9"/>
+    <text class="lbl t" x="34" y="54">① ViewTemplate::load</text>
+    <text class="mut ts" x="34" y="72">JSON::parse → 展开 vars</text>
+    <text class="mut ts" x="34" y="88">按路径缓存（与语言无关）</text>
+
+    <rect class="band" x="360" y="30" width="300" height="70" rx="9" stroke="var(--accent)"/>
+    <text class="lbl t" x="374" y="54">② instantiate()</text>
+    <text class="mut ts" x="374" y="72">按 type 取工厂（27 种）+ 属性表</text>
+    <text class="mut ts" x="374" y="88">@i18n / @theme / @style 在这一步解析</text>
+
+    <rect class="band" x="750" y="30" width="370" height="70" rx="9"/>
+    <text class="lbl t" x="764" y="54">View 树</text>
+    <text class="mut ts" x="764" y="72">每个节点 = 一个 Yoga 节点</text>
+    <text class="mut ts" x="764" y="88">children 递归；include 整棵接入（栈深 32）</text>
+
+    <g stroke="var(--muted)" stroke-width="1.3" fill="none">
+      <path d="M272 65 L356 65" marker-end="url(#ar2)"/>
+      <path d="M662 65 L746 65" marker-end="url(#ar2)"/>
+    </g>
+    <defs>
+      <marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/>
+      </marker>
+    </defs>
+
+    <rect x="20" y="140" width="600" height="70" rx="9" fill="var(--warnbg)" stroke="var(--warnline)" stroke-width="1.1"/>
+    <text class="ts" x="34" y="164" fill="var(--warnline)">把 @i18n 放进 ① 的缓存里 → 切语言时模板已经烤死（列表 cell 复用同一模板必现）</text>
+    <text class="ts" x="34" y="186" fill="var(--warnline)">所以文案解析必须在 ②；缓存里保留原文。</text>
+
+    <rect x="660" y="140" width="460" height="70" rx="9" fill="var(--okbg)" stroke="var(--okline)" stroke-width="1.1"/>
+    <text class="ts" x="674" y="164" fill="var(--okline)">限制：深度 32 / 节点 4096 / include 栈 32</text>
+    <text class="ts" x="674" y="186" fill="var(--okline)">结构错误 → 返回 nullptr + 日志；未知属性 → 只警告</text>
+  </svg>
+  <figcaption>图 3　两段式解析：模板可缓存、与语言无关；实例化才做引用替换。</figcaption>
+</figure>
+
+<h3>2.3 缩放只有三个乘法点</h3>
+<table>
+  <thead><tr><th style="width:46%">位置</th><th style="width:18%">乘 uiScale</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr><td><code>ThemeData::number("metric.*")</code></td><td><span class="tag ok">是</span></td>
+      <td><code>metric.anim.*</code>（毫秒）与 <code>metric.font.lineHeight</code>（系数）除外</td></tr>
+  <tr><td>外观里的 radius / strokeWidth / width / height / fontSize / inset / offset / feather / spread</td>
+      <td><span class="tag ok">是</span></td>
+      <td><code>opacity</code>（系数）、<code>duration</code>（毫秒）不乘</td></tr>
+  <tr><td>代码里写死的像素</td><td><span class="tag bad">否</span></td>
+      <td>想跟随比例就写进主题 metric 或外观 JSON</td></tr>
+  </tbody>
+</table>
+
+<h3>2.4 错误与限制一览</h3>
+<table>
+  <thead><tr><th style="width:30%">项</th><th style="width:22%">行为 / 上限</th><th>位置</th></tr></thead>
+  <tbody>
+  <tr><td>视图结构错误</td><td>返回 <code>nullptr</code> + 日志</td><td><code>view_parse.cpp</code></td></tr>
+  <tr><td>视图未知属性</td><td><span class="tag warn">警告</span>（带拼错提示）</td><td><code>attributes.cpp</code></td></tr>
+  <tr><td>外观缺 <code>layers</code> / key 不存在</td><td><span class="tag bad">报错</span></td><td><code>appearance.cpp</code> / <code>json_util.cpp</code></td></tr>
+  <tr><td>外观枚举拼错</td><td><span class="tag warn">警告</span> + 保持原值</td><td><code>appearance_box.cpp</code></td></tr>
+  <tr><td><code>import</code> 深度 / 循环</td><td>8 层 / 报错</td><td><code>appearance_imports.cpp</code></td></tr>
+  <tr><td><code>vars</code> 链深 / 循环</td><td>4 层 / 报错</td><td><code>json_vars.cpp</code></td></tr>
+  <tr><td>视图深度 / 节点 / include 栈</td><td>32 / 4096 / 32</td><td><code>view_parse.cpp</code></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>三、页面与控件的渲染</h2>
+
+<h3>3.1 一帧的顺序：布局与绘制是分开的两段</h3>
+<ul class="tl">
+  <li><span class="no">0</span><b>字体</b><span>　窗口创建后才可用；视图树通常更早建好</span></li>
+  <li><span class="no">1</span><b>布局</b><span>　只在脏时算、一帧最多一次（<code>invalidate()</code> 只置脏）</span></li>
+  <li><span class="no">1b</span><b>UI 缩放</b><span>　画布宽度变了 → 重新取外观 + 重排</span></li>
+  <li><span class="no">2</span><b>动画与逐帧逻辑</b><span>　滚动、动图、状态补间（<code>AppearanceInstance</code>）</span></li>
+  <li><span class="no">3</span><b>输入与焦点</b><span>　用上一帧的命中结果</span></li>
+  <li><span class="no">4</span><b>业务回调</b><span>　<code>onUpdate</code> 可能新建/改动视图树</span></li>
+  <li class="key"><span class="no">4b</span><b>补一次布局</b><span>　上面任何一步改了树，这里补算 —— 切页时文字不再堆在顶部</span></li>
+  <li class="key"><span class="no">5</span><b>绘制视图树</b><span>　<code>root-&gt;frame(drawList)</code> 递归；层按已排好的顺序画</span></li>
+  <li><span class="no">6</span><b>玻璃采集</b><span>　GL：首个 glass 命令时抓帧一次（半分辨率模糊 + 折射）</span></li>
+  <li><span class="no">7</span><b>ImGui 窗口</b><span>　宿主自己的面板：视图树之后、<code>ImGui::Render()</code> 之前</span></li>
+</ul>
+
+<h3>3.2 层序是解析期定死的，不是书写顺序</h3>
+<figure class="fig">
+  <svg viewBox="0 0 1140 250" role="img" aria-label="层序">
+    <rect class="band" x="20" y="18" width="700" height="34" rx="6"/>
+    <text class="ts" x="34" y="40" fill="var(--badline)">OVERLAY(4)　最上层装饰（如聚焦框之类的外扩装饰）</text>
+
+    <rect class="band" x="20" y="58" width="700" height="34" rx="6"/>
+    <text class="ts" x="34" y="80" fill="var(--warnline)">DECORATION(3)　hlGlow / hlBorder</text>
+
+    <rect class="band" x="20" y="98" width="700" height="34" rx="6"/>
+    <text class="ts" x="34" y="120">内置层(2)　rect / text / image / custom / EXTENSION —— 按书写顺序</text>
+
+    <rect class="band" x="20" y="138" width="700" height="34" rx="6"/>
+    <text class="ts" x="34" y="160" fill="var(--okline)">GLASS(1)　玻璃：染色 + 内缘高光（半透明阴影压不暗它）</text>
+
+    <rect class="band" x="20" y="178" width="700" height="34" rx="6"/>
+    <text class="ts" x="34" y="200" fill="var(--mut)">SHADOW(0)　外投影：垫在控件下面</text>
+
+    <rect x="760" y="58" width="360" height="90" rx="9" fill="var(--warnbg)" stroke="var(--warnline)" stroke-width="1.1"/>
+    <text class="ts" x="774" y="82" fill="var(--warnline)">例外：<tspan font-weight="600">shadow 层 inner: true</tspan></text>
+    <text class="ts" x="774" y="104" fill="var(--warnline)">内阴影画的是"内缘"，被底色盖住就等于没画</text>
+    <text class="ts" x="774" y="126" fill="var(--warnline)">→ 按内置层处理，保持书写顺序</text>
+
+    <rect x="760" y="162" width="360" height="62" rx="9" fill="var(--okbg)" stroke="var(--okline)" stroke-width="1.1"/>
+    <text class="ts" x="774" y="186" fill="var(--okline)">排错顺序的代价：不透明高亮底会把内容盖住</text>
+    <text class="ts" x="774" y="208" fill="var(--okline)">theme_test 会遍历两套主题逐份断言</text>
+  </svg>
+  <figcaption>图 4　<code>layerSortRank</code>：阴影垫底、玻璃次之、内置按书写顺序、装饰件压上。</figcaption>
+</figure>
+
+<h3>3.3 控件 → 层 → 注册表分派</h3>
+<div class="pipe">
+  <div class="step"><b>AppearanceView::frame</b><span>取当前 AppearanceInstance</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>逐层遍历</b><span>已按 sortLayers 排好</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>op → 注册表</b><span>LayerDrawContext 分派</span></div>
+  <div class="arrow">→</div>
+  <div class="step"><b>layer_draw_*</b><span>rect / text / image / shadow / glass / custom / EXTENSION</span></div>
+</div>
+<div class="note">
+  <b>为什么分派走注册表</b>：加一种 op = 解析字段 + <code>registerLayer&lt;T&gt;()</code> 带一个 draw 钩子，
+  上层不用改；第三方层（stripe / quad）就是这么接进来的。
+</div>
+
+<h3>3.4 同一个 JSON 键，落到哪一步</h3>
+<table>
+  <thead><tr><th style="width:32%">JSON</th><th style="width:30%">编译产物</th><th>绘制位置</th></tr></thead>
+  <tbody>
+  <tr><td><code>box.*</code></td><td><code>AppearanceBox</code>（已乘缩放）</td><td>写进 Yoga 节点，布局期生效</td></tr>
+  <tr><td><code>layers[i].fill/stroke/radius/inset/offset/opacity</code></td><td><code>AppearanceLayer</code> 定长字段</td><td><code>layer_draw_*</code></td></tr>
+  <tr><td><code>layers[i].gradient</code></td><td><code>Gradient</code>（不补间）</td><td><code>core/gradient.cpp</code> 顶点色网格</td></tr>
+  <tr><td><code>layers[i].inner / cutout</code></td><td>布尔</td><td>选 <code>drawSoft</code> / <code>drawInnerSoft</code></td></tr>
+  <tr><td><code>states.*</code></td><td>通道表（目标值 + 时长 + 曲线）</td><td><code>AppearanceInstance</code> 补间 → 绘制期读值</td></tr>
+  <tr><td><code>transitions.*</code></td><td>视图级 + 层内通道（delay 已折算）</td><td><code>TransitionPlayer</code>：绘制期变换，零重排</td></tr>
+  <tr><td><code>vars</code> / <code>&amp;</code> / <code>@theme</code></td><td><b>解析期就消失</b></td><td>无（运行时看不到引用）</td></tr>
+  <tr><td><code>import</code></td><td>合并后的 Appearance</td><td>无（运行时看不到来源）</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2>四、重做设计器前要补的三个接口</h2>
+<div class="grid g3">
+  <div class="card">
+    <div><span class="tag warn">模型</span><b>源文档 + 有效值并列</b></div>
+    <p class="sub"><code>import</code>/<code>include</code>/<code>vars</code> 让"文件"≠"对象"。需要保留键序、未知键、原始写法（<code>"50%"</code>、<code>&amp;color.x</code>）的结构模型，外加"合并后有效值 + 每个字段来自哪份文件"。</p>
+  </div>
+  <div class="card">
+    <div><span class="tag warn">引用</span><b>能解但不丢引用</b></div>
+    <p class="sub">现在 <code>json_vars</code> 是就地展开、展开即消失。工具要能显示"指向哪里 + 解析后的值"，同时保留 <code>&amp;</code> 本身。</p>
+  </div>
+  <div class="card">
+    <div><span class="tag bad">校验</span><b>视图侧严格模式</b></div>
+    <p class="sub">未知属性目前只警告 → 工具无法判定"合法"。需要一个 <code>strictAttributes</code> 开关（报错而非警告，默认关）。</p>
+  </div>
+</div>
+
+<h2>五、建议（前三条都是"让错误更早暴露"）</h2>
+<table>
+  <thead><tr><th style="width:6%">#</th><th style="width:52%">建议</th><th style="width:10%">成本</th><th>收益</th></tr></thead>
+  <tbody>
+  <tr><td>1</td><td>视图侧加 strict 模式（未知属性报错，默认关）</td><td>小</td><td>让"合法 JSON"可判定</td></tr>
+  <tr><td>2</td><td><code>theme.json</code> 的 <code>files[]</code> 少后缀：警告 → 报错</td><td>小</td><td>避免"外观静默变空"</td></tr>
+  <tr><td>3</td><td>外观顶层键白名单</td><td>小</td><td>拼错 <code>state</code>/<code>layer</code> 能被发现</td></tr>
+  <tr><td>4</td><td>把"结构模型"抽成库（保序 / 原文 / 来源）</td><td>中</td><td>重做设计器的地基，也方便写校验工具</td></tr>
+  <tr><td>5</td><td><code>json-syntax.md</code> 补两处：<code>$</code>=元数据、EXTENSION 参数表从哪查</td><td>很小</td><td>减少误用</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  数据与结论来自代码与资源实测（<code>bklv/compile</code>、<code>bklv/core</code>、<code>bklv/widgets</code>、
+  <code>resources/theme/default</code>）；文字版见 <a href="json-audit.md">json-audit.md</a>。
+  本页为单文件、无外部依赖，直接双击打开即可。
+</footer>
+
+</div>
+</body>
+</html>

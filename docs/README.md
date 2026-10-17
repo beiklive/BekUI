@@ -14,6 +14,7 @@
 | [`icon-fonts.md`](icon-fonts.md) | **图标字体规则**：两套字体（Material / switch_icons）、码位必须与字体配对、按层指定与运行时切换、三种典型写错方式 |
 | [`json-syntax.md`](json-syntax.md) | **JSON 语法速查**：视图描述 / 控件外观 / 主题 / 文案 四类 JSON 的完整键表、取值形式、枚举拼写与报错行为 |
 | [`json-audit.md`](json-audit.md) | **JSON 审查报告**：语法完备性（闭合/开放集）、代码解析链（主题→外观→视图）、渲染链（布局→层→绘制），以及"重做设计器前要补的三个接口" |
+| [`json-audit.html`](json-audit.html) | 同一份报告的**图文版**：五类文件与解析入口、完备性三档光谱、外观 10 步管线、视图两段式、一帧时间线、层序栈、键→产物→绘制对照（单文件、无外部依赖、自动适配深色模式） |
 | [`rect-gradient.md`](rect-gradient.md) | **`rect` 层加渐变的调研与方案**：三条路线对比（顶点色网格 / LUT 贴图 / 现成 API）、JSON 语法草案、数据模型、绘制与抗锯齿实现、与状态动效的取舍、两步工作量与像素验收 |
 | [`glass-layer.md`](glass-layer.md) | **液态玻璃使用说明**：三层职责（Shell 管开关/帧级参数、外观 JSON 管样式、视图只声明）、`op: "glass"` 写法与三条硬要求、后端矩阵与取舍、接口、三个坑、验收数据与文件地图 |
 | [`glass-layer-plan.md`](glass-layer-plan.md) | **开发计划书**：液态玻璃做成外观层（GL / GLES3-Switch / Vulkan）—— 范围、API 契约与优先级、四个阶段与验收、风险清单、审查记录 |
