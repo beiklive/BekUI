@@ -1169,7 +1169,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
   widgets/          外壳与外观驱动的控件：shell（四层外壳）/ pager（页面懒加载）/ appearance_view
                     / rectangle / button / header / bottom_bar / slider / tab_frame / sidebar
-                    / dialog / dropdown / edit_text_dialog / hints_bar
+                    / dialog / dropdown / edit_text_dialog / hints_bar / tab_bar（底部导航）
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
