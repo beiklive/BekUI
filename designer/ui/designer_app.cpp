@@ -304,6 +304,19 @@ void DesignerApp::update()
 
     this->maybeAutosave();
 
+    // 诊断收集：错误换了就记一条（不重复记同一个字符串）
+    if (!this->lastError.empty() && this->lastError != this->lastSeenError)
+    {
+        this->lastSeenError = this->lastError;
+        this->diagnostics.insert(this->diagnostics.begin(), this->lastError);
+        if (this->diagnostics.size() > 20)
+            this->diagnostics.pop_back();
+    }
+    else if (this->lastError.empty())
+    {
+        this->lastSeenError.clear();
+    }
+
     // 视图预览：鼠标点击（或 --click 模拟）→ 选中节点
     if (this->viewLoaded && this->viewPreview != nullptr)
     {
@@ -489,7 +502,7 @@ void DesignerApp::drawFileList()
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "过滤文件名…", this->filter, sizeof(this->filter));
 
-    ImGui::BeginChild("##list", ImVec2(0, 0), false);
+    ImGui::BeginChild("##list", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.68f), false);
     for (int i = 0; i < (int)this->files.size(); i++)
     {
         const FileEntry& entry = this->files[(size_t)i];
@@ -507,6 +520,8 @@ void DesignerApp::drawFileList()
         }
     }
     ImGui::EndChild();
+
+    this->drawDiagnostics();
 
     if (ImGui::BeginPopup("打开失败"))
     {
@@ -601,6 +616,26 @@ void DesignerApp::drawTokenTable()
     ImGui::BeginChild("##refs", ImVec2(0, 0), true);
     for (const TokenRef& ref : this->tokenRefs)
         ImGui::Text("%s  %s", ref.file.c_str(), ref.pointer.c_str());
+    ImGui::EndChild();
+}
+
+void DesignerApp::drawDiagnostics()
+{
+    ImGui::Separator();
+    ImGui::BeginChild("##diagnostics", ImVec2(0, 0), true);
+    // 标题用 TextDisabled 直接打印（`###` 只在控件 label 里起隐藏 ID 的作用，打印出来会是字面量）
+    ImGui::TextDisabled("诊断（%zu）", this->diagnostics.size());
+    if (this->diagnostics.empty())
+    {
+        ImGui::TextDisabled("没有错误。");
+    }
+    else
+    {
+        for (const std::string& line : this->diagnostics)
+            ImGui::TextWrapped("%s", line.c_str());
+        if (ImGui::Button("清空"))
+            this->diagnostics.clear();
+    }
     ImGui::EndChild();
 }
 

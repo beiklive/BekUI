@@ -66,6 +66,7 @@ class DesignerApp
     void maybeAutosave();
     void drawRecoveryPopup();
     void drawQuickOpen();
+    void drawDiagnostics();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
     // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
@@ -124,6 +125,8 @@ class DesignerApp
     bool              paletteVisible = false;
     char              paletteFilter[64] = {0};
     int               paletteIndex = 0;
+    std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
+    std::string       lastSeenError;
     long long         lastAutosaveMs = 0;
     AutosaveInfo      pendingDraft;   // 启动时发现的未保存草稿
     bool              hasPendingDraft = false;
