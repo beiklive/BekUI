@@ -17,6 +17,9 @@ struct AutosaveInfo
     long long   savedAt = 0; // 秒（time(nullptr)）
 };
 
+// 草稿路径：**用户可写目录**（不是主题目录 —— 从 dist 里跑时那里可能只读，
+// 直接写主题目录会天天弹"写不了自动保存草稿"，实测踩到）。
+// Linux/macOS: $HOME/.bklv-designer/autosave.json；Windows: %APPDATA%\bklv-designer\autosave.json
 std::string autosavePath(const std::string& themeDir);
 
 bool writeAutosave(const std::string& themeDir, const std::string& file, const std::string& text,

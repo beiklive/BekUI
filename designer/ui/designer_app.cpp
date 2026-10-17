@@ -55,12 +55,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     // 根视图就是库的 Header（设计器自己的"外壳"也由框架画）：
     // 标题固定，副标题每帧更新成"主题 · 文件数 · 当前文件 · 错误"。
-    auto root  = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
-    auto header = new bklv::Header();
-    header->setTitle("外观设计器");
-    header->setSubtitle(this->options.themeDir);
-    this->header = header;
-    root->addView(header);
+    // 顶部标题条由设计器自己的 ImGui 顶栏负责（bklv Header 会和它叠字）；
+    // 库在这里只负责**画布内容的真实渲染**，这是"设计器用框架"的关键复用。
+    auto root = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
 
     // 中间一行：左让位（文件面板）+ 画布 + 右让位（检视器）。
     // 三栏宽度与 ImGui 面板一致（都乘 uiScale），所以画布刚好夹在中间、不会重叠。
@@ -271,6 +268,8 @@ void DesignerApp::saveCurrent()
 
 void DesignerApp::update()
 {
+    // （顶部状态现在都在 ImGui 顶栏里；bklv Header 已移除）
+
     // 层快捷键：只在没有输入控件抢键盘时生效；调**操作本体**而不是界面函数
     if (this->appearanceLoaded && !ImGui::GetIO().WantCaptureKeyboard)
     {
@@ -350,14 +349,6 @@ void DesignerApp::update()
     if (!this->pendingFile.empty())
         this->drawPendingSwitchPopup();
 
-    if (this->header == nullptr)
-        return;
-    std::string subtitle = this->themeTitle + " · " + std::to_string(this->files.size()) + " 个文件";
-    if (!this->currentFile.empty())
-        subtitle += " · " + this->currentFile;
-    if (!this->lastError.empty())
-        subtitle += " · 错误：" + this->lastError;
-    this->header->setSubtitle(subtitle);
 }
 
 void DesignerApp::drawPanels()
@@ -366,33 +357,46 @@ void DesignerApp::drawPanels()
     static bool styleApplied = false;
     if (!styleApplied)
     {
+        // 设计器按**桌面程序**的规格排版（不是 720p × uiScale 那套）：
+        // 正文约 14pt，边距/行高按 1x 桌面密度；画布仍按 720p 设计基准预览内容。
         styleApplied            = true;
+        const float u           = bklv::getUiScale();
+        ImGui::GetIO().FontGlobalScale = 0.70f; // 字体图集是 20px 栅格 → 约 14pt
         ImGuiStyle& style       = ImGui::GetStyle();
-        style.WindowRounding    = 8.0f;
-        style.ChildRounding     = 6.0f;
-        style.FrameRounding     = 5.0f;
-        style.PopupRounding     = 6.0f;
-        style.WindowPadding     = ImVec2(10.0f, 8.0f);
-        style.FramePadding      = ImVec2(8.0f, 4.0f);
-        style.ItemSpacing       = ImVec2(8.0f, 6.0f);
-        style.WindowBorderSize  = 1.0f;
+        style.WindowRounding    = 10.0f;
+        style.ChildRounding     = 8.0f;
+        style.FrameRounding     = 6.0f;
+        style.PopupRounding     = 8.0f;
+        style.GrabRounding      = 6.0f;
+        style.ScrollbarRounding = 8.0f;
+        style.ScrollbarSize     = 10.0f * u;
+        style.WindowPadding     = ImVec2(16.0f * u, 14.0f * u);
+        style.FramePadding      = ImVec2(10.0f * u, 6.0f * u);
+        style.ItemSpacing       = ImVec2(10.0f * u, 8.0f * u);
+        style.ItemInnerSpacing  = ImVec2(8.0f * u, 6.0f * u);
+        style.WindowBorderSize  = 0.0f;
         style.FrameBorderSize   = 0.0f;
+        style.WindowTitleAlign  = ImVec2(0.0f, 0.5f);
     }
 
     this->drawQuickOpen(); // 面板之前画浮层（它落在右栏空白区，不会被画布盖住）
 
-    const float top   = 96.0f * bklv::getUiScale();
+    const float u     = bklv::getUiScale();
+    const float barH  = 56.0f * u;
+    const float top   = barH + 8.0f * u;
     const float scale = bklv::getUiScale();
-    const float leftW = this->fileFilterWidth * scale;
+    const float leftW  = this->fileFilterWidth * scale;
     const float rightW = this->inspectorWidth * scale;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float panelH = viewport->WorkSize.y - top - 12.0f;
 
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + top), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(leftW, panelH), ImGuiCond_Always);
-    ImGui::Begin("文件", nullptr,
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
-            | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::Begin("##filesPanel", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::TextDisabled("文件");
+    ImGui::Separator();
     this->drawFileList();
     ImGui::End();
 
@@ -400,9 +404,11 @@ void DesignerApp::drawPanels()
                               viewport->WorkPos.y + top),
         ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(rightW, panelH), ImGuiCond_Always);
-    ImGui::Begin("检视器", nullptr,
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
-            | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::Begin("##inspectorPanel", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::TextDisabled("检视器");
+    ImGui::Separator();
     // 画布缩放（两种文件都可用）
     ImGui::TextDisabled("画布 %d%%", (int)(this->canvasZoom * 100.0f + 0.5f));
     ImGui::SameLine();
@@ -494,6 +500,32 @@ void DesignerApp::drawPanels()
     }
     ImGui::End();
 
+    // ---- 顶栏：标题 + 主题 + 动作 ----
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, barH), ImGuiCond_Always);
+    ImGui::Begin("##topbar", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f * u, 8.0f * u));
+    ImGui::TextUnformatted("外观设计器");
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s · %zu 个文件", this->themeTitle.c_str(), this->files.size());
+    // 右对齐：按"剩余宽度 - 三个按钮宽度"回推（用 viewport 绝对值会被面板裁掉）
+    const float buttonsW = 300.0f * u;
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonsW);
+    if (ImGui::Button("打开主题…"))
+        this->wantOpenTheme = true;
+    ImGui::SameLine();
+    if (ImGui::Button("快速打开"))
+        this->wantPalette = true;
+    ImGui::SameLine();
+    if (ImGui::Button(this->appearanceLoaded && this->appearance.isDirty() ? "保存 ●" : "保存"))
+        this->saveCurrent();
+    ImGui::PopStyleVar();
+    ImGui::End();
+
+
     this->handleCanvasClick();
 }
 
@@ -532,9 +564,6 @@ void DesignerApp::drawMenuBar()
 
 void DesignerApp::drawFileList()
 {
-    if (ImGui::Button("打开主题…"))
-        this->wantOpenTheme = true;
-    ImGui::SameLine();
     if (ImGui::Button("重新扫描"))
         this->scanTheme();
 
@@ -550,7 +579,7 @@ void DesignerApp::drawFileList()
     {
         this->lastError = draftError;
     }
-    ImGui::TextDisabled("%zu 个文件 · 点名字打开", this->files.size());
+    ImGui::TextDisabled("点名字打开");
     this->drawOpenTheme();
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "过滤文件名…", this->filter, sizeof(this->filter));
@@ -564,7 +593,19 @@ void DesignerApp::drawFileList()
             continue;
 
         const bool selected = (entry.relPath == this->currentFile);
-        if (ImGui::Selectable(entry.relPath.c_str(), selected))
+        const size_t      slash = entry.relPath.find('/');
+        const std::string group = slash == std::string::npos ? entry.relPath
+                                                            : entry.relPath.substr(0, slash);
+        if (slash != std::string::npos && group != this->lastListGroup)
+        {
+            this->lastListGroup = group;
+            ImGui::Spacing();
+            ImGui::TextDisabled("%s", group.c_str());
+        }
+        const std::string labelText = slash == std::string::npos
+            ? entry.relPath
+            : "  " + entry.relPath.substr(slash + 1);
+        if (ImGui::Selectable(labelText.c_str(), selected))
         {
             this->selectedIndex = i;
             this->confirmFileSwitch(entry.relPath);

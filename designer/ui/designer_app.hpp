@@ -96,7 +96,7 @@ class DesignerApp
     std::string      lastError;
     std::string      themeTitle;
     int              selectedIndex = -1;
-    float            fileFilterWidth = 320.0f;
+    float            fileFilterWidth = 300.0f;
     char             filter[128] = {0};
     bklv::Header*    header = nullptr; // 根视图（库的控件）：标题 + 状态副标题
     AppearanceDoc    appearance;      // 当前打开的外观文件（P3 只编辑 base/widget）
@@ -107,7 +107,7 @@ class DesignerApp
     long long        fileMtimeAtLoad = 0;
     bklv::View*      canvasHost = nullptr; // 中间那块画布（库的视图树负责画）
     bklv::AppearanceView* canvasView = nullptr;
-    float            inspectorWidth = 430.0f;
+    float            inspectorWidth = 380.0f;
     std::vector<char> sourceBuffer; // 源码页签的编辑缓冲（InputText 需要稳定内存）
     std::string       sourceError;  // 上次"应用"失败的原因（带行列）
     std::string       sourceStatus; // 上次"应用"成功提示
@@ -130,6 +130,7 @@ class DesignerApp
     bool              paletteVisible = false;
     char              paletteFilter[64] = {0};
     int               paletteIndex = 0;
+    std::string       lastListGroup; // 左栏分组节头（只在分组变化时画一次）
     std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
     bool              wantOpenTheme = false;
     bool              openThemeVisible = false;
