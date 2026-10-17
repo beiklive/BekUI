@@ -12,6 +12,7 @@ set(DESIGNER_CORE_SOURCES
     core/undo_stack.cpp
     core/layer_fields.cpp
     core/tokens_doc.cpp
+    core/view_doc.cpp
 )
 
 set(DESIGNER_CORE_ABS "")

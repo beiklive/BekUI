@@ -16,6 +16,7 @@
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 #include "bklv/widgets/rectangle.hpp"
+#include "bklv/core/json_view.hpp"
 
 namespace designer
 {
@@ -158,6 +159,20 @@ bool DesignerApp::openFile(const std::string& relPath)
             this->lastError = tokenError;
     }
 
+    this->viewLoaded = false;
+    if (relPath.rfind("view/", 0) == 0)
+    {
+        std::string viewError;
+        if (this->viewDoc.fromText(this->currentText, viewError))
+        {
+            this->viewLoaded     = true;
+            this->selectedNode   = 0;
+            this->rebuildViewPreview();
+        }
+        else
+            this->lastError = viewError;
+    }
+
     const bool isAppearance = relPath.rfind("base/", 0) == 0 || relPath.rfind("widget/", 0) == 0;
     if (isAppearance)
     {
@@ -297,6 +312,14 @@ void DesignerApp::drawPanels()
     ImGui::Begin("检视器", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    if (this->viewLoaded)
+    {
+        this->drawViewPanel();
+        ImGui::End();
+        this->handleCanvasClick();
+        return;
+    }
+
     if (this->tokensLoaded)
     {
         this->drawTokenTable();
@@ -540,6 +563,21 @@ void DesignerApp::applySource()
     const std::string text(this->sourceBuffer.data());
     this->lastError.clear();
 
+    if (this->viewLoaded)
+    {
+        std::string parseError;
+        if (!this->viewDoc.fromText(text, parseError))
+        {
+            this->sourceError = "应用失败（文档未改动）：" + parseError;
+            return;
+        }
+        this->currentText = this->viewDoc.serialize();
+        this->sourceError.clear();
+        this->sourceStatus = "已应用（未保存）";
+        this->rebuildViewPreview();
+        return;
+    }
+
     if (!this->appearanceLoaded)
     {
         // 非外观文件：只验证 JSON 语法，不接文档模型
@@ -571,6 +609,83 @@ void DesignerApp::applySource()
     this->sourceError.clear();
     this->sourceStatus = "已应用（未保存）";
     this->applyToCanvas();
+}
+
+void DesignerApp::rebuildViewPreview()
+{
+    if (this->canvasHost == nullptr)
+        return;
+
+    // 外观预览与视图预览互斥：同一块画布一次只显示一个
+    if (this->canvasView != nullptr)
+        this->canvasView->setVisibility(
+            this->appearanceLoaded ? bklv::Visibility::VISIBLE : bklv::Visibility::GONE);
+
+    if (this->viewPreview != nullptr)
+    {
+        this->canvasHost->asBox()->removeView(this->viewPreview, true);
+        this->viewPreview = nullptr;
+    }
+    if (!this->viewLoaded)
+        return;
+
+    const auto tmpl = bklv::ViewTemplate::fromString(this->viewDoc.serialize(), this->currentFile);
+    if (tmpl == nullptr)
+    {
+        this->lastError = "视图模板装载失败（语法或结构错误）";
+        return;
+    }
+    bklv::View* preview = tmpl->instantiate();
+    if (preview == nullptr)
+    {
+        this->lastError = "视图实例化失败（结构错误，细节见日志）";
+        return;
+    }
+    preview->setGrow(1.0f);
+    preview->setAlignSelf(bklv::AlignSelf::STRETCH);
+    this->viewPreview = preview;
+    this->canvasHost->asBox()->addView(preview);
+    this->lastError.clear();
+}
+
+void DesignerApp::drawViewPanel()
+{
+    ImGui::TextDisabled("%s.json%s", this->currentFile.c_str(),
+        this->viewDoc.isDirty() ? "  ●" : "");
+    if (!this->lastError.empty())
+        ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
+    ImGui::Separator();
+
+    if (ImGui::Button("属性"))
+        this->inspectorTab = 0;
+    ImGui::SameLine();
+    if (ImGui::Button("源码"))
+        this->inspectorTab = 1;
+    ImGui::Separator();
+
+    if (this->inspectorTab == 1)
+    {
+        this->drawSourceTab();
+        return;
+    }
+
+    ImGui::TextDisabled("节点（点选同步画布预览）");
+    ImGui::BeginChild("##nodes", ImVec2(0, 0), true);
+    const std::vector<ViewNodeInfo> nodes = this->viewDoc.listNodes();
+    for (int i = 0; i < (int)nodes.size(); i++)
+    {
+        ImGui::PushID(i);
+        ImGui::Indent((float)nodes[(size_t)i].depth * 12.0f);
+        char label[192];
+        std::snprintf(label, sizeof(label), "%s  %s",
+            nodes[(size_t)i].type.empty() ? "(无 type)" : nodes[(size_t)i].type.c_str(),
+            nodes[(size_t)i].pointer.empty() ? "/" : nodes[(size_t)i].pointer.c_str());
+        if (ImGui::Selectable(label, this->selectedNode == i))
+            this->selectedNode = i;
+        ImGui::Unindent((float)nodes[(size_t)i].depth * 12.0f);
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
 }
 
 void DesignerApp::applyToCanvas()

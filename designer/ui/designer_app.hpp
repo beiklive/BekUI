@@ -10,6 +10,7 @@
 #include "designer/core/appearance_doc.hpp"
 #include "designer/core/layer_fields.hpp"
 #include "designer/core/tokens_doc.hpp"
+#include "designer/core/view_doc.hpp"
 #include "designer/core/undo_stack.hpp"
 
 namespace bklv { class Header; class View; class AppearanceView; }
@@ -54,6 +55,8 @@ class DesignerApp
     void handleCanvasClick();
     void drawSourceTab();
     void drawTokenTable();
+    void rebuildViewPreview();
+    void drawViewPanel();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
     // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
@@ -101,6 +104,10 @@ class DesignerApp
     std::string       pendingFile;   // 有未保存改动时等待确认切换的目标文件
     char              renameBuffer[128] = {0};
     bool              wantRename = false;
+    ViewDoc           viewDoc;
+    bool              viewLoaded = false;
+    bklv::View*       viewPreview = nullptr; // 视图文件的画布预览（与外观预览互斥）
+    int               selectedNode = 0;
 };
 
 } // namespace designer
