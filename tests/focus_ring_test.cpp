@@ -105,6 +105,51 @@ int countVertices(const focus_ring::Outline& outline, const focus_ring::Style& s
     return list.VtxBuffer.Size;
 }
 
+// 画一圈，把每个四边形的外缘起点按顺序取出来（AddImageQuad 的顶点顺序：
+// 外起点、外终点、内终点、内起点）。用来验"相邻段共用同一条边"和"圆角够圆"。
+std::vector<ImVec2> ringOuterPolyline(const focus_ring::Outline& outline,
+    const focus_ring::Style& style, float phase)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+
+    std::vector<ImVec2> points;
+    for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+        points.push_back(list.VtxBuffer[i].pos);
+    return points;
+}
+
+// 相邻两段的公共边是否**完全重合**（外终点 == 下一段外起点）。
+// 以前每段各自按自己的法线偏移，拐角处两段对不上，外侧就看出一排小缺口（锯齿）。
+int countJointGaps(const focus_ring::Outline& outline, const focus_ring::Style& style, float phase)
+{
+    ImDrawList list(ImGui::GetDrawListSharedData());
+    list._ResetForNewFrame();
+    list._FringeScale    = 1.0f;
+    list._InvFringeScale = 1.0f;
+
+    focus_ring::draw(&list, outline, style, phase);
+
+    int gaps = 0;
+    for (int i = 0, quad = 0; i + 7 < list.VtxBuffer.Size; i += 4, quad++)
+    {
+        const ImVec2 end   = list.VtxBuffer[i + 1].pos; // 本段外终点
+        const ImVec2 start = list.VtxBuffer[i + 4].pos; // 下一段外起点
+        // 阈值 0.05px：浮点噪声在 0.02px 量级；而"每段各自算法线"那种缺口是
+        // 2*half*tan(Δθ/2) —— 线宽 6 时圆角上是 0.6px、直角拐角上是 6px，差两个数量级。
+        const float dx = end.x - start.x;
+        const float dy = end.y - start.y;
+        (void)quad;
+        if (std::sqrt(dx * dx + dy * dy) > 0.05f)
+            gaps++;
+    }
+    return gaps;
+}
+
 } // namespace
 
 int main()
@@ -350,6 +395,72 @@ int main()
 
         delete row;
     }
+
+    std::printf("\n== 8. 几何精度：相邻段共用边（不开缝）、小半径圆角不被削平 ==\n");
+    {
+        ImGui::CreateContext();
+
+        focus_ring::Style style;
+        style.type      = focus_ring::Type::SOLID; // 相位固定，几何与颜色都稳定
+        style.lut       = fakeLut();
+        style.lineWidth = 6.0f;
+        style.expand    = 2.0f;
+        style.alpha     = 1.0f;
+
+        // ① 相邻段共享边：一圈下来**一处缺口都不许有**
+        //（以前每段按自己的法线偏移，拐角外侧是一排小三角缺口 —— 用户报的"精度有问题"）
+        for (const auto& shape : { makeOutline(0, 0, 200, 80, 14.0f),
+                 makeOutline(0, 0, 48, 48, 24.0f),   // 正圆
+                 makeOutline(0, 0, 300, 60, 0.0f) })  // 直角矩形（miter 拐角）
+        {
+            checkEqualInt(countJointGaps(shape, style, 0.0f), 0, "相邻段的外侧边完全重合（没有缺口）");
+        }
+
+        // ② 小半径（r=8，真实按钮那种）的圆角要有足够多的段，不能被"切角"成一根斜线。
+        //    判据：外缘折线上相邻两点的**转角**都不超过 16°（8 段/90° = 11.25°）。
+        const focus_ring::Outline small = makeOutline(0, 0, 160, 48, 8.0f);
+        const std::vector<ImVec2> outer = ringOuterPolyline(small, style, 0.0f);
+        check(outer.size() >= 20, "小半径也切出足够多的段");
+
+        float maxTurn = 0.0f;
+        for (size_t i = 0; i < outer.size(); i++)
+        {
+            const ImVec2& a = outer[(i + outer.size() - 1) % outer.size()];
+            const ImVec2& b = outer[i];
+            const ImVec2& c = outer[(i + 1) % outer.size()];
+            const float ax = b.x - a.x, ay = b.y - a.y;
+            const float bx = c.x - b.x, by = c.y - b.y;
+            const float la = std::sqrt(ax * ax + ay * ay);
+            const float lb = std::sqrt(bx * bx + by * by);
+            if (la < 1e-4f || lb < 1e-4f)
+                continue;
+            const float dot = (ax * bx + ay * by) / (la * lb);
+            const float turn = std::acos(std::max(-1.0f, std::min(1.0f, dot))) * 180.0f / 3.14159265f;
+            maxTurn = std::max(maxTurn, turn);
+        }
+        check(maxTurn <= 16.0f, "小半径圆角每段转角 <= 16°（够圆，不是几根折线）");
+
+        // ③ 描边宽度处处等于 lineWidth（拐角 miter 拉长后不能变宽/变窄）
+        bool uniform = true;
+        {
+            ImDrawList list(ImGui::GetDrawListSharedData());
+            list._ResetForNewFrame();
+            list._FringeScale    = 1.0f;
+            list._InvFringeScale = 1.0f;
+            focus_ring::draw(&list, small, style, 0.0f);
+            for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+            {
+                const ImVec2& outerFrom = list.VtxBuffer[i].pos;
+                const ImVec2& innerFrom = list.VtxBuffer[i + 3].pos;
+                const float width = std::sqrt((outerFrom.x - innerFrom.x) * (outerFrom.x - innerFrom.x)
+                    + (outerFrom.y - innerFrom.y) * (outerFrom.y - innerFrom.y));
+                if (std::fabs(width - style.lineWidth) > 0.05f)
+                    uniform = false;
+            }
+        }
+        check(uniform, "描边宽度处处等于 lineWidth");
+    }
+
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace bklv
 {
@@ -12,6 +13,13 @@ namespace
 {
 
 constexpr float kPi    = 3.14159265358979f;
+
+// 中线每段的目标弧长（px）：和 segmentCount() 的"每 6px 一段"同口径。
+constexpr float kTargetSegmentPixels = 6.0f;
+
+// 一个圆角至少切几段（8 段 = 每段 11.25°）。半径很小时按"每 6px 一段"只会切出 3~4 段，
+// 圆角看着就是几根折线；固定下限让任何半径都圆。
+constexpr int kMinCornerSamples = 8;
 constexpr float kHalfPi = 1.5707963267949f;
 
 // 半径钳到短边的一半：超过就退化成胶囊/正圆。
@@ -34,47 +42,158 @@ float wrap01(float value)
     return wrapped < 0.0f ? wrapped + 1.0f : wrapped;
 }
 
-// 段的两侧偏移（用段的法线近似，段很短看不出接缝）
-struct SegmentQuad
+// 一个采样点：中线上的点 + 该点的**单位外法线**。
+struct Sample
 {
-    Point outerFrom;
-    Point outerTo;
-    Point innerTo;
-    Point innerFrom;
+    Point point;
+    Point normal;
+    float u = 0.0f; // 沿中线的归一化位置（0..1），贴图 U 用它
 };
 
-SegmentQuad makeQuad(const Point& p0, const Point& p1, float half)
+// 中线采样：直边与圆角**分开**细分。
+//
+// 为什么不能整体按弧长均分：
+//   ① 小半径的圆角只有十几像素，均分时可能整个圆角落在一段里 —— 那一段就是弦，
+//      圆角被"削平"成切角（用户报的"精度有问题"就是这个观感）；
+//   ② 采样点不一定落在"直边 ↔ 圆角"的交界上，交界处会多出一个不该有的折点。
+// 分开细分保证：每个圆角至少 kMinCornerSamples 段、采样点正好落在 8 个特征交界上。
+std::vector<Sample> buildSamples(const Outline& ring, float step)
 {
-    float nx = -(p1.y - p0.y);
-    float ny = p1.x - p0.x;
+    const Rect& bounds = ring.bounds;
+    const float r      = clampedRadius(ring);
+    const float left   = bounds.x;
+    const float right  = bounds.x + bounds.width;
+    const float top    = bounds.y;
+    const float bottom = bounds.y + bounds.height;
+
+    const float straightW = std::max(0.0f, bounds.width - 2.0f * r);  // 上下边直段
+    const float straightH = std::max(0.0f, bounds.height - 2.0f * r); // 左右边直段
+    const float arcLen    = kHalfPi * r;
+
+    auto spansFor = [step](float length, int minimum) {
+        if (length <= 0.0001f)
+            return 0;
+        return std::max(minimum, (int)std::ceil(length / std::max(step, 0.5f)));
+    };
+
+    const int wSpans = spansFor(straightW, 1);
+    const int hSpans = spansFor(straightH, 1);
+    const int aSpans = r > 0.01f ? spansFor(arcLen, kMinCornerSamples) : 0;
+
+    // 每个特征只放"起点"，末点由下一个特征补上 —— 这样正好是闭环、没有重复点。
+    std::vector<Point> points;
+    points.reserve((size_t)(2 * wSpans + 2 * hSpans + 4 * aSpans));
+
+    for (int i = 0; i < wSpans; i++) // 上边：左 → 右
+        points.push_back(Point(left + r + straightW * (float)i / (float)wSpans, top));
+    for (int i = 0; i < aSpans; i++) // 右上角
+        points.push_back(arcPoint(right - r, top + r, r, kHalfPi * (float)i / (float)aSpans));
+    for (int i = 0; i < hSpans; i++) // 右边：上 → 下
+        points.push_back(Point(right, top + r + straightH * (float)i / (float)hSpans));
+    for (int i = 0; i < aSpans; i++) // 右下角
+        points.push_back(
+            arcPoint(right - r, bottom - r, r, kHalfPi + kHalfPi * (float)i / (float)aSpans));
+    for (int i = 0; i < wSpans; i++) // 下边：右 → 左
+        points.push_back(Point(right - r - straightW * (float)i / (float)wSpans, bottom));
+    for (int i = 0; i < aSpans; i++) // 左下角
+        points.push_back(arcPoint(left + r, bottom - r, r, kPi + kHalfPi * (float)i / (float)aSpans));
+    for (int i = 0; i < hSpans; i++) // 左边：下 → 上
+        points.push_back(Point(left, bottom - r - straightH * (float)i / (float)hSpans));
+    for (int i = 0; i < aSpans; i++) // 左上角
+        points.push_back(
+            arcPoint(left + r, top + r, r, kPi + kHalfPi + kHalfPi * (float)i / (float)aSpans));
+
+    // 顶点法线 = 相邻两条边法线的角平分线，再按 1/cos(θ/2) 拉长（miter）。
+    // 不拉长的话拐角外侧会缺一块、描边在转角处变窄；半径 0 的直角最明显。
+    const size_t count = points.size();
+    std::vector<Sample> samples(count);
+    if (count == 0)
+        return samples;
+
+    auto edgeNormal = [&points, count](size_t i) {
+        const Point& a = points[i];
+        const Point& b = points[(i + 1) % count];
+        float nx = -(b.y - a.y);
+        float ny = b.x - a.x;
+        const float length = std::sqrt(nx * nx + ny * ny);
+        if (length > 1e-6f)
+        {
+            nx /= length;
+            ny /= length;
+        }
+        return Point(nx, ny);
+    };
+
+    float accumulated = 0.0f;
+    for (size_t i = 0; i < count; i++)
+    {
+        const Point prev = edgeNormal((i + count - 1) % count);
+        const Point next = edgeNormal(i);
+
+        float nx = prev.x + next.x;
+        float ny = prev.y + next.y;
+        float length = std::sqrt(nx * nx + ny * ny);
+        if (length <= 1e-6f) // 180° 折返（正常形状不会出现）：退回后一条边的法线
+        {
+            nx     = next.x;
+            ny     = next.y;
+            length = 1.0f;
+        }
+        nx /= length;
+        ny /= length;
+
+        // miter 拉长系数：夹角越尖越长，但夹到 4 倍，避免极端形状戳出尖刺
+        const float cosHalf = nx * next.x + ny * next.y;
+        const float miter   = 1.0f / std::max(0.25f, cosHalf);
+
+        samples[i].point  = points[i];
+        samples[i].normal = Point(nx * std::min(miter, 4.0f), ny * std::min(miter, 4.0f));
+
+        // U：沿中线的累计弧长（最后归一化）
+        const Point& after = points[(i + 1) % count];
+        accumulated += std::sqrt((after.x - points[i].x) * (after.x - points[i].x)
+            + (after.y - points[i].y) * (after.y - points[i].y));
+        samples[i].u = accumulated;
+    }
+
+    for (Sample& sample : samples)
+        sample.u = accumulated > 1e-6f ? sample.u / accumulated : 0.0f;
+
+    return samples;
+}
+
+// 一个贴图片段：用**两个采样点各自的法线**算四个角，所以相邻段共用同一条边 —— 不会开缝。
+void addTexturedSpan(ImDrawList* drawList, const Sample& from, const Sample& to, float half,
+    const TextureRef& lut, float u0, float u1, ImU32 tint)
+{
+    const Point outerFrom(from.point.x + from.normal.x * half, from.point.y + from.normal.y * half);
+    const Point outerTo(to.point.x + to.normal.x * half, to.point.y + to.normal.y * half);
+    const Point innerTo(to.point.x - to.normal.x * half, to.point.y - to.normal.y * half);
+    const Point innerFrom(from.point.x - from.normal.x * half, from.point.y - from.normal.y * half);
+
+    drawList->AddImageQuad(lut.texture, ImVec2(outerFrom.x, outerFrom.y),
+        ImVec2(outerTo.x, outerTo.y), ImVec2(innerTo.x, innerTo.y),
+        ImVec2(innerFrom.x, innerFrom.y), ImVec2(u0, 0.0f), ImVec2(u1, 0.0f),
+        ImVec2(u1, 1.0f), ImVec2(u0, 1.0f), tint);
+}
+
+// 在 from→to 之间按比例 ratio 插一个采样点（跨接缝时切开用）：位置与法线都插值再归一化。
+Sample lerpSample(const Sample& from, const Sample& to, float ratio)
+{
+    Sample out;
+    out.point  = Point(from.point.x + (to.point.x - from.point.x) * ratio,
+        from.point.y + (to.point.y - from.point.y) * ratio);
+    float nx = from.normal.x + (to.normal.x - from.normal.x) * ratio;
+    float ny = from.normal.y + (to.normal.y - from.normal.y) * ratio;
     const float length = std::sqrt(nx * nx + ny * ny);
     if (length > 1e-6f)
     {
-        nx = nx / length * half;
-        ny = ny / length * half;
+        nx /= length;
+        ny /= length;
     }
-    else
-    {
-        nx = 0.0f;
-        ny = 0.0f;
-    }
-
-    SegmentQuad quad;
-    quad.outerFrom = Point(p0.x + nx, p0.y + ny);
-    quad.outerTo   = Point(p1.x + nx, p1.y + ny);
-    quad.innerTo   = Point(p1.x - nx, p1.y - ny);
-    quad.innerFrom = Point(p0.x - nx, p0.y - ny);
-    return quad;
-}
-
-// 一个贴图片段：四个角 + 四个 UV
-void addTexturedQuad(ImDrawList* drawList, const SegmentQuad& quad, const TextureRef& lut,
-    float u0, float u1, ImU32 tint)
-{
-    drawList->AddImageQuad(lut.texture,
-        ImVec2(quad.outerFrom.x, quad.outerFrom.y), ImVec2(quad.outerTo.x, quad.outerTo.y),
-        ImVec2(quad.innerTo.x, quad.innerTo.y), ImVec2(quad.innerFrom.x, quad.innerFrom.y),
-        ImVec2(u0, 0.0f), ImVec2(u1, 0.0f), ImVec2(u1, 1.0f), ImVec2(u0, 1.0f), tint);
+    out.normal = Point(nx, ny);
+    out.u      = from.u + (to.u - from.u) * ratio;
+    return out;
 }
 
 } // namespace
@@ -204,8 +323,18 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
     if (!style.lut.isValid())
         return;
 
-    const int segments = segmentCount(ring, style);
-    const float half   = style.lineWidth * 0.5f;
+    const float half = style.lineWidth * 0.5f;
+
+    // 段长：默认约 6px 一段；显式 segments 时按"总长 / segments"作为上限，
+    // 保证每段的 U 跨度不超过 1/segments（tests/focus_ring_test.cpp 的接缝扫描依赖这条）。
+    const float totalLength = perimeter(ring);
+    const int segmentBudget = segmentCount(ring, style);
+    const float step = std::max(0.5f,
+        std::min(kTargetSegmentPixels, totalLength / (float)std::max(1, segmentBudget)));
+
+    const std::vector<Sample> samples = buildSamples(ring, step);
+    if (samples.size() < 2)
+        return;
 
     // 三种类型的区别只在"动什么"：
     //   FLOW      相位推动贴图（颜色绕圈流动）
@@ -226,32 +355,28 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
 
     const ImU32 tint = colorWithAlpha(IM_COL32_WHITE, segmentAlpha);
 
-    for (int i = 0; i < segments; i++)
+    for (size_t i = 0; i < samples.size(); i++)
     {
-        const float t0 = (float)i / (float)segments;
-        const float t1 = (float)(i + 1) / (float)segments;
+        const Sample& from = samples[i];
+        const Sample& to   = samples[(i + 1) % samples.size()];
 
-        const Point p0 = pointAt(ring, t0);
-        const Point p1 = pointAt(ring, t1);
-        const SegmentQuad quad = makeQuad(p0, p1, half);
-
-        const LutSpan span = lutSpanAt(t0, t1, segmentPhase);
+        const LutSpan span = lutSpanAt(from.u, to.u, segmentPhase);
         if (!span.wrapped)
         {
-            addTexturedQuad(drawList, quad, style.lut, span.u0, span.u1, tint);
+            addTexturedSpan(drawList, from, to, half, style.lut, span.u0, span.u1, tint);
             continue;
         }
 
         // 跨接缝：按 U 的比例切开，画成两段，保证 UV 单调、不被拉花
         const float length = 1.0f - span.u0 + span.u1;
         const float ratio  = length > 1e-6f ? (1.0f - span.u0) / length : 0.5f;
+        const Sample mid   = lerpSample(from, to, ratio);
 
-        const Point pm(p0.x + (p1.x - p0.x) * ratio, p0.y + (p1.y - p0.y) * ratio);
-        addTexturedQuad(drawList, makeQuad(p0, pm, half), style.lut, span.u0, 1.0f, tint);
+        addTexturedSpan(drawList, from, mid, half, style.lut, span.u0, 1.0f, tint);
 
         // u1 正好是 0（最后一段的收尾）时后半段长度为 0，跳过它
         if (span.u1 > 1e-4f)
-            addTexturedQuad(drawList, makeQuad(pm, p1, half), style.lut, 0.0f, span.u1, tint);
+            addTexturedSpan(drawList, mid, to, half, style.lut, 0.0f, span.u1, tint);
     }
 }
 
