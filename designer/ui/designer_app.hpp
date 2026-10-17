@@ -98,7 +98,6 @@ class DesignerApp
     int              selectedIndex = -1;
     float            fileFilterWidth = 300.0f;
     char             filter[128] = {0};
-    bklv::Header*    header = nullptr; // 根视图（库的控件）：标题 + 状态副标题
     AppearanceDoc    appearance;      // 当前打开的外观文件（P3 只编辑 base/widget）
     bool             appearanceLoaded = false;
     int              selectedLayer = -1;
