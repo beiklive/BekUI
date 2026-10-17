@@ -84,7 +84,7 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
   make 会认为"已是最新"而**不重新链接** —— 于是你以为在验收 A 配置，实际跑的是 B 的二进制
   （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本，
   check.sh 的检查项数也跟着少了一截）。跑完额外构建目录后要
-  `rm -f dist/*_test dist/demo dist/designer && cmake --build build/gl -j 8` 强制重链。
+  `rm -f dist/*_test dist/demo && cmake --build build/gl -j 8` 强制重链。
 - 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 查 core/views/widgets，
   根 `CMakeLists.txt` 查 demo），不用等链接期。
 - 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
@@ -534,7 +534,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ③ 每行只一次 `AddText`，拼接走复用缓冲（稳态零分配）；④ 面板不可见时 `View::frame` 直接返回。
   实测：30 条与 1000 条日志的顶点数/命令数**完全相同**（162/3），一帧约 2 微秒。
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）。
-  现在只有设计器还在用这条路（它自己的界面就是 ImGui）；demo 的日志窗口已经是视图了。
+  demo 的日志窗口已经是视图了；这条路留给"需要自己的 ImGui 面板"的宿主。
 - **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
   按住则等 `repeatDelay`（默认 250ms）后每 `repeatInterval`（默认 100ms）一次，
   和 borealis 的 `BUTTOM_REPEAT_TRIGGER` / `BUTTON_REPEAT_DELAY` 一致。
@@ -803,11 +803,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 struct StripeLayer
 {
     static constexpr const char* kName  = "stripe";   // JSON 里的 op
-    static constexpr const char* kLabel = "斜条纹";    // 设计器显示名
+    static constexpr const char* kLabel = "斜条纹";    // 显示名（工具/日志用）
     static constexpr auto kOrder = bklv::compile::LayerOrder::DECORATION;
     // kIdPrefix / kHelp 可省（默认 kName / 空串）
 
-    // 参数模式：引擎按它解析（类型 / 720p 缩放 / 枚举校验），设计器候选键也由它派生
+    // 参数模式：引擎按它解析（类型 / 720p 缩放 / 枚举校验），工具侧的候选键也由它派生
     static std::vector<bklv::compile::LayerParam> params()
     {
         return { bklv::compile::LayerParam::number("angle", 45.0f, "角度"),
@@ -969,183 +969,20 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 **demo 里不要加环境变量调试开关**（曾经有 `BKLV_DEMO_PAGE` / `BKLV_DEMO_LOG(_SPAM)` /
 `BKLV_DEMO_SCROLL` / `BKLV_DEMO_CLICK` / `BKLV_DEMO_SWEEP` / `BKLV_SCREENSHOT(_FRAMES)`，
 已全部删除）。要验收就写 `tests/` 里的无窗口测试，要截图就在自己的临时程序里调
-`App::requestScreenshot()`（设计器就是这么用的）；产品程序里不留"只有调试时才走"的分支。
+`App::requestScreenshot()`；产品程序里不留"只有调试时才走"的分支。
 
-## 设计器（designer/）
+## 设计器（已移除，待重做）
 
-第二个程序（`dist/designer`），**界面本体用 ImGui 控件、预览用 bklv 的真实视图**渲染，
-和 demo 互不依赖。逻辑层 `designer/core` 不含界面代码，能无窗口测
-（`tests/designer_core_test.cpp`）。详细用法见 `docs/designer.md`。
+原来的 `designer/`（44 文件 / ~11.8k 行）**已整体删除**：好用的前提是"先把 JSON 模型做对"，
+而当时那套界面是在模型上直接堆 UI，体验和可维护性都不达标。重做时要遵守两条：
 
-- 构建：`BKLV_TARGET_LIST` 里一行（`"designer|designer/main.cpp|designer"`）+ 根
-  `CMakeLists.txt` 的 `BKLV_DESIGNER_CORE_SOURCES` / `BKLV_DESIGNER_UI_SOURCES`；
-  漏项检查覆盖 `demo/*.cpp` 与 `designer/*.cpp`。
-- 主题可以是**别的仓库**里的：装载走 `loadThemeIntoGlobalFromDirectory`（按绝对目录），
-  不是只认 `resources/theme/<name>`。
-- 预览是"手动驱动一棵不在 App 视图树里的视图"：`YGNodeCalculateLayout` → `notifyLayout`
-  → `update` → `setTranslation(画布原点)` → `frame(ctx)`；`View::draw` 是 protected，
-  别想直接调它。
-- `readOnly` 的基准主题（default / ios）只能浏览，编辑请走"模板新建"。
-- **ImGui 的默认字体必须显式设**（`setDefaultFont` 里设 `io.FontDefault`）：不设就用
-  字体表第 0 个，而那可能是先加载的图标字体（只有私用区字形）→ `ImGui::Text` 全画不出来。
-- **截图按帧缓冲读**（`App::saveScreenshot` 乘 `io.DisplayFramebufferScale`）：Retina 上
-  帧缓冲是逻辑尺寸的 2 倍，按逻辑尺寸读只拿到左下角一块。
-- 设计器里要关掉 ImGui 自己的键盘/手柄导航（`io.ConfigFlags &= ~NavEnableKeyboard`），
-  否则方向键会被 ImGui 拿去移动它的内部焦点、把面板滚到不知哪里去。
+- **逻辑层与界面层分离**：文档模型（读/改/写回、保序、未知字段透传）先做成无窗口可测的库，
+  UI 只做展示与输入。别再让 JSON 补丁逻辑长在界面代码里。
+- **先有"源文档 + 有效值"双视图**：`import` / `include` / `vars` 让"一份文件"不等于"一个完整对象"，
+  只显示源文档会让人以为样式丢了（见 `docs/json-audit.md` 的缺口清单）。
 
-- **液态玻璃只服务设计器外壳，预览区是禁区**（`designer/glass/` + `designer/ui/designer_glass.*`）：
-  1）**两条后端各有一套**：
-     · **GL**（`designer/glass/gl/`，GLSL 150）：抓帧 + 半分辨率可分离高斯 + 折射/色散合成。
-     · **Vulkan**（`designer/glass/vk/`）：ImGui 的绘制回调在渲染通道里，抓帧/模糊必须
-       **在通道外** —— 所以走 `bklv::VulkanUiPassHook` 两个钩子：
-       UI 通道**前**（`beginRendering()` 里、`vkCmdBeginRendering` 之前）铺底 +
-       模糊 + 合成，通道**后**（`endRendering()` 里、转 present 之前）把成品拷进常驻图像
-       留给下一帧。ImGui 那趟通道因此要用 **LOAD_OP_LOAD 不清屏**（钩子返回 true 时后端自动切）。
-       模糊**不用 shader**：`vkCmdBlitImage` 顺 mip 链下采样（硬件 box 滤波）；
-       圆角/染色/描边高光由 ImGui 叠着画。代价：背景是**上一帧**的（滞后一帧，静态界面看不出来）、
-       没有折射/色散（GL 才有）。
-     · 钩子类型在 `bklv/backends/vulkan_ui_pass.hpp`（只有 VK 构建会包含它，GL 不受影响）；
-       后端销毁设备**之前**必须 `detach()` 让钩子释放资源 —— 否则析构里 vkDestroyImage
-       会 "Invalid device" 直接 abort（踩过）。
-     · 拿不到 GL 入口 / 着色器编不过 / 尺寸非法 / 传统 render pass 路径 → 回退普通面板。
-     开关：`BKLV_DESIGNER_GLASS=0`。
-  2）**预览面板也上玻璃，但"bklv 渲染出来的内容"不受玻璃影响**：
-     中间面板和左右两栏一样是透明底 + 玻璃；bklv 渲染的 JSON 内容（画布）按它自己的方式
-     画在玻璃**之上** —— 靠**绘制顺序**保证（玻璃注入在面板内容之前），靠**不透明画布底**
-     （棋盘/暗面/纸面三档）保证画布区域逐像素不受玻璃影响。
-     验收方式：开/关玻璃各截一张，**画布内容区逐像素一致**（实测 0 像素差）。
-     ⚠️ 画布底现在还多了一档 **透明**（`canvasBackdrop == 3`，图标条循环 / 视图菜单可切）：
-     那一档是刻意让玻璃透出来看的（bklv 内容叠在玻璃上），此时不能再断言"画布区域逐像素一致"。
-     ⚠️ 别再用 `excludeRect` 去裁整个预览面板：面板一上玻璃，禁区裁剪会把整块玻璃切成
-     "剩下最大的那一半"，面板就成了半玻璃半实底（踩过思路，改成靠绘制顺序）。
-  3）**采样的是"本帧已经画好的内容"**：所以先在最底层画壁纸（渐变 + 柔光 + 斜条纹，
-     纯色底上玻璃看不出来），玻璃面板压在上面。与源项目（Android 覆盖层，画之前抓帧缓冲）
-     不同，抓取放在**第一条玻璃命令**里，一帧只抓一次。
-     ⚠️ **壁纸必须画在主窗口绘制列表的最前面，不能放 `ImGui::GetBackgroundDrawList()`**：
-     实测放背景列表时，抓帧那一刻帧缓冲里只有菜单栏、没有壁纸（把抓帧 FBO 读回来落成 PNG
-     看到的），于是玻璃采到一片黑、面板看着就是黑的（排查花了两轮）。
-     另外壁纸本身要够亮：深色底 + 低 alpha 柔光等于没有背景，玻璃出来还是黑的。
-     改玻璃默认观感时记得把 `designer/core/ui_state.cpp` 的 `kGlassTuningVersion` +1 ——
-     老状态文件里存着旧参数，不失效的话用户那边跑的还是旧观感。
-  4）**GL 状态必须还回去**：抓背景/模糊都画到离屏 FBO 上，而 framebuffer 绑定是全局状态 ——
-     不恢复的话后面所有 ImGui 命令都画进离屏 FBO（整屏四分之三会变透明，这次踩到）。
-     `designer/glass/gl/gl_backend.cpp` 里用 `FramebufferGuard` 兜住；
-     玻璃命令后面还要插一条 `DrawCallback_ResetRenderState` 让 ImGui 接着画。
-  4b）**守卫要包住"一次操作"，不能包住"整段回调"**（库侧 `bklv/backends/gl_glass.cpp` 踩过）：
-     `FramebufferGuard` 包到 `renderGlassCommand` 整段时，抓帧+模糊留下的离屏 FBO 会一直绑着，
-     于是**合成被画进离屏 FBO**，屏幕上什么都不出现（回读 `GL_READ_FRAMEBUFFER_BINDING` 得 3）。
-     正确写法是让守卫只包住 `prepareBackdrop`（抓帧 + 模糊）那一段，`composite` 在 FBO 恢复之后执行。
-     排查手法同样可复用：在合成前后各回读一次 framebuffer 绑定与一个像素值。
-  4c）**注入点的偏移是"插在下标 == drawCommandOffset 那条命令之前"**，而 ImGui 会把
-     **连续图元合并进同一条命令**：直接记 `CmdBuffer.Size` 拿到的不是真边界，
-     调用方自己的文字会跟前面的内容并进同一条命令 —— 玻璃插在后面就把它盖住。
-     库侧给的入口是 `GlassService::submitBackdrop()`：**先 `AddDrawCmd()` 切一条新命令**，
-     偏移取 `Size - 1`（玻璃插在"承载调用方内容的那条空命令"之前）→ 顺序 =
-     背景 → 玻璃 → 我的内容。自己手填 `drawCommandOffset` 就会踩这个坑。
-     验收：玻璃卡内"无文字区"的横向梯度要远低于壁纸（实测 0.07 vs 3.43），
-     同时标题亮像素 > 0（文字在玻璃之上）。
-  6b）**改守卫必须核实，别信"替换成功"**（Switch 上玻璃一直不生效的真因）：
-     `bklv/backends/gl_glass.cpp` 的守卫实际只有 `#if defined(BKLV_OPENGL)` ——
-     某次"改成 `|| defined(BKLV_GLES3)`"的字符串替换是**静默空操作**（没匹配上），事后没核实，
-     于是 Switch 上一直编的是文件末尾那份**"能力为空"的桩**（对象文件 2.6KB，真实现 33KB），
-     玻璃在真机上永远不可用、而且**一条日志都不会打**（桩里没有日志）。
-     核实办法：`nm -C build/switch/bklv/backends/gl_glass.o | grep -cE "renderBlur|createTarget"`
-     → **0 就是编成了桩**。
-     同理：`gl_glass_procs.hpp` 在 ES3 下把自带的 GL 类型/枚举让给 `<GLES3/gl3.h>`，
-     就必须**自己包含那个头**，否则真实现一编就是一片 `GLuint has not been declared`。
-     另：玻璃开启但后端不可用时 `GlassService` 会打 `[玻璃] 已开启但后端不可用` 的告警 ——
-     在真机上看到它，先按这条查。
-  5）**不引入构建期工具**：着色器是 GLSL 150 常量字符串（`gl_shaders.cpp`），
-     公共模块（blur_kernel / glass_math / glass_color / glass_lighting）直接内联，
-     不需要 glslc / SPIR-V 生成步骤。着色器改自 MIT 项目，版权声明留在文件头。
-  6）库侧只加了一个通用钩子：`App::onPrepareDrawData`（ImGui::Render() 之后、
-     renderDrawData() 之前），设计器用它注入玻璃命令；库里没有任何玻璃代码。
-  7）**参数可调且会存**：`designer/glass/glass_tuning.hpp` 里那份 `GlassTuning`
-     是唯一数据源 —— 工具菜单「玻璃调参」/ `F4` 打开滑块面板（面板自己也是玻璃），
-     参数随 `designer_state.json` 一起存（`ui_state.glass`）。
-     调参面板/日志这类**浮窗**底给 0.35 的 alpha 再叠玻璃：玻璃在预览区会被禁区裁掉，
-     那块得有底色才看得清字。
-     自查开关：`BKLV_DESIGNER_GLASS=0` 关玻璃、`BKLV_DESIGNER_GLASS_PANEL=1` 开局就展开调参面板
-     （**必须在 loadUiState() 之后生效**，否则被状态文件盖掉）。
-  8）**字号与边距要分开调**（踩过：把整体缩放从 0.85 提到 0.92 想"解决文字贴边"，
-     结果字更大、被用户连着投诉两次）：
-     · 边距 = `uiScale`（`applyDesignerStyle` 里那些 `* s` 的常量，已按"文字贴边"放宽一档）
-     · 字号 = `uiScale * kFontTighten`（0.817）—— 基准字体 20px，不收紧在面板里明显偏大
-     · **全界面只用一个字号**（用户要求"正文小一点、标题大一点，取平均值"）：
-       正文与标题都是 20×0.85×0.817 ≈ 13.9px，标题系数 `kTitleFontFactor = 1.0`。
-       ⚠️ 别再给某一类文字单独放大/放小 —— 上一轮把标题做成 0.9 倍，用户反馈"很极端"；
-       要调字号只动 `kFontTighten` 这一个数，要恢复层级才动 `kTitleFontFactor`
-     · **外壳整体内缩 8px**（`SetNextWindowPos/Size` 减 `kShellMargin`）：窗口贴满视口时
-       菜单栏会顶在最上沿，"顶部没留边距"
-     · 功能条/图标段这类自绘控件，图标尺寸要**给下限**（`max(14, …)`）：条一压矮，
-       按比例算出来的图标会糊成一团
-  9）**面板标题栏和内容区不是一个样式**（三个面板共用 `panelTitleBar*`，`designer_style.cpp`）：
-     深色底（黑 40%）+ 顶部两角跟面板圆角（用 `glass.getTuning().panelRadius`，和玻璃矩形一致）
-     + 底边一条细线；高度 = 标题字号 + 2×边距，边距 `kTitleBarPad` 乘 uiScale；
-     **标题字号 = 正文 × `kTitleFontFactor`**（现在 1.0，即全界面同号）。
-     ⚠️ **`PushFont(font, size)` 收的是"未缩放基准字号"**，不是 `GetFontSize()`：
-     imgui.h 里原话是 "DO NOT PASS THIS VALUE TO PushFont()! Use ImGui::GetStyle().FontSizeBase"。
-     传错的话 ImGui 会再乘一次 `FontScaleMain`（我们这里是 0.85×0.817≈0.69），
-     文字会比预期小 30% —— 实测同一个「文件」：菜单栏 26.0×12.5、标题栏 18.5×8.5（踩了两轮才发现）。
-     正确写法：`PushFont(font, style.FontSizeBase * factor)` 用于绘制，
-     排版算高度用 `GetFontSize() * factor`（已缩放）。
-     ⚠️ 标题栏必须画在**面板自己的绘制列表**里、坐标用 `GetWindowPos()`（子窗 (0,0) 就是窗口左上角，
-     不受 WindowPadding 影响），这样它正好盖住玻璃面板顶部那条约 10px 的高光带 ——
-     不盖住的话，量出来有 12px 留白、看着仍是"字贴着顶"（高光带把留白的视觉空间吃掉了，踩过）。
-     左栏的折叠按钮、脏标记都放进栏内同一行；`panelHeader()` 留着给**分区标题**（如左栏的"节点树"）。
-  9a）**自绘区块的底一律用 `frostedCard()`（或 `chipColor()` 那套半透明值），不要用调色板色块**：
-     `designerPalette()` 里的 `page/card/raised/sunken` 都是 `hex(0x......)` → **alpha = 1.0**，
-     直接铺底会把面板的玻璃整个挡住，看着就是一块不透明灰板（左下状态卡踩过：
-     卡片空白处像素标准差 0.00 = 完全平的，换成磨砂底后 3.65 = 壁纸透出来了）。
-     玻璃是画在**面板内容之前**的，任何 alpha=1 的内容色块都会盖住它。
-     需要"玻璃上的一块磨砂片"就用 `frostedCard()`（半透明深色 + 冷白描边 + 顶部高光）。
-  9b) **卡片/分区标题的边距要对齐面板的内容列，别自己定一套**：
-     · 卡片（如左栏底部状态卡）三面可见（左/右/下）的边距取 `style.WindowPadding`，
-       底部按 `winPos.y + GetWindowHeight() - WindowPadding.y` 反推着摆 ——
-       曾经"左右各往外扩 5px"，结果卡片比内容列还宽、看着像没留边距（踩过）
-     · 分区标题（如左栏"节点树"）要缩进到和它下面的内容对齐（树行箭头那儿，约 +40×uiScale）：
-       不缩进它就是面板里最靠左的文字，比它标题的内容还左 20~40px
-  9c）**自绘"卡片式"区块要先用同尺寸 `Dummy` 占位**（左栏底部那块状态卡就是这么写的）：
-     用 `SetCursorPos/SetCursorScreenPos` 把光标挪到卡片里画小标签（`statChip`/`crumbChip`），
-     必须先在卡片矩形处 `Dummy(卡片尺寸)` 把范围报给 ImGui，并且**收尾不能再补一次
-     `SetCursorScreenPos`** —— 那会让 `window->DC.IsSetPos` 停在 true，`EndChild()` 时
-     ImGui 会判"越界扩展窗口边界"并弹出报错框（DEAR IMGUI MESSAGE，踩过，
-     日志里是 `[imgui-error] ... SetCursorPos() ... to extend window/parent boundaries`）。
-  10）**界面控件也走同一套风格**：`applyDesignerStyle()` 里所有控件底一律用"磨砂白"
-     （`ImGuiCol_FrameBg/Button/Tab/TableHeaderBg…` 都是半透明白，不再铺不透明灰块），
-     圆角统一 8~12；因为面板背后有玻璃，控件看起来就是玻璃上的磨砂片。
-     `WindowBg/ChildBg/MenuBarBg` 全透明（底交给玻璃），但**预览面板要显式压一层
-     不透明 `ChildBg` + 直角**：圆角会露出背后的壁纸/玻璃，"预览区一个玻璃像素都不能有"就保不住。
-     所有浮窗（弹窗/下拉/日志/调参面板）在帧末由 `applyGlassToFloatingWindows()` 统一补玻璃：
-     遍历 ImGui 的窗口表，跳过子窗/提示浮层/主窗，注入点取 0（玻璃落在窗体底色与内容之前）。
-  11）**VK 那条路的可见性验证还差一步**：Vulkan 后端没有 `RenderBackend::readPixels`
-     实现，`App::requestScreenshot` 在 VK 下会报"后端不支持帧读回" → VK 的玻璃效果
-     目前只能靠日志 + 校验层静默来确认，**看不到图**。要视觉验收得先给 VK 后端补
-     帧读回（host-visible buffer + `vkCmdCopyImageToBuffer`）。
-  12）**中间那块是"设计工作台"，不是纯色面板**（`drawWorkbench` / `drawPreviewCanvas`）：
-     台面 = 竖向渐变 + 点阵网格（24px，alpha 18）+ 四边内阴影；画布 = 柔化投影 + 1px 细线 +
-     顶边高光 + 尺寸/缩放角标；参考线用虚线。三档画布底：细棋盘（看透明/阴影）/ 暗面 /
-     纸面（看浅色主题），存在 `ui_state.canvasBackdrop`（老文件按 `canvasChecker` 迁移）。
-     ⚠️ **工作台必须画在 `##stage` 子窗里面**：面板/子窗的不透明底是 BeginChild 那一刻铺的，
-     画在它之前会被整块盖掉（踩过一次：台面、点阵、内阴影全不见，看着还是纯色）。
-  13）**观感预设可存可取**（`designer/glass/glass_presets.{hpp,cpp}`）：内置 4 套
-     （清透 / 磨砂 / 厚重 / 极简），F4 面板上一排按钮一键切；当前参数能被 `matchGlassPreset`
-     认回哪一档（认不出显示"自定义"）。`designer_glass.json`（可执行文件目录）存/取当前参数，
-     方便调好一套留着或贴给别人。纯数据 + 纯函数 → 无窗口测试覆盖（往返、越界、非法输入）。
-  14）**样式要全覆盖**（三轮自查的结论，别再漏）：
-     ① `ImGuiCol_` 共 66 项，`applyDesignerStyle()` 必须**逐项**设（`COUNT` 除外）。漏项会
-        退回 ImGui 默认值 —— 踩过 `DragDropTarget`（默认亮黄，节点树拖层时很扎眼）、
-        `TreeLines`、`InputTextCursor`、`CheckboxSelectedBg`、`ModalWindowDimBg`。
-        核对办法：从 `imgui.h` 里 `enum ImGuiCol_` 提取名字，和 `set(ImGuiCol_...)` 求差集。
-     ② **自绘控件也必须走同一套取色**：`iconButton`（`icon_draw.cpp`）、文件/外观列表行、
-        分隔条都是手画的，曾经在里面写死颜色，而且选中态用了**不透明**色块 —— 正好把玻璃盖掉。
-        统一走 `designer_style.hpp` 的 `chipColor/chipHoverColor/chipActiveColor/
-        iconIdleColor/iconActiveColor/rowTextColor/rowIconColor`。
-     ③ **矢量图标**：`drawIcon` 的 Material 路径本来就是 `CalcTextSizeA(size, ...)` + `AddText(font, size, ...)`
-        （正确）；**回退路径**曾经用当前正文字体量尺寸、还顺手 `PushFont(图标字体, size)`（同样踩了上面那个坑），
-        已改成用 `g_iconFont->CalcTextSizeA(size, ...)` 量、直接 `AddText(g_iconFont, size, ...)` 画。
-     ④ 画布里的**设计辅助色**（棋盘格、padding 参考线、中轴线、选中框）不受这条约束：
-        那是画布自己的视觉语言（青色/橙色参考线），故意与界面配色不同。
+移除时一并删掉的东西：`CMakeLists.txt` 的两个目标与 `designer` 分支、`tests/designer_core_test.cpp`、
+`docs/designer.md`。`EffectCapabilities` 的能力位保留（等新宿主来读）。
 
 ## 测试
 

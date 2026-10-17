@@ -313,7 +313,7 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ### 分层
 
 ```
-demo/  designer/                       应用与工具（都用库，互不依赖）
+demo/                                 示例应用（用库）
         ↓
 bklv/widgets/*                          外观驱动控件：Shell / Pager / Button / Cell / Dialog
         ↓                               （样式来自主题 JSON，代码只写行为）

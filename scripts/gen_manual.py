@@ -271,7 +271,7 @@ sections.append(('概览', f'''
   bklv.hpp           伞头：常用类型一次引入（demo 只 include 它）
   core/  views/  widgets/  compile/  backends/  platforms/
 demo/                展示程序（15 个页面 + 底部导航 + 液态玻璃）
-designer/            可视化设计器（ImGui 界面 + bklv 真实视图预览）
+
 resources/theme/     主题 JSON（default / ios）
 tests/               无窗口测试（ctest 驱动，GL 与 VK 各跑一遍）
 scripts/             check.sh（一次跑完命名/分层/双后端构建/全部测试）

@@ -66,7 +66,8 @@ class App
 
     // ImGui 的绘制数据已经生成、还没交给后端渲染时的钩子（在 ImGui::Render() 之后、
     // backend->renderDrawData() 之前）。给"要往绘制命令里插东西"的宿主用：
-    // 设计器的液态玻璃就是在这里把玻璃命令注入 draw data（见 designer/glass/）。
+    // 需要额外注入绘制命令的宿主（比如带自己玻璃后端的工具）就是在这里做的：
+    // `App::frame` 之后、ImGui::Render() 之前把命令插进 draw data。
     std::function<void(ImDrawData*)> onPrepareDrawData;
 
     // 触发一次布局重算时用的画布尺寸。

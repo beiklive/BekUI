@@ -37,18 +37,18 @@ struct GlassRequest
     float blurMix = 1.0f;
 };
 
-// 后端能力：拿不到就整体回退成普通绘制（设计器不至于不能用）
+// 后端能力：拿不到就整体回退成普通绘制（宿主不至于不能用）
 //
-// refraction / dispersion 由 `GlassService::ensureBackend` 按后端如实填（VK 路线 A 填 false），
-// 读取方是设计器的调参面板（能力位为 false 时那几个折射滑块会被禁用并提示原因）。
+// refraction / dispersion 由 `GlassService::ensureBackend` 按后端如实填（VK 路线 A 填 false）。
 // 绘制路径不查它：GL 的 `composite` 无条件上传折射 uniform（GL 的能力位本来就是 true），
-// VK 压根没有折射那条路 —— 所以"能力位"目前只用来告诉使用者"这套后端有没有这个效果"。
+// VK 压根没有折射那条路 —— 所以"能力位"只用来告诉宿主/工具"这套后端有没有这个效果"。
+// （原本的读者是设计器的调参面板；设计器已移除、待重做，能力位保留给下一个宿主用。）
 struct EffectCapabilities
 {
     bool backdropCapture = false;
     bool blur           = false;
-    bool refraction     = false; // 读方：设计器调参面板
-    bool dispersion     = false; // 读方：同上（和折射一起禁用）
+    bool refraction     = false; // GL=true / VK=false（路线 A 没有折射）
+    bool dispersion     = false; // 同上（和折射一起）
     uint32_t maxGlassRegions = 0;
 };
 
