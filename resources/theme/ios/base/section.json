@@ -14,7 +14,7 @@
     {
       "op": "rect",
       "id": "bar",
-      "fill": "@theme/color.accent.base",
+      "fill": "#00000000",
       "width": "@theme/metric.section.barWidth",
       "radius": 2,
       "align": "left",

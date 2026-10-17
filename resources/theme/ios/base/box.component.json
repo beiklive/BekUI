@@ -29,10 +29,10 @@
     {
       "op": "rect",
       "id": "bg",
-      "fill": "#00000000",
-      "stroke": "@theme/color.common.white",
-      "strokeWidth": "@theme/metric.component.borderWidth",
-      "radius": "@theme/metric.component.radius"
+      "fill": "@theme/color.surface.card",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
+      "radius": "@theme/metric.radius.md"
     }
   ]
 }

@@ -7,9 +7,9 @@
     {
       "op": "rect",
       "id": "field",
-      "fill": "@theme/color.surface.sunken",
-      "stroke": "@theme/color.button.defaultBorder",
-      "strokeWidth": 2,
+      "fill": "@theme/color.surface.raised",
+      "stroke": "#00000000",
+      "strokeWidth": 0,
       "radius": "@theme/metric.radius.md"
     },
     {

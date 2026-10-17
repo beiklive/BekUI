@@ -21,10 +21,10 @@
     {
       "op": "rect",
       "id": "panel",
-      "fill": "@theme/color.surface.card",
-      "stroke": "@theme/color.border.default",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color/border.subtle",
       "strokeWidth": 1,
-      "radius": "@theme/metric.radius.lg"
+      "radius": 14
     },
     {
       "op": "text",

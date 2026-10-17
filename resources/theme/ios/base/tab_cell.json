@@ -8,7 +8,7 @@
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.radius.md"
+      "radius": "@theme/metric.radius.sm"
     },
     {
       "op": "rect",
@@ -25,9 +25,9 @@
     {
       "op": "rect",
       "id": "accent",
-      "fill": "@theme/color.common.transparent",
+      "fill": "#00000000",
       "radius": 2,
-      "width": 4,
+      "width": 0,
       "inset": [
         10,
         0,

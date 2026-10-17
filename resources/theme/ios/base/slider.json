@@ -8,16 +8,16 @@
       "op": "rect",
       "id": "track",
       "fill": "@theme/color.slider.lineEmpty",
-      "radius": 3,
-      "height": 6,
+      "radius": 2,
+      "height": 4,
       "valign": "center"
     },
     {
       "op": "rect",
       "id": "fill",
       "fill": "@theme/color.slider.lineFilled",
-      "radius": 3,
-      "height": 6,
+      "radius": 2,
+      "height": 4,
       "valign": "center"
     },
     {
@@ -26,9 +26,9 @@
       "fill": "@theme/color.slider.pointer",
       "stroke": "@theme/color.slider.pointerBorder",
       "strokeWidth": 2,
-      "radius": 10,
-      "width": 20,
-      "height": 20,
+      "radius": 14,
+      "width": 28,
+      "height": 28,
       "valign": "center"
     },
     {

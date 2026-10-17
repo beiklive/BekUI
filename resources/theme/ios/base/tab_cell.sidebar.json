@@ -25,7 +25,7 @@
     {
       "op": "rect",
       "id": "accent",
-      "fill": "@theme/color.common.transparent",
+      "fill": "#00000000",
       "radius": 2,
       "width": "@theme/metric.sidebar.accentWidth",
       "inset": [
@@ -106,7 +106,7 @@
         "duration": 140
       },
       "accent.fill": {
-        "to": "@theme/color.sidebar.activeItem",
+        "to": "@theme/color.common.transparent",
         "duration": 140,
         "easing": "quadraticOut"
       },

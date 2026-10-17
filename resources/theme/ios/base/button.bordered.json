@@ -9,8 +9,8 @@
       "id": "bg",
       "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.radius.md",
-      "stroke": "@theme/color.button.defaultBorder",
-      "strokeWidth": "@theme/metric.button.borderThickness"
+      "stroke": "@theme/color.accent.base",
+      "strokeWidth": 1
     },
     {
       "op": "rect",

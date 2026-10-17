@@ -1,5 +1,5 @@
 {
-  "$comment": "尺寸对齐 borealis 的 style.cpp（header/applet_frame/sidebar/button 那几组）。",
+  "$comment": "ios 主题：苹果风。尺寸按**比例**借鉴 iOS 的层级（大标题/正文/脚注、分组行高、胶囊分段），不照搬点值 —— bklv 画布是 1280×720，iOS 的 17pt/44pt 直接搬会明显偏大。",
   "spacing": {
     "xs": 4,
     "sm": 8,
@@ -8,18 +8,19 @@
     "xl": 24
   },
   "radius": {
-    "sm": 4,
-    "md": 5,
-    "lg": 8,
+    "sm": 6,
+    "md": 8,
+    "lg": 12,
     "round": 999
   },
   "font": {
     "size": {
-      "xs": 12,
+      "xs": 13,
       "sm": 15,
-      "md": 18,
+      "md": 17,
       "lg": 22,
-      "title": 28
+      "title": 30,
+      "lineHeight": 1.35
     },
     "lineHeight": 1.4
   },
@@ -32,14 +33,14 @@
     "slow": 260
   },
   "control": {
-    "height": 48,
+    "height": 44,
     "minWidth": 120
   },
   "header": {
-    "height": 55,
-    "titleFontSize": 18,
+    "height": 50,
+    "titleFontSize": 17,
     "paddingSides": 0,
-    "paddingTopBottom": 11,
+    "paddingTopBottom": 10,
     "imageSpacing": 18,
     "titleTopOffset": 7,
     "separatorThickness": 1,
@@ -48,21 +49,21 @@
     "fontSize": 18
   },
   "bottomBar": {
-    "height": 73
+    "height": 60
   },
   "appletFrame": {
-    "headerHeight": 55,
-    "footerHeight": 73,
-    "paddingSides": 30,
+    "headerHeight": 50,
+    "footerHeight": 60,
+    "paddingSides": 24,
     "contentTop": 12,
     "separatorThickness": 1,
     "contentPaddingSides": 16,
     "contentPaddingTopBottom": 16
   },
   "sidebar": {
-    "width": 300,
-    "itemHeight": 52,
-    "itemFontSize": 22,
+    "width": 320,
+    "itemHeight": 48,
+    "itemFontSize": 19,
     "gap": 2,
     "paddingTop": 12,
     "paddingBottom": 12,
@@ -73,7 +74,7 @@
     "accentMarginX": 8,
     "separatorHeight": 18,
     "separatorThickness": 1,
-    "radius": 14,
+    "radius": 10,
     "margin": 12,
     "iconSize": 22,
     "iconInset": 22,
@@ -81,21 +82,21 @@
     "shadowFeather": 14
   },
   "tabCell": {
-    "height": 40,
-    "fontSize": 22
+    "height": 32,
+    "fontSize": 15
   },
   "slider": {
-    "height": 32
+    "height": 28
   },
   "dialog": {
-    "width": 520,
+    "width": 460,
     "height": 220
   },
   "dropdown": {
     "height": 70,
-    "itemHeight": 60,
+    "itemHeight": 52,
     "itemTextSize": 20,
-    "popupWidth": 280,
+    "popupWidth": 300,
     "popupMinWidth": 180
   },
   "textField": {
@@ -107,26 +108,26 @@
     "caretWidth": 2
   },
   "button": {
-    "textSize": 18,
-    "borderThickness": 2
+    "textSize": 17,
+    "borderThickness": 1
   },
   "highlight": {
     "radius": 6,
     "strokeWidth": 5
   },
   "hintItem": {
-    "paddingX": 16,
+    "paddingX": 12,
     "paddingY": 4
   },
   "card": {
     "padding": 16
   },
   "list": {
-    "itemHeight": 64,
-    "sectionHeaderHeight": 36
+    "itemHeight": 56,
+    "sectionHeaderHeight": 30
   },
   "hintsBar": {
-    "paddingX": 25
+    "paddingX": 16
   },
   "hints": {
     "footerMarginSides": 30,
@@ -140,19 +141,19 @@
     "batteryLowThreshold": 0.2
   },
   "cell": {
-    "height": 70,
+    "height": 60,
     "paddingX": 16,
     "paddingY": 12.5,
     "gap": 12,
-    "titleFontSize": 22,
-    "detailFontSize": 22,
-    "detailWidth": 50,
+    "titleFontSize": 18,
+    "detailFontSize": 18,
+    "detailWidth": 56,
     "sliderWidth": 240
   },
   "switch": {
-    "width": 52,
-    "height": 26,
-    "knob": 20
+    "width": 51,
+    "height": 31,
+    "knob": 27
   },
   "radio": {
     "size": 22,
@@ -162,8 +163,8 @@
     "width": 360,
     "paddingX": 20,
     "paddingY": 14,
-    "radius": 8,
-    "fontSize": 18,
+    "radius": 14,
+    "fontSize": 17,
     "gap": 8,
     "duration": 3.0,
     "marginTop": 16,
@@ -239,8 +240,8 @@
     "barWidth": 4,
     "barMargin": 12,
     "titleInset": 16,
-    "fontSize": 18,
+    "fontSize": 15,
     "subtitleSize": 15,
-    "paddingTopBottom": 10
+    "paddingTopBottom": 8
   }
 }
