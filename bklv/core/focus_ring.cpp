@@ -163,18 +163,93 @@ std::vector<Sample> buildSamples(const Outline& ring, float step)
 }
 
 // 一个贴图片段：用**两个采样点各自的法线**算四个角，所以相邻段共用同一条边 —— 不会开缝。
+//
+// ⚠️ 这里全程手写顶点（PrimVtx），不用 AddImageQuad：AddImageQuad 内部是
+// `PushTexture(...) → 写 4 个顶点 → PopTexture()`，**它返回时"当前绘制命令"是 Pop 出来的那条**
+// （纹理已经换回原来那张）。之后再用 PrimVtx 写羽边，顶点就落到"别的纹理"的命令里，
+// 采出来全透明 —— 现象是几何完全正确、测试数得出 16 个顶点，但屏幕上一点痕迹都没有
+//（这个坑踩过，别改回去）。所以贴图由调用方在整圈外面统一 PushTexture/PopTexture。
+//
+// 每个 span 固定发 4 + 4 + 4 = 12 个顶点（tests/focus_ring_test.cpp 按这个布局解析）：
+//   [0..3]  贴图四边形（v0=外起点 v1=外终点 v2=内终点 v3=内起点）
+//   [4..7]  外侧羽边（near 起点/终点、far 起点/终点；far 侧 alpha = 0）
+//   [8..11] 内侧羽边（同上，朝内）
 void addTexturedSpan(ImDrawList* drawList, const Sample& from, const Sample& to, float half,
-    const TextureRef& lut, float u0, float u1, ImU32 tint)
+    const TextureRef& lut, float u0, float u1, ImU32 tint, float fringe)
 {
+    (void)lut; // 纹理由调用方 push，这里只管顶点（见上面的说明）
+
     const Point outerFrom(from.point.x + from.normal.x * half, from.point.y + from.normal.y * half);
     const Point outerTo(to.point.x + to.normal.x * half, to.point.y + to.normal.y * half);
     const Point innerTo(to.point.x - to.normal.x * half, to.point.y - to.normal.y * half);
     const Point innerFrom(from.point.x - from.normal.x * half, from.point.y - from.normal.y * half);
 
-    drawList->AddImageQuad(lut.texture, ImVec2(outerFrom.x, outerFrom.y),
-        ImVec2(outerTo.x, outerTo.y), ImVec2(innerTo.x, innerTo.y),
-        ImVec2(innerFrom.x, innerFrom.y), ImVec2(u0, 0.0f), ImVec2(u1, 0.0f),
-        ImVec2(u1, 1.0f), ImVec2(u0, 1.0f), tint);
+    const ImVec2 uvOuterFrom(u0, 0.0f);
+    const ImVec2 uvOuterTo(u1, 0.0f);
+    const ImVec2 uvInnerTo(u1, 1.0f);
+    const ImVec2 uvInnerFrom(u0, 1.0f);
+
+    const ImVec2 outerFromV(outerFrom.x, outerFrom.y);
+    const ImVec2 outerToV(outerTo.x, outerTo.y);
+    const ImVec2 innerToV(innerTo.x, innerTo.y);
+    const ImVec2 innerFromV(innerFrom.x, innerFrom.y);
+
+    // 4 个顶点 + 6 个索引（两个三角形共边）。**不能**用 6 次 PrimVtx 配 PrimReserve(6,4)：
+    // 那样写第 5、6 个顶点就越过了预留位置，_VtxCurrentIdx 与 VtxBuffer 从此错位，
+    // 后面的三角形会引用到别的段的顶点（现象：描边上出现一排黑三角）。
+    const ImVec2* corners[4] = { &outerFromV, &outerToV, &innerToV, &innerFromV };
+    const ImVec2* uvs[4]     = { &uvOuterFrom, &uvOuterTo, &uvInnerTo, &uvInnerFrom };
+    drawList->PrimReserve(6, 4);
+    const ImDrawIdx base = (ImDrawIdx)drawList->_VtxCurrentIdx;
+    for (int i = 0; i < 4; i++)
+        drawList->PrimWriteVtx(*corners[i], *uvs[i], tint);
+    drawList->PrimWriteIdx(base + 0);
+    drawList->PrimWriteIdx(base + 1);
+    drawList->PrimWriteIdx(base + 2);
+    drawList->PrimWriteIdx(base + 0);
+    drawList->PrimWriteIdx(base + 2);
+    drawList->PrimWriteIdx(base + 3);
+
+    if (fringe <= 0.0f)
+        return;
+
+    const ImU32 clear = tint & 0x00FFFFFFu; // 再往外：alpha 0（靠光栅化插值出羽边）
+
+    // 羽边**以描边边缘为中心**铺 1 个逻辑像素（=_FringeScale；Retina 上是 2 个物理像素，
+    // 每边各 1 个）。内侧一半压在实心描边上（同色、alpha 1），看不出来；外侧一半从实到透，
+    // 边缘那一两个像素就拿到部分覆盖 —— 斜的圆弧不再有台阶。
+    const float bandHalf = fringe;
+
+    // near = 描边边缘上的两个点；dir = +1 往外 / -1 往里；v 是贴图上的行（外缘 0、内缘 1）
+    auto emitFringe = [&](const Point& edgeFrom, const Point& edgeTo, float dir, float v) {
+        const ImVec2 nearA(edgeFrom.x - from.normal.x * bandHalf * dir,
+            edgeFrom.y - from.normal.y * bandHalf * dir);
+        const ImVec2 nearB(edgeTo.x - to.normal.x * bandHalf * dir,
+            edgeTo.y - to.normal.y * bandHalf * dir);
+        const ImVec2 farA(edgeFrom.x + from.normal.x * bandHalf * dir,
+            edgeFrom.y + from.normal.y * bandHalf * dir);
+        const ImVec2 farB(edgeTo.x + to.normal.x * bandHalf * dir,
+            edgeTo.y + to.normal.y * bandHalf * dir);
+
+        const ImVec2 uvNearA(u0, v), uvNearB(u1, v), uvFarA(u0, v), uvFarB(u1, v);
+
+        // 同样 4 顶点 + 6 索引：near 边 alpha = tint、far 边 alpha = 0，插值出羽边
+        drawList->PrimReserve(6, 4);
+        const ImDrawIdx fringeBase = (ImDrawIdx)drawList->_VtxCurrentIdx;
+        drawList->PrimWriteVtx(nearA, uvNearA, tint);
+        drawList->PrimWriteVtx(nearB, uvNearB, tint);
+        drawList->PrimWriteVtx(farA, uvFarA, clear);
+        drawList->PrimWriteVtx(farB, uvFarB, clear);
+        drawList->PrimWriteIdx(fringeBase + 2);
+        drawList->PrimWriteIdx(fringeBase + 3);
+        drawList->PrimWriteIdx(fringeBase + 1);
+        drawList->PrimWriteIdx(fringeBase + 2);
+        drawList->PrimWriteIdx(fringeBase + 1);
+        drawList->PrimWriteIdx(fringeBase + 0);
+    };
+
+    emitFringe(outerFrom, outerTo, 1.0f, 0.0f);  // 外侧
+    emitFringe(innerFrom, innerTo, -1.0f, 1.0f); // 内侧
 }
 
 // 在 from→to 之间按比例 ratio 插一个采样点（跨接缝时切开用）：位置与法线都插值再归一化。
@@ -325,6 +400,9 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
 
     const float half = style.lineWidth * 0.5f;
 
+    // 羽边宽度：1 逻辑像素（和 core/gradient.cpp 同口径，跟着 _FringeScale 走）
+    const float fringe = drawList->_FringeScale > 0.0f ? drawList->_FringeScale : 1.0f;
+
     // 段长：默认约 6px 一段；显式 segments 时按"总长 / segments"作为上限，
     // 保证每段的 U 跨度不超过 1/segments（tests/focus_ring_test.cpp 的接缝扫描依赖这条）。
     const float totalLength = perimeter(ring);
@@ -355,6 +433,9 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
 
     const ImU32 tint = colorWithAlpha(IM_COL32_WHITE, segmentAlpha);
 
+    // 整圈共用一条命令：贴图在这里 push 一次（addTexturedSpan 全程手写顶点）
+    drawList->PushTexture(style.lut.texture);
+
     for (size_t i = 0; i < samples.size(); i++)
     {
         const Sample& from = samples[i];
@@ -363,7 +444,7 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
         const LutSpan span = lutSpanAt(from.u, to.u, segmentPhase);
         if (!span.wrapped)
         {
-            addTexturedSpan(drawList, from, to, half, style.lut, span.u0, span.u1, tint);
+            addTexturedSpan(drawList, from, to, half, style.lut, span.u0, span.u1, tint, fringe);
             continue;
         }
 
@@ -372,12 +453,14 @@ void draw(ImDrawList* drawList, const Outline& outline, const Style& style, floa
         const float ratio  = length > 1e-6f ? (1.0f - span.u0) / length : 0.5f;
         const Sample mid   = lerpSample(from, to, ratio);
 
-        addTexturedSpan(drawList, from, mid, half, style.lut, span.u0, 1.0f, tint);
+        addTexturedSpan(drawList, from, mid, half, style.lut, span.u0, 1.0f, tint, fringe);
 
         // u1 正好是 0（最后一段的收尾）时后半段长度为 0，跳过它
         if (span.u1 > 1e-4f)
-            addTexturedSpan(drawList, mid, to, half, style.lut, 0.0f, span.u1, tint);
+            addTexturedSpan(drawList, mid, to, half, style.lut, 0.0f, span.u1, tint, fringe);
     }
+
+    drawList->PopTexture();
 }
 
 } // namespace focus_ring

@@ -39,8 +39,14 @@ TextureRef fakeLut()
     return lut;
 }
 
-// 每个贴图四边形写 4 个顶点（v0=(u0,0) v1=(u1,0) v2=(u1,1) v3=(u0,1)），
-// 这里扫一遍 UV，看有没有哪个四边形的 U 跨度不合理（跨过整张贴图 = 被拉花）。
+// 每个 span 的顶点布局（focus_ring.cpp 的 addTexturedSpan 保证这个顺序）：
+//   [0..3]  贴图四边形（外起点 / 外终点 / 内终点 / 内起点，UV 的 v = 0,0,1,1，alpha 全实）
+//   [4..7]  外侧羽边（近起点 / 近终点 / 远起点 / 远终点；远侧 alpha = 0）
+//   [8..11] 内侧羽边（同上）
+// 所以"每段"固定 12 个顶点 —— 下面所有解析都按这个步长走。
+constexpr int kSpanVertices = 12;
+
+// 扫一遍 UV，看有没有哪个贴图四边形的 U 跨度不合理（跨过整张贴图 = 被拉花）。
 struct UvScan
 {
     int quads       = 0;
@@ -59,7 +65,7 @@ UvScan scanUv(const focus_ring::Outline& outline, const focus_ring::Style& style
     focus_ring::draw(&list, outline, style, phase);
 
     UvScan scan;
-    for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+    for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
     {
         const float u0 = list.VtxBuffer[i].uv.x;
         const float u1 = list.VtxBuffer[i + 1].uv.x;
@@ -118,7 +124,7 @@ std::vector<ImVec2> ringOuterPolyline(const focus_ring::Outline& outline,
     focus_ring::draw(&list, outline, style, phase);
 
     std::vector<ImVec2> points;
-    for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+    for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
         points.push_back(list.VtxBuffer[i].pos);
     return points;
 }
@@ -135,10 +141,11 @@ int countJointGaps(const focus_ring::Outline& outline, const focus_ring::Style& 
     focus_ring::draw(&list, outline, style, phase);
 
     int gaps = 0;
-    for (int i = 0, quad = 0; i + 7 < list.VtxBuffer.Size; i += 4, quad++)
+    for (int i = 0, quad = 0; i + 2 * kSpanVertices - 1 < list.VtxBuffer.Size;
+         i += kSpanVertices, quad++)
     {
-        const ImVec2 end   = list.VtxBuffer[i + 1].pos; // 本段外终点
-        const ImVec2 start = list.VtxBuffer[i + 4].pos; // 下一段外起点
+        const ImVec2 end   = list.VtxBuffer[i + 1].pos;              // 本段外终点
+        const ImVec2 start = list.VtxBuffer[i + kSpanVertices].pos;  // 下一段外起点
         // 阈值 0.05px：浮点噪声在 0.02px 量级；而"每段各自算法线"那种缺口是
         // 2*half*tan(Δθ/2) —— 线宽 6 时圆角上是 0.6px、直角拐角上是 6px，差两个数量级。
         const float dx = end.x - start.x;
@@ -448,7 +455,7 @@ int main()
             list._FringeScale    = 1.0f;
             list._InvFringeScale = 1.0f;
             focus_ring::draw(&list, small, style, 0.0f);
-            for (int i = 0; i + 3 < list.VtxBuffer.Size; i += 4)
+            for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
             {
                 const ImVec2& outerFrom = list.VtxBuffer[i].pos;
                 const ImVec2& innerFrom = list.VtxBuffer[i + 3].pos;
@@ -459,6 +466,47 @@ int main()
             }
         }
         check(uniform, "描边宽度处处等于 lineWidth");
+
+        // ④ 羽边：每段 16 个顶点；羽边的外侧顶点正好在描边外缘再往外 1px，且 alpha = 0
+        //    （1px 之外 alpha 到 0，光栅化插值出抗锯齿；没有这层，斜向圆弧会露出台阶）
+        {
+            ImDrawList list(ImGui::GetDrawListSharedData());
+            list._ResetForNewFrame();
+            list._FringeScale    = 1.0f;
+            list._InvFringeScale = 1.0f;
+            focus_ring::draw(&list, small, style, 0.0f);
+
+            checkEqualInt(list.VtxBuffer.Size % kSpanVertices, 0, "每段固定 12 个顶点");
+
+            int farOffsetOk  = 0;
+            int nearOffsetOk = 0;
+            bool fringeIsClear = true;
+            for (int i = 0; i + kSpanVertices - 1 < list.VtxBuffer.Size; i += kSpanVertices)
+            {
+                // 外侧羽边：near 在描边外缘内侧 _FringeScale、far 在外侧同样距离
+                const ImVec2& outerFrom = list.VtxBuffer[i].pos;
+                const ImVec2& nearV     = list.VtxBuffer[i + 4].pos;
+                const ImVec2& farV      = list.VtxBuffer[i + 6].pos;
+                const float nearD = std::sqrt((nearV.x - outerFrom.x) * (nearV.x - outerFrom.x)
+                    + (nearV.y - outerFrom.y) * (nearV.y - outerFrom.y));
+                const float farD = std::sqrt((farV.x - outerFrom.x) * (farV.x - outerFrom.x)
+                    + (farV.y - outerFrom.y) * (farV.y - outerFrom.y));
+                // list._FringeScale = 1.0 -> 两侧各 1px
+                if (std::fabs(farD - 1.0f) <= 0.05f)
+                    farOffsetOk++;
+                if (std::fabs(nearD - 1.0f) <= 0.05f)
+                    nearOffsetOk++;
+
+                // 远侧 alpha 必须是 0（渐变），近侧必须是实心
+                const ImU32 farAlpha  = (list.VtxBuffer[i + 6].col >> 24) & 0xFFu;
+                const ImU32 nearAlpha = (list.VtxBuffer[i + 4].col >> 24) & 0xFFu;
+                if (farAlpha != 0 || nearAlpha == 0)
+                    fringeIsClear = false;
+            }
+            check(farOffsetOk > 0, "羽边 far 侧在描边外缘外 1px");
+            check(nearOffsetOk > 0, "羽边 near 侧在描边外缘内 1px（以边缘为中心）");
+            check(fringeIsClear, "羽边 far 侧 alpha = 0、near 侧实心（是渐变而不是实色）");
+        }
     }
 
 
