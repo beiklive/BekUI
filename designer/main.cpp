@@ -41,6 +41,8 @@ int main(int argc, char** argv)
         if (std::strcmp(argv[i], "--palette") == 0)
             options.openPalette = true;
     }
+    if (const char* name = argValue(argc, argv, "--create-project"))
+        options.createProject = name;
     if (const char* zoom = argValue(argc, argv, "--zoom"))
         options.zoom = (float)std::atof(zoom);
     if (const char* click = argValue(argc, argv, "--click"))

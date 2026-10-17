@@ -38,6 +38,7 @@ class DesignerApp
         std::string screenshotPath;
         int         frames = 3;
         std::string initialFile; // --file：启动就直接打开这个文件（自动化验证用）
+        std::string createProject; // --create-project <名字>：启动就从 default 模板建一个项目（自动化验证用）
         bool        startOnSource = false; // --source：启动就切到源码页签
         float       clickX = -1.0f;        // --click x,y：启动后模拟一次点击（自动化验证点选）
         float       clickY = -1.0f;

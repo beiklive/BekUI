@@ -277,6 +277,12 @@ bool DesignerApp::init(const Options& options, std::string& error)
     {
         this->lastError = draftError;
     }
+    if (!this->options.createProject.empty())
+    {
+        // 自动化验证"从模板创建项目"整条路径：复制 → 打开
+        this->createProjectFromTemplate(this->options.createProject, "resources/theme/default");
+    }
+
     if (!this->options.initialFile.empty())
     {
         this->openFile(this->options.initialFile);
@@ -1630,6 +1636,32 @@ bool DesignerApp::createProjectFromTemplate(const std::string& name, const std::
         return false;
     }
 
+    // 新项目的 theme.json 要把 name 改成项目名：装载器按 theme.json 的 name 匹配，
+    // 名字对不上会失败，界面就停在原来的主题上（实测：复制成功但标题仍是 default）。
+    const std::string themeFile = target + "/theme.json";
+    if (std::filesystem::exists(themeFile, ec))
+    {
+        std::ifstream in(themeFile);
+        std::stringstream buffer;
+        buffer << in.rdbuf();
+        in.close();
+        std::string text = buffer.str();
+        const size_t namePos = text.find("\"name\"");
+        if (namePos != std::string::npos)
+        {
+            const size_t colon = text.find(':', namePos);
+            const size_t firstQuote = text.find('"', colon);
+            const size_t secondQuote = text.find('"', firstQuote + 1);
+            if (colon != std::string::npos && firstQuote != std::string::npos
+                && secondQuote != std::string::npos)
+            {
+                text = text.substr(0, firstQuote + 1) + name + text.substr(secondQuote);
+                std::ofstream out(themeFile, std::ios::trunc);
+                out << text;
+            }
+        }
+    }
+
     this->welcomeVisible = false;
     this->openThemeDir(target, name);
     this->lastError.clear();
@@ -1996,7 +2028,8 @@ void DesignerApp::drawLayerOps()
 
     static const char* kOps[] = { "rect", "text", "image", "shadow", "glass", "custom" };
     ImGui::SetNextItemWidth(90.0f * bklv::getUiScale());
-    if (ImGui::BeginCombo("##newLayerOp", "＋ 添加组成部分", ImGuiComboFlags_HeightLarge))
+    ImGui::SetNextItemWidth(150.0f * bklv::getUiScale());
+    if (ImGui::BeginCombo("##newLayerOp", "＋ 添加", ImGuiComboFlags_HeightLarge))
     {
         for (const char* op : kOps)
         {
