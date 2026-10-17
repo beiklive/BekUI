@@ -20,3 +20,22 @@ endforeach()
 add_library(designer_core STATIC ${DESIGNER_CORE_ABS})
 target_link_libraries(designer_core PUBLIC bklv::bklv)
 target_include_directories(designer_core PUBLIC "${CMAKE_SOURCE_DIR}")
+
+# ---- 程序本体（P2 起）----
+set(DESIGNER_UI_SOURCES
+    main.cpp
+    ui/designer_app.cpp
+)
+set(DESIGNER_UI_ABS "")
+foreach(src IN LISTS DESIGNER_UI_SOURCES)
+    list(APPEND DESIGNER_UI_ABS "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+endforeach()
+
+add_executable(designer ${DESIGNER_UI_ABS})
+target_link_libraries(designer PRIVATE designer_core)
+set_target_properties(designer PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BKLV_OUT_DIR}"
+)
+bklv_copy_resources(designer)
