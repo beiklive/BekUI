@@ -242,5 +242,10 @@
     "fontSize": 18,
     "subtitleSize": 15,
     "paddingTopBottom": 10
+  },
+  "tabBar": {
+    "height": 64,
+    "paddingV": 8,
+    "paddingH": 16
   }
 }

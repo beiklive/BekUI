@@ -101,7 +101,8 @@
     "base/children_ref.json",
     "base/sample_card.json",
     "view/recycler_json_demo.json",
-    "view/page_pokedex_json.json"
+    "view/page_pokedex_json.json",
+    "widget/tab_bar.json"
   ],
   "author": "beiklive",
   "description": "ios：苹果风格主题（第一版骨架，整份沿用 default 的值，随后按 iOS 系统色/分组列表/大标题重做）",

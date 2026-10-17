@@ -57,14 +57,12 @@ DemoApp::DemoApp()
     this->contentRoot->setHeightPercentage(100.0f);
     this->contentRoot->setAlignItems(AlignItems::STRETCH);
 
-    Box* body = makeRow(getTheme().number("metric.spacing.xl", 24.0f), AlignItems::STRETCH);
+    // 苹果风外壳：内容占满宽度，导航是**底部 Tab 栏**（原来是左侧栏 + Switch 菜单语义）
+    Box* body = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
     body->setHeight(AUTO);
     body->setGrow(1.0f);
     body->setWidth(AUTO); // 有左右 margin 时不能写 100%：会多出边距那一段
     body->setAlignItems(AlignItems::STRETCH);
-
-    this->sidebar = new Sidebar(getStr("app/pages"));
-    body->addView(this->sidebar);
 
     Box* right = makeColumn(getTheme().number("metric.spacing.md", 12.0f));
     right->setGrow(1.0f);
@@ -78,6 +76,11 @@ DemoApp::DemoApp()
     this->scroller->setGrow(1.0f);
     this->scroller->setShowScrollingIndicator(true);
     right->addView(this->scroller);
+    body->addView(right);
+
+    // 底部导航：条目多了横向滚动；A/点击才切页（iOS 语义）
+    this->tabBar = new TabBar();
+    body->addView(this->tabBar);
 
     // 大标题（iOS 风格）：内容还在顶部时是"设置"这种大号标题，滚过一个行高后
     // 收成页头里的小标题。进度由 Header 每帧读滚动偏移算 —— 只改绘制期量，零重排。
@@ -85,7 +88,6 @@ DemoApp::DemoApp()
     this->header->setCollapseSource(this->scroller);
     this->header->setCollapseDistance(48.0f);
 
-    body->addView(right);
     // 内容区左右留白：和页头/底栏的 margin 用同一个主题值，四边看起来才是一套
     const float sideMargin = getTheme().number("metric.appletFrame.paddingSides", 30.0f);
     body->setMargins(0.0f, sideMargin, 0.0f, sideMargin);
@@ -129,13 +131,11 @@ DemoApp::DemoApp()
     this->addPage("theme", getStr("tab/theme"), getStr("page/theme_sub"), false, "palette");
     this->addPage("text", getStr("tab/text"), getStr("page/text_sub"), false, "format_align_left");
     this->addPage("layout", getStr("tab/layout"), getStr("page/layout_sub"), false, "grid_on");
-    this->sidebar->addSeparator(); // 分组：示例 / 组件 / 工具
     this->addPage("list", getStr("tab/list"), getStr("page/list_sub"), true, "list");
     this->addPage("pokedex", getStr("tab/pokedex"), getStr("page/pokedex_sub"), true, "favorite");
     this->addPage("json", getStr("tab/json"), getStr("page/json_sub"), false, "description");
     this->addPage("nav", getStr("tab/nav"), getStr("page/nav_sub"), false, "menu");
     this->addPage("overlay", getStr("tab/overlay"), getStr("page/overlay_sub"), false, "layers");
-    this->sidebar->addSeparator();
     this->addPage("scroll", getStr("tab/scroll"), getStr("page/scroll_sub"), false, "drag_indicator");
     this->addPage("transform", getStr("tab/transform"), getStr("page/transform_sub"), false, "fullscreen");
     this->addPage("settings", getStr("tab/settings"), getStr("page/settings_sub"), false, "settings");
@@ -192,12 +192,11 @@ void DemoApp::addPage(const std::string& id, const std::string& name, const std:
     page.selfScrolling = selfScrolling;
     this->pages.push_back(page);
 
-    // 捕获 this + index：DemoApp 活到程序结束，安全；捕获局部下标引用会悬空
-    // 聚焦 = 切页（不带内容焦点）；A = 切页并把焦点交给子页面的默认控件
-    // 侧栏条目 = 图标 + 文字（图标字形是字形表里的名字，建树期就查得到）
-    this->sidebar->addItem(name, icon::glyphByName(iconName),
-        [this, index] { this->selectPage(index, false); },
-        [this, index] { this->selectPage(index, true); });
+    // 捕获 this + index：DemoApp 活到程序结束，安全；捕获局部下标引用会悬空。
+    // TabBar 是 iOS 语义：**A / 点击才切页**（焦点只是移过去），切完把焦点交给页面默认控件。
+    // 图标暂时没接（TabBar 目前只有文字；接图标要给 tab_cell 加 icon 层，留到后面）。
+    (void)iconName;
+    this->tabBar->addItem(name, [this, index] { this->selectPage(index, true); });
 
     // 工厂：切到这一页时现建（旧页由 Pager 删）
     this->pager->setPageFactory(id, [this, index](PageContext&) -> View* {
@@ -272,7 +271,7 @@ void DemoApp::selectPage(size_t index, bool focusContent)
         return;
 
     this->currentPage = index;
-    this->sidebar->setSelectedIndex(index);
+    this->tabBar->setSelectedIndex(index);
 
     // 页头显示当前页
     this->header->setTitle(this->pages[index].name);
@@ -433,10 +432,11 @@ void DemoApp::update()
         const size_t page = (size_t)this->pendingStartPage;
         this->pendingStartPage = -1;
 
-        // 焦点落到侧栏对应条目上：侧栏"聚焦即切页"，这一步就把页面切过去了
-        if (View* item = this->sidebar->getItemView(page))
+        // 焦点落到 TabBar 对应条目上，然后真正切过去（TabBar 是 A/点击才切，
+        // 所以这里显式 select 一次；focusContent=true 把焦点交给页面默认控件）
+        if (View* item = this->tabBar->getItemView(page))
             getInputManager().giveFocus(item);
-        this->selectPage(page, false);
+        this->selectPage(page, true);
     }
 
     // 自管滚动的页（内部有列表）：外层框要和滚动器等高，列表才会在框里滚

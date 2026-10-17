@@ -6,7 +6,7 @@
 //     ├─ BackdropLayer  背景（本期不放东西）
 //     ├─ ContentLayer   ← **显式留白**：padding top/bottom = 页头/底栏高度
 //     │                    ├─ 基础内容（下钻栈的栈底）：body(ROW)
-//     │                    │    ├─ Sidebar（页面列表）
+//     │                    │    ├─ TabBar（底部导航，苹果风）
 //     │                    │    └─ right(COLUMN)[ 顶部按钮行 | scroller ]
 //     │                    │         scroller = Pager 的槽（同级换页在这里换内容）
 //     │                    └─ 下钻出来的详情页（Shell::pushContentView）
@@ -92,7 +92,7 @@ class DemoApp
     bklv::Header* header       = nullptr;
     bklv::BottomBar* footer    = nullptr;
     bklv::Box* contentRoot     = nullptr;
-    bklv::Sidebar* sidebar     = nullptr;
+    bklv::TabBar* tabBar      = nullptr;
     bklv::ScrollingFrame* scroller = nullptr;
     bklv::Pager* pager         = nullptr;
 
