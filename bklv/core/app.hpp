@@ -36,6 +36,9 @@ class App
 
     // 设置根视图，App 接管其所有权。
     void setRootView(View* view);
+
+    // 清屏色（0..1）：浅色主题的工具/编辑器宿主需要它；默认深色。必须在 run() 前设置。
+    void setClearColor(float r, float g, float b);
     View* getRootView() const { return this->root; }
     Box* getRootBox() const { return this->root != nullptr ? this->root->asBox() : nullptr; }
 
@@ -153,6 +156,7 @@ class App
     std::string screenshotPath;      // 非空表示要截图
     int screenshotDelay = 0;         // 还要等几帧
     bool quitRequested  = false;
+    float clearColor[3] = { 0.10f, 0.10f, 0.12f }; // 默认深色，工具可改
     bool debugLayerRequested = false; // 根视图还没就绪时先记下（setRootView 后再开）
     // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
     std::vector<std::pair<std::string, float>> pendingNotifications;

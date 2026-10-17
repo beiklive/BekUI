@@ -66,6 +66,13 @@ App::~App()
     this->root = nullptr;
 }
 
+void App::setClearColor(float r, float g, float b)
+{
+    this->clearColor[0] = r;
+    this->clearColor[1] = g;
+    this->clearColor[2] = b;
+}
+
 void App::setRootView(View* view)
 {
     // 通知层/调试层挂在旧根上，换根后指针失效（和模态栈一样必须清掉）
@@ -496,7 +503,8 @@ int App::run(const std::string& title, int width, int height)
     this->renderBackend = backend;
     glass::getGlassService().setBackend(backend->getGlassBackend());
 
-    const float clearColor[4] = { 0.10f, 0.10f, 0.12f, 1.0f };
+    const float clearColor[4] = { this->clearColor[0], this->clearColor[1], this->clearColor[2],
+        1.0f };
 
     // 平台自己的循环包装：Switch 上需要先做 applet / EGL 初始化。
     platform->runLoop([&]() {

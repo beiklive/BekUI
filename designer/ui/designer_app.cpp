@@ -207,7 +207,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     auto canvasHost = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     canvasHost->setGrow(1.0f);
-    canvasHost->setBackgroundColor(IM_COL32(0x1E, 0x1E, 0x1E, 0xFF)); // Figma 式中性画布底
+    canvasHost->setBackgroundColor(IM_COL32(0xF2, 0xF2, 0xF7, 0xFF)); // 苹果式浅灰画布底
     // 名字不能给空：空名字会让库打「主题里没有控件外观 ""」的警告，而且画不出一笔
     auto canvas = new bklv::AppearanceView("base/box", false);
     canvas->setGrow(1.0f);                              // 填满画布区的高度
@@ -236,6 +236,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
     row->setGrow(1.0f);
     root->addView(row.release());
 
+    this->app.setClearColor(0.95f, 0.95f, 0.97f); // 苹果式浅色底
     this->app.setRootView(root.release());
 
     if (this->options.zoom > 0.0f)
@@ -516,26 +517,21 @@ void DesignerApp::drawPanels()
     {
         // 设计器按**桌面程序**的规格排版（不是 720p × uiScale 那套）：
         // 正文约 14pt，边距/行高按 1x 桌面密度；画布仍按 720p 设计基准预览内容。
-        styleApplied            = true;
-        const float u           = bklv::getUiScale();
-        ImGui::GetIO().FontGlobalScale = 0.70f; // 字体图集是 20px 栅格 → 约 14pt
-        ImGuiStyle& style       = ImGui::GetStyle();
-        style.WindowRounding    = 10.0f;
-        style.ChildRounding     = 8.0f;
-        style.FrameRounding     = 6.0f;
-        style.PopupRounding     = 8.0f;
-        style.GrabRounding      = 6.0f;
-        style.ScrollbarRounding = 8.0f;
-        style.ScrollbarSize     = 10.0f * u;
-        style.WindowPadding     = ImVec2(16.0f * u, 14.0f * u);
-        style.FramePadding      = ImVec2(10.0f * u, 6.0f * u);
-        style.ItemSpacing       = ImVec2(10.0f * u, 8.0f * u);
-        style.ItemInnerSpacing  = ImVec2(8.0f * u, 6.0f * u);
-        style.WindowBorderSize  = 0.0f;
-        style.FrameBorderSize   = 0.0f;
-        style.WindowTitleAlign  = ImVec2(0.0f, 0.5f);
+        styleApplied = true;
+        this->applyIosStyle();
     }
 
+    if (this->canvasHost != nullptr)
+    {
+        static bool welcomeApplied = false;
+        if (welcomeApplied != this->welcomeVisible)
+        {
+            welcomeApplied = this->welcomeVisible;
+            this->canvasHost->setVisibility(this->welcomeVisible ? bklv::Visibility::GONE
+                                                                 : bklv::Visibility::VISIBLE);
+        }
+    }
+    this->drawWelcome();
     this->drawQuickOpen(); // 面板之前画浮层（它落在右栏空白区，不会被画布盖住）
 
     const float u     = bklv::getUiScale();
@@ -1537,6 +1533,167 @@ void DesignerApp::drawViewPanel()
         ImGui::PopID();
     }
     ImGui::EndChild();
+}
+
+void DesignerApp::applyIosStyle()
+{
+    const float u = bklv::getUiScale();
+    ImGuiIO&    io = ImGui::GetIO();
+    io.FontGlobalScale = 0.72f; // 字体图集 20px 栅格 → 约 14pt
+
+    ImGuiStyle& style       = ImGui::GetStyle();
+    style.WindowRounding    = 14.0f;
+    style.ChildRounding     = 12.0f;
+    style.FrameRounding     = 9.0f;
+    style.PopupRounding     = 12.0f;
+    style.GrabRounding      = 8.0f;
+    style.ScrollbarRounding = 10.0f;
+    style.ScrollbarSize     = 8.0f * u;
+    style.WindowPadding     = ImVec2(18.0f * u, 16.0f * u);
+    style.FramePadding      = ImVec2(12.0f * u, 7.0f * u);
+    style.ItemSpacing       = ImVec2(12.0f * u, 10.0f * u);
+    style.ItemInnerSpacing  = ImVec2(8.0f * u, 6.0f * u);
+    style.WindowBorderSize  = 0.0f;
+    style.FrameBorderSize   = 0.0f;
+    style.CellPadding       = ImVec2(10.0f * u, 6.0f * u);
+    style.WindowTitleAlign  = ImVec2(0.0f, 0.5f);
+
+    // 苹果系统色（light）：systemGroupedBackground / secondarySystemGroupedBackground
+    ImVec4* c = style.Colors;
+    c[ImGuiCol_Text]                  = ImVec4(0.11f, 0.11f, 0.12f, 1.00f);
+    c[ImGuiCol_TextDisabled]          = ImVec4(0.56f, 0.56f, 0.58f, 1.00f); // secondaryLabel
+    c[ImGuiCol_WindowBg]              = ImVec4(0.95f, 0.95f, 0.97f, 1.00f); // groupedBackground
+    c[ImGuiCol_ChildBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f); // 白卡片
+    c[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    c[ImGuiCol_Border]                = ImVec4(0.78f, 0.78f, 0.80f, 1.00f); // separator
+    c[ImGuiCol_FrameBg]               = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
+    c[ImGuiCol_FrameBgHovered]        = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
+    c[ImGuiCol_FrameBgActive]         = ImVec4(0.86f, 0.86f, 0.88f, 1.00f);
+    c[ImGuiCol_TitleBg]               = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
+    c[ImGuiCol_TitleBgActive]         = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
+    c[ImGuiCol_Button]                = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
+    c[ImGuiCol_ButtonHovered]         = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
+    c[ImGuiCol_ButtonActive]          = ImVec4(0.84f, 0.84f, 0.86f, 1.00f);
+    c[ImGuiCol_Header]                = ImVec4(0.00f, 0.48f, 1.00f, 0.14f); // systemBlue 14%
+    c[ImGuiCol_HeaderHovered]         = ImVec4(0.00f, 0.48f, 1.00f, 0.10f);
+    c[ImGuiCol_HeaderActive]          = ImVec4(0.00f, 0.48f, 1.00f, 0.20f);
+    c[ImGuiCol_Separator]             = ImVec4(0.78f, 0.78f, 0.80f, 1.00f);
+    c[ImGuiCol_CheckMark]             = ImVec4(0.00f, 0.48f, 1.00f, 1.00f); // systemBlue
+    c[ImGuiCol_SliderGrab]            = ImVec4(0.00f, 0.48f, 1.00f, 1.00f);
+    c[ImGuiCol_SliderGrabActive]      = ImVec4(0.00f, 0.40f, 0.85f, 1.00f);
+    c[ImGuiCol_ScrollbarBg]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    c[ImGuiCol_ScrollbarGrab]         = ImVec4(0.60f, 0.60f, 0.62f, 0.60f);
+    c[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.50f, 0.50f, 0.52f, 0.75f);
+}
+
+bool DesignerApp::createProjectFromTemplate(const std::string& name, const std::string& templateDir)
+{
+    if (name.empty())
+    {
+        this->lastError = "项目名不能为空";
+        return false;
+    }
+    const char* home = std::getenv("HOME");
+    const char* appdata = std::getenv("APPDATA");
+    std::string base = appdata != nullptr ? std::string(appdata) + "/bklv-designer/projects"
+                                          : std::string(home != nullptr ? home
+                                                                        : "/tmp")
+            + "/.bklv-designer/projects";
+    const std::string target = base + "/" + name;
+
+    std::error_code ec;
+    if (std::filesystem::exists(target, ec))
+    {
+        this->lastError = "同名项目已存在：" + target;
+        return false;
+    }
+    std::filesystem::create_directories(base, ec);
+    std::filesystem::copy(bklv::resourcePath(templateDir), target,
+        std::filesystem::copy_options::recursive, ec);
+    if (ec)
+    {
+        this->lastError = "复制模板失败：" + ec.message();
+        return false;
+    }
+
+    this->welcomeVisible = false;
+    this->openThemeDir(target, name);
+    this->lastError.clear();
+    return true;
+}
+
+void DesignerApp::drawWelcome()
+{
+    if (!this->welcomeVisible)
+        return;
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float          u        = bklv::getUiScale();
+    const ImVec2         size(520.0f * u, 420.0f * u);
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + (viewport->WorkSize.x - size.x) * 0.5f,
+                               viewport->WorkPos.y + (viewport->WorkSize.y - size.y) * 0.5f),
+        ImGuiCond_Always);
+    ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+    ImGui::Begin("##welcome", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoScrollbar);
+
+    ImGui::Dummy(ImVec2(0.0f, 6.0f * u));
+    ImGui::TextDisabled("外观设计器");
+    ImGui::Dummy(ImVec2(0.0f, 2.0f * u));
+    ImGui::SetWindowFontScale(1.45f);
+    ImGui::TextUnformatted("开始");
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::Dummy(ImVec2(0.0f, 8.0f * u));
+    ImGui::TextWrapped("做界面外观不用写代码：挑一个模板、改颜色和尺寸，保存后立刻生效。");
+
+    ImGui::Dummy(ImVec2(0.0f, 14.0f * u));
+
+    // 两张卡片：从模板创建 / 编辑已有
+    const ImVec2 card(ImGui::GetContentRegionAvail().x, 124.0f * u); // 标题+说明+整行按钮
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
+    ImGui::BeginChild("##newProject", card, true);
+    ImGui::SetWindowFontScale(1.12f);
+    ImGui::TextUnformatted("从模板创建项目");
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::TextDisabled("复制一份内置模板，改的是你自己的副本");
+    if (ImGui::Button("创建…##new", ImVec2(-1.0f, 0.0f)))
+        this->createPanelVisible = true;
+    ImGui::EndChild();
+
+    ImGui::Dummy(ImVec2(0.0f, 8.0f * u));
+
+    ImGui::BeginChild("##openProject", card, true);
+    ImGui::SetWindowFontScale(1.12f);
+    ImGui::TextUnformatted("编辑已有项目");
+    ImGui::SetWindowFontScale(1.0f);
+    ImGui::TextDisabled("打开内置主题，或你之前创建的项目");
+    if (ImGui::Button("打开…##open", ImVec2(-1.0f, 0.0f)))
+    {
+        this->welcomeVisible = false;
+        this->wantOpenTheme  = true;
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+
+    if (this->createPanelVisible)
+    {
+        ImGui::Dummy(ImVec2(0.0f, 8.0f * u));
+        ImGui::TextDisabled("项目名");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##projectName", "例如 我的主题", this->projectName,
+            sizeof(this->projectName));
+        for (const std::string& theme : this->listThemes())
+        {
+            const std::string label = "用 " + theme + " 作模板";
+            if (ImGui::Button(label.c_str()))
+                this->createProjectFromTemplate(this->projectName, theme);
+        }
+    }
+
+    if (!this->lastError.empty())
+        ImGui::TextColored(ImVec4(0.85f, 0.20f, 0.18f, 1.0f), "%s", this->lastError.c_str());
+    ImGui::End();
 }
 
 void DesignerApp::updateCanvasTitle()

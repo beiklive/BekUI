@@ -72,6 +72,9 @@ class DesignerApp
     void drawOpenTheme();
     void syncCanvasSelection(); // 点选层 → 画布上的选中框
     void updateCanvasTitle();   // 画板标题（画布上方的 muted 小字）
+    void drawWelcome();         // 启动欢迎页：从模板创建 / 编辑已有
+    void applyIosStyle();       // 苹果风配色（浅色分组底 + 白卡片 + 系统蓝）
+    bool createProjectFromTemplate(const std::string& name, const std::string& templateDir);
     bklv::Label* canvasTitle = nullptr;
     void openThemeDir(const std::string& dir, const std::string& name);
     std::vector<std::string> listThemes() const;
@@ -136,6 +139,9 @@ class DesignerApp
     std::string       lastListGroup;   // 左栏分组节头（只在分组变化时画一次）
     bool              groupOpen[4] = { true, true, true, true }; // base / widget / view / tokens
     std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
+    bool              welcomeVisible = true; // 启动先看欢迎页
+    bool              createPanelVisible = false;
+    char              projectName[96] = {0};
     bool              wantOpenTheme = false;
     bool              openThemeVisible = false;
     char              themePathBuffer[512] = {0};
