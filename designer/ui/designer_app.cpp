@@ -42,6 +42,51 @@ std::string readWhole(const std::string& path)
 
 } // namespace
 
+namespace
+{
+
+// Figma 风格的下划线页签：文字靠左、选中项底部一条强调色线、悬停变亮。
+// 返回被点中的下标（没点中返回 -1）。
+int underlineTabs(const char* const* labels, int count, int* active)
+{
+    int       clicked = -1;
+    const float u     = bklv::getUiScale();
+    const ImU32 accent = ImGui::GetColorU32(ImGuiCol_CheckMark);
+    const ImU32 text   = ImGui::GetColorU32(ImGuiCol_Text);
+    const ImU32 muted  = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    for (int i = 0; i < count; i++)
+    {
+        if (i > 0)
+            ImGui::SameLine(0.0f, 18.0f * u);
+
+        ImGui::PushID(i);
+        const ImVec2 labelSize = ImGui::CalcTextSize(labels[i]);
+        const ImVec2 pos       = ImGui::GetCursorScreenPos();
+        const ImVec2 size(labelSize.x + 6.0f * u, labelSize.y + 12.0f * u);
+        const bool   hovered   = ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+        const bool   isActive  = i == *active;
+
+        if (ImGui::InvisibleButton("##tab", size))
+            clicked = i;
+
+        drawList->AddText(ImVec2(pos.x + 3.0f * u, pos.y + 6.0f * u),
+            isActive ? text : (hovered ? text : muted), labels[i]);
+        if (isActive)
+        {
+            drawList->AddRectFilled(ImVec2(pos.x + 3.0f * u, pos.y + size.y - 2.0f * u),
+                ImVec2(pos.x + size.x - 3.0f * u, pos.y + size.y), accent, 1.0f);
+        }
+        ImGui::PopID();
+    }
+    if (clicked >= 0)
+        *active = clicked;
+    return clicked;
+}
+
+} // namespace
+
 bool DesignerApp::init(const Options& options, std::string& error)
 {
     this->options = options;
@@ -68,7 +113,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     auto canvasHost = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     canvasHost->setGrow(1.0f);
-    canvasHost->setBackgroundColor(IM_COL32(0x16, 0x1a, 0x22, 0xFF));
+    canvasHost->setBackgroundColor(IM_COL32(0x1E, 0x1E, 0x1E, 0xFF)); // Figma 式中性画布底
     auto canvas = new bklv::AppearanceView(std::string(), false);
     canvas->setGrow(1.0f);                              // 填满画布区的高度
     canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
@@ -456,11 +501,8 @@ void DesignerApp::drawPanels()
         if (!this->saveStatus.empty())
             ImGui::TextDisabled("%s", this->saveStatus.c_str());
         ImGui::Separator();
-        if (ImGui::Button("属性"))
-            this->inspectorTab = 0;
-        ImGui::SameLine();
-        if (ImGui::Button("源码"))
-            this->inspectorTab = 1;
+        static const char* kTabs[] = { "属性", "源码" };
+        underlineTabs(kTabs, 2, &this->inspectorTab);
         ImGui::Separator();
 
         if (this->inspectorTab == 1)
@@ -1170,11 +1212,8 @@ void DesignerApp::drawViewPanel()
         ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
     ImGui::Separator();
 
-    if (ImGui::Button("属性"))
-        this->inspectorTab = 0;
-    ImGui::SameLine();
-    if (ImGui::Button("源码"))
-        this->inspectorTab = 1;
+    static const char* kTabs[] = { "属性", "源码" };
+    underlineTabs(kTabs, 2, &this->inspectorTab);
     ImGui::Separator();
 
     if (this->inspectorTab == 1)
@@ -1243,7 +1282,7 @@ void DesignerApp::drawViewPanel()
         std::snprintf(buffer, sizeof(buffer), "%s", current.c_str());
         // 标签单独一行：ImGui 的 SetNextItemWidth(-1) 会把"控件前的标签"挤出可视区
         ImGui::TextUnformatted(field.key.c_str());
-        ImGui::SetNextItemWidth(-1);
+        ImGui::SetNextItemWidth(-1.0f);
         bool committed = false;
 
         using bklv::AttributeKind;
