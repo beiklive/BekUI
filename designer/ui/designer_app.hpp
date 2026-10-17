@@ -7,6 +7,9 @@
 #include <vector>
 
 #include "bklv/core/app.hpp"
+#include "designer/core/appearance_doc.hpp"
+#include "designer/core/layer_fields.hpp"
+#include "designer/core/undo_stack.hpp"
 
 namespace bklv { class Header; }
 
@@ -44,6 +47,9 @@ class DesignerApp
     void drawMenuBar();
     void drawFileList();
     void drawJsonView();
+    void drawInspector();
+    void saveCurrent();
+    void applyFieldEdit(const std::string& key, const designer::Json& value);
     void drawStatusBar();
     bool openFile(const std::string& relPath);
 
@@ -58,6 +64,12 @@ class DesignerApp
     float            fileFilterWidth = 320.0f;
     char             filter[128] = {0};
     bklv::Header*    header = nullptr; // 根视图（库的控件）：标题 + 状态副标题
+    AppearanceDoc    appearance;      // 当前打开的外观文件（P3 只编辑 base/widget）
+    bool             appearanceLoaded = false;
+    int              selectedLayer = -1;
+    UndoStack        undo;
+    std::string      saveStatus;
+    long long        fileMtimeAtLoad = 0;
     bool             lastErrorEnabled = false;
 };
 

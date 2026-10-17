@@ -10,6 +10,7 @@ set(DESIGNER_CORE_SOURCES
     core/appearance_doc.cpp
     core/save_transaction.cpp
     core/undo_stack.cpp
+    core/layer_fields.cpp
 )
 
 set(DESIGNER_CORE_ABS "")
