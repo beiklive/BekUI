@@ -10,6 +10,7 @@
 #include "bklv/core/box.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/appearance.hpp"
+#include "bklv/core/logger.hpp"
 #include "designer/core/save_transaction.hpp"
 #include "bklv/core/ui_scale.hpp"
 #include "bklv/views/label.hpp"
@@ -296,6 +297,25 @@ void DesignerApp::update()
     }
 
     this->maybeAutosave();
+
+    // 视图预览：鼠标点击（或 --click 模拟）→ 选中节点
+    if (this->viewLoaded && this->viewPreview != nullptr)
+    {
+        if (this->pendingClick)
+        {
+            if (this->clickDelayFrames < 5)
+                this->clickDelayFrames++;
+            else
+            {
+                this->pendingClick = false;
+                this->selectNodeAt(this->options.clickX, this->options.clickY);
+            }
+        }
+        else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::GetIO().WantCaptureMouse)
+        {
+            this->selectNodeAt(ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
+        }
+    }
 
     if (!this->pendingFile.empty())
         this->drawPendingSwitchPopup();
@@ -742,6 +762,59 @@ void DesignerApp::rebuildViewPreview()
     this->viewPreview = preview;
     this->canvasHost->asBox()->addView(preview);
     this->lastError.clear();
+
+    // DFS 序（先父后子、子按书写顺序）—— 与 ViewDoc::listNodes 的顺序一致
+    this->previewOrder.clear();
+    std::function<void(bklv::View*)> walk = [&](bklv::View* node) {
+        this->previewOrder.push_back(node);
+        if (bklv::Box* box = node != nullptr ? node->asBox() : nullptr)
+            for (bklv::View* child : box->getChildren())
+                walk(child);
+    };
+    walk(preview);
+}
+
+void DesignerApp::selectNodeAt(float screenX, float screenY)
+{
+    if (!this->viewLoaded || this->viewPreview == nullptr || this->previewOrder.empty())
+        return;
+
+    const std::vector<ViewNodeInfo> nodes = this->viewDoc.listNodes();
+    std::vector<int>                typed;
+    for (int i = 0; i < (int)nodes.size(); i++)
+        if (!nodes[(size_t)i].type.empty())
+            typed.push_back(i);
+
+    if (typed.size() != this->previewOrder.size())
+    {
+        BKLV_LOG_WARNING("画布点选跳过：节点数对不上（include 展开？）");
+        return;
+    }
+
+    int bestNode = -1;
+    int bestDepth = -1;
+    for (size_t i = 0; i < this->previewOrder.size(); i++)
+    {
+        bklv::View* view = this->previewOrder[i];
+        const float x = view->getX();
+        const float y = view->getY();
+        const float w = view->getWidth();
+        const float h = view->getHeight();
+        if (w <= 0.0f || h <= 0.0f)
+            continue;
+        if (screenX < x || screenX > x + w || screenY < y || screenY > y + h)
+            continue;
+        const int depth = nodes[(size_t)typed[i]].depth;
+        if (depth >= bestDepth)
+        {
+            bestDepth = depth;
+            bestNode  = typed[i];
+        }
+    }
+    if (bestNode >= 0)
+        this->selectedNode = bestNode;
+    else
+        BKLV_LOG_INFO("点选：没有命中任何视图");
 }
 
 void DesignerApp::drawViewPanel()
