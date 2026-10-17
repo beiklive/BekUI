@@ -199,7 +199,12 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `width` `height` `minWidth` `minHeight` `maxWidth` `maxHeight` | SIZE | 长度语法（含 `"auto"` / `"50%"`） |
-| `margin` `marginTop` `marginRight` `marginBottom` `marginLeft` | NUMBER | |
+| `margin` `marginTop` `marginRight` `marginBottom` `marginLeft` | NUMBER | 外边距（像素量，随 uiScale） |
+| `padding` `paddingTop` `paddingRight` `paddingBottom` `paddingLeft` | NUMBER | 内边距（像素量）；**只对容器有效**，写在非容器上会警告 |
+| `axis` | ENUM | `row` / `column` —— 主轴方向（只对容器有效） |
+| `alignItems` | ENUM | `auto` / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline`（只对容器有效） |
+| `justifyContent` | ENUM | `flexStart` / `center` / `flexEnd` / `spaceBetween` / `spaceAround` / `spaceEvenly` |
+| `gap` | NUMBER | 主轴向子节点间距（像素量）；跟 `axis` 走同一根 gutter |
 | `grow` `shrink` | NUMBER | flex 伸缩 |
 | `alignSelf` | ENUM | `auto`(默认) / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline` |
 | `position` | ENUM | `relative`(默认) / `absolute` |

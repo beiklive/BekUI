@@ -250,6 +250,36 @@ int main()
         setUiScale(1.0f);
     }
 
+    std::printf("\n== 10. 布局属性不再被静默忽略：padding / gap / axis / alignItems ==\n");
+    {
+        setUiScale(1.0f);
+        const auto tmpl = ViewTemplate::fromString(R"({
+            "type": "Box", "axis": "row", "alignItems": "center", "gap": 12,
+            "padding": 10, "paddingTop": 4,
+            "children": [ { "type": "Box", "width": 10, "height": 10 } ]
+        })",
+            "test/layout-attrs");
+        check(tmpl != nullptr, "模板装载成功");
+        if (tmpl != nullptr)
+        {
+            View* root = tmpl->instantiate();
+            check(root != nullptr, "实例化成功（不再有 未知属性 警告）");
+            if (auto* box = root != nullptr ? root->asBox() : nullptr)
+            {
+                check(box->getAxis() == Axis::ROW, "axis=row 生效");
+                check(box->getAlignItems() == AlignItems::CENTER, "alignItems=center 生效");
+                checkFloat(box->getGap(), 12.0f, "gap 生效");
+                checkFloat(box->getPaddingTop(), 4.0f, "paddingTop 覆盖了 padding 的上边");
+                checkFloat(box->getPaddingLeft(), 10.0f, "padding 的其余边保留");
+            }
+            else
+            {
+                check(false, "根节点应当是 Box");
+            }
+            delete root;
+        }
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

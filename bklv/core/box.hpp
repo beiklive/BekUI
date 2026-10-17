@@ -130,6 +130,7 @@ class Box : public View
 
     // 相邻子节点之间的间隔，等价于 CSS gap。
     void setGap(float gap);
+    float getGap() const;
     void setGapColumn(float gap);
     void setGapRow(float gap);
 

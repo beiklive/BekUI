@@ -544,6 +544,12 @@ float Box::getPaddingLeft() const
 // 间距与换行
 // ---------------------------------------------------------------------------
 
+float Box::getGap() const
+{
+    // setGap 只设**当前轴**对应的那条 gutter（读 YGGutterAll 在 Yoga 里是不定的）
+    return YGNodeStyleGetGap(this->ygNode, this->axis == Axis::ROW ? YGGutterColumn : YGGutterRow);
+}
+
 void Box::setGap(float gap)
 {
     if (this->axis == Axis::ROW)
