@@ -47,3 +47,15 @@ set(BKLV_TARGET_LIST
 
 `scripts/check.sh` 会把它一起编、一起跑测试（所以设计器代码同样要零警告）；
 `scripts/check_naming.py` 只扫 `bklv/`，库的 API 命名规则不管设计器，但风格建议保持一致。
+
+## 运行
+
+```bash
+scripts/check.sh                                   # 构建 + 全量检查（GL/VK）
+./dist/designer                                     # 打开默认主题
+./dist/designer --theme <主题目录> --file view/page_json
+./dist/designer --palette --screenshot /tmp/d.png   # 无人值守验证：开浮层、渲染 N 帧后截图退出
+```
+
+命令行：`--theme` / `--theme-name` / `--file` / `--source` / `--palette` / `--zoom` /
+`--click x,y` / `--screenshot <png>` / `--frames <n>`。设计与验收对照见 [`DESIGN.md`](DESIGN.md)。
