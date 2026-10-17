@@ -19,6 +19,7 @@
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/icon_font.hpp"
 #include "designer/core/view_fields.hpp"
 #include "designer/core/autosave.hpp"
 
@@ -83,6 +84,49 @@ int underlineTabs(const char* const* labels, int count, int* active)
     if (clicked >= 0)
         *active = clicked;
     return clicked;
+}
+
+} // namespace
+
+namespace
+{
+
+// 属性行：左边固定宽度的标签列、右边值区占满剩余宽度。
+// 以前是"标签一行 + 控件一行"（因为 SetNextItemWidth(-1) 会挤掉标签），信息密度太低。
+constexpr float kFieldLabelWidth = 96.0f;
+
+// 图标按钮：Material 字形 + 悬停提示 + 方形点击区（Figma 工具栏的基本单元）
+bool iconButton(const char* iconName, const char* tooltip, bool accent = false)
+{
+    const char* glyph = bklv::icon::glyphByName(iconName);
+    if (glyph == nullptr)
+        return false;
+
+    const float u    = bklv::getUiScale();
+    const float side = 34.0f * u;
+    ImFont*     iconFont = bklv::icon::font();
+    if (iconFont != nullptr)
+        ImGui::PushFont(iconFont);
+    if (accent)
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_CheckMark));
+    const ImVec2 textSize = ImGui::CalcTextSize(glyph);
+    const bool   pressed  = ImGui::Button(glyph, ImVec2(side, side));
+    if (accent)
+        ImGui::PopStyleColor();
+    if (iconFont != nullptr)
+        ImGui::PopFont();
+    (void)textSize;
+
+    if (ImGui::IsItemHovered() && tooltip != nullptr)
+        ImGui::SetTooltip("%s", tooltip);
+    return pressed;
+}
+
+void fieldRowLabel(const char* label)
+{
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label);
+    ImGui::SameLine(kFieldLabelWidth * bklv::getUiScale());
 }
 
 } // namespace
@@ -457,19 +501,19 @@ void DesignerApp::drawPanels()
     // 画布缩放（两种文件都可用）
     ImGui::TextDisabled("画布 %d%%", (int)(this->canvasZoom * 100.0f + 0.5f));
     ImGui::SameLine();
-    if (ImGui::Button("-##zoom"))
+    if (iconButton("zoom_out", "缩小（-25%）"))
     {
         this->canvasZoom = std::max(0.25f, this->canvasZoom - 0.25f);
         this->applyCanvasZoom();
     }
     ImGui::SameLine();
-    if (ImGui::Button("100%##zoom"))
+    if (ImGui::SmallButton("100%"))
     {
         this->canvasZoom = 1.0f;
         this->applyCanvasZoom();
     }
     ImGui::SameLine();
-    if (ImGui::Button("+##zoom"))
+    if (iconButton("zoom_in", "放大（+25%）"))
     {
         this->canvasZoom = std::min(2.0f, this->canvasZoom + 0.25f);
         this->applyCanvasZoom();
@@ -556,13 +600,14 @@ void DesignerApp::drawPanels()
     // 右对齐：按"剩余宽度 - 三个按钮宽度"回推（用 viewport 绝对值会被面板裁掉）
     const float buttonsW = 300.0f * u;
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonsW);
-    if (ImGui::Button("打开主题…"))
+    if (iconButton("folder_open", "打开主题…（切换主题目录）"))
         this->wantOpenTheme = true;
     ImGui::SameLine();
-    if (ImGui::Button("快速打开"))
+    if (iconButton("search", "快速打开（Cmd/Ctrl+P）"))
         this->wantPalette = true;
     ImGui::SameLine();
-    if (ImGui::Button(this->appearanceLoaded && this->appearance.isDirty() ? "保存 ●" : "保存"))
+    const bool dirty = this->appearanceLoaded && this->appearance.isDirty();
+    if (iconButton("save", dirty ? "保存（有未保存改动）" : "保存（Cmd/Ctrl+S）", dirty))
         this->saveCurrent();
     ImGui::PopStyleVar();
     ImGui::End();
@@ -1218,22 +1263,6 @@ void DesignerApp::selectNodeAt(float screenX, float screenY)
         BKLV_LOG_INFO("点选：没有命中任何视图");
 }
 
-namespace
-{
-
-// 属性行：左边固定宽度的标签列、右边值区占满剩余宽度。
-// 以前是"标签一行 + 控件一行"（因为 SetNextItemWidth(-1) 会挤掉标签），信息密度太低。
-constexpr float kFieldLabelWidth = 96.0f;
-
-void fieldRowLabel(const char* label)
-{
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(label);
-    ImGui::SameLine(kFieldLabelWidth * bklv::getUiScale());
-}
-
-} // namespace
-
 void DesignerApp::drawViewPanel()
 {
     ImGui::TextDisabled("%s.json%s", this->currentFile.c_str(),
@@ -1653,7 +1682,7 @@ void DesignerApp::drawLayerOps()
 
     static const char* kOps[] = { "rect", "text", "image", "shadow", "glass", "custom" };
     ImGui::SetNextItemWidth(90.0f * bklv::getUiScale());
-    if (ImGui::BeginCombo("##newLayerOp", "＋ 加层"))
+    if (ImGui::BeginCombo("##newLayerOp", "＋ 加层", ImGuiComboFlags_HeightLarge))
     {
         for (const char* op : kOps)
             if (ImGui::Selectable(op))
@@ -1667,10 +1696,10 @@ void DesignerApp::drawLayerOps()
 
     ImGui::SameLine();
     ImGui::BeginDisabled(!hasSelection);
-    if (ImGui::Button("复制"))
+    if (iconButton("content_copy", "复制所选层（Cmd/Ctrl+D）"))
         this->duplicateSelected();
     ImGui::SameLine();
-    if (ImGui::Button("删"))
+    if (iconButton("delete", "删除所选层（Del）"))
         this->deleteSelected();
     ImGui::SameLine();
     if (ImGui::ArrowButton("##up", ImGuiDir_Up))

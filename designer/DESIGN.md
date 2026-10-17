@@ -548,6 +548,10 @@ designer/ui/
 
 用户选定"更接近 Figma + 下划线式 tab"。已落地：
 
+- **图标按钮**：`iconButton(名字, 提示, accent?)` 用 Material 字形（`icon::font()` +
+  `icon::glyphByName`），34×uiScale 方形点击区、悬停提示、`accent` 用于"有未保存改动"的保存键。
+  已换：顶栏（文件夹 / 搜索 / 保存）、缩放（zoom_out / 100% / zoom_in）、层操作（复制 / 删除）。
+  字形名取自 `core/icon_font.cpp` 的表，写错名字时 `glyphByName` 返回空、按钮不画（不会画成方块）。
 - **面板分组折叠**：右栏属性按「外观（颜色/文字）/ 几何（尺寸/圆角/对齐/内缩/位移）/ 参数（其余）」
   三组 `CollapsingHeader`，默认展开；左栏 `base / widget / view / tokens` 分节也做成可折叠
   （折叠后跳过该组行，避免每行都判断一次）。分组分类用 `groupOf(FieldDesc)` 的白名单，
@@ -562,6 +566,29 @@ designer/ui/
 后续 Figma 化待做（按价值）：面板内的**分组折叠**、控件**图标按钮**（Material 字体已在
 ImGui 图集里，可用 `icon::font()`）、画板标题与**选中框**（选中框必须由 bklv 画，
 因为视图树在 foreground draw list 上，ImGui 盖不住它）。
+
+### ④ 画板标题 + 选中框：库侧方案（待实施）
+
+**约束**：视图树画在 `ImGui::GetForegroundDrawList()` 上，ImGui 画的任何东西都被它盖住，
+所以画板边框/选中框**必须由 bklv 画**。
+
+**方案 A（推荐，改动最小）**：给 `AppearanceView` 加"设计期叠加"能力
+```cpp
+// widgets/appearance_view.hpp
+void setDesignSelection(int layerIndex, ImU32 color); // -1 = 不画
+void setDesignGuides(bool on);                        // 画板边框 + 尺寸标签
+```
+- 实现：在 `draw()` 末尾、所有层画完后，用 `getLayerRect()` 取该层矩形，
+  `drawList->AddRect(...)` 描 1.5px 边 + 四角 5px 把手；画板边框沿 `getX/Y/W/H` 再描一圈。
+- 影响面：只加两个 setter + 一段绘制，不参与布局、不进外观 JSON、不改变渲染语义；
+  `theme_test`/`appearance_test` 不受影响（默认关闭）。
+- 风险：低。可用一条 `designer_overlay_test`（无窗口下只断言"开关状态与层索引校验"）。
+
+**方案 B**：`canvasHost` 里叠一个独立的 bklv 视图专门画框（`DesignOverlay : View`），
+读 `AppearanceView` 的层矩形。不动 `AppearanceView`，但要把矩形从别处传出来（多一层耦合）。
+
+选择 A：语义上"设计器的叠加"确实属于视图自身能画的东西，且只有一个开关，
+不会污染运行期的绘制路径。
 
 ### 已知限制
 
