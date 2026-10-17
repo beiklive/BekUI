@@ -88,6 +88,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     this->app.setRootView(root.release());
 
+    if (this->options.openPalette)
+        this->wantPalette = true;
+
     if (this->options.clickX >= 0.0f)
         this->pendingClick = true; // 第一帧后再点（此时布局已算完）
 
@@ -97,6 +100,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)
             || ImGui::IsKeyChordPressed(ImGuiMod_Super | ImGuiKey_S))
             this->saveCurrent();
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_P)
+            || ImGui::IsKeyChordPressed(ImGuiMod_Super | ImGuiKey_P))
+            this->wantPalette = true;
         this->update();
     };
     this->scanTheme();
@@ -332,6 +338,8 @@ void DesignerApp::update()
 
 void DesignerApp::drawPanels()
 {
+    this->drawQuickOpen(); // 面板之前画浮层（它落在右栏空白区，不会被画布盖住）
+
     const float top   = 96.0f * bklv::getUiScale();
     const float scale = bklv::getUiScale();
     const float leftW = this->fileFilterWidth * scale;
@@ -594,6 +602,81 @@ void DesignerApp::drawTokenTable()
     for (const TokenRef& ref : this->tokenRefs)
         ImGui::Text("%s  %s", ref.file.c_str(), ref.pointer.c_str());
     ImGui::EndChild();
+}
+
+void DesignerApp::drawQuickOpen()
+{
+    if (this->wantPalette)
+    {
+        this->wantPalette     = false;
+        this->paletteVisible  = true;
+        this->paletteIndex    = 0;
+        this->paletteFilter[0] = '\0';
+    }
+    if (!this->paletteVisible)
+        return;
+
+    // **必须放在不画视图的区域**：视图树画在 ImGui 的 foreground draw list 上，
+    // 会把屏幕中央的浮层盖住（见 DESIGN.md §10）。右栏是空 Box，安全。
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float          scale    = bklv::getUiScale();
+    const float          rightW   = this->inspectorWidth * scale;
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - rightW - 8.0f,
+                               viewport->WorkPos.y + 96.0f * scale + 8.0f),
+        ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(rightW - 16.0f, 340.0f), ImGuiCond_Appearing);
+    if (!ImGui::Begin("快速打开（Cmd+P）", &this->paletteVisible,
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::End();
+        return;
+    }
+
+    if (ImGui::IsWindowAppearing())
+        ImGui::SetKeyboardFocusHere();
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputTextWithHint("##paletteFilter", "文件名片段，回车打开", this->paletteFilter,
+        sizeof(this->paletteFilter));
+
+    std::vector<int> matches;
+    for (int i = 0; i < (int)this->files.size(); i++)
+    {
+        if (this->paletteFilter[0] != '\0'
+            && this->files[(size_t)i].relPath.find(this->paletteFilter) == std::string::npos)
+            continue;
+        matches.push_back(i);
+    }
+    if (matches.empty())
+        this->paletteIndex = 0;
+    else if (this->paletteIndex >= (int)matches.size())
+        this->paletteIndex = (int)matches.size() - 1;
+
+    const bool enter = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter);
+    if (!matches.empty() && ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+        this->paletteIndex = (this->paletteIndex + 1) % (int)matches.size();
+    if (!matches.empty() && ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+        this->paletteIndex = (this->paletteIndex + (int)matches.size() - 1) % (int)matches.size();
+
+    ImGui::BeginChild("##paletteList", ImVec2(0, -32.0f), true);
+    for (int i = 0; i < (int)matches.size(); i++)
+    {
+        const FileEntry& entry = this->files[(size_t)matches[(size_t)i]];
+        if (ImGui::Selectable(entry.relPath.c_str(), i == this->paletteIndex))
+            this->paletteIndex = i;
+    }
+    ImGui::EndChild();
+
+    const bool activate = (enter || ImGui::Button("打开")) && !matches.empty();
+    if (activate)
+    {
+        const std::string target = this->files[(size_t)matches[(size_t)this->paletteIndex]].relPath;
+        this->paletteVisible = false;
+        this->confirmFileSwitch(target);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("取消"))
+        this->paletteVisible = false;
+    ImGui::End();
 }
 
 void DesignerApp::maybeAutosave()

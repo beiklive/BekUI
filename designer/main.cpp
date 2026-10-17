@@ -35,8 +35,12 @@ int main(int argc, char** argv)
     if (const char* shot = argValue(argc, argv, "--screenshot"))
         options.screenshotPath = shot;
     for (int i = 1; i < argc; i++)
+    {
         if (std::strcmp(argv[i], "--source") == 0)
             options.startOnSource = true;
+        if (std::strcmp(argv[i], "--palette") == 0)
+            options.openPalette = true;
+    }
     if (const char* click = argValue(argc, argv, "--click"))
     {
         options.clickX = (float)std::atof(click);

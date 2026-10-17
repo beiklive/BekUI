@@ -39,6 +39,7 @@ class DesignerApp
         bool        startOnSource = false; // --source：启动就切到源码页签
         float       clickX = -1.0f;        // --click x,y：启动后模拟一次点击（自动化验证点选）
         float       clickY = -1.0f;
+        bool        openPalette = false; // --palette：启动就打开快速打开（自动化验证）
     };
 
     bool init(const Options& options, std::string& error);
@@ -64,6 +65,7 @@ class DesignerApp
     void selectNodeAt(float screenX, float screenY);
     void maybeAutosave();
     void drawRecoveryPopup();
+    void drawQuickOpen();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
     // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
@@ -118,6 +120,10 @@ class DesignerApp
     std::vector<bklv::View*> previewOrder; // 预览树的 DFS 序（与 viewDoc.listNodes 对齐）
     bool              pendingClick = false;
     int               clickDelayFrames = 0;
+    bool              wantPalette = false;
+    bool              paletteVisible = false;
+    char              paletteFilter[64] = {0};
+    int               paletteIndex = 0;
     long long         lastAutosaveMs = 0;
     AutosaveInfo      pendingDraft;   // 启动时发现的未保存草稿
     bool              hasPendingDraft = false;
