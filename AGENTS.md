@@ -552,6 +552,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   显隐用**实例方法** `Shell::setHeaderVisible(bool)` / `setFooterVisible(bool)`：隐藏时看 `GONE`
   （不占位）；**栏里不能留固定外边距**（页头下边的留白写在页头自己的 padding 里），
   否则隐藏后会留下空隙。
+- **大标题随滚动收起（iOS 风格）写在 `Header` 里**：`setLargeTitle("设置")` +
+  `setCollapseSource(scroller)`，之后 `Header::update()` 每帧读
+  `ScrollingFrame::getContentOffsetY()` 算进度（`setCollapseDistance` 默认 44px 算收起），
+  展开时只显示大标题、收起后只显示页头里的小标题。**全程只改绘制期量**
+  （alpha / `Label::setFontScaleX/Y` / `setTranslateY`）→ 零重排；不绑滚动源时也能
+  `setCollapseProgress()` 手动驱动（测试走这条）。大标题是**绝对定位**在页头下沿之外的子视图，
+  所以页头高度不受影响。字号取 `metric.font.size.title`（ios 主题 30、default 28），
+  位置取 `metric.appletFrame.headerHeight` + `metric.spacing.sm`。JSON 侧对应属性 `largeTitle`。
+  `tests/header_collapse_test.cpp` 钉住进度映射与"没大标题时小标题常显"。
   **content 避让不自动**：`Shell::setHeaderInset/setFooterInset` 由宿主给（动画期间给**目标值**，
   这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（demo 就是这么做的）。
   栏的"折叠补间"是**宿主**的事：`Animatable` 逐帧改两栏高度 + `App::requestLayout()`，

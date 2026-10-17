@@ -22,6 +22,7 @@
 #include "bklv/core/graphics.hpp"
 #include "bklv/views/label.hpp"
 #include "bklv/views/padding.hpp"
+#include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
 namespace bklv
@@ -63,6 +64,32 @@ class Header : public AppearanceView
     Label* getTitleLabel() const { return this->titleLabel; }
     HeaderIcon* getIcon() const { return this->icon; }
 
+    // ---- 大标题（iOS 风格：内容在顶部时是大标题，滚动后收成页头里的小标题）----
+    //
+    // 大标题是**绝对定位**的子视图，落在页头下沿之外，所以不参与页头布局、不引起重排；
+    // 整个收起过程只改**绘制期**的量（alpha / 缩放 / 位移）。宿主只需要：
+    //
+    //     header->setLargeTitle(getStr("app/title"));
+    //     header->setCollapseSource(this->scroller);   // 传包住内容的 ScrollingFrame
+    //
+    // 之后每帧由 Header::update() 自己按滚动偏移算进度（不绑滚动源时也可手动
+    // setCollapseProgress()）。两套主题都适用：ios 主题字号更大，观感就是苹果那一套。
+    void setLargeTitle(const std::string& text);
+    const std::string& getLargeTitle() const { return this->largeTitle; }
+    Label* getLargeTitleLabel() const { return this->largeTitleLabel; }
+
+    // 收起进度从哪个滚动器读（nullptr = 手动模式，进度保持不变）
+    void setCollapseSource(ScrollingFrame* scroller) { this->collapseSource = scroller; }
+    ScrollingFrame* getCollapseSource() const { return this->collapseSource; }
+    // 滚多少像素算"完全收起"（大约一个列表行的距离）
+    void setCollapseDistance(float pixels);
+    float getCollapseDistance() const { return this->collapseDistance; }
+    // 0 = 展开（只有大标题），1 = 收起（只有页头小标题）
+    void setCollapseProgress(float progress);
+    float getCollapseProgress() const { return this->collapseProgress; }
+
+    void update() override;
+
     void applyTheme() override;
 
     std::string getClassString() const override { return "bklv::Header"; }
@@ -76,9 +103,15 @@ class Header : public AppearanceView
     Padding* padding       = nullptr; // 顶开标题与右侧区
     Box* hintBox           = nullptr;
     Label* subtitleLabel   = nullptr;
+    Label* largeTitleLabel = nullptr; // 绝对定位在页头下沿之外（见 setLargeTitle）
 
     std::string title;
     std::string subtitle;
+    std::string largeTitle;
+
+    ScrollingFrame* collapseSource = nullptr;
+    float collapseDistance = 44.0f;
+    float collapseProgress = 0.0f;
 };
 
 } // namespace bklv

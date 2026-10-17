@@ -79,6 +79,12 @@ DemoApp::DemoApp()
     this->scroller->setShowScrollingIndicator(true);
     right->addView(this->scroller);
 
+    // 大标题（iOS 风格）：内容还在顶部时是"设置"这种大号标题，滚过一个行高后
+    // 收成页头里的小标题。进度由 Header 每帧读滚动偏移算 —— 只改绘制期量，零重排。
+    this->header->setLargeTitle(getStr("app/title"));
+    this->header->setCollapseSource(this->scroller);
+    this->header->setCollapseDistance(48.0f);
+
     body->addView(right);
     // 内容区左右留白：和页头/底栏的 margin 用同一个主题值，四边看起来才是一套
     const float sideMargin = getTheme().number("metric.appletFrame.paddingSides", 30.0f);
