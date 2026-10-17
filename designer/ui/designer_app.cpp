@@ -725,7 +725,6 @@ void DesignerApp::drawMenuBar()
     }
     if (ImGui::BeginMenu("视图"))
     {
-        ImGui::TextDisabled("P2：文件浏览与 JSON 只读");
         ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
@@ -1364,8 +1363,11 @@ void DesignerApp::selectNodeAt(float screenX, float screenY)
 
 void DesignerApp::drawViewPanel()
 {
-    ImGui::TextDisabled("%s.json%s", this->currentFile.c_str(),
+    // 中文标题；原始路径放悬停（专业用户仍能对上文件）
+    ImGui::TextDisabled("%s%s", designer::fileTitle(this->currentFile).c_str(),
         this->viewDoc.isDirty() ? "  ●" : "");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s.json", this->currentFile.c_str());
     if (!this->lastError.empty())
         ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
     ImGui::Separator();
