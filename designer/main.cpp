@@ -34,6 +34,9 @@ int main(int argc, char** argv)
         options.themeName = name;
     if (const char* shot = argValue(argc, argv, "--screenshot"))
         options.screenshotPath = shot;
+    for (int i = 1; i < argc; i++)
+        if (std::strcmp(argv[i], "--source") == 0)
+            options.startOnSource = true;
     if (const char* file = argValue(argc, argv, "--file"))
         options.initialFile = file;
     if (const char* frames = argValue(argc, argv, "--frames"))

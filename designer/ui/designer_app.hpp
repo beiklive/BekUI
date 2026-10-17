@@ -33,6 +33,7 @@ class DesignerApp
         std::string screenshotPath;
         int         frames = 3;
         std::string initialFile; // --file：启动就直接打开这个文件（自动化验证用）
+        bool        startOnSource = false; // --source：启动就切到源码页签
     };
 
     bool init(const Options& options, std::string& error);
@@ -50,6 +51,8 @@ class DesignerApp
     void drawInspector();
     void applyToCanvas();
     void handleCanvasClick();
+    void drawSourceTab();
+    void applySource();
     void saveCurrent();
     void applyFieldEdit(const std::string& key, const designer::Json& value);
     void drawStatusBar();
@@ -75,6 +78,10 @@ class DesignerApp
     bklv::View*      canvasHost = nullptr; // 中间那块画布（库的视图树负责画）
     bklv::AppearanceView* canvasView = nullptr;
     float            inspectorWidth = 430.0f;
+    std::vector<char> sourceBuffer; // 源码页签的编辑缓冲（InputText 需要稳定内存）
+    std::string       sourceError;  // 上次"应用"失败的原因（带行列）
+    std::string       sourceStatus; // 上次"应用"成功提示
+    int               inspectorTab = 0; // 0 = 属性，1 = 源码
 };
 
 } // namespace designer

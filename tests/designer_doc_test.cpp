@@ -201,6 +201,23 @@ int main()
         check(!Selection::none().valid(), "none() 无效");
     }
 
+    std::printf("\n== 6. 源码应用失败时文档不动（P5 验收）==\n");
+    {
+        AppearanceDoc doc;
+        std::string   error;
+        check(doc.fromText(kDocText, error), "先装一份好的");
+        const std::string before = doc.serialize();
+
+        // 语法坏：fromText 失败，且**不能**把旧文档换掉
+        check(!doc.fromText("{ \"layers\": [ ", error), "坏 JSON -> 解析失败");
+        check(!error.empty(), "错误里有原因（含行列）");
+        checkEqual(doc.serialize(), before, "失败后文档仍是上一份（不丢用户编辑）");
+
+        // 能解析但结构不对：fromText 成功（顶层对象），后续 apply 由编译校验兜
+        check(doc.fromText("{\"layers\": []}", error), "空 layers 能解析");
+        checkEqualSize(doc.getLayers().size(), (size_t)0, "换成空 layers");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

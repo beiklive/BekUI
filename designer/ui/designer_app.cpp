@@ -93,7 +93,11 @@ bool DesignerApp::init(const Options& options, std::string& error)
     };
     this->scanTheme();
     if (!this->options.initialFile.empty())
+    {
         this->openFile(this->options.initialFile);
+        if (this->options.startOnSource)
+            this->inspectorTab = 1;
+    }
     return true;
 }
 
@@ -153,6 +157,10 @@ bool DesignerApp::openFile(const std::string& relPath)
             this->selectedLayer    = 0; // 直接落到第一层，省一次点击
             this->fileMtimeAtLoad  = fileMtime(path);
             this->currentText      = this->appearance.serialize();
+            this->sourceBuffer.assign(this->currentText.begin(), this->currentText.end());
+            this->sourceBuffer.push_back('\0');
+            this->sourceError.clear();
+            this->sourceStatus.clear();
             this->applyToCanvas();
         }
         else
@@ -246,6 +254,21 @@ void DesignerApp::drawPanels()
         if (!this->saveStatus.empty())
             ImGui::TextDisabled("%s", this->saveStatus.c_str());
         ImGui::Separator();
+        if (ImGui::Button("属性"))
+            this->inspectorTab = 0;
+        ImGui::SameLine();
+        if (ImGui::Button("源码"))
+            this->inspectorTab = 1;
+        ImGui::Separator();
+
+        if (this->inspectorTab == 1)
+        {
+            this->drawSourceTab();
+            ImGui::End();
+            this->handleCanvasClick();
+            return;
+        }
+
         ImGui::BeginChild("##layers", ImVec2(0, 130), true);
         const std::vector<LayerInfo> layers = this->appearance.getLayers();
         for (int i = 0; i < (int)layers.size(); i++)
@@ -331,6 +354,74 @@ void DesignerApp::drawFileList()
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+}
+
+void DesignerApp::drawSourceTab()
+{
+    if (!this->sourceError.empty())
+        ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->sourceError.c_str());
+    else if (!this->sourceStatus.empty())
+        ImGui::TextDisabled("%s", this->sourceStatus.c_str());
+
+    if (ImGui::Button("应用（Cmd+Enter）"))
+        this->applySource();
+    ImGui::SameLine();
+    if (ImGui::Button("还原"))
+    {
+        this->sourceBuffer.assign(this->currentText.begin(), this->currentText.end());
+        this->sourceBuffer.push_back('\0');
+        this->sourceError.clear();
+        this->sourceStatus = "已还原到上次成功的版本";
+    }
+
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Enter)
+        || ImGui::IsKeyChordPressed(ImGuiMod_Super | ImGuiKey_Enter))
+        this->applySource();
+
+    ImGui::BeginChild("##source", ImVec2(0, 0), true);
+    ImGui::PushFont(nullptr); // 用默认字体；等宽在 P7 统一
+    ImGui::InputTextMultiline("##text", this->sourceBuffer.data(), this->sourceBuffer.size(),
+        ImVec2(-1, -1));
+    ImGui::PopFont();
+    ImGui::EndChild();
+}
+
+void DesignerApp::applySource()
+{
+    const std::string text(this->sourceBuffer.data());
+    this->lastError.clear();
+
+    if (!this->appearanceLoaded)
+    {
+        // 非外观文件：只验证 JSON 语法，不接文档模型
+        designer::Json scratch;
+        try
+        {
+            scratch = designer::Json::parse(text, nullptr, true, true);
+        }
+        catch (const std::exception& e)
+        {
+            this->sourceError = std::string("语法错误：") + e.what();
+            return;
+        }
+        this->sourceError.clear();
+        this->sourceStatus = "语法有效（这个文件类型暂不可编辑，P6 接令牌表）";
+        return;
+    }
+
+    // 外观：解析失败时**保持旧文档不动**（不丢用户已有编辑），并把行列报出来
+    std::string parseError;
+    if (!this->appearance.fromText(text, parseError))
+    {
+        this->sourceError = "应用失败（文档未改动）：" + parseError;
+        return;
+    }
+
+    this->currentText = this->appearance.serialize();
+    this->selectedLayer = this->appearance.getLayers().empty() ? -1 : 0;
+    this->sourceError.clear();
+    this->sourceStatus = "已应用（未保存）";
+    this->applyToCanvas();
 }
 
 void DesignerApp::applyToCanvas()
