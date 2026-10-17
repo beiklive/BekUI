@@ -91,6 +91,50 @@ int underlineTabs(const char* const* labels, int count, int* active)
 namespace
 {
 
+// 文件分组的中文说法：`base/` 这种名字只有熟悉主题结构的人才懂
+struct GroupText
+{
+    const char* folder;   // base
+    const char* title;    // 基础形状
+    const char* hint;     // 单个元素的外观（按钮底、分隔线…）
+};
+const GroupText kGroups[] = {
+    { "base", "基础形状", "单个元素的外观：底、边框、文字、图片" },
+    { "widget", "控件样式", "把基础形状拼成的按钮、页头、单元格…" },
+    { "view", "页面布局", "整页的结构：有哪些区域、怎么排" },
+    { "tokens", "颜色与尺寸", "全局调色板与数值，改了处处都变" },
+};
+const GroupText* groupText(const std::string& folder)
+{
+    for (const GroupText& entry : kGroups)
+        if (folder == entry.folder)
+            return &entry;
+    return nullptr;
+}
+
+// 视图节点属性的中文名：不翻译的键原样显示（未知键不隐藏）
+const char* prettyAttribute(const std::string& key)
+{
+    static const std::pair<const char*, const char*> kNames[] = {
+        { "type", "类型" }, { "axis", "排列方向" }, { "direction", "方向" },
+        { "alignItems", "交叉轴对齐" }, { "justifyContent", "主轴对齐" },
+        { "flexWrap", "换行" }, { "alignContent", "多行对齐" }, { "gap", "间距" },
+        { "width", "宽度" }, { "height", "高度" }, { "text", "文字" },
+        { "src", "图片" }, { "icon", "图标" }, { "fontSize", "字号" },
+        { "textColor", "文字颜色" }, { "backgroundColor", "背景色" },
+        { "cornerRadius", "圆角" }, { "borderThickness", "边框粗细" },
+        { "borderColor", "边框颜色" }, { "opacity", "不透明度" },
+        { "padding", "内边距" }, { "margin", "外边距" }, { "grow", "可伸展" },
+        { "shrink", "可压缩" }, { "scale", "显示比例" }, { "offsetX", "水平偏移" },
+        { "offsetY", "垂直偏移" }, { "children", "子节点" }, { "id", "标识" },
+        { "include", "引用文件" }, { "scroll", "可滚动" },
+    };
+    for (const auto& entry : kNames)
+        if (key == entry.first)
+            return entry.second;
+    return nullptr;
+}
+
 // 属性行：左边固定宽度的标签列、右边值区占满剩余宽度。
 // 以前是"标签一行 + 控件一行"（因为 SetNextItemWidth(-1) 会挤掉标签），信息密度太低。
 constexpr float kFieldLabelWidth = 96.0f;
@@ -599,7 +643,13 @@ void DesignerApp::drawPanels()
     }
     else
     {
-        ImGui::TextDisabled("%s", this->currentFile.empty() ? "左侧选一个文件" : this->currentFile.c_str());
+        if (this->currentFile.empty())
+        {
+            ImGui::TextDisabled("还没有选中文件");
+            ImGui::TextWrapped("在左边挑一个：先看「基础形状」，改右边的属性，中间会立刻变。");
+        }
+        else
+            ImGui::TextDisabled("%s", this->currentFile.c_str());
         if (!this->lastError.empty())
             ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
         ImGui::Separator();
@@ -713,10 +763,16 @@ void DesignerApp::drawFileList()
             // Figma 式分组：默认展开，可折叠（折叠后跳过该组的行）
             const int groupIndex
                 = group == "base" ? 0 : group == "widget" ? 1 : group == "view" ? 2 : 3;
+            const GroupText* text = groupText(group);
             ImGui::Spacing();
-            const bool open = ImGui::CollapsingHeader((group + "##grp").c_str(),
+            char header[128];
+            std::snprintf(header, sizeof(header), "%s (%s)##grp",
+                text != nullptr ? text->title : group.c_str(), group.c_str());
+            const bool open = ImGui::CollapsingHeader(header,
                 ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
             this->groupOpen[groupIndex] = open;
+            if (open && text != nullptr)
+                ImGui::TextDisabled("%s", text->hint);
             if (!open)
                 continue;
         }
@@ -1364,7 +1420,8 @@ void DesignerApp::drawViewPanel()
         char buffer[256];
         std::snprintf(buffer, sizeof(buffer), "%s", current.c_str());
         // 固定标签列 + 右侧值区（原来标签一行、控件一行，太松散）
-        fieldRowLabel(field.key.c_str());
+        fieldRowLabel(prettyAttribute(field.key) != nullptr ? prettyAttribute(field.key)
+                                                           : field.key.c_str());
         ImGui::SetNextItemWidth(-1.0f);
         bool committed = false;
 
