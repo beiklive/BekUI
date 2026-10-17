@@ -702,6 +702,25 @@ void DesignerApp::drawViewPanel()
     ImGui::Separator();
     ImGui::Text("%s   %s", node.type.c_str(), node.pointer.empty() ? "/" : node.pointer.c_str());
     ImGui::BeginChild("##nodeFields", ImVec2(0, 0), false);
+    // 资源图片清单（只在有 Image 的 src 字段时才列出）
+    static std::vector<std::string> resourceImages;
+    if (resourceImages.empty())
+    {
+        namespace fs = std::filesystem;
+        std::error_code ec;
+        for (const auto& entry : fs::recursive_directory_iterator("resources", ec))
+        {
+            if (!entry.is_regular_file())
+                continue;
+            const std::string ext = entry.path().extension().string();
+            if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" && ext != ".svg")
+                continue;
+            std::string rel = entry.path().lexically_relative("resources").string();
+            resourceImages.push_back("@res/" + rel);
+        }
+        std::sort(resourceImages.begin(), resourceImages.end());
+    }
+
     const std::vector<ViewFieldDesc> fields = viewFields(node.type);
     for (const ViewFieldDesc& field : fields)
     {
@@ -710,6 +729,8 @@ void DesignerApp::drawViewPanel()
 
         char buffer[256];
         std::snprintf(buffer, sizeof(buffer), "%s", current.c_str());
+        // 标签单独一行：ImGui 的 SetNextItemWidth(-1) 会把"控件前的标签"挤出可视区
+        ImGui::TextUnformatted(field.key.c_str());
         ImGui::SetNextItemWidth(-1);
         bool committed = false;
 
@@ -719,7 +740,7 @@ void DesignerApp::drawViewPanel()
             case AttributeKind::BOOL:
             {
                 bool value = current == "true";
-                if (ImGui::Checkbox((field.key + "##b").c_str(), &value))
+                if (ImGui::Checkbox("##b", &value))
                 {
                     this->viewDoc.setAttribute(node.pointer, field.key, designer::Json(value),
                         this->lastError);
@@ -744,7 +765,7 @@ void DesignerApp::drawViewPanel()
                 }
                 if (!token.empty())
                     options.push_back(token);
-                if (ImGui::BeginCombo(field.key.c_str(), current.empty() ? "（未设）" : current.c_str()))
+                if (ImGui::BeginCombo("##enum", current.empty() ? "（未设）" : current.c_str()))
                 {
                     for (const std::string& option : options)
                     {
@@ -760,7 +781,7 @@ void DesignerApp::drawViewPanel()
                 break;
             }
             default:
-                if (ImGui::InputText(field.key.c_str(), buffer, sizeof(buffer),
+                if (ImGui::InputText("##value", buffer, sizeof(buffer),
                         ImGuiInputTextFlags_EnterReturnsTrue))
                 {
                     // 数字/布尔按字面量写，其余按字符串（"auto"/"50%"/"@res/…"都要原样保留）
@@ -778,6 +799,25 @@ void DesignerApp::drawViewPanel()
                     committed = true;
                 }
                 break;
+        }
+
+        // `src` 键给一个资源挑选器（列出 resources/ 下的图片）
+        if (field.key == "src")
+        {
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::BeginCombo("##res", "从 resources/ 选一张"))
+            {
+                for (const std::string& candidate : resourceImages)
+                {
+                    if (ImGui::Selectable(candidate.c_str(), candidate == current))
+                    {
+                        this->viewDoc.setAttribute(node.pointer, field.key,
+                            designer::Json(candidate), this->lastError);
+                        committed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
         }
 
         // `icon` 键给一排常用的内置图标（@icon/名字）—— 比手打字形可靠
