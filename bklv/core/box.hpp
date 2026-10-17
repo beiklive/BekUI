@@ -112,6 +112,15 @@ class Box : public View
     // 交叉轴上的对齐方式。
     void setAlignItems(AlignItems alignment);
 
+    // 多行（flexWrap 打开后）行与行之间的对齐。
+    void setAlignContent(AlignContent content);
+    AlignContent getAlignContent() const { return this->alignContent; }
+
+    // flex-basis：主轴上的初始尺寸（像素）。写 "auto" 用 setFlexBasisAuto()。
+    void setFlexBasis(float basis);
+    void setFlexBasisAuto();
+    float getFlexBasis() const; // auto 时返回 NAN
+
     // ---- 内边距 ----
 
     void setPadding(float padding);
@@ -167,6 +176,7 @@ class Box : public View
     // 记一份，getter / 诊断要用（Yoga 那边也设了，这里是镜像）
     JustifyContent justifyContent = JustifyContent::FLEX_START;
     AlignItems alignItems        = AlignItems::STRETCH;
+    AlignContent alignContent    = AlignContent::FLEX_START;
     std::vector<View*> children;
 
     View* lastFocusedView   = nullptr;

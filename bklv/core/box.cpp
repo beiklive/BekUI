@@ -477,6 +477,38 @@ void Box::setAlignItems(AlignItems alignment)
 // 内边距
 // ---------------------------------------------------------------------------
 
+void Box::setAlignContent(AlignContent content)
+{
+    this->alignContent = content;
+    switch (content)
+    {
+        case AlignContent::FLEX_START: YGNodeStyleSetAlignContent(this->ygNode, YGAlignFlexStart); break;
+        case AlignContent::CENTER: YGNodeStyleSetAlignContent(this->ygNode, YGAlignCenter); break;
+        case AlignContent::FLEX_END: YGNodeStyleSetAlignContent(this->ygNode, YGAlignFlexEnd); break;
+        case AlignContent::STRETCH: YGNodeStyleSetAlignContent(this->ygNode, YGAlignStretch); break;
+        case AlignContent::SPACE_BETWEEN: YGNodeStyleSetAlignContent(this->ygNode, YGAlignSpaceBetween); break;
+        case AlignContent::SPACE_AROUND: YGNodeStyleSetAlignContent(this->ygNode, YGAlignSpaceAround); break;
+    }
+    this->invalidate();
+}
+
+void Box::setFlexBasis(float basis)
+{
+    YGNodeStyleSetFlexBasis(this->ygNode, basis);
+    this->invalidate();
+}
+
+void Box::setFlexBasisAuto()
+{
+    YGNodeStyleSetFlexBasisAuto(this->ygNode);
+    this->invalidate();
+}
+
+float Box::getFlexBasis() const
+{
+    return YGNodeStyleGetFlexBasis(this->ygNode).value; // auto 时是 NaN
+}
+
 void Box::setPadding(float padding)
 {
     this->setPadding(padding, padding, padding, padding);
@@ -688,6 +720,40 @@ void setFlexWrapAttr(View* v, const ResolvedValue& r)
     v->asBox()->setFlexWrap(r.boolean);
 }
 
+void setAlignContentAttr(View* v, const ResolvedValue& r)
+{
+    Box* box = v->asBox();
+    if (enumMatches(r.text, "flexStart")) box->setAlignContent(AlignContent::FLEX_START);
+    else if (enumMatches(r.text, "center")) box->setAlignContent(AlignContent::CENTER);
+    else if (enumMatches(r.text, "flexEnd")) box->setAlignContent(AlignContent::FLEX_END);
+    else if (enumMatches(r.text, "stretch")) box->setAlignContent(AlignContent::STRETCH);
+    else if (enumMatches(r.text, "spaceBetween")) box->setAlignContent(AlignContent::SPACE_BETWEEN);
+    else if (enumMatches(r.text, "spaceAround")) box->setAlignContent(AlignContent::SPACE_AROUND);
+    else
+        warnUnknownEnumValue("alignContent", r.text,
+            "flexStart|center|flexEnd|stretch|spaceBetween|spaceAround");
+}
+
+void setFlexBasisAttr(View* v, const ResolvedValue& r)
+{
+    Box* box = v->asBox();
+    if (std::isnan(r.number))
+    {
+        box->setFlexBasisAuto();
+        return;
+    }
+    if (r.percent)
+    {
+        // 百分比 basis 在 Yoga 里要另外设（YGNodeStyleSetFlexBasisPercent）。这里不静默丢掉：
+        // 说清楚目前只支持像素与 auto，避免"写了没反应"。
+        BKLV_LOG_WARNING("flexBasis 暂不支持百分比（%g%%），按 auto 处理；要百分比请用 width/height",
+            r.number);
+        box->setFlexBasisAuto();
+        return;
+    }
+    box->setFlexBasis(r.number);
+}
+
 void setGapAttr(View* v, const ResolvedValue& r)
 {
     v->asBox()->setGap(r.number);
@@ -740,6 +806,9 @@ const AttributeTable& Box::attributes() const
         { "justifyContent", AttributeKind::ENUM, setJustifyContentAttr,
             "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly" },
         { "flexWrap", AttributeKind::BOOL, setFlexWrapAttr, nullptr },
+        { "alignContent", AttributeKind::ENUM, setAlignContentAttr,
+            "flexStart|center|flexEnd|stretch|spaceBetween|spaceAround" },
+        { "flexBasis", AttributeKind::SIZE, setFlexBasisAttr, nullptr, true },
         { "gap", AttributeKind::NUMBER, setGapAttr, nullptr },
         { "gapRow", AttributeKind::NUMBER, setGapRowAttr, nullptr },
         { "gapColumn", AttributeKind::NUMBER, setGapColumnAttr, nullptr },

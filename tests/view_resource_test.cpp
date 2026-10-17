@@ -280,6 +280,48 @@ int main()
         }
     }
 
+    std::printf("\n== 11. 容器额外属性：alignContent / flexBasis ==\n");
+    {
+        setUiScale(2.0f);
+        const auto tmpl = ViewTemplate::fromString(R"({
+            "type": "Box", "axis": "row", "flexWrap": true,
+            "alignContent": "spaceBetween", "flexBasis": 50,
+            "children": [ { "type": "Box", "width": 10, "height": 10 } ]
+        })",
+            "test/align-content");
+        check(tmpl != nullptr, "模板装载成功");
+        if (tmpl != nullptr)
+        {
+            View* root = tmpl->instantiate();
+            check(root != nullptr, "实例化成功");
+            if (auto* box = root != nullptr ? root->asBox() : nullptr)
+            {
+                check(box->getAlignContent() == AlignContent::SPACE_BETWEEN, "alignContent 生效");
+                checkFloat(box->getFlexBasis(), 100.0f, "flexBasis 50 -> 100（像素量随 uiScale）");
+            }
+            else
+            {
+                check(false, "根节点应当是 Box");
+            }
+            delete root;
+        }
+
+        // "auto" -> Yoga 的 auto basis（读回来是 NAN）
+        if (const auto tmplAuto = ViewTemplate::fromString(R"({
+                "type": "Box", "axis": "row", "flexBasis": "auto"
+            })",
+                "test/flex-basis-auto"))
+        {
+            View* root = tmplAuto->instantiate();
+            if (auto* box = root != nullptr ? root->asBox() : nullptr)
+                check(std::isnan(box->getFlexBasis()), "flexBasis=auto -> NAN（Yoga 的 auto）");
+            else
+                check(false, "根节点应当是 Box");
+            delete root;
+        }
+        setUiScale(1.0f);
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

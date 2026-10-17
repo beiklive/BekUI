@@ -1140,102 +1140,6 @@ void setShrinkAttr(View* v, const ResolvedValue& r)
     v->setShrink(r.number);
 }
 
-namespace
-{
-
-// 这几个是"容器才有"的布局量：落到非容器上就没意义，报一条警告而不是静默忽略
-Box* asBoxOrWarn(View* v, const char* attribute)
-{
-    Box* box = v->asBox();
-    if (box == nullptr)
-        BKLV_LOG_WARNING("属性 \"%s\" 只对容器（Box / Row / 各种面板）有效，%s 不是容器，已忽略",
-            attribute, v->getClassString().c_str());
-    return box;
-}
-
-void setAxisAttr(View* v, const ResolvedValue& r)
-{
-    Box* box = asBoxOrWarn(v, "axis");
-    if (box == nullptr)
-        return;
-    if (enumMatches(r.text, "row"))
-        box->setAxis(Axis::ROW);
-    else if (enumMatches(r.text, "column"))
-        box->setAxis(Axis::COLUMN);
-    else
-        warnUnknownEnumValue("axis", r.text, "row|column");
-}
-
-void setAlignItemsAttr(View* v, const ResolvedValue& r)
-{
-    Box* box = asBoxOrWarn(v, "alignItems");
-    if (box == nullptr)
-        return;
-    if (enumMatches(r.text, "flexStart")) box->setAlignItems(AlignItems::FLEX_START);
-    else if (enumMatches(r.text, "center")) box->setAlignItems(AlignItems::CENTER);
-    else if (enumMatches(r.text, "flexEnd")) box->setAlignItems(AlignItems::FLEX_END);
-    else if (enumMatches(r.text, "stretch")) box->setAlignItems(AlignItems::STRETCH);
-    else if (enumMatches(r.text, "baseline")) box->setAlignItems(AlignItems::BASELINE);
-    else if (enumMatches(r.text, "auto")) box->setAlignItems(AlignItems::AUTO);
-    else
-        warnUnknownEnumValue("alignItems", r.text,
-            "auto|flexStart|center|flexEnd|stretch|baseline");
-}
-
-void setJustifyContentAttr(View* v, const ResolvedValue& r)
-{
-    Box* box = asBoxOrWarn(v, "justifyContent");
-    if (box == nullptr)
-        return;
-    if (enumMatches(r.text, "flexStart")) box->setJustifyContent(JustifyContent::FLEX_START);
-    else if (enumMatches(r.text, "center")) box->setJustifyContent(JustifyContent::CENTER);
-    else if (enumMatches(r.text, "flexEnd")) box->setJustifyContent(JustifyContent::FLEX_END);
-    else if (enumMatches(r.text, "spaceBetween")) box->setJustifyContent(JustifyContent::SPACE_BETWEEN);
-    else if (enumMatches(r.text, "spaceAround")) box->setJustifyContent(JustifyContent::SPACE_AROUND);
-    else if (enumMatches(r.text, "spaceEvenly")) box->setJustifyContent(JustifyContent::SPACE_EVENLY);
-    else
-        warnUnknownEnumValue("justifyContent", r.text,
-            "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly");
-}
-
-void setGapAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "gap"))
-        box->setGap(r.number); // 像素量：已按 pixels 标记乘过 uiScale
-}
-
-void setPaddingAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "padding"))
-        box->setPadding(r.number);
-}
-
-void setPaddingTopAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "paddingTop"))
-        box->setPaddingTop(r.number);
-}
-
-void setPaddingRightAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "paddingRight"))
-        box->setPaddingRight(r.number);
-}
-
-void setPaddingBottomAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "paddingBottom"))
-        box->setPaddingBottom(r.number);
-}
-
-void setPaddingLeftAttr(View* v, const ResolvedValue& r)
-{
-    if (Box* box = asBoxOrWarn(v, "paddingLeft"))
-        box->setPaddingLeft(r.number);
-}
-
-} // namespace
-
 const AttributeTable& commonAttributes()
 {
     static const AttributeTable table = {
@@ -1245,17 +1149,6 @@ const AttributeTable& commonAttributes()
         { "minHeight", AttributeKind::SIZE, setMinHeightAttr, nullptr, true },
         { "maxWidth", AttributeKind::SIZE, setMaxWidthAttr, nullptr, true },
         { "maxHeight", AttributeKind::SIZE, setMaxHeightAttr, nullptr, true },
-        { "axis", AttributeKind::ENUM, setAxisAttr, "row|column" },
-        { "alignItems", AttributeKind::ENUM, setAlignItemsAttr,
-            "auto|flexStart|center|flexEnd|stretch|baseline" },
-        { "justifyContent", AttributeKind::ENUM, setJustifyContentAttr,
-            "flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly" },
-        { "gap", AttributeKind::NUMBER, setGapAttr, nullptr, true },
-        { "padding", AttributeKind::NUMBER, setPaddingAttr, nullptr, true },
-        { "paddingTop", AttributeKind::NUMBER, setPaddingTopAttr, nullptr, true },
-        { "paddingRight", AttributeKind::NUMBER, setPaddingRightAttr, nullptr, true },
-        { "paddingBottom", AttributeKind::NUMBER, setPaddingBottomAttr, nullptr, true },
-        { "paddingLeft", AttributeKind::NUMBER, setPaddingLeftAttr, nullptr, true },
         { "margin", AttributeKind::NUMBER, setMarginAttr, nullptr, true },
         { "marginTop", AttributeKind::NUMBER, setMarginTopAttr, nullptr, true },
         { "marginRight", AttributeKind::NUMBER, setMarginRightAttr, nullptr, true },

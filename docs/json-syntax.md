@@ -194,17 +194,29 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 
 > `RecyclerFrame` **故意不注册**：它必须先有数据源才能用，光有类型没有意义。
 
+### 容器额外属性（`Box` / `Row` / 各类面板都继承，定义在 `Box::attributes()`）
+
+| 键 | 类型 | 说明 |
+|---|---|---|
+| `axis` | ENUM | `row` / `column` —— 主轴方向 |
+| `direction` | ENUM | `inherit`(默认) / `ltr` / `rtl` |
+| `alignItems` | ENUM | `auto` / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline`（默认 `stretch`） |
+| `justifyContent` | ENUM | `flexStart` / `center` / `flexEnd` / `spaceBetween` / `spaceAround` / `spaceEvenly` |
+| `alignContent` | ENUM | 换行后行与行的对齐：`flexStart` / `center` / `flexEnd` / `stretch` / `spaceBetween` / `spaceAround` |
+| `flexWrap` | BOOL | 子节点换行（默认 false） |
+| `flexBasis` | SIZE | 主轴初始尺寸（像素 / `"auto"`）；**百分比暂不支持**（警告并按 auto） |
+| `gap` `gapRow` `gapColumn` | NUMBER | 子节点间距（像素量）；`gap` 跟 `axis` 走同一根 gutter |
+| `padding` `paddingTop` `paddingRight` `paddingBottom` `paddingLeft` | NUMBER | 内边距（像素量）；单边写在后会覆盖 `padding` |
+
+> **`order` 不支持**：这套 Yoga 没有对应接口，JSON 里写它只会得到"未知属性"警告。
+> 要在视觉上换顺序就改 `children` 里的书写顺序。
+
 ### 公共属性（所有控件，定义在 `View::attributes()`）
 
 | 键 | 类型 | 说明 |
 |---|---|---|
 | `width` `height` `minWidth` `minHeight` `maxWidth` `maxHeight` | SIZE | 长度语法（含 `"auto"` / `"50%"`） |
 | `margin` `marginTop` `marginRight` `marginBottom` `marginLeft` | NUMBER | 外边距（像素量，随 uiScale） |
-| `padding` `paddingTop` `paddingRight` `paddingBottom` `paddingLeft` | NUMBER | 内边距（像素量）；**只对容器有效**，写在非容器上会警告 |
-| `axis` | ENUM | `row` / `column` —— 主轴方向（只对容器有效） |
-| `alignItems` | ENUM | `auto` / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline`（只对容器有效） |
-| `justifyContent` | ENUM | `flexStart` / `center` / `flexEnd` / `spaceBetween` / `spaceAround` / `spaceEvenly` |
-| `gap` | NUMBER | 主轴向子节点间距（像素量）；跟 `axis` 走同一根 gutter |
 | `grow` `shrink` | NUMBER | flex 伸缩 |
 | `alignSelf` | ENUM | `auto`(默认) / `flexStart` / `center` / `flexEnd` / `stretch` / `baseline` |
 | `position` | ENUM | `relative`(默认) / `absolute` |

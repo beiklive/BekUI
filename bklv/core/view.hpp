@@ -72,6 +72,17 @@ enum class JustifyContent
 };
 
 // 交叉轴对齐，对应 borealis 的 AlignItems。
+// 多行时的行间对齐（CSS align-content）。不收 auto / baseline：那两者对"行"没有意义。
+enum class AlignContent
+{
+    FLEX_START,
+    CENTER,
+    FLEX_END,
+    STRETCH,
+    SPACE_BETWEEN,
+    SPACE_AROUND,
+};
+
 enum class AlignItems
 {
     DEFAULT, // 等于 STRETCH
