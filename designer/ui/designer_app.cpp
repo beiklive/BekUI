@@ -1751,7 +1751,10 @@ void DesignerApp::applyToCanvas()
     std::string error;
     // **不走库的外观缓存**：直接编译这份 JSON 换进画布那个实例，所以未保存的改动立刻可见
     if (!this->canvasView->applyAppearanceJson(this->appearance.serialize(), error))
+    {
         this->lastError = "画布预览失败：" + error;
+        BKLV_LOG_ERROR("画布预览失败：%s", error.c_str());
+    }
     this->canvasView->setVisibility(bklv::Visibility::VISIBLE);
 }
 
