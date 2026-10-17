@@ -53,6 +53,10 @@ class ThemeData
     // 编译交给 core/appearance.*（这样 theme 不依赖 appearance，避免循环依赖）。
     const std::string* widgetAppearanceJson(const std::string& widget) const;
 
+    // **只取 default 主题**的那份原文（当前主题同名文件坏了时，错误策略会用它整份回退）。
+    // 注意它和 widgetAppearanceJson 的区别：后者是"当前主题优先、缺了才回退"。
+    const std::string* defaultWidgetAppearanceJson(const std::string& widget) const;
+
     // 页面/视图描述的原始 JSON 文本（view/ 目录，结构 + 外观）。
     // 同样带 default 主题回退；找不到返回 nullptr。实例化交给 core/json_view.*。
     const std::string* viewJson(const std::string& name) const;

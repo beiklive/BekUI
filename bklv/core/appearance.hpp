@@ -326,8 +326,16 @@ class Appearance
 {
   public:
     // 编译一份外观 JSON。失败返回 nullptr，error 里是人话（含出错的 key 路径）。
+    // source 只用于**诊断**（JSON 错误策略里"是哪个文件坏了"），不影响解析。
     static std::shared_ptr<const Appearance> compile(const std::string& json, const ThemeData& theme,
-        std::string& error);
+        std::string& error, const std::string& source = std::string());
+
+    // 编译 + 按错误策略回退：policy == FALLBACK_DEFAULT 且编译失败时，用 **default 主题**
+    // 里的同名外观（widget，如 "widget/button.text"）再编一次。
+    // 注意回退的是"外观定义"，`@theme` 引用仍按**当前主题**解析 —— 否则那一块会突然变成
+    // default 的配色，和旁边对不上。
+    static std::shared_ptr<const Appearance> compileWithFallback(const std::string& json,
+        const std::string& widget, const ThemeData& theme, std::string& error);
 
     const std::vector<AppearanceLayer>& getLayers() const { return this->layers; }
     const std::vector<AppearanceChild>& getChildren() const { return this->children; }

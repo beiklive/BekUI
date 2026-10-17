@@ -1,6 +1,7 @@
 #include "bklv/compile/appearance_layer_fields.hpp"
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/compile/json_policy.hpp"
 
 namespace bklv
 {
@@ -43,7 +44,8 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
     {
         if (!node.contains(field.key))
             continue;
-        if (!resolveColor(node[field.key], theme, *field.target, error, where + "." + field.key))
+        if (applyColorField(node[field.key], theme, *field.target, error,
+                where + "." + field.key) == FieldResult::FAILED)
             return false;
     }
 
@@ -72,8 +74,12 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
     {
         if (!node.contains(field.key))
             continue;
-        if (!resolveNumber(node[field.key], theme, *field.target, error, where + "." + field.key))
+        const FieldResult numberResult = applyNumberField(node[field.key], theme, *field.target,
+            error, where + "." + field.key);
+        if (numberResult == FieldResult::FAILED)
             return false;
+        if (numberResult == FieldResult::SKIPPED)
+            continue; // 跳过这个字段：保留默认值，也不要再乘缩放
         if (field.pixels)
             *field.target = scalePixels(*field.target);
     }
@@ -81,18 +87,24 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
     if (node.contains("inset") && node["inset"].is_array() && node["inset"].size() == 4)
         for (size_t k = 0; k < 4; k++)
         {
-            if (!resolveNumber(node["inset"][k], theme, layer.inset[k], error,
-                    where + ".inset[" + std::to_string(k) + "]"))
+            const FieldResult insetResult = applyNumberField(node["inset"][k], theme,
+                layer.inset[k], error, where + ".inset[" + std::to_string(k) + "]");
+            if (insetResult == FieldResult::FAILED)
                 return false;
+            if (insetResult == FieldResult::SKIPPED)
+                continue;
             layer.inset[k] = scalePixels(layer.inset[k]);
         }
 
     if (node.contains("offset") && node["offset"].is_array() && node["offset"].size() == 2)
         for (size_t k = 0; k < 2; k++)
         {
-            if (!resolveNumber(node["offset"][k], theme, layer.offset[k], error,
-                    where + ".offset[" + std::to_string(k) + "]"))
+            const FieldResult offsetResult = applyNumberField(node["offset"][k], theme,
+                layer.offset[k], error, where + ".offset[" + std::to_string(k) + "]");
+            if (offsetResult == FieldResult::FAILED)
                 return false;
+            if (offsetResult == FieldResult::SKIPPED)
+                continue;
             layer.offset[k] = scalePixels(layer.offset[k]);
         }
 

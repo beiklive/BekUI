@@ -239,6 +239,7 @@ AppearanceView::frame → draw(drawList, x, y, w, h)
 | # | 建议 | 收益 | 成本 |
 |---|---|---|---|
 | 1 | 视图侧加 **strict 模式**（未知属性报错，默认关） | 让"合法 JSON"可判定；拼写错误立刻暴露 | 小（一个开关 + 日志级别） |
+| 1b | ~~错误恢复策略~~ **已实现**：`JsonErrorPolicy`（STRICT / SKIP_FIELD / FALLBACK_DEFAULT）+ 诊断表；见 `docs/json-syntax.md`「错误策略与诊断」 | 容错但不静默：恢复过的错误都留诊断 | 已完成 |
 | 2 | `theme.json` 的 `files[]` 少后缀从警告升为**报错**（或至少汇总一条"本主题有 N 个文件没装载"） | 避免"外观静默变空" | 小 |
 | 3 | 外观顶层键白名单（`vars/import/box/layers/states/transitions/$comment`），其余报错 | 拼错 `state`/`layer` 能被发现 | 小 |
 | 4 | 把"结构模型"抽成库（保留键序/原文/来源），本轮不动 UI | 重做设计器的基础，也方便写校验工具 | 中 |

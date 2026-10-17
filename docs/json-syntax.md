@@ -123,6 +123,31 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 
 ---
 
+## 一·补、错误策略与诊断（`json_policy`）
+
+解析失败之后，除了报错，还可以按**策略**选一种恢复动作。三种策略（默认 `STRICT`）：
+
+| 策略 | 字段级错误（颜色/数值非法、`@theme` key 不存在、属性类型不对） | 文件级错误（JSON 语法坏、缺 `layers`） |
+|---|---|---|
+| `STRICT`（默认） | 整份编译失败 | 整份编译失败 |
+| `SKIP_FIELD` | **跳过该字段**（保留默认值），其余照常编译 | 仍然失败（没法跳） |
+| `FALLBACK_DEFAULT` | 仍然失败 | **整份退到 default 主题的同名外观**（`@theme` 引用仍按当前主题解析） |
+
+```cpp
+#include "bklv/compile/json_policy.hpp"
+
+compile::setJsonErrorPolicy(compile::JsonErrorPolicy::SKIP_FIELD);   // App 启动前设
+for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
+    // d.file（外观名/视图路径）、d.path（layers[2].fill）、d.message、d.recovered（是否已恢复）
+```
+
+- 环境变量 `BKLV_JSON_POLICY=strict|skip|fallback` 也能设（排查用）；**显式 API 优先**。
+- **不论哪种策略都会留诊断**：`recovered=false` 表示致命，`true` 表示已按策略恢复。
+  `skip` 不是"没发生"，只是"不致命"——调用方/工具应该把 `recovered=true` 的那些显示出来。
+- 能跳过的只有**字段级**错误。文件级（JSON 语法、缺 `layers`、`import`/`vars` 循环、
+  渐变那五类结构校验）一律失败，`FALLBACK_DEFAULT` 只能"整份退 default"。
+- **枚举拼错不受策略影响**：一直是"警告 + 保持原值"（它已等价于跳过；改成致命会破坏第三方主题）。
+
 ## 二、视图描述 JSON
 
 ```json

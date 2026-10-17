@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 
 #include "bklv/compile/json_vars.hpp"
+#include "bklv/compile/json_policy.hpp"
 #include "bklv/core/attributes.hpp"
 #include "bklv/core/globals.hpp"
 #include "bklv/core/logger.hpp"
@@ -345,6 +346,18 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         std::string convertError;
         if (!toValue(it.value(), value, convertError))
         {
+            // 值本身不是标量（数组/对象）：跳过字段时丢这一个属性、整棵树照建
+            if (compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::SKIP_FIELD)
+            {
+                compile::JsonDiagnostic diagnostic;
+                diagnostic.path      = pointer + "/" + key;
+                diagnostic.message   = convertError;
+                diagnostic.recovered = true;
+                compile::pushJsonDiagnostic(diagnostic);
+                BKLV_LOG_WARNING("JSON 视图字段已跳过（%s）：%s", diagnostic.path.c_str(),
+                    convertError.c_str());
+                continue;
+            }
             addError(ctx, pointer + "/" + key, convertError);
             return nullptr;
         }
@@ -354,6 +367,18 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
 
         if (result == ApplyResult::FAILED)
         {
+            // 跳过字段：丢掉这一个属性、整棵树照建（诊断里标 recovered）
+            if (compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::SKIP_FIELD)
+            {
+                compile::JsonDiagnostic diagnostic;
+                diagnostic.path      = pointer + "/" + key;
+                diagnostic.message   = error;
+                diagnostic.recovered = true;
+                compile::pushJsonDiagnostic(diagnostic);
+                BKLV_LOG_WARNING("JSON 视图字段已跳过（%s）：%s", diagnostic.path.c_str(),
+                    error.c_str());
+                continue;
+            }
             addError(ctx, pointer + "/" + key, error);
             return nullptr;
         }
@@ -367,6 +392,12 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
             message += "（" + view->getClassString() + "，公共属性也认）";
             ctx.errors.push_back(pointer + "/" + key + ": " + message);
             BKLV_LOG_WARNING("JSON 视图 %s", (pointer + "/" + key + ": " + message).c_str());
+
+            compile::JsonDiagnostic diagnostic;
+            diagnostic.path      = pointer + "/" + key;
+            diagnostic.message   = message;
+            diagnostic.recovered = true; // 未知属性一直是"警告 + 继续"，等于已经跳过
+            compile::pushJsonDiagnostic(diagnostic);
         }
     }
 
@@ -555,6 +586,7 @@ View* ViewTemplate::instantiate(std::vector<Binding>* bindings) const
         ctx.includeStack.push_back(this->origin);
 
     g_activeContext = &ctx;
+    const compile::JsonSourceScope sourceScope(this->origin);
     View* view     = instantiateNode(this->impl->document, this->origin, 0, ctx);
     g_activeContext = nullptr;
 

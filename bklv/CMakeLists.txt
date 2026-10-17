@@ -354,6 +354,7 @@ set(BKLV_CORE_SOURCES
     core/appearance.cpp
     compile/json_util.cpp
     compile/json_vars.cpp
+    compile/json_policy.cpp
     compile/layer_registry.cpp
     compile/appearance_box.cpp
     compile/appearance_gradient.cpp

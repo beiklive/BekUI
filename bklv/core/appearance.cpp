@@ -17,6 +17,7 @@
 #include "bklv/compile/json_util.hpp"
 #include "bklv/compile/appearance_box.hpp"
 #include "bklv/compile/appearance_gradient.hpp"
+#include "bklv/compile/json_policy.hpp"
 #include "bklv/compile/json_vars.hpp"
 #include "bklv/compile/appearance_imports.hpp"
 #include "bklv/compile/appearance_layer_fields.hpp"
@@ -823,8 +824,10 @@ bool parseTransitions(const Json& root, const Appearance& appearance, const Them
 }
 
 std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, const ThemeData& theme,
-    std::string& error)
+    std::string& error, const std::string& source)
 {
+    const JsonSourceScope sourceScope(source);
+
     Json doc;
     try
     {
@@ -884,6 +887,47 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
     return appearance;
 }
 
+std::shared_ptr<const Appearance> Appearance::compileWithFallback(const std::string& json,
+    const std::string& widget, const ThemeData& theme, std::string& error)
+{
+    std::string firstError;
+    if (auto appearance = Appearance::compile(json, theme, firstError, widget))
+        return appearance;
+
+    if (getJsonErrorPolicy() != JsonErrorPolicy::FALLBACK_DEFAULT)
+    {
+        error = firstError;
+        return nullptr;
+    }
+
+    const std::string* fallback = theme.defaultWidgetAppearanceJson(widget);
+    if (fallback == nullptr || *fallback == json)
+    {
+        // 没有可回退的（或回退源就是同一份）—— 报原错误
+        error = firstError;
+        return nullptr;
+    }
+
+    JsonDiagnostic diagnostic;
+    diagnostic.file      = widget;
+    diagnostic.path      = "(整份外观)";
+    diagnostic.message   = "编译失败，已回退 default 主题的同名外观：" + firstError;
+    diagnostic.recovered = true;
+    pushJsonDiagnostic(diagnostic);
+    BKLV_LOG_WARNING("外观 %s 编译失败，已回退 default 的同名外观：%s", widget.c_str(),
+        firstError.c_str());
+
+    std::string secondError;
+    auto fallbackAppearance
+        = Appearance::compile(*fallback, theme, secondError, widget + "@default");
+    if (fallbackAppearance == nullptr)
+    {
+        error = firstError + "；回退 default 也失败：" + secondError;
+        return nullptr;
+    }
+    return fallbackAppearance;
+}
+
 std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
 {
     const std::string key = getTheme().getName() + "/" + widget;
@@ -901,7 +945,9 @@ std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
     }
 
     std::string error;
-    std::shared_ptr<const Appearance> appearance = Appearance::compile(*text, getTheme(), error);
+    // 走"带回退"的入口：STRICT 下等价于直接编译；FALLBACK_DEFAULT 下整份退到 default 的同名外观
+    std::shared_ptr<const Appearance> appearance
+        = Appearance::compileWithFallback(*text, widget, getTheme(), error);
     if (appearance == nullptr)
         BKLV_LOG_ERROR("控件外观编译失败（%s）：%s", key.c_str(), error.c_str());
 

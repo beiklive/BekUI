@@ -504,6 +504,14 @@ std::vector<std::string> ThemeData::getViewNames() const
     return names;
 }
 
+const std::string* ThemeData::defaultWidgetAppearanceJson(const std::string& widget) const
+{
+    const auto it = this->defaultWidgetJson.find(widget);
+    if (it != this->defaultWidgetJson.end())
+        return &it->second;
+    return nullptr;
+}
+
 const std::string* ThemeData::widgetAppearanceJson(const std::string& widget) const
 {
     const auto it = this->widgetJson.find(widget);

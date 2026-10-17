@@ -1,6 +1,7 @@
 #include "bklv/compile/appearance_box.hpp"
 
 #include "bklv/core/attributes.hpp" // enumMatches / warnUnknownEnumValue
+#include "bklv/compile/json_policy.hpp"
 
 namespace bklv
 {
@@ -36,8 +37,11 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
                     return true;
                 }
             }
-            if (!resolveNumber(node, theme, out, error, where))
+            const FieldResult result = applyNumberField(node, theme, out, error, where);
+            if (result == FieldResult::FAILED)
                 return false;
+            if (result == FieldResult::SKIPPED)
+                return true; // 跳过：out 不动，auto/percent 也不设
             out = scalePixels(out);
             return true;
         };
@@ -47,8 +51,11 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
             if (node.is_number() || node.is_string())
             {
                 float all = 0.0f;
-                if (!resolveNumber(node, theme, all, error, where))
+                const FieldResult result = applyNumberField(node, theme, all, error, where);
+                if (result == FieldResult::FAILED)
                     return false;
+                if (result == FieldResult::SKIPPED)
+                    return true; // 跳过：四边都不写，保留默认
                 all = scalePixels(all);
                 for (int i = 0; i < 4; i++)
                     edges[i] = all;
@@ -61,9 +68,12 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
             }
             for (size_t i = 0; i < 4; i++)
             {
-                if (!resolveNumber(node[i], theme, edges[i], error,
-                        where + "[" + std::to_string(i) + "]"))
+                const FieldResult result = applyNumberField(node[i], theme, edges[i], error,
+                    where + "[" + std::to_string(i) + "]");
+                if (result == FieldResult::FAILED)
                     return false;
+                if (result == FieldResult::SKIPPED)
+                    continue;
                 edges[i] = scalePixels(edges[i]);
             }
             return true;
@@ -72,8 +82,12 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
         auto readNumber = [&](const char* key, float& out, bool& has, const std::string& where) {
             if (!boxNode.contains(key))
                 return true;
-            if (!resolveNumber(boxNode[key], theme, out, error, where + "." + key))
+            const FieldResult result = applyNumberField(boxNode[key], theme, out, error,
+                where + "." + key);
+            if (result == FieldResult::FAILED)
                 return false;
+            if (result == FieldResult::SKIPPED)
+                return true; // 跳过：has 保持 false，等于这个字段没写
             out = scalePixels(out);
             has = true;
             return true;
@@ -143,16 +157,22 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
         }
         if (boxNode.contains("backgroundColor"))
         {
-            if (!resolveColor(boxNode["backgroundColor"], theme, box.background, error,
-                    where + ".backgroundColor"))
+            const FieldResult result = applyColorField(boxNode["backgroundColor"], theme,
+                box.background, error, where + ".backgroundColor");
+            if (result == FieldResult::FAILED)
                 return false;
+            if (result == FieldResult::SKIPPED)
+                return true; // 跳过：整段 box 剩下的字段也不再处理（保持默认）
             box.hasBackground = true;
         }
         if (boxNode.contains("borderColor"))
         {
-            if (!resolveColor(boxNode["borderColor"], theme, box.borderColor, error,
-                    where + ".borderColor"))
+            const FieldResult result = applyColorField(boxNode["borderColor"], theme,
+                box.borderColor, error, where + ".borderColor");
+            if (result == FieldResult::FAILED)
                 return false;
+            if (result == FieldResult::SKIPPED)
+                return true;
             box.hasBorderColor = true;
         }
     } // 收掉"有 box 段"这一层（切片时它被当成函数收尾吃掉了，补回来）

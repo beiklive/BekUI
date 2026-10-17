@@ -445,6 +445,7 @@
   <thead><tr><th style="width:6%">#</th><th style="width:52%">建议</th><th style="width:10%">成本</th><th>收益</th></tr></thead>
   <tbody>
   <tr><td>1</td><td>视图侧加 strict 模式（未知属性报错，默认关）</td><td>小</td><td>让"合法 JSON"可判定</td></tr>
+  <tr><td>1b</td><td><b>错误恢复策略（已实现）</b>：<code>JsonErrorPolicy</code> = STRICT / SKIP_FIELD / FALLBACK_DEFAULT + 诊断表</td><td>完成</td><td>容错但不静默：恢复过的错误都留 file/path/message</td></tr>
   <tr><td>2</td><td><code>theme.json</code> 的 <code>files[]</code> 少后缀：警告 → 报错</td><td>小</td><td>避免"外观静默变空"</td></tr>
   <tr><td>3</td><td>外观顶层键白名单</td><td>小</td><td>拼错 <code>state</code>/<code>layer</code> 能被发现</td></tr>
   <tr><td>4</td><td>把"结构模型"抽成库（保序 / 原文 / 来源）</td><td>中</td><td>重做设计器的地基，也方便写校验工具</td></tr>

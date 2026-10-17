@@ -253,6 +253,14 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   负数写进变量本身）、不做结构复用（那是 `import` 的活）、不做字符串/枚举变量。
   外观与视图描述两条解析路径都接了（`Appearance::compile` / `ViewTemplate::fromString`），
   `tests/json_vars_test.cpp` 钉住展开、错法、以及"用 vars 与写字面量编译结果完全一致"。
+- **JSON 错误策略**（`compile/json_policy.*`）：解析失败后按 `JsonErrorPolicy` 选恢复动作 ——
+  `STRICT`（默认，整份失败）/ `SKIP_FIELD`（字段级错误跳过该字段、保留默认值）/
+  `FALLBACK_DEFAULT`（文件级错误整份退到 default 主题的同名外观，`@theme` 仍按当前主题解析）。
+  三条边界：① 能跳过的只有**字段级**（颜色/数值/`@theme` key/属性类型）；文件级（语法、缺
+  `layers`、`import`/`vars` 循环、渐变结构校验）只能整份回退；② **不管哪种策略都要留诊断**
+  （`getJsonDiagnostics()`：file/path/message/recovered），`skip` 不是"没发生"；
+  ③ 枚举拼错仍是"警告 + 保持原值"，不受策略影响（改成致命会破坏第三方主题）。
+  环境变量 `BKLV_JSON_POLICY=strict|skip|fallback`，显式 API 优先；`tests/json_policy_test.cpp` 钉住。
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，
   对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 会被容错成点分
   （带一条警告提示正确写法），
