@@ -240,14 +240,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   写"透明"就用 `@theme/color.common.transparent`，别再散 `"#00000000"`（曾经在 60 处重复）。
   注意 `colors.json` **不支持 key 之间互相引用**（`@theme/` 只在视图/外观 JSON 里解析），
   所以语义键（`button.primaryBg` 这类）仍是字面量；想改整体配色就一起改。
-- **JSON 变量块：`@` 跨文件、`$` 同文件**（`compile/json_vars.*`）：
-  一份文件在顶层写**一个** `vars`（只有 `colors` / `numbers` 两个子块），正文用 `$color.x` /
-  `$number.y` 引用。五条：① 只有一个、必须在顶层（嵌套 → 报错）；② 值可以是字面量或 `@theme/...`；
-  ③ `vars` 之间可链式引用（≤4 层，循环 → 报错）；④ `$` 的作用域是**整份文档**——`box` /
+- **JSON 变量块：`@` 跨文件、`&` 同文件**（`compile/json_vars.*`）：
+  一份文件在顶层写**一个** `vars`（只有 `colors` / `numbers` 两个子块），正文用 `&color.x` /
+  `&number.y` 引用。**`$` 前缀只用于键**（`$comment` / `$files` 这类元数据，i18n 装载器按
+  "跳过 `$` 开头的键"处理）；值位置写 `$color.x` 会**报错并提示改用 `&`**，
+  以 `&` 开头但不合法的值同样报错（不静默当普通字符串）。五条：① 只有一个、必须在顶层（嵌套 → 报错）；② 值可以是字面量或 `@theme/...`；
+  ③ `vars` 之间可链式引用（≤4 层，循环 → 报错）；④ `&` 的作用域是**整份文档**——`box` /
   `layers` / `states` / `transitions` / `children` 里都能直接用，别在子节点里再写一遍 vars；
   ⑤ 展开与"直接写那个值"**完全等价**（缩放/报错口径都交给 `resolveColor` / `resolveNumber`）。
-  **`$` 绑"写它的那份文件"**：`import` / `include` 进来的文件按它自己的 vars 展开后再合并，
-  想让调用方调被引入方的值就直接覆盖那个字段。**不做算式**（`"-$number.gap"`、`"$x * 2"` 都不行，
+  **`&` 绑"写它的那份文件"**：`import` / `include` 进来的文件按它自己的 vars 展开后再合并，
+  想让调用方调被引入方的值就直接覆盖那个字段。**不做算式**（`"-&number.gap"`、`"&x * 2"` 都不行，
   负数写进变量本身）、不做结构复用（那是 `import` 的活）、不做字符串/枚举变量。
   外观与视图描述两条解析路径都接了（`Appearance::compile` / `ViewTemplate::fromString`），
   `tests/json_vars_test.cpp` 钉住展开、错法、以及"用 vars 与写字面量编译结果完全一致"。

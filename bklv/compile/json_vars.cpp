@@ -23,15 +23,19 @@ struct ResolvedVars
     std::map<std::string, Json> values;
 };
 
-// `$color.x` / `$number.y` -> block="color"/"number"，name="x"
+// `&color.x` / `&number.y` -> block="color"/"number"，name="x"
+//
+// 前缀用 `&` 而不是 `$`：`$` 开头的是**键**上的"元数据"约定（`$comment` / `$files`，
+// i18n 装载器按这个规则跳过它们），值位置用 `&` 就不会两套语义混在一起。
+// 只认这两个前缀 —— 别的以 `&` 开头的普通字符串（比如文案 "&note"）原样保留。
 bool splitVarReference(const std::string& text, std::string& block, std::string& name)
 {
-    if (text.rfind("$color.", 0) == 0)
+    if (text.rfind("&color.", 0) == 0)
     {
         block = "color";
         name  = text.substr(7);
     }
-    else if (text.rfind("$number.", 0) == 0)
+    else if (text.rfind("&number.", 0) == 0)
     {
         block = "number";
         name  = text.substr(8);
@@ -42,6 +46,12 @@ bool splitVarReference(const std::string& text, std::string& block, std::string&
     }
 
     return !name.empty();
+}
+
+// 旧的 `$color.x` / `$number.y` 写法：专门给一句"改用 &"的提示，而不是让它当成普通字符串
+bool looksLikeOldReference(const std::string& text)
+{
+    return text.rfind("$color.", 0) == 0 || text.rfind("$number.", 0) == 0;
 }
 
 // 递归找"非顶层"的 vars：只有顶层那一个允许存在
@@ -71,7 +81,7 @@ bool findNestedVars(const Json& node, const std::string& path, std::string& wher
     return false;
 }
 
-// 解析一个变量（允许链式 `$color.a` -> `$color.b` -> 值）
+// 解析一个变量（允许链式 `&color.a` -> `&color.b` -> 值）
 bool resolveOne(const std::string& block, const std::string& name, const Json& colors,
     const Json& numbers, ResolvedVars& out, std::set<std::string>& visiting, int depth,
     std::string& error)
@@ -83,20 +93,20 @@ bool resolveOne(const std::string& block, const std::string& name, const Json& c
 
     if (!visiting.insert(key).second)
     {
-        error = "vars 出现循环引用：$" + key + "（引用链回到了自己）";
+        error = "vars 出现循环引用：&" + key + "（引用链回到了自己）";
         return false;
     }
 
     if (depth > kMaxChainDepth)
     {
-        error = "vars 的引用链超过 " + std::to_string(kMaxChainDepth) + " 层：$" + key;
+        error = "vars 的引用链超过 " + std::to_string(kMaxChainDepth) + " 层：&" + key;
         return false;
     }
 
     const Json& source = (block == "color") ? colors : numbers;
     if (!source.is_object() || !source.contains(name))
     {
-        error = "引用了不存在的变量：$" + key + "（写法是 $color.名字 / $number.名字）";
+        error = "引用了不存在的变量：&" + key + "（写法是 &color.名字 / &number.名字）";
         return false;
     }
 
@@ -107,19 +117,19 @@ bool resolveOne(const std::string& block, const std::string& name, const Json& c
     if (raw.is_string())
     {
         const std::string text = raw.get<std::string>();
-        if (!text.empty() && text[0] == '$')
+        if (!text.empty() && text[0] == '&')
         {
             std::string nextBlock;
             std::string nextName;
             if (!splitVarReference(text, nextBlock, nextName))
             {
-                error = "变量 $" + key + " 的引用写法不对：\"" + text
-                    + "\"（写法是 $color.名字 / $number.名字）";
+                error = "变量 &" + key + " 的引用写法不对：\"" + text
+                    + "\"（写法是 &color.名字 / &number.名字）";
                 return false;
             }
             if (nextBlock != block)
             {
-                error = "变量 $" + key + "（" + block + "）不能引用另一个类型的变量：\"" + text + "\"";
+                error = "变量 &" + key + "（" + block + "）不能引用另一个类型的变量：\"" + text + "\"";
                 return false;
             }
             if (!resolveOne(nextBlock, nextName, colors, numbers, out, visiting, depth + 1, error))
@@ -132,12 +142,12 @@ bool resolveOne(const std::string& block, const std::string& name, const Json& c
     // 类型检查：颜色块必须是字符串，数值块必须是数字或字符串（@theme/metric.x）
     if (block == "color" && !value.is_string())
     {
-        error = "颜色变量 $color." + name + " 必须是字符串（\"#RRGGBB[AA]\" 或 \"@theme/color.x.y\"）";
+        error = "颜色变量 &color." + name + " 必须是字符串（\"#RRGGBB[AA]\" 或 \"@theme/color.x.y\"）";
         return false;
     }
     if (block == "number" && !value.is_number() && !value.is_string())
     {
-        error = "数值变量 $number." + name
+        error = "数值变量 &number." + name
             + " 必须是数字或 \"@theme/metric.x.y\" 这样的引用";
         return false;
     }
@@ -153,15 +163,26 @@ bool replaceVars(Json& node, const ResolvedVars& vars, const std::string& path, 
     if (node.is_string())
     {
         const std::string text = node.get<std::string>();
-        if (text.empty() || text[0] != '$')
-            return true; // 不是变量引用，原样保留
+
+        // 旧写法（$color.x）给一句明确的迁移提示：否则它会被当成普通字符串，
+        // 最后以"期望颜色字符串"的面目报错，看不出真正原因
+        if (looksLikeOldReference(text))
+        {
+            error = "\"" + text + "\"（在 " + (path.empty() ? "顶层" : path)
+                + "）用了旧写法：变量引用改用 &color.名字 / &number.名字"
+                "（$ 开头留给键上的元数据：$comment / $files）";
+            return false;
+        }
+
+        if (text.empty() || text[0] != '&')
+            return true; // 不是变量引用，原样保留（"&note" 这类普通字符串不受影响）
 
         std::string block;
         std::string name;
         if (!splitVarReference(text, block, name))
         {
             error = "\"" + text + "\"（在 " + (path.empty() ? "顶层" : path)
-                + "）不是合法的变量引用：写法是 $color.名字 / $number.名字";
+                + "）不是合法的变量引用：写法是 &color.名字 / &number.名字";
             return false;
         }
 
@@ -290,7 +311,7 @@ bool expandJsonVars(Json& doc, std::string& error)
     }
     else
     {
-        // 没有 vars 却写了 $color.x：仍然按"未知变量"报错（别让人以为是别的语法）
+        // 没有 vars 却写了 &color.x：仍然按"未知变量"报错（别让人以为是别的语法）
         ResolvedVars empty;
         if (!replaceVars(doc, empty, std::string(), error))
             return false;

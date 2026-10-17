@@ -18,20 +18,20 @@
   "box": {
     "measureContent": "sum",
     "padding": [
-      "$number.padY",
-      "$number.padX",
-      "$number.padY",
-      "$number.padX"
+      "&number.padY",
+      "&number.padX",
+      "&number.padY",
+      "&number.padX"
     ]
   },
   "layers": [
     {
       "op": "rect",
       "id": "bg",
-      "fill": "$color.none",
-      "stroke": "$color.line",
-      "strokeWidth": "$number.border",
-      "radius": "$number.radius"
+      "fill": "&color.none",
+      "stroke": "&color.line",
+      "strokeWidth": "&number.border",
+      "radius": "&number.radius"
     }
   ]
 }

@@ -1,4 +1,4 @@
-// 无窗口测试：JSON 变量块（vars + $color.x / $number.y）。
+// 无窗口测试：JSON 变量块（vars + &color.x / &number.y）。
 //
 // 约定（用户拍板）：
 //   · `@前缀` = 引用别的文件（@theme / @i18n / @res）
@@ -75,8 +75,8 @@ int main()
                 "numbers": { "row": 44, "gap": "@theme/metric.spacing.md" }
             },
             "layers": [
-                { "op": "rect", "fill": "$color.ring", "radius": "$number.gap" },
-                { "op": "rect", "fill": "$color.bg",   "inset": [0, 0, 0, "$number.row"] }
+                { "op": "rect", "fill": "&color.ring", "radius": "&number.gap" },
+                { "op": "rect", "fill": "&color.bg",   "inset": [0, 0, 0, "&number.row"] }
             ]
         })",
             error);
@@ -97,8 +97,8 @@ int main()
         std::string error;
         const Json doc = expand(R"({
             "vars": { "numbers": { "row": 44 } },
-            "box": { "height": "$number.row" },
-            "layers": [ { "op": "rect", "inset": [0, 0, 0, "$number.row"] } ]
+            "box": { "height": "&number.row" },
+            "layers": [ { "op": "rect", "inset": [0, 0, 0, "&number.row"] } ]
         })",
             error);
 
@@ -116,10 +116,10 @@ int main()
         std::string error;
         const Json doc = expand(R"({
             "vars": {
-                "colors":  { "a": "$color.b", "b": "$color.c", "c": "#112233" },
-                "numbers": { "outer": "$number.inner", "inner": 12 }
+                "colors":  { "a": "&color.b", "b": "&color.c", "c": "#112233" },
+                "numbers": { "outer": "&number.inner", "inner": 12 }
             },
-            "layers": [ { "op": "rect", "fill": "$color.a", "radius": "$number.outer" } ]
+            "layers": [ { "op": "rect", "fill": "&color.a", "radius": "&number.outer" } ]
         })",
             error);
 
@@ -134,22 +134,22 @@ int main()
     std::printf("\n== 4. 写错都要报错（不静默降级）==\n");
     {
         check(failsWith(R"({ "vars": { "colors": { "a": "#112233" } },
-                            "layers": [ { "op": "rect", "fill": "$color.missing" } ] })",
-                  "$color.missing"),
+                            "layers": [ { "op": "rect", "fill": "&color.missing" } ] })",
+                  "&color.missing"),
             "未知变量 -> 报错并点名");
 
-        check(failsWith(R"({ "layers": [ { "op": "rect", "fill": "$bg" } ] })", "$bg"),
+        check(failsWith(R"({ "layers": [ { "op": "rect", "fill": "&bg" } ] })", "&bg"),
             "没有块名的 $写法 -> 报错");
 
-        check(failsWith(R"({ "vars": { "colors": { "a": "$color.b", "b": "$color.a" } },
-                            "layers": [ { "op": "rect", "fill": "$color.a" } ] })",
+        check(failsWith(R"({ "vars": { "colors": { "a": "&color.b", "b": "&color.a" } },
+                            "layers": [ { "op": "rect", "fill": "&color.a" } ] })",
                   "循环"),
             "循环引用 -> 报错");
 
         check(failsWith(R"({ "vars": { "numbers": {
-                              "a": "$number.b", "b": "$number.c", "c": "$number.d",
-                              "d": "$number.e", "e": 1 } },
-                            "box": { "height": "$number.a" } })",
+                              "a": "&number.b", "b": "&number.c", "c": "&number.d",
+                              "d": "&number.e", "e": 1 } },
+                            "box": { "height": "&number.a" } })",
                   "超过"),
             "引用链超过 4 层 -> 报错");
 
@@ -162,7 +162,7 @@ int main()
             std::string error;
             const auto appearance = Appearance::compile(R"({
                 "vars": { "numbers": { "a": 1 } },
-                "layers": [ { "op": "rect", "fill": "$number.a" } ]
+                "layers": [ { "op": "rect", "fill": "&number.a" } ]
             })",
                 theme, error);
             check(appearance == nullptr, "颜色槽里放数值变量 -> 编译失败");
@@ -173,7 +173,7 @@ int main()
         check(failsWith(R"({ "vars": { "colors": { "a": 1 } }, "layers": [] })", "必须是字符串"),
             "颜色变量不是字符串 -> 报错");
 
-        check(failsWith(R"({ "vars": { "colors": { "a": "$number.x" }, "numbers": { "x": 1 } },
+        check(failsWith(R"({ "vars": { "colors": { "a": "&number.x" }, "numbers": { "x": 1 } },
                             "layers": [] })",
                   "不能引用"),
             "颜色变量指向数值变量 -> 报错");
@@ -185,6 +185,32 @@ int main()
 
         check(failsWith(R"({ "vars": 3, "layers": [] })", "必须是对象"),
             "vars 不是对象 -> 报错");
+
+        // 旧写法（$color.x）要有明确的迁移提示，而不是被当成普通字符串一路走到下游
+        check(failsWith(R"({ "vars": { "colors": { "a": "#112233" } },
+                            "layers": [ { "op": "rect", "fill": "$color.a" } ] })",
+                  "改用 &"),
+            "旧的 $color.x 写法 -> 报错并提示改用 &");
+
+        // $ 开头的**键**是元数据（$comment / $files），完全不受影响
+        {
+            std::string meta;
+            const Json doc = expand(R"({ "$comment": "这里是说明", "$files": ["pages"],
+                                        "layers": [ { "op": "rect", "fill": "#112233" } ] })",
+                meta);
+            check(doc.is_object(), "带 $ 元数据键的文件能过（" + meta + "）");
+            if (doc.is_object())
+            {
+                checkEqual(doc["$comment"].get<std::string>(), "这里是说明", "$comment 原样保留");
+                checkEqual(doc["$files"][0].get<std::string>(), "pages", "$files 原样保留");
+            }
+        }
+
+        // 以 & 开头的值一律当引用：写错了要报"写法不对"，而不是静默当普通字符串
+        //（静默放过的结果是下游报"期望颜色字符串"，看不出真正原因）
+        check(failsWith(R"({ "layers": [ { "op": "rect", "fill": "&colour.x" } ] })",
+                  "写法是 &color.名字"),
+            "& 开头但不是合法引用 -> 报错并给出正确写法");
     }
 
     std::printf("\n== 5. 外观：用 vars 与写字面量编译结果完全等价 ==\n");
@@ -207,10 +233,10 @@ int main()
                 "numbers": { "height": "@theme/metric.control.height",
                              "radius": "@theme/metric.radius.md" }
             },
-            "box": { "height": "$number.height" },
+            "box": { "height": "&number.height" },
             "layers": [
-                { "op": "rect", "id": "bg", "fill": "$color.surface", "radius": "$number.radius" },
-                { "op": "text", "id": "text", "source": "text", "color": "$color.label" }
+                { "op": "rect", "id": "bg", "fill": "&color.surface", "radius": "&number.radius" },
+                { "op": "text", "id": "text", "source": "text", "color": "&color.label" }
             ]
         })";
 
@@ -250,10 +276,10 @@ int main()
                 "colors":  { "accent": "@theme/color.accent.base" },
                 "numbers": { "row": 40, "gap": 8 }
             },
-            "type": "Box", "axis": "column", "width": 200, "gap": "$number.gap",
+            "type": "Box", "axis": "column", "width": 200, "gap": "&number.gap",
             "children": [
-                { "type": "Box", "height": "$number.row", "width": 100 },
-                { "type": "Box", "height": "$number.row", "width": 100 }
+                { "type": "Box", "height": "&number.row", "width": 100 },
+                { "type": "Box", "height": "&number.row", "width": 100 }
             ]
         })";
 
@@ -284,7 +310,7 @@ int main()
                 checkEqualSize(kids.size(), (size_t)2, "两个子节点");
                 if (kids.size() == 2)
                 {
-                    checkFloat(kids[0]->getHeight(), 40.0f, "children 里直接写的 $number.row 生效");
+                    checkFloat(kids[0]->getHeight(), 40.0f, "children 里直接写的 &number.row 生效");
                     checkFloat(kids[1]->getHeight(), 40.0f, "第二个子节点同样生效");
                 }
             }
