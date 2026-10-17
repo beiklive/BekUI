@@ -40,6 +40,7 @@ class DesignerApp
         float       clickX = -1.0f;        // --click x,y：启动后模拟一次点击（自动化验证点选）
         float       clickY = -1.0f;
         bool        openPalette = false; // --palette：启动就打开快速打开（自动化验证）
+        float       zoom = 1.0f;         // --zoom：画布缩放（自动化验证）
     };
 
     bool init(const Options& options, std::string& error);
@@ -126,6 +127,9 @@ class DesignerApp
     char              paletteFilter[64] = {0};
     int               paletteIndex = 0;
     std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
+    float             canvasZoom = 1.0f;
+    float             appliedZoom = -1.0f; // 上次套用的缩放（避免每帧重设尺寸）
+    void applyCanvasZoom();
     std::string       lastSeenError;
     long long         lastAutosaveMs = 0;
     AutosaveInfo      pendingDraft;   // 启动时发现的未保存草稿

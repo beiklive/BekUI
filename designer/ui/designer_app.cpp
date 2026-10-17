@@ -88,6 +88,9 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     this->app.setRootView(root.release());
 
+    if (this->options.zoom > 0.0f)
+        this->canvasZoom = this->options.zoom;
+
     if (this->options.openPalette)
         this->wantPalette = true;
 
@@ -302,6 +305,10 @@ void DesignerApp::update()
         }
     }
 
+    // 画布缩放：首次布局完成后套一次；改缩放后套一次（不在每帧重设，避免无谓重排）
+    if (this->canvasZoom != this->appliedZoom)
+        this->applyCanvasZoom();
+
     this->maybeAutosave();
 
     // 诊断收集：错误换了就记一条（不重复记同一个字符串）
@@ -375,6 +382,28 @@ void DesignerApp::drawPanels()
     ImGui::Begin("检视器", nullptr,
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    // 画布缩放（两种文件都可用）
+    ImGui::TextDisabled("画布 %d%%", (int)(this->canvasZoom * 100.0f + 0.5f));
+    ImGui::SameLine();
+    if (ImGui::Button("-##zoom"))
+    {
+        this->canvasZoom = std::max(0.25f, this->canvasZoom - 0.25f);
+        this->applyCanvasZoom();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("100%##zoom"))
+    {
+        this->canvasZoom = 1.0f;
+        this->applyCanvasZoom();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("+##zoom"))
+    {
+        this->canvasZoom = std::min(2.0f, this->canvasZoom + 0.25f);
+        this->applyCanvasZoom();
+    }
+    ImGui::Separator();
+
     if (this->viewLoaded)
     {
         this->drawViewPanel();
@@ -890,6 +919,30 @@ void DesignerApp::rebuildViewPreview()
                 walk(child);
     };
     walk(preview);
+}
+
+void DesignerApp::applyCanvasZoom()
+{
+    // 方案①：按画布区的**像素尺寸**×缩放给预览定尺寸（不用百分比 —— 根 Box 高度 auto 时
+    // 百分比拿不到确定值，zoom=1 反而不铺满，这条是上一轮踩过的）
+    if (this->canvasHost == nullptr)
+        return;
+    const float areaW = this->canvasHost->getWidth();
+    const float areaH = this->canvasHost->getHeight();
+    if (areaW <= 1.0f || areaH <= 1.0f)
+        return; // 还没布局
+
+    auto apply = [&](bklv::View* view) {
+        if (view == nullptr)
+            return;
+        view->setGrow(0.0f);
+        view->setAlignSelf(bklv::AlignSelf::CENTER);
+        view->setWidth(areaW * this->canvasZoom);
+        view->setHeight(areaH * this->canvasZoom);
+    };
+    apply(this->canvasView);
+    apply(this->viewPreview);
+    this->appliedZoom = this->canvasZoom;
 }
 
 void DesignerApp::selectNodeAt(float screenX, float screenY)

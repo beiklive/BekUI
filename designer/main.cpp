@@ -41,6 +41,8 @@ int main(int argc, char** argv)
         if (std::strcmp(argv[i], "--palette") == 0)
             options.openPalette = true;
     }
+    if (const char* zoom = argValue(argc, argv, "--zoom"))
+        options.zoom = (float)std::atof(zoom);
     if (const char* click = argValue(argc, argv, "--click"))
     {
         options.clickX = (float)std::atof(click);
