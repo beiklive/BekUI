@@ -244,13 +244,11 @@ def diagram_packages():
     d = Diagram("模块总览", 1520, 620)
     d.cls("demo", "demo（示例程序）", ["三页示例：基础控件 / 图标总览 / 布局", "只用 bklv.hpp 伞头文件"],
           x=60, y=30, w=300, kind="group")
-    d.cls("designer", "designer（设计器）", ["ImGui 界面本体 + bklv 真实视图预览", "core 层无窗口可测"],
-          x=400, y=30, w=300, kind="group")
     d.cls("switch", "Switch / 桌面", ["同一套上层代码，换平台实现"],
           x=740, y=30, w=240, kind="group")
 
     d.group("lib", "bklv（BekUI）—— 库本体，自包含", 60, 140, 1400, 250,
-            note="上层与图形 API 无关：demo / designer 不写任何 GL / Vulkan 代码")
+            note="上层与图形 API 无关：demo 不写任何 GL / Vulkan 代码")
     d.cls("core", "core/", ["App / View / Box / ThemeData", "Appearance / RenderBackend / Platform",
                             "task / event / input / ime / logger"],
           x=90, y=190, w=290, kind="group")
@@ -274,8 +272,6 @@ def diagram_packages():
 
     d.link("demo", "core", kind="depend", label="链接 bklv::bklv", b_side="t", a_side="b",
            route=[(210, 100), (210, 190)])
-    d.link("designer", "widgets", kind="depend", b_side="t", a_side="b",
-           route=[(550, 100), (550, 190)])
     d.link("switch", "platforms", kind="depend", b_side="t", a_side="b",
            route=[(860, 100), (1010, 100), (1010, 190)])
     d.link("core", "t6", kind="depend", dashed=True, a_side="b", b_side="t",
@@ -378,7 +374,7 @@ def diagram_theme():
           x=590, y=470, w=300, kind="class")
     d.cls("view", "View 树", ["构造后 applyTheme()", "换肤 = 重新取外观 + 重排"],
           x=1200, y=470, w=280, kind="class")
-    d.cls("doc", "设计器 AppearanceDoc", ["直接读写 JSON 文档", "改完热重载就变预览"],
+    d.cls("doc", "JSON 文档编辑（外部工具）", ["直接读写主题外观 JSON", "改完热重载就变预览"],
           x=60, y=560, w=380, kind="group")
 
     d.link("res", "themes", kind="assoc", label="读", a_side="r", b_side="l")
@@ -445,53 +441,6 @@ def diagram_runtime():
     return d.svg("图 4：App 是装配点：由 Platform 创建窗口与后端；输入 / 事件 / 定时 / IME / 日志 / 音频都是它的成员")
 
 
-# ---------------------------------------------------------------- 图 5：设计器与玻璃
-
-def diagram_designer():
-    d = Diagram("设计器与玻璃管线", 1600, 760)
-    d.cls("win", "DesignerWindow", ["ImGui 画界面（面板 / 菜单 / 工具栏）",
-                                    "预览用 bklv 真实视图渲染",
-                                    "+ drawPreview / drawProps / drawStatus"],
-           x=60, y=40, w=360, kind="class")
-    d.cls("glass", "DesignerGlass", ["两套后端二选一", "+ addBar / addPanel / addRect",
-                                     "+ usesOwnWallpaper()"], x=520, y=40, w=330, kind="class")
-    d.cls("tune", "GlassTuning", ["每帧参数唯一数据源", "预设：清透/磨砂/厚重/极简"],
-           x=60, y=270, w=300, kind="theme")
-    d.cls("state", "UiState", ["designer_state.json", "缩放 / 布局 / 画布底 / 观感"],
-           x=60, y=430, w=300, kind="theme")
-    d.cls("glb", "glass/gl/", ["GLSL 150 常量字符串", "抓帧 FBO + 半分辨率高斯",
-                               "折射 / 色散 / 采样", "FramebufferGuard 还状态"],
-           x=520, y=300, w=320, kind="group")
-    d.cls("vkg", "glass/vk/", ["VkGlass : VulkanUiPassHook", "vkCmdBlitImage 走 mip 链",
-                               "通道前铺底 / 通道后拷帧"], x=900, y=300, w=340, kind="group")
-    d.cls("hook", "App::onPrepareDrawData", ["ImGui::Render() 之后、", "renderDrawData() 之前"],
-           x=520, y=560, w=330, kind="iface", stereotype="«hook»")
-    d.cls("vkback", "VulkanBackend", ["beginRendering：清屏改 LOAD", "endRendering：转 present 前回调"],
-           x=900, y=560, w=340, kind="class")
-    d.cls("prev", "预览区（画布）", ["bklv 渲染的 JSON 内容", "面板玻璃在它之下（逐像素不受影响）"],
-           x=1280, y=40, w=280, kind="group")
-
-    d.link("win", "glass", kind="compose", label="每个面板一次请求", a_side="r", b_side="l")
-    d.link("win", "tune", kind="assoc", a_side="b", b_side="t", route=[(240, 250), (210, 250), (210, 270)])
-    d.link("tune", "state", kind="compose", label="随状态存", a_side="b", b_side="t",
-           route=[(210, 350), (210, 430)])
-    d.link("glass", "glb", kind="depend", label="GL 构建", a_side="b", b_side="t",
-           route=[(620, 200), (620, 300)])
-    d.link("glass", "vkg", kind="depend", label="VK 构建", a_side="b", b_side="t",
-           route=[(760, 240), (1050, 240), (1050, 300)])
-    d.link("glb", "hook", kind="depend", label="GL 命令注入", a_side="b", b_side="t",
-           route=[(620, 430), (620, 560)])
-    d.link("vkg", "vkback", kind="compose", label="挂 UI pass 钩子", a_side="b", b_side="t",
-           route=[(1070, 460), (1070, 560)])
-    d.link("hook", "prev", kind="depend", dashed=True, a_side="r", b_side="b",
-           route=[(850, 600), (1420, 600), (1420, 190)])
-    d.note("玻璃只服务设计器外壳；预览区是禁区（画布内容由 bklv 画在玻璃之上，逐像素不受影响）",
-           520, 680, lines=1)
-    return d.svg("图 7：设计器的玻璃管线 —— GL 走 ImGui 绘制回调，VK 走 UI pass 钩子（两条完全不同的路径）")
-
-
-# ---------------------------------------------------------------- 时序图
-
 def sequence_frame():
     s = Sequence(1200, [("app", "App", "主循环"),
                         ("plat", "Platform", "SDL / libnx"),
@@ -502,13 +451,13 @@ def sequence_frame():
                   ("app", "view", "YGNodeCalculateLayout（一帧最多一次）", "call"),
                   ("app", "view", "notifyLayout() → update() → frame(ctx)", "call"),
                   ("view", "view", "draw()：画进 ImGui 绘制列表", "self"),
-                  ("app", "view", "onDrawWindows()：ImGui 窗口（设计器）", "call"),
+                  ("app", "view", "onDrawWindows()：宿主自己的 ImGui 窗口", "call"),
                   ("app", "app", "ImGui::Render() → 生成 ImDrawData", "self"),
                   ("app", "app", "onPrepareDrawData()（通用钩子）", "self"),
                   ("app", "back", "renderDrawData()（GL 或 Vulkan）", "call"),
                   ("back", "plat", "present()", "call")],
                  note="布局是延迟的：invalidate() 只标脏，真正的重排由 App::frame 统一做（静态页面 0 次/秒）")
-    return s.svg("图 5：一帧的时序（当前只有设计器用 onDrawWindows；demo 的日志窗口已是视图）")
+    return s.svg("图 5：一帧的时序（onDrawWindows 留给需要自己 ImGui 面板的宿主；demo 的日志窗口已是视图）")
 
 
 def sequence_theme():
@@ -526,7 +475,7 @@ def sequence_theme():
                   ("app", "app", "下一帧：重排 + 重绘", "self"),
                   ("app", "back", "纹理失效的图片重新上传", "call")],
                  note="换肤不改 C++：整份主题就是 resources/theme/<名>/ 下的一组 JSON")
-    return s.svg("图 6：换主题 / 热重载的时序（设计器改 JSON 后走同一条路，预览立刻变）")
+    return s.svg("图 6：换主题 / 热重载的时序（改完 JSON 走同一条路，界面立刻变）")
 
 
 # ---------------------------------------------------------------- HTML 组装
@@ -547,7 +496,6 @@ def build_html(path_out):
         ("runtime", "4 · 运行时装配", "App / Platform / RenderBackend 的关系", diagram_runtime()),
         ("frame", "5 · 一帧时序（图 5）", "从 pollEvents 到 present", sequence_frame()),
         ("switch", "6 · 换主题时序（图 6）", "换肤 / 热重载", sequence_theme()),
-        ("designer", "7 · 设计器与玻璃（图 7）", "两套玻璃后端 + 通用钩子", diagram_designer()),
     ]
 
     nav = "".join(f'<a href="#{sid}">{html.escape(title)}</a>' for sid, title, _, _ in sections)
