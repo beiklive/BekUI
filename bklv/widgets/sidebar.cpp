@@ -226,7 +226,7 @@ const AttributeTable& Sidebar::attributes() const
          }, nullptr },
         { "panelWidth", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<Sidebar*>(v)->setPanelWidth(r.number);
-         }, nullptr },
+         }, nullptr, true },
     };
     return table;
 }

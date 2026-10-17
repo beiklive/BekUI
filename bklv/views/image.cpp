@@ -569,12 +569,12 @@ const AttributeTable& Image::attributes() const
         { "src", AttributeKind::RESOURCE_PATH, setImageSrcAttr, nullptr },
         // Image 上的 cornerRadius 指**图片本身的圆角**（子类表优先于公共表里
         // 那个背景圆角），这才是 Image 上看得见的东西。
-        { "cornerRadius", AttributeKind::NUMBER, setImageRadiusAttr, nullptr },
+        { "cornerRadius", AttributeKind::NUMBER, setImageRadiusAttr, nullptr, true },
         { "scalingType", AttributeKind::ENUM, setScalingTypeAttr, "fit|fill|stretch|center" },
         // 显示比例（默认 1.0 = 原比例）、平移（像素）；fill 模式下无效（见 placeImage）
         { "scale", AttributeKind::NUMBER, setImageScaleAttr, nullptr },
-        { "offsetX", AttributeKind::NUMBER, setImageOffsetXAttr, nullptr },
-        { "offsetY", AttributeKind::NUMBER, setImageOffsetYAttr, nullptr },
+        { "offsetX", AttributeKind::NUMBER, setImageOffsetXAttr, nullptr, true },
+        { "offsetY", AttributeKind::NUMBER, setImageOffsetYAttr, nullptr, true },
         { "placeholderColor", AttributeKind::COLOR, setImagePlaceholderAttr, nullptr },
     };
     return table;

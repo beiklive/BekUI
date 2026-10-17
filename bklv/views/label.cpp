@@ -537,7 +537,7 @@ const AttributeTable& Label::attributes() const
 {
     static const AttributeTable table = {
         { "text", AttributeKind::TEXT, setTextAttr, nullptr },
-        { "fontSize", AttributeKind::NUMBER, setFontSizeAttr, nullptr },
+        { "fontSize", AttributeKind::NUMBER, setFontSizeAttr, nullptr, true },
         { "textColor", AttributeKind::COLOR, setTextColorAttr, nullptr },
         { "singleLine", AttributeKind::BOOL, setSingleLineAttr, nullptr },
         { "lineHeight", AttributeKind::NUMBER, setLineHeightAttr, nullptr },

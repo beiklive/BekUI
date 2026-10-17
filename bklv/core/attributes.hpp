@@ -80,6 +80,7 @@ enum class AttributeKind
 struct ResolvedValue
 {
     float number  = 0.0f; // Number / Size（AUTO 时是 NAN）
+    bool fromTheme = false; // 值来自 @style/ 主题查找（已乘过 uiScale，别再乘一次）
     bool percent  = false; // Size："50%" -> number=50, percent=true
     bool boolean  = false;
     ImU32 color   = 0;
@@ -94,6 +95,10 @@ struct AttributeDef
     AttributeKind kind;
     AttributeSetter set;
     const char* allowed; // 仅 Enum 用，"row|column" 这种
+    // **像素量**（长度/坐标/偏移）：解析时乘 uiScale，和主题 metric、外观 JSON 用同一个基准。
+    // 720p 上写的 100，在 1080p 窗口里是 150 —— 不标这一位的（grow/shrink/alpha/比例）不缩放。
+    // 主题引用（@style/metric.x）本来就缩过了，不会重复乘。
+    bool pixels = false;
 };
 
 // 一个类的属性表。静态存续（函数内 static），不随实例分配。

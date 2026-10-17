@@ -318,7 +318,7 @@ const AttributeTable& RecyclerView::attributes() const
          }, nullptr },
         { "minItemWidth", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setMinItemWidth(r.number);
-         }, nullptr },
+         }, nullptr, true },
         { "slotLoading", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerView*>(v)->setSlotLoading(r.text);
          }, nullptr },
@@ -357,10 +357,10 @@ const AttributeTable& RecyclerView::attributes() const
              RecyclerLoadConfig config = frame->getLoadConfig();
              config.estimatedItemHeight = std::isfinite(r.number) && r.number > 0.0f ? r.number : 0.0f;
              frame->setLoadConfig(config);
-         }, nullptr },
+         }, nullptr, true },
         { "itemHeight", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              static_cast<RecyclerFrame*>(v)->setItemHeight(r.number);
-         }, nullptr },
+         }, nullptr, true },
         { "preFetchLine", AttributeKind::NUMBER, [](View* v, const ResolvedValue& r) {
              RecyclerFrame* frame = static_cast<RecyclerFrame*>(v);
              const size_t lines = clampToSize(r);

@@ -1,6 +1,7 @@
 #include "bklv/core/attributes.hpp"
 
 #include "bklv/core/icon_font.hpp"
+#include "bklv/core/ui_scale.hpp"
 
 #include <set>
 
@@ -214,7 +215,8 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
                         + "（写法是 @style/metric.a.b）";
                     return false;
                 }
-                out.number = getTheme().number(key);
+                out.number    = getTheme().number(key);
+                out.fromTheme = true; // ThemeData::number 已乘过 uiScale，别再乘一次
                 return true;
             }
             break;
@@ -259,7 +261,8 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
                         + "（写法是 @style/metric.a.b）";
                     return false;
                 }
-                out.number = getTheme().number(key);
+                out.number    = getTheme().number(key);
+                out.fromTheme = true; // ThemeData::number 已乘过 uiScale，别再乘一次
                 return true;
             }
             if (parseNumber(text, out.number))
@@ -491,6 +494,12 @@ ApplyResult applyFromTable(View* view, const AttributeTable& table, const std::s
     ResolvedValue resolved;
     if (!resolve(def->kind, value, def->allowed, resolved, error))
         return ApplyResult::FAILED;
+
+    // 像素量统一乘 uiScale：视图描述 JSON 里写的长度/坐标/偏移与主题 metric、外观 JSON
+    // 用**同一个基准**（都是 1280x720 上量出来的），换分辨率不会错位。
+    // 不乘的三种：百分比（"50%"）、auto（NAN）、来自主题的值（ThemeData::number 已乘过）。
+    if (def->pixels && !resolved.fromTheme && !resolved.percent && std::isfinite(resolved.number))
+        resolved.number *= getUiScale();
 
     if (def->set != nullptr)
         def->set(view, resolved);

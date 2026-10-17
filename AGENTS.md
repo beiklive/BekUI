@@ -291,7 +291,11 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ① `ThemeData::number()` 里 `metric.*` 会乘缩放（`metric.anim.*` 是毫秒、
      `metric.font.lineHeight` 是系数，都不缩放）；
   ② 外观 JSON 里的 radius/strokeWidth/width/height/fontSize/inset/offset 会乘缩放
-     （opacity 是系数、duration 是毫秒，不缩放）。
+     （opacity 是系数、duration 是毫秒，不缩放）；
+  ③ **视图描述 JSON 的像素量也乘**（`AttributeDef::pixels` 标记，在 `applyFromTable` 里统一乘）：
+     width/height/min*/margin*/top/left/right/bottom/borderThickness/cornerRadius/fontSize/
+     图片的 offsetX/offsetY 等。**不加这一位就不缩放**（百分比、auto、grow/shrink/alpha、
+     图片显示比例都是这样）。三处必须用同一个基准，否则换分辨率就错位。
   代码里写死的像素值**不缩放**——想跟随比例就用主题 metric 或把数字写进外观 JSON。
   画布尺寸变了要重新套用外观（外观值在 `applyTheme()` 时就取定了）并重排，
   这个由 `App::frame` 里调 `updateUiScaleFromCanvas()` 统一处理。

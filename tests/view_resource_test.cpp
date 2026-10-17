@@ -13,8 +13,11 @@
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/core/theme_data.hpp"
+#include "bklv/core/ui_scale.hpp"
 #include "bklv/core/view.hpp"
 #include "bklv/views/image.hpp"
+#include "bklv/views/label.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/widget_types.hpp"
 #include "test_util.hpp"
@@ -178,6 +181,73 @@ int main()
     {
         const ImagePlacement p = placeImage(ImageScalingType::FIT, 0.0f, 0.0f, 200.0f, 200.0f);
         check(near(p.width, 0.0f) && near(p.height, 0.0f), "0x0 图 -> 空矩形");
+    }
+
+    std::printf("\n== 9. 同一个基准：像素量随 uiScale 缩放，比例/百分比/主题值不重复乘 ==\n");
+    {
+        setUiScale(2.0f);
+
+        // 字面量像素量：offsetX/offsetY/cornerRadius 都跟着放大
+        if (const auto tmpl = ViewTemplate::fromString(R"({
+                "type": "Image", "src": "@res/testcard.png", "cornerRadius": 3,
+                "offsetX": 10, "offsetY": -4
+            })",
+                "test/ui-scale"))
+        {
+            View* root = tmpl->instantiate();
+            if (auto* image = dynamic_cast<Image*>(root))
+            {
+                checkFloat(image->getOffsetX(), 20.0f, "offsetX 10 -> 20（uiScale=2）");
+                checkFloat(image->getOffsetY(), -8.0f, "offsetY -4 -> -8");
+                checkFloat(image->getImageCornerRadius(), 6.0f, "cornerRadius 3 -> 6");
+                checkFloat(image->getDisplayScale(), 1.0f, "显示比例是系数，不缩放（仍为 1）");
+            }
+            else
+            {
+                check(false, "根节点应当是 Image");
+            }
+            delete root;
+        }
+
+        // 主题引用：@style/ 已经由 ThemeData::number 乘过缩放，不能再乘一次
+        const float metricValue = getTheme().number("metric.spacing.md"); // 14 * 2 = 28
+        if (const auto tmpl = ViewTemplate::fromString(R"({
+                "type": "Image", "src": "@res/testcard.png", "offsetX": "@style/metric.spacing.md"
+            })",
+                "test/ui-scale-theme"))
+        {
+            View* root = tmpl->instantiate();
+            if (auto* image = dynamic_cast<Image*>(root))
+                checkFloat(image->getOffsetX(), metricValue, "@style 引用不重复缩放");
+            else
+                check(false, "根节点应当是 Image");
+            delete root;
+        }
+
+        // 百分比不缩放（它本来就是相对父容器的）。`View::getWidth()` 读的是 Yoga 算完的
+        // 布局尺寸（没算过就是 NAN），所以这里用一个**存下来的**量来验：Label 的字号。
+        if (const auto tmpl = ViewTemplate::fromString(R"({
+                "type": "Box", "width": "50%", "height": 100,
+                "children": [ { "type": "Label", "text": "x", "fontSize": 14 } ]
+            })",
+                "test/ui-scale-percent"))
+        {
+            View* root = tmpl->instantiate();
+            auto* box = root != nullptr ? root->asBox() : nullptr;
+            check(box != nullptr, "Box 建出来了");
+            if (box != nullptr && !box->getChildren().empty())
+            {
+                if (auto* label = dynamic_cast<Label*>(box->getChildren().front()))
+                    checkFloat(label->getFontSize(), 28.0f, "字号 14 -> 28（同一个基准）");
+                else
+                    check(false, "子节点应当是 Label");
+            }
+            check(std::isnan(root != nullptr ? root->getWidth() : 0.0f),
+                "50% 保持百分比语义：不预先变成长度（换算交给布局）");
+            delete root;
+        }
+
+        setUiScale(1.0f);
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
