@@ -129,7 +129,8 @@ class DesignerApp
     bool              paletteVisible = false;
     char              paletteFilter[64] = {0};
     int               paletteIndex = 0;
-    std::string       lastListGroup; // 左栏分组节头（只在分组变化时画一次）
+    std::string       lastListGroup;   // 左栏分组节头（只在分组变化时画一次）
+    bool              groupOpen[4] = { true, true, true, true }; // base / widget / view / tokens
     std::vector<std::string> diagnostics; // 最近的错误（去重后倒序显示）
     bool              wantOpenTheme = false;
     bool              openThemeVisible = false;

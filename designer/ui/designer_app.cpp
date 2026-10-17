@@ -641,8 +641,22 @@ void DesignerApp::drawFileList()
         if (slash != std::string::npos && group != this->lastListGroup)
         {
             this->lastListGroup = group;
+            // Figma 式分组：默认展开，可折叠（折叠后跳过该组的行）
+            const int groupIndex
+                = group == "base" ? 0 : group == "widget" ? 1 : group == "view" ? 2 : 3;
             ImGui::Spacing();
-            ImGui::TextDisabled("%s", group.c_str());
+            const bool open = ImGui::CollapsingHeader((group + "##grp").c_str(),
+                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
+            this->groupOpen[groupIndex] = open;
+            if (!open)
+                continue;
+        }
+        else if (slash != std::string::npos)
+        {
+            const int groupIndex
+                = group == "base" ? 0 : group == "widget" ? 1 : group == "view" ? 2 : 3;
+            if (!this->groupOpen[groupIndex])
+                continue; // 该分组被折叠
         }
         const std::string labelText = slash == std::string::npos
             ? entry.relPath
@@ -1737,8 +1751,34 @@ void DesignerApp::drawInspector()
         return;
     }
 
+    // Figma 式分组：外观（颜色/透明度）、几何（尺寸/圆角/对齐/内缩/位移）、参数（其余）
+    const auto groupOf = [](const FieldDesc& field) {
+        if (field.key == "fill" || field.key == "stroke" || field.key == "opacity"
+            || field.key == "fontSize" || field.key == "text")
+            return 0;
+        if (field.key == "inset" || field.key == "offset" || field.key == "width"
+            || field.key == "height" || field.key == "radius" || field.key == "strokeWidth"
+            || field.key == "align" || field.key == "valign")
+            return 1;
+        return 2;
+    };
+    static const char* kGroupNames[] = { "外观##g", "几何##g", "参数##g" };
+
+    for (int group = 0; group < 3; group++)
+    {
+        bool any = false;
+        for (const FieldDesc& field : fields)
+            any = any || groupOf(field) == group;
+        if (!any)
+            continue;
+        if (!ImGui::CollapsingHeader(kGroupNames[group],
+                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
+            continue;
+
     for (const FieldDesc& field : fields)
     {
+        if (groupOf(field) != group)
+            continue;
         const std::string pointer = base + "/" + field.key;
         const designer::Json* current = this->appearance.get(pointer);
 
@@ -1843,6 +1883,7 @@ void DesignerApp::drawInspector()
         }
         ImGui::PopID();
     }
+    } // for (group)
 }
 
 void DesignerApp::drawJsonView()
