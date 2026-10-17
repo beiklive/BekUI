@@ -7,6 +7,7 @@
 
 | 文档 | 内容 |
 |---|---|
+| [manual.html](manual.html) | **单页手册**（左目录 + 右内容，离线可用）：分层架构、接口速查、内置控件清单、主题与 token、JSON 字段与求值规则、运行期能力（帧预算/线程池/异步图片）、约定与坑；由 `scripts/gen_manual.py` 生成 |
 | [uml.html](uml.html) | bklv 库结构与 UML 图（自包含 HTML，离线可看；由 `scripts/gen_uml.py` 生成） |
 | [architecture-review.html](architecture-review.html) | **架构评审**：分层与依赖图（含实测的 5 条反向依赖边）、帧循环时序、外观数据流、后端/平台抽象边界；组件清单、进程级单例清单、优点与风险（逐条附 `file:line`）与改进顺序 |
 | [`bklv-api.md`](bklv-api.md) | bklv 移植层速查：文件职责表、Box 布局调用、交互与内容控件、imgui.ini 开关、日志约定、已知的坑、分层约定 |
