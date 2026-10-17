@@ -14,6 +14,7 @@ set(DESIGNER_CORE_SOURCES
     core/tokens_doc.cpp
     core/view_doc.cpp
     core/view_fields.cpp
+    core/autosave.cpp
 )
 
 set(DESIGNER_CORE_ABS "")

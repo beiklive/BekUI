@@ -19,6 +19,7 @@
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/attributes.hpp"
 #include "designer/core/view_fields.hpp"
+#include "designer/core/autosave.hpp"
 
 namespace designer
 {
@@ -95,6 +96,19 @@ bool DesignerApp::init(const Options& options, std::string& error)
         this->update();
     };
     this->scanTheme();
+
+    // 上次异常退出留下的草稿？
+    AutosaveInfo draft;
+    std::string  draftError;
+    if (readAutosave(this->options.themeDir, draft, draftError))
+    {
+        this->pendingDraft    = draft;
+        this->hasPendingDraft = true;
+    }
+    else if (!draftError.empty())
+    {
+        this->lastError = draftError;
+    }
     if (!this->options.initialFile.empty())
     {
         this->openFile(this->options.initialFile);
@@ -229,6 +243,7 @@ void DesignerApp::saveCurrent()
         this->fileMtimeAtLoad = fileMtime(path);
         this->undo.clear();
         this->lastError.clear();
+        clearAutosave(this->options.themeDir);
         this->saveStatus = "已保存 " + this->currentFile;
     }
     else
@@ -276,6 +291,8 @@ void DesignerApp::update()
             }
         }
     }
+
+    this->maybeAutosave();
 
     if (!this->pendingFile.empty())
         this->drawPendingSwitchPopup();
@@ -394,6 +411,19 @@ void DesignerApp::drawMenuBar()
     {
         if (ImGui::MenuItem("重新扫描"))
             this->scanTheme();
+
+    // 上次异常退出留下的草稿？
+    AutosaveInfo draft;
+    std::string  draftError;
+    if (readAutosave(this->options.themeDir, draft, draftError))
+    {
+        this->pendingDraft    = draft;
+        this->hasPendingDraft = true;
+    }
+    else if (!draftError.empty())
+    {
+        this->lastError = draftError;
+    }
         ImGui::Separator();
         ImGui::TextDisabled("主题：%s", this->options.themeDir.c_str());
         ImGui::EndMenu();
@@ -410,6 +440,19 @@ void DesignerApp::drawFileList()
 {
     if (ImGui::Button("重新扫描"))
         this->scanTheme();
+
+    // 上次异常退出留下的草稿？
+    AutosaveInfo draft;
+    std::string  draftError;
+    if (readAutosave(this->options.themeDir, draft, draftError))
+    {
+        this->pendingDraft    = draft;
+        this->hasPendingDraft = true;
+    }
+    else if (!draftError.empty())
+    {
+        this->lastError = draftError;
+    }
     ImGui::SameLine();
     ImGui::TextDisabled("%zu 个文件", this->files.size());
     ImGui::SetNextItemWidth(-1);
@@ -528,6 +571,54 @@ void DesignerApp::drawTokenTable()
     for (const TokenRef& ref : this->tokenRefs)
         ImGui::Text("%s  %s", ref.file.c_str(), ref.pointer.c_str());
     ImGui::EndChild();
+}
+
+void DesignerApp::maybeAutosave()
+{
+    if (!this->appearanceLoaded || !this->appearance.isDirty())
+        return;
+    const long long now = (long long)(ImGui::GetTime() * 1000.0);
+    if (now - this->lastAutosaveMs < 2000)
+        return;
+    this->lastAutosaveMs = now;
+
+    std::string error;
+    if (!writeAutosave(this->options.themeDir, this->currentFile,
+            this->appearance.serialize(), error))
+        this->lastError = error;
+}
+
+void DesignerApp::drawRecoveryPopup()
+{
+    if (!this->hasPendingDraft)
+        return;
+
+    ImGui::OpenPopup("发现未保存的草稿");
+    if (ImGui::BeginPopupModal("发现未保存的草稿", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("上次退出时「%s」还有未保存的改动。", this->pendingDraft.file.c_str());
+        if (ImGui::Button("恢复"))
+        {
+            this->hasPendingDraft = false;
+            this->openFile(this->pendingDraft.file);
+            if (this->appearanceLoaded && this->appearance.fromText(this->pendingDraft.text,
+                                                    this->lastError))
+            {
+                this->currentText = this->appearance.serialize();
+                this->applyToCanvas();
+            }
+            clearAutosave(this->options.themeDir);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("丢弃"))
+        {
+            this->hasPendingDraft = false;
+            clearAutosave(this->options.themeDir);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 void DesignerApp::drawSourceTab()
@@ -1102,6 +1193,8 @@ void DesignerApp::drawLayerOps()
 
 void DesignerApp::drawInspector()
 {
+    this->drawRecoveryPopup();
+
     if (this->wantRename)
     {
         ImGui::OpenPopup("重命名 id");

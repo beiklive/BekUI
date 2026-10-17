@@ -11,6 +11,7 @@
 #include "designer/core/layer_fields.hpp"
 #include "designer/core/tokens_doc.hpp"
 #include "designer/core/view_doc.hpp"
+#include "designer/core/autosave.hpp"
 #include "designer/core/undo_stack.hpp"
 
 namespace bklv { class Header; class View; class AppearanceView; }
@@ -57,6 +58,8 @@ class DesignerApp
     void drawTokenTable();
     void rebuildViewPreview();
     void drawViewPanel();
+    void maybeAutosave();
+    void drawRecoveryPopup();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
     // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
@@ -108,6 +111,9 @@ class DesignerApp
     bool              viewLoaded = false;
     bklv::View*       viewPreview = nullptr; // 视图文件的画布预览（与外观预览互斥）
     int               selectedNode = 0;
+    long long         lastAutosaveMs = 0;
+    AutosaveInfo      pendingDraft;   // 启动时发现的未保存草稿
+    bool              hasPendingDraft = false;
 };
 
 } // namespace designer
