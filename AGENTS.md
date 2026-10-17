@@ -983,18 +983,81 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 已全部删除）。要验收就写 `tests/` 里的无窗口测试，要截图就在自己的临时程序里调
 `App::requestScreenshot()`；产品程序里不留"只有调试时才走"的分支。
 
-## 设计器（已移除，待重做）
+## 设计器（`designer/`）
 
-原来的 `designer/`（44 文件 / ~11.8k 行）**已整体删除**：好用的前提是"先把 JSON 模型做对"，
-而当时那套界面是在模型上直接堆 UI，体验和可维护性都不达标。重做时要遵守两条：
+上一版（44 文件 / ~11.8k 行）已整体移除，重做时**在这里**写：`designer/` 是它的**项目根**，
+代码、状态文件、预设都在这个目录里。三条已定的边界（用户拍板，2026-10）：
 
-- **逻辑层与界面层分离**：文档模型（读/改/写回、保序、未知字段透传）先做成无窗口可测的库，
-  UI 只做展示与输入。别再让 JSON 补丁逻辑长在界面代码里。
-- **先有"源文档 + 有效值"双视图**：`import` / `include` / `vars` 让"一份文件"不等于"一个完整对象"，
-  只显示源文档会让人以为样式丢了（见 `docs/json-audit.md` 的缺口清单）。
+- **子目录、绑定 bklv**：同一个 CMake 工程、直接链接 `bklv::bklv`，可以直接用库的类型与 API。
+  它是一方工具，不需要把库 API 磨成"对外可用"的样子。
+- **资源走原路径**：主题/字体/文案仍读 `resources/`（只读），不复制、不挪路径。
+  设计器自己的东西（窗口状态、预设）写 `designer/` 下，**不写 `dist/`**
+  （上一版把 `designer_state.json` / `designer_project.json` 落在 `dist/`，跟着 `check.sh` 被扫到）。
+- **不往库内塞设计器专用分支**：库需要的能力做成通用 API（`GlassService::getCapabilities()`、
+  `layer_registry` 的中文名与参数模式、`ThemeData` 按绝对目录装载都是这么来的）。
+  判断标准：把设计器删掉之后，这段代码还说得通吗？
 
-移除时一并删掉的东西：`CMakeLists.txt` 的两个目标与 `designer` 分支、`tests/designer_core_test.cpp`、
-`docs/designer.md`。`EffectCapabilities` 的能力位保留（等新宿主来读）。
+重做时的两条工程约束：文档模型（读/改/写回、保序、来源追踪）**先做成无窗口可测的库**，
+UI 只做展示与输入；**先有"源文档 + 有效值"双视图**（`import`/`include`/`vars` 让一份文件
+≠ 一个完整对象，缺口清单见 `docs/json-audit.md`）。细则与构建方式见 `designer/README.md`。
+
+
+## 测试
+
+无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：
+
+```bash
+cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=ON
+cmake --build build/gl -j 8
+./dist/i18n_test          # 或 cd build/gl && ctest
+```
+
+产物与 demo 同目录（`dist/`）——资源路径按可执行文件目录解析（见
+`bklv/core/resource.hpp`），测试要能读到 `resources/`。
+加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集；
+断言脚手架在 `tests/test_util.hpp`（`check` / `checkEqual` / `checkFloat` /
+`checkColor` / `checkEqualInt` / `checkEqualSize` + `g_checks` / `g_failed`），
+不要在每个测试里再抄一份。
+**资源按可执行文件目录解析**：每个测试目标都和 demo 一样会把 `resources/` 复制到
+`dist/`，测试开头要调 `initResources()`——不调的话路径按工作目录解析，
+写出来的 fixture 会落进仓库树（还会被打进 romfs）。
+
+CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，
+`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建 + `ctest`，构建出现 warning 即失败。
+**Windows 还没接**（那条路要 `build.bat` + MSYS2，见上面「Windows」）。
+本机验收仍然是 `bash scripts/check.sh` —— CI 是它的并行拆版，不是替代品。
+
+## 目录
+
+```
+bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
+  bklv.hpp          伞头文件：常用类型一次引入（demo 只用它）
+  core/             接口层：view / box / app / platform / graphics / input / ...
+  core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
+  views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
+  widgets/          外壳与外观驱动的控件：shell（四层外壳）/ pager（页面懒加载）/ appearance_view
+                    / rectangle / button / header / bottom_bar / slider / tab_frame / sidebar
+                    / dialog / dropdown / edit_text_dialog / hints_bar / tab_bar（底部导航）
+  backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
+  platforms/        平台实现：sdl3 / switch
+  3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
+                    / webp（可选）/ lunasvg + plutovg（可选，SVG）
+  CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
+resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, widget/, view/}
+                    （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
+demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
+CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
+scripts/            构建脚本（只剩 Switch 的）
+docs/               速查文档：bklv 文件职责、API 用法、已知的坑
+notes/              设计笔记与移植评估
+resources/          demo 用的图片等素材（桌面复制到可执行文件目录，Switch 打进 romfs）
+```
+
+`bklv/` 要能被整个目录拷到别的项目里用，所以**它自己的构建逻辑必须留在
+`bklv/CMakeLists.txt`**，不要往根 `CMakeLists.txt` 里加库相关的东西。
+
+README 只讲项目介绍、拉取编译、怎么用到别的项目里；**代码层面的说明（文件职责表、
+API 速查、踩坑记录）写在 `docs/`**，别往 README 里堆。
 
 ## 测试
 

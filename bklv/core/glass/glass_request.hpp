@@ -42,7 +42,8 @@ struct GlassRequest
 // refraction / dispersion 由 `GlassService::ensureBackend` 按后端如实填（VK 路线 A 填 false）。
 // 绘制路径不查它：GL 的 `composite` 无条件上传折射 uniform（GL 的能力位本来就是 true），
 // VK 压根没有折射那条路 —— 所以"能力位"只用来告诉宿主/工具"这套后端有没有这个效果"。
-// （原本的读者是设计器的调参面板；设计器已移除、待重做，能力位保留给下一个宿主用。）
+// （读者是设计器的调参面板和任何需要"探一下这套后端有没有折射"的宿主；
+// 设计器在 `designer/`，重做中，所以目前主要是给宿主/工具读。）
 struct EffectCapabilities
 {
     bool backdropCapture = false;
