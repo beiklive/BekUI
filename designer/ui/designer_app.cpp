@@ -148,6 +148,12 @@ bool DesignerApp::init(const Options& options, std::string& error)
     // 库在这里只负责**画布内容的真实渲染**，这是"设计器用框架"的关键复用。
     auto root = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
 
+    // 顶部让位：ImGui 顶栏画在 bklv 视图**之上**，不给画布让出这段高度的话，
+    // 预览会被顶栏压住（实测：控件顶部 112px 看不见）。
+    auto topSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
+    topSpacer->setHeight(56.0f * bklv::getUiScale());
+    root->addView(topSpacer.release());
+
     // 中间一行：左让位（文件面板）+ 画布 + 右让位（检视器）。
     // 三栏宽度与 ImGui 面板一致（都乘 uiScale），所以画布刚好夹在中间、不会重叠。
     auto row = std::make_unique<bklv::Box>(bklv::Axis::ROW);

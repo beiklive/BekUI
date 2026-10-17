@@ -567,45 +567,26 @@ designer/ui/
 ImGui 图集里，可用 `icon::font()`）、画板标题与**选中框**（选中框必须由 bklv 画，
 因为视图树在 foreground draw list 上，ImGui 盖不住它）。
 
-### ④ 画板标题 + 选中框：已实施"选中框"，"画板边框"暂不用
+### ④ 选中框：已完成（并顺带修掉一个真 bug）
 
-按方案 A 落地（库侧，默认关闭、不参与布局）：
-```cpp
-void AppearanceView::setDesignSelection(int layerIndex, ImU32 color = 0xFFD9822B); // -1 = 不画
-void AppearanceView::setDesignGuides(bool on, ImU32 color = 0x66FFFFFF);
-```
-- 绘制位置：`draw()` 里**所有层之后**（标注不该被内容盖住）；选中框 = 层矩形外扩 1px 的
-  1.5px 描边 + 四角 4px 把手；层矩形复用 `getLayerRect()`。
-- 设计器：`syncCanvasSelection()` 每帧把 `selectedLayer` 同步给画布（setter 很便宜）。
-  实测截图：`base/button` 的 hlBg 层被选中时，卡片周围出现蓝色描边与四个角把手。
-- 测试 `tests/designer_overlay_test.cpp`（11 项）：默认 `-1`/关闭、设置读回、层矩形正常与
-  越界（`99` / `-1` 都返回 false）。
-- **画板边框暂不用**：截图里它按 `draw()` 收到的矩形画，范围与画布上看到的卡片对不上
-  （还发现一条横贯画布的细蓝线，疑似 `hlBorder`/`hlGlow` 层在"被拉伸的预览控件"上按整块
-  控件矩形描边；换成真实控件尺寸后应消失）。下一步：先查这条线的来源，再决定画板标题
-  怎么画（更可能是"画布区域内由 bklv 单独画一层"而不是叠在 AppearanceView 上）。
+**做成的**：`AppearanceView::setDesignSelection(layerIndex, color)` / `setDesignGuides(on, color)`，
+绘制在 `draw()` **所有层之后**；选中框 = 选中层绘制矩形外扩 1px、1.5px 描边 + 四角 4px 把手。
+设计器每帧 `syncCanvasSelection()` 同步 `selectedLayer`。测试 `designer_overlay_test`（11 项）。
 
+**踩的坑（两次）**：
+1. 一开始用 `draw()` 收到的 `x/y/width/height` 算叠加矩形 → 画到别处（框比控件大两倍多）。
+   `draw()` 的参数是**绘制空间**的量，`getX/getWidth()` 是**布局空间**，两者不是一个缩放/原点。
+2. 改成 `getX/getWidth` 后仍然错位：**层矩形 `rect` 是 `[left, top, right, bottom]`**，
+   不是 `[x, y, w, h]`（内部 `layerRect()` 填的是右/下边界）。按 w/h 解释直接把框放大。
+   **正解**：在层循环里把**绘制期同一个 `rect`** 记下来给叠加层用 —— 与绘制同源，天然对齐，
+   不再猜坐标系。截图验证：框与卡片完全贴合（像素扫描 bbox 与卡片一致）。
 
-**约束**：视图树画在 `ImGui::GetForegroundDrawList()` 上，ImGui 画的任何东西都被它盖住，
-所以画板边框/选中框**必须由 bklv 画**。
+**顺带修掉的真 bug**：bklv 视图从 `y=0` 开始排，而 ImGui 顶栏画在 bklv **之上**，
+于是外观预览的顶部 112px 一直被顶栏压住（之前几轮截图里"卡片看着偏小"就是这个）。
+在根视图最前面加了一个 56×uiScale 的顶部让位 Box，预览现在完整显示在顶栏下方。
 
-**方案 A（推荐，改动最小）**：给 `AppearanceView` 加"设计期叠加"能力
-```cpp
-// widgets/appearance_view.hpp
-void setDesignSelection(int layerIndex, ImU32 color); // -1 = 不画
-void setDesignGuides(bool on);                        // 画板边框 + 尺寸标签
-```
-- 实现：在 `draw()` 末尾、所有层画完后，用 `getLayerRect()` 取该层矩形，
-  `drawList->AddRect(...)` 描 1.5px 边 + 四角 5px 把手；画板边框沿 `getX/Y/W/H` 再描一圈。
-- 影响面：只加两个 setter + 一段绘制，不参与布局、不进外观 JSON、不改变渲染语义；
-  `theme_test`/`appearance_test` 不受影响（默认关闭）。
-- 风险：低。可用一条 `designer_overlay_test`（无窗口下只断言"开关状态与层索引校验"）。
-
-**方案 B**：`canvasHost` 里叠一个独立的 bklv 视图专门画框（`DesignOverlay : View`），
-读 `AppearanceView` 的层矩形。不动 `AppearanceView`，但要把矩形从别处传出来（多一层耦合）。
-
-选择 A：语义上"设计器的叠加"确实属于视图自身能画的东西，且只有一个开关，
-不会污染运行期的绘制路径。
+**仍未做**：画板标题（在画布区域里由 bklv 单独画一层文字，而不是叠在 `AppearanceView` 上）。
+`setDesignGuides` 已可用但不启用 —— 它的矩形与选中框重复，等做标题时一起用。
 
 ### 已知限制
 

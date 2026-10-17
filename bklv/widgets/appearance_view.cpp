@@ -519,6 +519,13 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
     if (layers.empty())
         return;
 
+    // 设计期叠加：用**绘制期同一个 rect**（下面循环里逐层算出来的那个），
+    // 不用 getX/getWidth —— 两者在绘制空间里不是一个量，混用会画到别处。
+    float selectedRect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    bool  hasSelectedRect  = false;
+    float contentRect[4]   = { 0.0f, 0.0f, 0.0f, 0.0f };
+    bool  hasContentRect   = false;
+
     for (size_t i = 0; i < layers.size(); i++)
     {
         const AppearanceLayer& layer = layers[i];
@@ -532,8 +539,27 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             radius = this->getCornerRadius();
         const float opacity     = this->appearance.getNumber(index, AppearanceProp::OPACITY);
 
-        float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // [left, top, right, bottom]
         this->layerRect(layer, x, y, width, height, rect);
+
+        // 设计期叠加：记下被选中层的绘制矩形，以及所有层的并集（画板边框用）
+        if ((int)i == this->designSelection)
+        {
+            std::copy(rect, rect + 4, selectedRect);
+            hasSelectedRect = true;
+        }
+        if (!hasContentRect)
+        {
+            std::copy(rect, rect + 4, contentRect);
+            hasContentRect = true;
+        }
+        else
+        {
+            contentRect[0] = std::min(contentRect[0], rect[0]);
+            contentRect[1] = std::min(contentRect[1], rect[1]);
+            contentRect[2] = std::max(contentRect[2], rect[2]);
+            contentRect[3] = std::max(contentRect[3], rect[3]);
+        }
 
         // 撞边抖动只作用在高亮层（hlBg / hlGlow / hlBorder，和 borealis 的
         // drawHighlight 一致）：纯绘制期位移，不进布局、不改命中矩形。
@@ -612,31 +638,26 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
     // ---- 设计期叠加（默认关闭）：画板边框 + 选中层描边与四角把手 ----
     // 放在**所有层之后**：它是"标注"，不该被内容盖住；也不参与布局、不影响运行期绘制。
-    if (this->designGuides)
+    // ---- 设计期叠加（默认关闭）：画板边框 + 选中层描边与四角把手 ----
+    // 用**绘制期算出来的 rect**（[left, top, right, bottom]），和绘制同源，天然对齐。
+    if (this->designGuides && hasContentRect)
     {
         const ImU32 color = this->designGuidesColor != 0 ? this->designGuidesColor : 0x66FFFFFF;
-        drawList->AddRect(ImVec2(x, y), ImVec2(x + width, y + height), color, 0.0f, 0, 1.0f);
+        drawList->AddRect(ImVec2(contentRect[0], contentRect[1]),
+            ImVec2(contentRect[2], contentRect[3]), color, 0.0f, 0, 1.0f);
     }
-    if (this->designSelection >= 0)
+    if (this->designSelection >= 0 && hasSelectedRect)
     {
-        float box[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        if (this->getLayerRect(this->designSelection, x, y, width, height, box))
-        {
-            const ImU32 color
-                = this->designSelectionColor != 0 ? this->designSelectionColor : 0xFFD9822B;
-            const ImVec2 min(box[0] - 1.0f, box[1] - 1.0f);
-            const ImVec2 max(box[0] + box[2] + 1.0f, box[1] + box[3] + 1.0f);
-            drawList->AddRect(min, max, color, 0.0f, 0, 1.5f);
-            // 四角把手：设计器里"这个层被选中了"的最直观标记
-            const float handle = 4.0f;
-            const ImVec2 corners[4] = { min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y) };
-            for (const ImVec2& corner : corners)
-            {
-                drawList->AddRectFilled(ImVec2(corner.x - handle, corner.y - handle),
-                    ImVec2(corner.x + handle, corner.y + handle), color);
-            }
-        }
+        const ImU32 color
+            = this->designSelectionColor != 0 ? this->designSelectionColor : 0xFFD9822B;
+        const ImVec2 min(selectedRect[0] - 1.0f, selectedRect[1] - 1.0f);
+        const ImVec2 max(selectedRect[2] + 1.0f, selectedRect[3] + 1.0f);
+        drawList->AddRect(min, max, color, 0.0f, 0, 1.5f);
+        const float  handle = 4.0f;
+        const ImVec2 corners[4] = { min, ImVec2(max.x, min.y), max, ImVec2(min.x, max.y) };
+        for (const ImVec2& corner : corners)
+            drawList->AddRectFilled(ImVec2(corner.x - handle, corner.y - handle),
+                ImVec2(corner.x + handle, corner.y + handle), color);
     }
 }
-
 } // namespace bklv
