@@ -242,9 +242,9 @@ View* DemoApp::wrapPage(Box* page, bool selfScrolling)
     Box* frame = new Box(Axis::COLUMN);
     frame->setWidthPercentage(100.0f);
     frame->setAlignItems(AlignItems::STRETCH);
-    frame->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 42.0f));
-    frame->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
-    frame->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 60.0f));
+    frame->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 28.0f));
+    frame->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 28.0f));
+    frame->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 28.0f));
 
     if (selfScrolling)
     {

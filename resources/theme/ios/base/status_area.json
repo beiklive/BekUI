@@ -9,7 +9,7 @@
     {
       "op": "shadow",
       "id": "sh",
-      "fill": "@theme/color.common.transparent",
+      "fill": "#00000000",
       "opacity": 22,
       "feather": 10,
       "radius": 40,
@@ -28,8 +28,8 @@
     {
       "op": "rect",
       "id": "border",
-      "strokeWidth": 2,
-      "stroke": "@theme/color.common.grey",
+      "strokeWidth": 0,
+      "stroke": "#00000000",
       "radius": 40,
       "inset": [
         3,

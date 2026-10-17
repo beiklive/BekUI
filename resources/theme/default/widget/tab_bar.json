@@ -1,5 +1,4 @@
 {
-  "import": "base/glass_surface.chrome",
   "box": {
     "width": "100%",
     "height": "@theme/metric.tabBar.height",
@@ -12,13 +11,5 @@
     ],
     "alignItems": "center"
   },
-  "layers": [
-    {
-      "op": "rect",
-      "id": "line",
-      "fill": "@theme/color.border.subtle",
-      "height": 1,
-      "valign": "top"
-    }
-  ]
+  "layers": []
 }

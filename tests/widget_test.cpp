@@ -41,15 +41,22 @@ static void writeFile(const std::string& relativePath, const std::string& conten
     out << content;
 }
 
-// 取"那条边线"：按**层 id** 找，不按层类型也不按下标。
-// 页头/底栏都 import base/glass_surface.chrome 当底：default（扁平）下它是实心 rect，
-// ios（苹果风）下它是 glass —— 数层数或找"第一个 rect"都会随主题变，只有 id 是契约。
-const AppearanceLayer* lineLayerById(const Appearance& appearance, const std::string& id)
+// 顶栏/底栏**不该有装饰**：任何主题都不许用底色或边框把它们框出来（用户拍板）。
+// 这里只认"会画东西的层"（rect / shadow / glass / image），文字层不算装饰。
+bool hasBarDecoration(const Appearance& appearance)
 {
     for (const AppearanceLayer& layer : appearance.getLayers())
-        if (layer.id == id)
-            return &layer;
-    return nullptr;
+    {
+        const bool paints = layer.op == AppearanceLayer::Op::RECT
+            || layer.op == AppearanceLayer::Op::SHADOW
+            || layer.op == AppearanceLayer::Op::GLASS
+            || layer.op == AppearanceLayer::Op::IMAGE;
+        if (!paints)
+            continue;
+        if (layer.fill != 0 || layer.strokeWidth > 0.0f || layer.op == AppearanceLayer::Op::SHADOW)
+            return true;
+    }
+    return false;
 }
 
 int main()
@@ -288,14 +295,9 @@ int main()
         checkEqual(header.getTitle(), "标题", "标题进了控件");
 
         // 页头按 borealis 的结构：图标 / 标题 / 右侧区 都是子节点，装饰只有下边线
-        const Appearance& appearance = header.getActiveAppearance();
-        const AppearanceLayer* line = lineLayerById(appearance, "line");
-        check(line != nullptr, "Header 有下边线那一层（按 id 找，底是实心还是玻璃交给主题）");
-        if (line != nullptr)
-        {
-            checkFloat(line->height, 1.0f, "下边线 height=1");
-            checkEqual(line->valign, "bottom", "下边线贴底");
-        }
+        // 用户拍板：**顶栏只是"一块区域"**，任何主题都不许给它画底、画边线
+        check(!hasBarDecoration(header.getActiveAppearance()),
+            "Header 不画底也不画边线（只是一块区域）");
 
         check(header.getIcon() != nullptr, "页头有图标位");
         check(header.getIcon()->getVisibility() == Visibility::GONE, "没设图标时图标隐藏");
@@ -312,10 +314,8 @@ int main()
         BottomBar bar;
         check(bar.getHints() != nullptr, "底栏里有提示栏");
         check(bar.getStatus() != nullptr, "底栏里有状态区");
-        const AppearanceLayer* barLine = lineLayerById(bar.getActiveAppearance(), "line");
-        check(barLine != nullptr, "底栏有上边线那一层（同样按 id 找）");
-        if (barLine != nullptr)
-            checkEqual(barLine->valign, "top", "上边线贴上");
+        check(!hasBarDecoration(bar.getActiveAppearance()),
+            "底栏同样不画底也不画边线（只是一块区域）");
         check(bar.getActiveAppearance().getBox().hasHeight, "底栏高度来自 box 段");
     }
 

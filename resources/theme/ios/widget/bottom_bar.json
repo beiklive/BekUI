@@ -17,15 +17,5 @@
     "alignItems": "stretch",
     "axis": "row"
   },
-  "layers": [
-    {
-      "op": "rect",
-      "id": "line",
-      "fill": "@theme/color.border.subtle",
-      "height": 1,
-      "opacity": 0,
-      "valign": "top"
-    }
-  ],
-  "import": "base/glass_surface.chrome"
+  "layers": []
 }

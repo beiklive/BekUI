@@ -93,7 +93,7 @@ Box* makeSplitRow(const char* titleKey, const std::string& json, View* demo)
     row->addView(makeText(getStr(titleKey), getTheme().number("metric.font.size.md", 18.0f),
         getTheme().color("color.text.primary")));
 
-    Box* split = demo::makeRow(getTheme().number("metric.spacing.sm", 8.0f) + 4.0f);
+    Box* split = demo::makeRow(getTheme().number("metric.spacing.lg", 20.0f));
     split->setAlignItems(AlignItems::FLEX_START);
 
     // 左：渲染结果
@@ -105,8 +105,8 @@ Box* makeSplitRow(const char* titleKey, const std::string& json, View* demo)
     // 右：代码块（底色 + 内边距，和左边的实物区分开）
     Box* code = makeColumn(0.0f);
     code->setWidthPercentage(46.0f);
-    code->setPadding(10.0f);
-    code->setCornerRadius(8.0f);
+    code->setPadding(getTheme().number("metric.spacing.md", 14.0f));
+    code->setCornerRadius(getTheme().number("metric.radius.lg", 12.0f));
     code->setBackgroundColor(getTheme().color("color.surface.sunken"));
     code->addView(makeSnippet(json));
     split->addView(code);

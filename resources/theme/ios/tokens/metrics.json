@@ -1,11 +1,11 @@
 {
   "$comment": "ios 主题：苹果风。尺寸按**比例**借鉴 iOS 的层级（大标题/正文/脚注、分组行高、胶囊分段），不照搬点值 —— bklv 画布是 1280×720，iOS 的 17pt/44pt 直接搬会明显偏大。",
   "spacing": {
-    "xs": 4,
-    "sm": 8,
-    "md": 12,
-    "lg": 16,
-    "xl": 24
+    "xs": 6,
+    "sm": 10,
+    "md": 14,
+    "lg": 20,
+    "xl": 28
   },
   "radius": {
     "sm": 6,
@@ -57,8 +57,8 @@
     "paddingSides": 24,
     "contentTop": 12,
     "separatorThickness": 1,
-    "contentPaddingSides": 16,
-    "contentPaddingTopBottom": 16
+    "contentPaddingSides": 28,
+    "contentPaddingTopBottom": 28
   },
   "sidebar": {
     "width": 320,
@@ -120,7 +120,7 @@
     "paddingY": 4
   },
   "card": {
-    "padding": 16
+    "padding": 20
   },
   "list": {
     "itemHeight": 56,
@@ -143,8 +143,8 @@
   "cell": {
     "height": 60,
     "paddingX": 16,
-    "paddingY": 12.5,
-    "gap": 12,
+    "paddingY": 14,
+    "gap": 14,
     "titleFontSize": 18,
     "detailFontSize": 18,
     "detailWidth": 56,
@@ -220,8 +220,8 @@
     "shadowOffsetY": 2,
     "shadowFeather": 10,
     "shadowSpread": 0,
-    "paddingX": 16,
-    "paddingY": 10
+    "paddingX": 18,
+    "paddingY": 12
   },
   "layout": {
     "padding": 12
@@ -242,7 +242,7 @@
     "titleInset": 16,
     "fontSize": 15,
     "subtitleSize": 15,
-    "paddingTopBottom": 8
+    "paddingTopBottom": 14
   },
   "tabBar": {
     "height": 60,

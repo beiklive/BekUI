@@ -30,7 +30,7 @@ bklv::Rectangle* makeCard(const std::string& variant);
 bklv::View* makeGlassWallpaper();
 
 // 横向一行 / 纵向一列
-bklv::Box* makeRow(float gap = 12.0f, bklv::AlignItems align = bklv::AlignItems::CENTER);
-bklv::Box* makeColumn(float gap = 10.0f);
+bklv::Box* makeRow(float gap = 14.0f, bklv::AlignItems align = bklv::AlignItems::CENTER);
+bklv::Box* makeColumn(float gap = 14.0f);
 
 } // namespace demo

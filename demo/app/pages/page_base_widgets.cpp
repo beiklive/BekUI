@@ -67,7 +67,7 @@ std::string glyph(const char* name)
 // 一行一个控件：整行铺满，控件 grow=1（不并排挤在一起）
 Box* makeItemRow(View* item)
 {
-    Box* row = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    Box* row = makeRow(getTheme().number("metric.spacing.lg", 20.0f));
     item->setGrow(1.0f);
     row->addView(item);
     return row;
@@ -90,7 +90,7 @@ Box* makeSection(const char* titleKey, const char* themeFile)
     if (themeFile != nullptr)
         header->setInfoText(themeFile);
 
-    Box* section = makeColumn(getTheme().number("metric.spacing.sm", 8.0f));
+    Box* section = makeColumn(getTheme().number("metric.spacing.md", 14.0f));
     section->setWidthPercentage(100.0f);
     section->addView(header);
     return section;
@@ -127,7 +127,7 @@ Box* makeStateGrid(const char* const* labels, View* const* items, int count, boo
 // stretch=false 用于固定尺寸的控件（正方形 / 圆形的图标按钮）—— 拉伸会把圆形拉成椭圆
 Box* makeStateRow(const char* stateKey, View* item, bool stretch = true)
 {
-    Box* row = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+    Box* row = makeRow(getTheme().number("metric.spacing.lg", 20.0f));
 
     // 单行 + 固定宽度：状态名不许换行（换行了每行高度会不一样，右边控件就对不齐）
     Label* name = makeText(getStr(stateKey), getTheme().number("metric.font.size.sm", 15.0f),
@@ -337,7 +337,7 @@ Box* buildBaseWidgetsPage()
         image->setImageFromFileAsync("resources/testcard.png");
         image->setWidth(120.0f);
         image->setHeight(120.0f);
-        Box* row = makeRow(getTheme().number("metric.spacing.md", 12.0f));
+        Box* row = makeRow(getTheme().number("metric.spacing.lg", 20.0f));
         row->addView(image);
         row->addView(makeHint(getStr("base_widgets/image_hint")));
         section->addView(row);

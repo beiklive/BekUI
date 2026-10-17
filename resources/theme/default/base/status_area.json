@@ -9,8 +9,8 @@
     {
       "op": "rect",
       "id": "border",
-      "strokeWidth": 2,
-      "stroke": "@theme/color.common.grey",
+      "strokeWidth": 0,
+      "stroke": "#00000000",
       "radius": 40,
       "inset": [
         3,

@@ -278,7 +278,10 @@ int main()
         check(styled != nullptr, "@style/ 主题数值引用能建出树");
         if (styled != nullptr)
         {
-            checkFloat(styled->asBox()->getChildren()[0]->getX(), 12.0f, "@style/metric.spacing.md → 12");
+            // 不写死数值：主题的 spacing 可能按排版需要调（这条断言的是"解析到主题值"）
+            const float expectedLeft = getTheme().number("metric.spacing.md", 0.0f);
+            checkFloat(styled->asBox()->getChildren()[0]->getX(), expectedLeft,
+                "@style/metric.spacing.md 解析成主题里的值");
             delete styled;
         }
 
