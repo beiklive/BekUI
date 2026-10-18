@@ -42,6 +42,35 @@ std::string readWhole(const std::string& path)
     return buffer.str();
 }
 
+bool containsStringValue(const designer::Json& node, const std::string& target)
+{
+    if (node.is_string())
+        return node.get<std::string>() == target;
+    if (node.is_object())
+    {
+        for (auto it = node.begin(); it != node.end(); ++it)
+            if (containsStringValue(*it, target))
+                return true;
+    }
+    else if (node.is_array())
+    {
+        for (const designer::Json& value : node)
+            if (containsStringValue(value, target))
+                return true;
+    }
+    return false;
+}
+
+bool validLocalVariableName(const std::string& name)
+{
+    if (name.empty() || name[0] == '$')
+        return false;
+    return std::all_of(name.begin(), name.end(), [](char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9') || c == '_' || c == '-';
+    });
+}
+
 } // namespace
 
 namespace
@@ -141,27 +170,24 @@ const char* prettyAttribute(const std::string& key)
 constexpr float kFieldLabelWidth = 96.0f;
 
 // 图标按钮：Material 字形 + 悬停提示 + 方形点击区（Figma 工具栏的基本单元）
-bool iconButton(const char* iconName, const char* tooltip, bool accent = false)
+bool iconButton(const char* iconName, const char* tooltip, bool accent = false, float size = 34.0f)
 {
     const char* glyph = bklv::icon::glyphByName(iconName);
-    if (glyph == nullptr)
+    if (glyph == nullptr || glyph[0] == '\0')
         return false;
 
     const float u    = bklv::getUiScale();
-    const float side = 34.0f * u;
+    const float side = size * u;
     ImFont*     iconFont = bklv::icon::font();
     if (iconFont != nullptr)
         ImGui::PushFont(iconFont);
     if (accent)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_CheckMark));
-    const ImVec2 textSize = ImGui::CalcTextSize(glyph);
     const bool   pressed  = ImGui::Button(glyph, ImVec2(side, side));
     if (accent)
         ImGui::PopStyleColor();
     if (iconFont != nullptr)
         ImGui::PopFont();
-    (void)textSize;
-
     if (ImGui::IsItemHovered() && tooltip != nullptr)
         ImGui::SetTooltip("%s", tooltip);
     return pressed;
@@ -197,6 +223,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
     // 预览会被顶栏压住（实测：控件顶部 112px 看不见）。
     auto topSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     topSpacer->setHeight(56.0f * bklv::getUiScale());
+    this->topSpacer = topSpacer.get();
     root->addView(topSpacer.release());
 
     // 中间一行：左让位（文件面板）+ 画布 + 右让位（检视器）。
@@ -204,6 +231,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
     auto row = std::make_unique<bklv::Box>(bklv::Axis::ROW);
     auto leftSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     leftSpacer->setWidth(this->fileFilterWidth * bklv::getUiScale());
+    this->leftSpacer = leftSpacer.get();
     row->addView(leftSpacer.release());
 
     auto canvasHost = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
@@ -233,6 +261,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     auto rightSpacer = std::make_unique<bklv::Box>(bklv::Axis::COLUMN);
     rightSpacer->setWidth(this->inspectorWidth * bklv::getUiScale());
+    this->rightSpacer = rightSpacer.get();
     row->addView(rightSpacer.release());
     row->setGrow(1.0f);
     root->addView(row.release());
@@ -246,13 +275,10 @@ bool DesignerApp::init(const Options& options, std::string& error)
     if (this->options.openPalette)
         this->wantPalette = true;
 
-    if (!this->options.initialFile.empty())
-        this->welcomeVisible = false; // 命令行直接指定了文件：跳过欢迎页
-
     if (this->options.clickX >= 0.0f)
         this->pendingClick = true; // 第一帧后再点（此时布局已算完）
 
-    this->app.onDrawWindows = [this]() { this->drawPanels(); };
+    this->app.onDrawWindows = [this]() { this->drawWorkspacePanels(); };
     this->app.onUpdate       = [this]() {
         // Cmd/Ctrl + S 保存（ImGui 输入在 update 里读没问题：无窗口测试不会走这条路）
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)
@@ -285,9 +311,12 @@ bool DesignerApp::init(const Options& options, std::string& error)
 
     if (!this->options.initialFile.empty())
     {
-        this->openFile(this->options.initialFile);
-        if (this->options.startOnSource)
-            this->inspectorTab = 1;
+        if (this->openFile(this->options.initialFile))
+        {
+            this->welcomeVisible = false;
+            if (this->options.startOnSource)
+                this->inspectorTab = this->appearanceLoaded ? 4 : 1;
+        }
     }
     return true;
 }
@@ -335,6 +364,11 @@ bool DesignerApp::openFile(const std::string& relPath)
     }
     this->currentFile = relPath;
     this->currentText = std::move(text);
+    this->activeNumericField.clear();
+    this->editingTokenKey.clear();
+    this->tokenRefs.clear();
+    this->inspectorTab = 0;
+    this->fileMtimeAtLoad = fileMtime(path);
     this->lastError.clear();
     this->saveStatus.clear();
     this->appearanceLoaded = false;
@@ -393,36 +427,43 @@ bool DesignerApp::openFile(const std::string& relPath)
 
 void DesignerApp::saveCurrent()
 {
-    if (!this->appearanceLoaded || this->currentFile.empty())
+    if (this->currentFile.empty())
         return;
 
-    const std::string text = this->appearance.serialize();
+    std::string text;
+    if (this->appearanceLoaded) text = this->appearance.serialize();
+    else if (this->viewLoaded) text = this->viewDoc.serialize();
+    else if (this->tokensLoaded) text = this->tokens.serialize();
+    else return;
     const std::string path = bklv::resourcePath(this->options.themeDir + "/" + this->currentFile + ".json");
-
-    // 校验先行：外观能编译才允许落盘
-    std::string compileError;
-    const auto compiled = bklv::Appearance::compile(text, bklv::getTheme(), compileError);
-    if (compiled == nullptr)
-    {
-        this->lastError = "校验失败（未保存）：" + compileError;
-        return;
-    }
 
     SaveOptions options;
     options.expectedMtime = this->fileMtimeAtLoad;
-    options.validate = [](const std::string& candidate, std::string& why) {
-        return bklv::Appearance::compile(candidate, bklv::getTheme(), why) != nullptr;
+    options.validate = [this](const std::string& candidate, std::string& why) {
+        if (this->appearanceLoaded)
+            return bklv::Appearance::compile(candidate, bklv::getTheme(), why) != nullptr;
+        if (this->viewLoaded)
+            return bklv::ViewTemplate::fromString(candidate, this->currentFile) != nullptr;
+        try { const designer::Json parsed = designer::Json::parse(candidate); (void)parsed; return true; }
+        catch (const std::exception& error) { why = error.what(); return false; }
     };
     std::string saveError;
     const SaveResult result = saveText(path, text, options, saveError);
     if (result == SaveResult::OK)
     {
-        this->appearance.markSaved();
+        if (this->appearanceLoaded) this->appearance.markSaved();
+        if (this->viewLoaded) this->viewDoc.markSaved();
+        if (this->tokensLoaded) this->tokens.markSaved();
         this->fileMtimeAtLoad = fileMtime(path);
         this->undo.clear();
         this->lastError.clear();
         clearAutosave(this->options.themeDir);
         this->saveStatus = "已保存 " + this->currentFile;
+        if (this->tokensLoaded)
+        {
+            bklv::loadThemeIntoGlobalFromDirectory(this->options.themeDir, this->options.themeName);
+            this->applyToCanvas();
+        }
     }
     else
     {
@@ -534,10 +575,11 @@ void DesignerApp::drawPanels()
     if (this->canvasHost != nullptr)
     {
         static bool welcomeApplied = false;
-        if (welcomeApplied != this->welcomeVisible)
+        const bool hideCanvas = this->welcomeVisible || this->tokensLoaded;
+        if (welcomeApplied != hideCanvas)
         {
-            welcomeApplied = this->welcomeVisible;
-            this->canvasHost->setVisibility(this->welcomeVisible ? bklv::Visibility::GONE
+            welcomeApplied = hideCanvas;
+            this->canvasHost->setVisibility(hideCanvas ? bklv::Visibility::GONE
                                                                  : bklv::Visibility::VISIBLE);
         }
     }
@@ -619,13 +661,81 @@ void DesignerApp::drawPanels()
         if (!this->saveStatus.empty())
             ImGui::TextDisabled("%s", this->saveStatus.c_str());
         ImGui::Separator();
-        static const char* kTabs[] = { "属性", "源码" };
-        underlineTabs(kTabs, 2, &this->inspectorTab);
+        static const char* kTabs[] = { "属性", "状态", "过渡", "变量", "源码" };
+        underlineTabs(kTabs, 5, &this->inspectorTab);
         ImGui::Separator();
 
-        if (this->inspectorTab == 1)
+        if (this->inspectorTab == 4)
         {
             this->drawSourceTab();
+            ImGui::End();
+            this->handleCanvasClick();
+            return;
+        }
+
+        if (this->inspectorTab == 3)
+        {
+            this->drawVariablesTab();
+            ImGui::End();
+            this->handleCanvasClick();
+            return;
+        }
+
+        if (this->inspectorTab == 1 || this->inspectorTab == 2)
+        {
+            const char* section = this->inspectorTab == 1 ? "states" : "transitions";
+            const designer::Json* value = this->appearance.get(std::string("/") + section);
+            static std::string bufferFile;
+            static std::string bufferSection;
+            static std::vector<char> buffer;
+            const std::string sectionName(section);
+            if (bufferFile != this->currentFile || bufferSection != sectionName || buffer.empty())
+            {
+                const std::string text = value != nullptr ? value->dump(2) : "{}";
+                buffer.assign(64 * 1024, '\0');
+                std::copy(text.begin(), text.end(), buffer.begin());
+                bufferFile = this->currentFile;
+                bufferSection = sectionName;
+            }
+            ImGui::TextDisabled("%s：按 bklv JSON 语义校验", section);
+            ImGui::BeginChild("##stateTransitionJson", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), false);
+            ImGui::InputTextMultiline("##sectionJson", buffer.data(), buffer.size(), ImVec2(-1, -1));
+            ImGui::EndChild();
+            if (ImGui::Button("应用此段"))
+            {
+                try
+                {
+                    const designer::Json parsed = designer::Json::parse(buffer.data());
+                    const std::string before = this->appearance.serialize();
+                    std::string error;
+                    if (!parsed.is_object())
+                        this->lastError = std::string(section) + " 必须是 JSON 对象";
+                    else if (!this->appearance.set(std::string("/") + section, parsed, error))
+                        this->lastError = error;
+                    else
+                    {
+                        const std::string candidate = this->appearance.serialize();
+                        if (bklv::Appearance::compile(candidate, bklv::getTheme(), error) == nullptr)
+                        {
+                            this->appearance.fromText(before, error);
+                            this->lastError = "校验失败：" + error;
+                        }
+                        else
+                        {
+                            this->undo.record(before, std::string("编辑 ") + section);
+                            this->currentText = candidate;
+                            this->lastError.clear();
+                            this->applyToCanvas();
+                        }
+                    }
+                }
+                catch (const std::exception& error)
+                {
+                    this->lastError = std::string("JSON 解析失败：") + error.what();
+                }
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("完整语法见 docs/json-syntax.md");
             ImGui::End();
             this->handleCanvasClick();
             return;
@@ -698,6 +808,309 @@ void DesignerApp::drawPanels()
     this->handleCanvasClick();
 }
 
+void DesignerApp::drawWorkspacePanels()
+{
+    static bool styleApplied = false;
+    if (!styleApplied)
+    {
+        this->applyIosStyle();
+        styleApplied = true;
+    }
+    if (this->canvasHost != nullptr)
+    {
+        static bool welcomeApplied = false;
+        const bool hideCanvas = this->welcomeVisible || this->tokensLoaded;
+        if (welcomeApplied != hideCanvas)
+        {
+            welcomeApplied = hideCanvas;
+            this->canvasHost->setVisibility(hideCanvas ? bklv::Visibility::GONE
+                                                                 : bklv::Visibility::VISIBLE);
+        }
+    }
+    this->drawWelcome();
+    // 欢迎页显示时不绘制工作区面板，避免底层控件列表仍接收鼠标输入。
+    if (this->welcomeVisible)
+    {
+        this->drawOpenTheme();
+        return;
+    }
+    this->drawQuickOpen();
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImVec2 origin = viewport->WorkPos;
+    const float width = viewport->WorkSize.x;
+    const float height = viewport->WorkSize.y;
+    const bool compactToolbar = width < 1180.0f;
+    const float topH = compactToolbar ? 102.0f : 64.0f;
+    const float leftW = std::clamp(width * 0.19f, 248.0f, 320.0f);
+    const float rightW = std::clamp(width * 0.27f, 344.0f, 440.0f);
+    const float bodyY = origin.y + topH;
+    const float bodyH = height - topH;
+    if (this->topSpacer != nullptr && this->panelTopHeight != topH)
+    {
+        this->topSpacer->setHeight(topH);
+        this->panelTopHeight = topH;
+    }
+    if (this->leftSpacer != nullptr && this->panelLeftWidth != leftW)
+    {
+        this->leftSpacer->setWidth(leftW);
+        this->panelLeftWidth = leftW;
+    }
+    if (this->rightSpacer != nullptr && this->panelRightWidth != rightW)
+    {
+        this->rightSpacer->setWidth(rightW);
+        this->panelRightWidth = rightW;
+    }
+
+    ImGui::SetNextWindowPos(origin, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(width, topH), ImGuiCond_Always);
+    ImGui::Begin("##workspaceToolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 8.0f));
+    ImGui::TextUnformatted("BKLV  /  设计工作台");
+    ImGui::SameLine();
+    if (!this->themeTitle.empty())
+        ImGui::TextDisabled("%s", this->themeTitle.c_str());
+    const float rightEdge = ImGui::GetWindowContentRegionMax().x;
+    if (compactToolbar)
+        ImGui::NewLine();
+    else
+        ImGui::SameLine(std::max(280.0f, width * 0.32f));
+    if (!this->tokensLoaded)
+    {
+        ImGui::TextDisabled("设备");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(140.0f);
+        const char* resolutions = "1280 x 720\0" "1920 x 1080\0" "自适应\0";
+        if (ImGui::Combo("##device", &this->previewResolution, resolutions))
+        {
+            if (this->previewResolution == 0) { this->previewWidth = 1280; this->previewHeight = 720; }
+            else if (this->previewResolution == 1) { this->previewWidth = 1920; this->previewHeight = 1080; }
+            else
+            {
+                this->previewWidth = (int)this->canvasHost->getWidth();
+                this->previewHeight = (int)this->canvasHost->getHeight();
+            }
+            if (this->viewLoaded) this->rebuildViewPreview();
+            if (this->appearanceLoaded) this->applyToCanvas();
+            this->applyCanvasZoom();
+        }
+        ImGui::SameLine();
+        if (iconButton("zoom_out", "缩小")) { this->canvasZoom = std::max(0.25f, this->canvasZoom - 0.25f); this->applyCanvasZoom(); }
+        ImGui::SameLine();
+        ImGui::TextDisabled("%d%%", (int)(this->canvasZoom * 100.0f));
+        ImGui::SameLine();
+        if (iconButton("zoom_in", "放大")) { this->canvasZoom = std::min(2.0f, this->canvasZoom + 0.25f); this->applyCanvasZoom(); }
+    }
+    else
+        ImGui::TextDisabled("全局变量");
+    if (compactToolbar)
+        ImGui::SameLine(0.0f, 20.0f);
+    else
+        ImGui::SameLine(std::max(ImGui::GetCursorPosX() + 24.0f, rightEdge - 196.0f));
+    if (iconButton("folder_open", "切换主题目录")) this->wantOpenTheme = true;
+    ImGui::SameLine();
+    if (iconButton("search", "快速打开（Cmd/Ctrl+P）")) this->wantPalette = true;
+    ImGui::SameLine();
+    const bool dirty = (this->appearanceLoaded && this->appearance.isDirty())
+        || (this->viewLoaded && this->viewDoc.isDirty())
+        || (this->tokensLoaded && this->tokens.isDirty());
+    if (iconButton("undo", "撤销（Cmd/Ctrl+Z）"))
+    {
+        if (this->appearanceLoaded)
+        {
+            std::string restored;
+            if (this->undo.undo(this->appearance.serialize(), restored))
+            {
+                std::string error;
+                if (this->appearance.fromText(restored, error))
+                {
+                    this->currentText = this->appearance.serialize();
+                    this->applyToCanvas();
+                }
+            }
+        }
+    }
+    ImGui::SameLine();
+    if (iconButton("save", dirty ? "保存未提交修改" : "保存（Cmd/Ctrl+S）", dirty))
+        this->saveCurrent();
+    if (!this->diagnostics.empty())
+    {
+        ImGui::SameLine();
+        if (iconButton("error_outline", "查看错误记录"))
+            ImGui::OpenPopup("错误记录");
+        if (ImGui::BeginPopup("错误记录"))
+        {
+            ImGui::TextUnformatted("错误记录");
+            ImGui::Separator();
+            for (const std::string& line : this->diagnostics)
+                ImGui::TextWrapped("%s", line.c_str());
+            if (ImGui::Button("清空记录"))
+                this->diagnostics.clear();
+            ImGui::EndPopup();
+        }
+    }
+    ImGui::PopStyleVar(2);
+    ImGui::End();
+
+    if (!this->tokensLoaded)
+    {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 12.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+    ImGui::SetNextWindowPos(ImVec2(origin.x, bodyY), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(leftW, bodyH), ImGuiCond_Always);
+    ImGui::Begin("##workspaceNavigation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    static const char* navTabs[] = { "文件", "大纲", "变量" };
+    underlineTabs(navTabs, 3, &this->workspaceNavTab);
+    ImGui::Separator();
+    if (this->workspaceNavTab == 0)
+        this->drawFileList();
+    else if (this->workspaceNavTab == 1)
+    {
+        if (this->appearanceLoaded)
+        {
+            const std::vector<LayerInfo> layers = this->appearance.getLayers();
+            for (size_t i = 0; i < layers.size(); ++i)
+            {
+                ImGui::PushID((int)i);
+                const std::string title = designer::segmentName(layers[i].id);
+                const std::string label = (title.empty() ? layers[i].id : title) + "  ·  " + layers[i].op;
+                if (ImGui::Selectable(label.c_str(), this->selectedLayer == (int)i))
+                    this->selectedLayer = (int)i;
+                ImGui::PopID();
+            }
+        }
+        else if (this->viewLoaded)
+        {
+            const std::vector<ViewNodeInfo> nodes = this->viewDoc.listNodes();
+            for (size_t i = 0; i < nodes.size(); ++i)
+            {
+                ImGui::PushID((int)i);
+                ImGui::Indent((float)nodes[i].depth * 12.0f);
+                const std::string label = (nodes[i].type.empty() ? "(无类型)" : nodes[i].type)
+                    + "  " + (nodes[i].pointer.empty() ? "/" : nodes[i].pointer);
+                if (ImGui::Selectable(label.c_str(), this->selectedNode == (int)i))
+                    this->selectedNode = (int)i;
+                ImGui::Unindent((float)nodes[i].depth * 12.0f);
+                ImGui::PopID();
+            }
+        }
+        else
+            ImGui::TextDisabled("打开外观或视图文件后显示结构");
+    }
+    else
+    {
+        ImGui::TextDisabled("全局色值与尺寸");
+        if (iconButton("palette", "打开颜色变量")) this->confirmFileSwitch("tokens/colors");
+        ImGui::SameLine();
+        ImGui::TextUnformatted("颜色变量");
+        if (iconButton("tune", "打开数值变量")) this->confirmFileSwitch("tokens/metrics");
+        ImGui::SameLine();
+        ImGui::TextUnformatted("数值变量");
+        ImGui::Separator();
+        if (this->appearanceLoaded)
+            ImGui::TextDisabled("当前文件变量在右侧“变量”页签");
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    }
+
+    if (this->tokensLoaded)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 16.0f));
+        ImGui::SetNextWindowPos(ImVec2(origin.x, bodyY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(width, bodyH), ImGuiCond_Always);
+        ImGui::Begin("##workspaceTokens", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+                | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        this->drawTokenTable();
+        ImGui::End();
+        ImGui::PopStyleVar();
+        return;
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16.0f, 12.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
+    ImGui::SetNextWindowPos(ImVec2(origin.x + width - rightW, bodyY), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(rightW, bodyH), ImGuiCond_Always);
+    ImGui::Begin("##workspaceInspector", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    if (this->appearanceLoaded)
+    {
+        ImGui::TextUnformatted(this->currentFile.c_str());
+        ImGui::SameLine();
+        if (this->appearance.isDirty()) ImGui::TextColored(ImVec4(0.9f, 0.55f, 0.1f, 1), "未保存");
+        ImGui::Separator();
+        static const char* inspectorTabs[] = { "属性", "状态", "过渡", "变量", "JSON" };
+        underlineTabs(inspectorTabs, 5, &this->inspectorTab);
+        ImGui::Separator();
+        if (this->inspectorTab == 0)
+        {
+            this->drawLayerOps();
+            ImGui::BeginChild("##workspaceFields", ImVec2(0, 0), false);
+            this->drawInspector();
+            ImGui::EndChild();
+        }
+        else if (this->inspectorTab == 3)
+            this->drawVariablesTab();
+        else if (this->inspectorTab == 4)
+            this->drawSourceTab();
+        else
+        {
+            const char* key = this->inspectorTab == 1 ? "states" : "transitions";
+            const designer::Json* section = this->appearance.get(std::string("/") + key);
+            ImGui::TextDisabled("%s  ·  编辑后按 bklv 规则校验", key);
+            static std::string editorFile;
+            static std::string editorKey;
+            static std::vector<char> editor;
+            if (editorFile != this->currentFile || editorKey != key || editor.empty())
+            {
+                const std::string text = section != nullptr ? section->dump(2) : "{}";
+                editor.assign(65536, '\0');
+                std::copy(text.begin(), text.end(), editor.begin());
+                editorFile = this->currentFile;
+                editorKey = key;
+            }
+            ImGui::InputTextMultiline("##animationJson", editor.data(), editor.size(), ImVec2(-1, -ImGui::GetFrameHeightWithSpacing()));
+            if (ImGui::Button("应用并预览"))
+            {
+                try
+                {
+                    const designer::Json value = designer::Json::parse(editor.data());
+                    const std::string before = this->appearance.serialize();
+                    std::string error;
+                    if (!value.is_object()) this->lastError = std::string(key) + " 必须是对象";
+                    else if (!this->appearance.set(std::string("/") + key, value, error)) this->lastError = error;
+                    else if (bklv::Appearance::compile(this->appearance.serialize(), bklv::getTheme(), error) == nullptr)
+                    {
+                        this->appearance.fromText(before, error);
+                        this->lastError = "校验失败：" + error;
+                    }
+                    else
+                    {
+                        this->undo.record(before, std::string("编辑 ") + key);
+                        this->currentText = this->appearance.serialize();
+                        this->applyToCanvas();
+                        this->lastError.clear();
+                    }
+                }
+                catch (const std::exception& error) { this->lastError = error.what(); }
+            }
+        }
+    }
+    else if (this->viewLoaded)
+        this->drawViewPanel();
+    else if (this->tokensLoaded)
+        this->drawTokenTable();
+    else
+        ImGui::TextDisabled("选择文件后，这里显示对应的属性和数据");
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+
+    this->handleCanvasClick();
+}
+
 void DesignerApp::drawMenuBar()
 {
     if (!ImGui::BeginMainMenuBar())
@@ -706,19 +1119,6 @@ void DesignerApp::drawMenuBar()
     {
         if (ImGui::MenuItem("重新扫描"))
             this->scanTheme();
-
-    // 上次异常退出留下的草稿？
-    AutosaveInfo draft;
-    std::string  draftError;
-    if (readAutosave(this->options.themeDir, draft, draftError))
-    {
-        this->pendingDraft    = draft;
-        this->hasPendingDraft = true;
-    }
-    else if (!draftError.empty())
-    {
-        this->lastError = draftError;
-    }
         ImGui::Separator();
         ImGui::TextDisabled("主题：%s", this->options.themeDir.c_str());
         ImGui::EndMenu();
@@ -732,27 +1132,15 @@ void DesignerApp::drawMenuBar()
 
 void DesignerApp::drawFileList()
 {
-    if (ImGui::Button("重新扫描"))
+    if (iconButton("refresh", "重新扫描主题文件"))
         this->scanTheme();
-
-    // 上次异常退出留下的草稿？
-    AutosaveInfo draft;
-    std::string  draftError;
-    if (readAutosave(this->options.themeDir, draft, draftError))
-    {
-        this->pendingDraft    = draft;
-        this->hasPendingDraft = true;
-    }
-    else if (!draftError.empty())
-    {
-        this->lastError = draftError;
-    }
 
     this->drawOpenTheme();
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", "搜索外观…", this->filter, sizeof(this->filter));
 
-    ImGui::BeginChild("##list", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.68f), false);
+    ImGui::BeginChild("##list", ImVec2(0, 0), false);
+    this->lastListGroup.clear();
     for (int i = 0; i < (int)this->files.size(); i++)
     {
         const FileEntry& entry = this->files[(size_t)i];
@@ -778,8 +1166,8 @@ void DesignerApp::drawFileList()
             const bool open = ImGui::CollapsingHeader(header,
                 ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
             this->groupOpen[groupIndex] = open;
-            if (open && text != nullptr)
-                ImGui::TextDisabled("%s", text->hint);
+            if (text != nullptr && ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", text->hint);
             if (!open)
                 continue;
         }
@@ -794,13 +1182,6 @@ void DesignerApp::drawFileList()
         const std::string title = fileTitle(entry.relPath);
         const std::string hint  = fileHint(entry.relPath);
         const std::string labelText = "  " + (title.empty() ? entry.relPath : title);
-        if (ImGui::IsItemHovered())
-        {
-            if (hint.empty())
-                ImGui::SetTooltip("%s.json", entry.relPath.c_str());
-            else
-                ImGui::SetTooltip("%s\n%s.json", hint.c_str(), entry.relPath.c_str());
-        }
         if (ImGui::Selectable(labelText.c_str(), selected))
         {
             this->selectedIndex = i;
@@ -808,10 +1189,15 @@ void DesignerApp::drawFileList()
             if (!this->lastError.empty())
                 ImGui::OpenPopup("打开失败");
         }
+        if (ImGui::IsItemHovered())
+        {
+            if (hint.empty())
+                ImGui::SetTooltip("%s.json", entry.relPath.c_str());
+            else
+                ImGui::SetTooltip("%s\n%s.json", hint.c_str(), entry.relPath.c_str());
+        }
     }
     ImGui::EndChild();
-
-    this->drawDiagnostics();
 
     if (ImGui::BeginPopup("打开失败"))
     {
@@ -824,109 +1210,359 @@ void DesignerApp::drawFileList()
 
 void DesignerApp::drawTokenTable()
 {
-    ImGui::TextDisabled("%s%s", this->currentFile.c_str(), this->tokens.isDirty() ? "  ●" : "");
-    if (!this->lastError.empty())
-        ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "%s", this->lastError.c_str());
-    ImGui::SetNextItemWidth(-1);
-    ImGui::InputTextWithHint("##tokenFilter", "过滤键…", this->tokenFilter, sizeof(this->tokenFilter));
-    ImGui::Separator();
-
-    const std::string kind = this->currentFile.find("metrics") != std::string::npos
-        ? "metric"
-        : "color";
-    ImGui::BeginChild("##tokens", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.62f), true);
-    for (const TokenEntry& entry : this->tokens.list())
+    const bool metrics = this->currentFile == "tokens/metrics";
+    ImGui::TextUnformatted(metrics ? "数值变量" : "颜色变量");
+    if (this->tokens.isDirty())
     {
-        if (this->tokenFilter[0] != '\0'
-            && entry.key.find(this->tokenFilter) == std::string::npos)
-            continue;
-        ImGui::PushID(entry.key.c_str());
-        ImGui::TextUnformatted(entry.key.c_str());
-        // 用窗口坐标定位值列（SameLine 的相对量与"剩余宽度"不是一回事，第一版就撞在一起了）
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x * 0.62f);
-        ImGui::TextDisabled("%s", entry.value.c_str());
         ImGui::SameLine();
-        if (ImGui::SmallButton("改"))
+        ImGui::TextDisabled("未保存");
+    }
+    ImGui::TextDisabled("%s.json", this->currentFile.c_str());
+    if (!this->lastError.empty())
+        ImGui::TextWrapped("%s", this->lastError.c_str());
+    ImGui::SetNextItemWidth(std::min(360.0f, ImGui::GetContentRegionAvail().x - 48.0f));
+    ImGui::InputTextWithHint("##tokenFilter", "搜索变量名称", this->tokenFilter, sizeof(this->tokenFilter));
+    ImGui::SameLine();
+    if (iconButton("add", "新增变量", true, 30.0f))
+    {
+        this->newTokenName[0] = '\0';
+        this->newTokenValue[0] = '\0';
+        this->lastError.clear();
+        ImGui::OpenPopup("新增变量");
+    }
+    ImGui::Spacing();
+
+    const ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY
+        | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp;
+    bool openEditor = false;
+    bool openRefs = false;
+    bool openDelete = false;
+    ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4(0.85f, 0.89f, 0.90f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.94f, 0.96f, 0.96f, 1.0f));
+    if (ImGui::BeginTable("##tokenTable", 3, tableFlags, ImVec2(0, 0)))
+    {
+        ImGui::TableSetupColumn("名称", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+        ImGui::TableSetupColumn("值", ImGuiTableColumnFlags_WidthStretch, 0.38f);
+        ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed, 116.0f);
+        ImGui::TableHeadersRow();
+        for (const TokenEntry& entry : this->tokens.list())
         {
-            std::string buffer = entry.value;
-            char        editable[256];
-            std::snprintf(editable, sizeof(editable), "%s", buffer.c_str());
-            ImGui::OpenPopup("改令牌");
-            ImGui::SetNextWindowSize(ImVec2(360, 0), ImGuiCond_Appearing);
-            if (ImGui::BeginPopup("改令牌"))
+            if (this->tokenFilter[0] != '\0'
+                && entry.key.find(this->tokenFilter) == std::string::npos)
+                continue;
+            ImGui::PushID(entry.key.c_str());
+            ImGui::TableNextRow(ImGuiTableRowFlags_None, 34.0f);
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(entry.key.c_str());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", entry.key.c_str());
+            ImGui::TableSetColumnIndex(1);
+            ImGui::AlignTextToFramePadding();
+            if (!metrics && entry.value.size() == 7 && entry.value[0] == '#')
             {
-                ImGui::TextUnformatted(entry.key.c_str());
-                ImGui::InputText("##value", editable, sizeof(editable));
-                if (ImGui::Button("写入并重载"))
+                unsigned int rgb = 0;
+                if (std::sscanf(entry.value.c_str(), "#%x", &rgb) == 1)
                 {
-                    std::string writeError;
-                    if (!this->tokens.write(entry.key, editable, writeError))
-                        this->lastError = writeError;
-                    else
-                    {
-                        const std::string path
-                            = this->options.themeDir + "/" + this->currentFile + ".json";
-                        SaveOptions options; // 令牌改动靠"重新装载主题"验证，不再单独编译
-                        std::string saveError;
-                        if (saveText(path, this->tokens.serialize(), options, saveError)
-                            == SaveResult::OK)
-                        {
-                            this->tokens.markSaved();
-                            // 重新装载主题 → 画布/控件立刻拿到新色值
-                            std::string loadError;
-                            bklv::loadThemeIntoGlobalFromDirectory(
-                                this->options.themeDir, this->options.themeName);
-                            this->applyToCanvas();
-                            this->saveStatus = "已写入 " + entry.key + " 并重载主题";
-                        }
-                        else
-                            this->lastError = saveError;
-                    }
+                    ImGui::ColorButton("##swatch", ImVec4(((rgb >> 16) & 255) / 255.0f,
+                        ((rgb >> 8) & 255) / 255.0f, (rgb & 255) / 255.0f, 1.0f),
+                        ImGuiColorEditFlags_NoTooltip, ImVec2(18.0f, 18.0f));
+                    ImGui::SameLine();
+                }
+            }
+            ImGui::TextUnformatted(entry.value.c_str());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", entry.value.c_str());
+            ImGui::TableSetColumnIndex(2);
+            if (iconButton("edit", "编辑变量", false, 26.0f))
+            {
+                this->editingTokenKey = entry.key;
+                std::snprintf(this->editingTokenValue, sizeof(this->editingTokenValue), "%s", entry.value.c_str());
+                this->lastError.clear();
+                openEditor = true;
+            }
+            ImGui::SameLine(0.0f, 6.0f);
+            if (iconButton("search", "查看引用位置", false, 26.0f))
+            {
+                this->tokenRefsKey = entry.key;
+                this->tokenRefs = scanThemeReferences(bklv::resourcePath(this->options.themeDir),
+                    metrics ? "metric" : "color", entry.key);
+                openRefs = true;
+            }
+            ImGui::SameLine(0.0f, 6.0f);
+            if (iconButton("delete", "删除变量", false, 26.0f))
+            {
+                this->deletingTokenKey = entry.key;
+                this->tokenRefs = scanThemeReferences(bklv::resourcePath(this->options.themeDir),
+                    metrics ? "metric" : "color", entry.key);
+                openDelete = true;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::PopStyleColor(2);
+    if (openEditor) ImGui::OpenPopup("编辑变量");
+    if (openRefs) ImGui::OpenPopup("引用位置");
+    if (openDelete) ImGui::OpenPopup("删除变量");
+    ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("新增变量", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::SetNextItemWidth(320.0f);
+        ImGui::InputTextWithHint("##newTokenName", "名称，如 spacing.card", this->newTokenName,
+            sizeof(this->newTokenName));
+        ImGui::SetNextItemWidth(320.0f);
+        ImGui::InputTextWithHint("##newTokenValue", metrics ? "数值，如 12" : "颜色，如 #ffcc00",
+            this->newTokenValue, sizeof(this->newTokenValue));
+        if (!this->lastError.empty()) ImGui::TextWrapped("%s", this->lastError.c_str());
+        if (ImGui::Button("新增"))
+        {
+            const auto parsed = designer::Json::parse(this->newTokenValue, nullptr, false);
+            if (this->newTokenName[0] == '\0' || this->tokens.find(this->newTokenName) != nullptr)
+                this->lastError = "名称为空或已存在";
+            else if (metrics && !parsed.is_number())
+                this->lastError = "数值变量必须是有效数字";
+            else
+            {
+                std::string error;
+                if (this->tokens.write(this->newTokenName, this->newTokenValue, error))
+                {
+                    this->currentText = this->tokens.serialize();
+                    this->lastError.clear();
                     ImGui::CloseCurrentPopup();
                 }
-                ImGui::SameLine();
-                if (ImGui::Button("取消"))
-                    ImGui::CloseCurrentPopup();
-                ImGui::EndPopup();
+                else this->lastError = error;
             }
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("引用"))
-        {
-            this->tokenRefs = scanThemeReferences(
-                this->options.themeDir, kind, entry.key);
-            this->saveStatus = entry.key + "：" + std::to_string(this->tokenRefs.size()) + " 处引用";
-        }
-        ImGui::PopID();
+        if (ImGui::Button("取消")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
-    ImGui::EndChild();
-
-    ImGui::Separator();
-    ImGui::TextDisabled("引用列表（%zu）", this->tokenRefs.size());
-    ImGui::BeginChild("##refs", ImVec2(0, 0), true);
-    for (const TokenRef& ref : this->tokenRefs)
-        ImGui::Text("%s  %s", ref.file.c_str(), ref.pointer.c_str());
-    ImGui::EndChild();
+    ImGui::SetNextWindowSize(ImVec2(380, 0), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("编辑变量", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted(this->editingTokenKey.c_str());
+        ImGui::SetNextItemWidth(320.0f);
+        ImGui::InputText("##editingTokenValue", this->editingTokenValue, sizeof(this->editingTokenValue));
+        if (!this->lastError.empty()) ImGui::TextWrapped("%s", this->lastError.c_str());
+        if (ImGui::Button("应用"))
+        {
+            bool valid = true;
+            if (metrics)
+            {
+                const auto parsed = designer::Json::parse(this->editingTokenValue, nullptr, false);
+                valid = parsed.is_number();
+                if (!valid) this->lastError = "数值变量必须是有效数字";
+            }
+            if (valid)
+            {
+                std::string error;
+                if (this->tokens.write(this->editingTokenKey, this->editingTokenValue, error))
+                {
+                    this->currentText = this->tokens.serialize();
+                    this->lastError.clear();
+                    ImGui::CloseCurrentPopup();
+                }
+                else this->lastError = error;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("取消")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    ImGui::SetNextWindowSize(ImVec2(450, 280), ImGuiCond_Appearing);
+    if (ImGui::BeginPopup("引用位置"))
+    {
+        ImGui::Text("%s · %zu 处引用", this->tokenRefsKey.c_str(), this->tokenRefs.size());
+        ImGui::Separator();
+        if (this->tokenRefs.empty()) ImGui::TextDisabled("没有引用");
+        for (const TokenRef& ref : this->tokenRefs)
+        {
+            const std::string label = ref.file + "  " + ref.pointer;
+            if (ImGui::Selectable(label.c_str()))
+            {
+                this->confirmFileSwitch(ref.file);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("删除变量", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("删除 %s？", this->deletingTokenKey.c_str());
+        if (!this->tokenRefs.empty())
+            ImGui::TextWrapped("仍有 %zu 处引用。请先解除引用。", this->tokenRefs.size());
+        if (this->tokenRefs.empty() && ImGui::Button("确认删除"))
+        {
+            std::string error;
+            if (this->tokens.removeKey(this->deletingTokenKey, error))
+            {
+                this->currentText = this->tokens.serialize();
+                this->lastError.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            else this->lastError = error;
+        }
+        if (!this->lastError.empty()) ImGui::TextWrapped("%s", this->lastError.c_str());
+        if (!this->tokenRefs.empty())
+        {
+            for (const TokenRef& ref : this->tokenRefs)
+                ImGui::BulletText("%s  %s", ref.file.c_str(), ref.pointer.c_str());
+        }
+        if (this->tokenRefs.empty()) ImGui::SameLine();
+        if (ImGui::Button("取消")) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
 }
 
-void DesignerApp::drawDiagnostics()
+void DesignerApp::drawVariablesTab()
 {
+    static const char* scopes[] = { "文件变量", "全局变量" };
+    underlineTabs(scopes, 2, &this->variableScopeTab);
     ImGui::Separator();
-    ImGui::BeginChild("##diagnostics", ImVec2(0, 0), true);
-    // 标题用 TextDisabled 直接打印（`###` 只在控件 label 里起隐藏 ID 的作用，打印出来会是字面量）
-    ImGui::TextDisabled("诊断（%zu）", this->diagnostics.size());
-    if (this->diagnostics.empty())
+
+    if (this->variableScopeTab == 0)
     {
-        ImGui::TextDisabled("没有错误。");
+        bool openVariableEditor = false;
+        const designer::Json* vars = this->appearance.get("/vars");
+        if (vars != nullptr && vars->is_object())
+        {
+            for (const char* kind : { "colors", "numbers" })
+            {
+                ImGui::TextUnformatted(kind);
+                const designer::Json* entries = this->appearance.get(std::string("/vars/") + kind);
+                if (entries == nullptr || !entries->is_object())
+                {
+                    ImGui::TextDisabled("无定义");
+                    continue;
+                }
+                for (auto it = entries->begin(); it != entries->end(); ++it)
+                {
+                    ImGui::PushID((std::string(kind) + "." + it.key()).c_str());
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s.%s", kind, it.key().c_str());
+                    ImGui::SameLine(150.0f);
+                    const std::string raw = it->is_string() ? it->get<std::string>() : it->dump();
+                    ImGui::TextDisabled("%s", raw.c_str());
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", raw.c_str());
+                    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 64.0f);
+                    if (iconButton("edit", "编辑文件变量", false, 26.0f))
+                    {
+                        this->editingVariablePath = std::string("/vars/") + kind + "/" + it.key();
+                        std::snprintf(this->editingVariableValue, sizeof(this->editingVariableValue),
+                            "%s", raw.c_str());
+                        openVariableEditor = true;
+                    }
+                    ImGui::SameLine();
+                    if (iconButton("delete", "删除文件变量", false, 26.0f))
+                    {
+                        const std::string ref = std::string("&")
+                            + (std::string(kind) == "colors" ? "color." : "number.") + it.key();
+                        if (containsStringValue(this->appearance.root(), ref))
+                            this->lastError = "变量仍被引用：" + ref;
+                        else
+                        {
+                            const std::string before = this->appearance.serialize();
+                            std::string error;
+                            if (this->appearance.remove(std::string("/vars/") + kind + "/" + it.key(), error))
+                            {
+                                this->undo.record(before, "删除文件变量");
+                                this->currentText = this->appearance.serialize();
+                            }
+                            else this->lastError = error;
+                        }
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::PopID();
+                }
+            }
+        }
+        else
+            ImGui::TextDisabled("当前文件没有 vars 定义");
+
+        if (openVariableEditor) ImGui::OpenPopup("编辑文件变量");
+        if (ImGui::BeginPopupModal("编辑文件变量", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextUnformatted(this->editingVariablePath.c_str());
+            ImGui::SetNextItemWidth(320.0f);
+            ImGui::InputText("##localValue", this->editingVariableValue,
+                sizeof(this->editingVariableValue));
+            if (!this->lastError.empty()) ImGui::TextWrapped("%s", this->lastError.c_str());
+            if (ImGui::Button("应用"))
+            {
+                const std::string before = this->appearance.serialize();
+                designer::Json value;
+                try { value = designer::Json::parse(this->editingVariableValue); }
+                catch (...) { value = this->editingVariableValue; }
+                std::string error;
+                AppearanceDoc candidate = this->appearance;
+                if (candidate.set(this->editingVariablePath, std::move(value), error)
+                    && bklv::Appearance::compile(candidate.serialize(), bklv::getTheme(), error) != nullptr)
+                {
+                    this->appearance = std::move(candidate);
+                    this->undo.record(before, "修改文件变量");
+                    this->currentText = this->appearance.serialize();
+                    this->lastError.clear();
+                    this->applyToCanvas();
+                    ImGui::CloseCurrentPopup();
+                }
+                else this->lastError = error;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("取消")) ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+        }
+
+        ImGui::Separator();
+        ImGui::Combo("类型", &this->variableKind, "颜色\0数值\0");
+        ImGui::InputText("名称", this->variableName, sizeof(this->variableName));
+        ImGui::InputText("值", this->variableValue, sizeof(this->variableValue));
+        if (ImGui::Button("新增文件变量"))
+        {
+            const char* kind = this->variableKind == 0 ? "colors" : "numbers";
+            const std::string root = std::string("/vars/") + kind;
+            std::string error;
+            if (!validLocalVariableName(this->variableName))
+                this->lastError = "变量名只能使用字母、数字、_ 和 -，不能以 $ 开头";
+            else if (this->appearance.get(root + "/" + this->variableName) != nullptr)
+                this->lastError = "变量名已存在";
+            else
+            {
+                const std::string before = this->appearance.serialize();
+                AppearanceDoc candidate = this->appearance;
+                if (candidate.get("/vars") == nullptr)
+                    candidate.set("/vars", designer::Json::object(), error);
+                if (candidate.get(root) == nullptr)
+                    candidate.set(root, designer::Json::object(), error);
+                designer::Json value;
+                try { value = designer::Json::parse(this->variableValue); }
+                catch (...) { value = this->variableValue; }
+                if (candidate.set(root + "/" + this->variableName, std::move(value), error)
+                    && bklv::Appearance::compile(candidate.serialize(), bklv::getTheme(), error) != nullptr)
+                {
+                    this->appearance = std::move(candidate);
+                    this->undo.record(before, "新增文件变量");
+                    this->currentText = this->appearance.serialize();
+                    this->variableName[0] = this->variableValue[0] = '\0';
+                    this->lastError.clear();
+                    this->applyToCanvas();
+                }
+                else this->lastError = error;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("保存") && this->appearance.isDirty())
+            this->saveCurrent();
+        return;
     }
-    else
-    {
-        for (const std::string& line : this->diagnostics)
-            ImGui::TextWrapped("%s", line.c_str());
-        if (ImGui::Button("清空"))
-            this->diagnostics.clear();
-    }
-    ImGui::EndChild();
+
+    ImGui::TextDisabled("选择变量文件，在独立工作区编辑");
+    if (iconButton("palette", "打开颜色变量")) this->confirmFileSwitch("tokens/colors");
+    ImGui::SameLine();
+    ImGui::TextUnformatted("颜色变量");
+    if (iconButton("tune", "打开数值变量")) this->confirmFileSwitch("tokens/metrics");
+    ImGui::SameLine();
+    ImGui::TextUnformatted("数值变量");
 }
 
 std::vector<std::string> DesignerApp::listThemes() const
@@ -948,13 +1584,14 @@ std::vector<std::string> DesignerApp::listThemes() const
     return out;
 }
 
-void DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
+bool DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
 {
     if (!bklv::loadThemeIntoGlobalFromDirectory(dir, name))
     {
         this->lastError = "装载主题失败：" + dir;
-        return;
+        return false;
     }
+    this->welcomeVisible = false;
     this->options.themeDir  = dir;
     this->options.themeName = name;
     // 标题用我们打开时给的名字：库的 getName() 在"非内置目录"时可能还是 default
@@ -973,9 +1610,20 @@ void DesignerApp::openThemeDir(const std::string& dir, const std::string& name)
     if (this->canvasView != nullptr)
         this->canvasView->setVisibility(bklv::Visibility::GONE);
     this->scanTheme();
+    this->hasPendingDraft = false;
+    AutosaveInfo draft;
+    std::string draftError;
+    if (readAutosave(this->options.themeDir, draft, draftError))
+    {
+        this->pendingDraft = draft;
+        this->hasPendingDraft = true;
+    }
+    else if (!draftError.empty())
+        this->lastError = draftError;
     BKLV_LOG_INFO("切换主题：%s（目录 %s），%zu 个文件", this->themeTitle.c_str(),
         this->options.themeDir.c_str(), this->files.size());
-    this->lastError.clear();
+    if (draftError.empty()) this->lastError.clear();
+    return true;
 }
 
 void DesignerApp::drawOpenTheme()
@@ -1009,8 +1657,8 @@ void DesignerApp::drawOpenTheme()
     {
         if (ImGui::Selectable(theme.c_str()))
         {
-            this->openThemeDir(theme, fs::path(theme).filename().string());
-            this->openThemeVisible = false;
+            if (this->openThemeDir(theme, fs::path(theme).filename().string()))
+                this->openThemeVisible = false;
         }
     }
     ImGui::Separator();
@@ -1022,8 +1670,8 @@ void DesignerApp::drawOpenTheme()
         const std::string dir(this->themePathBuffer);
         if (!dir.empty())
         {
-            this->openThemeDir(dir, fs::path(dir).filename().string());
-            this->openThemeVisible = false;
+            if (this->openThemeDir(dir, fs::path(dir).filename().string()))
+                this->openThemeVisible = false;
         }
     }
     ImGui::SameLine();
@@ -1256,13 +1904,17 @@ void DesignerApp::rebuildViewPreview()
     if (!this->viewLoaded)
         return;
 
+    const float previousScale = bklv::getUiScale();
+    bklv::setUiScale((float)this->previewWidth / bklv::UI_BASE_WIDTH);
     const auto tmpl = bklv::ViewTemplate::fromString(this->viewDoc.serialize(), this->currentFile);
     if (tmpl == nullptr)
     {
+        bklv::setUiScale(previousScale);
         this->lastError = "视图模板装载失败（语法或结构错误）";
         return;
     }
     bklv::View* preview = tmpl->instantiate();
+    bklv::setUiScale(previousScale);
     if (preview == nullptr)
     {
         this->lastError = "视图实例化失败（结构错误，细节见日志）";
@@ -1310,10 +1962,12 @@ void DesignerApp::applyCanvasZoom()
     // 视图预览：页面类内容按画布区大小 × 缩放
     if (this->viewPreview != nullptr)
     {
+        const float fit = std::min(areaW / (float)this->previewWidth,
+            areaH / (float)this->previewHeight);
         this->viewPreview->setGrow(0.0f);
         this->viewPreview->setAlignSelf(bklv::AlignSelf::CENTER);
-        this->viewPreview->setWidth(areaW * this->canvasZoom);
-        this->viewPreview->setHeight(areaH * this->canvasZoom);
+        this->viewPreview->setWidth((float)this->previewWidth * fit * this->canvasZoom);
+        this->viewPreview->setHeight((float)this->previewHeight * fit * this->canvasZoom);
     }
     this->appliedZoom = this->canvasZoom;
 }
@@ -1567,45 +2221,45 @@ void DesignerApp::applyIosStyle()
     io.FontGlobalScale = 0.72f; // 字体图集 20px 栅格 → 约 14pt
 
     ImGuiStyle& style       = ImGui::GetStyle();
-    style.WindowRounding    = 14.0f;
-    style.ChildRounding     = 12.0f;
-    style.FrameRounding     = 9.0f;
-    style.PopupRounding     = 12.0f;
-    style.GrabRounding      = 8.0f;
-    style.ScrollbarRounding = 10.0f;
-    style.ScrollbarSize     = 8.0f * u;
-    style.WindowPadding     = ImVec2(18.0f * u, 16.0f * u);
-    style.FramePadding      = ImVec2(12.0f * u, 7.0f * u);
-    style.ItemSpacing       = ImVec2(12.0f * u, 10.0f * u);
-    style.ItemInnerSpacing  = ImVec2(8.0f * u, 6.0f * u);
-    style.WindowBorderSize  = 0.0f;
-    style.FrameBorderSize   = 0.0f;
-    style.CellPadding       = ImVec2(10.0f * u, 6.0f * u);
+    style.WindowRounding    = 4.0f;
+    style.ChildRounding     = 3.0f;
+    style.FrameRounding     = 3.0f;
+    style.PopupRounding     = 4.0f;
+    style.GrabRounding      = 3.0f;
+    style.ScrollbarRounding = 3.0f;
+    style.ScrollbarSize     = 7.0f * u;
+    style.WindowPadding     = ImVec2(12.0f * u, 10.0f * u);
+    style.FramePadding      = ImVec2(8.0f * u, 5.0f * u);
+    style.ItemSpacing       = ImVec2(8.0f * u, 7.0f * u);
+    style.ItemInnerSpacing  = ImVec2(6.0f * u, 5.0f * u);
+    style.WindowBorderSize  = 1.0f;
+    style.FrameBorderSize   = 1.0f;
+    style.CellPadding       = ImVec2(8.0f * u, 5.0f * u);
     style.WindowTitleAlign  = ImVec2(0.0f, 0.5f);
 
-    // 苹果系统色（light）：systemGroupedBackground / secondarySystemGroupedBackground
+    // Workbench palette: neutral surfaces with a restrained teal action color.
     ImVec4* c = style.Colors;
-    c[ImGuiCol_Text]                  = ImVec4(0.11f, 0.11f, 0.12f, 1.00f);
-    c[ImGuiCol_TextDisabled]          = ImVec4(0.56f, 0.56f, 0.58f, 1.00f); // secondaryLabel
-    c[ImGuiCol_WindowBg]              = ImVec4(0.95f, 0.95f, 0.97f, 1.00f); // groupedBackground
-    c[ImGuiCol_ChildBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f); // 白卡片
-    c[ImGuiCol_PopupBg]               = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-    c[ImGuiCol_Border]                = ImVec4(0.78f, 0.78f, 0.80f, 1.00f); // separator
-    c[ImGuiCol_FrameBg]               = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
-    c[ImGuiCol_FrameBgHovered]        = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
-    c[ImGuiCol_FrameBgActive]         = ImVec4(0.86f, 0.86f, 0.88f, 1.00f);
-    c[ImGuiCol_TitleBg]               = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
-    c[ImGuiCol_TitleBgActive]         = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
-    c[ImGuiCol_Button]                = ImVec4(0.95f, 0.95f, 0.97f, 1.00f);
-    c[ImGuiCol_ButtonHovered]         = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
-    c[ImGuiCol_ButtonActive]          = ImVec4(0.84f, 0.84f, 0.86f, 1.00f);
-    c[ImGuiCol_Header]                = ImVec4(0.00f, 0.48f, 1.00f, 0.14f); // systemBlue 14%
-    c[ImGuiCol_HeaderHovered]         = ImVec4(0.00f, 0.48f, 1.00f, 0.10f);
-    c[ImGuiCol_HeaderActive]          = ImVec4(0.00f, 0.48f, 1.00f, 0.20f);
-    c[ImGuiCol_Separator]             = ImVec4(0.78f, 0.78f, 0.80f, 1.00f);
-    c[ImGuiCol_CheckMark]             = ImVec4(0.00f, 0.48f, 1.00f, 1.00f); // systemBlue
-    c[ImGuiCol_SliderGrab]            = ImVec4(0.00f, 0.48f, 1.00f, 1.00f);
-    c[ImGuiCol_SliderGrabActive]      = ImVec4(0.00f, 0.40f, 0.85f, 1.00f);
+    c[ImGuiCol_Text]                  = ImVec4(0.13f, 0.16f, 0.18f, 1.00f);
+    c[ImGuiCol_TextDisabled]          = ImVec4(0.43f, 0.48f, 0.50f, 1.00f);
+    c[ImGuiCol_WindowBg]              = ImVec4(0.91f, 0.93f, 0.94f, 1.00f);
+    c[ImGuiCol_ChildBg]               = ImVec4(0.98f, 0.99f, 0.99f, 1.00f);
+    c[ImGuiCol_PopupBg]               = ImVec4(0.99f, 1.00f, 1.00f, 1.00f);
+    c[ImGuiCol_Border]                = ImVec4(0.76f, 0.80f, 0.81f, 1.00f);
+    c[ImGuiCol_FrameBg]               = ImVec4(0.94f, 0.96f, 0.96f, 1.00f);
+    c[ImGuiCol_FrameBgHovered]        = ImVec4(0.88f, 0.94f, 0.93f, 1.00f);
+    c[ImGuiCol_FrameBgActive]         = ImVec4(0.83f, 0.91f, 0.90f, 1.00f);
+    c[ImGuiCol_TitleBg]               = ImVec4(0.91f, 0.93f, 0.94f, 1.00f);
+    c[ImGuiCol_TitleBgActive]         = ImVec4(0.91f, 0.93f, 0.94f, 1.00f);
+    c[ImGuiCol_Button]                = ImVec4(0.94f, 0.96f, 0.96f, 1.00f);
+    c[ImGuiCol_ButtonHovered]         = ImVec4(0.86f, 0.93f, 0.92f, 1.00f);
+    c[ImGuiCol_ButtonActive]          = ImVec4(0.79f, 0.89f, 0.88f, 1.00f);
+    c[ImGuiCol_Header]                = ImVec4(0.10f, 0.55f, 0.51f, 0.16f);
+    c[ImGuiCol_HeaderHovered]         = ImVec4(0.10f, 0.55f, 0.51f, 0.10f);
+    c[ImGuiCol_HeaderActive]          = ImVec4(0.10f, 0.55f, 0.51f, 0.22f);
+    c[ImGuiCol_Separator]             = ImVec4(0.76f, 0.80f, 0.81f, 1.00f);
+    c[ImGuiCol_CheckMark]             = ImVec4(0.06f, 0.48f, 0.44f, 1.00f);
+    c[ImGuiCol_SliderGrab]            = ImVec4(0.06f, 0.48f, 0.44f, 1.00f);
+    c[ImGuiCol_SliderGrabActive]      = ImVec4(0.04f, 0.37f, 0.34f, 1.00f);
     c[ImGuiCol_ScrollbarBg]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     c[ImGuiCol_ScrollbarGrab]         = ImVec4(0.60f, 0.60f, 0.62f, 0.60f);
     c[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.50f, 0.50f, 0.52f, 0.75f);
@@ -1667,10 +2321,7 @@ bool DesignerApp::createProjectFromTemplate(const std::string& name, const std::
         }
     }
 
-    this->welcomeVisible = false;
-    this->openThemeDir(target, name);
-    this->lastError.clear();
-    return true;
+    return this->openThemeDir(target, name);
 }
 
 void DesignerApp::drawWelcome()
@@ -1721,7 +2372,6 @@ void DesignerApp::drawWelcome()
     ImGui::TextDisabled("打开内置主题，或你之前创建的项目");
     if (ImGui::Button("打开…##open", ImVec2(-1.0f, 0.0f)))
     {
-        this->welcomeVisible = false;
         this->wantOpenTheme  = true;
     }
     ImGui::EndChild();
@@ -1815,11 +2465,14 @@ void DesignerApp::applyToCanvas()
     }
 
     // **不走库的外观缓存**：直接编译这份 JSON 换进画布那个实例，所以未保存的改动立刻可见
+    const float previousScale = bklv::getUiScale();
+    bklv::setUiScale((float)this->previewWidth / bklv::UI_BASE_WIDTH);
     if (!this->canvasView->applyAppearanceJson(json, error))
     {
         this->lastError = "画布预览失败：" + error;
         BKLV_LOG_ERROR("画布预览失败：%s", error.c_str());
     }
+    bklv::setUiScale(previousScale);
     this->canvasView->setVisibility(bklv::Visibility::VISIBLE);
 
 
@@ -1887,7 +2540,11 @@ void DesignerApp::applyFieldEdit(const std::string& key, const designer::Json& v
 
 void DesignerApp::confirmFileSwitch(const std::string& relPath)
 {
-    if (this->appearanceLoaded && this->appearance.isDirty())
+    if (relPath == this->currentFile)
+        return;
+    if ((this->appearanceLoaded && this->appearance.isDirty())
+        || (this->viewLoaded && this->viewDoc.isDirty())
+        || (this->tokensLoaded && this->tokens.isDirty()))
     {
         this->pendingFile = relPath;
         return;
@@ -1907,7 +2564,9 @@ void DesignerApp::drawPendingSwitchPopup()
         if (ImGui::Button("保存并切换"))
         {
             this->saveCurrent();
-            if (!this->appearance.isDirty())
+            if ((!this->appearanceLoaded || !this->appearance.isDirty())
+                && (!this->viewLoaded || !this->viewDoc.isDirty())
+                && (!this->tokensLoaded || !this->tokens.isDirty()))
             {
                 const std::string target = this->pendingFile;
                 this->pendingFile.clear();
@@ -2179,38 +2838,113 @@ void DesignerApp::drawInspector()
         fieldRowLabel(field.label.empty() ? field.key.c_str() : field.label.c_str());
         if (!field.help.empty() && ImGui::IsItemHovered())
             ImGui::SetTooltip("%s", field.help.c_str());
+        const bool referenceable = field.kind == FieldKind::COLOR
+            || field.kind == FieldKind::NUMBER || field.kind == FieldKind::PIXELS;
+        if (referenceable)
+        {
+            if (iconButton("search", "选择变量引用来源", false, 26.0f))
+                ImGui::OpenPopup("选择引用来源");
+            if (ImGui::BeginPopup("选择引用来源"))
+            {
+                const bool colorField = field.kind == FieldKind::COLOR;
+                const char* localKind = colorField ? "colors" : "numbers";
+                const char* globalKind = colorField ? "color" : "metric";
+                const designer::Json* local = this->appearance.get(std::string("/vars/") + localKind);
+                if (local != nullptr && local->is_object())
+                {
+                    for (auto it = local->begin(); it != local->end(); ++it)
+                    {
+                        const std::string option = std::string("&") + (colorField ? "color." : "number.") + it.key();
+                        if (ImGui::MenuItem(option.c_str()))
+                            this->applyFieldEdit(field.key, designer::Json(option));
+                    }
+                }
+                TokensDoc sources;
+                std::string sourceError;
+                const std::string sourcePath = bklv::resourcePath(this->options.themeDir
+                    + (colorField ? "/tokens/colors.json" : "/tokens/metrics.json"));
+                if (sources.loadFile(sourcePath, sourceError))
+                {
+                    for (const TokenEntry& entry : sources.list())
+                    {
+                        const std::string option = std::string("@theme/") + globalKind + "." + entry.key;
+                        if (ImGui::MenuItem(option.c_str()))
+                            this->applyFieldEdit(field.key, designer::Json(option));
+                    }
+                }
+                ImGui::EndPopup();
+            }
+            ImGui::SameLine();
+        }
 
+        ImGui::PushItemWidth(-1.0f);
         switch (field.kind)
         {
             case FieldKind::NUMBER:
             case FieldKind::PIXELS:
             {
+                const bool isReference = current != nullptr && current->is_string();
                 float value = current != nullptr && current->is_number() ? current->get<float>()
                                                                         : field.numberDefault;
-                if (ImGui::DragFloat("##v", &value, 0.5f, 0.0f, 0.0f, "%.1f"))
-                    this->applyFieldEdit(field.key, designer::Json(value));
+                if (this->activeNumericField == pointer && this->activeNumericValue.is_number())
+                    value = this->activeNumericValue.get<float>();
+                if (isReference)
+                {
+                    const std::string reference = current->get<std::string>();
+                    char buffer[512];
+                    std::snprintf(buffer, sizeof(buffer), "%s", reference.c_str());
+                    ImGui::InputText("##v", buffer, sizeof(buffer), ImGuiInputTextFlags_ReadOnly);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", reference.c_str());
+                }
+                else
+                {
+                    if (ImGui::DragFloat("##v", &value, 0.5f, 0.0f, 0.0f, "%.1f"))
+                    {
+                        this->activeNumericField = pointer;
+                        this->activeNumericValue = value;
+                    }
+                    if (ImGui::IsItemDeactivatedAfterEdit() && this->activeNumericField == pointer)
+                    {
+                        this->applyFieldEdit(field.key, this->activeNumericValue);
+                        this->activeNumericField.clear();
+                    }
+                }
                 break;
             }
             case FieldKind::COLOR:
             {
-                // 只处理字面量颜色；@theme/ 引用在 P6 做选择器，这里显示成文本
+                // 字符串可能是全局或文件变量引用；从引用选择器改为字面量前需显式操作。
                 if (current != nullptr && current->is_string())
                 {
-                    ImGui::TextDisabled("%s", current->get<std::string>().c_str());
+                    const std::string reference = current->get<std::string>();
+                    char buffer[512];
+                    std::snprintf(buffer, sizeof(buffer), "%s", reference.c_str());
+                    ImGui::InputText("##v", buffer, sizeof(buffer), ImGuiInputTextFlags_ReadOnly);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", reference.c_str());
                     break;
                 }
                 unsigned int packed = current != nullptr && current->is_number() ? current->get<unsigned int>()
                                                                                 : field.colorDefault;
+                if (this->activeNumericField == pointer && this->activeNumericValue.is_number_unsigned())
+                    packed = this->activeNumericValue.get<unsigned int>();
                 float color[4] = { ((packed >> 16) & 0xFF) / 255.0f, ((packed >> 8) & 0xFF) / 255.0f,
                     (packed & 0xFF) / 255.0f, ((packed >> 24) & 0xFF) / 255.0f };
-                if (ImGui::ColorEdit4("##v", color, ImGuiColorEditFlags_AlphaBar))
+                if (ImGui::ColorEdit4("##v", color,
+                        ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_DisplayHex))
                 {
                     const unsigned int r = (unsigned int)(color[0] * 255.0f + 0.5f);
                     const unsigned int g = (unsigned int)(color[1] * 255.0f + 0.5f);
                     const unsigned int b = (unsigned int)(color[2] * 255.0f + 0.5f);
                     const unsigned int a = (unsigned int)(color[3] * 255.0f + 0.5f);
-                    this->applyFieldEdit(
-                        field.key, designer::Json((a << 24) | (b << 16) | (g << 8) | r));
+                    this->activeNumericField = pointer;
+                    this->activeNumericValue = (a << 24) | (b << 16) | (g << 8) | r;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && this->activeNumericField == pointer)
+                {
+                    this->applyFieldEdit(field.key, this->activeNumericValue);
+                    this->activeNumericField.clear();
                 }
                 break;
             }
@@ -2264,16 +2998,28 @@ void DesignerApp::drawInspector()
                     for (int i = 0; i < count && i < (int)current->size(); i++)
                         if ((*current)[(size_t)i].is_number())
                             values[i] = (*current)[(size_t)i].get<float>();
-                if (ImGui::DragFloat2("##v", values, 0.5f))
+                if (this->activeNumericField == pointer && this->activeNumericValue.is_array())
+                    for (int i = 0; i < count; i++)
+                        values[i] = this->activeNumericValue[(size_t)i].get<float>();
+                const bool changed = count == 4 ? ImGui::DragFloat4("##v", values, 0.5f)
+                                                : ImGui::DragFloat2("##v", values, 0.5f);
+                if (changed)
                 {
                     designer::Json array = designer::Json::array();
                     for (int i = 0; i < count; i++)
                         array.push_back(values[i]);
-                    this->applyFieldEdit(field.key, array);
+                    this->activeNumericField = pointer;
+                    this->activeNumericValue = std::move(array);
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && this->activeNumericField == pointer)
+                {
+                    this->applyFieldEdit(field.key, this->activeNumericValue);
+                    this->activeNumericField.clear();
                 }
                 break;
             }
         }
+        ImGui::PopItemWidth();
         ImGui::PopID();
     }
     } // for (group)

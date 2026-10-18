@@ -1,5 +1,6 @@
 #include "designer/core/tokens_doc.hpp"
 
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -16,6 +17,8 @@ void flatten(const Json& node, const std::string& prefix, std::vector<TokenEntry
 {
     for (auto it = node.begin(); it != node.end(); ++it)
     {
+        if (!it.key().empty() && it.key()[0] == '$')
+            continue;
         const std::string key = prefix.empty() ? it.key() : prefix + "." + it.key();
         if (it->is_object())
             flatten(*it, key, out);
@@ -44,13 +47,37 @@ std::string pointerForKey(const std::string& key)
     return pointer;
 }
 
+bool validTokenKey(const std::string& key)
+{
+    if (key.empty())
+        return false;
+    size_t start = 0;
+    while (start < key.size())
+    {
+        const size_t end = key.find('.', start);
+        const size_t length = (end == std::string::npos ? key.size() : end) - start;
+        if (length == 0 || key[start] == '$')
+            return false;
+        for (size_t i = start; i < start + length; ++i)
+        {
+            const unsigned char c = static_cast<unsigned char>(key[i]);
+            if (!std::isalnum(c) && c != '_' && c != '-')
+                return false;
+        }
+        if (end == std::string::npos)
+            return true;
+        start = end + 1;
+    }
+    return false;
+}
+
 void collectRefs(const Json& node, const std::string& pointer, const std::string& needle,
     std::vector<TokenRef>& out, const std::string& file)
 {
     if (node.is_string())
     {
         const std::string text = node.get<std::string>();
-        if (text.find(needle) != std::string::npos)
+        if (text == needle)
             out.push_back({ file, pointer, text });
         return;
     }
@@ -90,6 +117,11 @@ const TokenEntry* TokensDoc::find(const std::string& key) const
 
 bool TokensDoc::write(const std::string& key, const std::string& value, std::string& error)
 {
+    if (!validTokenKey(key))
+    {
+        error = "变量名只能使用字母、数字、_、- 和点分层级，且不能以 $ 开头";
+        return false;
+    }
     // 数字/布尔按字面量写回，其余按字符串（颜色、字体名）
     Json parsed;
     try
@@ -100,7 +132,20 @@ bool TokensDoc::write(const std::string& key, const std::string& value, std::str
     {
         parsed = Json(value);
     }
-    return this->set(pointerForKey(key), std::move(parsed), error);
+    TokensDoc candidate = *this;
+    const std::string pointer = pointerForKey(key);
+    const Pointer path = Pointer::parse(pointer);
+    Pointer parent;
+    for (size_t i = 0; i + 1 < path.tokens.size(); ++i)
+    {
+        parent.tokens.assign(path.tokens.begin(), path.tokens.begin() + (std::ptrdiff_t)(i + 1));
+        if (candidate.get(parent) == nullptr && !candidate.set(parent, Json::object(), error))
+            return false;
+    }
+    if (!candidate.set(pointer, std::move(parsed), error))
+        return false;
+    *this = std::move(candidate);
+    return true;
 }
 
 bool TokensDoc::removeKey(const std::string& key, std::string& error)
@@ -115,12 +160,12 @@ std::vector<TokenRef> scanThemeReferences(
     const std::string     needle = "@theme/" + kind + "." + key;
     std::error_code       ec;
 
-    for (const char* dir : { "base", "widget" })
+    for (const char* dir : { "base", "widget", "view" })
     {
         const fs::path path = fs::path(themeDir) / dir;
         if (!fs::exists(path, ec))
             continue;
-        for (const auto& entry : fs::directory_iterator(path, ec))
+        for (const auto& entry : fs::recursive_directory_iterator(path, ec))
         {
             if (!entry.is_regular_file() || entry.path().extension() != ".json")
                 continue;
@@ -138,7 +183,7 @@ std::vector<TokenRef> scanThemeReferences(
             {
                 continue;
             }
-            const std::string rel = std::string(dir) + "/" + entry.path().stem().string();
+            const std::string rel = fs::relative(entry.path(), themeDir, ec).replace_extension().generic_string();
             collectRefs(document, std::string(), needle, refs, rel);
         }
     }

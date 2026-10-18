@@ -55,6 +55,7 @@ class DesignerApp
   private:
     void scanTheme();
     void drawPanels();
+    void drawWorkspacePanels();
     void drawMenuBar();
     void drawFileList();
     void drawJsonView();
@@ -63,6 +64,7 @@ class DesignerApp
     void handleCanvasClick();
     void drawSourceTab();
     void drawTokenTable();
+    void drawVariablesTab();
     void rebuildViewPreview();
     void drawViewPanel();
     // 画布点击 → 选中节点（预览树与文档按同一 DFS 序对齐；数量对不上就不选，宁可不动）
@@ -77,9 +79,8 @@ class DesignerApp
     void applyIosStyle();       // 苹果风配色（浅色分组底 + 白卡片 + 系统蓝）
     bool createProjectFromTemplate(const std::string& name, const std::string& templateDir);
     bklv::Label* canvasTitle = nullptr;
-    void openThemeDir(const std::string& dir, const std::string& name);
+    bool openThemeDir(const std::string& dir, const std::string& name);
     std::vector<std::string> listThemes() const;
-    void drawDiagnostics();
     void drawLayerOps();
     // 操作本体与 UI 分开：按钮与快捷键走同一份实现（快捷键只在 update() 里调这些，
     // 不能调 drawLayerOps —— 那是界面代码，不能在没有窗口上下文时执行）
@@ -104,7 +105,7 @@ class DesignerApp
     std::string      lastError;
     std::string      themeTitle;
     int              selectedIndex = -1;
-    float            fileFilterWidth = 300.0f;
+    float            fileFilterWidth = 272.0f;
     char             filter[128] = {0};
     AppearanceDoc    appearance;      // 当前打开的外观文件（P3 只编辑 base/widget）
     bool             appearanceLoaded = false;
@@ -114,15 +115,33 @@ class DesignerApp
     long long        fileMtimeAtLoad = 0;
     bklv::View*      canvasHost = nullptr; // 中间那块画布（库的视图树负责画）
     bklv::AppearanceView* canvasView = nullptr;
-    float            inspectorWidth = 380.0f;
+    float            inspectorWidth = 360.0f;
     std::vector<char> sourceBuffer; // 源码页签的编辑缓冲（InputText 需要稳定内存）
     std::string       sourceError;  // 上次"应用"失败的原因（带行列）
     std::string       sourceStatus; // 上次"应用"成功提示
-    int               inspectorTab = 0; // 0 = 属性，1 = 源码
+    int               inspectorTab = 0; // 当前检视器页签
+    int               workspaceNavTab = 0;
+    int               previewResolution = 0;
+    int               previewWidth = 1280;
+    int               previewHeight = 720;
+    int               variableScopeTab = 0;
+    char              variableName[96] = {0};
+    char              variableValue[256] = {0};
+    std::string       editingVariablePath;
+    char              editingVariableValue[256] = {0};
+    int               variableKind = 0;
     TokensDoc         tokens;
     bool              tokensLoaded = false;
     char              tokenFilter[64] = {0};
     std::vector<TokenRef> tokenRefs; // 当前选中 token 的引用（点"查引用"才扫）
+    std::string       tokenRefsKey;
+    std::string       editingTokenKey;
+    char              editingTokenValue[256] = {0};
+    char              newTokenName[96] = {0};
+    char              newTokenValue[256] = {0};
+    std::string       deletingTokenKey;
+    std::string       activeNumericField;
+    designer::Json    activeNumericValue;
     std::string       pendingFile;   // 有未保存改动时等待确认切换的目标文件
     char              renameBuffer[128] = {0};
     bool              wantRename = false;
@@ -146,6 +165,12 @@ class DesignerApp
     bool              wantOpenTheme = false;
     bool              openThemeVisible = false;
     char              themePathBuffer[512] = {0};
+    bklv::Box*        topSpacer = nullptr;
+    bklv::Box*        leftSpacer = nullptr;
+    bklv::Box*        rightSpacer = nullptr;
+    float             panelLeftWidth = -1.0f;
+    float             panelRightWidth = -1.0f;
+    float             panelTopHeight = -1.0f;
     float             canvasZoom = 1.0f;
     float             appliedZoom = -1.0f; // 上次套用的缩放（避免每帧重设尺寸）
     void applyCanvasZoom();

@@ -17,6 +17,7 @@ int main()
         "装载 colors.json（" + error + "）");
     const std::vector<TokenEntry> entries = colors.list();
     check(entries.size() > 50, "token 数量合理（" + std::to_string(entries.size()) + "）");
+    check(colors.find("$comment") == nullptr, "元数据不显示为变量");
 
     const TokenEntry* accent = colors.find("accent.base");
     check(accent != nullptr, "能找到 accent.base");
@@ -33,6 +34,13 @@ int main()
         check(doc.get("/zz/keep") != nullptr, "未知键保留");
         check(doc.removeKey("a.x", error), "删 a.x");
         check(doc.find("a.x") == nullptr, "删后不存在");
+        check(doc.write("new.group.value", "17", error), "新增嵌套全局变量（" + error + "）");
+        const TokenEntry* added = doc.find("new.group.value");
+        check(added != nullptr && added->value == "17", "新增项可读回且保留数字类型");
+        const std::string beforeInvalid = doc.serialize();
+        for (const char* invalid : { "", "a.", ".a", "a..b", "$comment", "a/$bad", "a~b" })
+            check(!doc.write(invalid, "17", error) && doc.serialize() == beforeInvalid,
+                std::string("非法变量名不会修改文档：") + invalid);
     }
 
     std::printf("\n== 3. 反向引用：真实主题里 accent.base 至少被一处引用 ==\n");
@@ -44,6 +52,8 @@ int main()
         for (const TokenRef& ref : refs)
             hasFile = hasFile || ref.file.rfind("widget/", 0) == 0 || ref.file.rfind("base/", 0) == 0;
         check(hasFile, "引用里带相对路径");
+        check(scanThemeReferences("resources/theme/default", "color", "accent").empty(),
+            "键名按完整边界匹配，不把 accent.base 算作 accent");
         check(scanThemeReferences("resources/theme/default", "color", "__no_such_key__").empty(),
             "不存在的键 -> 空");
     }

@@ -2,7 +2,7 @@
 
 // Vulkan 渲染后端。
 //
-// 构建：./build.sh --vk  ->  dist/vk/
+// 构建：cmake --preset vk && cmake --build --preset vk  ->  dist/vk/
 // 依赖：Vulkan SDK（头文件 + loader）。Windows 用 MSYS2 的 vulkan-headers/loader 包，
 //       macOS 上是 MoltenVK，Linux 上装 libvulkan-dev。
 //
