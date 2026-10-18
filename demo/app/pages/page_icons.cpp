@@ -40,6 +40,7 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
     //   · 码位文字必须 setSingleLine：窄格子里宁可裁掉也不能换行，否则行高会跳
     Box* cell = new Box(Axis::COLUMN);
     cell->setWidthPercentage(100.0f / static_cast<float>(kIconsPerRow));
+    cell->setShrink(0.0f); // 不关收缩：10% 会被内容宽度压掉，整页变成细条（实测）
     cell->setAlignItems(AlignItems::STRETCH);
     cell->setJustifyContent(JustifyContent::CENTER);
     cell->setGap(theme.number("metric.spacing.xs", 4.0f));
@@ -85,6 +86,7 @@ Box* makeIconGrid(const std::vector<unsigned int>& codepoints, ImFont* font)
 {
     Box* grid = new Box(Axis::COLUMN);
     grid->setWidthPercentage(100.0f);
+    grid->setShrink(0.0f);
 
     Box* row = nullptr;
     for (size_t i = 0; i < codepoints.size(); i++)
@@ -94,6 +96,7 @@ Box* makeIconGrid(const std::vector<unsigned int>& codepoints, ImFont* font)
             row = new Box(Axis::ROW);
             row->setWidthPercentage(100.0f);
             row->setAlignItems(AlignItems::STRETCH);
+            row->setShrink(0.0f);
             grid->addView(row);
         }
 
@@ -111,8 +114,10 @@ Box* buildIconsPage()
     // （selfScrolling=false），外层已经有滚动器；页面的外层框是 auto 高，内层滚动器
     // 拿不到确定高度 → 高度算成 0，整页内容都看不见（旧版正是这样：只看得见页头）。
     Box* page = new Box(Axis::COLUMN);
-    page->setGrow(1.0f);
+    // 这一页会放进页面的滚动器里：高度按内容撑（grow 会被压成一屏，滚不动），
+    // 宽度必须留得下 10 列 —— 所有百分比容器都要显式关掉收缩，否则会被压成细条。
     page->setWidthPercentage(100.0f);
+    page->setShrink(0.0f);
 
     // ---- Switch Icon ----
     const std::vector<unsigned int>& switchIcons = getIconFontCodepoints();
