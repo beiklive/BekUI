@@ -284,7 +284,7 @@ void Pager::rememberPageState()
 
     // **只有焦点确实在这一页里才记焦点**。
     // 焦点在页面之外（侧栏 / 页头这类）时记下来，还原时会把焦点抢回侧栏；
-    // 而侧栏是"聚焦即切页"（TabCell::onFocusGained → 宿主 selectPage → show），
+    // 而侧栏是"聚焦即切页"（TabButton::onFocusGained → 宿主 selectPage → show），
     // 于是形成 show → loadPageState → giveFocus(侧栏) → selectPage → show 的无限递归
     // —— 实测踩过（demo 14 页里有 5 页栈溢出崩在这里）。
     if (this->isFocusInsidePage())

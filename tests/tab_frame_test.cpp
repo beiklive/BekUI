@@ -71,7 +71,7 @@ int main()
         frame.addTab("一", makePage("一"));
         frame.addTab("二", makePage("二"));
 
-        auto* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        auto* second = static_cast<TabButton*>(frame.getTabBar()->getChildren()[1]);
         getInputManager().giveFocus(second);
         checkEqualInt((int)frame.getSelectedIndex(), 0, "焦点移到第二个 tab 仍未切页");
         check(getInputManager().getCurrentFocus() == second, "焦点在 tab 上");
@@ -87,7 +87,7 @@ int main()
         frame.addTab("一", makePage("一"));
         frame.addTab("二", makePage("二"));
 
-        auto* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        auto* second = static_cast<TabButton*>(frame.getTabBar()->getChildren()[1]);
         getInputManager().giveFocus(second);
         checkEqualInt((int)frame.getSelectedIndex(), 1, "焦点移到第二个 tab 就切页");
 
@@ -123,7 +123,7 @@ int main()
 
         // 自定义按钮：子类实例能被接管，且带上方向
         frame.addTab("一", new Box(Axis::COLUMN));
-        auto* custom = new TabCell();
+        auto* custom = new TabButton();
         custom->setTitle("二");
         const size_t index = frame.addTab(custom, new Box(Axis::COLUMN));
         checkEqualInt((int)index, 1, "自定义按钮加入成功");

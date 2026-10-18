@@ -29,12 +29,12 @@ enum class TabOrientation
     VERTICAL,
 };
 
-class TabCell : public AppearanceView
+class TabButton : public AppearanceView
 {
   public:
     using SelectHandler = std::function<void()>;
 
-    TabCell();
+    TabButton();
 
     void setTitle(const std::string& title);
 
@@ -51,7 +51,7 @@ class TabCell : public AppearanceView
 
     void trigger();
 
-    std::string getClassString() const override { return "bklv::TabCell"; }
+    std::string getClassString() const override { return "bklv::TabButton"; }
 
   protected:
     void onFocusGained() override;
@@ -138,8 +138,8 @@ class TabFrame : public Box
     // 带图标的 tab（图标层由外观声明）
     size_t addTab(const std::string& title, const std::string& icon, View* content);
 
-    // 自定义 tab 按钮：传进来的 TabCell（或其子类）会被接管，宿主不要再 delete
-    size_t addTab(TabCell* button, View* content);
+    // 自定义 tab 按钮：传进来的 TabButton（或其子类）会被接管，宿主不要再 delete
+    size_t addTab(TabButton* button, View* content);
 
     // ---- 部件样式替换（TabFrame 是聚合体，四个部件各自可换）----
     // 栏容器 / 内容框 / 按钮：默认就是 base/frame/tab_bar、base/frame/tab_content、
@@ -161,7 +161,7 @@ class TabFrame : public Box
   private:
     void rebuildLayout();          // 按方向/位置重建"栏 + 内容框"的结构
     void applyBarAppearance();     // 栏容器按方向切外观变体
-    void applyCellTrigger(TabCell* cell, size_t index);
+    void applyCellTrigger(TabButton* cell, size_t index);
     void selectFromInput(size_t index, bool focusContent);
     static View* firstFocusableIn(View* root);
 
@@ -181,7 +181,7 @@ class TabFrame : public Box
     size_t selected          = 0;
     std::string barTitle;
     Label* barTitleLabel = nullptr;
-    std::vector<TabCell*> cells;
+    std::vector<TabButton*> cells;
     std::vector<View*> contents;
 };
 

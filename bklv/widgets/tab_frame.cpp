@@ -13,7 +13,7 @@
 namespace bklv
 {
 
-TabCell::TabCell()
+TabButton::TabButton()
     : AppearanceView("base/button/tab_button", true)
 {
     // 高度/内边距/图标层全在 base/button/tab_button.<方向>.json 里
@@ -28,7 +28,7 @@ TabCell::TabCell()
     this->applyTheme();
 }
 
-void TabCell::setOrientation(TabOrientation value)
+void TabButton::setOrientation(TabOrientation value)
 {
     if (this->orientation == value && !this->getAppearanceName().empty())
         return;
@@ -36,12 +36,12 @@ void TabCell::setOrientation(TabOrientation value)
     this->setAppearanceVariant(value == TabOrientation::VERTICAL ? "vertical" : "horizontal");
 }
 
-void TabCell::setTitle(const std::string& title)
+void TabButton::setTitle(const std::string& title)
 {
     this->setText(title);
 }
 
-void TabCell::setSelected(bool value)
+void TabButton::setSelected(bool value)
 {
     if (this->selected == value)
         return;
@@ -50,13 +50,13 @@ void TabCell::setSelected(bool value)
     this->setAppearanceState("selected", value);
 }
 
-void TabCell::trigger()
+void TabButton::trigger()
 {
     if (this->onSelect)
         this->onSelect();
 }
 
-void TabCell::onFocusGained()
+void TabButton::onFocusGained()
 {
     AppearanceView::onFocusGained();
 
@@ -65,7 +65,7 @@ void TabCell::onFocusGained()
         this->onFocus();
 }
 
-void TabCell::onFocusLost()
+void TabButton::onFocusLost()
 {
     AppearanceView::onFocusLost();
 }
@@ -170,7 +170,7 @@ void TabFrame::setOrientation(TabOrientation value)
     if (this->orientation == value)
         return;
     this->orientation = value;
-    for (TabCell* cell : this->cells)
+    for (TabButton* cell : this->cells)
         cell->setOrientation(value);
     this->rebuildLayout();
 }
@@ -190,7 +190,7 @@ void TabFrame::setTriggerMode(TabTriggerMode value)
         this->applyCellTrigger(this->cells[i], i);
 }
 
-void TabFrame::applyCellTrigger(TabCell* cell, size_t index)
+void TabFrame::applyCellTrigger(TabButton* cell, size_t index)
 {
     // CLICK：只有点击 / A 才切页，焦点留在 tab 上
     // FOCUS：焦点移过来就切页；点击 / A 再把握焦点交给内容区
@@ -241,7 +241,7 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
 
     const size_t index = this->cells.size();
 
-    TabCell* cell = new TabCell();
+    TabButton* cell = new TabButton();
     cell->setAppearanceName(this->buttonAppearance);
     cell->setOrientation(this->orientation);
     cell->setTitle(title);
@@ -259,7 +259,7 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
     return index;
 }
 
-size_t TabFrame::addTab(TabCell* button, View* content)
+size_t TabFrame::addTab(TabButton* button, View* content)
 {
     if (button == nullptr || content == nullptr)
         return static_cast<size_t>(-1);
@@ -294,7 +294,7 @@ void TabFrame::setContentAppearance(const std::string& name)
 void TabFrame::setTabButtonAppearance(const std::string& name)
 {
     this->buttonAppearance = name;
-    for (TabCell* cell : this->cells)
+    for (TabButton* cell : this->cells)
     {
         cell->setAppearanceName(name);
         cell->setOrientation(this->orientation);

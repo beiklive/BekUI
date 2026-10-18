@@ -363,7 +363,7 @@ int main()
         check(frame.getContentBox()->getChildren()[0] == pageA, "切回来还是同一个页面对象");
 
         check(frame.getTabBar()->getChildrenCount() == 3, "tab 栏三个格子");
-        TabCell* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        TabButton* second = static_cast<TabButton*>(frame.getTabBar()->getChildren()[1]);
         check(!second->isSelected(), "未选中的格子 selected=false");
         frame.setSelectedIndex(1);
         check(second->isSelected(), "选中后 selected=true");
@@ -380,7 +380,7 @@ int main()
         check(frame.getTabCount() == 2, "两个条目");
         check(frame.getSelectedIndex() == 0, "默认选第一个");
 
-        auto* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        auto* second = static_cast<TabButton*>(frame.getTabBar()->getChildren()[1]);
         getInputManager().giveFocus(second);
         checkEqualInt((int)frame.getSelectedIndex(), 1, "焦点移到第二个就切");
 

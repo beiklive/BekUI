@@ -519,7 +519,7 @@ void InputManager::giveFocus(View* view)
     // 焦点反馈音：侧栏条目单独一种（和 borealis 的 SOUND_FOCUS_SIDEBAR 一致）
     if (view != nullptr)
     {
-        const bool sidebar = view->getClassString() == "bklv::TabCell";
+        const bool sidebar = view->getClassString() == "bklv::TabButton";
         audio::play(sidebar ? Sound::FOCUS_SIDEBAR : Sound::FOCUS_CHANGE);
     }
 

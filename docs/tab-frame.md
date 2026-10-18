@@ -58,7 +58,7 @@ enum class TabTriggerMode { CLICK, FOCUS };
 **目录约定（用户追加要求）**：外观目录按**控件分类**组织，不按用途组织 ——
 
 ```
-base/button/tab_button.<方向>.json   按钮（TabCell 是按钮）
+base/button/tab_button.<方向>.json   按钮（TabButton 是按钮）
 base/frame/tab_bar.<方向>.json       栏容器
 base/frame/tab_content.json          页面框
 ```
@@ -78,6 +78,14 @@ base/frame/tab_content.json          页面框
 
 控件侧只有**一个** `TabButton` 类，按方向 `setAppearanceVariant("horizontal" | "vertical")`；
 样式差异全部写在 JSON 里（沿用"样式归 JSON、行为归 C++"的约定）。
+
+## 4b. 三个名字
+
+| 名字 | 是什么 |
+|---|---|
+| `TabFrame` | 聚合体：栏 + 内容框 + 按钮，管方向/位置/触发/切页 |
+| `TabItem` | 视图 JSON 里的描述节点（`title`/`icon` + 子节点=页面），建树后即删 |
+| `TabButton` | 真正的按钮控件（原 `TabCell`），外观 `base/button/tab_button.<方向>` |
 
 ## 5. C++ API
 
@@ -118,8 +126,8 @@ class TabFrame : public Box {
 | 内容框 | `base/frame/tab_content.json` | `setContentAppearance(name)` |
 | tab 按钮（横向/纵向） | `base/button/tab_button.<方向>.json` | `setTabButtonAppearance(name)` |
 
-按钮还支持**实例级自定义**：`addTab(TabCell* button, View* content)` 接管调用方传入的
-`TabCell`（或其子类），宿主不要再 delete。
+按钮还支持**实例级自定义**：`addTab(TabButton* button, View* content)` 接管调用方传入的
+`TabButton`（或其子类），宿主不要再 delete。
 
 这样分工的理由：TabFrame 只负责**组装与行为**（方向、位置、触发、焦点、切页）；
 "长什么样"归四个部件的 JSON —— 换栏样式不影响按钮，换按钮样式不影响内容框。
@@ -139,7 +147,7 @@ class TabFrame : public Box {
 
 | 阶段 | 内容 | 完成判据 |
 |---|---|---|
-| P1 | `TabCell` → `TabButton`（加图标层、双外观）+ 两份按钮 JSON | `check.sh` 绿；外观能编译 |
+| P1 | `TabButton` → `TabButton`（加图标层、双外观）+ 两份按钮 JSON | `check.sh` 绿；外观能编译 |
 | P2 | 重写 `TabFrame`（方向/位置/触发/栏+内容框） | 新测试全过 |
 | P3 | 删除 `TabBar`/`Sidebar`，迁移 demo 与 `widget_test` | demo 启动、无残留引用 |
 | P4 | JSON 注册 + 属性表 + 样例 `view/tab_frame_demo.json` | 视图 JSON 能建出两种方向 |

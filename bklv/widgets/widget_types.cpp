@@ -54,7 +54,7 @@ void registerWidgetViewTypes()
     registerViewType("BottomBar", [] { return (View*)new BottomBar(); });
     registerViewType("HintsBar", [] { return (View*)new HintsBar(); });
     registerViewType("StatusArea", [] { return (View*)new StatusArea(); });
-    registerViewType("TabCell", [] { return (View*)new TabCell(); });
+    registerViewType("TabButton", [] { return (View*)new TabButton(); });
 
     // 可交互的（属性表里能配出可用的默认值）
     registerViewType("Button", [] { return (View*)new Button(); });
