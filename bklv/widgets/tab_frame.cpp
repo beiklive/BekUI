@@ -147,8 +147,19 @@ void TabFrame::rebuildLayout()
         this->barFrame->setHeightPercentage(100.0f);
     }
 
-    this->contentBox->setWidthPercentage(100.0f);
-    this->contentBox->setHeight(horizontal ? AUTO : 100.0f);
+    // 内容框按轴取尺寸：横向占满宽度、高度由 grow 拿剩余；纵向反过来。
+    // 以前两个方向都写 width:100%，纵向时"栏 + 100% 内容"会超出父宽，
+    // 内容被压扁 → 页里的 Label/按钮叠在一起（实测）。
+    if (horizontal)
+    {
+        this->contentBox->setWidthPercentage(100.0f);
+        this->contentBox->setHeight(AUTO);
+    }
+    else
+    {
+        this->contentBox->setWidth(AUTO);
+        this->contentBox->setHeightPercentage(100.0f);
+    }
     this->contentBox->setGrow(1.0f);
     this->contentBox->setShrink(1.0f);
 

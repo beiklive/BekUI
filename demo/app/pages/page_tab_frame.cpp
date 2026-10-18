@@ -37,6 +37,7 @@ Box* makeTabPage(const std::string& title, const std::string& detail)
 
     Button* action = new Button();
     action->setText("测试按钮");
+    action->setWidthPercentage(45.0f); // 别拉满整行（列方向默认 stretch）
     action->setOnClick([title] { BKLV_LOG_INFO("点了：%s 里的按钮", title.c_str()); });
     page->addView(action);
 
