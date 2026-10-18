@@ -1,6 +1,7 @@
 #include "app/demo_app.hpp"
 
 #include "app/pages.hpp"
+#include "bklv/core/icon_font.hpp"
 
 using namespace bklv;
 
@@ -14,45 +15,155 @@ DemoApp::DemoApp()
 
     this->header = new Header();
     this->header->setAppearanceVariant("applet");
-    this->header->setTitle(getStr("app/title"));
+    this->applyHeaderFor(std::string());
     this->shell->setHeaderView(this->header);
     this->shell->getOverlayLayer()->addView(new Padding());
-    this->shell->setHeaderInset(
-        getTheme().number("metric.appletFrame.headerHeight", 88.0f));
+    const float headerH = getTheme().number("metric.appletFrame.headerHeight", 88.0f);
+    this->shell->setHeaderInset(headerH);
+    // 内容避让是显式的：不给内容层留白，页面会从 y=0 开始、被页头压住
+    this->shell->getContentLayer()->setPaddingTop(headerH);
 
-    // 内容：统一的 TabFrame（横向 / 栏在顶部 / 点击切换）
-    // demo 只有一个页面；将来加页面就是多一个 addTab。
     this->contentRoot = new Box(Axis::COLUMN);
     this->contentRoot->setWidthPercentage(100.0f);
     this->contentRoot->setHeightPercentage(100.0f);
     this->contentRoot->setAlignItems(AlignItems::STRETCH);
 
-    this->frame = new TabFrame(TabOrientation::HORIZONTAL, TabTriggerMode::CLICK);
-    this->frame->setTitle(getStr("app/title"));
-    this->contentRoot->addView(this->frame);
-
     this->shell->pushContentView(this->contentRoot);
 
-    BKLV_LOG_INFO("demo 已就绪：1 个页面（图标总览）");
+    // B / 返回：内容层还有下钻时退回主页
+    this->shell->setOnBackRequested([this] {
+        if (this->currentDemo == 0)
+            return false;
+        this->goBack();
+        return true;
+    });
+
+    BKLV_LOG_INFO("demo 已就绪：主页 + 3 个演示页");
 }
 
-DemoApp::~DemoApp() = default;
+void DemoApp::applyHeaderFor(const std::string& title)
+{
+    if (this->header == nullptr)
+        return;
+    this->header->setTitle(title.empty() ? getStr("app/title") : title);
+    this->header->setSubtitle(std::string());
+}
 
 void DemoApp::update()
 {
-    if (this->pageSelected)
-        return;
+    if (!this->built)
+    {
+        this->built = true;
+        this->showHome();
+        if (this->pendingOpen > 0)
+            this->openDemo(this->pendingOpen);
+    }
+}
 
-    // 首帧建页：图标字形要等 App::run() 建好字体图集之后才扫得到
-    this->pageSelected = true;
+void DemoApp::showHome()
+{
+    if (this->contentRoot->getChildrenCount() > 0)
+        return; // 主页只建一次，返回时复用
 
+    Box* home = new Box(Axis::COLUMN);
+    home->setWidthPercentage(100.0f);
+    home->setGrow(1.0f);
+    home->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    home->setAlignItems(AlignItems::CENTER);
+    home->setJustifyContent(JustifyContent::CENTER);
+
+    struct Entry
+    {
+        const char* title;
+        const char* icon;
+        int         index;
+    };
+    const Entry entries[] = {
+        { "图标展示", bklv::icon::glyphByName("star"), 1 },
+        { "水平 TabFrame", bklv::icon::glyphByName("menu"), 2 },
+        { "竖直 TabFrame", bklv::icon::glyphByName("list"), 3 },
+    };
+
+    for (const Entry& entry : entries)
+    {
+        Button* button = new Button();
+        button->setAppearanceName("widget/button.icon_text");
+        button->setText(entry.title);
+        button->setIcon(entry.icon);
+        button->setWidthPercentage(60.0f);
+        button->setOnClick([this, index = entry.index, title = std::string(entry.title)] {
+            this->openDemo(index);
+            (void)title;
+        });
+        home->addView(button);
+    }
+
+    this->contentRoot->addView(home);
+}
+
+void DemoApp::openDemo(int index)
+{
+    if (index == 1)
+        this->openPage("图标展示", [] { return buildIconsPage(); }, 1);
+    else if (index == 2)
+        this->openPage("水平 TabFrame", [] { return buildHorizontalTabPage(); }, 2);
+    else if (index == 3)
+        this->openPage("竖直 TabFrame", [] { return buildVerticalTabPage(); }, 3);
+}
+
+Box* DemoApp::wrapPage(Box* content)
+{
+    Box* frame = new Box(Axis::COLUMN);
+    frame->setWidthPercentage(100.0f);
+    frame->setHeightPercentage(100.0f);
+    frame->setAlignItems(AlignItems::STRETCH);
+    frame->setPadding(getTheme().number("metric.appletFrame.contentPaddingTopBottom", 28.0f));
+    frame->setPaddingLeft(getTheme().number("metric.appletFrame.contentPaddingSides", 28.0f));
+    frame->setPaddingRight(getTheme().number("metric.appletFrame.contentPaddingSides", 28.0f));
+    frame->setGap(getTheme().number("metric.spacing.md", 12.0f));
+
+    // 顶部「返回」行
+    Box* bar = new Box(Axis::ROW);
+    bar->setWidthPercentage(100.0f);
+    Button* back = new Button();
+    back->setAppearanceName("widget/button.text");
+    back->setText("返回"); // 不用 ‹：默认字体里没有这个字形（会显示成问号）
+    back->setWidth(180.0f);
+    back->setHeight(56.0f);
+    back->setOnClick([this] { this->goBack(); });
+    bar->addView(back);
+    frame->addView(bar);
+
+    // 内容（可滚动）
     ScrollingFrame* scroller = new ScrollingFrame();
     scroller->setWidthPercentage(100.0f);
     scroller->setGrow(1.0f);
     scroller->setShowScrollingIndicator(true);
-    scroller->addView(buildIconsPage());
+    scroller->addView(content);
+    frame->addView(scroller);
 
-    this->frame->addTab(getStr("tab/icons"), scroller);
+    return frame;
+}
+
+void DemoApp::openPage(const std::string& title, std::function<Box*()> builder, int index)
+{
+    Box* content = builder();
+    if (content == nullptr)
+        return;
+
+    this->currentDemo = index;
+    this->applyHeaderFor(title);
+    this->shell->pushContentView(this->wrapPage(content));
+}
+
+void DemoApp::goBack()
+{
+    if (this->currentDemo == 0)
+        return;
+
+    this->currentDemo = 0;
+    this->applyHeaderFor(std::string());
+    this->shell->popContentView();
 }
 
 } // namespace demo

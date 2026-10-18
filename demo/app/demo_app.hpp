@@ -1,13 +1,16 @@
 #pragma once
 
-// demo 外壳（清理后只保留图标页）：
+// demo 外壳：主页 + 三个演示内容页（点按钮进入，可返回）。
 //
 //   Shell
-//     ├─ ContentLayer  [ ScrollingFrame（Pager 的槽） | TabBar ]
+//     ├─ ContentLayer  ContentStack
+//     │                  ├─ [0] 主页（常驻）：三颗按钮
+//     │                  └─ [1] 内容页（push 进来，返回时销毁）
 //     ├─ OverlayLayer  header | Padding
 //     └─ DebugLayer    （空）
-//
-// 页面是工厂：切页时 Pager 现建、旧页现删。
+
+#include <functional>
+#include <string>
 
 #include "bklv/bklv.hpp"
 
@@ -18,21 +21,31 @@ class DemoApp
 {
   public:
     DemoApp();
-    ~DemoApp();
 
     bklv::View* getView() { return this->shell; }
 
-    // 首帧选页：图标字形要等 App::run() 建好字体图集之后才扫得到，
-    // 构造期建页会拿到空表（整页空白）。
+    // 首帧建主页（字体图集要等 App::run() 建好才可用）
     void update();
 
-  private:
-    bklv::Shell* shell      = nullptr;
-    bklv::Header* header    = nullptr;
-    bklv::Box* contentRoot  = nullptr;
-    bklv::TabFrame* frame   = nullptr;
+    // 供 main.cpp 的 --open 使用：1=图标 2=水平 3=竖直
+    void openDemo(int index);
 
-    bool pageSelected = false;
+  private:
+    void showHome();
+    void openPage(const std::string& title, std::function<bklv::Box*()> builder, int index);
+    void goBack();
+    void applyHeaderFor(const std::string& title);
+
+    // 内容页外面套：顶部「返回」行 + 内容
+    bklv::Box* wrapPage(bklv::Box* content);
+
+    bklv::Shell* shell          = nullptr;
+    bklv::Header* header        = nullptr;
+    bklv::Box* contentRoot      = nullptr;
+
+    bool built = false;
+    int  pendingOpen = 0;   // --open：首帧后自动打开
+    int  currentDemo = 0;   // 0 = 主页
 };
 
 } // namespace demo

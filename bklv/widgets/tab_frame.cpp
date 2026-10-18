@@ -116,6 +116,7 @@ void TabFrame::rebuildLayout()
         scroller->setHeight(AUTO);
         this->barScroller = scroller;
         this->itemBox->setAxis(Axis::ROW);
+        this->itemBox->setWidthPercentage(100.0f);
     }
     else
     {
@@ -130,7 +131,7 @@ void TabFrame::rebuildLayout()
     this->barScroller->addView(this->itemBox);
     if (this->barTitleLabel != nullptr && this->barTitleLabel->hasParent())
         this->barFrame->removeView(this->barTitleLabel, false);
-    if (this->barTitleLabel != nullptr)
+    if (this->barTitleLabel != nullptr && !horizontal)
         this->barFrame->addView(this->barTitleLabel);
     this->barFrame->addView(this->barScroller);
 
@@ -244,6 +245,8 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
     TabButton* cell = new TabButton();
     cell->setAppearanceName(this->buttonAppearance);
     cell->setOrientation(this->orientation);
+    if (this->orientation == TabOrientation::HORIZONTAL)
+        cell->setGrow(1.0f); // 横向栏里等分宽度
     cell->setTitle(title);
     if (!icon.empty())
         cell->setIcon(icon);

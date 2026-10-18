@@ -173,6 +173,7 @@ endfunction()
 set(BKLV_APP_SOURCES
     app/demo_app.cpp
     app/pages/page_icons.cpp
+    app/pages/page_tab_frame.cpp
 )
 
 set(BKLV_APP_ABS "")
