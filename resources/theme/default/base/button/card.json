@@ -1,0 +1,123 @@
+{
+  "box": {
+    "width": "30%",
+    "height": 260,
+    "padding": 18,
+    "cornerRadius": 18,
+    "borderThickness": 1,
+    "borderColor": "@theme/color.common.divider",
+    "backgroundColor": "@theme/color.surface.card"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "radius": 18
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.surface.hover",
+      "radius": 18,
+      "inset": [
+        -3,
+        -3,
+        -3,
+        -3
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "source": "icon",
+      "color": "@theme/color.accent.base",
+      "fontSize": 44,
+      "align": "center",
+      "valign": "top",
+      "inset": [
+        40,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "source": "text",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.lg",
+      "align": "center",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        -24,
+        0
+      ]
+    },
+    {
+      "op": "text",
+      "id": "info",
+      "source": "info",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.xs",
+      "align": "center",
+      "valign": "bottom",
+      "inset": [
+        0,
+        0,
+        30,
+        0
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "stroke": "@theme/color.common.transparent",
+      "strokeWidth": 0,
+      "radius": 18,
+      "inset": [
+        -6,
+        -6,
+        -6,
+        -6
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "stroke": "@theme/color.common.transparent",
+      "strokeWidth": 0,
+      "radius": 18,
+      "inset": [
+        -3,
+        -3,
+        -3,
+        -3
+      ]
+    }
+  ],
+  "states": {
+    "focused": {
+      "bg.fill": {
+        "to": "@theme/color.surface.hover",
+        "duration": 160,
+        "easing": "quadraticOut"
+      },
+      "hlBorder.stroke": {
+        "to": "@theme/color.accent.base",
+        "duration": 160
+      },
+      "hlBorder.strokeWidth": {
+        "to": 2,
+        "duration": 160
+      },
+      "icon.color": {
+        "to": "@theme/color.text.primary",
+        "duration": 160
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 #include "app/demo_app.hpp"
 
+#include "app/card_button.hpp"
 #include "app/pages.hpp"
 #include "bklv/core/icon_font.hpp"
 
@@ -12,6 +13,8 @@ DemoApp::DemoApp()
 {
     this->shell = new Shell();
     this->shell->setGlassEnabled(true);
+    // 卡片自己有"聚焦抬起 + 强调色描边"，再叠流光焦点框会太吵
+    this->shell->setFocusRingEnabled(false);
 
     this->header = new Header();
     this->header->setAppearanceVariant("applet");
@@ -72,33 +75,44 @@ void DemoApp::showHome()
     home->setAlignItems(AlignItems::CENTER);
     home->setJustifyContent(JustifyContent::CENTER);
 
+    // 三张卡片横排；每张自带浮动动效（绘制期变换，不影响布局）
+    home->setGap(getTheme().number("metric.spacing.lg", 24.0f));
+    home->setAlignItems(AlignItems::CENTER);
+
+    Box* cards = new Box(Axis::ROW);
+    cards->setWidthPercentage(100.0f);
+    cards->setGap(getTheme().number("metric.spacing.lg", 24.0f));
+    cards->setJustifyContent(JustifyContent::CENTER);
+    cards->setAlignItems(AlignItems::CENTER);
+
     struct Entry
     {
         const char* title;
+        const char* subtitle;
         const char* icon;
         int         index;
     };
     const Entry entries[] = {
-        { "图标展示", bklv::icon::glyphByName("star"), 1 },
-        { "水平 TabFrame", bklv::icon::glyphByName("menu"), 2 },
-        { "竖直 TabFrame", bklv::icon::glyphByName("list"), 3 },
+        { "图标展示", "两套图标字体的全部字形", "star", 1 },
+        { "水平 TabFrame", "栏在顶部的分页容器", "menu", 2 },
+        { "竖直 TabFrame", "栏在左侧的分页容器", "list", 3 },
     };
 
     for (const Entry& entry : entries)
     {
-        Button* button = new Button();
-        button->setAppearanceName("widget/button.icon_text");
-        button->setText(entry.title);
-        button->setIcon(entry.icon);
-        button->setWidthPercentage(60.0f);
-        button->setOnClick([this, index = entry.index, title = std::string(entry.title)] {
-            this->openDemo(index);
-            (void)title;
-        });
-        home->addView(button);
+        CardButton* card = new CardButton(entry.title, entry.subtitle,
+            bklv::icon::glyphByName(entry.icon));
+        card->setOnClick([this, index = entry.index] { this->openDemo(index); });
+        cards->addView(card);
     }
 
+    home->addView(cards);
+
     this->contentRoot->addView(home);
+
+    // 默认聚焦第一张卡片（会抬起来，能看到动效）
+    if (cards->getChildrenCount() > 0)
+        getInputManager().giveFocus(cards->getChildren()[0]);
 }
 
 void DemoApp::openDemo(int index)

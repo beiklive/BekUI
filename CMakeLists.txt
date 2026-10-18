@@ -172,6 +172,7 @@ endfunction()
 
 set(BKLV_APP_SOURCES
     app/demo_app.cpp
+    app/card_button.cpp
     app/pages/page_icons.cpp
     app/pages/page_tab_frame.cpp
 )

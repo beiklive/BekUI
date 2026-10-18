@@ -104,6 +104,7 @@
     "base/frame/tab_content.json",
     "base/frame/tab_bar.json",
     "base/button/tab_button.json",
+    "base/button/card.json",
     "view/recycler_json_demo.json",
     "view/page_pokedex_json.json",
     "view/tab_frame_demo.json"
