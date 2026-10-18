@@ -19,6 +19,14 @@ namespace bklv
 {
 
 // 单个 tab 格子：外观驱动（底 + 文字），带 selected / focused 两个状态。
+// Tab 条目。方向决定用哪套外观（`base/frame/tab_button.horizontal` / `.vertical`），
+// 交互逻辑只有一份 —— 样式差异全在 JSON 里。
+enum class TabOrientation
+{
+    HORIZONTAL,
+    VERTICAL,
+};
+
 class TabCell : public AppearanceView
 {
   public:
@@ -27,6 +35,10 @@ class TabCell : public AppearanceView
     TabCell();
 
     void setTitle(const std::string& title);
+
+    // 方向 → 外观变体；构造后默认按宿主 TabFrame 的方向设置
+    void setOrientation(TabOrientation orientation);
+    TabOrientation getOrientation() const { return this->orientation; }
     void setSelected(bool selected);
     bool isSelected() const { return this->selected; }
 
@@ -44,6 +56,7 @@ class TabCell : public AppearanceView
     void onFocusLost() override;
 
   private:
+    TabOrientation orientation = TabOrientation::HORIZONTAL;
     bool selected = false;
     SelectHandler onSelect;
     std::function<void()> onFocus;

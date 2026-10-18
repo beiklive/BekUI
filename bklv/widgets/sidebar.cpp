@@ -78,6 +78,9 @@ void Sidebar::addItem(const std::string& itemTitle, const std::string& icon,
     if (!icon.empty())
         cell->setIcon(icon);
     // 侧栏条目比 tab 格子高（borealis 是 70）：走 tab_cell 的 "sidebar" 变体
+    // 过渡期：Sidebar 还没并入 TabFrame，这里先把外观名钉回旧的那份
+    // （P3 会删除 Sidebar，届时这条路一起没了）
+    cell->setAppearanceName("base/tab_cell");
     cell->setAppearanceVariant("sidebar");
     // 聚焦 = 激活：直接切子页面（borealis 的语义）
     cell->setOnFocus([this, index, onActivate] {

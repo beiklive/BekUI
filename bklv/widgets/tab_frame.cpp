@@ -8,9 +8,10 @@ namespace bklv
 {
 
 TabCell::TabCell()
-    : AppearanceView("base/tab_cell", true)
+    : AppearanceView("base/frame/tab_button", true)
 {
-    // 高度/不压缩/内边距全在 widgets/tab_cell.json 的 box 段里
+    // 高度/内边距/图标层全在 base/frame/tab_button.<方向>.json 里
+    this->setAppearanceVariant("horizontal");
 
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, "切换", [this](View*) { this->trigger(); });
@@ -19,6 +20,14 @@ TabCell::TabCell()
     this->enableContentMeasurement();
 
     this->applyTheme();
+}
+
+void TabCell::setOrientation(TabOrientation value)
+{
+    if (this->orientation == value && !this->getAppearanceName().empty())
+        return;
+    this->orientation = value;
+    this->setAppearanceVariant(value == TabOrientation::VERTICAL ? "vertical" : "horizontal");
 }
 
 void TabCell::setTitle(const std::string& title)
