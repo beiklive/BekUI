@@ -139,7 +139,7 @@ Box* DemoApp::wrapPage(Box* content)
     scroller->setWidthPercentage(100.0f);
     scroller->setGrow(1.0f);
     scroller->setShowScrollingIndicator(true);
-    scroller->addView(content);
+    scroller->setContentView(content); // 必须用 setContentView：addView 只是普通子节点，滚动器不认
     frame->addView(scroller);
 
     return frame;
