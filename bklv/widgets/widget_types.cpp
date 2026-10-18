@@ -58,6 +58,8 @@ void registerWidgetViewTypes()
 
     // 可交互的（属性表里能配出可用的默认值）
     registerViewType("Button", [] { return (View*)new Button(); });
+    registerViewType("TabFrame", [] { return (View*)new TabFrame(); });
+    registerViewType("TabItem", [] { return (View*)new TabItem(); });
     registerViewType("Slider", [] { return (View*)new Slider(); });
     registerViewType("Dropdown", [] { return (View*)new Dropdown(); });
 

@@ -80,11 +80,35 @@ enum class TabBarPlacement
     END,
 };
 
+// TabItem：JSON 里描述"一个 tab 页"的轻量节点。
+// 只声明 title / icon；它的子节点就是页面内容（可以为空）。
+class TabItem : public Box
+{
+  public:
+    TabItem();
+    void setTabTitle(const std::string& title) { this->title = title; }
+    void setTabIcon(const std::string& icon) { this->icon = icon; }
+    const std::string& getTabTitle() const { return this->title; }
+    const std::string& getTabIcon() const { return this->icon; }
+    const AttributeTable& attributes() const override;
+    std::string getClassString() const override { return "bklv::TabItem"; }
+
+  private:
+    std::string title;
+    std::string icon;
+};
+
 class TabFrame : public Box
 {
   public:
     explicit TabFrame(TabOrientation orientation = TabOrientation::HORIZONTAL,
         TabTriggerMode trigger = TabTriggerMode::CLICK);
+
+    // 建树时接管：TabItem → 一个 tab 页；普通 View → 直接作为页面内容
+    using Box::addView;
+    void addView(View* view) override;
+
+    const AttributeTable& attributes() const override;
 
     // content 的所有权交给 TabFrame（切换时只脱离不销毁，析构时统一释放）
     size_t addTab(const std::string& title, View* content);

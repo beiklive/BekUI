@@ -24,7 +24,8 @@ class Box : public View
     // ---- 视图树管理 ----
 
     // 追加子节点到末尾。
-    void addView(View* view);
+    // 虚函数：TabFrame 这类"聚合体"需要在建树时接管特定子节点（TabItem）
+    virtual void addView(View* view);
 
     // 插入子节点到指定位置。
     void addView(View* view, size_t position);

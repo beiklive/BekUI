@@ -8,9 +8,11 @@
 #include <string>
 
 #include "bklv/core/input.hpp"
+#include "bklv/core/json_view.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/tab_frame.hpp"
+#include "bklv/widgets/widget_types.hpp"
 #include "test_util.hpp"
 
 using namespace bklv;
@@ -32,6 +34,8 @@ Box* makePage(const char* label)
 
 int main()
 {
+    registerWidgetViewTypes(); // TabFrame / TabItem 由 widgets 层注册
+
     std::string error;
     check(loadThemeIntoGlobalFromDirectory("resources/theme/default", "default"),
         "装载 default 主题（" + error + "）");
@@ -128,6 +132,31 @@ int main()
 
         custom->trigger();
         checkEqualInt((int)frame.getSelectedIndex(), 1, "自定义按钮也能触发切页");
+    }
+
+    std::printf("\n== 6. 视图 JSON：TabFrame + TabItem（设计器渲染路径）==\n");
+    {
+        std::shared_ptr<const ViewTemplate> t = loadViewTemplateFromTheme("view/tab_frame_demo");
+        check(t != nullptr, "装载 view/tab_frame_demo");
+        if (t != nullptr)
+        {
+            std::unique_ptr<View> root(t->instantiate());
+            check(root != nullptr, "实例化成功");
+            TabFrame* frame = root != nullptr && root->getClassString() == "bklv::TabFrame"
+                ? static_cast<TabFrame*>(root.get())
+                : nullptr;
+            check(frame != nullptr, "根节点是 TabFrame");
+            if (frame != nullptr)
+            {
+                checkEqualInt((int)frame->getTabCount(), 2, "两个 TabItem 变成两个 tab");
+                check(frame->getBarContainer() != nullptr, "栏渲染出来了");
+                check(frame->getTabBar()->getChildrenCount() == 2, "栏里两个按钮");
+                checkEqualInt((int)frame->getContentBox()->getChildrenCount(), 1,
+                    "只挂当前页");
+                checkEqual(frame->getTabButtonAppearance(), "base/button/tab_button",
+                    "button 字段落到了按钮外观");
+            }
+        }
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);

@@ -151,15 +151,17 @@ void TabFrame::rebuildLayout()
     this->contentBox->setGrow(1.0f);
     this->contentBox->setShrink(1.0f);
 
+    // **必须显式调 Box::addView**：TabFrame 重写了 addView 用来接管 TabItem，
+    // 内部这两个块要绕过重写，否则会被当成页面内容收进 tab 里（实测：栏和内容框消失）。
     if (this->placement == TabBarPlacement::START)
     {
-        this->addView(this->barFrame);
-        this->addView(this->contentBox);
+        Box::addView(this->barFrame);
+        Box::addView(this->contentBox);
     }
     else
     {
-        this->addView(this->contentBox);
-        this->addView(this->barFrame);
+        Box::addView(this->contentBox);
+        Box::addView(this->barFrame);
     }
 }
 
@@ -351,6 +353,121 @@ void TabFrame::setSelectedIndex(size_t index)
 
     for (size_t i = 0; i < this->cells.size(); i++)
         this->cells[i]->setSelected(i == index);
+}
+
+
+// ---- TabItem ----
+TabItem::TabItem()
+    : Box(Axis::COLUMN)
+{
+    this->setWidthPercentage(100.0f);
+    this->setGrow(1.0f);
+}
+
+namespace
+{
+
+void setTabItemTitle(View* v, const ResolvedValue& value)
+{
+    static_cast<TabItem*>(v)->setTabTitle(value.text);
+}
+
+void setTabItemIcon(View* v, const ResolvedValue& value)
+{
+    static_cast<TabItem*>(v)->setTabIcon(value.text);
+}
+
+void setFrameOrientation(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setOrientation(
+        value.text == "vertical" ? TabOrientation::VERTICAL : TabOrientation::HORIZONTAL);
+}
+
+void setFramePlacement(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setBarPlacement(
+        value.text == "end" ? TabBarPlacement::END : TabBarPlacement::START);
+}
+
+void setFrameTrigger(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setTriggerMode(
+        value.text == "focus" ? TabTriggerMode::FOCUS : TabTriggerMode::CLICK);
+}
+
+void setFrameTitle(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setTitle(value.text);
+}
+
+void setFrameButton(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setTabButtonAppearance(value.text);
+}
+
+void setFrameBar(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setBarAppearance(value.text);
+}
+
+void setFrameContent(View* v, const ResolvedValue& value)
+{
+    static_cast<TabFrame*>(v)->setContentAppearance(value.text);
+}
+
+} // namespace
+
+const AttributeTable& TabItem::attributes() const
+{
+    static const AttributeTable table = {
+        { "title", AttributeKind::TEXT, setTabItemTitle, nullptr },
+        { "icon", AttributeKind::TEXT, setTabItemIcon, nullptr },
+    };
+    return table;
+}
+
+const AttributeTable& TabFrame::attributes() const
+{
+    static const AttributeTable table = {
+        { "orientation", AttributeKind::ENUM, setFrameOrientation, "horizontal|vertical" },
+        { "placement", AttributeKind::ENUM, setFramePlacement, "start|end" },
+        { "trigger", AttributeKind::ENUM, setFrameTrigger, "click|focus" },
+        { "title", AttributeKind::TEXT, setFrameTitle, nullptr },
+        { "button", AttributeKind::STRING, setFrameButton, nullptr },
+        { "bar", AttributeKind::STRING, setFrameBar, nullptr },
+        { "content", AttributeKind::STRING, setFrameContent, nullptr },
+    };
+    return table;
+}
+
+// ---- TabFrame：建树时接管子节点 ----
+void TabFrame::addView(View* view)
+{
+    if (view == nullptr)
+        return;
+
+    if (view->getClassString() != "bklv::TabItem")
+    {
+        // 普通 View：直接当成一个 tab 的页面内容（C++ 手写场景）
+        this->addTab(std::string(), view);
+        return;
+    }
+
+    TabItem* item = static_cast<TabItem*>(view);
+    const std::string title = item->getTabTitle();
+    const std::string icon  = item->getTabIcon();
+
+    // TabItem 的子节点搬到页面框里；描述节点自己删掉（它不参与布局）
+    Box* page = new Box(Axis::COLUMN);
+    page->setWidthPercentage(100.0f);
+    page->setGrow(1.0f);
+    page->setAlignItems(AlignItems::STRETCH);
+    for (View* child : item->getChildren())
+        page->addView(child, page->getChildrenCount());
+    item->removeAllViews();
+    delete item;
+
+    this->addTab(title, icon, page);
 }
 
 } // namespace bklv

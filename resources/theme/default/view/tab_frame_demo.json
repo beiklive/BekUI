@@ -1,0 +1,23 @@
+{
+  "type": "TabFrame",
+  "orientation": "horizontal",
+  "placement": "start",
+  "trigger": "click",
+  "title": "示例",
+  "button": "base/button/tab_button",
+  "children": [
+    {
+      "type": "TabItem",
+      "title": "图标",
+      "icon": "@icon/star",
+      "children": [
+        { "type": "Label", "text": "第一页：这里放页面内容" }
+      ]
+    },
+    {
+      "type": "TabItem",
+      "title": "空页",
+      "icon": "@icon/settings"
+    }
+  ]
+}

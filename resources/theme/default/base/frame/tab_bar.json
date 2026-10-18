@@ -1,0 +1,15 @@
+{
+  "box": {
+    "width": "100%",
+    "height": "@theme/metric.tabBar.height",
+    "shrink": 0,
+    "padding": [
+      "@theme/metric.tabBar.paddingV",
+      "@theme/metric.tabBar.paddingH",
+      "@theme/metric.tabBar.paddingV",
+      "@theme/metric.tabBar.paddingH"
+    ],
+    "alignItems": "center"
+  },
+  "layers": []
+}
