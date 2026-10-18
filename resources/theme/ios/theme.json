@@ -31,8 +31,6 @@
     "base/cell_radio.json",
     "base/cell_selector.json",
     "base/cell_slider.json",
-    "base/tab_cell.json",
-    "base/tab_cell.sidebar.json",
     "base/slider.json",
     "base/hint_item.json",
     "base/header_icon.json",
@@ -63,7 +61,6 @@
     "widget/header.popup.json",
     "widget/hints_bar.json",
     "widget/notification.json",
-    "widget/sidebar.json",
     "view/list_item.json",
     "view/page_json.json",
     "base/glass_panel.json",
@@ -101,8 +98,7 @@
     "base/children_ref.json",
     "base/sample_card.json",
     "view/recycler_json_demo.json",
-    "view/page_pokedex_json.json",
-    "widget/tab_bar.json"
+    "view/page_pokedex_json.json"
   ],
   "author": "beiklive",
   "description": "ios：苹果风格主题（第一版骨架，整份沿用 default 的值，随后按 iOS 系统色/分组列表/大标题重做）",

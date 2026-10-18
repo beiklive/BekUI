@@ -18,6 +18,8 @@
 namespace bklv
 {
 
+class Label;
+
 // 单个 tab 格子：外观驱动（底 + 文字），带 selected / focused 两个状态。
 // Tab 条目。方向决定用哪套外观（`base/frame/tab_button.horizontal` / `.vertical`），
 // 交互逻辑只有一份 —— 样式差异全在 JSON 里。
@@ -107,6 +109,7 @@ class TabFrame : public Box
     void addSeparator();
     // 栏标题（纵向侧栏常见；横向时显示在栏起始处）
     void setTitle(const std::string& title);
+    const std::string& getTitle() const { return this->barTitle; }
 
     // 带图标的 tab（图标层由外观声明）
     size_t addTab(const std::string& title, const std::string& icon, View* content);
@@ -135,6 +138,7 @@ class TabFrame : public Box
     AppearanceView* contentBox = nullptr;
     size_t selected          = 0;
     std::string barTitle;
+    Label* barTitleLabel = nullptr;
     std::vector<TabCell*> cells;
     std::vector<View*> contents;
 };

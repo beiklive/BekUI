@@ -30,9 +30,7 @@ class DemoApp
     bklv::Shell* shell      = nullptr;
     bklv::Header* header    = nullptr;
     bklv::Box* contentRoot  = nullptr;
-    bklv::ScrollingFrame* scroller = nullptr;
-    bklv::TabBar* tabBar    = nullptr;
-    bklv::Pager* pager      = nullptr;
+    bklv::TabFrame* frame   = nullptr;
 
     bool pageSelected = false;
 };

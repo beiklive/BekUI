@@ -14,7 +14,7 @@ int main()
 {
     bklv::registerWidgetViewTypes(); // 控件类型由 widgets 层注册（核心只注册 8 种）
     const std::vector<std::string> types = { "Box", "Row", "Label", "Image", "ScrollingFrame",
-        "HScrollingFrame", "ProgressSpinner", "Padding", "Button", "Header", "Sidebar",
+        "HScrollingFrame", "ProgressSpinner", "Padding", "Button", "Header",
         "TabCell", "Slider", "SliderCell", "SelectorCell", "DetailCell", "BooleanCell",
         "RadioCell", "InputCell", "HintsBar", "StatusArea", "BottomBar", "Dropdown", "Recycler" };
 

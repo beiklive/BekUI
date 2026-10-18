@@ -31,8 +31,6 @@
     "base/cell_radio.json",
     "base/cell_selector.json",
     "base/cell_slider.json",
-    "base/tab_cell.json",
-    "base/tab_cell.sidebar.json",
     "base/slider.json",
     "base/hint_item.json",
     "base/header_icon.json",
@@ -63,7 +61,6 @@
     "widget/header.popup.json",
     "widget/hints_bar.json",
     "widget/notification.json",
-    "widget/sidebar.json",
     "view/list_item.json",
     "view/page_json.json",
     "base/glass_panel.json",
@@ -106,8 +103,7 @@
     "base/frame/tab_bar.vertical.json",
     "base/frame/tab_content.json",
     "view/recycler_json_demo.json",
-    "view/page_pokedex_json.json",
-    "widget/tab_bar.json"
+    "view/page_pokedex_json.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -400,8 +400,6 @@ set(BKLV_CORE_SOURCES
     widgets/cell.cpp
     widgets/slider.cpp
     widgets/tab_frame.cpp
-    widgets/sidebar.cpp
-    widgets/tab_bar.cpp
     widgets/status_area.cpp
     widgets/widget_types.cpp
     widgets/dialog.cpp

@@ -11,7 +11,6 @@
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/widgets/recycler_view.hpp"
 #include "bklv/widgets/shell.hpp"
-#include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"
 #include "bklv/widgets/status_area.hpp"
 #include "bklv/widgets/tab_frame.hpp"
@@ -53,7 +52,6 @@ void registerWidgetViewTypes()
     registerViewType("Shell", [] { return (View*)new Shell(); });
     registerViewType("Header", [] { return (View*)new Header(); });
     registerViewType("BottomBar", [] { return (View*)new BottomBar(); });
-    registerViewType("Sidebar", [] { return (View*)new Sidebar(); });
     registerViewType("HintsBar", [] { return (View*)new HintsBar(); });
     registerViewType("StatusArea", [] { return (View*)new StatusArea(); });
     registerViewType("TabCell", [] { return (View*)new TabCell(); });

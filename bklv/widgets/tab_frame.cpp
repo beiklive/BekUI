@@ -6,6 +6,7 @@
 #include "bklv/core/logger.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/h_scrolling_frame.hpp"
+#include "bklv/views/label.hpp"
 #include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/appearance_view.hpp"
 
@@ -127,6 +128,10 @@ void TabFrame::rebuildLayout()
     }
 
     this->barScroller->addView(this->itemBox);
+    if (this->barTitleLabel != nullptr && this->barTitleLabel->hasParent())
+        this->barFrame->removeView(this->barTitleLabel, false);
+    if (this->barTitleLabel != nullptr)
+        this->barFrame->addView(this->barTitleLabel);
     this->barFrame->addView(this->barScroller);
 
     this->barFrame->setAppearanceVariant(horizontal ? "horizontal" : "vertical");
@@ -280,8 +285,16 @@ void TabFrame::addSeparator()
 
 void TabFrame::setTitle(const std::string& title)
 {
-    // 栏标题：放在栏容器最上方（纵向侧栏常见）
+    // 栏标题：栏容器最上方的一行小字（纵向侧栏常见；横向时是栏左端）
     this->barTitle = title;
+    if (this->barTitleLabel == nullptr)
+    {
+        this->barTitleLabel = new Label();
+        this->barTitleLabel->setFontSize(getTheme().number("metric.font.size.xs", 12.0f));
+        this->barTitleLabel->setTextColor(getTheme().color("color.text.dim"));
+        this->rebuildLayout(); // 顺序：标题 → 条目
+    }
+    this->barTitleLabel->setText(title);
 }
 
 void TabFrame::setSelectedIndex(size_t index)

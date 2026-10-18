@@ -20,7 +20,6 @@
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/cell.hpp"
 #include "bklv/widgets/header.hpp"
-#include "bklv/widgets/sidebar.hpp"
 #include "bklv/widgets/slider.hpp"
 #include "bklv/widgets/tab_frame.hpp"
 #include "bklv/widgets/rectangle.hpp"
@@ -370,24 +369,26 @@ int main()
         check(second->isSelected(), "选中后 selected=true");
     }
 
-    std::printf("\n== 8. Sidebar：条目与选中态 ==\n");
+    std::printf("\n== 8. TabFrame（纵向 + 聚焦切换）：原 Sidebar 的语义 ==\n");
     {
-        Sidebar sidebar("导航");
-        checkEqual(sidebar.getTitle(), "导航", "侧栏标题");
+        TabFrame frame(TabOrientation::VERTICAL, TabTriggerMode::FOCUS);
+        frame.setTitle("导航");
+        checkEqual(frame.getTitle(), "导航", "栏标题");
 
-        sidebar.addItem("条目一", nullptr);
-        sidebar.addItem("条目二", nullptr);
-        check(sidebar.getItemCount() == 2, "两个条目");
-        check(sidebar.getSelectedIndex() == 0, "默认选第一个");
+        frame.addTab("条目一", new Box(Axis::COLUMN));
+        frame.addTab("条目二", new Box(Axis::COLUMN));
+        check(frame.getTabCount() == 2, "两个条目");
+        check(frame.getSelectedIndex() == 0, "默认选第一个");
 
-        sidebar.setSelectedIndex(1);
-        check(sidebar.getSelectedIndex() == 1, "选中第二个");
+        auto* second = static_cast<TabCell*>(frame.getTabBar()->getChildren()[1]);
+        getInputManager().giveFocus(second);
+        checkEqualInt((int)frame.getSelectedIndex(), 1, "焦点移到第二个就切");
 
-        sidebar.setTitle("新标题");
-        checkEqual(sidebar.getTitle(), "新标题", "改标题");
+        frame.setSelectedIndex(0);
+        checkEqualInt((int)frame.getSelectedIndex(), 0, "也能用 API 切回");
 
-        sidebar.clearItems();
-        check(sidebar.getItemCount() == 0, "清空条目");
+        frame.setTitle("新标题");
+        checkEqual(frame.getTitle(), "新标题", "改标题");
     }
 
     std::printf("\n== 底栏：提示在左、状态在右 ==\n");
