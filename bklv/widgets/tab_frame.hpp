@@ -114,6 +114,19 @@ class TabFrame : public Box
     // 带图标的 tab（图标层由外观声明）
     size_t addTab(const std::string& title, const std::string& icon, View* content);
 
+    // 自定义 tab 按钮：传进来的 TabCell（或其子类）会被接管，宿主不要再 delete
+    size_t addTab(TabCell* button, View* content);
+
+    // ---- 部件样式替换（TabFrame 是聚合体，四个部件各自可换）----
+    // 栏容器 / 内容框 / 按钮：默认就是 base/frame/tab_bar、base/frame/tab_content、
+    // base/button/tab_button；换名字后按方向自动取 <name>.horizontal / <name>.vertical。
+    void setBarAppearance(const std::string& name);
+    void setContentAppearance(const std::string& name);
+    void setTabButtonAppearance(const std::string& name);
+    const std::string& getBarAppearance() const { return this->barAppearance; }
+    const std::string& getContentAppearance() const { return this->contentAppearance; }
+    const std::string& getTabButtonAppearance() const { return this->buttonAppearance; }
+
     Box* getTabBar() const { return this->itemBox; }
     // 栏容器（含外观）：测试/调试用，看它在布局里的位置
     View* getBarContainer() const { return this->barFrame; }
@@ -132,7 +145,12 @@ class TabFrame : public Box
     TabTriggerMode trigger      = TabTriggerMode::CLICK;
     TabBarPlacement placement   = TabBarPlacement::START;
 
-    AppearanceView* barFrame = nullptr;   // 栏容器的外观（base/frame/tab_bar.<方向>）
+    // 三个部件的外观名（默认值在构造函数里给；TabFrame 本身不进视图 JSON）
+    std::string barAppearance     = "base/frame/tab_bar";
+    std::string contentAppearance = "base/frame/tab_content";
+    std::string buttonAppearance  = "base/button/tab_button";
+
+    AppearanceView* barFrame = nullptr;   // 栏容器的外观（<barAppearance>.<方向>）
     Box* barScroller         = nullptr;   // HScrollingFrame / ScrollingFrame（按轴）
     Box* itemBox             = nullptr;   // 条目容器
     AppearanceView* contentBox = nullptr;

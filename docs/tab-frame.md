@@ -106,25 +106,23 @@ class TabFrame : public Box {
 };
 ```
 
-## 6. JSON（视图描述）
+## 6. 聚合体，不进视图 JSON（用户拍板）
 
-```json
-{
-  "type": "TabFrame",
-  "orientation": "vertical",
-  "trigger": "focus",
-  "placement": "start",
-  "title": "导航",
-  "children": [
-    { "type": "Box", "title": "图标", "icon": "star", "children": [] },
-    { "type": "Box", "title": "设置", "icon": "settings", "children": [] }
-  ]
-}
-```
+`TabFrame` 是**组装体**，不是单体控件，所以**不注册** `registerViewType`、也不由一份 JSON 描述。
+它由四个部件组成，样式各自独立：
 
-- 每个 child 就是**一个 tab 的页面内容**；`title` / `icon` 是 tab 条目的文字与图标；
-- `children[0]` 默认选中；
-- 属性表：`orientation` / `trigger` / `placement`（ENUM）+ `title`（TEXT）。
+| 部件 | 外观 | 可替换入口 |
+|---|---|---|
+| 栏容器（横向） | `base/frame/tab_bar.horizontal.json` | `setBarAppearance(name)` |
+| 栏容器（纵向） | `base/frame/tab_bar.vertical.json` | 同上（按方向取变体） |
+| 内容框 | `base/frame/tab_content.json` | `setContentAppearance(name)` |
+| tab 按钮（横向/纵向） | `base/button/tab_button.<方向>.json` | `setTabButtonAppearance(name)` |
+
+按钮还支持**实例级自定义**：`addTab(TabCell* button, View* content)` 接管调用方传入的
+`TabCell`（或其子类），宿主不要再 delete。
+
+这样分工的理由：TabFrame 只负责**组装与行为**（方向、位置、触发、焦点、切页）；
+"长什么样"归四个部件的 JSON —— 换栏样式不影响按钮，换按钮样式不影响内容框。
 
 ## 7. 测试与验证
 

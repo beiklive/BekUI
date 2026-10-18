@@ -105,6 +105,31 @@ int main()
         check(frame.getContentBox()->getChildren()[0] == page, "切回来还是原来那个实例");
     }
 
+    std::printf("\n== 5. 聚合体：四个部件的外观可分别替换 ==\n");
+    {
+        TabFrame frame(TabOrientation::VERTICAL, TabTriggerMode::CLICK);
+
+        checkEqual(frame.getBarAppearance(), "base/frame/tab_bar", "默认栏外观名");
+        checkEqual(frame.getContentAppearance(), "base/frame/tab_content", "默认内容框外观名");
+        checkEqual(frame.getTabButtonAppearance(), "base/button/tab_button", "默认按钮外观名");
+
+        frame.setBarAppearance("base/frame/tab_bar");
+        frame.setContentAppearance("base/frame/tab_content");
+        frame.setTabButtonAppearance("base/button/tab_button");
+
+        // 自定义按钮：子类实例能被接管，且带上方向
+        frame.addTab("一", new Box(Axis::COLUMN));
+        auto* custom = new TabCell();
+        custom->setTitle("二");
+        const size_t index = frame.addTab(custom, new Box(Axis::COLUMN));
+        checkEqualInt((int)index, 1, "自定义按钮加入成功");
+        check(frame.getTabCount() == 2, "两个条目");
+        check(custom->getOrientation() == TabOrientation::VERTICAL, "自定义按钮跟随方向");
+
+        custom->trigger();
+        checkEqualInt((int)frame.getSelectedIndex(), 1, "自定义按钮也能触发切页");
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }

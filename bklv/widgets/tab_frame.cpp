@@ -80,11 +80,11 @@ TabFrame::TabFrame(TabOrientation orientation, TabTriggerMode trigger)
     this->setHeightPercentage(100.0f);
 
     // 栏容器（外观按方向切变体）与内容框（两个方向共用同一份外观）
-    this->barFrame = new AppearanceView("base/frame/tab_bar", false);
+    this->barFrame = new AppearanceView(this->barAppearance, false);
     this->itemBox  = new Box(Axis::ROW);
     this->itemBox->setGap(getTheme().number("metric.spacing.xs", 4.0f));
 
-    this->contentBox = new AppearanceView("base/frame/tab_content", false);
+    this->contentBox = new AppearanceView(this->contentAppearance, false);
 
     this->rebuildLayout();
 }
@@ -240,6 +240,7 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
     const size_t index = this->cells.size();
 
     TabCell* cell = new TabCell();
+    cell->setAppearanceName(this->buttonAppearance);
     cell->setOrientation(this->orientation);
     cell->setTitle(title);
     if (!icon.empty())
@@ -254,6 +255,48 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
         this->contentBox->addView(content);
 
     return index;
+}
+
+size_t TabFrame::addTab(TabCell* button, View* content)
+{
+    if (button == nullptr || content == nullptr)
+        return static_cast<size_t>(-1);
+
+    const size_t index = this->cells.size();
+
+    button->setOrientation(this->orientation);
+    this->applyCellTrigger(button, index);
+    this->itemBox->addView(button);
+    this->cells.push_back(button);
+
+    this->contents.push_back(content);
+    if (index == this->selected)
+        this->contentBox->addView(content);
+    return index;
+}
+
+void TabFrame::setBarAppearance(const std::string& name)
+{
+    this->barAppearance = name;
+    this->barFrame->setAppearanceName(name);
+    this->barFrame->setAppearanceVariant(
+        this->orientation == TabOrientation::HORIZONTAL ? "horizontal" : "vertical");
+}
+
+void TabFrame::setContentAppearance(const std::string& name)
+{
+    this->contentAppearance = name;
+    this->contentBox->setAppearanceName(name);
+}
+
+void TabFrame::setTabButtonAppearance(const std::string& name)
+{
+    this->buttonAppearance = name;
+    for (TabCell* cell : this->cells)
+    {
+        cell->setAppearanceName(name);
+        cell->setOrientation(this->orientation);
+    }
 }
 
 void TabFrame::setTabTitle(size_t index, const std::string& title)
