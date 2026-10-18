@@ -172,25 +172,7 @@ endfunction()
 
 set(BKLV_APP_SOURCES
     app/demo_app.cpp
-    app/ui.cpp
-    app/pages/page_text.cpp
-    app/pages/page_layout.cpp
-    app/pages/list_items.cpp
-    app/pages/page_list.cpp
-    app/pages/page_json.cpp
-    app/pages/page_theme.cpp
-    app/pages/page_nav.cpp
-    app/pages/page_overlay.cpp
-    app/pages/page_pokedex.cpp
-    app/pages/page_scroll.cpp
-    app/pages/page_settings.cpp
-    app/pages/page_shell.cpp
-    contrib/stripe_layer.cpp
-    contrib/quad_layer.cpp
-    app/pages/page_shadow.cpp
     app/pages/page_icons.cpp
-    app/pages/page_base_widgets.cpp
-    app/pages/page_transform.cpp
 )
 
 set(BKLV_APP_ABS "")
@@ -312,8 +294,8 @@ if(BKLV_BUILD_TESTS)
         # 在测试里复制一份会慢慢漂移（stripe 的测试桩与样例就漂过），
         # 所以这里让测试编真源码，而不是再写一份仿制品。
         if(${test_name} STREQUAL "quad_layer_test")
-            target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo/contrib/quad_layer.cpp")
-            target_include_directories(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/demo")
+            target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/tests/support/quad_layer.cpp")
+            target_include_directories(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/tests")
         endif()
         if(TARGET designer_core)
             target_link_libraries(${test_name} PRIVATE designer_core)

@@ -414,7 +414,7 @@ int main()
     {
         using namespace bklv::compile;
 
-        // 这一层的注册在 tests/test_contrib.hpp（和 demo/contrib/stripe_layer.cpp 同构）。
+        // 这一层的注册在 tests/test_contrib.hpp（与已移除的 demo 第三方层样例同构）。
         // 断言的是"主题 JSON 里的值 → 绘制钩子读到的位置"这条链：
         // 角度是 NUMBER（**不缩放**）、间距/线宽是 PIXELS（乘 uiScale）、
         // 而 fill/radius/inset 是引擎字段（和参数槽互不干扰）。

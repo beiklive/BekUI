@@ -1,8 +1,8 @@
-// 无窗口测试：「不规则四边形」扩展层（demo/contrib/quad_layer.cpp）。
+// 无窗口测试：「不规则四边形」扩展层（tests/support/quad_layer.cpp）。
 //
 // 这个测试有两个目的：
 //   ① 钉住随机游走的**纯函数性质**（确定性、范围、连续、四顶点互不相同、gain 生效）——
-//      纯数学部分在 contrib/quad_layer.hpp 里，所以能直接断言，不用建窗口；
+//      纯数学部分在 support/quad_layer.hpp 里，所以能直接断言，不用建窗口；
 //   ② 证明"第三方层"这条路径真的能跑通：注册 → 主题 JSON 里写 op → 引擎解析参数 →
 //      钩子拿到上下文并画进 ImDrawList。测试**直接编 demo 里那份源码**（见 CMakeLists
 //      的 target_sources），而不是在测试里复制一份 —— 复制的那份会慢慢漂移
@@ -15,7 +15,7 @@
 #include <cstdio>
 #include <string>
 
-#include "contrib/quad_layer.hpp" // demo/contrib（测试的 include 目录里加了 demo/）
+#include "support/quad_layer.hpp" // 原 demo/contrib，清理 demo 时挪到测试目录
 
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/appearance.hpp"
@@ -29,7 +29,7 @@ using namespace bklv;
 namespace
 {
 
-// demo 侧声明的两个入口（注册 + 纯数学在 contrib/quad_layer.hpp 里）
+// 测试样例声明的两个入口（注册 + 纯数学在 contrib/quad_layer.hpp 里）
 void ensureRegistered()
 {
     static bool done = false;

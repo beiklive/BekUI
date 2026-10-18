@@ -17,7 +17,7 @@
 //
 // 顶点顺序：左上 → 右上 → 右下 → 左下（顺时针）。
 
-#include "contrib/quad_layer.hpp"
+#include "support/quad_layer.hpp"
 
 #include <cmath>
 #include <vector>

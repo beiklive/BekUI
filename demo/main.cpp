@@ -1,40 +1,16 @@
-// bklv 能力总览：Tab 页面。
+// bklv 图标总览：只演示图标字体里实际存在的全部字形。
 //
-// 用 bklv 自己的控件搭出 tab 导航 + 多页内容，逐页展示已经实现的框架能力。
-// 没有任何 ImGui 窗口调用，也没有任何图形 API 调用——全部走 View 树。
-//
-// 读写入口：
-//   app/demo_app.*       应用外壳：Shell（四层）+ Pager（页面懒加载）+ 左侧栏导航
-//   app/tab_bar.*        tab 栏与单个 tab 格子
-//   app/pages/*          五个页面，各自独立
-//   app/widgets.*        自定义控件（开关、环形/横向进度）
-//   app/page_helpers.*   排版小工具（文字、卡片、行）
-//
-// 操作：
-//   左右 / AD            切换 tab
-//   上下 / WS            在页面内容里移动焦点
-//   回车 / 空格 / 手柄 A 触发当前焦点控件的动作
-//   鼠标点击             直接选中 tab 或控件
-//   滚轮 / 拖拽          滚动页面
-//   右上角「显示日志」   开关 ImGui 日志窗口（可拖动、可缩放、可筛选级别）
+// 操作：滚轮/拖拽滚动；F1 无（其它演示页已清理）。
 
 #include "app/demo_app.hpp"
-#include "app/pages.hpp"
 #include "bklv/bklv.hpp"
 
 int main(int argc, char** argv)
 {
     bklv::App app;
 
-    BKLV_LOG_INFO("开始构建界面");
-    // 主题页要切主题，把 App 递给它（在建树之前）
-    demo::setThemeSwitchApp(&app);
-
     demo::DemoApp host;
     app.setRootView(host.getView());
-    BKLV_LOG_INFO("界面构建完成");
-
-    // 每帧回调：刷新调试页上的统计信息
     app.onUpdate = [&host]() { host.update(); };
 
     (void)argc;

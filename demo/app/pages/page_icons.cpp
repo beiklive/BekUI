@@ -11,7 +11,6 @@
 
 #include "app/pages.hpp"
 
-#include "app/ui.hpp"
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
 
