@@ -1,7 +1,7 @@
 {
   "box": {
-    "width": "30%",
-    "height": 260,
+    "width": 220,
+    "height": 300,
     "padding": 18,
     "cornerRadius": 18,
     "borderThickness": 1,
