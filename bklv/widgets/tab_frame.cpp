@@ -2,7 +2,12 @@
 
 #include <utility>
 
+#include "bklv/core/input.hpp"
+#include "bklv/core/logger.hpp"
 #include "bklv/core/theme_data.hpp"
+#include "bklv/views/h_scrolling_frame.hpp"
+#include "bklv/views/scrolling_frame.hpp"
+#include "bklv/widgets/appearance_view.hpp"
 
 namespace bklv
 {
@@ -64,59 +69,219 @@ void TabCell::onFocusLost()
     AppearanceView::onFocusLost();
 }
 
-TabFrame::TabFrame()
+TabFrame::TabFrame(TabOrientation orientation, TabTriggerMode trigger)
     : Box(Axis::COLUMN)
 {
+    this->orientation = orientation;
+    this->trigger     = trigger;
+
     this->setWidthPercentage(100.0f);
     this->setHeightPercentage(100.0f);
 
-    // tab 栏：横向，可滚动（tab 多的时候）
-    this->tabBar = new Box(Axis::ROW);
-    this->tabBar->setWidthPercentage(100.0f);
-    this->tabBar->setHeight(AUTO);
-    this->tabBar->setGap(getTheme().number("metric.spacing.sm", 8.0f));
-    this->tabBar->setMarginBottom(getTheme().number("metric.spacing.md", 12.0f));
-    this->addView(this->tabBar);
+    // 栏容器（外观按方向切变体）与内容框（两个方向共用同一份外观）
+    this->barFrame = new AppearanceView("base/frame/tab_bar", false);
+    this->itemBox  = new Box(Axis::ROW);
+    this->itemBox->setGap(getTheme().number("metric.spacing.xs", 4.0f));
 
-    // 内容区：撑满剩余空间
-    this->contentBox = new Box(Axis::COLUMN);
-    this->contentBox->setWidthPercentage(100.0f);
-    this->contentBox->setGrow(1.0f);
-    this->contentBox->setShrink(1.0f);
-    this->addView(this->contentBox);
+    this->contentBox = new AppearanceView("base/frame/tab_content", false);
+
+    this->rebuildLayout();
 }
 
-void TabFrame::addTab(const std::string& title, View* content)
+void TabFrame::rebuildLayout()
+{
+    const bool horizontal = this->orientation == TabOrientation::HORIZONTAL;
+    this->setAxis(horizontal ? Axis::COLUMN : Axis::ROW);
+
+    // 先把两个块摘下来（不销毁），再按位置重新挂
+    if (this->barFrame != nullptr && this->barFrame->hasParent())
+        this->removeView(this->barFrame, false);
+    if (this->contentBox != nullptr && this->contentBox->hasParent())
+        this->removeView(this->contentBox, false);
+
+    // 栏内的滚动器按轴重建：条目容器（itemBox）保住，里面是 tab 格子
+    if (this->barScroller != nullptr)
+    {
+        this->barScroller->removeView(this->itemBox, false);
+        if (this->barScroller->hasParent())
+            this->barFrame->removeView(this->barScroller, true);
+        this->barScroller = nullptr;
+    }
+
+    if (horizontal)
+    {
+        auto scroller = new HScrollingFrame();
+        scroller->setWidthPercentage(100.0f);
+        scroller->setHeight(AUTO);
+        this->barScroller = scroller;
+        this->itemBox->setAxis(Axis::ROW);
+    }
+    else
+    {
+        auto scroller = new ScrollingFrame();
+        scroller->setWidthPercentage(100.0f);
+        scroller->setGrow(1.0f);
+        this->barScroller = scroller;
+        this->itemBox->setAxis(Axis::COLUMN);
+        this->itemBox->setWidthPercentage(100.0f);
+    }
+
+    this->barScroller->addView(this->itemBox);
+    this->barFrame->addView(this->barScroller);
+
+    this->barFrame->setAppearanceVariant(horizontal ? "horizontal" : "vertical");
+    if (horizontal)
+    {
+        this->barFrame->setWidthPercentage(100.0f);
+        this->barFrame->setHeight(AUTO);
+    }
+    else
+    {
+        this->barFrame->setWidth(AUTO); // 宽度由外观的 box.width 决定
+        this->barFrame->setHeightPercentage(100.0f);
+    }
+
+    this->contentBox->setWidthPercentage(100.0f);
+    this->contentBox->setHeight(horizontal ? AUTO : 100.0f);
+    this->contentBox->setGrow(1.0f);
+    this->contentBox->setShrink(1.0f);
+
+    if (this->placement == TabBarPlacement::START)
+    {
+        this->addView(this->barFrame);
+        this->addView(this->contentBox);
+    }
+    else
+    {
+        this->addView(this->contentBox);
+        this->addView(this->barFrame);
+    }
+}
+
+void TabFrame::setOrientation(TabOrientation value)
+{
+    if (this->orientation == value)
+        return;
+    this->orientation = value;
+    for (TabCell* cell : this->cells)
+        cell->setOrientation(value);
+    this->rebuildLayout();
+}
+
+void TabFrame::setBarPlacement(TabBarPlacement value)
+{
+    if (this->placement == value)
+        return;
+    this->placement = value;
+    this->rebuildLayout();
+}
+
+void TabFrame::setTriggerMode(TabTriggerMode value)
+{
+    this->trigger = value;
+    for (size_t i = 0; i < this->cells.size(); i++)
+        this->applyCellTrigger(this->cells[i], i);
+}
+
+void TabFrame::applyCellTrigger(TabCell* cell, size_t index)
+{
+    // CLICK：只有点击 / A 才切页，焦点留在 tab 上
+    // FOCUS：焦点移过来就切页；点击 / A 再把握焦点交给内容区
+    if (this->trigger == TabTriggerMode::FOCUS)
+        cell->setOnFocus([this, index] { this->selectFromInput(index, false); });
+    else
+        cell->setOnFocus(nullptr);
+
+    cell->setOnSelect([this, index] { this->selectFromInput(index, this->trigger == TabTriggerMode::FOCUS); });
+}
+
+View* TabFrame::firstFocusableIn(View* root)
+{
+    if (root == nullptr)
+        return nullptr;
+    if (root->isFocusable())
+        return root;
+    Box* box = root->asBox();
+    if (box != nullptr)
+    {
+        for (View* child : box->getChildren())
+            if (View* found = firstFocusableIn(child))
+                return found;
+    }
+    return nullptr;
+}
+
+void TabFrame::selectFromInput(size_t index, bool focusContent)
+{
+    this->setSelectedIndex(index);
+    if (!focusContent || index >= this->contents.size())
+        return;
+
+    // FOCUS 模式：点击 / A 后焦点进入子页面的默认焦点；没有可聚焦项就留在 tab 上
+    if (View* target = firstFocusableIn(this->contents[index]))
+        getInputManager().giveFocus(target);
+}
+
+size_t TabFrame::addTab(const std::string& title, View* content)
+{
+    return this->addTab(title, std::string(), content);
+}
+
+size_t TabFrame::addTab(const std::string& title, const std::string& icon, View* content)
 {
     if (content == nullptr)
-        return;
+        return static_cast<size_t>(-1);
 
     const size_t index = this->cells.size();
 
     TabCell* cell = new TabCell();
+    cell->setOrientation(this->orientation);
     cell->setTitle(title);
+    if (!icon.empty())
+        cell->setIcon(icon);
 
-    // borealis 的 TabFrame::addTab 里写得很明确：
-    // "Only trigger when the sidebar item gains focus" —— 聚焦到哪个 tab 就切到哪一页。
-    // （我们的改进：内容不销毁，切回来状态还在；borealis 会把旧 tab 删掉重建。）
-    cell->setOnFocus([this, index] { this->setSelectedIndex(index); });
-    cell->setOnSelect([this, index] { this->setSelectedIndex(index); });
-
-    this->tabBar->addView(cell);
+    this->applyCellTrigger(cell, index);
+    this->itemBox->addView(cell);
     this->cells.push_back(cell);
 
-    // 内容全部由 TabFrame 持有，但只有当前选中的挂在树上
-    contents.push_back(content);
-
+    this->contents.push_back(content);
     if (index == this->selected)
         this->contentBox->addView(content);
+
+    return index;
 }
 
 void TabFrame::setTabTitle(size_t index, const std::string& title)
 {
-    if (index >= this->cells.size())
+    if (index < this->cells.size())
+        this->cells[index]->setTitle(title);
+}
+
+void TabFrame::setTabIcon(size_t index, const std::string& icon)
+{
+    if (index < this->cells.size())
+        this->cells[index]->setIcon(icon);
+}
+
+void TabFrame::addSeparator()
+{
+    if (this->orientation == TabOrientation::HORIZONTAL)
+    {
+        BKLV_LOG_WARNING("TabFrame::addSeparator：横向 tab 不支持分组线，已忽略");
         return;
-    this->cells[index]->setTitle(title);
+    }
+
+    Box* line = new Box(Axis::COLUMN);
+    line->setWidthPercentage(100.0f);
+    line->setHeight(getTheme().number("metric.sidebar.separatorHeight", 1.0f));
+    line->setBackgroundColor(getTheme().color("color.sidebar.separator"));
+    this->itemBox->addView(line);
+}
+
+void TabFrame::setTitle(const std::string& title)
+{
+    // 栏标题：放在栏容器最上方（纵向侧栏常见）
+    this->barTitle = title;
 }
 
 void TabFrame::setSelectedIndex(size_t index)
@@ -124,10 +289,8 @@ void TabFrame::setSelectedIndex(size_t index)
     if (index >= this->contents.size() || index == this->selected)
         return;
 
-    // 旧页面脱离但不销毁：切回来时状态还在
     this->contentBox->removeView(this->contents[this->selected], false);
     this->contentBox->addView(this->contents[index]);
-
     this->selected = index;
 
     for (size_t i = 0; i < this->cells.size(); i++)

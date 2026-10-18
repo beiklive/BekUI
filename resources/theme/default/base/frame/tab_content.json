@@ -1,0 +1,14 @@
+{
+  "box": {
+    "width": "100%",
+    "grow": 1,
+    "shrink": 1,
+    "padding": [
+      "@theme/metric.appletFrame.contentPaddingTopBottom",
+      "@theme/metric.appletFrame.contentPaddingSides",
+      "@theme/metric.appletFrame.contentPaddingTopBottom",
+      "@theme/metric.appletFrame.contentPaddingSides"
+    ]
+  },
+  "layers": []
+}

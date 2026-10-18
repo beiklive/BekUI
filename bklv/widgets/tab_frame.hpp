@@ -62,13 +62,30 @@ class TabCell : public AppearanceView
     std::function<void()> onFocus;
 };
 
+// 触发模式（用户拍板）：
+//   CLICK —— 点击 / A 才切页，切完**焦点留在 tab 上**
+//   FOCUS —— 焦点移到哪个 tab 就切哪个；点击 / A 后**焦点进入子页面默认焦点**
+enum class TabTriggerMode
+{
+    CLICK,
+    FOCUS,
+};
+
+// 栏的位置：START = 横向在顶部 / 纵向在左侧（默认）；END = 交换到另一端
+enum class TabBarPlacement
+{
+    START,
+    END,
+};
+
 class TabFrame : public Box
 {
   public:
-    TabFrame();
+    explicit TabFrame(TabOrientation orientation = TabOrientation::HORIZONTAL,
+        TabTriggerMode trigger = TabTriggerMode::CLICK);
 
     // content 的所有权交给 TabFrame（切换时只脱离不销毁，析构时统一释放）
-    void addTab(const std::string& title, View* content);
+    size_t addTab(const std::string& title, View* content);
 
     void setSelectedIndex(size_t index);
     size_t getSelectedIndex() const { return this->selected; }
@@ -76,16 +93,48 @@ class TabFrame : public Box
 
     // 换肤时同步 tab 标题（文案在控件构造时解析，不会自动重译）
     void setTabTitle(size_t index, const std::string& title);
+    void setTabIcon(size_t index, const std::string& icon);
 
-    Box* getTabBar() const { return this->tabBar; }
+    // ---- 方向 / 位置 / 触发 ----
+    void setOrientation(TabOrientation value);
+    TabOrientation getOrientation() const { return this->orientation; }
+    void setTriggerMode(TabTriggerMode value);
+    TabTriggerMode getTriggerMode() const { return this->trigger; }
+    void setBarPlacement(TabBarPlacement value);
+    TabBarPlacement getBarPlacement() const { return this->placement; }
+
+    // 纵向分组线；横向忽略（打一条日志）
+    void addSeparator();
+    // 栏标题（纵向侧栏常见；横向时显示在栏起始处）
+    void setTitle(const std::string& title);
+
+    // 带图标的 tab（图标层由外观声明）
+    size_t addTab(const std::string& title, const std::string& icon, View* content);
+
+    Box* getTabBar() const { return this->itemBox; }
+    // 栏容器（含外观）：测试/调试用，看它在布局里的位置
+    View* getBarContainer() const { return this->barFrame; }
     Box* getContentBox() const { return this->contentBox; }
 
     std::string getClassString() const override { return "bklv::TabFrame"; }
 
   private:
-    Box* tabBar       = nullptr;
-    Box* contentBox   = nullptr;
-    size_t selected   = 0;
+    void rebuildLayout();          // 按方向/位置重建"栏 + 内容框"的结构
+    void applyBarAppearance();     // 栏容器按方向切外观变体
+    void applyCellTrigger(TabCell* cell, size_t index);
+    void selectFromInput(size_t index, bool focusContent);
+    static View* firstFocusableIn(View* root);
+
+    TabOrientation orientation = TabOrientation::HORIZONTAL;
+    TabTriggerMode trigger      = TabTriggerMode::CLICK;
+    TabBarPlacement placement   = TabBarPlacement::START;
+
+    AppearanceView* barFrame = nullptr;   // 栏容器的外观（base/frame/tab_bar.<方向>）
+    Box* barScroller         = nullptr;   // HScrollingFrame / ScrollingFrame（按轴）
+    Box* itemBox             = nullptr;   // 条目容器
+    AppearanceView* contentBox = nullptr;
+    size_t selected          = 0;
+    std::string barTitle;
     std::vector<TabCell*> cells;
     std::vector<View*> contents;
 };

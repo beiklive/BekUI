@@ -102,6 +102,9 @@
     "base/sample_card.json",
     "base/button/tab_button.horizontal.json",
     "base/button/tab_button.vertical.json",
+    "base/frame/tab_bar.horizontal.json",
+    "base/frame/tab_bar.vertical.json",
+    "base/frame/tab_content.json",
     "view/recycler_json_demo.json",
     "view/page_pokedex_json.json",
     "widget/tab_bar.json"

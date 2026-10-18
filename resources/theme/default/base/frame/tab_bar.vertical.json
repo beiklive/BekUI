@@ -1,0 +1,19 @@
+{
+  "box": {
+    "width": "@theme/metric.sidebar.width",
+    "height": "100%",
+    "shrink": 0,
+    "gap": "@theme/metric.sidebar.gap",
+    "padding": [
+      "@theme/metric.sidebar.paddingTop",
+      "@theme/metric.sidebar.paddingRight",
+      "@theme/metric.sidebar.paddingBottom",
+      "@theme/metric.sidebar.paddingLeft"
+    ],
+    "cornerRadius": "@theme/metric.sidebar.radius",
+    "borderThickness": 1,
+    "borderColor": "@theme/color.sidebar.border",
+    "backgroundColor": "@theme/color.common.transparent"
+  },
+  "layers": []
+}
