@@ -1,0 +1,135 @@
+# TabFrame：统一的 Tab 容器（横向 / 纵向）
+
+> 状态：**规格已定，实现分 P1–P5**。本文是实现的唯一口径，改行为先改这里。
+
+## 1. 目标
+
+把现在的三个东西合并成一个：
+
+| 现状 | 合并后 |
+|---|---|
+| `TabFrame`：横向 tab + 内容框（栏外观无） | **`TabFrame`**：一个组件覆盖两种方向 |
+| `TabBar`：只有横向，无内容框 | 由 `TabFrame` 内部承担（栏 + 内容框） |
+| `Sidebar`：只有纵向，"焦点即切"，外观走 `applyWidgetBox` | 由 `TabFrame(orientation=VERTICAL, trigger=FOCUS)` 表达 |
+
+删除：`tab_bar.{hpp,cpp}`、`sidebar.{hpp,cpp}`、`base/tab_cell*.json`、
+`widget/tab_bar.json`、`widget/sidebar.json`。
+
+## 2. 方向与位置
+
+```cpp
+enum class TabOrientation { HORIZONTAL, VERTICAL };
+enum class TabBarPlacement { START, END };
+```
+
+| 方向 | 默认（START） | 交换（END） |
+|---|---|---|
+| HORIZONTAL | 栏在**顶部** | 底部 |
+| VERTICAL | 栏在**左侧** | 右侧 |
+
+布局轴不随位置变，只换"栏 / 内容框"的先后顺序：
+
+```
+HORIZONTAL + START:  COLUMN[ 栏 , 内容(grow) ]
+HORIZONTAL + END:    COLUMN[ 内容(grow) , 栏 ]
+VERTICAL   + START:  ROW   [ 栏(固定宽) , 内容(grow) ]
+VERTICAL   + END:    ROW   [ 内容(grow) , 栏(固定宽) ]
+```
+
+## 3. 触发模式与焦点规则（**用户拍板**）
+
+```cpp
+enum class TabTriggerMode { CLICK, FOCUS };
+```
+
+| 模式 | 切页时机 | 切完焦点 |
+|---|---|---|
+| `CLICK` | 点击 / A **才切页** | **仍留在 tab 上**（方向键可继续浏览 tab） |
+| `FOCUS` | **焦点移到哪个 tab 就切哪个** | 点击（或 A）后**焦点进入子页面的默认焦点** |
+
+两条推论，实现时要保证：
+
+1. `CLICK` 模式下，方向键只是在 tab 之间移动焦点，**不切页**；切页只由点击 / A 触发。
+2. `FOCUS` 模式下，选择由 `onFocusGained` 驱动；鼠标点击 / A 额外把焦点交给内容区
+   的默认控件（内容区没有可聚焦项时焦点留在 tab 上，不报错）。
+
+## 4. 视觉：两套按钮 + 一份内容框
+
+| 文件 | 用途 |
+|---|---|
+| `base/tab_button.horizontal.json` | 横向按钮：图标在上、文字在下，等分宽度，选中态 `accent` 底部指示条 |
+| `base/tab_button.vertical.json` | 纵向按钮：图标在左、文字在右，固定行高，选中态 `accent` 左侧竖条 + 底色 |
+| `widget/tab_bar.horizontal.json` | 横向栏容器（高度、内边距、背景/玻璃） |
+| `widget/tab_bar.vertical.json` | 纵向栏容器（宽度、内边距、圆角/边框、分组线） |
+| `widget/tab_content.json` | **子页面框：横向纵向共用同一份** |
+
+控件侧只有**一个** `TabButton` 类，按方向 `setAppearanceVariant("horizontal" | "vertical")`；
+样式差异全部写在 JSON 里（沿用"样式归 JSON、行为归 C++"的约定）。
+
+## 5. C++ API
+
+```cpp
+class TabFrame : public Box {
+  public:
+    TabFrame(TabOrientation orientation = TabOrientation::HORIZONTAL,
+             TabTriggerMode trigger = TabTriggerMode::CLICK);
+
+    void setOrientation(TabOrientation);
+    void setTriggerMode(TabTriggerMode);
+    void setBarPlacement(TabBarPlacement);   // START 默认
+
+    size_t addTab(const std::string& title, View* content);
+    size_t addTab(const std::string& title, const std::string& icon, View* content);
+    void addSeparator();                     // 纵向分组线；横向忽略（打日志）
+    void setTitle(const std::string&);       // 栏标题（纵向侧栏常见）
+
+    void setSelectedIndex(size_t);
+    size_t getSelectedIndex() const;
+    void setTabTitle(size_t, const std::string&);
+    void setTabIcon(size_t, const std::string&);
+
+    Box* getBarBox();       // 栏容器（内部按轴用滚动器）
+    Box* getContentBox();   // 内容框（共用 tab_content）
+};
+```
+
+## 6. JSON（视图描述）
+
+```json
+{
+  "type": "TabFrame",
+  "orientation": "vertical",
+  "trigger": "focus",
+  "placement": "start",
+  "title": "导航",
+  "children": [
+    { "type": "Box", "title": "图标", "icon": "star", "children": [] },
+    { "type": "Box", "title": "设置", "icon": "settings", "children": [] }
+  ]
+}
+```
+
+- 每个 child 就是**一个 tab 的页面内容**；`title` / `icon` 是 tab 条目的文字与图标；
+- `children[0]` 默认选中；
+- 属性表：`orientation` / `trigger` / `placement`（ENUM）+ `title`（TEXT）。
+
+## 7. 测试与验证
+
+- `tests/tab_frame_test.cpp`（替换 `tab_bar_test.cpp`）：
+  1. 两种方向 + 两种位置：栏与内容框的先后兄弟顺序正确；
+  2. `CLICK`：焦点在 tab 间移动**不**切页；点击 / A 切页且焦点仍在 tab；
+  3. `FOCUS`：焦点移动即切页；点击后焦点落到内容区第一个可聚焦控件；
+  4. 选中不触发重排（布局计数不增长）；
+  5. `addSeparator` 在纵向才有条目、横向忽略。
+- `theme_test`：新外观的层序断言自动覆盖；
+- 实机：demo 加一个双方向示例（横向顶部 + 纵向左侧）各截一张图。
+
+## 8. 阶段
+
+| 阶段 | 内容 | 完成判据 |
+|---|---|---|
+| P1 | `TabCell` → `TabButton`（加图标层、双外观）+ 两份按钮 JSON | `check.sh` 绿；外观能编译 |
+| P2 | 重写 `TabFrame`（方向/位置/触发/栏+内容框） | 新测试全过 |
+| P3 | 删除 `TabBar`/`Sidebar`，迁移 demo 与 `widget_test` | demo 启动、无残留引用 |
+| P4 | JSON 注册 + 属性表 + 样例 `view/tab_frame_demo.json` | 视图 JSON 能建出两种方向 |
+| P5 | 文档（`docs/json-syntax.md` 的 TabFrame 一节）、旧注释清理、截图 | 全量门禁 + 截图 |
