@@ -100,8 +100,8 @@
     "view/children_ref_demo.json",
     "base/children_ref.json",
     "base/sample_card.json",
-    "base/frame/tab_button.horizontal.json",
-    "base/frame/tab_button.vertical.json",
+    "base/button/tab_button.horizontal.json",
+    "base/button/tab_button.vertical.json",
     "view/recycler_json_demo.json",
     "view/page_pokedex_json.json",
     "widget/tab_bar.json"

@@ -55,11 +55,17 @@ enum class TabTriggerMode { CLICK, FOCUS };
 
 ## 4. 视觉：两套按钮 + 一份内容框
 
-**目录约定（用户追加要求）**：本次及以后新增的 tab/frame 相关外观，一律放在
-`resources/theme/default/base/frame/` 下（当前只做 `default` 主题；`ios` 缺项时按
-"当前主题 → default → 空外观"的回退链拿到 default 的副本）。
-名字 = 相对主题根的路径去掉扩展名，例如 `base/frame/tab_button.vertical.json`
-对应的外观名是 `base/frame/tab_button` + 变体 `vertical`。
+**目录约定（用户追加要求）**：外观目录按**控件分类**组织，不按用途组织 ——
+
+```
+base/button/tab_button.<方向>.json   按钮（TabCell 是按钮）
+base/frame/tab_bar.<方向>.json       栏容器
+base/frame/tab_content.json          页面框
+```
+
+理由：同一个按钮外观会被多个容器复用（tab / 分段控件 / 工具栏），把它放进容器目录等于按用途复制；
+改动也要能隔离（按钮样式只动 `button/`，栏布局只动 `frame/`）。当前只做 `default` 主题，
+`ios` 缺项时按"当前主题 → default → 空外观"回退。名字 = 相对主题根的路径去掉扩展名。
 **新增文件必须登记进 `theme.json` 的 `files[]`**（漏了会静默回退成空外观）。
 
 | 文件 | 用途 |

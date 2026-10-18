@@ -8,9 +8,9 @@ namespace bklv
 {
 
 TabCell::TabCell()
-    : AppearanceView("base/frame/tab_button", true)
+    : AppearanceView("base/button/tab_button", true)
 {
-    // 高度/内边距/图标层全在 base/frame/tab_button.<方向>.json 里
+    // 高度/内边距/图标层全在 base/button/tab_button.<方向>.json 里
     this->setAppearanceVariant("horizontal");
 
     this->onPointerAction = true;
