@@ -33,7 +33,7 @@ void setButtonEnabledAttr(View* v, const ResolvedValue& r)
 } // namespace
 
 Button::Button(const std::string& text, const std::string& variant)
-    : AppearanceView(variant.empty() ? "base/button" : "base/button." + variant, true)
+    : AppearanceView(variant.empty() ? "base/button/button" : "base/button/button." + variant, true)
 {
     this->setText(text);
 

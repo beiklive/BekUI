@@ -123,9 +123,9 @@ int main()
         // 造一个只有一层按钮外观的皮肤
         writeFile("resources/theme/widget-skin/theme.json",
             R"({"name":"widget-skin","version":1,
-                "files":["tokens/colors.json","base/button.json"]})");
+                "files":["tokens/colors.json","base/button/button.json"]})");
         writeFile("resources/theme/widget-skin/tokens/colors.json", R"({"accent":{"base":"#00ff00"}})");
-        writeFile("resources/theme/widget-skin/base/button.json",
+        writeFile("resources/theme/widget-skin/base/button/button.json",
             R"({"layers":[{"op":"rect","id":"bg","fill":"@theme/color.accent.base"}]})");
 
         Box root(Axis::COLUMN);
@@ -151,8 +151,8 @@ int main()
     std::printf("\n== 3.5 控件样式真的来自 JSON：改 box 段，控件尺寸跟着变 ==\n");
     {
         writeFile("resources/theme/box-skin/theme.json",
-            R"({"name":"box-skin","version":1,"files":["base/button.json"]})");
-        writeFile("resources/theme/box-skin/base/button.json",
+            R"({"name":"box-skin","version":1,"files":["base/button/button.json"]})");
+        writeFile("resources/theme/box-skin/base/button/button.json",
             R"({"box":{"height":72,"padding":[4,20,4,20]},
                 "layers":[{"op":"rect","id":"bg","fill":"@theme/color.button.defaultBg"}]})");
 

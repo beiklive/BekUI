@@ -12,7 +12,7 @@ int main()
     check(bklv::loadThemeIntoGlobalFromDirectory("resources/theme/default", "default"),
         "装载 default 主题（" + error + "）");
 
-    bklv::AppearanceView view("base/button", false);
+    bklv::AppearanceView view("base/button/button", false);
 
     std::printf("== 1. 默认关闭 ==\n");
     checkEqualInt(view.getDesignSelection(), -1, "默认没有选中层");

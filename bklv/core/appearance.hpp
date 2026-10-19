@@ -131,7 +131,10 @@ struct AppearanceLayer
     Op op = Op::RECT;
     std::string extensionType; // op == EXTENSION 时：注册表里的类型名（\"stripe\"）
     std::string id;
-    std::string source; // Text/Image/Custom 的数据来源名
+    std::string source; // Text/Image/Custom 的数据来源名（= 内容槽 id）
+    // 字体种类声明："icon" 用图标字体、"text" 用正文字体、空 = 按旧规则推断
+    // （层 id/source 叫 "icon" 就沿用图标字体）。槽 id 自由之后必须能显式声明。
+    std::string font;
 
     // 初值（编译时已把 @theme/... 解析成具体值）
     // RECT 层的渐变（`gradient` 对象）。写了就以它为准，没写用上面的 fill 单色。

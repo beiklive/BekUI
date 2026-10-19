@@ -80,6 +80,7 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
     const std::string idPrefix = outType != nullptr ? outType->idPrefix : opName;
     out.id     = node.value("id", idPrefix + std::to_string(index));
     out.source = node.value("source", "");
+    out.font   = node.value("font", "");
     out.align  = node.value("align", "left");
     out.valign = node.value("valign", "center");
     out.scaling = node.value("scaling", "fit");

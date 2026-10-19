@@ -85,7 +85,7 @@ int main()
 
     std::printf("\n== 4. 控件外观编译（JSON 描述绘制结构）==\n");
     {
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button");
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button/button");
         check(button != nullptr, "button 外观能取到");
         if (button != nullptr)
         {
@@ -154,7 +154,7 @@ int main()
             // primary/highlight/default 聚焦不出高亮底，只有 bordered/borderless 才出。
             check(button->getTransitions("focused").empty(),
                 "default 按钮 focused 不再画框（无高亮底、无描边）");
-            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("base/button.bordered");
+            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("base/button/button.bordered");
             check(bordered != nullptr && bordered->getTransitions("focused").size() == 1,
                 "bordered 按钮 focused 只剩高亮底那一条");
         }
@@ -163,7 +163,7 @@ int main()
     std::printf("\n== 5. 状态动效（tweeny 逐属性插值）==\n");
     {
         // 用 bordered：它聚焦时才有高亮底补间（default 是 hideHighlightBackground）
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button.bordered");
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button/button.bordered");
         check(button != nullptr, "取到外观");
 
         AppearanceInstance instance;
@@ -242,11 +242,11 @@ int main()
         // 新布局：tokens/ 放色板与数值、base/ 放基础控件外观，清单写在 files[]
         writeFile("resources/theme/test-skin/theme.json",
             R"({"name":"test-skin","version":1,"author":"测试","description":"覆盖测试用皮肤",
-                "files":["tokens/colors.json","tokens/metrics.json","base/button.json"]})");
+                "files":["tokens/colors.json","tokens/metrics.json","base/button/button.json"]})");
         writeFile("resources/theme/test-skin/tokens/colors.json",
             R"({"accent":{"base":"#ff8800"},"surface":{"raised":"#101010"}})");
         writeFile("resources/theme/test-skin/tokens/metrics.json", R"({"radius":{"md":2}})");
-        writeFile("resources/theme/test-skin/base/button.json",
+        writeFile("resources/theme/test-skin/base/button/button.json",
             R"({"layers":[{"op":"rect","id":"bg","fill":"@theme/color.surface.raised",
                 "radius":"@theme/metric.radius.md"}]})");
 
@@ -262,7 +262,7 @@ int main()
         checkFloat(getTheme().number("metric.font.size.md"), 18.0f, "皮肤没写的数值回退 default");
 
         // 外观缓存必须跟着换（否则控件还在用旧外观）
-        std::shared_ptr<const Appearance> skinned = getWidgetAppearance("base/button");
+        std::shared_ptr<const Appearance> skinned = getWidgetAppearance("base/button/button");
         check(skinned != nullptr, "换肤后能取到该皮肤的外观");
         if (skinned != nullptr)
         {

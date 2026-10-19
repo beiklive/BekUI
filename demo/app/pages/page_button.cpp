@@ -69,11 +69,11 @@ Box* buildButtonShowcasePage()
     // ---- 基础形态 ----
     Box* basics = makeSection("基础形态");
     makeButtonRow(basics, "基础按钮（base/button/button）", "base/button/button", "基础按钮");
-    makeButtonRow(basics, "主按钮", "base/button.primary", "主按钮");
-    makeButtonRow(basics, "高亮按钮", "base/button.highlight", "高亮按钮");
-    makeButtonRow(basics, "带边框", "base/button.bordered", "带边框");
-    makeButtonRow(basics, "无边框", "base/button.borderless", "无边框");
-    makeButtonRow(basics, "幽灵", "base/button.ghost", "幽灵按钮");
+    makeButtonRow(basics, "主按钮", "base/button/button.primary", "主按钮");
+    makeButtonRow(basics, "高亮按钮", "base/button/button.highlight", "高亮按钮");
+    makeButtonRow(basics, "带边框", "base/button/button.bordered", "带边框");
+    makeButtonRow(basics, "无边框", "base/button/button.borderless", "无边框");
+    makeButtonRow(basics, "幽灵", "base/button/button.ghost", "幽灵按钮");
     page->addView(basics);
 
     // ---- 图标组合 ----

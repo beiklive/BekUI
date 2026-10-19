@@ -238,7 +238,7 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
     targetWidgets.clear();
     targetViews.clear();
 
-    // 名字 = 相对主题根的路径去掉扩展名（base/button.json -> "base/button"）
+    // 名字 = 相对主题根的路径去掉扩展名（base/button/button.json -> "base/button/button"）
     auto nameFromPath = [](const std::string& relative) {
         std::string name = relative;
         const size_t dot = name.find_last_of('.');

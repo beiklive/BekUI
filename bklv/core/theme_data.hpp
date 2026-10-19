@@ -11,9 +11,9 @@
 //   .../widget/*.json                    二级控件外观（引用 base 组合出来的）
 //   .../view/*.json                      页面/视图描述（结构 + 外观）
 //
-// **名字 = 相对主题根的路径去掉扩展名**：`base/button.json` -> "base/button"、
+// **名字 = 相对主题根的路径去掉扩展名**：`base/button/button.json` -> "base/button/button"、
 // `widget/sidebar.json` -> "widget/sidebar"。所以挪文件 = 改名字，C++ 里的引用要一起改。
-// 变体仍是后缀：`base/button.json` + variant "primary" -> "base/button.primary"。
+// 变体仍是后缀：`base/button/button.json` + variant "primary" -> "base/button/button.primary"。
 //
 // 换肤 = 复制 default 改名 + 改 JSON + 在 themes.json 里登记。
 // 缺项的回退链：当前主题 -> default 主题 -> 调用方给的兜底值（只警告，不崩）。
@@ -78,7 +78,7 @@ class ThemeData
     std::vector<std::string> getColorKeys() const;
     std::vector<std::string> getNumberKeys() const;
 
-    // 该主题登记的外观名（路径名，如 "base/button.primary"），顺序与 theme.json 的 files[] 一致
+    // 该主题登记的外观名（路径名，如 "base/button/button.primary"），顺序与 theme.json 的 files[] 一致
     std::vector<std::string> getWidgetNames() const;
     // 该主题登记的视图名（"view/page_json"）
     std::vector<std::string> getViewNames() const;

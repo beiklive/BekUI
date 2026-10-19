@@ -173,16 +173,121 @@ void AppearanceView::enableContentMeasurement()
     });
 }
 
-void AppearanceView::setText(const std::string& value)
+AppearanceView::ContentSlot* AppearanceView::findSlot(const std::string& id)
 {
-    if (this->text == value)
+    for (ContentSlot& slot : this->contentSlots)
+        if (slot.id == id)
+            return &slot;
+    return nullptr;
+}
+
+const AppearanceView::ContentSlot* AppearanceView::findSlot(const std::string& id) const
+{
+    for (const ContentSlot& slot : this->contentSlots)
+        if (slot.id == id)
+            return &slot;
+    return nullptr;
+}
+
+bool AppearanceView::hasSlot(const std::string& id) const
+{
+    return this->findSlot(id) != nullptr;
+}
+
+const std::string& AppearanceView::getSlotText(const std::string& id) const
+{
+    static const std::string empty;
+    const ContentSlot* slot = this->findSlot(id);
+    return slot != nullptr ? slot->text : empty;
+}
+
+void AppearanceView::setText(const std::string& id, const std::string& value)
+{
+    if (id.empty())
         return;
 
-    this->text = value;
+    ContentSlot* slot = this->findSlot(id);
+    if (slot == nullptr)
+    {
+        ContentSlot created;
+        created.id   = id;
+        created.kind = ContentSlot::Kind::TEXT;
+        this->contentSlots.push_back(created);
+        slot = &this->contentSlots.back();
+    }
+    if (slot->kind == ContentSlot::Kind::TEXT && slot->text == value)
+        return;
 
-    // 文字变了，固有尺寸跟着变（外观驱动控件靠测量函数定宽）
+    slot->kind = ContentSlot::Kind::TEXT;
+    slot->text = value;
+    slot->image = TextureRef();
+
     this->markMeasureDirty();
     this->invalidate();
+}
+
+void AppearanceView::setIcon(const std::string& id, const std::string& glyph)
+{
+    if (id.empty())
+        return;
+
+    ContentSlot* slot = this->findSlot(id);
+    if (slot == nullptr)
+    {
+        ContentSlot created;
+        created.id = id;
+        this->contentSlots.push_back(created);
+        slot = &this->contentSlots.back();
+    }
+    if (slot->kind == ContentSlot::Kind::ICON && slot->text == glyph)
+        return;
+
+    slot->kind = ContentSlot::Kind::ICON;
+    slot->text = glyph;
+    slot->image = TextureRef();
+
+    this->markMeasureDirty();
+    this->invalidate();
+}
+
+void AppearanceView::setImage(const std::string& id, const TextureRef& texture)
+{
+    if (id.empty())
+        return;
+
+    ContentSlot* slot = this->findSlot(id);
+    if (slot == nullptr)
+    {
+        ContentSlot created;
+        created.id = id;
+        this->contentSlots.push_back(created);
+        slot = &this->contentSlots.back();
+    }
+    slot->kind  = ContentSlot::Kind::IMAGE;
+    slot->image = texture;
+    slot->text.clear();
+
+    this->markMeasureDirty();
+    this->invalidate();
+}
+
+void AppearanceView::clearSlot(const std::string& id)
+{
+    for (size_t i = 0; i < this->contentSlots.size(); i++)
+    {
+        if (this->contentSlots[i].id != id)
+            continue;
+        this->contentSlots.erase(this->contentSlots.begin() + (long)i);
+        this->markMeasureDirty();
+        this->invalidate();
+        return;
+    }
+}
+
+// 默认槽老入口
+void AppearanceView::setText(const std::string& value)
+{
+    this->setText("text", value);
 }
 
 void AppearanceView::setAppearanceName(const std::string& name)
@@ -368,38 +473,23 @@ bool AppearanceView::getLayerRect(
 
 void AppearanceView::setIcon(const std::string& glyph)
 {
-    if (this->icon == glyph)
-        return;
-
-    this->icon = glyph;
-    this->markMeasureDirty();
-    this->invalidate();
+    this->setIcon("icon", glyph);
 }
 
 void AppearanceView::setInfoText(const std::string& value)
 {
-    if (this->infoText == value)
-        return;
-
-    this->infoText = value;
-    this->markMeasureDirty();
-    this->invalidate();
+    this->setText("info", value);
 }
 
 std::string AppearanceView::getLayerText(const std::string& source)
 {
-    if (source == "text")
-        return this->text;
-    if (source == "icon")
-        return this->icon;
-    if (source == "info")
-        return this->infoText;
-    return {};
+    return this->getSlotText(source);
 }
 
-TextureRef AppearanceView::getLayerImage(const std::string&)
+TextureRef AppearanceView::getLayerImage(const std::string& source)
 {
-    return TextureRef();
+    const ContentSlot* slot = this->findSlot(source);
+    return slot != nullptr ? slot->image : TextureRef();
 }
 
 ImFont* AppearanceView::iconFontFor(IconFontKind kind)
@@ -441,6 +531,16 @@ ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
 {
     // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块。
     // 哪一套由"这一层的 kind"决定：显式指定过就按指定的，否则跟随 setIconFontKind 的全局那套。
+    // 字体：层上显式声明 > 旧规则（id/source 叫 "icon" 或显式指定过 kind）
+    if (layer.font == "text")
+        return getDefaultFont();
+    if (layer.font == "icon")
+    {
+        if (ImFont* font = iconFontFor(this->getLayerIconFontKind(layer.id)))
+            return font;
+        return getDefaultFont();
+    }
+
     const bool isIconLayer = layer.id == "icon" || layer.source == "icon";
     if (isIconLayer || this->hasLayerIconFontKind(layer.id))
     {

@@ -56,9 +56,9 @@ int main()
 
     std::printf("\n== 3. 没写 children 的普通外观不受影响 ==\n");
     {
-        AppearanceView plain("base/button", false);
+        AppearanceView plain("base/button/button", false);
         checkEqualInt((int)plain.getChildrenCount(), 0, "base/button 没有子视图（行为不变）");
-        const auto spec = getWidgetAppearance("base/button");
+        const auto spec = getWidgetAppearance("base/button/button");
         check(spec != nullptr && spec->getChildren().empty(), "编译产物里也没有 children");
     }
 
