@@ -51,7 +51,7 @@
         0,
         "@theme/metric.sidebar.iconInset"
       ],
-      "font": "icon"
+      "font_kind": "icon"
     },
     {
       "op": "text",

@@ -23,6 +23,8 @@ const std::vector<FieldDesc>& fixedLayerFields()
             out.push_back(std::move(field));
         };
         add("fill", FieldKind::COLOR, "填充", "底色 / 文字色（rect/text/shadow/glass 用）");
+        add("data_id", FieldKind::TEXT, "内容槽",
+            "这一层从哪个内容槽取内容（text / icon / info / image，或自定义 id）");
         add("stroke", FieldKind::COLOR, "描边色");
         add("strokeWidth", FieldKind::PIXELS, "描边宽");
         add("radius", FieldKind::PIXELS, "圆角");

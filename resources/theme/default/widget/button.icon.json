@@ -36,7 +36,7 @@
         0,
         0
       ],
-      "font": "icon"
+      "font_kind": "icon"
     },
     {
       "op": "rect",

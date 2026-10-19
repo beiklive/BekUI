@@ -18,7 +18,7 @@
       "fontSize": 25.5,
       "align": "left",
       "valign": "center",
-      "font": "icon"
+      "font_kind": "icon"
     },
     {
       "op": "text",

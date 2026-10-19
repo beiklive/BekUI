@@ -13,17 +13,6 @@
     "lg": 12,
     "round": 999
   },
-  "font": {
-    "size": {
-      "xs": 13,
-      "sm": 15,
-      "md": 17,
-      "lg": 22,
-      "title": 30,
-      "lineHeight": 1.35
-    },
-    "lineHeight": 1.4
-  },
   "border": {
     "thickness": 2
   },
@@ -248,5 +237,16 @@
     "height": 60,
     "paddingV": 6,
     "paddingH": 12
+  },
+  "font": {
+    "size": {
+      "xs": 13,
+      "sm": 15,
+      "md": 17,
+      "lg": 22,
+      "title": 30,
+      "lineHeight": 1.35
+    },
+    "lineHeight": 1.4
   }
 }

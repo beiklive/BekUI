@@ -89,7 +89,26 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
         BKLV_LOG_WARNING("图层 \"%s\" 用的是旧键 \"source\"，请改成 \"data_id\"",
             out.id.c_str());
     }
-    out.font   = node.value("font", "");
+    // font_kind 是正式键；font 旧键兼容并提示
+    if (node.contains("font_kind"))
+        out.fontKind = node.value("font_kind", "");
+    else if (node.contains("font"))
+    {
+        out.fontKind = node.value("font", "");
+        BKLV_LOG_WARNING("图层 \"%s\" 用的是旧键 \"font\"，请改成 \"font_kind\"", out.id.c_str());
+    }
+
+    // data_id 省略时默认取层的 id（最常见的"一层一份内容"）
+    if (out.dataId.empty() && !out.id.empty()
+        && (out.op == AppearanceLayer::Op::TEXT || out.op == AppearanceLayer::Op::IMAGE
+            || out.op == AppearanceLayer::Op::CUSTOM))
+        out.dataId = out.id;
+
+    // 不读内容的层写了 data_id：提醒（多半是复制粘贴留下的）
+    if (!out.dataId.empty() && out.op != AppearanceLayer::Op::TEXT
+        && out.op != AppearanceLayer::Op::IMAGE && out.op != AppearanceLayer::Op::CUSTOM)
+        BKLV_LOG_WARNING("图层 \"%s\" 是 %s，不读内容，data_id 会被忽略",
+            out.id.c_str(), out.dataId.c_str());
     out.align  = node.value("align", "left");
     out.valign = node.value("valign", "center");
     out.scaling = node.value("scaling", "fit");

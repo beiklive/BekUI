@@ -519,9 +519,9 @@ ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
     // 哪一套由"这一层的 kind"决定：显式指定过就按指定的，否则跟随 setIconFontKind 的全局那套。
     // 字体只由**层上声明**决定（font: "icon" / "text"），通用类不认识具体槽 id。
     // 显式设过 kind 的层（setLayerIconFontKind）也按图标字体处理。
-    if (layer.font == "text")
+    if (layer.fontKind == "text")
         return getDefaultFont();
-    if (layer.font == "icon" || this->hasLayerIconFontKind(layer.id))
+    if (layer.fontKind == "icon" || this->hasLayerIconFontKind(layer.id))
     {
         if (ImFont* font = iconFontFor(this->getLayerIconFontKind(layer.id)))
             return font;
