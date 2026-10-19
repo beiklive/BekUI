@@ -326,6 +326,9 @@ App::App()
 
 void App::frame()
 {
+    const auto tFrameStart = std::chrono::steady_clock::now();
+    double     tAfterLayout = 0.0;
+    double     tAfterUpdate = 0.0;
     // 帧预算：只管"可以延后"的活（后台回调、上传、动图换帧、SVG 栅格化、缓存淘汰）。
     // 用完之后它们自己停手、留给下一帧；布局 / update / 输入 / 绘制不吃预算。
     // 这一帧的预算在函数末尾 endFrame()（动图与 SVG 发生在 root->update() 里，也在预算内）。
@@ -401,7 +404,11 @@ void App::frame()
 
         // 2. 动画与视图逐帧逻辑（滚动等）。
         Ticking::updateTickings();
+        tAfterLayout = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - tFrameStart).count();
         this->root->update();
+        tAfterUpdate = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - tFrameStart).count();
 
         // 3. 输入与焦点（必须在绘制前，读取的是上一帧的命中结果）。
         //
@@ -436,6 +443,15 @@ void App::frame()
         //    放在视图树之后，所以窗口浮在界面之上；必须在 ImGui::Render() 之前。
         if (this->onDrawWindows)
             this->onDrawWindows();
+    }
+
+    {
+        const auto now = std::chrono::steady_clock::now();
+        this->profile.layoutMs += tAfterLayout;
+        this->profile.updateMs += tAfterUpdate - tAfterLayout;
+        this->profile.drawMs   += std::chrono::duration<double, std::milli>(now - tFrameStart).count()
+            - tAfterUpdate;
+        this->profile.frames++;
     }
 
     ImGui::Render();
@@ -580,6 +596,12 @@ int App::run(const std::string& title, int width, int height)
                 + std::to_string((int)summary.worstMs) + "ms；掉帧 "
                 + std::to_string(summary.droppedCount) + "/" + std::to_string(summary.count)
                 + "（60Hz 一帧 16.7ms 为线）");
+
+            const double n = (double)this->profile.frames;
+            if (n > 0.0)
+                Logger::info("帧内分段（均值）：布局 " + std::to_string(this->profile.layoutMs / n)
+                    + "ms / update " + std::to_string(this->profile.updateMs / n)
+                    + "ms / 绘制 " + std::to_string(this->profile.drawMs / n) + "ms");
         }
     }
 

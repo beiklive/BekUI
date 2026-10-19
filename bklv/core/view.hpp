@@ -42,6 +42,16 @@ class FrameContext
   public:
     ImDrawList* drawList = nullptr; // 本帧的绘制目标，等价于 borealis 的 NVGcontext*
     float pixelRatio     = 1.0f;
+
+    // 当前生效的裁剪窗口（绘制坐标）。由会裁剪的容器（滚动器）设置，
+    // 后代的 drawChildren 用它做**跨容器剔除**：完全在窗口外的子树连 update 都不跑。
+    // 外扩 cullMargin 是为了阴影/发光这类会画出控件矩形的效果不被误裁。
+    bool  hasCull    = false;
+    float cullX      = 0.0f;
+    float cullY      = 0.0f;
+    float cullW      = 0.0f;
+    float cullH      = 0.0f;
+    float cullMargin = 80.0f;
 };
 
 // 主轴方向，对应 borealis 的 Box::Axis。

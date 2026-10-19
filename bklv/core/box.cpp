@@ -627,23 +627,45 @@ void Box::update()
 // 绘制
 // ---------------------------------------------------------------------------
 
-void Box::drawChildren(ImDrawList*, float x, float y, float width, float height, FrameContext* ctx)
+void Box::drawChildren(ImDrawList*, float, float, float, float, FrameContext* ctx)
 {
+    // 会裁剪的容器把"自己的矩形"下发给后代（由后代继续继承）。
+    // 这样滚动器里的深层子树（比如一页 68 行图标）也能被剔除，而不是只剔直接子节点。
+    const bool  savedHasCull = ctx->hasCull;
+    const float savedX = ctx->cullX, savedY = ctx->cullY;
+    const float savedW = ctx->cullW, savedH = ctx->cullH;
+    if (this->clipsToBounds)
+    {
+        // 用**布局坐标**（self frame）而不是 draw 参数：后者是绘制空间，和 getFrame() 不同源
+        const Rect self = this->getFrame();
+        ctx->hasCull = true;
+        ctx->cullX    = self.x;
+        ctx->cullY    = self.y;
+        ctx->cullW    = self.width;
+        ctx->cullH    = self.height;
+    }
+
     for (View* child : this->children)
     {
         if (child->getVisibility() != Visibility::VISIBLE)
             continue;
 
-        // 简单剔除：完全落在本容器之外且本容器裁剪时跳过。
-        if (this->clipsToBounds)
+        // 剔除：完全落在当前裁剪窗口之外 → 整棵子树跳过（update + draw 都不跑）。
+        // 动画在滚动出去期间会停住，滚回来从当前值继续（dt 有钳制，不会瞬移）。
+        if (ctx->hasCull)
         {
-            const Rect bounds(x, y, width, height);
-            if (!bounds.intersects(child->getFrame()))
+            const float margin = ctx->cullMargin;
+            const Rect  cull(ctx->cullX - margin, ctx->cullY - margin,
+                 ctx->cullW + margin * 2.0f, ctx->cullH + margin * 2.0f);
+            if (!cull.intersects(child->getFrame()))
                 continue;
         }
 
         child->frame(ctx);
     }
+
+    ctx->hasCull = savedHasCull;
+    ctx->cullX = savedX; ctx->cullY = savedY; ctx->cullW = savedW; ctx->cullH = savedH;
 }
 
 

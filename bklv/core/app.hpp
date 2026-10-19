@@ -157,6 +157,17 @@ class App
     int screenshotDelay = 0;         // 还要等几帧
     bool quitRequested  = false;
     float clearColor[3] = { 0.10f, 0.10f, 0.12f }; // 默认深色，工具可改
+
+    // 帧内分段耗时（毫秒，累计值 + 帧数），退出时打印一次；--stats 可随时看
+    struct FrameProfile
+    {
+        double updateMs = 0.0;
+        double layoutMs = 0.0;
+        double drawMs   = 0.0;
+        double windowMs = 0.0;
+        long   frames   = 0;
+    };
+    FrameProfile profile;
     bool debugLayerRequested = false; // 根视图还没就绪时先记下（setRootView 后再开）
     // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
     std::vector<std::pair<std::string, float>> pendingNotifications;

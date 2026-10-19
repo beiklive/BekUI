@@ -13,6 +13,7 @@ DemoApp::DemoApp()
 {
     this->shell = new Shell();
     this->shell->setGlassEnabled(true);
+    this->shell->setGlassQuality(bklv::glass::GlassQuality::MINIMAL); // 演示默认用快速档
     // 卡片自己有"聚焦抬起 + 强调色描边"，再叠流光焦点框会太吵
     this->shell->setFocusRingEnabled(false);
 
