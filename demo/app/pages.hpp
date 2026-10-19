@@ -15,4 +15,7 @@ bklv::Box* buildIconsPage();
 bklv::Box* buildHorizontalTabPage();
 bklv::Box* buildVerticalTabPage();
 
+// 按钮展示：各种 button 外观的集合（骨架页，细节待补）
+bklv::Box* buildButtonShowcasePage();
+
 } // namespace demo

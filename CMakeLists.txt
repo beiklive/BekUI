@@ -175,6 +175,7 @@ set(BKLV_APP_SOURCES
     app/card_button.cpp
     app/pages/page_icons.cpp
     app/pages/page_tab_frame.cpp
+    app/pages/page_button.cpp
 )
 
 set(BKLV_APP_ABS "")

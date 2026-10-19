@@ -96,6 +96,7 @@ void DemoApp::showHome()
         { "图标展示", "两套图标字体的全部字形", "star", 1 },
         { "水平 TabFrame", "栏在顶部的分页容器", "menu", 2 },
         { "竖直 TabFrame", "栏在左侧的分页容器", "list", 3 },
+        { "按钮展示", "button 外观一览（骨架）", "add", 4 },
     };
 
     for (const Entry& entry : entries)
@@ -123,6 +124,8 @@ void DemoApp::openDemo(int index)
         this->openPage("水平 TabFrame", [] { return buildHorizontalTabPage(); }, 2);
     else if (index == 3)
         this->openPage("竖直 TabFrame", [] { return buildVerticalTabPage(); }, 3);
+    else if (index == 4)
+        this->openPage("按钮展示", [] { return buildButtonShowcasePage(); }, 4);
 }
 
 Box* DemoApp::wrapPage(Box* content)
