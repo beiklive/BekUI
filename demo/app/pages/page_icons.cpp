@@ -46,6 +46,8 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
     cell->setGap(theme.number("metric.spacing.xs", 4.0f));
     cell->setPadding(theme.number("metric.spacing.xs", 4.0f));
     cell->setMinHeight(theme.number("metric.list.itemHeight", 64.0f));
+    cell->setBorderColor(theme.color("color.text.primary"));
+    cell->setBorderThickness(.1f);
 
     // 图标字形：显式指定字体（Material 与 Switch 两套各用自己那份）
     Label* glyph = new Label();
@@ -63,7 +65,7 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
     Label* codeLabel = new Label();
     codeLabel->setText(code);
     codeLabel->setFontSize(theme.number("metric.font.size.xs", 12.0f));
-    codeLabel->setTextColor(theme.color("color.text.dim"));
+    codeLabel->setTextColor(theme.color("color.common.white"));
     codeLabel->setHorizontalAlign(HorizontalAlign::CENTER);
     codeLabel->setSingleLine(true);
     cell->addView(codeLabel);
