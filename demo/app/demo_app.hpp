@@ -41,7 +41,11 @@ class DemoApp
 
     bklv::Shell* shell          = nullptr;
     bklv::Header* header        = nullptr;
-    bklv::Box* contentRoot      = nullptr;
+    bklv::Box*   contentRoot = nullptr;
+    bklv::Label* fpsLabel    = nullptr; // 顶层帧率（调试层）
+    float        fpsSmoothed = 60.0f;
+    float        fpsTimer    = 0.0f;
+    int          fpsFrames   = 0;
 
     bool built = false;
     int  pendingOpen = 0;   // --open：首帧后自动打开
