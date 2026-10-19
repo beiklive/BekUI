@@ -65,11 +65,8 @@ class AppearanceView : public Box
     bool hasSlot(const std::string& id) const;
     const std::string& getSlotText(const std::string& id) const;
 
-    // 默认槽 "text" 的老入口（等价 setText("text", …)）
-    void setText(const std::string& text);
     static const bklv::AttributeTable& appearanceAttributes();
 
-    const std::string& getText() const { return this->getSlotText("text"); }
 
     // 换一份外观文件（如 "card" -> widgets/rectangle.card.json）。
     // 传空串表示用控件默认的那份。
@@ -95,11 +92,7 @@ class AppearanceView : public Box
     //
     // 图标是图标字体的字形；信息文字放右侧（下拉框当前值、开关的"开/关"、选择器数值…）。
     // 放在基类是因为这些组合外观不只 Button 用（Dropdown 也能换上去）。
-    void setIcon(const std::string& glyph);
-    const std::string& getIcon() const { return this->getSlotText("icon"); }
 
-    void setInfoText(const std::string& value);
-    const std::string& getInfoText() const { return this->getSlotText("info"); }
 
     void setIconFontKind(IconFontKind kind) { this->iconFontKind = kind; }
     IconFontKind getIconFontKind() const { return this->iconFontKind; }

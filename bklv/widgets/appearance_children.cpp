@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "bklv/core/logger.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -56,7 +57,7 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
             // 只覆盖写了的字段（存在标记由 compile 侧设好，见 compile/appearance_children.cpp）
             applyAppearanceBox(child.get(), spec.box);
             if (!spec.text.empty())
-                child->setText(spec.text);
+                child->setText(content::TEXT, spec.text);
             if (!spec.icon.empty())
             {
                 // JSON 里写 `@icon/star` 这种名字也能用：图标控件要的是**字形**，
@@ -65,13 +66,13 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
                 if (spec.icon.rfind("@icon/", 0) == 0)
                 {
                     const std::string iconName = spec.icon.substr(6); // 局部变量：保证 c_str() 生命周期
-                    child->setIcon(icon::glyphByName(iconName.c_str()));
+                    child->setIcon(content::ICON, icon::glyphByName(iconName.c_str()));
                 }
                 else
-                    child->setIcon(spec.icon);
+                    child->setIcon(content::ICON, spec.icon);
             }
             if (!spec.info.empty())
-                child->setInfoText(spec.info);
+                child->setText(content::INFO, spec.info);
 
             AppearanceView* raw = child.get();
             parent.addView(child.release()); // addView 收裸指针：交给父节点后再 release（AGENTS 的 RAII 约定）

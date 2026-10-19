@@ -1,4 +1,5 @@
 #include "bklv/widgets/edit_text_dialog.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -235,6 +236,10 @@ class EditPanel : public AppearanceView
 class TextField : public AppearanceView
 {
   public:
+    using AppearanceView::setText;
+    // 输入框自己的语义：文本永远进 "text" 槽
+    void setText(const std::string& value) { AppearanceView::setText(content::TEXT, value); }
+
     TextField()
         : AppearanceView("base/text_field", false)
     {

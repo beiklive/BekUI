@@ -8,6 +8,7 @@
 #include "bklv/views/data_source.hpp"
 #include "bklv/views/item_binder.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -133,7 +134,7 @@ void RecyclerHeaderCell::setAppearanceName(const std::string& name)
 void RecyclerHeaderCell::onSectionTitle(size_t, const std::string& title)
 {
     if (this->content != nullptr)
-        this->content->setText(title); // 段标题由数据源给，这里套进段头模板
+        this->content->setText(content::TEXT, title); // 段标题由数据源给，这里套进段头模板
 }
 
 // ---------------- RecyclerView ----------------

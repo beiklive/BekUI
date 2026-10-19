@@ -10,6 +10,7 @@
 #include <string>
 
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -18,6 +19,14 @@ class Button : public AppearanceView
 {
   public:
     explicit Button(const std::string& text = "", const std::string& variant = "");
+
+    // Button 自己的语义：文字进 "text" 槽、图标进 "icon" 槽
+    // （通用类 AppearanceView 不认具体 id，这里由具体控件给出约定）
+    using AppearanceView::setText;
+    using AppearanceView::setIcon;
+    void setText(const std::string& text);
+    void setIcon(const std::string& glyph);
+    const std::string& getText() const { return this->getSlotText(content::TEXT); }
 
     void setOnClick(std::function<void()> callback) { this->onClick = std::move(callback); }
 

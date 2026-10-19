@@ -9,6 +9,7 @@
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -246,7 +247,7 @@ void SelectorButton::onFocusLost()
 
 void SelectorButton::refreshInfoText()
 {
-    this->setInfoText(this->getDisplayText());
+    this->setText(content::INFO, this->getDisplayText());
 }
 
 std::string SelectorButton::getLayerText(const std::string& source)
@@ -271,7 +272,7 @@ namespace
 // （都走公开 setter，行为与 Button 一致），再加选择器自己的两个。
 void setSelectorTextAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<SelectorButton*>(v)->setText(r.text);
+    static_cast<SelectorButton*>(v)->setText(content::TEXT, r.text);
 }
 
 void setSelectorVariantAttr(View* v, const ResolvedValue& r)

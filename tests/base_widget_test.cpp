@@ -9,6 +9,7 @@
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/input.hpp"
 #include "tests/test_util.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
 
@@ -110,9 +111,9 @@ int main()
         button->setAppearanceName("widget/button");
         button->setAppearanceVariant("icon_text");
         button->setIcon("I");
-        checkEqual(button->getIcon(), "I", "图标槽能设");
-        button->setInfoText("V");
-        checkEqual(button->getInfoText(), "V", "信息文字槽能设");
+        checkEqual(button->getSlotText(bklv::content::ICON), "I", "图标槽能设");
+        button->setText(bklv::content::INFO, "V");
+        checkEqual(button->getSlotText(bklv::content::INFO), "V", "信息文字槽能设");
 
         // 开关变体：on / off 是外观状态（补间由主题描述）
         Button* toggle = new Button("开关");
@@ -135,7 +136,7 @@ int main()
         selector->setNumberRange(0.0f, 100.0f, 5.0f, 1, 40.0f);
         checkFloat(selector->getValue(), 40.0f, "初值");
         checkEqual(selector->getDisplayText(), "40.0", "按小数位格式化");
-        checkEqual(selector->getInfoText(), "40.0", "信息文字跟着显示值");
+        checkEqual(selector->getSlotText(bklv::content::INFO), "40.0", "信息文字跟着显示值");
 
         selector->stepValue(1);
         checkFloat(selector->getValue(), 45.0f, "上一档 +5");

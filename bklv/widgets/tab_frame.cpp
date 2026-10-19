@@ -9,6 +9,7 @@
 #include "bklv/views/label.hpp"
 #include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -38,7 +39,7 @@ void TabButton::setOrientation(TabOrientation value)
 
 void TabButton::setTitle(const std::string& title)
 {
-    this->setText(title);
+    this->setText(content::TEXT, title);
 }
 
 void TabButton::setSelected(bool value)
@@ -260,7 +261,7 @@ size_t TabFrame::addTab(const std::string& title, const std::string& icon, View*
         cell->setGrow(1.0f); // 横向栏里等分宽度
     cell->setTitle(title);
     if (!icon.empty())
-        cell->setIcon(icon);
+        cell->setIcon(content::ICON, icon);
 
     this->applyCellTrigger(cell, index);
     this->itemBox->addView(cell);
@@ -324,7 +325,7 @@ void TabFrame::setTabTitle(size_t index, const std::string& title)
 void TabFrame::setTabIcon(size_t index, const std::string& icon)
 {
     if (index < this->cells.size())
-        this->cells[index]->setIcon(icon);
+        this->cells[index]->setIcon(content::ICON, icon);
 }
 
 void TabFrame::addSeparator()

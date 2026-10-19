@@ -1,40 +1,144 @@
 {
   "import": "base/box.component",
   "box": {
-    "axis": "row", "alignItems": "center", "gap": "@theme/metric.buttonVariant.gap"
+    "axis": "row",
+    "alignItems": "center",
+    "gap": "@theme/metric.buttonVariant.gap"
   },
   "layers": [
-    { "op": "rect", "id": "hlBg", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] },
-    { "op": "text", "id": "icon", "source": "icon", "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.buttonVariant.iconSize", "align": "left", "valign": "center",
-      "inset": [0, 0, 0, 0] },
-    { "op": "text", "id": "text", "source": "text", "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.md", "align": "left", "valign": "center",
-      "inset": [0, 66, 0, 36] },
-    { "op": "rect", "id": "track", "width": "@theme/metric.buttonVariant.switchWidth",
-      "height": "@theme/metric.buttonVariant.switchHeight", "align": "right", "valign": "center",
-      "radius": "@theme/metric.radius.round", "fill": "@theme/color.common.greyDark" },
-    { "op": "rect", "id": "knob", "width": "@theme/metric.buttonVariant.switchKnob",
-      "height": "@theme/metric.buttonVariant.switchKnob", "align": "right", "valign": "center",
-      "radius": "@theme/metric.radius.round", "fill": "@theme/color.common.white",
-      "inset": [0, 3, 0, 3] },
-    { "op": "rect", "id": "hlGlow", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-6.5, -6.5, -6.5, -6.5] },
-    { "op": "rect", "id": "hlBorder", "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius", "inset": [-2.5, -2.5, -2.5, -2.5] }
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "source": "icon",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "font": "icon"
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "source": "text",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.md",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        66,
+        0,
+        36
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "track",
+      "width": "@theme/metric.buttonVariant.switchWidth",
+      "height": "@theme/metric.buttonVariant.switchHeight",
+      "align": "right",
+      "valign": "center",
+      "radius": "@theme/metric.radius.round",
+      "fill": "@theme/color.common.greyDark"
+    },
+    {
+      "op": "rect",
+      "id": "knob",
+      "width": "@theme/metric.buttonVariant.switchKnob",
+      "height": "@theme/metric.buttonVariant.switchKnob",
+      "align": "right",
+      "valign": "center",
+      "radius": "@theme/metric.radius.round",
+      "fill": "@theme/color.common.white",
+      "inset": [
+        0,
+        3,
+        0,
+        3
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlGlow",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius",
+      "inset": [
+        -6.5,
+        -6.5,
+        -6.5,
+        -6.5
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "hlBorder",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.component.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    }
   ],
   "states": {
-    "focused": {
+    "focused": {},
+    "on": {
+      "track.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 140,
+        "easing": "quadraticOut"
+      },
+      "knob.offsetX": {
+        "to": -22,
+        "duration": 140,
+        "easing": "quadraticOut"
+      }
     },
-    "on":  { "track.fill": { "to": "@theme/color.accent.base", "duration": 140, "easing": "quadraticOut" },
-             "knob.offsetX": { "to": -22, "duration": 140, "easing": "quadraticOut" } },
-    "off": { "track.fill": { "to": "@theme/color.common.greyDark", "duration": 140, "easing": "quadraticOut" },
-             "knob.offsetX": { "to": 0, "duration": 140, "easing": "quadraticOut" } },
+    "off": {
+      "track.fill": {
+        "to": "@theme/color.common.greyDark",
+        "duration": 140,
+        "easing": "quadraticOut"
+      },
+      "knob.offsetX": {
+        "to": 0,
+        "duration": 140,
+        "easing": "quadraticOut"
+      }
+    },
     "disabled": {
-      "icon.color": { "to": "@theme/color.text.disabled", "duration": 150 },
-      "text.color": { "to": "@theme/color.text.disabled", "duration": 150 },
-      "bg.stroke": { "to": "@theme/color.text.disabled", "duration": 150 }
+      "icon.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      },
+      "text.color": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      },
+      "bg.stroke": {
+        "to": "@theme/color.text.disabled",
+        "duration": 150
+      }
     }
   }
 }

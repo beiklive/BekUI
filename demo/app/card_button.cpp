@@ -6,6 +6,7 @@
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/time.hpp"
 #include "bklv/core/logger.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
 
@@ -23,9 +24,9 @@ CardButton::CardButton(const std::string& title, const std::string& subtitle,
 {
     this->phase = 0.7f * (float)g_cardIndex++;
     this->onPointerAction = true;
-    this->setText(title);
-    this->setInfoText(subtitle);
-    this->setIcon(icon);
+    this->setText(bklv::content::TEXT, title);
+    this->setText(bklv::content::INFO, subtitle);
+    this->setIcon(bklv::content::ICON, icon);
     this->registerAction(ControllerButton::A, "打开", [this](View*) {
         if (this->onClick)
             this->onClick();

@@ -35,7 +35,8 @@
         0,
         0,
         0
-      ]
+      ],
+      "font": "icon"
     },
     {
       "op": "rect",
@@ -63,8 +64,7 @@
     }
   ],
   "states": {
-    "focused": {
-    },
+    "focused": {},
     "disabled": {
       "icon.color": {
         "to": "@theme/color.text.disabled",

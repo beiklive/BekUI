@@ -1,5 +1,7 @@
 #include "bklv/widgets/appearance_view.hpp"
 
+#include "bklv/widgets/content_ids.hpp"
+
 #include "bklv/core/glass/glass_service.hpp"
 #include "bklv/widgets/appearance_children.hpp"
 #include "bklv/widgets/layer_draw.hpp"
@@ -284,12 +286,6 @@ void AppearanceView::clearSlot(const std::string& id)
     }
 }
 
-// 默认槽老入口
-void AppearanceView::setText(const std::string& value)
-{
-    this->setText("text", value);
-}
-
 void AppearanceView::setAppearanceName(const std::string& name)
 {
     if (this->appearanceName == name)
@@ -400,17 +396,17 @@ namespace
 
 void setAppearanceTextAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<AppearanceView*>(v)->setText(r.text);
+    static_cast<AppearanceView*>(v)->setText(content::TEXT, r.text);
 }
 
 void setAppearanceIconAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<AppearanceView*>(v)->setIcon(r.text);
+    static_cast<AppearanceView*>(v)->setIcon(content::ICON, r.text);
 }
 
 void setAppearanceInfoAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<AppearanceView*>(v)->setInfoText(r.text);
+    static_cast<AppearanceView*>(v)->setText(content::INFO, r.text);
 }
 
 void setAppearanceIconFontAttr(View* v, const ResolvedValue& r)
@@ -471,16 +467,6 @@ bool AppearanceView::getLayerRect(
     return true;
 }
 
-void AppearanceView::setIcon(const std::string& glyph)
-{
-    this->setIcon("icon", glyph);
-}
-
-void AppearanceView::setInfoText(const std::string& value)
-{
-    this->setText("info", value);
-}
-
 std::string AppearanceView::getLayerText(const std::string& source)
 {
     return this->getSlotText(source);
@@ -531,18 +517,11 @@ ImFont* AppearanceView::getLayerFont(const AppearanceLayer& layer)
 {
     // 图标层必须用图标字体：私有区字形不在正文字体里，用错会量错尺寸、画出方块。
     // 哪一套由"这一层的 kind"决定：显式指定过就按指定的，否则跟随 setIconFontKind 的全局那套。
-    // 字体：层上显式声明 > 旧规则（id/source 叫 "icon" 或显式指定过 kind）
+    // 字体只由**层上声明**决定（font: "icon" / "text"），通用类不认识具体槽 id。
+    // 显式设过 kind 的层（setLayerIconFontKind）也按图标字体处理。
     if (layer.font == "text")
         return getDefaultFont();
-    if (layer.font == "icon")
-    {
-        if (ImFont* font = iconFontFor(this->getLayerIconFontKind(layer.id)))
-            return font;
-        return getDefaultFont();
-    }
-
-    const bool isIconLayer = layer.id == "icon" || layer.source == "icon";
-    if (isIconLayer || this->hasLayerIconFontKind(layer.id))
+    if (layer.font == "icon" || this->hasLayerIconFontKind(layer.id))
     {
         if (ImFont* font = iconFontFor(this->getLayerIconFontKind(layer.id)))
             return font;

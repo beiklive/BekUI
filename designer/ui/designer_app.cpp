@@ -16,6 +16,7 @@
 #include "bklv/views/label.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 #include "bklv/widgets/rectangle.hpp"
 #include "bklv/core/json_view.hpp"
 #include "bklv/core/attributes.hpp"
@@ -241,7 +242,7 @@ bool DesignerApp::init(const Options& options, std::string& error)
     auto canvas = new bklv::AppearanceView("base/box", false);
     canvas->setGrow(1.0f);                              // 填满画布区的高度
     canvas->setAlignSelf(bklv::AlignSelf::STRETCH);    // 填满宽度
-    canvas->setText("示例文字"); // 外观预览给一段样例文字，否则按钮类外观只看得到一块底色
+    canvas->setText(bklv::content::TEXT, "示例文字"); // 外观预览给一段样例文字，否则按钮类外观只看得到一块底色
     // 说明：`setDesignGuides` 这条画板边框先不用 —— 截图里它按 draw() 收到的矩形画，
     // 与画布上看到的卡片范围对不上（卡片另有自己的背景层）。选中框不受影响，先用它。
 

@@ -8,6 +8,7 @@
 #include "bklv/core/audio.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/core/time.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -17,7 +18,7 @@ namespace
 
 void setButtonTextAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<Button*>(v)->setText(r.text);
+    static_cast<Button*>(v)->setText(content::TEXT, r.text);
 }
 
 void setButtonVariantAttr(View* v, const ResolvedValue& r)
@@ -31,6 +32,16 @@ void setButtonEnabledAttr(View* v, const ResolvedValue& r)
 }
 
 } // namespace
+
+void Button::setText(const std::string& text)
+{
+    AppearanceView::setText(content::TEXT, text);
+}
+
+void Button::setIcon(const std::string& glyph)
+{
+    AppearanceView::setIcon(content::ICON, glyph);
+}
 
 Button::Button(const std::string& text, const std::string& variant)
     : AppearanceView(variant.empty() ? "base/button/button" : "base/button/button." + variant, true)
@@ -103,7 +114,7 @@ namespace
 
 void setButtonIconAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<Button*>(v)->setIcon(r.text);
+    static_cast<Button*>(v)->setIcon(content::ICON, r.text);
 }
 
 void setButtonIconFontAttr(View* v, const ResolvedValue& r)

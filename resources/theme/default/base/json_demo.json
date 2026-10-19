@@ -35,7 +35,8 @@
       "fontSize": 28,
       "width": 36,
       "align": "left",
-      "valign": "center"
+      "valign": "center",
+      "font": "icon"
     },
     {
       "op": "text",

@@ -13,6 +13,7 @@
 
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 #include <cstdio>
 #include <string>
@@ -78,8 +79,8 @@ Box* makeSectionHeader(const std::string& title, size_t count)
 {
     // 同一个 section 外观：标题走 text 层，数量走右侧 info 层（borealis 的 Header 也是这个结构）
     AppearanceView* section = new AppearanceView("base/section", false);
-    section->setText(title);
-    section->setInfoText(getStr("icons/count", static_cast<int>(count)));
+    section->setText(bklv::content::TEXT, title);
+    section->setText(bklv::content::INFO, getStr("icons/count", static_cast<int>(count)));
     return section;
 }
 

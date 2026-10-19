@@ -21,6 +21,7 @@
 #include "bklv/widgets/button.hpp"
 #include "bklv/widgets/widget_types.hpp"
 #include "test_util.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
 
@@ -66,7 +67,7 @@ int main()
                     {
                         const std::string expected = icon::glyphByName("star");
                         check(!expected.empty(), "名字表里能找到 star");
-                        checkEqual(byName->getIcon(), expected, "@icon/star 变成了字形");
+                        checkEqual(byName->getSlotText(bklv::content::ICON), expected, "@icon/star 变成了字形");
                         checkEqual(byName->getText(), std::string("设置"), "text 字面量照旧直接生效");
                     }
 
@@ -74,7 +75,7 @@ int main()
                     check(b2 != nullptr, "第二个是 Button");
                     if (b2 != nullptr)
                     {
-                        checkEqual(b2->getIcon(), icon::utf8Glyph(0xE000), "@icon/U+E000 按码位取字形");
+                        checkEqual(b2->getSlotText(bklv::content::ICON), icon::utf8Glyph(0xE000), "@icon/U+E000 按码位取字形");
                         check(b2->getIconFontKind() == IconFontKind::SWITCH, "iconFont=switch 生效");
                     }
                 }

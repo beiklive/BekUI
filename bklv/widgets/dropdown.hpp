@@ -17,6 +17,7 @@
 #include "bklv/core/box.hpp"
 #include "bklv/views/scrolling_frame.hpp"
 #include "bklv/widgets/appearance_view.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 namespace bklv
 {
@@ -27,8 +28,8 @@ class DropdownOption : public AppearanceView
   public:
     DropdownOption();
 
-    void setLabel(const std::string& value) { this->setText(value); }
-    const std::string& getLabel() const { return this->getText(); }
+    void setLabel(const std::string& value) { this->setText(content::TEXT, value); }
+    const std::string& getLabel() const { return this->getSlotText(content::TEXT); }
 
     void setSelected(bool value);
     bool isSelected() const { return this->selected; }

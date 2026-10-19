@@ -1,3 +1,4 @@
+#include "bklv/widgets/content_ids.hpp"
 #include "bklv/widgets/dialog.hpp"
 
 #include <utility>
@@ -89,7 +90,7 @@ void Dialog::setTitle(const std::string& value)
 
 void Dialog::setText(const std::string& value)
 {
-    this->panel->setText(value);
+    this->panel->AppearanceView::setText(content::TEXT, value); // DialogPanel 自己也有 setText，绕开名字隐藏
 }
 
 Button* Dialog::addButton(const std::string& label, std::function<void()> onPress)

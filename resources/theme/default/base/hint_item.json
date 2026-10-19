@@ -17,7 +17,8 @@
       "color": "@theme/color.text.primary",
       "fontSize": 25.5,
       "align": "left",
-      "valign": "center"
+      "valign": "center",
+      "font": "icon"
     },
     {
       "op": "text",

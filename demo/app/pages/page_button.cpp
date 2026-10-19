@@ -7,6 +7,7 @@
 #include "app/pages.hpp"
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
+#include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
 
@@ -48,9 +49,9 @@ Button* makeButtonRow(Box* section, const std::string& caption, const std::strin
 
     Button* button = new Button();
     button->setAppearanceName(appearance);
-    button->setText(text);
+    button->setText(bklv::content::TEXT, text);
     if (!icon.empty())
-        button->setIcon(icon);
+        button->setIcon(bklv::content::ICON, icon);
     row->addView(button);
 
     section->addView(row);
