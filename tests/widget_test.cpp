@@ -72,7 +72,7 @@ int main()
         check(appearance.getLayers().size() == 5,
             "Button 取到五层外观（底 + 高亮底 + 文字 + 辉光 + 描边）");
         checkEqual(button.getText(), "点我", "文字进了按钮");
-        checkEqual(appearance.getLayers()[2].source, "text", "文字层从 source=text 取内容");
+        checkEqual(appearance.getLayers()[2].dataId, "text", "文字层从 source=text 取内容");
         check(appearance.indexOfLayer("hlBorder") > 0, "带焦点高亮描边层");
         // getHeight() 读的是 Yoga 的**布局**结果，所以要先真的跑一次布局
         YGNodeCalculateLayout(button.getYGNode(), 300.0f, 100.0f, YGDirectionLTR);

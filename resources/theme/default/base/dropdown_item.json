@@ -19,7 +19,7 @@
     {
       "op": "text",
       "id": "label",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.dropdown.itemTextSize",
       "align": "left",

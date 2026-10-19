@@ -26,7 +26,7 @@
     {
       "op": "text",
       "id": "initial",
-      "source": "initial",
+      "data_id": "initial",
       "color": "@theme/color.account.initial",
       "fontSize": "@theme/metric.account.initialFontSize",
       "align": "left",

@@ -13,7 +13,7 @@
     {
       "op": "text",
       "id": "icon",
-      "source": "icon",
+      "data_id": "icon",
       "color": "@theme/color.text.primary",
       "fontSize": 25.5,
       "align": "left",
@@ -23,7 +23,7 @@
     {
       "op": "text",
       "id": "label",
-      "source": "label",
+      "data_id": "label",
       "color": "@theme/color.text.dim",
       "fontSize": 21.5,
       "align": "left",

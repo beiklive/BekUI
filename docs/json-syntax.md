@@ -356,7 +356,7 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | `radius` | rect, shadow | 圆角 |
 | `color` / `textColor` | text | 文字色 |
 | `fontSize` | text | 字号 |
-| `source` | text, image | 取哪份数据（如 `"text"` = 控件 `setText()` 的值） |
+| `data_id` | text, image | 取哪份数据（如 `"text"` = 控件 `setText()` 的值） |
 | `scaling` | image | `fit`(默认) / 由控件解释 |
 | `opacity` | 全部 | 透明度系数（**不**乘缩放） |
 | `width` `height` | 全部 | **给了就按 align/valign 摆**（色条 4、下边线 1）；不给就铺满 inset 收缩后的区域 |
@@ -575,7 +575,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 - `layers` 段在这里**不参与绘制**，但**必须存在**（少了会报「外观 JSON 缺少 layers 数组」）
 - 面板投影没有对应的 box 字段，由 `Sidebar::draw()` 用 `shadow::drawSoft(..., cutout=true)` 补
-- 条目外观是 `base/tab_cell.sidebar.json`：`icon` 层（`"source": "icon"`，自动用图标字体）+
+- 条目外观是 `base/tab_cell.sidebar.json`：`icon` 层（`"data_id": "icon"`，自动用图标字体）+
   `title` 层（`inset` 让位）+ 选中态的 `bg.fill` / `accent.fill` / `title.color` / `icon.color`
 - 分组用 `Sidebar::addSeparator()`（不可聚焦、不进条目索引）
 
@@ -707,7 +707,7 @@ static void draw(const bklv::compile::LayerDrawContext& ctx)
 
 `fill` / `stroke` / `color`(`textColor`) / `strokeWidth` / `radius` / `opacity` / `fontSize` /
 `width` / `height` / `feather` / `spread` / `cutout` / `inner` / `inset` / `offset` / `gradient`，
-外加元信息 `op` / `id` / `source` / `align` / `valign` / `scaling` —— 全都解析好放在
+外加元信息 `op` / `id` / `data_id` / `align` / `valign` / `scaling` —— 全都解析好放在
 `ctx.layer` 上，绘制钩子直接读。完整清单见 `compile::engineLayerKeys()`。
 
 **别把这些名字再声明成参数**：那样同一层会有两份值（引擎一份、参数槽一份）。注册时会警告。

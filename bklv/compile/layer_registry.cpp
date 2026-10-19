@@ -109,7 +109,7 @@ const std::vector<std::string>& engineLayerKeys()
     // （通用字段表）保持一致：那边加一个键，这里补一条，设计器与注册校验就自动跟上。
     static const std::vector<std::string> keys = {
         // 元信息
-        "op", "id", "source", "align", "valign", "scaling",
+        "op", "id", "data_id", "source", "align", "valign", "scaling",
         // 通用字段：颜色
         "fill", "stroke", "color", "textColor",
         // 通用字段：数值
@@ -400,10 +400,10 @@ void registerBuiltinLayers()
             "align", "valign", "gradient" }));
     add(make("text", "文字", "text", LayerOrder::CONTENT,
         "文字：从内容槽取字（source: text/icon/info），可指定字体、颜色、对齐、内缩",
-        { "source", "color", "fontSize", "align", "valign", "inset", "width", "height", "opacity" }));
+        { "data_id", "color", "fontSize", "align", "valign", "inset", "width", "height", "opacity" }));
     add(make("image", "图片", "image", LayerOrder::CONTENT,
         "图片：source: image + scaling(fit/fill/crop...)",
-        { "source", "scaling", "tint", "align", "valign", "inset", "width", "height", "radius",
+        { "data_id", "scaling", "tint", "align", "valign", "inset", "width", "height", "radius",
             "opacity" }));
     add(make("shadow", "阴影", "shadow", LayerOrder::SHADOW,
         "柔化投影：fill 浓度 / feather 羽化 / spread 外扩 / offset 位移 / cutout 挖空 / inner 内阴影",

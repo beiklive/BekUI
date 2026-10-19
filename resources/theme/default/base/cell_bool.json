@@ -35,7 +35,7 @@
     {
       "op": "text",
       "id": "title",
-      "source": "title",
+      "data_id": "title",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.cell.titleFontSize",
       "valign": "center"
@@ -43,7 +43,7 @@
     {
       "op": "custom",
       "id": "switch",
-      "source": "switch"
+      "data_id": "switch"
     },
     {
       "op": "rect",

@@ -8,7 +8,7 @@
     {
       "op": "custom",
       "id": "battery",
-      "source": "battery"
+      "data_id": "battery"
     }
   ]
 }

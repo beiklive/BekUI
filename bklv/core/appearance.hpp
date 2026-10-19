@@ -9,7 +9,7 @@
 //       { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.md",
 //         "fill": "@theme/color.surface.raised",
 //         "stroke": "@theme/color.border.default", "strokeWidth": 0 },
-//       { "op": "text", "id": "title", "source": "text",
+//       { "op": "text", "id": "title", "data_id": "text",
 //         "color": "@theme/color.text.primary",
 //         "fontSize": "@theme/metric.font.size.md",
 //         "align": "center", "valign": "center", "inset": [0, 12, 0, 12] }
@@ -131,7 +131,7 @@ struct AppearanceLayer
     Op op = Op::RECT;
     std::string extensionType; // op == EXTENSION 时：注册表里的类型名（\"stripe\"）
     std::string id;
-    std::string source; // Text/Image/Custom 的数据来源名（= 内容槽 id）
+    std::string dataId; // Text/Image/Custom 的数据来源：内容槽 id（JSON 键 data_id）
     // 字体种类声明："icon" 用图标字体、"text" 用正文字体、空 = 按旧规则推断
     // （层 id/source 叫 "icon" 就沿用图标字体）。槽 id 自由之后必须能显式声明。
     std::string font;

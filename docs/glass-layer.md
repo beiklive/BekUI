@@ -57,7 +57,7 @@
   "layers": [
     { "id": "glass", "op": "glass", "radius": "@theme/metric.component.radius",
       "fill": "#0A0F1E57" },
-    { "id": "title", "op": "text", "source": "title",
+    { "id": "title", "op": "text", "data_id": "title",
       "color": "@theme/color.text.primary", "fontSize": "@theme/metric.font.size.sm",
       "align": "left", "valign": "top" }
   ]

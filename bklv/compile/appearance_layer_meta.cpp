@@ -2,6 +2,7 @@
 
 #include "bklv/compile/layer_registry.hpp"
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/logger.hpp"
 
 namespace bklv
 {
@@ -79,7 +80,15 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
     // （opName 是上面已经取好的 op 字符串）
     const std::string idPrefix = outType != nullptr ? outType->idPrefix : opName;
     out.id     = node.value("id", idPrefix + std::to_string(index));
-    out.source = node.value("source", "");
+    // data_id 是正式键；source 是旧键，兼容一版并提示迁移
+    if (node.contains("data_id"))
+        out.dataId = node.value("data_id", "");
+    else if (node.contains("source"))
+    {
+        out.dataId = node.value("source", "");
+        BKLV_LOG_WARNING("图层 \"%s\" 用的是旧键 \"source\"，请改成 \"data_id\"",
+            out.id.c_str());
+    }
     out.font   = node.value("font", "");
     out.align  = node.value("align", "left");
     out.valign = node.value("valign", "center");

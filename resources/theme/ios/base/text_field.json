@@ -27,7 +27,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.md",
       "align": "left",
@@ -42,7 +42,7 @@
     {
       "op": "text",
       "id": "counter",
-      "source": "counter",
+      "data_id": "counter",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.font.size.sm",
       "align": "right",

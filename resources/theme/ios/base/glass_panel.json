@@ -13,7 +13,7 @@
     {
       "id": "title",
       "op": "text",
-      "source": "title",
+      "data_id": "title",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.sm",
       "align": "left",

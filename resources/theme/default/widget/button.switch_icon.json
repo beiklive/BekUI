@@ -21,7 +21,7 @@
     {
       "op": "text",
       "id": "icon",
-      "source": "icon",
+      "data_id": "icon",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.buttonVariant.iconSize",
       "align": "left",
@@ -37,7 +37,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.md",
       "align": "left",

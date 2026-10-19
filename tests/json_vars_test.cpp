@@ -222,7 +222,7 @@ int main()
             "layers": [
                 { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
                   "radius": "@theme/metric.radius.md" },
-                { "op": "text", "id": "text", "source": "text", "color": "@theme/color.text.primary" }
+                { "op": "text", "id": "text", "data_id": "text", "color": "@theme/color.text.primary" }
             ]
         })";
 
@@ -236,7 +236,7 @@ int main()
             "box": { "height": "&number.height" },
             "layers": [
                 { "op": "rect", "id": "bg", "fill": "&color.surface", "radius": "&number.radius" },
-                { "op": "text", "id": "text", "source": "text", "color": "&color.label" }
+                { "op": "text", "id": "text", "data_id": "text", "color": "&color.label" }
             ]
         })";
 

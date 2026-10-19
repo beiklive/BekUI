@@ -107,7 +107,7 @@ int main()
 
                 checkEqual(title.id, "title", "第 2 层 id");
                 check(title.op == AppearanceLayer::Op::TEXT, "第 2 层是 text");
-                checkEqual(title.source, "text", "文字层的数据来源是 text");
+                checkEqual(title.dataId, "text", "文字层的数据来源是 text");
                 checkFloat(title.fontSize, 18.0f, "文字：字号来自主题");
                 checkColor(title.textColor, IM_COL32(0xFF, 0xFF, 0xFF, 255), "文字：颜色来自主题");
             }

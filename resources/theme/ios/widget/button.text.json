@@ -21,7 +21,7 @@
     { "op": "rect", "id": "hlBg", "fill": "&color.none",
       "radius": "&number.radius",
       "inset": ["&number.gap", "&number.gap", "&number.gap", "&number.gap"] },
-    { "op": "text", "id": "text", "source": "text", "color": "&color.label",
+    { "op": "text", "id": "text", "data_id": "text", "color": "&color.label",
       "fontSize": "&number.font", "align": "center", "valign": "center" },
     { "op": "rect", "id": "hlGlow", "fill": "&color.none",
       "radius": "&number.radius",

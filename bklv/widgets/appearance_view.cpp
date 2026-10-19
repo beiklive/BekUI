@@ -131,7 +131,7 @@ void AppearanceView::enableContentMeasurement()
             ImFont* font = this->getLayerFont(layer);
             if (layer.op == AppearanceLayer::Op::TEXT && font != nullptr)
             {
-                const std::string content = this->getLayerText(layer.source);
+                const std::string content = this->getLayerText(layer.dataId);
                 if (!content.empty())
                 {
                     const float size = layer.fontSize > 0.0f ? layer.fontSize : 15.0f;
@@ -143,7 +143,7 @@ void AppearanceView::enableContentMeasurement()
             }
             else if (layer.op == AppearanceLayer::Op::IMAGE)
             {
-                const TextureRef texture = this->getLayerImage(layer.source);
+                const TextureRef texture = this->getLayerImage(layer.dataId);
                 if (texture.isValid() && layerWidth <= 0.0f)
                     layerWidth = (float)texture.width;
                 if (texture.isValid() && layerHeight <= 0.0f)
@@ -688,7 +688,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             case AppearanceLayer::Op::TEXT:
             {
                 // 内容槽在这里现算：getLayerText 返回 std::string，要活到钩子调用结束
-                const std::string textContent = this->getLayerText(layer.source);
+                const std::string textContent = this->getLayerText(layer.dataId);
                 layerType->draw(hookContext(&textContent, this->getLayerFont(layer), nullptr));
                 break;
             }
@@ -696,7 +696,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             case AppearanceLayer::Op::IMAGE:
             {
                 // 图与"是否有效"在这里现算；TextureRef 同样要活到调用之后
-                const TextureRef layerImage = this->getLayerImage(layer.source);
+                const TextureRef layerImage = this->getLayerImage(layer.dataId);
                 layerType->draw(hookContext(nullptr, nullptr,
                     layerImage.isValid() ? (void*)layerImage.texture : nullptr));
                 break;

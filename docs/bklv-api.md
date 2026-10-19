@@ -244,7 +244,7 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
   "layers": [
     { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
       "radius": "@theme/metric/radius.md" },
-    { "op": "text", "id": "title", "source": "text", "color": "@theme/color.text.primary",
+    { "op": "text", "id": "title", "data_id": "text", "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric/font.size.md", "align": "center", "valign": "center" } ],
   "states": {
     "focused": { "bg.fill": { "to": "@theme/color.accent.base", "duration": 120,

@@ -22,7 +22,7 @@ namespace
 
 const char* kLayers = R"("layers": [
     { "op": "rect", "id": "bg", "fill": "#FF0000FF" },
-    { "op": "text", "id": "title", "source": "text", "color": "#FFFFFFFF" }
+    { "op": "text", "id": "title", "data_id": "text", "color": "#FFFFFFFF" }
 ])";
 
 std::shared_ptr<const Appearance> compileAppearance(const std::string& extra, std::string& error)

@@ -18,7 +18,7 @@
     {
       "op": "text",
       "id": "title",
-      "source": "title",
+      "data_id": "title",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.title",
       "align": "left",

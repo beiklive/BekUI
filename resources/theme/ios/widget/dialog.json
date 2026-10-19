@@ -29,7 +29,7 @@
     {
       "op": "text",
       "id": "title",
-      "source": "title",
+      "data_id": "title",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.title",
       "align": "left",
@@ -45,7 +45,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.font.size.md",
       "align": "left",

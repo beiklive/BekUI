@@ -29,7 +29,7 @@ resources/theme/
     { "op": "rect", "id": "bg", "fill": "@theme/color.surface.raised",
       "stroke": "@theme/color.border.default", "strokeWidth": 0,
       "radius": "@theme/metric.radius.md" },
-    { "op": "text", "id": "title", "source": "text",
+    { "op": "text", "id": "title", "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.md",
       "align": "center", "valign": "center", "inset": [0, 16, 0, 16] }

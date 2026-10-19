@@ -30,7 +30,7 @@
     {
       "op": "text",
       "id": "icon",
-      "source": "icon",
+      "data_id": "icon",
       "color": "@theme/color.accent.base",
       "fontSize": 44,
       "align": "center",
@@ -46,7 +46,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.lg",
       "align": "center",
@@ -61,7 +61,7 @@
     {
       "op": "text",
       "id": "info",
-      "source": "info",
+      "data_id": "info",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.font.size.xs",
       "align": "center",

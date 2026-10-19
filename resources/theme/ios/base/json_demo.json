@@ -42,7 +42,7 @@
     {
       "op": "text",
       "id": "icon",
-      "source": "icon",
+      "data_id": "icon",
       "color": "@theme/color.accent.base",
       "fontSize": 28,
       "width": 36,
@@ -53,7 +53,7 @@
     {
       "op": "text",
       "id": "title",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": 20,
       "align": "left",

@@ -21,7 +21,7 @@
     {
       "op": "text",
       "id": "icon",
-      "source": "icon",
+      "data_id": "icon",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.buttonVariant.iconSize",
       "align": "left",
@@ -37,7 +37,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.md",
       "align": "left",
@@ -52,7 +52,7 @@
     {
       "op": "text",
       "id": "arrowLeft",
-      "source": "arrowLeft",
+      "data_id": "arrowLeft",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.buttonVariant.arrowSize",
       "align": "right",
@@ -68,7 +68,7 @@
     {
       "op": "text",
       "id": "info",
-      "source": "info",
+      "data_id": "info",
       "color": "@theme/color.text.value",
       "fontSize": "@theme/metric.buttonVariant.infoFontSize",
       "align": "right",
@@ -83,7 +83,7 @@
     {
       "op": "text",
       "id": "arrowRight",
-      "source": "arrowRight",
+      "data_id": "arrowRight",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.buttonVariant.arrowSize",
       "align": "right",

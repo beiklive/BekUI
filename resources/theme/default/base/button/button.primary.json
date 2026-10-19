@@ -25,7 +25,7 @@
     {
       "op": "text",
       "id": "title",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.button.primaryText",
       "fontSize": "@theme/metric.button.textSize",
       "align": "center",

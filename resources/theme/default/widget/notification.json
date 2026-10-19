@@ -22,7 +22,7 @@
     {
       "op": "text",
       "id": "text",
-      "source": "text",
+      "data_id": "text",
       "color": "@theme/color.notification.text",
       "fontSize": "@theme/metric.notification.fontSize",
       "valign": "center"

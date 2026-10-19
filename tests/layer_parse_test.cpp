@@ -84,7 +84,7 @@ int main()
         }
 
         error.clear();
-        const auto text = compileLayers(R"({ "op": "text", "id": "title", "source": "text",
+        const auto text = compileLayers(R"({ "op": "text", "id": "title", "data_id": "text",
             "color": "#FFFFFFFF", "fontSize": 20, "align": "left" })", error);
         check(text != nullptr, "text 能编译");
         if (text != nullptr)
@@ -92,11 +92,11 @@ int main()
             const AppearanceLayer* l = layerOf(*text, "title");
             check(l != nullptr && l->op == AppearanceLayer::Op::TEXT, "op 是 text");
             if (l != nullptr)
-                check(l->source == "text", "source 落在 source 上");
+                check(l->dataId == "text", "data_id 落在 dataId 上");
         }
 
         error.clear();
-        const auto image = compileLayers(R"({ "op": "image", "id": "pic", "source": "image",
+        const auto image = compileLayers(R"({ "op": "image", "id": "pic", "data_id": "image",
             "scaling": "fill" })", error);
         check(image != nullptr, "image 能编译");
         if (image != nullptr)
@@ -153,7 +153,7 @@ int main()
     {
         std::string error;
         const auto appearance = compileLayers(R"({ "op": "rect", "fill": "#00000000" },
-            { "op": "text", "source": "text" })", error);
+            { "op": "text", "data_id": "text" })", error);
         check(appearance != nullptr, "不写 id 也能编译");
         if (appearance != nullptr)
         {
