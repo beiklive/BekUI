@@ -1,5 +1,8 @@
 #include "bklv/backends/opengl_backend.hpp"
 
+#include <cstdlib>
+#include <cstring>
+
 #if !defined(BKLV_SWITCH)
 
 #include <SDL3/SDL.h>
@@ -65,7 +68,10 @@ bool OpenGLBackend::initContext(void* nativeWindow)
 
     SDL_GL_MakeCurrent(target, this->glContext);
     // 开垂直同步，避免无上限渲染把 GPU 跑满。
-    SDL_GL_SetSwapInterval(1);
+    // 默认开 vsync（60Hz 封顶）。诊断/压测时用 BKLV_VSYNC=0 关掉，
+    // 这样"帧时间"反映的是真实渲染耗时，而不是 vsync 抖动。
+    const char* vsync = std::getenv("BKLV_VSYNC");
+    SDL_GL_SetSwapInterval(vsync != nullptr && std::strcmp(vsync, "0") == 0 ? 0 : 1);
 
     // Windows 上 opengl32.dll 只导出 GL 1.1，3.2 Core 的函数要在这里取地址。
     // 其余平台是空实现，调用点不必分平台。
