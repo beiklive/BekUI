@@ -19,21 +19,7 @@ DemoApp::DemoApp()
     // 卡片自己有"聚焦抬起 + 强调色描边"，再叠流光焦点框会太吵
     this->shell->setFocusRingEnabled(false);
 
-    // 顶层帧率：挂在调试层（HUD 之上、永远最后绘制），不参与交互
-    {
-        Box* row = new Box(Axis::ROW);
-        row->setWidthPercentage(100.0f);
-        row->setJustifyContent(JustifyContent::FLEX_END);
-        row->setPaddingTop(getTheme().number("metric.spacing.sm", 8.0f));
-        row->setPaddingRight(getTheme().number("metric.spacing.lg", 20.0f));
-
-        this->fpsLabel = new Label();
-        this->fpsLabel->setFontSize(getTheme().number("metric.font.size.sm", 16.0f));
-        this->fpsLabel->setTextColor(getTheme().color("color.text.dim"));
-        this->fpsLabel->setText("-- FPS / 目标 60");
-        row->addView(this->fpsLabel);
-        this->shell->getDebugLayer()->addView(row);
-    }
+    this->shell->setFpsOverlayEnabled(true);
 
     this->header = new Header();
     this->header->setAppearanceVariant("applet");
@@ -73,24 +59,6 @@ void DemoApp::applyHeaderFor(const std::string& title)
 
 void DemoApp::update()
 {
-    // 帧率：0.25s 刷一次文本（改文本会触发一次布局，别每帧改）
-    {
-        const float dt = bklv::getFrameDeltaSeconds();
-        // 按窗口数帧：比 EMA 稳定（EMA 在 vsync 抖动下会在 58~60 之间跳）
-        this->fpsTimer += dt;
-        this->fpsFrames++;
-        if (this->fpsTimer >= 0.5f && this->fpsLabel != nullptr)
-        {
-            this->fpsSmoothed = (float)this->fpsFrames / this->fpsTimer;
-            this->fpsTimer    = 0.0f;
-            this->fpsFrames   = 0;
-            char buffer[64];
-            std::snprintf(buffer, sizeof(buffer), "%d FPS / 目标 %d",
-                (int)(this->fpsSmoothed + 0.5f), (int)(1000.0f / bklv::FrameStats::kOneFrameMs + 0.5f));
-            this->fpsLabel->setText(buffer);
-        }
-    }
-
     if (!this->built)
     {
         this->built = true;

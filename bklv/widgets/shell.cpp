@@ -6,6 +6,7 @@
 #include "bklv/core/logger.hpp"
 #include "bklv/core/time.hpp"
 #include "bklv/views/padding.hpp"
+#include "bklv/views/fps_overlay.hpp"
 
 namespace bklv
 {
@@ -446,6 +447,26 @@ void Shell::update()
     this->stepBackdropTransition(getFrameDeltaSeconds());
     this->stepContentTransition(getFrameDeltaSeconds());
     this->releaseTransitionHostIfEmpty();
+}
+
+void Shell::setFpsOverlayEnabled(bool enabled)
+{
+    if (enabled == (this->fpsOverlay != nullptr))
+        return;
+
+    if (!enabled)
+    {
+        if (this->fpsOverlay != nullptr && this->debugLayer != nullptr)
+            this->debugLayer->removeView(this->fpsOverlay);
+        this->fpsOverlay = nullptr;
+        return;
+    }
+
+    if (this->debugLayer == nullptr)
+        return;
+
+    this->fpsOverlay = new FpsOverlay();
+    this->debugLayer->addView(this->fpsOverlay);
 }
 
 } // namespace bklv

@@ -99,6 +99,11 @@ class Shell : public Box
     // 它是个普通 Box：不可聚焦、不参与焦点链，所以挂进去的视图也不会吃到输入。
     Box* getDebugLayer() const { return this->debugLayer; }
 
+    // 顶层帧率覆盖：当前 FPS（一位小数）+ 目标帧率 + p99/最坏帧。
+    // 默认关；打开后挂在调试层（HUD 之上、永远最后绘制），不参与交互。
+    void setFpsOverlayEnabled(bool enabled);
+    bool isFpsOverlayEnabled() const { return this->fpsOverlay != nullptr; }
+
     // 页头 / 底栏视图（由上层建好交给外壳）；显隐时走 GONE（不占位）
     void setHeaderView(View* view);
     void setFooterView(View* view);
@@ -263,6 +268,7 @@ class Shell : public Box
     Box* hudLayer      = nullptr;
     FocusRingView* focusRingView = nullptr;
     Box* debugLayer    = nullptr;
+    bklv::View* fpsOverlay = nullptr;
 
     std::vector<View*> dialogStack;
     std::vector<View*> dimStack;
