@@ -36,6 +36,10 @@ void FpsOverlay::update()
     }
 
     this->stats.record((double)dt);
+
+    // 第一帧就给个即时值：不然窗口到期前一直是 0.0（截图/短会话很容易看到）
+    if (this->fps <= 0.0f)
+        this->fps = 1.0f / dt;
     this->window += dt;
     this->frames++;
 
