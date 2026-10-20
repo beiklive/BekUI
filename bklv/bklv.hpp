@@ -60,6 +60,7 @@
 #include "bklv/widgets/appearance_view.hpp"
 #include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
+#include "bklv/widgets/section.hpp"
 #include "bklv/widgets/selector_button.hpp"
 #include "bklv/widgets/cell.hpp"
 #include "bklv/widgets/dialog.hpp"

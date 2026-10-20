@@ -47,8 +47,6 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
     cell->setGap(theme.number("metric.spacing.xs", 4.0f));
     cell->setPadding(theme.number("metric.spacing.xs", 4.0f));
     cell->setMinHeight(theme.number("metric.list.itemHeight", 64.0f));
-    cell->setBorderColor(theme.color("color.text.primary"));
-    cell->setBorderThickness(.1f);
 
     // 图标字形：显式指定字体（Material 与 Switch 两套各用自己那份）
     Label* glyph = new Label();
@@ -75,13 +73,10 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
 }
 
 // 一个 header：标题 + 数量
-Box* makeSectionHeader(const std::string& title, size_t count)
+// 段落标题直接用库里的工厂（标题 + 右侧数量）
+Box* makeIconSection(const std::string& title, size_t count)
 {
-    // 同一个 section 外观：标题走 text 层，数量走右侧 info 层（borealis 的 Header 也是这个结构）
-    AppearanceView* section = new AppearanceView("base/section", false);
-    section->setText(bklv::content::TEXT, title);
-    section->setText(bklv::content::INFO, getStr("icons/count", static_cast<int>(count)));
-    return section;
+    return bklv::makeSectionHeader(title, getStr("icons/count", static_cast<int>(count)));
 }
 
 // 网格：一排 10 个，格子等宽（10 × 10% = 100%，间距靠格子自己的 padding）
@@ -124,7 +119,7 @@ Box* buildIconsPage()
 
     // ---- Switch Icon ----
     const std::vector<unsigned int>& switchIcons = getIconFontCodepoints();
-    page->addView(makeSectionHeader(getStr("icons/switch"), switchIcons.size()));
+    page->addView(makeIconSection(getStr("icons/switch"), switchIcons.size()));
     page->addView(makeIconGrid(switchIcons, getIconFont()));
 
     // ---- Material Icon ----
@@ -135,7 +130,7 @@ Box* buildIconsPage()
     for (const icon::Glyph& glyph : materialGlyphs)
         materialIcons.push_back(glyph.codepoint);
 
-    page->addView(makeSectionHeader(getStr("icons/material"), materialIcons.size()));
+    page->addView(makeIconSection(getStr("icons/material"), materialIcons.size()));
     page->addView(makeIconGrid(materialIcons, icon::font()));
 
     return page;

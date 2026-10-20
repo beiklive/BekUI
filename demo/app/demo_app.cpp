@@ -15,18 +15,18 @@ namespace demo
 DemoApp::DemoApp()
 {
     this->shell = new Shell();
-    this->shell->setGlassEnabled(true);
-    this->shell->setGlassQuality(bklv::glass::GlassQuality::MINIMAL); // 演示默认用快速档
+    // this->shell->setGlassEnabled(true);
+    // this->shell->setGlassQuality(bklv::glass::GlassQuality::MINIMAL); // 演示默认用快速档
     // 卡片自己有"聚焦抬起 + 强调色描边"，再叠流光焦点框会太吵
-    this->shell->setFocusRingEnabled(false);
+    // this->shell->setFocusRingEnabled(false);
 
     this->shell->setFpsOverlayEnabled(true);
 
     // 预设背景（挂外壳的背景层，铺满视口）
-    this->setBackdropPreset(1);
+    this->setBackdropPreset(2);
 
     this->header = new Header();
-    this->header->setAppearanceVariant("applet");
+    // this->header->setAppearanceVariant("applet");
     this->applyHeaderFor(std::string());
     this->shell->setHeaderView(this->header);
     this->shell->getOverlayLayer()->addView(new Padding());
@@ -180,14 +180,16 @@ Box* DemoApp::wrapPage(Box* content)
     // 顶部「返回」行
     Box* bar = new Box(Axis::ROW);
     bar->setWidthPercentage(100.0f);
+    bar->setMarginTop(10.f);
     Button* back = new Button();
-    back->setAppearanceName("widget/button.text");
+    back->setAppearanceName("base/button/button");
     back->setText("返回"); // 不用 ‹：默认字体里没有这个字形（会显示成问号）
     back->setWidth(180.0f);
-    back->setHeight(56.0f);
+    back->setHeight(46.0f);
     back->setOnClick([this] { this->goBack(); });
+
+    bar->addView(new Padding());
     bar->addView(back);
-    frame->addView(bar);
 
     // 内容（可滚动）
     ScrollingFrame* scroller = new ScrollingFrame();
@@ -196,6 +198,7 @@ Box* DemoApp::wrapPage(Box* content)
     scroller->setShowScrollingIndicator(true);
     scroller->setContentView(content); // 必须用 setContentView：addView 只是普通子节点，滚动器不认
     frame->addView(scroller);
+    frame->addView(bar);
 
     return frame;
 }
