@@ -411,14 +411,22 @@ sections.append(('主题与外观', f'''
     {{ "op": "text",  "id": "title", "color": "@theme/color.text.primary" }},
     {{ "op": "glass", "id": "glass", "fill": "#1C1C1ECC" }}
   ],
-  "states": {{ "focused": {{ "bg.fill": {{ "to": "@theme/color.highlight.background", "duration": 120 }} }} }},
+  "states": {{
+    "focused": {{
+      // self = 控件自身：视图级通道（translateX/Y、scaleX/Y、alpha、rotate、skewX/Y）
+      "self": {{ "translateY": {{ "to": -4, "duration": 160, "easing": "cubicOut" }} }},
+      // 层目标可以分组写；旧写法 "bg.fill" 仍兼容
+      "bg":   {{ "fill": {{ "to": "@theme/color.highlight.background", "duration": 120 }} }}
+    }}
+  }},
   "transitions": {{ "enter": {{ ... }} }}
 }}</code></pre>
 
 <p>六种内置层：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>；
 第三方可以注册自己的层（<code>registerLayer&lt;T&gt;()</code> 一行，参数模式声明一次，解析/缩放/设计器候选键自动跟上）。
 <b>层序</b>：内置层按 JSON 书写顺序画（只有阴影、玻璃被提到最前）；声明 DECORATION / OVERLAY 的扩展层画在所有内置层之上。
-<b>高亮底必须排在内容层之前</b>（<code>hlBg</code> 在 text/image 之前，<code>hlGlow</code>/<code>hlBorder</code> 在最后）。</p>
+<b>高亮底必须排在内容层之前</b>（<code>hlBg</code> 在 text/image 之前）；聚焦描边由浮层的焦点框绘制，
+外观里不再需要 <code>hlGlow</code>/<code>hlBorder</code> 占位层。</p>
 
 <h3>主题数值的"计算"规则</h3>
 <ul>
@@ -508,7 +516,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>事件总线</td><td><code>getEventBus().subscribe&lt;事件&gt;(handler)</code>（RAII 句柄，析构自动退订）</td></tr>
 <tr><td>通知 / Toast</td><td><code>App::notify(text, seconds)</code></td></tr>
 <tr><td>弹层</td><td><code>App::pushOverlay(view)</code> / <code>popOverlay(view)</code>（模态输入 + 焦点恢复）</td></tr>
-<tr><td>i18n</td><td><code>getStr("a/b")</code>，文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
+<tr><td>i18n</td><td><code>translate("a/b")</code>（或 <code>using namespace bklv::i18n;</code> 后写 <code>"a/b"_i18n</code>），文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
 <tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>

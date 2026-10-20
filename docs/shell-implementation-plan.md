@@ -1,6 +1,6 @@
 # bklv 外壳重构 · 完整实施方案 v2（经三轮场景推演审查）
 
-> 本文件是唯一实现依据。讨论记录：`docs/layers-and-focus.md`、`docs/shell-refactor-plan.md`。
+> 本文件是唯一实现依据。讨论记录：`docs/layers-and-focus.md`（早期 shell-refactor-plan 已归档，`git log` 可查）。
 > v2 相对 v1 的改动全部来自三轮场景推演（见文末"三轮审查记录"）。
 > 原则：**每个能力先推演使用场景，再决定需要哪些配套能力**，不留"能编译但不好用"的接口。
 
@@ -990,7 +990,7 @@ python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约�
 2. **栏折叠补间现在在 demo 里**（`DemoApp::startBarAnimation/updateBars/finishBarAnimation`），
    没有库级测试；若要给别的宿主复用，应抽成一个独立小控件。
 3. `FocusRecord.hint` 仍只写不读；撞边回调仍不支持 box 级覆盖。
-4. 旧讨论稿 `docs/layers-and-focus.md` / `docs/shell-refactor-plan.md` 保留原样（历史记录）。
+4. 旧讨论稿 `docs/layers-and-focus.md` 保留；更早的 shell-refactor-plan 已归档。
 
 ---
 

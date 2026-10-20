@@ -3,8 +3,7 @@
 一句话：**视图声明"这块要玻璃"，玻璃画在它下面，它自己的内容压在玻璃上面。**
 视图不写任何玻璃代码，样式由外观 JSON 决定，开关与帧级参数由 `Shell` 决定。
 
-配套阅读：[`glass-layer-plan.md`](glass-layer-plan.md)（计划书与验收记录）、
-[`glass-layer-feasibility.md`](glass-layer-feasibility.md)（调研与取舍）。
+设计取舍与实现记录已随开发完成归档（`git log -- docs/glass-layer-plan.md` 可查）。
 
 ---
 

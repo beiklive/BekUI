@@ -8,6 +8,7 @@
 | 文档 | 内容 |
 |---|---|
 | [manual.html](manual.html) | **单页手册**（左目录 + 右内容，离线可用）：分层架构、接口速查、内置控件清单、主题与 token、JSON 字段与求值规则、运行期能力（帧预算/线程池/异步图片）、约定与坑；由 `scripts/gen_manual.py` 生成 |
+| [json-attributes.html](json-attributes.html) | **JSON 属性表（HTML）**：四类 JSON、取值语法与缩放规则、视图/外观/层/states 的完整属性表与例子 |
 | [uml.html](uml.html) | bklv 库结构与 UML 图（自包含 HTML，离线可看；由 `scripts/gen_uml.py` 生成） |
 | [architecture-review.html](architecture-review.html) | **架构评审**：分层与依赖图（含实测的 5 条反向依赖边）、帧循环时序、外观数据流、后端/平台抽象边界；组件清单、进程级单例清单、优点与风险（逐条附 `file:line`）与改进顺序 |
 | [`bklv-api.md`](bklv-api.md) | bklv 移植层速查：文件职责表、Box 布局调用、交互与内容控件、imgui.ini 开关、日志约定、已知的坑、分层约定 |
@@ -17,8 +18,6 @@
 | [`json-audit.html`](json-audit.html) | 同一份报告的**图文版**：五类文件与解析入口、完备性三档光谱、外观 10 步管线、视图两段式、一帧时间线、层序栈、键→产物→绘制对照（单文件、无外部依赖、自动适配深色模式） |
 | [`rect-gradient.md`](rect-gradient.md) | **`rect` 层加渐变的调研与方案**：三条路线对比（顶点色网格 / LUT 贴图 / 现成 API）、JSON 语法草案、数据模型、绘制与抗锯齿实现、与状态动效的取舍、两步工作量与像素验收 |
 | [`glass-layer.md`](glass-layer.md) | **液态玻璃使用说明**：三层职责（Shell 管开关/帧级参数、外观 JSON 管样式、视图只声明）、`op: "glass"` 写法与三条硬要求、后端矩阵与取舍、接口、三个坑、验收数据与文件地图 |
-| [`glass-layer-plan.md`](glass-layer-plan.md) | **开发计划书**：液态玻璃做成外观层（GL / GLES3-Switch / Vulkan）—— 范围、API 契约与优先级、四个阶段与验收、风险清单、审查记录 |
-| [`glass-layer-feasibility.md`](glass-layer-feasibility.md) | **调研**：液态玻璃能不能做成 bklv 的一层、用 Shell 接口配置 —— 现状盘点、两种"层"的取舍、要动的地方与行数、API 草案、六个坑、分阶段计划 |
 | [`dependencies.md`](dependencies.md) | **依赖清单**（可直接转发）：9 个 vendored 子模块及版本/许可证、各平台要装的东西、随包资源体积 |
 
 ## 规划
@@ -46,4 +45,3 @@
 
 - [基础控件页对照表](base-widgets-map.md)：基础控件页里每个控件的代码 / 类文件 / 外观名 / JSON 路径
 - [解析层重构与扩展机制（评审稿）](parse-refactor-review.md) —— `bklv/compile/` 分层、图层类型注册表、外观内 `children`、迁移与验收
-- [解析层重构交付说明与示例](parse-refactor-handoff.md) —— 目录结构、可编译的示例外观、第三方加图层

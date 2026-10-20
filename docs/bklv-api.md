@@ -376,6 +376,70 @@ app.setIniPersistenceEnabled(true);
    （`TEXTURE_CACHE_FAILED`），只会打一条日志。所以要在项目根目录下运行；
    出现"图片位置空着"时先确认工作目录，别急着怀疑渲染后端。
 
+## 近期新增（2026-10）
+
+### 滚动盒：`ScrollBox`
+
+不用手工建 `ScrollingFrame` + `setContentView`：
+
+```cpp
+ScrollBox* list = new ScrollBox(Axis::COLUMN);   // 纵向；Axis::ROW = 横向
+list->setHeight(240);                            // 视口高
+list->addView(item);                             // 直接加，自动进内容盒
+list->getContentBox()->setGap(8);                // 间距写在内容盒上
+list->getScrollRange();                          // 透传：范围/偏移/滚动条
+list->setScrollOffset(120, true);
+```
+
+### 段落标题工厂
+
+```cpp
+Box* section = bklv::makeSectionHeader("图标", "共 340 个字形");
+// 等价于 new AppearanceView("base/section") + 写 text/info 槽
+```
+
+### 顶层帧率
+
+```cpp
+shell->setFpsOverlayEnabled(true);   // 右上角：60.0 FPS / 目标 60 + p99 / 最坏帧
+```
+
+### 外观 children 的 id 与查找
+
+```json
+"children": [
+  { "id": "icon",  "box": { "width": 24, "height": 24 }, "icon": "@icon/star" },
+  { "id": "label", "box": { "grow": 1 }, "text": "确认" }
+]
+```
+
+```cpp
+view->findViewById("icon")->setVisibility(Visibility::GONE); // 不占位，文字自动重排
+```
+
+### 状态驱动整块视图（`states.<状态>.self`）
+
+```json
+"states": {
+  "focused": {
+    "self": { "translateX": { "to": 100, "duration": 160, "easing": "cubicOut" } },
+    "bg":   { "fill": { "to": "@theme/color.surface.hover", "duration": 120 } }
+  }
+}
+```
+
+- `self` 支持：`translateX/Y`、`scaleX/Y`、`alpha`、`rotate`、`skewX/Y`；
+- 层目标支持分组写法（`"bg": { "fill": … }`），旧的 `"bg.fill"` 兼容；
+- 位移/缩放/旋转都是**绘制期**变换：不重排、不占位，命中区域不跟随移动；
+- 多状态同时激活时，后激活的赢；状态关闭时平滑回默认值（120ms）。
+
+### 预设背景
+
+```cpp
+shell->getBackdropLayer()->addView(new PresetBackdrop(BackdropPreset::GRID));
+// GRID / FLOATING / GRADIENT；颜色全部来自主题（surface.card / accent.base / common.grey）
+```
+
 ## 分层约定
 
 ```

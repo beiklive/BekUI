@@ -410,6 +410,28 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 `quinticOut`、`sinusoidalIn/Out/InOut`、`exponentialOut`、`circularOut`、`backOut`、
 `backInOut`、`bounceOut`、`elasticOut`、`stepped`。
 
+#### 分组目标与 `self`（视图级通道）
+
+除了上面的扁平写法，每个状态还可以按**目标**分组；`self` 表示控件自身，
+走**视图级通道**（整棵子树一起动的绘制期变换）：
+
+```json
+"states": {
+  "focused": {
+    "self": { "translateX": { "to": 100, "duration": 160, "easing": "cubicOut" } },
+    "bg":   { "fill": { "to": "@theme/color.surface.hover", "duration": 120 },
+              "radius": { "to": 10, "duration": 120 } }
+  }
+}
+```
+
+- `self` 的可用通道：`translateX` / `translateY` / `scaleX` / `scaleY` / `alpha` /
+  `rotate` / `skewX` / `skewY`（位移乘缩放，其余是系数/弧度不缩放）；
+- 层目标里的属性名与扁平写法完全一致；
+- 旧的 `"bg.fill": {...}` 继续支持（会提示迁移）；
+- 多个状态同时激活时**后激活的赢**；状态关闭时平滑回默认值（120ms）；
+- 视图通道是绘制期变换：**不重排、不占位**，命中区域不跟随移动。
+
 状态名不限于内置的 `focused` / `pressed` / `disabled`；控件自定义的（如 Cell 的 `selected`）
 由控件自己触发。重算目标时会先撤同一通道正在跑的补间。
 
