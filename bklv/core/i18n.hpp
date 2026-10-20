@@ -83,12 +83,45 @@ std::string translate(const std::string& key, Args&&... args)
 
 // ---- 字面量后缀：`"app/title"_i18n ----
 //
-// 只对**无参数的 key** 适用（带占位符的仍用 translate(key, args...)）。
-// 刻意放在 `bklv::i18n` 子命名空间里：必须 `using namespace bklv::i18n;` 才能用，
-// 避免 `"xxx"_i18n` 在不知道它含义的地方被顺手写出来。
+// 刻意放在 `bklv::i18n` 子命名空间里：必须 `using namespace bklv::i18n;` 才能用。
+//
+// 两种写法：
+//   "app/title"_i18n            → 直接当 std::string 用（隐式转换，翻译一次）
+//   "list/count"_i18n(12)       → 带参数（占位符 {} 按顺序替换）
+// 后缀返回的是**轻量 key 包装**，不是字符串 —— 只在取用时才翻译，所以 `(args)`
+// 这种"先拿 key 再格式化"的写法成立。
 namespace i18n
 {
-std::string operator""_i18n(const char* text, size_t length);
+
+class I18nText
+{
+  public:
+    explicit I18nText(std::string key)
+        : key(std::move(key))
+    {
+    }
+
+    // 拿原始 key（调试/日志用）
+    const std::string& getKey() const { return this->key; }
+
+    // 翻译后的文本（等价于隐式转换）
+    std::string str() const { return translate(this->key); }
+
+    // 带参数翻译：`"list/count"_i18n(12)`
+    template <typename... Args>
+    std::string operator()(Args&&... args) const
+    {
+        return translate(this->key, std::forward<Args>(args)...);
+    }
+
+    operator std::string() const { return this->str(); }
+
+  private:
+    std::string key;
+};
+
+I18nText operator""_i18n(const char* text, size_t length);
+
 } // namespace i18n
 
 // 测试与诊断用：已装载的 key 数量、查找缓存条目数。

@@ -304,9 +304,9 @@ const std::string& getDefaultLocale()
 namespace i18n
 {
 
-std::string operator""_i18n(const char* text, size_t length)
+I18nText operator""_i18n(const char* text, size_t length)
 {
-    return translate(std::string(text, length));
+    return I18nText(std::string(text, length));
 }
 
 } // namespace i18n

@@ -77,7 +77,7 @@ Box* makeIconCell(unsigned int codepoint, ImFont* font)
 // 段落标题直接用库里的工厂（标题 + 右侧数量）
 Box* makeIconSection(const std::string& title, size_t count)
 {
-    return bklv::makeSectionHeader(title, translate("icons/count", static_cast<int>(count)));
+    return bklv::makeSectionHeader(title, "icons/count"_i18n(static_cast<int>(count)));
 }
 
 // 网格：一排 10 个，格子等宽（10 × 10% = 100%，间距靠格子自己的 padding）

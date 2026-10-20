@@ -132,6 +132,8 @@ bklv::translate("demo/list_count", 12);       // "共 12 项"（{} 按顺序替�
 bklv::translate("demo/nope");                 // 未命中返回 key 本身
 bklv::translate("demo/list_count", 12);       // 带占位符必须用函数形式
 "demo/welcome"_i18n;                          // 无参数 key 的字面量写法（需 using namespace bklv::i18n）
+"demo/list_count"_i18n(12);                   // 带参数：占位符 {} 按顺序替换
+"demo/welcome"_i18n.str();                    // 显式取字符串（auto 存下来就是 key 包装，不是 string）
 bklv::setLocale("en-US");                  // 运行中切换
 bklv::getLocale();                         // 规范化后的当前语言
 ```

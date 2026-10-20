@@ -48,8 +48,10 @@ int main()
 
     std::printf("\n== 3. 缺 key 的行为 ==\n");
     checkEqual(translate("demo/__nope__"), "demo/__nope__", "缺 key 返回 key 本身");
-    checkEqual("demo/welcome"_i18n, "欢迎使用 bklv", "字面量后缀 _i18n");
-    checkEqual("demo/__nope__"_i18n, "demo/__nope__", "字面量后缀缺 key 返回 key 本身");
+    checkEqual(std::string("demo/welcome"_i18n), "欢迎使用 bklv", "字面量后缀 _i18n");
+    checkEqual(std::string("demo/__nope__"_i18n), "demo/__nope__", "字面量后缀缺 key 返回 key 本身");
+    checkEqual("demo/list_count"_i18n(12), "共 12 项", "字面量后缀带参数");
+    checkEqual("demo/list_count"_i18n.getKey(), "demo/list_count", "字面量后缀能取原始 key");
 
     std::printf("\n== 4. 占位符格式化 ==\n");
     checkEqual(translate("demo/list_count", 12), "共 12 项", "整数参数");
