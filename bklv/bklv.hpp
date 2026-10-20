@@ -54,6 +54,7 @@
 #include "bklv/views/progress_spinner.hpp"
 #include "bklv/views/recycler.hpp"
 #include "bklv/views/scrolling_frame.hpp"
+#include "bklv/views/scroll_box.hpp"
 
 // ---- widgets：外观驱动的控件 ----
 #include "bklv/widgets/account.hpp"
