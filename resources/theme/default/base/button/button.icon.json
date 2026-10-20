@@ -1,57 +1,16 @@
 {
-  "box": {
-    "height": "@theme/metric.control.height",
-    "minWidth": "@theme/metric.control.minWidth"
-  },
+  "import": ["base/button/button"],
   "layers": [
     {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
-    },
-    {
       "op": "text",
-      "id": "title",
-      "data_id": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
       "color": "@theme/color.button.defaultText",
-      "fontSize": "@theme/metric.button.textSize",
       "align": "center",
-      "valign": "center",
-      "inset": [
-        0,
-        25,
-        0,
-        25
-      ]
+      "valign": "center"
     }
   ],
-  "states": {
-    "focused": {
-    },
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      },
-      "title.color": {
-        "to": "@theme/color.button.defaultText",
-        "duration": 60
-      }
-    },
-    "disabled": {
-    }
-  }
+  "states": {}
 }
