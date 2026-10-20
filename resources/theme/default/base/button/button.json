@@ -36,30 +36,6 @@
         0,
         25
       ]
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -6.5,
-        -6.5,
-        -6.5,
-        -6.5
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
     }
   ],
   "states": {
@@ -76,18 +52,6 @@
       }
     },
     "disabled": {
-      "bg.fill": {
-        "to": "@theme/color.state.disabled",
-        "duration": 150
-      },
-      "title.color": {
-        "to": "@theme/color.text.disabled",
-        "duration": 150
-      },
-      "bg.stroke": {
-        "to": "@theme/color.button.disabledBorder",
-        "duration": 150
-      }
     }
   }
 }

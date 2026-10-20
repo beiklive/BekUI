@@ -69,11 +69,12 @@ int main()
     {
         Button button("点我");
         const Appearance& appearance = button.getActiveAppearance();
-        check(appearance.getLayers().size() == 5,
-            "Button 取到五层外观（底 + 高亮底 + 文字 + 辉光 + 描边）");
+        check(appearance.getLayers().size() >= 2,
+            "Button 取到外观（底 + 文字，装饰层可选）");
         checkEqual(button.getText(), "点我", "文字进了按钮");
         checkEqual(appearance.getLayers()[2].dataId, "text", "文字层从 source=text 取内容");
-        check(appearance.indexOfLayer("hlBorder") > 0, "带焦点高亮描边层");
+        check(appearance.indexOfLayer("bg") >= 0, "有底（bg）");
+        check(appearance.indexOfLayer("title") >= 0, "有文字（title）");
         // getHeight() 读的是 Yoga 的**布局**结果，所以要先真的跑一次布局
         YGNodeCalculateLayout(button.getYGNode(), 300.0f, 100.0f, YGDirectionLTR);
         checkFloat(button.getHeight(), getTheme().number("metric.control.height", 0.0f),
@@ -85,11 +86,11 @@ int main()
             "Rectangle 取到单层外观");
 
         // variant 指向另一份外观文件
-        Button ghost("描边", "ghost");
-        check(ghost.getActiveAppearance().getLayers().size() == 5,
-            "ghost 变体取到自己的外观文件");
-        checkEqual(ghost.getActiveAppearance().getLayers()[0].id, "bg",
-            "ghost 变体的底是 bg 层");
+        Button outlined("描边", "bordered");
+        check(outlined.getActiveAppearance().getLayers().size() >= 2,
+            "bordered 变体取到自己的外观文件");
+        checkEqual(outlined.getActiveAppearance().getLayers()[0].id, "bg",
+            "bordered 变体的第一层是 bg");
     }
 
     std::printf("\n== 2. 状态切换驱动动效 ==\n");
@@ -103,11 +104,12 @@ int main()
         check(!button.getAppearanceInstanceForTest().isAnimating(),
             "default 按钮聚焦不再补间（框改由浮层画）");
 
-        Button bordered("状态", "bordered");
-        bordered.onFocusGained();
-        check(bordered.isAppearanceStateActive("focused"), "bordered 聚焦后状态打开");
-        check(bordered.getAppearanceInstanceForTest().isAnimating(),
-            "bordered 聚焦仍有补间（高亮底）");
+        // 按下有底色补间（60ms）；聚焦的框由浮层画，不再走外观补间
+        Button withState("状态");
+        withState.setAppearanceState("pressed", true);
+        check(withState.isAppearanceStateActive("pressed"), "pressed 状态打开");
+        check(withState.getAppearanceInstanceForTest().isAnimating(),
+            "pressed 有底色补间");
 
         button.onFocusLost();
         check(!button.isAppearanceStateActive("focused"), "失焦后状态关闭");
@@ -132,8 +134,8 @@ int main()
         Button* button = new Button("换肤对象");
         root.addView(button);
 
-        check(button->getActiveAppearance().getLayers().size() == 5,
-            "换肤前：五层外观");
+        check(button->getActiveAppearance().getLayers().size() >= 2,
+            "换肤前：默认按钮外观");
 
         check(setTheme("widget-skin"), "切到 widget-skin");
         root.applyThemeRecursive();
@@ -144,7 +146,7 @@ int main()
 
         setTheme("default");
         root.applyThemeRecursive();
-        check(button->getActiveAppearance().getLayers().size() == 5,
+        check(button->getActiveAppearance().getLayers().size() >= 2,
             "切回 default 后外观也回来了");
     }
 

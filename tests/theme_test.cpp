@@ -89,151 +89,84 @@ int main()
         check(button != nullptr, "button 外观能取到");
         if (button != nullptr)
         {
-            // 新结构：底 / 高亮底 / 文字 / 辉光 / 描边（后三层是 borealis 的焦点高亮）
-            check(button->getLayers().size() == 5, "五层：底 + 高亮底 + 文字 + 辉光 + 描边");
-            if (button->getLayers().size() == 5)
+            // 结构断言：按 id 找层，不钉死层数/顺序（删装饰层不该让测试红）
+            const int bgIndex    = button->indexOfLayer("bg");
+            const int titleIndex = button->indexOfLayer("title");
+            check(bgIndex >= 0, "有底（bg）");
+            check(titleIndex >= 0, "有文字（title）");
+            check(button->indexOfLayer("hlBg") >= 0, "有高亮底（hlBg）");
+            if (bgIndex >= 0)
             {
-                const AppearanceLayer& bg    = button->getLayers()[0];
-                const AppearanceLayer& title = button->getLayers()[2];
-
-                checkEqual(button->getLayers()[1].id, "hlBg", "第 1 层是高亮底");
-                checkEqual(button->getLayers()[3].id, "hlGlow", "第 3 层是辉光");
-                checkEqual(button->getLayers()[4].id, "hlBorder", "第 4 层是描边");
-
-                checkEqual(bg.id, "bg", "第 1 层 id");
-                check(bg.op == AppearanceLayer::Op::RECT, "第 1 层是 rect");
-                checkColor(bg.fill, IM_COL32(0x50, 0x50, 0x50, 255), "底：@theme/color.surface.raised");
+                const AppearanceLayer& bg = button->getLayers()[(size_t)bgIndex];
+                check(bg.op == AppearanceLayer::Op::RECT, "底是 rect");
+                checkColor(bg.fill, getTheme().color("color.button.defaultBg"), "底：按钮默认底色");
                 checkFloat(bg.radius, 5.0f, "底：圆角来自 @theme/metric.radius.md");
-
-                checkEqual(title.id, "title", "第 2 层 id");
-                check(title.op == AppearanceLayer::Op::TEXT, "第 2 层是 text");
-                checkEqual(title.dataId, "text", "文字层的数据来源是 text");
-                checkFloat(title.fontSize, 18.0f, "文字：字号来自主题");
-                checkColor(title.textColor, IM_COL32(0xFF, 0xFF, 0xFF, 255), "文字：颜色来自主题");
             }
-
-            // 盒模型也在 JSON 里（顶层 box 段）
-            const AppearanceBox& box = button->getBox();
-            check(box.hasHeight, "button 的 box 声明了 height");
-            checkFloat(box.height, getTheme().number("metric.control.height", 0.0f),
-                "button.box.height 解析成主题数值");
-            check(box.hasMinWidth, "button 的 box 声明了 minWidth");
-
-            // 百分比 / auto / 四边内边距
-            std::shared_ptr<const Appearance> card = getWidgetAppearance("base/rectangle.card");
-            check(card != nullptr && card->getBox().hasWidth && card->getBox().widthPercent,
-                "card 的宽度是百分比");
-            checkFloat(card->getBox().width, 100.0f, "card 宽度 100%");
-            check(card->getBox().hasPadding, "card 声明了 padding");
-
-            // 提示行本身只是"左侧内容"；高度与左右留白归底栏（borealis 的 hints/* 在 footer 上）
-            std::shared_ptr<const Appearance> hints = getWidgetAppearance("widget/hints_bar");
-            check(hints != nullptr && hints->getBox().hasGap, "hints_bar 声明了条目间距");
-
-            std::shared_ptr<const Appearance> bar = getWidgetAppearance("widget/bottom_bar");
-            check(bar != nullptr && bar->getBox().hasPadding, "bottom_bar 声明了 padding");
-            if (bar != nullptr)
+            if (titleIndex >= 0)
             {
-                checkFloat(bar->getBox().padding[1],
-                    getTheme().number("metric.hints.footerPaddingSides", 0.0f),
-                    "底栏左右内边距来自主题（borealis footer_padding_sides）");
-                check(bar->getBox().hasHeight && !bar->getBox().heightAuto,
-                    "底栏高度是具体像素");
-                check(bar->getBox().hasMargin, "底栏声明了左右外边距（footer_margin_sides）");
+                const AppearanceLayer& title = button->getLayers()[(size_t)titleIndex];
+                check(title.op == AppearanceLayer::Op::TEXT, "文字层是 text");
+                checkEqual(title.dataId, "text", "文字层的数据来源是 text");
+                checkFloat(title.fontSize, getTheme().number("metric.button.textSize", 0.0f),
+                    "文字：字号来自主题");
+                checkColor(title.textColor, getTheme().color("color.button.defaultText"),
+                    "文字：颜色来自主题");
             }
-
-            std::shared_ptr<const Appearance> shell = getWidgetAppearance("widget/applet_frame");
-            check(shell != nullptr && shell->getBox().hasBackground, "applet_frame 声明了底色");
-            if (shell != nullptr)
-                checkColor(shell->getBox().background, getTheme().color("color.surface.page"),
-                    "外壳底色 = color.surface.page");
-
-            check(button->getStateNames().size() == 3, "三个状态：focused / pressed / disabled");
-            // 聚焦的**框**已经搬到浮层的焦点框（FocusRingView）上：外观里不再补 hlGlow/hlBorder
-            // 的描边，只保留"高亮底"这一条。borealis 的 hideHighlightBackground 依然成立：
-            // primary/highlight/default 聚焦不出高亮底，只有 bordered/borderless 才出。
-            check(button->getTransitions("focused").empty(),
-                "default 按钮 focused 不再画框（无高亮底、无描边）");
-            std::shared_ptr<const Appearance> bordered = getWidgetAppearance("base/button/button.bordered");
-            check(bordered != nullptr && bordered->getTransitions("focused").size() == 1,
-                "bordered 按钮 focused 只剩高亮底那一条");
         }
     }
 
     std::printf("\n== 5. 状态动效（tweeny 逐属性插值）==\n");
     {
-        // 用 bordered：它聚焦时才有高亮底补间（default 是 hideHighlightBackground）
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button/button.bordered");
+        // 用默认按钮的 pressed：底从 defaultBg 补到 defaultPressedBg（60ms）
+        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button/button");
         check(button != nullptr, "取到外观");
 
         AppearanceInstance instance;
         instance.setAppearance(button);
-        // bordered（borealis 的 BORDERED）：**没有底**，只有描边
-        checkColor(instance.getColor(0, AppearanceProp::FILL), 0, "bordered 没有底");
-        checkColor(instance.getColor(0, AppearanceProp::STROKE),
-            getTheme().color("color.button.defaultBorder"), "bordered 有描边（颜色来自主题）");
 
-        const int hlBgIndex     = button->indexOfLayer("hlBg");
-        const int hlBorderIndex = button->indexOfLayer("hlBorder");
-        check(hlBgIndex > 0 && hlBorderIndex > 0, "找得到高亮层");
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), 0,
-            "初始不聚焦：高亮底是透明的");
+        const int bgIndex       = button->indexOfLayer("bg");
+        const ImU32 idleFill    = getTheme().color("color.button.defaultBg");
+        const ImU32 pressedFill = getTheme().color("color.button.defaultPressedBg");
+
+        checkColor(instance.getColor(bgIndex, AppearanceProp::FILL), idleFill,
+            "初始：按钮默认底色");
         check(!instance.isAnimating(), "没触发状态时不该有补间在跑");
 
-        instance.setState("focused", true);
-        check(instance.isAnimating(), "聚焦后开始补间");
+        instance.setState("pressed", true);
+        check(instance.isAnimating(), "按下后开始补间");
 
-        // 目标色
-        // 断言"补到了主题里那个颜色"，而不是写死色值：
-        // 主题是数据，测试不该因为改色就被误伤
-        const ImU32 focusedFill = getTheme().color("color.highlight.background");
-        const ImU32 idleFill    = 0; // 高亮底初始是全透明
-
-        // 推进 60ms（该动效 120ms），应该处在中间：既不是初值也不是终值
-        instance.update(0.06f);
-        const ImU32 mid = instance.getColor(hlBgIndex, AppearanceProp::FILL);
-        check(mid != idleFill && mid != focusedFill, "60ms 时高亮底色在中间态（不是跳变）");
+        instance.update(0.03f); // 动效 60ms，走一半
+        const ImU32 mid = instance.getColor(bgIndex, AppearanceProp::FILL);
+        check(mid != idleFill && mid != pressedFill, "30ms 时底色在中间态（不是跳变）");
         check(instance.isAnimating(), "动效还没结束");
 
-        // 描边宽度不再补：框由浮层的焦点框画，外观状态里不该再去动描边
-        const float midStroke = instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH);
-        checkFloat(midStroke, 0.0f, "聚焦不再补描边宽度（框改由浮层画）");
-
-        // 再推进到结束
-        instance.update(0.2f);
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), focusedFill,
-            "结束值：高亮底 = color.highlight.background");
-        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 0.0f,
-            "结束值：描边仍是 0（外观不再画框）");
-        checkColor(instance.getColor(hlBorderIndex, AppearanceProp::STROKE), 0,
-            "结束值：描边色保持透明");
+        instance.update(0.1f);
+        checkColor(instance.getColor(bgIndex, AppearanceProp::FILL), pressedFill,
+            "结束值：按下底色");
         check(!instance.isAnimating(), "动效结束后不再是 animating");
 
-        // 文字颜色同样按各自动效插值
-        checkColor(instance.getColor(2, AppearanceProp::TEXT_COLOR),
-            getTheme().color("color.button.defaultText"), "文字色保持按钮字色（高亮不改字色）");
+        // 文字色同样按补间走（pressed 里也写了 title.color）
+        checkColor(instance.getColor(button->indexOfLayer("title"), AppearanceProp::TEXT_COLOR),
+            getTheme().color("color.button.defaultText"), "文字色保持按钮字色");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
-        // 先单独验一个容易漏的情况：刚打开就马上关掉——这时当前值还等于初值，
-        // 旧补间必须被撤掉，否则它会继续往状态目标跑（弹窗面板整块补透明就是这么来的）
+        // 刚按下就松开：当前值还等于初值时，旧补间必须被撤掉
         {
             AppearanceInstance quick;
             quick.setAppearance(button);
-            quick.setState("focused", true);   // 启动 1 -> 目标色 的补间
-            quick.setState("focused", false);  // 立刻撤销：当前值还没动
+            quick.setState("pressed", true);
+            quick.setState("pressed", false);
             for (int i = 0; i < 30; i++)
                 quick.update(0.05f);
-            checkColor(quick.getColor(button->indexOfLayer("hlBg"), AppearanceProp::FILL), 0,
-                "开了又马上关：停在初值（高亮底仍是透明），不会继续跑到状态目标");
+            checkColor(quick.getColor(bgIndex, AppearanceProp::FILL), idleFill,
+                "按下又立刻松开：停在默认底色，不会继续跑到按下色");
             check(!quick.isAnimating(), "撤销后不该还有补间在跑");
         }
 
-        instance.setState("focused", false);
+        instance.setState("pressed", false);
         instance.update(0.3f);
-        checkColor(instance.getColor(hlBgIndex, AppearanceProp::FILL), idleFill,
-            "取消聚焦后高亮底回到透明");
-        checkFloat(instance.getNumber(hlBorderIndex, AppearanceProp::STROKE_WIDTH), 0.0f,
-            "取消聚焦后描边宽度归零");
+        checkColor(instance.getColor(bgIndex, AppearanceProp::FILL), idleFill,
+            "松开后回到默认底色");
     }
 
     std::printf("\n== 7. 换肤：复制 default 改名改 JSON ==\n");

@@ -1,7 +1,7 @@
 {
   "box": {
-    "height": "@theme/metric.tabCell.height",
-    "shrink": 0
+    "height": "@theme/metric.control.height",
+    "minWidth": "@theme/metric.control.minWidth"
   },
   "layers": [
     {
@@ -12,86 +12,33 @@
     },
     {
       "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
-    },
-    {
-      "op": "rect",
       "id": "accent",
       "fill": "@theme/color.common.transparent",
-      "radius": 2,
-      "height": 3,
-      "align": "center",
-      "valign": "bottom",
+      "radius": 8,
+      "width": 3,
+      "height": 30,
+      "align": "left",
+      "valign": "center",
       "inset": [
         0,
-        10,
-        0,
-        10
-      ]
-    },
-    {
-      "op": "text",
-      "id": "icon",
-      "data_id": "icon",
-      "color": "@theme/color.text.primary",
-      "fontSize": "@theme/metric.font.size.lg",
-      "align": "center",
-      "valign": "top",
-      "inset": [
-        "@theme/metric.spacing.xs",
         0,
         0,
         0
-      ],
-      "font_kind": "icon"
+      ]
     },
     {
       "op": "text",
       "id": "title",
       "data_id": "text",
-      "color": "@theme/color.text.dim",
-      "fontSize": "@theme/metric.font.size.xs",
+      "color": "@theme/color.button.defaultText",
+      "fontSize": "@theme/metric.button.textSize",
       "align": "center",
-      "valign": "bottom",
+      "valign": "center",
       "inset": [
         0,
+        25,
         0,
-        "@theme/metric.spacing.xs",
-        0
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "stroke": "@theme/color.common.transparent",
-      "strokeWidth": 0,
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -6.5,
-        -6.5,
-        -6.5,
-        -6.5
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "stroke": "@theme/color.common.transparent",
-      "strokeWidth": 0,
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
+        25
       ]
     }
   ],
@@ -110,16 +57,12 @@
       "title.color": {
         "to": "@theme/color.accent.base",
         "duration": 140
-      },
-      "icon.color": {
-        "to": "@theme/color.accent.base",
-        "duration": 140
       }
     },
     "focused": {
-      "hlBg.fill": {
-        "to": "@theme/color.highlight.background",
-        "duration": 120,
+      "accent.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 0,
         "easing": "quadraticOut"
       }
     }
