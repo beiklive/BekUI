@@ -130,6 +130,8 @@ image->setImageFromFile("resources/testcard.png");
 bklv::translate("demo/welcome");              // "欢迎使用 bklv"
 bklv::translate("demo/list_count", 12);       // "共 12 项"（{} 按顺序替换）
 bklv::translate("demo/nope");                 // 未命中返回 key 本身
+bklv::translate("demo/list_count", 12);       // 带占位符必须用函数形式
+"demo/welcome"_i18n;                          // 无参数 key 的字面量写法（需 using namespace bklv）
 bklv::setLocale("en-US");                  // 运行中切换
 bklv::getLocale();                         // 规范化后的当前语言
 ```

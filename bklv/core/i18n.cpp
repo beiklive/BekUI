@@ -301,6 +301,11 @@ const std::string& getDefaultLocale()
     return g_defaultLocale;
 }
 
+std::string operator""_i18n(const char* text, size_t length)
+{
+    return translate(std::string(text, length));
+}
+
 std::string translate(const std::string& key)
 {
     if (key.empty())

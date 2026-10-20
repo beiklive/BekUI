@@ -57,7 +57,7 @@ void DemoApp::applyHeaderFor(const std::string& title)
 {
     if (this->header == nullptr)
         return;
-    this->header->setTitle(title.empty() ? translate("app/title") : title);
+    this->header->setTitle(title.empty() ? "app/title"_i18n : title);
     this->header->setSubtitle(std::string());
 }
 

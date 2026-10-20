@@ -119,7 +119,7 @@ Box* buildIconsPage()
 
     // ---- Switch Icon ----
     const std::vector<unsigned int>& switchIcons = getIconFontCodepoints();
-    page->addView(makeIconSection(translate("icons/switch"), switchIcons.size()));
+    page->addView(makeIconSection("icons/switch"_i18n, switchIcons.size()));
     page->addView(makeIconGrid(switchIcons, getIconFont()));
 
     // ---- Material Icon ----
@@ -130,7 +130,7 @@ Box* buildIconsPage()
     for (const icon::Glyph& glyph : materialGlyphs)
         materialIcons.push_back(glyph.codepoint);
 
-    page->addView(makeIconSection(translate("icons/material"), materialIcons.size()));
+    page->addView(makeIconSection("icons/material"_i18n, materialIcons.size()));
     page->addView(makeIconGrid(materialIcons, icon::font()));
 
     return page;
