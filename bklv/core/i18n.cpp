@@ -191,7 +191,7 @@ const nlohmann::json* lookupCached(const std::string& key, const nlohmann::json&
 
 bool g_defaultLoaded = false;
 
-// 默认语言表的懒加载。任何公开入口（setLocale / getStr）都先确保它存在——
+// 默认语言表的懒加载。任何公开入口（setLocale / translate）都先确保它存在——
 // 否则"直接调 setLocale()"这种用法在回退时会拿到空表（测试抓到过）。
 void ensureDefaultLoaded();
 
@@ -275,7 +275,7 @@ bool setLocale(const std::string& locale)
     nlohmann::json loaded = loadLocale(wanted);
     if (loaded.is_discarded() || !loaded.is_object())
     {
-        // 回退：完全没读到就退回默认语言，仍不可用则保持空表（getStr 返回 key）。
+        // 回退：完全没读到就退回默认语言，仍不可用则保持空表（translate 返回 key）。
         BKLV_LOG_WARNING("语言 %s 的文案未装载，回退到 %s", wanted.c_str(), g_defaultLocale.c_str());
         g_current = g_default.is_object() ? g_default : nlohmann::json::object();
         g_locale  = g_defaultLocale;
@@ -301,7 +301,7 @@ const std::string& getDefaultLocale()
     return g_defaultLocale;
 }
 
-std::string getStr(const std::string& key)
+std::string translate(const std::string& key)
 {
     if (key.empty())
         return key;

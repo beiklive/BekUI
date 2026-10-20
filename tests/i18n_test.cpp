@@ -42,16 +42,16 @@ int main()
     // 不依赖 initI18n：直接 setLocale 也要能工作（回退表必须懒加载）
     check(setLocale("zh-Hans"), "setLocale(zh-Hans) 成功");
     checkEqual(getLocale(), "zh-Hans", "getLocale()");
-    checkEqual(getStr("demo/welcome"), "欢迎使用 bklv", "嵌套 key 查找");
+    checkEqual(translate("demo/welcome"), "欢迎使用 bklv", "嵌套 key 查找");
     check(getI18nKeyCount() > 0, "装载到了若干 key");
 
     std::printf("\n== 3. 缺 key 的行为 ==\n");
-    checkEqual(getStr("demo/__nope__"), "demo/__nope__", "缺 key 返回 key 本身");
+    checkEqual(translate("demo/__nope__"), "demo/__nope__", "缺 key 返回 key 本身");
 
     std::printf("\n== 4. 占位符格式化 ==\n");
-    checkEqual(getStr("demo/list_count", 12), "共 12 项", "整数参数");
-    checkEqual(getStr("demo/lang_current", "zh-Hans"), "当前语言：zh-Hans", "字符串参数");
-    checkEqual(getStr("demo/list_count", 3.14f), "共 3.14 项", "浮点用 %g（不是 3.140000）");
+    checkEqual(translate("demo/list_count", 12), "共 12 项", "整数参数");
+    checkEqual(translate("demo/lang_current", "zh-Hans"), "当前语言：zh-Hans", "字符串参数");
+    checkEqual(translate("demo/list_count", 3.14f), "共 3.14 项", "浮点用 %g（不是 3.140000）");
     checkEqual(formatStr("a{}b{}c", {"1", "2"}), "a1b2c", "多个占位符按顺序");
     checkEqual(formatStr("a{}b", {}), "ab", "参数不足留空");
     checkEqual(formatStr("a{}b", {"1", "2"}), "a1b", "多余参数忽略");
@@ -59,25 +59,25 @@ int main()
     std::printf("\n== 5. 查找缓存（同一 key 重复取不应增长缓存）==\n");
     const int before = getI18nCacheSize();
     for (int i = 0; i < 100; i++)
-        getStr("demo/welcome");
+        translate("demo/welcome");
     check(getI18nCacheSize() == before, "重复取同一 key，缓存条目数不变");
     const int missBefore = getI18nCacheSize();
     for (int i = 0; i < 100; i++)
-        getStr("demo/__nope__");
+        translate("demo/__nope__");
     check(getI18nCacheSize() == missBefore, "重复取缺失 key 也不增长（负缓存生效）");
 
     std::printf("\n== 6. 切语言 ==\n");
     check(setLocale("en-US"), "setLocale(en-US) 成功");
-    checkEqual(getStr("demo/welcome"), "Welcome to bklv", "切换到英文后文案变化");
-    checkEqual(getStr("demo/list_count", 12), "12 items", "格式化也走新语言");
+    checkEqual(translate("demo/welcome"), "Welcome to bklv", "切换到英文后文案变化");
+    checkEqual(translate("demo/list_count", 12), "12 items", "格式化也走新语言");
 
     std::printf("\n== 7. 语言缺失时回退默认语言 ==\n");
     check(!setLocale("fr-FR"), "setLocale(fr-FR) 返回失败");
     checkEqual(getLocale(), getDefaultLocale(), "语言回退到默认语言");
-    checkEqual(getStr("demo/welcome"), "Welcome to bklv", "文案来自默认语言表");
+    checkEqual(translate("demo/welcome"), "Welcome to bklv", "文案来自默认语言表");
 
     std::printf("\n== 8. 空 key ==\n");
-    checkEqual(getStr(""), "", "空 key 返回空串");
+    checkEqual(translate(""), "", "空 key 返回空串");
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed == 0 ? 0 : 1;

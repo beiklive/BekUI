@@ -167,7 +167,7 @@ bklv::View* view = bklv::createFromJSONFile("resources/views/page_json.json");
 ```
 
 文案也走同一套资源目录：`resources/i18n/zh-Hans.json`、`resources/i18n/en-US.json`，
-用 `bklv::getStr("demo/welcome")` 取；桌面可用 `BKLV_LOCALE=en-US` 覆盖系统语言。
+用 `bklv::translate("demo/welcome")` 取；桌面可用 `BKLV_LOCALE=en-US` 覆盖系统语言。
 
 ### Linux
 

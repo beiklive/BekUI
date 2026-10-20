@@ -478,9 +478,9 @@ image-&gt;setImageFromFile(&quot;resources/testcard.png&quot;);</code></pre>
 <h3 id="sec-14">文案（i18n）</h3>
 <p>资源放 <code>resources/i18n/&lt;locale&gt;.json</code>，key 用 <code>/</code> 分层：</p>
 <pre><code class="lang-json">{ &quot;demo&quot;: { &quot;welcome&quot;: &quot;欢迎使用 bklv&quot;, &quot;list_count&quot;: &quot;共 {} 项&quot; } }</code></pre>
-<pre><code class="lang-cpp">bklv::getStr(&quot;demo/welcome&quot;);              // &quot;欢迎使用 bklv&quot;
-bklv::getStr(&quot;demo/list_count&quot;, 12);       // &quot;共 12 项&quot;（{} 按顺序替换）
-bklv::getStr(&quot;demo/nope&quot;);                 // 未命中返回 key 本身
+<pre><code class="lang-cpp">bklv::translate(&quot;demo/welcome&quot;);              // &quot;欢迎使用 bklv&quot;
+bklv::translate(&quot;demo/list_count&quot;, 12);       // &quot;共 12 项&quot;（{} 按顺序替换）
+bklv::translate(&quot;demo/nope&quot;);                 // 未命中返回 key 本身
 bklv::setLocale(&quot;en-US&quot;);                  // 运行中切换
 bklv::getLocale();                         // 规范化后的当前语言</code></pre>
 <p>三条要记住的：</p>
@@ -1437,7 +1437,7 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
   &quot;shadow&quot;: { &quot;quality_state&quot;: &quot;当前档位：{}&quot; }
 }</code></pre>
 <table><thead><tr><th>规则</th><th>说明</th></tr></thead><tbody>
-<tr><td>取值</td><td><code>getStr(&quot;app/title&quot;)</code>；带占位符 <code>{}</code> 时 <code>getStr(&quot;shadow/quality_state&quot;, &quot;smooth&quot;)</code></td></tr>
+<tr><td>取值</td><td><code>translate(&quot;app/title&quot;)</code>；带占位符 <code>{}</code> 时 <code>translate(&quot;shadow/quality_state&quot;, &quot;smooth&quot;)</code></td></tr>
 <tr><td>拆文件</td><td>主文件用 <code>&quot;$files&quot;: [&quot;pages&quot;]</code> 显式列（<strong>不扫目录</strong>；写文件名不带 <code>.json</code>，它自己补）</td></tr>
 <tr><td>locale 名</td><td>只能用规范名：<code>zh-Hans</code>（桌面 <code>zh-CN</code>、Switch <code>zh-Hans</code> 都归到这里）、<code>en-US</code></td></tr>
 <tr><td>装载时机</td><td><code>App::App()</code>，早于视图树构建；<strong>切语言不会自动重译已有视图</strong></td></tr>
@@ -1771,7 +1771,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>事件总线</td><td><code>getEventBus().subscribe&lt;事件&gt;(handler)</code>（RAII 句柄，析构自动退订）</td></tr>
 <tr><td>通知 / Toast</td><td><code>App::notify(text, seconds)</code></td></tr>
 <tr><td>弹层</td><td><code>App::pushOverlay(view)</code> / <code>popOverlay(view)</code>（模态输入 + 焦点恢复）</td></tr>
-<tr><td>i18n</td><td><code>getStr("a/b")</code>，文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
+<tr><td>i18n</td><td><code>translate("a/b")</code>，文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
 <tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>

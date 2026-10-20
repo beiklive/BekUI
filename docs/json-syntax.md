@@ -481,7 +481,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 | 规则 | 说明 |
 |---|---|
-| 取值 | `getStr("app/title")`；带占位符 `{}` 时 `getStr("shadow/quality_state", "smooth")` |
+| 取值 | `translate("app/title")`；带占位符 `{}` 时 `translate("shadow/quality_state", "smooth")` |
 | 拆文件 | 主文件用 `"$files": ["pages"]` 显式列（**不扫目录**；写文件名不带 `.json`，它自己补） |
 | locale 名 | 只能用规范名：`zh-Hans`（桌面 `zh-CN`、Switch `zh-Hans` 都归到这里）、`en-US` |
 | 装载时机 | `App::App()`，早于视图树构建；**切语言不会自动重译已有视图** |

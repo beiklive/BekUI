@@ -64,7 +64,7 @@ class ThemeData
     // 元信息（设计器"打开项目"用）
     const std::string& getAuthor() const { return this->author; }
     const std::string& getDescription() const { return this->description; }
-    // 描述文案的 i18n key（可空；有就走 getStr，没有就直接用 description）
+    // 描述文案的 i18n key（可空；有就走 translate，没有就直接用 description）
     const std::string& getDescriptionKey() const { return this->descriptionKey; }
 
     // 可用的主题名（来自 themes.json，按清单顺序）。

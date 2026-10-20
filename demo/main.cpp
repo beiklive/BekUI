@@ -53,5 +53,5 @@ int main(int argc, char** argv)
         };
     }
 
-    return app.run(bklv::getStr("app/title"), 1280, 720);
+    return app.run(bklv::translate("app/title"), 1280, 720);
 }

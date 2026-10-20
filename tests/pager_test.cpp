@@ -273,7 +273,7 @@ int main()
         check(errorFactoryCalls == 2, "未注册工厂走失败路径");
         check(pager->getCurrentView() != nullptr, "未注册工厂也不白屏");
 
-        // 不设占位工厂时的内置兜底（走 getStr("pager/*")）
+        // 不设占位工厂时的内置兜底（走 translate("pager/*")）
         Pager* plain = new Pager();
         plain->setSlot(slot);
         plain->show("nope");

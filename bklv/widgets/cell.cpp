@@ -39,7 +39,7 @@ Cell::Cell(const std::string& appearance, const std::string& title)
 
     // 点击 = 执行（列表项在 borealis 里也是点击即进）
     this->onPointerAction = true;
-    this->registerAction(ControllerButton::A, getStr("hints/ok"), [this](View*) { this->trigger(); });
+    this->registerAction(ControllerButton::A, translate("hints/ok"), [this](View*) { this->trigger(); });
 
     this->applyTheme();
 }
@@ -156,7 +156,7 @@ void BooleanCell::refreshTextMode()
         return;
 
     // borealis 的 updateUI()：文字在"开/关"之间切，颜色也跟着切
-    this->setDetail(getStr(this->value ? "hints/on" : "hints/off"));
+    this->setDetail(translate(this->value ? "hints/on" : "hints/off"));
 
     if (this->detailLabel != nullptr)
     {
@@ -321,10 +321,10 @@ SelectorCell::SelectorCell(const std::string& title)
     auto next = [this](View*) { this->selectNext(); return true; };
     auto prev = [this](View*) { this->selectPrevious(); return true; };
 
-    this->registerAction(ControllerButton::RB, getStr("hints/next"), next);
-    this->registerAction(ControllerButton::LB, getStr("hints/previous"), prev);
-    this->registerAction(ControllerButton::RIGHT, getStr("hints/next"), next);
-    this->registerAction(ControllerButton::LEFT, getStr("hints/previous"), prev);
+    this->registerAction(ControllerButton::RB, translate("hints/next"), next);
+    this->registerAction(ControllerButton::LB, translate("hints/previous"), prev);
+    this->registerAction(ControllerButton::RIGHT, translate("hints/next"), next);
+    this->registerAction(ControllerButton::LEFT, translate("hints/previous"), prev);
 
     // borealis 的 SelectorCell 点击就是弹一个 Dropdown；设了 onOpen 就交给调用方
     this->setOnClick([this] {

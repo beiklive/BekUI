@@ -46,9 +46,9 @@
         Rectangle* section = makeSection("base_widgets/sec_box");
         Rectangle* box    = new Rectangle();
         box->setAppearanceName("base/box");
-        box->addView(bodyText(getStr("base_widgets/box_inner")));
+        box->addView(bodyText(translate("base_widgets/box_inner")));
         section->addView(makeItemRow(box));
-        section->addView(makeHint(getStr("base_widgets/box_hint")));
+        section->addView(makeHint(translate("base_widgets/box_hint")));
         page->addView(section);
     }
 ```
@@ -85,10 +85,10 @@
         layout->addView(makeText("layout", getTheme().number("metric.font.size.sm", 15.0f),
             getTheme().color("color.text.dim")));
         Rectangle* inner = makeComponentBox();
-        inner->addView(bodyText(getStr("base_widgets/component_inner")));
+        inner->addView(bodyText(translate("base_widgets/component_inner")));
         layout->addView(inner);
         section->addView(makeItemRow(layout));
-        section->addView(makeHint(getStr("base_widgets/layout_hint")));
+        section->addView(makeHint(translate("base_widgets/layout_hint")));
         page->addView(section);
     }
 ```
@@ -114,9 +114,9 @@
 {
         Rectangle* section = makeSection("base_widgets/sec_component");
         Rectangle* box     = makeComponentBox();
-        box->addView(bodyText(getStr("base_widgets/component_inner")));
+        box->addView(bodyText(translate("base_widgets/component_inner")));
         section->addView(makeItemRow(box));
-        section->addView(makeHint(getStr("base_widgets/component_hint")));
+        section->addView(makeHint(translate("base_widgets/component_hint")));
         page->addView(section);
     }
 ```
@@ -135,13 +135,13 @@
 // 文本：普通 / 次级 / 单行截断
 {
         Rectangle* section = makeSection("base_widgets/sec_label");
-        section->addView(makeItemRow(bodyText(getStr("base_widgets/label_body"))));
-        section->addView(makeItemRow(makeHint(getStr("base_widgets/label_dim"))));
-        Label* truncated = makeText(getStr("base_widgets/label_long"),
+        section->addView(makeItemRow(bodyText(translate("base_widgets/label_body"))));
+        section->addView(makeItemRow(makeHint(translate("base_widgets/label_dim"))));
+        Label* truncated = makeText(translate("base_widgets/label_long"),
             getTheme().number("metric.font.size.sm", 15.0f),
             getTheme().color("color.text.primary"), true);
         section->addView(makeStateRow("base_widgets/state_single_line", truncated));
-        section->addView(makeHint(getStr("base_widgets/label_hint")));
+        section->addView(makeHint(translate("base_widgets/label_hint")));
         page->addView(section);
     }
 ```
@@ -166,7 +166,7 @@
         image->setHeight(120.0f);
         Box* row = makeRow(getTheme().number("metric.spacing.md", 12.0f));
         row->addView(image);
-        row->addView(makeHint(getStr("base_widgets/image_hint")));
+        row->addView(makeHint(translate("base_widgets/image_hint")));
         section->addView(row);
         page->addView(section);
     }
@@ -196,15 +196,15 @@
 // 滑块：进度决定几何（语义绘制），颜色/圆角/粗细来自 JSON
 {
         Rectangle* section = makeSection("base_widgets/sec_slider");
-        Label* value       = makeHint(getStr("base_widgets/slider_value", 40));
+        Label* value       = makeHint(translate("base_widgets/slider_value", 40));
         Slider* slider     = new Slider();
         slider->setProgress(0.4f);
         slider->setOnChange([value](float progress) {
-            value->setText(getStr("base_widgets/slider_value", (int)(progress * 100.0f)));
+            value->setText(translate("base_widgets/slider_value", (int)(progress * 100.0f)));
         });
         section->addView(makeStateRow("base_widgets/state_default", slider));
         section->addView(value);
-        section->addView(makeHint(getStr("base_widgets/slider_hint")));
+        section->addView(makeHint(translate("base_widgets/slider_hint")));
         page->addView(section);
     }
 ```
@@ -229,7 +229,7 @@
         slow->setDuration(2.4f);
         slow->setThickness(4.0f);
         row->addView(slow);
-        row->addView(makeHint(getStr("base_widgets/spinner_hint")));
+        row->addView(makeHint(translate("base_widgets/spinner_hint")));
         section->addView(row);
         page->addView(section);
     }
@@ -255,8 +255,8 @@
 // 纯文字：最普通的按钮，四种状态都摆出来
 {
         Rectangle* section = makeSection("base_widgets/sec_btn_text");
-        addButtonStates(section, "text", getStr("base_widgets/btn_text"), nullptr);
-        section->addView(makeHint(getStr("base_widgets/states_hint")));
+        addButtonStates(section, "text", translate("base_widgets/btn_text"), nullptr);
+        section->addView(makeHint(translate("base_widgets/states_hint")));
         page->addView(section);
     }
 ```
@@ -287,11 +287,11 @@
 // 纯图标：两款 —— 正方形（icon）与圆形（icon_circle），图标都完全居中
 {
         Rectangle* section = makeSection("base_widgets/sec_btn_icon");
-        section->addView(makeHint(getStr("base_widgets/shape_square")));
+        section->addView(makeHint(translate("base_widgets/shape_square")));
         addButtonStates(section, "icon", "", "star", false);
-        section->addView(makeHint(getStr("base_widgets/shape_circle")));
+        section->addView(makeHint(translate("base_widgets/shape_circle")));
         addButtonStates(section, "icon_circle", "", "settings", false);
-        section->addView(makeHint(getStr("base_widgets/icon_hint")));
+        section->addView(makeHint(translate("base_widgets/icon_hint")));
         page->addView(section);
     }
 ```
@@ -316,7 +316,7 @@
 // 图标 + 文字
 {
         Rectangle* section = makeSection("base_widgets/sec_btn_icon_text");
-        addButtonStates(section, "icon_text", getStr("base_widgets/btn_icon_text"), "save");
+        addButtonStates(section, "icon_text", translate("base_widgets/btn_icon_text"), "save");
         page->addView(section);
     }
 ```
@@ -341,8 +341,8 @@
 // 列表按钮：普通按钮的"列表元素"款 —— 没有边框，文字正常左对齐
 {
         Rectangle* section = makeSection("base_widgets/sec_btn_list");
-        addButtonStates(section, "list", getStr("base_widgets/btn_list"), nullptr);
-        section->addView(makeHint(getStr("base_widgets/list_hint")));
+        addButtonStates(section, "list", translate("base_widgets/btn_list"), nullptr);
+        section->addView(makeHint(translate("base_widgets/list_hint")));
         page->addView(section);
     }
 ```
@@ -367,17 +367,17 @@
 // 信息按钮：右侧信息文字由程序决定
 {
         Rectangle* section = makeSection("base_widgets/sec_btn_info");
-        addButtonStates(section, "info", getStr("base_widgets/btn_info"), "home");
-        Button* live = makeVariantButton("info", getStr("base_widgets/btn_info"));
+        addButtonStates(section, "info", translate("base_widgets/btn_info"), "home");
+        Button* live = makeVariantButton("info", translate("base_widgets/btn_info"));
         live->setIcon(glyph("home"));
-        live->setInfoText(getStr("base_widgets/info_value"));
+        live->setInfoText(translate("base_widgets/info_value"));
         live->setOnClick([live] {
             static int clicks = 0;
             clicks++;
             live->setInfoText(std::to_string(clicks));
         });
         section->addView(makeStateRow("base_widgets/state_clickable", live));
-        section->addView(makeHint(getStr("base_widgets/info_hint")));
+        section->addView(makeHint(translate("base_widgets/info_hint")));
         page->addView(section);
     }
 ```
@@ -402,15 +402,15 @@
 // 文字开关：开 / 关两个状态（信息文字跟着变）
 {
         Rectangle* section = makeSection("base_widgets/sec_switch_text");
-        addSwitchStates(section, "switch_text", getStr("base_widgets/btn_switch_text"), "info");
-        Button* live = makeVariantButton("switch_text", getStr("base_widgets/btn_switch_text"));
+        addSwitchStates(section, "switch_text", translate("base_widgets/btn_switch_text"), "info");
+        Button* live = makeVariantButton("switch_text", translate("base_widgets/btn_switch_text"));
         live->setIcon(glyph("info"));
         live->setSwitched(false);
-        live->setInfoText(getStr("base_widgets/off"));
+        live->setInfoText(translate("base_widgets/off"));
         live->setOnClick([live] {
             live->setSwitched(!live->isSwitched());
-            live->setInfoText(live->isSwitched() ? getStr("base_widgets/on")
-                                                 : getStr("base_widgets/off"));
+            live->setInfoText(live->isSwitched() ? translate("base_widgets/on")
+                                                 : translate("base_widgets/off"));
         });
         section->addView(makeStateRow("base_widgets/state_clickable", live));
         page->addView(section);
@@ -437,13 +437,13 @@
 // 图案开关：轨道 + 滑块，切换有过渡动画（补间写在 on/off 状态里）
 {
         Rectangle* section = makeSection("base_widgets/sec_switch_icon");
-        addSwitchStates(section, "switch_icon", getStr("base_widgets/btn_switch_icon"), "settings");
-        Button* live = makeVariantButton("switch_icon", getStr("base_widgets/btn_switch_icon"));
+        addSwitchStates(section, "switch_icon", translate("base_widgets/btn_switch_icon"), "settings");
+        Button* live = makeVariantButton("switch_icon", translate("base_widgets/btn_switch_icon"));
         live->setIcon(glyph("settings"));
         live->setSwitched(true);
         live->setOnClick([live] { live->setSwitched(!live->isSwitched()); });
         section->addView(makeStateRow("base_widgets/state_clickable", live));
-        section->addView(makeHint(getStr("base_widgets/switch_hint")));
+        section->addView(makeHint(translate("base_widgets/switch_hint")));
         page->addView(section);
     }
 ```
@@ -489,18 +489,18 @@
 {
         Rectangle* section = makeSection("base_widgets/sec_dropdown");
         Dropdown* dropdown = new Dropdown();
-        dropdown->setOptions({ getStr("base_widgets/option_a"), getStr("base_widgets/option_b"),
-            getStr("base_widgets/option_c") }, 0);
+        dropdown->setOptions({ translate("base_widgets/option_a"), translate("base_widgets/option_b"),
+            translate("base_widgets/option_c") }, 0);
         AppearanceView* trigger = dropdown->getTrigger();
         trigger->setAppearanceName("widget/button.dropdown");
         trigger->setIcon(glyph("list"));
-        trigger->setText(getStr("base_widgets/btn_dropdown"));
+        trigger->setText(translate("base_widgets/btn_dropdown"));
         trigger->setInfoText(dropdown->getSelectedText());
         dropdown->setOnChange([dropdown, trigger](size_t) {
             trigger->setInfoText(dropdown->getSelectedText());
         });
         section->addView(makeItemRow(dropdown));
-        section->addView(makeHint(getStr("base_widgets/dropdown_hint")));
+        section->addView(makeHint(translate("base_widgets/dropdown_hint")));
         page->addView(section);
     }
 ```
@@ -525,13 +525,13 @@
 // 选择器（数值模式）：进入设置态后焦点钉住，LR / 方向键调值，长按连发
 {
         Rectangle* section = makeSection("base_widgets/sec_selector_number");
-        SelectorButton* number = new SelectorButton(getStr("base_widgets/btn_selector_number"));
+        SelectorButton* number = new SelectorButton(translate("base_widgets/btn_selector_number"));
         number->setIcon(glyph("palette"));
         number->setNumberRange(0.0f, 100.0f, 5.0f, 1, 40.0f);
         number->setOnValueChanged(
             [](float value) { BKLV_LOG_INFO("选择器（数值）：%.1f", (double)value); });
         section->addView(makeItemRow(number));
-        section->addView(makeHint(getStr("base_widgets/selector_hint")));
+        section->addView(makeHint(translate("base_widgets/selector_hint")));
         page->addView(section);
     }
 ```
@@ -556,10 +556,10 @@
 // 选择器（列表模式）：LR 切换选项，越界环绕
 {
         Rectangle* section = makeSection("base_widgets/sec_selector_list");
-        SelectorButton* list = new SelectorButton(getStr("base_widgets/btn_selector_list"));
+        SelectorButton* list = new SelectorButton(translate("base_widgets/btn_selector_list"));
         list->setIcon(glyph("list"));
-        list->setOptions({ getStr("base_widgets/option_a"), getStr("base_widgets/option_b"),
-            getStr("base_widgets/option_c") });
+        list->setOptions({ translate("base_widgets/option_a"), translate("base_widgets/option_b"),
+            translate("base_widgets/option_c") });
         list->setArrowStyle(SelectorArrow::LR);
         list->setOnSelectionChanged([](int index, const std::string& text) {
             BKLV_LOG_INFO("选择器（列表）：" + std::to_string(index) + " " + text);

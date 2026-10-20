@@ -353,9 +353,9 @@ EditTextDialog::EditTextDialog()
     this->field->setMarginTop(getTheme().number("metric.editTextDialog.fieldTop", 16.0f)); // 给标题层让位
     panel->addView(this->field);
 
-    this->confirmButton = new Button(getStr("hints/ok"));
+    this->confirmButton = new Button(translate("hints/ok"));
     this->confirmButton->setOnClick([this] { this->handleSubmit(); });
-    this->cancelButton = new Button(getStr("widgets/cancel"));
+    this->cancelButton = new Button(translate("widgets/cancel"));
     this->cancelButton->setOnClick([this] { this->handleCancel(); });
 
     Box* row = new Box(Axis::ROW);
@@ -369,7 +369,7 @@ EditTextDialog::EditTextDialog()
     this->backdrop->setAppearanceState("closed", true);
     this->panel->setAppearanceState("closed", true);
 
-    this->registerAction(ControllerButton::B, getStr("hints/cancel"), [this](View*) {
+    this->registerAction(ControllerButton::B, translate("hints/cancel"), [this](View*) {
         this->handleCancel();
     });
 }

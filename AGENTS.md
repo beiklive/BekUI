@@ -212,7 +212,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   但跨越「创建视图树」这类中途可能失败的操作必须 RAII（用 `std::unique_ptr<View>` 持有，
   交给父节点后再 release），否则抛出时会泄漏半棵树。
 - **文案（i18n）**：资源 `resources/i18n/<locale>.json`，key 用 `/` 分层，取值走
-  `bklv::getStr("a/b")`（带 `{}` 占位符则 `getStr("a/b", 12)`）。
+  `bklv::translate("a/b")`（带 `{}` 占位符则 `translate("a/b", 12)`）。
   三条约定：① 文案在控件构造时解析成字符串，**切语言不会自动重译已有视图**；
   ② 语言名经 `canonicalLocale()` 归一（桌面 `zh-CN` 与 Switch `zh-Hans` 都归到 `zh-Hans`），
   资源名只用规范名；③ **不要扫目录**列语言文件——romfs 上的目录迭代真机未验证，
@@ -791,7 +791,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 | 成员变量 | camelCase（私有，不加 `m_`/`_` 后缀） | `headerVisible` / `appearanceName` |
 | **枚举值** | **UPPER_SNAKE**（全库统一，含 `Op`/`Kind`/`Sound`/`EasingFunction`） | `Visibility::GONE` / `Sound::CLICK` / `EasingFunction::BOUNCE_OUT` |
 | 状态查询（返回 bool） | `is*` / `has*` / `can*` | `isFocusable` / `hasTexture` / `isAppearanceAnimating` |
-| 值访问器（返回数据） | `get*` | `getWidth` / `getStr` / `getBool`（数据取值，不是状态查询） |
+| 值访问器（返回数据） | `get*` | `getWidth` / `translate` / `getBool`（数据取值，不是状态查询） |
 | **动作返回是否成功** | 保留动词式（不加 `is`） | `initContext` / `open` / `pushOverlay` / `step` / `recognize` |
 | 布尔开关 | `set<名词>Enabled` / `set<名词>Visible` / `set<名词>Animated` | `setBarsAnimated` / `setHeaderVisible` / `setBatteryVisible` |
 | 回调 | `setOnXxx` | `setOnClick` / `setOnChange` / `setOnSubmit` |

@@ -69,7 +69,7 @@ class Header : public AppearanceView
     // 大标题是**绝对定位**的子视图，落在页头下沿之外，所以不参与页头布局、不引起重排；
     // 整个收起过程只改**绘制期**的量（alpha / 缩放 / 位移）。宿主只需要：
     //
-    //     header->setLargeTitle(getStr("app/title"));
+    //     header->setLargeTitle(translate("app/title"));
     //     header->setCollapseSource(this->scroller);   // 传包住内容的 ScrollingFrame
     //
     // 之后每帧由 Header::update() 自己按滚动偏移算进度（不绑滚动源时也可手动

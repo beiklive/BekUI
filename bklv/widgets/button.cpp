@@ -50,7 +50,7 @@ Button::Button(const std::string& text, const std::string& variant)
 
     // 点一下就执行（不用先聚焦再按回车），键盘/手柄走 A 键
     this->onPointerAction = true;
-    this->registerAction(ControllerButton::A, getStr("hints/ok"), [this](View*) { this->trigger(); });
+    this->registerAction(ControllerButton::A, translate("hints/ok"), [this](View*) { this->trigger(); });
 
     this->enableContentMeasurement();
     this->applyTheme();

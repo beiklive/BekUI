@@ -322,7 +322,7 @@ bool resolve(AttributeKind kind, const Value& value, const char* allowed, Resolv
             out.text = raw;
             if (startsWith(raw, "@i18n/"))
             {
-                out.text = getStr(raw.substr(6));
+                out.text = translate(raw.substr(6));
                 return true;
             }
             // `@icon/名字` 与 `@icon/U+E000`：图标控件要的是**字形**，字形只有 C++ 侧能查

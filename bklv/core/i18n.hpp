@@ -34,9 +34,9 @@ bool setLocale(const std::string& locale);
 const std::string& getLocale();
 const std::string& getDefaultLocale();
 
-// 取文案。key 用 "/" 分层：{"demo":{"welcome":"..."}} 对应 "demo/welcome"。
+// 取文案（翻译）。key 用 "/" 分层：{"demo":{"welcome":"..."}} 对应 "demo/welcome"。
 // 未命中顺序：当前语言 -> 默认语言 -> 返回 key 本身（并记一次 debug 日志）。
-std::string getStr(const std::string& key);
+std::string translate(const std::string& key);
 
 // 把平台原始语言串规范成资源文件名。"zh-CN"/"zh-Hans" 都归到 "zh-Hans"。
 std::string canonicalLocale(const std::string& raw);
@@ -72,13 +72,13 @@ void collectArgs(std::vector<std::string>& out, T&& first, Rest&&... rest)
 
 } // namespace detail
 
-// 带参数的文案：getStr("list/count", 12)
+// 带参数的文案：translate("list/count", 12)
 template <typename... Args>
-std::string getStr(const std::string& key, Args&&... args)
+std::string translate(const std::string& key, Args&&... args)
 {
     std::vector<std::string> list;
     detail::collectArgs(list, std::forward<Args>(args)...);
-    return formatStr(getStr(key), list);
+    return formatStr(translate(key), list);
 }
 
 // 测试与诊断用：已装载的 key 数量、查找缓存条目数。

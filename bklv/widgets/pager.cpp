@@ -100,12 +100,12 @@ View* Pager::makePlaceholder(const std::string& id, PageBuildResult result)
     {
         if (this->errorViewFactory)
             return this->errorViewFactory(id);
-        return makePlaceholderView(getStr("pager/load_failed"));
+        return makePlaceholderView(translate("pager/load_failed"));
     }
 
     if (this->loadingViewFactory)
         return this->loadingViewFactory();
-    return makePlaceholderView(getStr("pager/loading"));
+    return makePlaceholderView(translate("pager/loading"));
 }
 
 void Pager::show(const std::string& id)
