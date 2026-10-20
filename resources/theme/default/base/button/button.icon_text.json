@@ -1,0 +1,72 @@
+{
+  "$comment": "图标 + 文字按钮：两层都用左侧 inset 排队（层不是流式布局）；文字/图标都由接口改",
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": 0,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
+      "color": "@theme/color.button.defaultText",
+      "width": "@theme/metric.buttonVariant.iconSize",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        20
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": "@theme/metric.buttonVariant.infoFontSize",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        56
+      ]
+    }
+  ],
+  "states": {
+    "focused": {},
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.button.defaultPressedBg",
+        "duration": 60
+      }
+    },
+    "disabled": {}
+  }
+}

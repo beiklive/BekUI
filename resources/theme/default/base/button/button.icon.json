@@ -1,6 +1,6 @@
 {
   "box": {
-    "width": 56,
+    "width": "@theme/metric.control.height",
     "height": "@theme/metric.control.height",
     "minWidth": 0,
     "padding": 0,

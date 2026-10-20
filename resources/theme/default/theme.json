@@ -19,6 +19,8 @@
     "base/rectangle.card.innerglow.json",
     "base/button/button.json",
     "base/button/button.icon.json",
+    "base/button/button.icon_text.json",
+    "base/button/button.icon_circle.json",
     "base/button/button.bordered.json",
     "base/text_field.json",
     "base/cell.json",

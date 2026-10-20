@@ -52,18 +52,39 @@ Box* buildButtonShowcasePage()
     }
 
     page->addView(bklv::makeSectionHeader("图标按钮"));
-    Box* icon_button_box = new Box(Axis::ROW);
-    icon_button_box->setWidthPercentage(100.0f); // 关键：行自身要有确定宽度，grow 才有"剩余空间"可分
-    icon_button_box->setGap(getTheme().number("metric.spacing.md", 12.0f));
 
+    Box* icon_row = new Box(Axis::ROW);
+    icon_row->setWidthPercentage(100.0f);
+    icon_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    icon_row->setAlignItems(AlignItems::CENTER);
 
-    Button* icon_button = new Button();
-    icon_button->setAppearanceName("base/button/button.icon");
-    // 纯图标按钮：不写文字（外观里也没有 title 层）
-    icon_button->setIcon(bklv::icon::glyphByName("star")); // 图标层读的是 icon 槽
-    icon_button_box->addView(icon_button);
+    // 1) 纯图标正方形
+    Button* square = new Button();
+    square->setAppearanceName("base/button/button.icon");
+    square->setIcon(bklv::icon::glyphByName("star"));
+    icon_row->addView(square);
 
-    page->addView(icon_button_box); // ← 忘了这行：整行不在视图树里，所以看不到
+    // 2) 纯图标圆形
+    Button* circle = new Button();
+    circle->setAppearanceName("base/button/button.icon_circle");
+    circle->setIcon(bklv::icon::glyphByName("favorite"));
+    icon_row->addView(circle);
+
+    // 3) 图标 + 文字：点一下换图标和文字，验证接口生效
+    Button* icon_text = new Button();
+    icon_text->setAppearanceName("base/button/button.icon_text");
+    icon_text->setIcon(bklv::icon::glyphByName("settings"));
+    icon_text->setText("图标 + 文字");
+    icon_text->setWidth(220.0f);
+    icon_text->setOnClick([icon_text] {
+        static bool alt = false;
+        alt = !alt;
+        icon_text->setIcon(bklv::icon::glyphByName(alt ? "check" : "settings"));
+        icon_text->setText(alt ? "已切换" : "图标 + 文字");
+    });
+    icon_row->addView(icon_text);
+
+    page->addView(icon_row);
 
     return page;
 }
