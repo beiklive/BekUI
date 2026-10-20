@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>bklv JSON 属性表 · 功能与取值速查</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg:#17191d; --panel:#1f2227; --panel2:#24282e; --line:#33383f;
+    --text:#e8eaed; --dim:#9aa0a6; --accent:#00e6b4; --accent2:#7fd8ff;
+    --warn:#ffb86b; --code:#12141a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    line-height:1.65; font-size:15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing:.5px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--dim); margin-bottom: 32px; }
+  h2 {
+    font-size: 21px; margin: 48px 0 14px; padding-left: 12px;
+    border-left: 4px solid var(--accent);
+  }
+  h3 { font-size: 16px; margin: 28px 0 10px; color: var(--accent2); }
+  p { margin: 10px 0; }
+  code, pre, kbd { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: var(--code); padding: 1px 6px; border-radius: 5px; font-size: 13px; color:#cfe9ff; }
+  pre {
+    background: var(--code); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: #d7e3ee; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 8px; background: var(--panel); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13.5px; }
+  th { background: var(--panel2); color: var(--accent); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  td.k { white-space: nowrap; color:#ffe6a7; font-family: "SF Mono", Menlo, monospace; font-size: 13px; }
+  .muted { color: var(--dim); }
+  .tip, .warn {
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0; font-size: 14px;
+  }
+  .tip { background: rgba(0,230,180,.08); border-left: 3px solid var(--accent); }
+  .warn { background: rgba(255,184,107,.09); border-left: 3px solid var(--warn); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+  .card { background: var(--panel); border:1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card h4 { margin: 0 0 6px; font-size: 14px; color: var(--accent2); }
+  .tag { display:inline-block; font-size:12px; padding:0 7px; border-radius:999px; border:1px solid var(--line); color:var(--dim); margin-left:6px; }
+  .toc { background: var(--panel); border:1px solid var(--line); border-radius: 12px; padding: 16px 20px; columns: 2; column-gap: 32px; }
+  .toc a { color: var(--text); text-decoration: none; display:block; padding: 3px 0; font-size: 14px; }
+  .toc a:hover { color: var(--accent); }
+  @media (max-width: 720px) { .toc { columns: 1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>bklv <span>JSON 属性表</span></h1>
+<div class="sub">四类 JSON 的键、取值写法、缩放规则与例子 —— 以代码里的属性表为准（<code>View::attributes()</code> / <code>Box::attributes()</code> / <code>engineLayerKeys()</code>）。</div>
+
+<div class="toc">
+  <a href="#kinds">0. 四类 JSON 文件</a>
+  <a href="#values">1. 取值语法（数字/颜色/引用/枚举）</a>
+  <a href="#scaling">2. 数值缩放规则</a>
+  <a href="#view-common">3. 视图公共属性</a>
+  <a href="#view-box">4. Box 属性</a>
+  <a href="#view-widgets">5. 控件属性（Label / Image / Button / Cell / Dropdown）</a>
+  <a href="#appearance">6. 外观 JSON 结构</a>
+  <a href="#appearance-box">7. 外观 box 段</a>
+  <a href="#layers">8. 绘制层属性表</a>
+  <a href="#states">9. states / transitions 通道</a>
+  <a href="#examples">10. 完整例子</a>
+</div>
+
+<h2 id="kinds">0. 四类 JSON 文件</h2>
+<table>
+  <tr><th>文件</th><th>作用</th><th>谁读</th></tr>
+  <tr><td class="k">themes.json</td><td>主题清单（有哪些主题可用）</td><td>App / 设计器</td></tr>
+  <tr><td class="k">&lt;主题&gt;/theme.json</td><td>元信息 + <code>files[]</code> 显式清单（不扫目录）</td><td>主题装载</td></tr>
+  <tr><td class="k">&lt;主题&gt;/tokens/*.json</td><td>色板（colors）与数值（metrics）</td><td>主题数据</td></tr>
+  <tr><td class="k">&lt;主题&gt;/base|widget/*.json</td><td><b>外观</b>：box + layers + states + transitions</td><td><code>Appearance::compile</code></td></tr>
+  <tr><td class="k">&lt;主题&gt;/view/*.json</td><td><b>视图描述</b>：type + 属性 + children + include</td><td><code>ViewTemplate</code></td></tr>
+</table>
+<div class="tip">名字规则：<b>相对主题根的路径去掉扩展名</b>。<code>base/button/button.json</code> → 外观名 <code>base/button/button</code>；变体用后缀拼：<code>base/button/button.primary</code>。挪文件 = 改名，C++ 里的引用要一起改。</div>
+
+<h2 id="values">1. 取值语法</h2>
+
+<h3>1.1 数字</h3>
+<table>
+  <tr><th>写法</th><th>含义</th><th>例子</th></tr>
+  <tr><td class="k">12</td><td>像素（按 720p 设计稿写，运行时乘 uiScale）</td><td><code>"width": 220</code></td></tr>
+  <tr><td class="k">"50%"</td><td>父容器主轴尺寸的百分比</td><td><code>"width": "50%"</code></td></tr>
+  <tr><td class="k">"auto"</td><td>由内容/布局决定</td><td><code>"height": "auto"</code></td></tr>
+  <tr><td class="k">"@theme/metric.x.y"</td><td>主题数值（自动带缩放规则）</td><td><code>"radius": "@theme/metric.radius.md"</code></td></tr>
+  <tr><td class="k">"&amp;number.x"</td><td>同文件 <code>vars.numbers</code> 变量</td><td><code>"gap": "&amp;number.gap"</code></td></tr>
+</table>
+
+<h3>1.2 颜色</h3>
+<table>
+  <tr><th>写法</th><th>含义</th></tr>
+  <tr><td class="k">"#RRGGBB"</td><td>6 位十六进制，不透明</td></tr>
+  <tr><td class="k">"#RRGGBBAA"</td><td>8 位，最后两位是 alpha</td></tr>
+  <tr><td class="k">"@theme/color.a.b"</td><td>主题色；key 不存在会<b>编译失败</b>（不静默回退）</td></tr>
+  <tr><td class="k">"&amp;color.x"</td><td>同文件 <code>vars.colors</code> 变量</td></tr>
+  <tr><td class="k">"transparent"</td><td>全透明（等价 <code>#00000000</code>）</td></tr>
+</table>
+
+<h3>1.3 引用与变量</h3>
+<table>
+  <tr><th>前缀</th><th>作用域</th><th>说明</th></tr>
+  <tr><td class="k">@theme/</td><td>主题</td><td>取 <code>color.*</code> 或 <code>metric.*</code>；点号分层</td></tr>
+  <tr><td class="k">&amp;</td><td><b>本文件</b></td><td>引用本文件顶层 <code>vars.colors / vars.numbers</code>，不能跨文件</td></tr>
+  <tr><td class="k">@i18n/</td><td>视图描述</td><td>取文案；实例化时替换（缓存模板不会烤死语言）</td></tr>
+  <tr><td class="k">@icon/</td><td>属性值</td><td>图标名 → 字形，如 <code>"icon": "@icon/star"</code></td></tr>
+  <tr><td class="k">@res/</td><td>资源路径</td><td>相对 <code>resources/</code>，如 <code>"src": "@res/img/a.png"</code></td></tr>
+  <tr><td class="k">$</td><td>键名</td><td>元数据键（<code>$comment</code> / <code>$files</code>），装载器跳过；写在值位置会报错</td></tr>
+</table>
+<pre><code>{
+  "vars": {
+    "colors":  { "label": "@theme/color.text.primary" },
+    "numbers": { "gap": 12 }
+  },
+  "box": { "gap": "&amp;number.gap" },
+  "layers": [
+    { "op": "text", "id": "text", "data_id": "text", "fill": "&amp;color.label" }
+  ]
+}</code></pre>
+
+<h3>1.4 枚举</h3>
+<div class="tip">枚举值<b>大小写与 <code>_</code>/<code>-</code> 都不敏感</b>：<code>flexEnd</code> = <code>flex_end</code> = <code>FLEX_END</code>。视图 JSON 拼错 → 不建控件并报错（列出可选值）；外观 JSON 拼错 → 警告且保持原值。</div>
+
+<h2 id="scaling">2. 数值缩放规则</h2>
+<table>
+  <tr><th>位置</th><th>是否乘 uiScale</th><th>说明</th></tr>
+  <tr><td>主题 <code>metric.*</code></td><td>✅</td><td><code>metric.anim.*</code>（毫秒）与 <code>metric.font.lineHeight</code>（系数）<b>不缩放</b></td></tr>
+  <tr><td>外观 JSON 的 radius / strokeWidth / width / height / fontSize / inset / offset / feather / spread</td><td>✅</td><td><code>opacity</code> 是系数、<code>duration</code> 是毫秒，都不缩放</td></tr>
+  <tr><td>视图 JSON 的像素量</td><td>✅</td><td>width / height / min* / margin* / top / left / right / bottom / borderThickness / cornerRadius / fontSize / 图片 offset</td></tr>
+  <tr><td>代码里写死的像素</td><td>❌</td><td>想跟随分辨率就用主题 token 或写进 JSON</td></tr>
+</table>
+<pre><code>// 720p 设计稿：uiScale = 画布宽 / 1280
+// 1280 宽时 220 → 220px；2560 宽时 220 → 440px
+"box": { "width": 220, "height": 300 }</code></pre>
+
+<h2 id="view-common">3. 视图公共属性</h2>
+<p class="muted">所有视图（<code>View</code>）都支持；表格里标 <span class="tag">px</span> 的字段是像素量，会乘 uiScale。</p>
+<table>
+  <tr><th>键</th><th>类型 / 取值</th><th>说明</th></tr>
+  <tr><td class="k">id</td><td>string</td><td>调试/查找用；设计器选中靠它</td></tr>
+  <tr><td class="k">type</td><td>string</td><td>控件类型，如 <code>Box</code> / <code>Label</code> / <code>Button</code>；缺省 <code>Box</code></td></tr>
+  <tr><td class="k">children</td><td>array</td><td>子节点</td></tr>
+  <tr><td class="k">include</td><td>string</td><td>引另一个视图 JSON（相对主题 root，需写 <code>resources/views/...</code> 的完整路径）</td></tr>
+  <tr><td class="k">width / height</td><td>px · <code>"auto"</code> · <code>"50%"</code> · @theme</td><td>主轴尺寸</td></tr>
+  <tr><td class="k">minWidth / minHeight / maxWidth / maxHeight</td><td>同上</td><td>尺寸夹取</td></tr>
+  <tr><td class="k">grow</td><td>number</td><td>剩余空间的分配权重（建议配 <code>flexBasis: 0</code>）</td></tr>
+  <tr><td class="k">shrink</td><td>number</td><td>空间不足时的压缩权重；<b>Yoga 默认 0 = 不缩</b></td></tr>
+  <tr><td class="k">margin / marginTop / …</td><td>px</td><td>外边距</td></tr>
+  <tr><td class="k">alignSelf</td><td>auto|flexStart|center|flexEnd|stretch|baseline</td><td>覆盖父容器的 alignItems</td></tr>
+  <tr><td class="k">position</td><td>relative|absolute</td><td>absolute 不占流、不参与 gap</td></tr>
+  <tr><td class="k">top / left / right / bottom</td><td>px · %</td><td>绝对定位偏移</td></tr>
+  <tr><td class="k">visibility</td><td>visible|invisible|gone</td><td>gone 不占位、不参与布局</td></tr>
+  <tr><td class="k">backgroundColor</td><td>color</td><td>盒底色（与外观层无关）</td></tr>
+  <tr><td class="k">borderColor / borderThickness</td><td>color / px</td><td>边框</td></tr>
+  <tr><td class="k">cornerRadius</td><td>px</td><td>圆角</td></tr>
+  <tr><td class="k">alpha</td><td>0..1</td><td>整棵子树的透明度（绘制期）</td></tr>
+  <tr><td class="k">clipsToBounds</td><td>bool</td><td>裁剪超出部分</td></tr>
+</table>
+
+<h2 id="view-box">4. Box 属性</h2>
+<table>
+  <tr><th>键</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">axis</td><td>row|column</td><td>主轴方向；默认 column</td></tr>
+  <tr><td class="k">direction</td><td>inherit|ltr|rtl</td><td>文本/排列方向</td></tr>
+  <tr><td class="k">alignItems</td><td>stretch|flexStart|center|flexEnd|baseline|auto</td><td>交叉轴对齐</td></tr>
+  <tr><td class="k">justifyContent</td><td>flexStart|center|flexEnd|spaceBetween|spaceAround|spaceEvenly</td><td>主轴分布</td></tr>
+  <tr><td class="k">flexWrap</td><td>bool</td><td>是否换行</td></tr>
+  <tr><td class="k">alignContent</td><td>flexStart|center|flexEnd|stretch|spaceBetween|spaceAround</td><td>多行时的行对齐</td></tr>
+  <tr><td class="k">flexBasis</td><td>px · % · auto</td><td>flex 基准尺寸；<code>0</code> + grow = 按权重分</td></tr>
+  <tr><td class="k">gap</td><td>px</td><td>主轴间距</td></tr>
+  <tr><td class="k">gapRow / gapColumn</td><td>px</td><td>分别设行/列间距</td></tr>
+  <tr><td class="k">padding / paddingTop / paddingRight / paddingBottom / paddingLeft</td><td>px</td><td>内边距</td></tr>
+</table>
+<pre><code>{ "type": "Box", "axis": "row", "gap": 12,
+  "children": [
+    { "type": "Button", "text": "A", "grow": 1, "flexBasis": 0, "minWidth": 0 },
+    { "type": "Button", "text": "B", "grow": 2, "flexBasis": 0, "minWidth": 0 }
+  ] }</code></pre>
+
+<h2 id="view-widgets">5. 控件属性</h2>
+
+<h3>5.1 Label</h3>
+<table>
+  <tr><th>键</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">text</td><td>string / @i18n</td><td>文案</td></tr>
+  <tr><td class="k">fontSize</td><td>px</td><td>字号（会缩放）</td></tr>
+  <tr><td class="k">textColor</td><td>color</td><td>文字色</td></tr>
+  <tr><td class="k">singleLine</td><td>bool</td><td>单行（超出省略）</td></tr>
+  <tr><td class="k">lineHeight</td><td>number</td><td>行高系数</td></tr>
+  <tr><td class="k">horizontalAlign</td><td>left|center|right</td><td>水平对齐</td></tr>
+  <tr><td class="k">verticalAlign</td><td>top|center|bottom</td><td>垂直对齐</td></tr>
+</table>
+
+<h3>5.2 Image</h3>
+<table>
+  <tr><th>键</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">src</td><td>路径 / @res</td><td>图片路径（相对 resources 或完整路径）</td></tr>
+  <tr><td class="k">scalingType</td><td>fit|fill|stretch|center</td><td>缩放模式</td></tr>
+  <tr><td class="k">cornerRadius</td><td>px</td><td>图片自身圆角（覆盖公共属性里的背景圆角）</td></tr>
+  <tr><td class="k">scale / offsetX / offsetY</td><td>number / px</td><td>显示比例与平移（fill 模式无效）</td></tr>
+  <tr><td class="k">placeholderColor</td><td>color</td><td>占位色</td></tr>
+</table>
+
+<h3>5.3 Button</h3>
+<table>
+  <tr><th>键</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">text</td><td>string</td><td>按钮文字</td></tr>
+  <tr><td class="k">icon</td><td>@icon/名字 或字形</td><td>图标</td></tr>
+  <tr><td class="k">iconFont</td><td>material|switch</td><td>用哪套图标字体</td></tr>
+  <tr><td class="k">variant</td><td>string</td><td>外观变体后缀，如 <code>primary</code> → <code>base/button/button.primary</code></td></tr>
+  <tr><td class="k">enabled</td><td>bool</td><td>禁用态</td></tr>
+</table>
+
+<h3>5.4 Cell / Dropdown</h3>
+<table>
+  <tr><th>控件</th><th>键</th><th>说明</th></tr>
+  <tr><td class="k">Cell</td><td>title / detail / enabled</td><td>标题、右侧详情、是否可用</td></tr>
+  <tr><td class="k">Dropdown</td><td>title / selected</td><td>标题、当前选中索引（0 起）</td></tr>
+</table>
+
+<h2 id="appearance">6. 外观 JSON 结构</h2>
+<table>
+  <tr><th>顶层键</th><th>类型</th><th>说明</th></tr>
+  <tr><td class="k">vars</td><td>object</td><td>本文件变量：<code>{ "colors":{}, "numbers":{} }</code>，只有一个、必须在顶层</td></tr>
+  <tr><td class="k">import</td><td>string / array</td><td>引用其它外观并逐字段合并（当前文件优先）</td></tr>
+  <tr><td class="k">box</td><td>object</td><td>盒模型/布局（见下节）</td></tr>
+  <tr><td class="k">layers</td><td>array</td><td>绘制层（必须有）</td></tr>
+  <tr><td class="k">states</td><td>object</td><td>状态补间：focused / pressed / disabled / selected / on / off …</td></tr>
+  <tr><td class="k">transitions</td><td>object</td><td>生命周期动画：enter / exit / show / hide</td></tr>
+  <tr><td class="k">children</td><td>array</td><td>外观驱动的子视图（可嵌套）</td></tr>
+</table>
+<div class="warn">外观里没有的层 = 不画，这是正常情况；但 <b><code>states</code>/<code>transitions</code> 里引用不存在的层 id 会编译失败</b>。删层时要把引用一起删。</div>
+
+<h2 id="appearance-box">7. 外观 <code>box</code> 段</h2>
+<table>
+  <tr><th>键</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">axis</td><td>row|column</td><td>控件内部排列方向（AppearanceView 默认 column）</td></tr>
+  <tr><td class="k">width / height / minWidth / minHeight / maxWidth / maxHeight</td><td>px · auto · % · @theme</td><td>尺寸</td></tr>
+  <tr><td class="k">padding / margin</td><td>px 或 [上,右,下,左]</td><td>只接受 1 个或 4 个数</td></tr>
+  <tr><td class="k">gap</td><td>px</td><td>子项间距</td></tr>
+  <tr><td class="k">grow / shrink</td><td>number</td><td>flex 权重</td></tr>
+  <tr><td class="k">alignItems / justifyContent</td><td>同 Box</td><td>对齐</td></tr>
+  <tr><td class="k">backgroundColor / borderColor / borderThickness / cornerRadius</td><td>color / color / px / px</td><td>盒属性</td></tr>
+  <tr><td class="k">measureContent</td><td>"sum"</td><td>固有尺寸按行求和（一行多内容层时用）</td></tr>
+</table>
+
+<h2 id="layers">8. 绘制层属性表</h2>
+<table>
+  <tr><th>键</th><th>适用于</th><th>取值</th><th>说明</th></tr>
+  <tr><td class="k">op</td><td>全部</td><td>rect|text|image|shadow|glass|custom</td><td>层类型</td></tr>
+  <tr><td class="k">id</td><td>全部</td><td>string</td><td>层身份：状态键 <code>layers.&lt;id&gt;.*</code>、字体覆盖、设计器点选</td></tr>
+  <tr><td class="k">data_id</td><td>text / image / custom</td><td>string</td><td>内容槽 id；省略时默认取层 id</td></tr>
+  <tr><td class="k">font_kind</td><td>text</td><td>icon|text</td><td>字体种类；不写 = 正文字体</td></tr>
+  <tr><td class="k">fill / color / textColor</td><td>rect / shadow / text</td><td>color</td><td>底色、阴影浓度、文字色</td></tr>
+  <tr><td class="k">stroke / strokeWidth</td><td>rect / glass / shadow</td><td>color / px</td><td>描边；玻璃层里是内缘高光</td></tr>
+  <tr><td class="k">radius</td><td>rect / shadow / glass</td><td>px</td><td>圆角</td></tr>
+  <tr><td class="k">opacity</td><td>全部</td><td>0..1</td><td>层透明度（不缩放）</td></tr>
+  <tr><td class="k">fontSize</td><td>text</td><td>px</td><td>字号</td></tr>
+  <tr><td class="k">align / valign</td><td>全部</td><td>left|center|right / top|center|bottom</td><td>层在控件范围内的对齐</td></tr>
+  <tr><td class="k">inset</td><td>全部</td><td>[上,右,下,左]</td><td>向内收缩（可负值外扩），用于给图标让位等</td></tr>
+  <tr><td class="k">offset</td><td>全部</td><td>[x,y]</td><td>平移</td></tr>
+  <tr><td class="k">width / height</td><td>全部</td><td>px</td><td>显式尺寸（装饰件：色条 4 / 下边线 1）</td></tr>
+  <tr><td class="k">feather / spread</td><td>shadow</td><td>px</td><td>羽化与外扩</td></tr>
+  <tr><td class="k">cutout</td><td>shadow</td><td>bool</td><td>只画外圈（挖空自身矩形）</td></tr>
+  <tr><td class="k">inner</td><td>shadow</td><td>bool</td><td>内阴影（无方向，offset 无效）</td></tr>
+  <tr><td class="k">scaling</td><td>image</td><td>fit|fill|stretch|center</td><td>图片缩放</td></tr>
+  <tr><td class="k">tint</td><td>image</td><td>color</td><td>图片着色</td></tr>
+  <tr><td class="k">gradient</td><td>rect</td><td>object</td><td><code>{type, angle, center, stops[2..4]}</code>；优先于 fill</td></tr>
+  <tr><td class="k">blurRadius / quality</td><td>glass</td><td>number / enum</td><td>玻璃模糊（总开关在 Shell）</td></tr>
+</table>
+<pre><code>{
+  "box": { "width": 200, "height": 56, "cornerRadius": "@theme/metric.radius.md" },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "#00000040", "feather": 12, "spread": 2 },
+    { "op": "rect",   "id": "bg",    "fill": "@theme/color.surface.card", "radius": "@theme/metric.radius.md" },
+    { "op": "text",   "id": "icon",  "data_id": "icon", "font_kind": "icon", "inset": [0,0,0,140] },
+    { "op": "text",   "id": "title", "data_id": "text", "fill": "@theme/color.text.primary" }
+  ]
+}</code></pre>
+
+<h2 id="states">9. states / transitions 通道</h2>
+<table>
+  <tr><th>通道写法</th><th>示例</th><th>说明</th></tr>
+  <tr><td class="k">layers.&lt;层id&gt;.&lt;属性&gt;</td><td><code>"layers.bg.fill": { "to": "#7fd8ff" }</code></td><td>层属性补间（fill/stroke/strokeWidth/radius/opacity/fontSize/inset/offset…）</td></tr>
+  <tr><td class="k">translateX / translateY</td><td><code>"translateX": { "to": 24 }</code></td><td>整树绘制期位移（零重排，transitions 用）</td></tr>
+  <tr><td class="k">scaleX / scaleY / alpha</td><td><code>"alpha": { "from": 0, "to": 1 }</code></td><td>整树缩放/透明度</td></tr>
+</table>
+<table>
+  <tr><th>字段</th><th>说明</th></tr>
+  <tr><td class="k">to</td><td>必写，目标值</td></tr>
+  <tr><td class="k">from</td><td>可省，省略取当前值</td></tr>
+  <tr><td class="k">duration</td><td>毫秒；<code>0</code> = 瞬变</td></tr>
+  <tr><td class="k">easing</td><td>如 <code>cubicOut</code> / <code>easeInOut</code>（大小写不敏感）</td></tr>
+  <tr><td class="k">delay</td><td>毫秒</td></tr>
+  <tr><td class="k">when</td><td>仅 transitions 层内条目：<code>with</code> / <code>after</code></td></tr>
+</table>
+<pre><code>{
+  "states": {
+    "focused": { "layers.bg.fill": { "to": "@theme/color.highlight.background", "duration": 120, "easing": "cubicOut" } },
+    "pressed": { "layers.bg.fill": { "to": "@theme/color.button.primaryPressedBg", "duration": 80 } }
+  },
+  "transitions": {
+    "enter": { "translateX": { "from": 40, "to": 0, "duration": 220, "easing": "cubicOut" },
+               "alpha":      { "from": 0,  "to": 1, "duration": 220 } }
+  }
+}</code></pre>
+
+<h2 id="examples">10. 完整例子</h2>
+
+<h3>10.1 一张卡片</h3>
+<pre><code>{
+  "box": { "width": 220, "height": 300, "cornerRadius": 18,
+           "borderThickness": 1, "borderColor": "@theme/color.common.divider",
+           "backgroundColor": "@theme/color.surface.card" },
+  "layers": [
+    { "op": "rect", "id": "bg", "fill": "@theme/color.surface.card", "radius": 18 },
+    { "op": "text", "id": "icon", "data_id": "icon", "font_kind": "icon",
+      "fontSize": "@theme/metric.font.size.lg", "inset": [0,0,0,0], "align": "center" },
+    { "op": "text", "id": "title", "data_id": "text", "fontSize": 22,
+      "inset": [0,0,40,0], "align": "center", "valign": "center" }
+  ],
+  "states": {
+    "focused": { "layers.bg.fill": { "to": "@theme/color.surface.hover", "duration": 120 } }
+  }
+}</code></pre>
+
+<h3>10.2 页面视图描述</h3>
+<pre><code>{
+  "type": "Box",
+  "axis": "column",
+  "gap": 16,
+  "children": [
+    { "type": "Label", "text": "@i18n/demo/title", "fontSize": 28,
+      "textColor": "@theme/color.text.primary" },
+    { "type": "Box", "axis": "row", "gap": 12,
+      "children": [
+        { "type": "Button", "text": "确定", "grow": 1, "flexBasis": 0, "minWidth": 0 },
+        { "type": "Button", "text": "取消", "variant": "bordered",
+          "grow": 1, "flexBasis": 0, "minWidth": 0 }
+      ] }
+  ]
+}</code></pre>
+
+<h3>10.3 主题 token 读取</h3>
+<pre><code>// colors.json
+{ "surface": { "card": "#1f2227" }, "accent": { "base": "#00e6b4" } }
+
+// metrics.json
+{ "radius": { "md": 5 }, "spacing": { "md": 12 } }
+
+// 外观 / 视图里
+"radius": "@theme/metric.radius.md"
+"fill":   "@theme/color.accent.base"</code></pre>
+
+<p class="muted" style="margin-top:48px">
+  文档以代码里的属性表为准：改控件属性请同步 <code>attributes()</code> 表；
+  改外观层字段请同步 <code>engineLayerKeys()</code> 与 <code>docs/json-syntax.md</code>。
+</p>
+
+</div>
+</body>
+</html>
