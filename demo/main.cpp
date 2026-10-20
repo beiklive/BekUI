@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     std::string screenshot;
     int         frames = 0;
     int         open   = 0;
-    int         bg     = 1;
+    int         bg     = -1; // -1 = 没传 --bg，保留 DemoApp 里的默认值
 
     for (int i = 1; i < argc; i++)
     {
@@ -32,7 +32,9 @@ int main(int argc, char** argv)
 
     demo::DemoApp host;
     app.setRootView(host.getView());
-    host.setBackdropPreset(bg);
+    // 只在**显式传了 --bg** 时覆盖；否则用 DemoApp 构造函数里的默认值
+    if (bg >= 0)
+        host.setBackdropPreset(bg);
     app.onUpdate = [&host]() { host.update(); };
 
     if (!screenshot.empty())
