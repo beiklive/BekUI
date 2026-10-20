@@ -234,6 +234,9 @@ enum class ViewChannel
     SCALE_X,
     SCALE_Y,
     ALPHA,
+    ROTATE, // 弧度（不缩放）
+    SKEW_X, // 弧度（不缩放）
+    SKEW_Y,
     COUNT,
 };
 
@@ -347,6 +350,9 @@ class Appearance
     const std::vector<std::string>& getStateNames() const { return this->stateNames; }
     const std::vector<AppearanceTransition>& getTransitions(const std::string& state) const;
 
+    // 状态里的**视图级**通道（`states.<状态>.self`）：整棵子树一起动的绘制期变换。
+    const std::vector<ViewChannelClip>& getStateViewClips(const std::string& state) const;
+
     // 视图过渡：外观里有没有写 transitions / 取某个事件的描述
     bool hasTransitions() const;
     const TransitionEventSpec& getTransition(TransitionEvent event) const;
@@ -361,6 +367,7 @@ class Appearance
     AppearanceBox box;
     std::vector<std::string> stateNames;
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
+    std::vector<std::pair<std::string, std::vector<ViewChannelClip>>> stateViewClips;
     // 四个生命周期事件（外观 JSON 的 transitions 段）；没写就是 defined=false
     std::array<TransitionEventSpec, (size_t)TransitionEvent::COUNT> transitions;
 };

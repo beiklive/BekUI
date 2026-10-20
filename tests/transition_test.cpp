@@ -300,7 +300,10 @@ int main()
                 && channel == ViewChannel::TRANSLATE_X,
             "translate-x");
         check(viewChannelFromName("scaleY", channel) && channel == ViewChannel::SCALE_Y, "scaleY");
-        check(!viewChannelFromName("rotate", channel), "rotate 不支持（要报错）");
+        check(viewChannelFromName("rotate", channel) && channel == ViewChannel::ROTATE,
+            "rotate 现在支持（视图级通道）");
+        check(viewChannelFromName("skewX", channel) && channel == ViewChannel::SKEW_X, "skewX");
+        check(!viewChannelFromName("blur", channel), "不认识的通道要报错");
         check(viewChannelIsScaled(ViewChannel::TRANSLATE_X), "位移按 720p 缩放");
         check(!viewChannelIsScaled(ViewChannel::ALPHA), "透明度不缩放");
     }

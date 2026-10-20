@@ -351,9 +351,153 @@ void AppearanceView::applyTheme()
     this->invalidate();
 }
 
+namespace
+{
+
+EasingFunction easingFromName(const std::string& name)
+{
+    if (enumMatches(name, "linear")) return EasingFunction::LINEAR;
+    if (enumMatches(name, "quadraticIn")) return EasingFunction::QUADRATIC_IN;
+    if (enumMatches(name, "quadraticOut")) return EasingFunction::QUADRATIC_OUT;
+    if (enumMatches(name, "quadraticInOut")) return EasingFunction::QUADRATIC_IN_OUT;
+    if (enumMatches(name, "cubicIn")) return EasingFunction::CUBIC_IN;
+    if (enumMatches(name, "cubicOut")) return EasingFunction::CUBIC_OUT;
+    if (enumMatches(name, "cubicInOut")) return EasingFunction::CUBIC_IN_OUT;
+    if (enumMatches(name, "quarticOut")) return EasingFunction::QUARTIC_OUT;
+    if (enumMatches(name, "quinticOut")) return EasingFunction::QUINTIC_OUT;
+    if (enumMatches(name, "sinusoidalIn")) return EasingFunction::SINE_IN;
+    if (enumMatches(name, "sinusoidalOut")) return EasingFunction::SINE_OUT;
+    if (enumMatches(name, "sinusoidalInOut")) return EasingFunction::SINE_IN_OUT;
+    if (enumMatches(name, "exponentialOut")) return EasingFunction::EXPONENTIAL_OUT;
+    if (enumMatches(name, "circularOut")) return EasingFunction::CIRCULAR_OUT;
+    if (enumMatches(name, "backOut")) return EasingFunction::BACK_OUT;
+    if (enumMatches(name, "backInOut")) return EasingFunction::BACK_IN_OUT;
+    if (enumMatches(name, "bounceOut")) return EasingFunction::BOUNCE_OUT;
+    if (enumMatches(name, "elasticOut")) return EasingFunction::ELASTIC_OUT;
+    return EasingFunction::LINEAR;
+}
+
+float defaultViewChannelValue(ViewChannel channel)
+{
+    switch (channel)
+    {
+        case ViewChannel::SCALE_X:
+        case ViewChannel::SCALE_Y:
+        case ViewChannel::ALPHA: return 1.0f;
+        default: return 0.0f;
+    }
+}
+
+} // namespace
+
+void AppearanceView::refreshStateViewChannels()
+{
+    if (!this->stateViewInit)
+    {
+        this->stateViewInit = true;
+        for (int i = 0; i < (int)ViewChannel::COUNT; i++)
+            this->stateViewAnims[(size_t)i].reset(defaultViewChannelValue((ViewChannel)i));
+    }
+
+    const Appearance& spec = this->appearance.getAppearance();
+
+    for (int i = 0; i < (int)ViewChannel::COUNT; i++)
+    {
+        const ViewChannel channel = (ViewChannel)i;
+        const bool wasDriven = this->stateViewDriven[(size_t)i];
+
+        float target       = defaultViewChannelValue(channel);
+        float durationMs   = 0.0f;
+        std::string easing = "linear";
+        bool  hasSource    = false;
+        float source       = 0.0f;
+        bool  hasClip      = false;
+
+        // 按激活顺序扫：后激活的状态覆盖先激活的（pressed 覆盖 focused）
+        for (const std::string& state : this->activeStateOrder)
+        {
+            for (const ViewChannelClip& clip : spec.getStateViewClips(state))
+            {
+                if (clip.channel != channel)
+                    continue;
+                target     = clip.target;
+                durationMs = clip.durationMs;
+                easing     = clip.easing;
+                hasSource  = clip.hasSource;
+                source     = clip.source;
+                hasClip    = true;
+            }
+        }
+
+        Animatable& anim = this->stateViewAnims[(size_t)i];
+
+        // 没有任何激活状态驱动这个通道：如果以前驱动过，平滑回到默认值
+        if (!hasClip)
+        {
+            if (wasDriven && anim.getValue() != target)
+            {
+                anim.reset(anim.getValue());
+                anim.addStep(target, 0.12f, EasingFunction::CUBIC_OUT);
+                anim.start();
+            }
+            continue;
+        }
+
+        this->stateViewDriven[(size_t)i] = true;
+
+        if (durationMs <= 0.0f)
+        {
+            anim.reset(hasSource ? source : target);
+            continue;
+        }
+
+        // 先撤掉旧补间（否则排队会串），再从当前值起新的一段
+        anim.reset(hasSource ? source : anim.getValue());
+        anim.addStep(target, durationMs / 1000.0f, easingFromName(easing));
+        anim.start();
+    }
+}
+
+void AppearanceView::stepStateViewChannels(float deltaSeconds)
+{
+    if (deltaSeconds > 0.0f)
+        for (Animatable& anim : this->stateViewAnims)
+            if (!anim.isStopped())
+                anim.update(deltaSeconds);
+
+    // 只写"被状态接管过"的通道：没写 self 的控件连 1.0 的 scale 都不碰，
+    // 否则会把内置的聚焦放大（focus scale）覆盖掉。
+    auto apply = [this](ViewChannel channel, auto setter) {
+        if (this->stateViewDriven[(size_t)channel])
+            setter(this->stateViewAnims[(size_t)channel].getValue());
+    };
+    apply(ViewChannel::TRANSLATE_X, [this](float v) { this->setTranslateX(v); });
+    apply(ViewChannel::TRANSLATE_Y, [this](float v) { this->setTranslateY(v); });
+    apply(ViewChannel::SCALE_X, [this](float v) { this->setScaleX(v); });
+    apply(ViewChannel::SCALE_Y, [this](float v) { this->setScaleY(v); });
+    apply(ViewChannel::ALPHA, [this](float v) { this->setAlpha(v); });
+    apply(ViewChannel::ROTATE, [this](float v) { this->setRotate(v); });
+    apply(ViewChannel::SKEW_X, [this](float v) { this->setSkewX(v); });
+    apply(ViewChannel::SKEW_Y, [this](float v) { this->setSkewY(v); });
+}
+
 void AppearanceView::setAppearanceState(const std::string& state, bool active)
 {
     this->appearance.setState(state, active);
+
+    // 维护激活顺序：激活时追加到末尾（= 优先级最高），关闭时移除
+    const auto found = std::find(this->activeStateOrder.begin(), this->activeStateOrder.end(), state);
+    if (active)
+    {
+        if (found == this->activeStateOrder.end())
+            this->activeStateOrder.push_back(state);
+    }
+    else if (found != this->activeStateOrder.end())
+    {
+        this->activeStateOrder.erase(found);
+    }
+
+    this->refreshStateViewChannels();
 }
 
 bool AppearanceView::isAppearanceStateActive(const std::string& state) const
@@ -381,6 +525,9 @@ void AppearanceView::update()
 
     // 聚焦反馈：轻微放大（画框在浮层上，这边只管"变大一点"）
     this->updateFocusScale();
+
+    // 状态驱动的视图级通道（states.<状态>.self）；没写 self 时不碰任何变换
+    this->stepStateViewChannels(getFrameDeltaSeconds());
 
     if (!this->appearance.isAnimating())
         return;

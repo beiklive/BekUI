@@ -263,6 +263,15 @@ const std::vector<AppearanceTransition>& Appearance::getTransitions(const std::s
     return empty;
 }
 
+const std::vector<ViewChannelClip>& Appearance::getStateViewClips(const std::string& state) const
+{
+    static const std::vector<ViewChannelClip> empty;
+    for (const auto& entry : this->stateViewClips)
+        if (entry.first == state)
+            return entry.second;
+    return empty;
+}
+
 const char* transitionEventName(TransitionEvent event)
 {
     switch (event)
@@ -293,6 +302,9 @@ const char* viewChannelName(ViewChannel channel)
         case ViewChannel::SCALE_X: return "scaleX";
         case ViewChannel::SCALE_Y: return "scaleY";
         case ViewChannel::ALPHA: return "alpha";
+        case ViewChannel::ROTATE: return "rotate";
+        case ViewChannel::SKEW_X: return "skewX";
+        case ViewChannel::SKEW_Y: return "skewY";
         default: return "alpha";
     }
 }
@@ -400,19 +412,133 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
 
 // states 段：`states.<状态>.<层id>.<属性>` -> 每个状态一组通道补间。
 // 抽成函数只为可读（原来和 box / layers / transitions 挤在 compile 里一个 501 行的函数体）。
+// 解析一组视图级通道：{ "translateY": { "from":24, "to":0, "duration":220, "easing":"cubicOut" } }
+// 用于 `states.<状态>.self` 与 `transitions.<事件>.self`。
+bool parseViewChannelSpecs(const Json& node, const ThemeData& theme,
+    std::vector<ViewChannelClip>& out, std::string& error, const std::string& where)
+{
+    if (!node.is_object())
+    {
+        error = where + " 必须是对象（通道名 -> 通道描述）";
+        return false;
+    }
+
+    for (auto it = node.begin(); it != node.end(); ++it)
+    {
+        ViewChannel channel = ViewChannel::ALPHA;
+        if (!viewChannelFromName(it.key(), channel))
+        {
+            error = where + " 不认识的通道 \"" + it.key()
+                + "\"（self 支持 translateX / translateY / scaleX / scaleY / alpha / rotate / skewX / skewY）";
+            return false;
+        }
+
+        const Json& spec = it.value();
+        if (!spec.is_object() || !spec.contains("to"))
+        {
+            error = where + "." + it.key() + " 必须写成 { \"from\": 起点(可省), \"to\": 终点 }";
+            return false;
+        }
+
+        ViewChannelClip clip;
+        clip.channel = channel;
+        if (spec.contains("from"))
+        {
+            if (!resolveNumber(spec["from"], theme, clip.source, error, where + "." + it.key() + ".from"))
+                return false;
+            clip.hasSource = true;
+            if (viewChannelIsScaled(channel))
+                clip.source = scalePixels(clip.source);
+        }
+        if (!resolveNumber(spec["to"], theme, clip.target, error, where + "." + it.key() + ".to"))
+            return false;
+        if (viewChannelIsScaled(channel))
+            clip.target = scalePixels(clip.target);
+
+        clip.durationMs = spec.value("duration", 0.0f);
+        clip.delayMs    = spec.value("delay", 0.0f);
+        clip.easing     = spec.value("easing", "quadraticOut");
+        out.push_back(clip);
+    }
+    return true;
+}
+
 bool parseStateProps(const std::string& stateName, const Json& stateNode,
     const ThemeData& theme, Appearance& target,
-    std::vector<AppearanceTransition>& transitions, std::string& error)
+    std::vector<AppearanceTransition>& transitions,
+    std::vector<ViewChannelClip>& viewClips, std::string& error)
 {
     for (auto propIt = stateNode.begin(); propIt != stateNode.end(); ++propIt)
     {
-        // property 写成 "<layerId>.<属性名>"
         const std::string property = propIt.key();
-        const size_t dot           = property.find_last_of('.');
+        const Json& value          = propIt.value();
+
+        // (a) self：整棵子树的视图级通道
+        if (property == "self")
+        {
+            if (!parseViewChannelSpecs(value, theme, viewClips, error,
+                    "states." + stateName + ".self"))
+                return false;
+            continue;
+        }
+
+        // (b) 分组写法：{ "bg": { "fill": {...}, "radius": {...} } }
+        const bool grouped = property.find('.') == std::string::npos
+            && value.is_object() && !value.contains("to");
+        if (grouped)
+        {
+            for (auto sub = value.begin(); sub != value.end(); ++sub)
+            {
+                const std::string where = "states." + stateName + "." + property + "." + sub.key();
+                const int layerIndex    = target.indexOfLayer(property);
+                if (layerIndex < 0)
+                {
+                    error = where + " 引用了不存在的层 \"" + property + "\"";
+                    return false;
+                }
+                AppearanceProp prop = AppearanceProp::FILL;
+                if (!appearancePropFromName(sub.key(), prop))
+                {
+                    error = where + " 不认识的属性 \"" + sub.key() + "\"";
+                    return false;
+                }
+                AppearanceTransition transition;
+                transition.layerId    = property;
+                transition.prop       = prop;
+                transition.durationMs = sub.value().value("duration", 0.0f);
+                transition.easing     = sub.value().value("easing", "linear");
+                const Json& specNode  = sub.value();
+                if (!specNode.is_object() || !specNode.contains("to"))
+                {
+                    error = where + " 必须写成 {\"to\": ..., \"duration\": 毫秒}";
+                    return false;
+                }
+                if (appearancePropIsColor(prop))
+                {
+                    ImU32 color = 0;
+                    if (!resolveColor(specNode["to"], theme, color, error, where + ".to"))
+                        return false;
+                    splitColor(color, transition.target);
+                }
+                else if (!resolveNumber(specNode["to"], theme, transition.target[0], error, where + ".to"))
+                {
+                    return false;
+                }
+                else if (prop != AppearanceProp::OPACITY)
+                {
+                    transition.target[0] = scalePixels(transition.target[0]);
+                }
+                transitions.push_back(transition);
+            }
+            continue;
+        }
+
+        // (c) 旧扁平写法：<层 id>.<属性名>
+        const size_t dot = property.find_last_of('.');
         if (dot == std::string::npos)
         {
             error = "states." + stateName + "." + property
-                + " 要写成 \"<层 id>.<属性名>\"，例如 \"bg.fill\"";
+                + " 要写成 \"<层 id>.<属性名>\"（或分组写 \"<层 id>\": { ... }，视图通道写 \"self\"）";
             return false;
         }
 
@@ -472,6 +598,7 @@ bool parseStateProps(const std::string& stateName, const Json& stateNode,
 bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& target,
     std::vector<std::string>& stateNames,
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>>& states,
+    std::vector<std::pair<std::string, std::vector<ViewChannelClip>>>& stateViewClips,
     std::string& error)
 {
     for (auto stateIt = statesNode.begin(); stateIt != statesNode.end(); ++stateIt)
@@ -485,11 +612,14 @@ bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& 
         }
 
         std::vector<AppearanceTransition> transitions;
-        if (!parseStateProps(stateName, stateNode, theme, target, transitions, error))
+        std::vector<ViewChannelClip> views;
+        if (!parseStateProps(stateName, stateNode, theme, target, transitions, views, error))
             return false;
 
         stateNames.push_back(stateName);
         states.emplace_back(stateName, std::move(transitions));
+        if (!views.empty())
+            stateViewClips.emplace_back(stateName, std::move(views));
     }
     return true;
 }
@@ -497,12 +627,13 @@ bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& 
 bool parseStates(const Json& doc, const ThemeData& theme, Appearance& target,
     std::vector<std::string>& stateNames,
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>>& states,
+    std::vector<std::pair<std::string, std::vector<ViewChannelClip>>>& stateViewClips,
     std::string& error)
 {
         // 状态
         if (doc.contains("states") && doc["states"].is_object())
         {
-            if (!parseAllStates(doc["states"], theme, target, stateNames, states, error))
+            if (!parseAllStates(doc["states"], theme, target, stateNames, states, stateViewClips, error))
                 return false;
         }
     return true;
@@ -596,6 +727,15 @@ bool parseTransitions(const Json& root, const Appearance& appearance, const Them
             const std::string key = keyIt.key();
             if (key == "duration" || key == "delay" || key == "easing" || key == "layers")
                 continue;
+
+            // `self`: 视图级通道的分组写法（与 states 一致；根上直写通道也继续支持）
+            if (key == "self")
+            {
+                if (!parseViewChannelSpecs(keyIt.value(), theme, spec.viewClips, error,
+                        where + ".self"))
+                    return false;
+                continue;
+            }
 
             ViewChannel channel = ViewChannel::ALPHA;
             if (!viewChannelFromName(key, channel))
@@ -925,7 +1065,8 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         return nullptr;
 
     // 状态
-    if (!parseStates(doc, theme, *appearance, appearance->stateNames, appearance->states, error))
+    if (!parseStates(doc, theme, *appearance, appearance->stateNames, appearance->states,
+        appearance->stateViewClips, error))
         return nullptr;
 
     // 视图过渡（enter / exit / show / hide）

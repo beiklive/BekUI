@@ -10,6 +10,7 @@
 //
 // 数据来源（`"source": "text"` 之类）由子类翻译成实际内容，见 getLayerText/getLayerImage。
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -79,6 +80,10 @@ class AppearanceView : public Box
     // 状态：focused / pressed / disabled / selected / hover。
     // 打开状态会让外观里的对应动效跑起来（tweeny 插值）。
     void setAppearanceState(const std::string& state, bool active);
+
+    // 状态里的视图级通道（`states.<状态>.self`）显式推进：无窗口测试用；
+    // 正常运行由 update() 用帧间隔调用。
+    void stepStateViewChannels(float deltaSeconds);
     bool isAppearanceStateActive(const std::string& state) const;
 
     bool isFocusable() const override { return this->focusable; }
@@ -217,6 +222,14 @@ class AppearanceView : public Box
     bool focusable = false;
     IconFontKind iconFontKind = IconFontKind::MATERIAL;
     std::map<std::string, IconFontKind> layerIconFontKinds;
+
+    // 状态驱动的视图级通道（translate/scale/alpha/rotate）。逐通道一根弹簧式补间，
+    // 最后激活的状态赢（和层通道"先撤旧补间再建新的"语义一致）。
+    std::array<Animatable, (size_t)ViewChannel::COUNT> stateViewAnims;
+    std::array<bool, (size_t)ViewChannel::COUNT> stateViewDriven{};
+    std::vector<std::string> activeStateOrder;
+    bool stateViewInit = false;
+    void refreshStateViewChannels();
     bool pressed   = false;
     AppearanceInstance appearance;
 

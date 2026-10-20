@@ -309,6 +309,14 @@ view-&gt;findViewById("icon")-&gt;setVisibility(Visibility::GONE);  // 不占位
 }</code></pre>
 
 <h2 id="states">9. states / transitions 通道</h2>
+<div class="tip"><b><code>states</code> 的两种目标：</b> <code>self</code> = 视图级通道（translateX/Y、scaleX/Y、alpha、rotate、skewX/Y），整棵子树一起动；<code>&lt;层 id&gt;</code> = 层属性（fill/stroke/radius/inset…）。同一状态可混写，多个状态同时激活时<b>后激活的赢</b>。</div>
+<pre><code>"states": {
+  "focused": {
+    "self": { "translateY": { "to": -4, "duration": 160, "easing": "cubicOut" } },
+    "bg":   { "fill": { "to": "@theme/color.surface.hover", "duration": 120 } }
+  },
+  "pressed": { "layers.bg.fill": { "to": "@theme/color.button.primaryPressedBg", "duration": 80 } }
+}</code></pre>
 <table>
   <tr><th>通道写法</th><th>示例</th><th>说明</th></tr>
   <tr><td class="k">layers.&lt;层id&gt;.&lt;属性&gt;</td><td><code>"layers.bg.fill": { "to": "#7fd8ff" }</code></td><td>层属性补间（fill/stroke/strokeWidth/radius/opacity/fontSize/inset/offset…）</td></tr>
