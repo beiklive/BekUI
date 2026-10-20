@@ -14,6 +14,7 @@ int main(int argc, char** argv)
     std::string screenshot;
     int         frames = 0;
     int         open   = 0;
+    int         bg     = 1;
 
     for (int i = 1; i < argc; i++)
     {
@@ -23,12 +24,15 @@ int main(int argc, char** argv)
             frames = std::atoi(argv[++i]);
         else if (std::strcmp(argv[i], "--open") == 0 && i + 1 < argc)
             open = std::atoi(argv[++i]);
+        else if (std::strcmp(argv[i], "--bg") == 0 && i + 1 < argc)
+            bg = std::atoi(argv[++i]);
     }
 
     bklv::App app;
 
     demo::DemoApp host;
     app.setRootView(host.getView());
+    host.setBackdropPreset(bg);
     app.onUpdate = [&host]() { host.update(); };
 
     if (!screenshot.empty())

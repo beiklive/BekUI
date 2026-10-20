@@ -381,6 +381,7 @@ set(BKLV_CORE_SOURCES
     views/progress_spinner.cpp
     views/debug_log_view.cpp
     views/fps_overlay.cpp
+    views/preset_backdrop.cpp
     # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
     widgets/account.cpp
     widgets/appearance_view.cpp

@@ -13,6 +13,7 @@
 #include <string>
 
 #include "bklv/bklv.hpp"
+#include "bklv/views/preset_backdrop.hpp"
 
 namespace demo
 {
@@ -30,6 +31,9 @@ class DemoApp
     // 供 main.cpp 的 --open 使用：1=图标 2=水平 3=竖直
     void openDemo(int index);
 
+    // 0=无 1=网格 2=浮动 3=渐变（--bg 用）
+    void setBackdropPreset(int preset);
+
   private:
     void showHome();
     void openPage(const std::string& title, std::function<bklv::Box*()> builder, int index);
@@ -40,6 +44,7 @@ class DemoApp
     bklv::Box* wrapPage(bklv::Box* content);
 
     bklv::Shell* shell          = nullptr;
+    bklv::PresetBackdrop* backdrop = nullptr;
     bklv::Header* header        = nullptr;
     bklv::Box*   contentRoot = nullptr;
 

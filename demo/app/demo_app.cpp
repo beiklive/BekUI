@@ -5,6 +5,7 @@
 #include "app/card_button.hpp"
 #include "app/pages.hpp"
 #include "bklv/core/icon_font.hpp"
+#include "bklv/views/preset_backdrop.hpp"
 
 using namespace bklv;
 
@@ -20,6 +21,9 @@ DemoApp::DemoApp()
     this->shell->setFocusRingEnabled(false);
 
     this->shell->setFpsOverlayEnabled(true);
+
+    // 预设背景（挂外壳的背景层，铺满视口）
+    this->setBackdropPreset(1);
 
     this->header = new Header();
     this->header->setAppearanceVariant("applet");
@@ -119,6 +123,35 @@ void DemoApp::showHome()
     // 默认聚焦第一张卡片（会抬起来，能看到动效）
     if (cards->getChildrenCount() > 0)
         getInputManager().giveFocus(cards->getChildren()[0]);
+}
+
+void DemoApp::setBackdropPreset(int preset)
+{
+    BackdropPreset value = BackdropPreset::GRID;
+    switch (preset)
+    {
+        case 0: value = BackdropPreset::NONE; break;
+        case 2: value = BackdropPreset::FLOATING; break;
+        case 3: value = BackdropPreset::GRADIENT; break;
+        default: value = BackdropPreset::GRID; break;
+    }
+
+    if (this->backdrop == nullptr)
+    {
+        if (value == BackdropPreset::NONE)
+            return;
+        this->backdrop = new PresetBackdrop(value);
+        this->shell->getBackdropLayer()->addView(this->backdrop);
+        return;
+    }
+
+    if (value == BackdropPreset::NONE)
+    {
+        this->shell->getBackdropLayer()->removeView(this->backdrop);
+        this->backdrop = nullptr;
+        return;
+    }
+    this->backdrop->setPreset(value);
 }
 
 void DemoApp::openDemo(int index)
