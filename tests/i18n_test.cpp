@@ -22,6 +22,7 @@ int main()
     bklv::initResources();
 
     using namespace bklv;
+    using namespace bklv::i18n;
 
     std::printf("\n== 0. initI18n 可独立调用（不崩，装载到某种语言）==\n");
     initI18n();

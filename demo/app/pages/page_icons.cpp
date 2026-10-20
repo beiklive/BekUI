@@ -20,6 +20,7 @@
 #include <vector>
 
 using namespace bklv;
+using namespace bklv::i18n; // "key"_i18n
 
 namespace demo
 {

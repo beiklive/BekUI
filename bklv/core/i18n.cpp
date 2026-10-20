@@ -301,10 +301,15 @@ const std::string& getDefaultLocale()
     return g_defaultLocale;
 }
 
+namespace i18n
+{
+
 std::string operator""_i18n(const char* text, size_t length)
 {
     return translate(std::string(text, length));
 }
+
+} // namespace i18n
 
 std::string translate(const std::string& key)
 {

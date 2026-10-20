@@ -8,6 +8,7 @@
 #include "bklv/views/preset_backdrop.hpp"
 
 using namespace bklv;
+using namespace bklv::i18n; // "key"_i18n 在这个子命名空间里
 
 namespace demo
 {

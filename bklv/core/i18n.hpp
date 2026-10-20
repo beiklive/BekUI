@@ -84,9 +84,12 @@ std::string translate(const std::string& key, Args&&... args)
 // ---- 字面量后缀：`"app/title"_i18n ----
 //
 // 只对**无参数的 key** 适用（带占位符的仍用 translate(key, args...)）。
-// 用法要能看见这个后缀：`using namespace bklv;` 之后写 `"app/title"_i18n`。
-// 它等价于 `translate("app/title")` —— 没有任何额外缓存，只是读起来短。
+// 刻意放在 `bklv::i18n` 子命名空间里：必须 `using namespace bklv::i18n;` 才能用，
+// 避免 `"xxx"_i18n` 在不知道它含义的地方被顺手写出来。
+namespace i18n
+{
 std::string operator""_i18n(const char* text, size_t length);
+} // namespace i18n
 
 // 测试与诊断用：已装载的 key 数量、查找缓存条目数。
 int getI18nKeyCount();
