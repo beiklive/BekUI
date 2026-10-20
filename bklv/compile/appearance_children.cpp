@@ -61,6 +61,9 @@ bool parseOneChild(const Json& node, const ThemeData& theme, AppearanceChild& ou
         out.kind = AppearanceChild::Kind::BOX;
     }
 
+    if (node.contains("id") && node["id"].is_string())
+        out.id = node["id"].get<std::string>();
+
     if (hasBox && !parseBoxNode(node["box"], theme, out.box, error, where + ".box"))
         return false;
 

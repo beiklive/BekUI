@@ -323,6 +323,7 @@ struct AppearanceChild
     std::string name;               // appearance 名 或 视图模板名（BOX 时为空）
     AppearanceBox box;              // 写了的字段才覆盖（沿用"没写不动"的既有约定）
     std::string text, icon, info;   // 内容槽（可空；实例化后套到 AppearanceView 的既有槽位）
+    std::string id;                 // 可选：子视图 id（findViewById 用）
     std::vector<AppearanceChild> children; // 递归
 };
 class Appearance

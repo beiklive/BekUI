@@ -367,6 +367,11 @@ class View
 
     // ---- 视图树 ----
     void setId(const std::string& id);
+
+    // 按 id 递归找子视图（含自身）；找不到返回 nullptr。
+    // 外观 children 里的 "id" 就是给它用的：`view->findViewById("icon")->setVisibility(...)`
+    View* findViewById(const std::string& id);
+    const View* findViewById(const std::string& id) const;
     const std::string& getId() const { return this->id; }
     virtual std::string getClassString() const;
     std::string describe() const;

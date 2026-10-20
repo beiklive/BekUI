@@ -20,7 +20,8 @@
         "width": 36,
         "height": 36
       },
-      "icon": "@icon/star"
+      "icon": "@icon/star",
+      "id": "icon"
     },
     {
       "box": {

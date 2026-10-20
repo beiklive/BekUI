@@ -44,6 +44,9 @@ int main()
         // 所以这里能直接断言"视图真的建出来了"（而不只是编译产物对）。
         AppearanceView view("base/children_demo", false);
         checkEqualInt((int)view.getChildrenCount(), 2, "建出两个子视图");
+        check(view.findViewById("icon") != nullptr, "children 的 id 可用 findViewById 找到");
+        check(view.findViewById("icon") == view.getChildren()[0],
+            "findViewById(icon) 就是第 1 个子视图");
         if (view.getChildrenCount() == 2)
         {
             // 第 2 个是"只写 box"的纯布局盒，盒子里还有两个（递归那一步）

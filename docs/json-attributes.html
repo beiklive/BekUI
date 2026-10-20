@@ -241,6 +241,26 @@
 </table>
 <div class="warn">外观里没有的层 = 不画，这是正常情况；但 <b><code>states</code>/<code>transitions</code> 里引用不存在的层 id 会编译失败</b>。删层时要把引用一起删。</div>
 
+<h3>6.1 <code>children</code> 段</h3>
+<p>每一项要么引用（<code>appearance</code> / <code>ref</code>），要么只写 <code>box</code> 造一个纯布局盒；<code>text</code> / <code>icon</code> / <code>info</code> 会写进子视图的内容槽，<code>id</code> 让 C++ 能按名字取到它。</p>
+<table>
+  <tr><th>键</th><th>说明</th></tr>
+  <tr><td class="k">appearance</td><td>引用一份外观 → 建 <code>AppearanceView</code></td></tr>
+  <tr><td class="k">ref</td><td>引用 <code>view/</code> 里的视图模板 → 实例化任意控件；与 appearance 二选一</td></tr>
+  <tr><td class="k">box</td><td>覆盖盒属性（只写要覆盖的字段）；只有 box 时建纯布局 <code>Box</code></td></tr>
+  <tr><td class="k">text / icon / info</td><td>写进子视图的内容槽（<code>icon</code> 支持 <code>@icon/名字</code>）</td></tr>
+  <tr><td class="k">id</td><td><b>可选</b>：子视图 id，运行时 <code>view-&gt;findViewById("icon")</code> 取到它</td></tr>
+  <tr><td class="k">children</td><td>递归子节点（<code>ref</code> 例外：模板自带 children）</td></tr>
+</table>
+<pre><code>"children": [
+  { "id": "icon", "box": { "width": 24, "height": 24 }, "icon": "@icon/star" },
+  { "id": "label", "box": { "grow": 1 }, "text": "确认" }
+]
+
+// 运行时可单独控制
+view-&gt;findViewById("icon")-&gt;setVisibility(Visibility::GONE);  // 不占位，文字自动重排</code></pre>
+<div class="warn"><code>findViewById</code> 只在 <b>建出来的视图树</b> 上有效；外观的 <code>states</code> 不能引用 children 的 id（那是层 id 的地盘）。</div>
+
 <h2 id="appearance-box">7. 外观 <code>box</code> 段</h2>
 <table>
   <tr><th>键</th><th>取值</th><th>说明</th></tr>

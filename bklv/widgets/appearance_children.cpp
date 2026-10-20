@@ -54,6 +54,8 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
             BuildingGuard guard; // 出错/提前 break 也会正确出栈
 
             auto child = std::make_unique<AppearanceView>(spec.name, false);
+            if (!spec.id.empty())
+                child->setId(spec.id);
             // 只覆盖写了的字段（存在标记由 compile 侧设好，见 compile/appearance_children.cpp）
             applyAppearanceBox(child.get(), spec.box);
             if (!spec.text.empty())
@@ -84,6 +86,8 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
         case AppearanceChild::Kind::BOX:
         {
             auto child = std::make_unique<Box>(Axis::COLUMN);
+            if (!spec.id.empty())
+                child->setId(spec.id);
             applyAppearanceBox(child.get(), spec.box);
 
             Box* raw = child.get();
@@ -111,6 +115,8 @@ void buildOne(Box& parent, const AppearanceChild& spec, int depth)
                 BKLV_LOG_WARNING("children 的 ref \"%s\" 实例化失败", spec.name.c_str());
                 break;
             }
+            if (!spec.id.empty())
+                view->setId(spec.id);
             if (Box* box = view->asBox())
                 applyAppearanceBox(box, spec.box);
 

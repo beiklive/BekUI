@@ -464,6 +464,23 @@ float View::getAlpha(bool child) const
 // 视图树
 // ---------------------------------------------------------------------------
 
+View* View::findViewById(const std::string& id)
+{
+    if (this->id == id)
+        return this;
+    if (Box* box = this->asBox())
+        for (View* child : box->getChildren())
+            if (child != nullptr)
+                if (View* found = child->findViewById(id))
+                    return found;
+    return nullptr;
+}
+
+const View* View::findViewById(const std::string& id) const
+{
+    return const_cast<View*>(this)->findViewById(id);
+}
+
 void View::setId(const std::string& value)
 {
     this->id = value;
