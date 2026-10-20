@@ -1,6 +1,32 @@
 {
-  "import": ["base/button/button"],
+  "box": {
+    "width": 56,
+    "height": "@theme/metric.control.height",
+    "minWidth": 0,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center",
+    "justifyContent": "center"
+  },
   "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
     {
       "op": "text",
       "id": "icon",
@@ -12,5 +38,14 @@
       "valign": "center"
     }
   ],
-  "states": {}
+  "states": {
+    "focused": {},
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.button.defaultPressedBg",
+        "duration": 60
+      }
+    },
+    "disabled": {}
+  }
 }

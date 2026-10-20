@@ -5,6 +5,7 @@
 
 #include "app/pages.hpp"
 #include "bklv/bklv.hpp"
+#include "bklv/core/icon_font.hpp"
 
 using namespace bklv;
 
@@ -56,8 +57,13 @@ Box* buildButtonShowcasePage()
     icon_button_box->setGap(getTheme().number("metric.spacing.md", 12.0f));
 
 
+    Button* icon_button = new Button();
+    icon_button->setAppearanceName("base/button/button.icon");
+    // 纯图标按钮：不写文字（外观里也没有 title 层）
+    icon_button->setIcon(bklv::icon::glyphByName("star")); // 图标层读的是 icon 槽
+    icon_button_box->addView(icon_button);
 
-
+    page->addView(icon_button_box); // ← 忘了这行：整行不在视图树里，所以看不到
 
     return page;
 }
