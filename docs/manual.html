@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 32e18a1 · 2026-10-20 16:38 · 两套主题（default / ios）</div>
+  <div class="version">提交 d592212 · 2026-10-20 17:03 · 两套主题（default / ios）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -1559,7 +1559,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 }</code></pre>
 <ul><li><code>self</code> 的可用通道：<code>translateX</code> / <code>translateY</code> / <code>scaleX</code> / <code>scaleY</code> / <code>alpha</code> /</li></ul>
 <p><code>rotate</code> / <code>skewX</code> / <code>skewY</code>（位移乘缩放，其余是系数/弧度不缩放）；</p>
-<ul><li>层目标里的属性名与扁平写法完全一致；</li><li>旧的 <code>&quot;bg.fill&quot;: {...}</code> 继续支持（会提示迁移）；</li><li>多个状态同时激活时<strong>后激活的赢</strong>；状态关闭时平滑回默认值（120ms）；</li><li>视图通道是绘制期变换：<strong>不重排、不占位</strong>，命中区域不跟随移动。</li></ul>
+<ul><li>层目标里的属性名与扁平写法完全一致；</li><li>旧的 <code>&quot;bg.fill&quot;: {...}</code> 继续支持（静默兼容，不告警）；</li><li>多个状态同时激活时<strong>后激活的赢</strong>；状态关闭时平滑回默认值（120ms）；</li><li>视图通道是绘制期变换：<strong>不重排、不占位</strong>，命中区域不跟随移动。</li></ul>
 <p>状态名不限于内置的 <code>focused</code> / <code>pressed</code> / <code>disabled</code>；控件自定义的（如 Cell 的 <code>selected</code>） 由控件自己触发。重算目标时会先撤同一通道正在跑的补间。</p>
 <h4 id="sec-133">变体与回退</h4>
 <ul><li><strong>变体</strong>：<code>setAppearanceVariant(&quot;sidebar&quot;)</code> → 读 <code>&lt;控件名&gt;.sidebar.json</code></li></ul>
@@ -1971,7 +1971,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
 
 </section>
-<footer>生成自仓库提交 <code>32e18a1</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>d592212</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>
