@@ -72,7 +72,9 @@ int main()
         check(appearance.getLayers().size() >= 2,
             "Button 取到外观（底 + 文字，装饰层可选）");
         checkEqual(button.getText(), "点我", "文字进了按钮");
-        checkEqual(appearance.getLayers()[2].dataId, "text", "文字层从 source=text 取内容");
+        const int titleIndex = appearance.indexOfLayer("title");
+        check(titleIndex >= 0 && appearance.getLayers()[(size_t)titleIndex].dataId == "text",
+            "文字层从 source=text 取内容");
         check(appearance.indexOfLayer("bg") >= 0, "有底（bg）");
         check(appearance.indexOfLayer("title") >= 0, "有文字（title）");
         // getHeight() 读的是 Yoga 的**布局**结果，所以要先真的跑一次布局
@@ -89,8 +91,8 @@ int main()
         Button outlined("描边", "bordered");
         check(outlined.getActiveAppearance().getLayers().size() >= 2,
             "bordered 变体取到自己的外观文件");
-        checkEqual(outlined.getActiveAppearance().getLayers()[0].id, "bg",
-            "bordered 变体的第一层是 bg");
+        check(outlined.getActiveAppearance().indexOfLayer("bg") >= 0,
+            "bordered 变体有 bg 层（阴影层排在它前面，不再断言第一层）");
     }
 
     std::printf("\n== 2. 状态切换驱动动效 ==\n");
