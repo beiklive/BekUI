@@ -149,6 +149,60 @@ Box* buildButtonShowcasePage()
     }
     page->addView(row1);
 
+    // ---- 选择器 / 下拉 ----
+    page->addView(bklv::makeSectionHeader("选择器 / 下拉"));
+
+    Box* selector_row = new Box(Axis::ROW);
+    selector_row->setWidthPercentage(100.0f);
+    selector_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    selector_row->setAlignItems(AlignItems::CENTER);
+
+    SelectorButton* volume = new SelectorButton("音量");
+    volume->setIcon(bklv::icon::glyphByName("settings"));
+    volume->setNumberRange(0.0f, 100.0f, 1.0f, 0, 50.0f);
+    volume->setWidth(360.0f);
+    volume->setOnValueChanged([](float v) {
+        demo::toastManager()->showInfo("音量：" + std::to_string((int)v));
+    });
+    selector_row->addView(volume);
+
+    SelectorButton* scale_mode = new SelectorButton("缩放模式");
+    scale_mode->setIcon(bklv::icon::glyphByName("settings"));
+    scale_mode->setMode(SelectorMode::LIST);
+    scale_mode->setOptions({"原始", "拉伸", "整数缩放"});
+    scale_mode->setSelectedIndex(1);
+    scale_mode->setArrowStyle(SelectorArrow::LR);
+    scale_mode->setWidth(360.0f);
+    scale_mode->setOnSelectionChanged([](int, const std::string& text) {
+        demo::toastManager()->showInfo("缩放：" + text);
+    });
+    selector_row->addView(scale_mode);
+    page->addView(selector_row);
+
+    Box* dropdown_row = new Box(Axis::ROW);
+    dropdown_row->setWidthPercentage(100.0f);
+    dropdown_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    dropdown_row->setAlignItems(AlignItems::CENTER);
+
+    Dropdown* theme_dropdown = new Dropdown();
+    theme_dropdown->setTitle("主题");
+    theme_dropdown->setOptions({"默认", "深色", "浅色"}, 0);
+    theme_dropdown->setWidth(360.0f);
+    theme_dropdown->setOnChange([](size_t index) {
+        demo::toastManager()->showInfo("主题切换到第 " + std::to_string((int)index + 1) + " 项");
+    });
+    dropdown_row->addView(theme_dropdown);
+
+    Dropdown* quality = new Dropdown();
+    quality->setTitle("画质");
+    quality->setOptions({"自动", "性能", "画质", "自定义", "省电", "极致"});
+    quality->setWidth(360.0f);
+    quality->setOnChange([](size_t index) {
+        demo::toastManager()->showInfo("画质选项：" + std::to_string((int)index));
+    });
+    dropdown_row->addView(quality);
+    page->addView(dropdown_row);
+
     // ---- Toast ----
     page->addView(bklv::makeSectionHeader("Toast"));
     Box* toast_row = new Box(Axis::ROW);

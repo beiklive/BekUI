@@ -33,7 +33,7 @@
         0,
         0,
         0,
-        40
+        16
       ]
     },
     {
@@ -43,7 +43,13 @@
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.md",
       "align": "right",
-      "valign": "center"
+      "valign": "center",
+      "inset": [
+        0,
+        16,
+        0,
+        0
+      ]
     }
   ],
   "states": {
