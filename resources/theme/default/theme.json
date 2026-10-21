@@ -134,5 +134,8 @@
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",
-  "descriptionKey": "theme/default_desc"
+  "descriptionKey": "theme/default_desc",
+  "behavior": {
+    "dropdown.placement": "trigger"
+  }
 }

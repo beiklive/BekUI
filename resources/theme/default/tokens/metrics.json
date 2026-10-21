@@ -86,7 +86,9 @@
     "itemHeight": 60,
     "itemTextSize": 20,
     "popupWidth": 280,
-    "popupMinWidth": 180
+    "popupMinWidth": 180,
+    "margin": 20,
+    "gap": 4
   },
   "textField": {
     "height": 48

@@ -11,6 +11,7 @@
 // 复用 Dialog 那套弹层/模态机制：打开时输入切模态，关闭后焦点回到触发器。
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -79,6 +80,8 @@ class DropdownPopup : public Box
     void applyTheme() override;
 
     void setAnchor(float x, float y, float width);
+    // 直接给面板/列表一个矩形（placement 计算的结果）
+    void applyRect(float x, float y, float width, float height);
     // 按可用空间定列表高度：优先下方、放不下且上方更宽裕就翻到上方，两边都不够就压缩高度
     void fitToSpace(float triggerTop, float triggerBottom, float gap, float canvasHeight,
         size_t optionCount);
@@ -107,6 +110,32 @@ class DropdownPopup : public Box
     std::function<void()> onClosed;
 };
 
+// 弹层相对画布的摆放方式：
+//   TRIGGER —— 贴着触发按钮（默认；不写配置就是它）
+//   CENTER  —— 画布居中
+//   BOTTOM  —— 画布底部（同宽卡片贴底）
+// 默认值可以跟主题走：theme.json 的 "behavior": { "dropdown.placement": "center" }。
+enum class DropdownPlacement
+{
+    TRIGGER,
+    CENTER,
+    BOTTOM,
+};
+
+// 纯几何计算（不依赖 Yoga/App），便于无窗口测试。
+struct DropdownPopupRect
+{
+    float x = 0.0f;
+    float y = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+};
+
+DropdownPopupRect computeDropdownPopupRect(DropdownPlacement placement, float triggerX,
+    float triggerTop, float triggerBottom, float triggerWidth, float canvasWidth,
+    float canvasHeight, float neededHeight, float margin, float gap, float minWidth,
+    float preferredWidth);
+
 class Dropdown : public Box
 {
   public:
@@ -124,6 +153,12 @@ class Dropdown : public Box
     void open();
     void close();
     bool isOpen() const { return this->opened; }
+
+    // 单实例覆盖；不调用就跟随主题（theme.json 的 behavior.dropdown.placement），
+    // 主题也没写时用 TRIGGER。
+    void setPlacement(DropdownPlacement value) { this->placementOverride = value; }
+    void clearPlacement() { this->placementOverride.reset(); }
+    DropdownPlacement getPlacement() const;
 
     void update() override;
 
@@ -144,6 +179,7 @@ class Dropdown : public Box
     size_t selected = 0;
     bool opened     = false;
     DropdownPopup* popup = nullptr;
+    std::optional<DropdownPlacement> placementOverride;
     std::function<void(size_t)> onChange;
 };
 

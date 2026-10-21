@@ -175,6 +175,14 @@ void DropdownPopup::setOptions(const std::vector<std::string>& names, size_t sel
         this->options.empty() ? -1 : static_cast<int>(this->selectedIndex));
 }
 
+void DropdownPopup::applyRect(float x, float y, float width, float height)
+{
+    this->anchorBox->setPositionLeft(x);
+    this->anchorBox->setPositionTop(y);
+    this->anchorBox->setWidth(width);
+    this->list->setHeight(height);
+}
+
 void DropdownPopup::setAnchor(float x, float y, float width)
 {
     this->anchorBox->setPositionLeft(x);
@@ -227,6 +235,102 @@ void DropdownPopup::dismiss()
 
     if (this->onClosed)
         this->onClosed();
+}
+
+DropdownPopupRect computeDropdownPopupRect(DropdownPlacement placement, float triggerX,
+    float triggerTop, float triggerBottom, float triggerWidth, float canvasWidth,
+    float canvasHeight, float neededHeight, float margin, float gap, float minWidth,
+    float preferredWidth)
+{
+    DropdownPopupRect rect;
+
+    const float m  = std::max(0.0f, margin);
+    const float g  = std::max(0.0f, gap);
+    const float cw = std::max(0.0f, canvasWidth);
+    const float ch = std::max(0.0f, canvasHeight);
+    const float need = std::max(0.0f, neededHeight);
+
+    // 画布尺寸还没准备好（无窗口/首帧）：退回触发器位置
+    if (cw <= 0.0f || ch <= 0.0f)
+    {
+        rect.x      = triggerX;
+        rect.y      = triggerBottom + g;
+        rect.width  = std::max(std::max(0.0f, minWidth), std::max(0.0f, triggerWidth));
+        rect.height = need;
+        return rect;
+    }
+
+    const float availW = std::max(0.0f, cw - 2.0f * m);
+    const float availH = std::max(0.0f, ch - 2.0f * m);
+
+    float width = placement == DropdownPlacement::TRIGGER
+        ? std::max(std::max(0.0f, minWidth), std::max(0.0f, triggerWidth))
+        : std::max(std::max(0.0f, minWidth), std::max(0.0f, preferredWidth));
+    width = std::min(width, availW);
+
+    float height = std::min(need, availH);
+
+    auto clampX = [&](float x) {
+        return std::max(m, std::min(x, std::max(m, cw - m - width)));
+    };
+
+    switch (placement)
+    {
+        case DropdownPlacement::CENTER:
+            rect.x = clampX((cw - width) * 0.5f);
+            rect.y = m + std::max(0.0f, (availH - height) * 0.5f);
+            break;
+
+        case DropdownPlacement::BOTTOM:
+            rect.x = clampX((cw - width) * 0.5f);
+            rect.y = std::max(m, ch - m - height);
+            break;
+
+        case DropdownPlacement::TRIGGER:
+        default:
+        {
+            rect.x = clampX(triggerX);
+
+            const float belowTop   = triggerBottom + g;
+            const float spaceBelow = ch - m - belowTop;
+            const float spaceAbove = triggerTop - g - m;
+
+            if (height <= spaceBelow)
+            {
+                rect.y = belowTop;
+            }
+            else if (spaceAbove > spaceBelow)
+            {
+                height = std::min(height, std::max(0.0f, spaceAbove));
+                rect.y = triggerTop - g - height;
+            }
+            else
+            {
+                height = std::min(height, std::max(0.0f, spaceBelow));
+                rect.y = belowTop;
+            }
+
+            rect.y = std::max(m, rect.y);
+            break;
+        }
+    }
+
+    rect.width  = width;
+    rect.height = height;
+    return rect;
+}
+
+DropdownPlacement Dropdown::getPlacement() const
+{
+    if (this->placementOverride.has_value())
+        return *this->placementOverride;
+
+    const std::string value = getTheme().text("dropdown.placement", "trigger");
+    if (value == "center" || value == "CENTER" || value == "Center")
+        return DropdownPlacement::CENTER;
+    if (value == "bottom" || value == "BOTTOM" || value == "Bottom")
+        return DropdownPlacement::BOTTOM;
+    return DropdownPlacement::TRIGGER;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +412,7 @@ void Dropdown::open()
         this->popup->setOnClosed([this] { this->opened = false; });
     }
 
-    // 列表锚在触发器上/下方（触发器的布局矩形此时已经是上一帧的结果）
+    // 列表位置：默认贴触发器；也可以跟主题走（CENTER / BOTTOM）
     const Rect frame = this->trigger->getFrame();
     this->popup->setOptions(this->options, this->selected, [this](size_t index) {
         this->selected = index;
@@ -316,16 +420,26 @@ void Dropdown::open()
         if (this->onChange)
             this->onChange(index);
     });
-    this->popup->setAnchor(frame.x, frame.getMaxY() + 4.0f, frame.width);
 
     if (!app->pushOverlay(this->popup))
         return;
 
-    // 弹层已经挂到根上了，这时能拿到画布高度 → 决定列表多高、要不要翻到触发器上方
-    const float canvasHeight = app->getRootView() != nullptr
-        ? app->getRootView()->getHeight()
-        : 0.0f;
-    this->popup->fitToSpace(frame.y, frame.getMaxY(), 4.0f, canvasHeight, this->options.size());
+    const View* root = app->getRootView();
+    const float canvasWidth  = root != nullptr ? root->getWidth() : 0.0f;
+    const float canvasHeight = root != nullptr ? root->getHeight() : 0.0f;
+
+    const float margin = getTheme().number("metric.dropdown.margin", 20.0f);
+    const float gap    = getTheme().number("metric.dropdown.gap", 4.0f);
+    const float item   = getTheme().number("metric.dropdown.itemHeight", 60.0f);
+    const AppearanceBox& panelBox = this->popup->getPanel()->getActiveAppearance().getBox();
+    const float padding = panelBox.padding[0] + panelBox.padding[2];
+    const float needed  = static_cast<float>(this->options.size()) * item + padding;
+
+    const DropdownPopupRect rect = computeDropdownPopupRect(this->getPlacement(), frame.x,
+        frame.y, frame.getMaxY(), frame.width, canvasWidth, canvasHeight, needed, margin, gap,
+        getTheme().number("metric.dropdown.popupMinWidth", 180.0f),
+        getTheme().number("metric.dropdown.popupWidth", 280.0f));
+    this->popup->applyRect(rect.x, rect.y, rect.width, rect.height);
 
     // 焦点落到**当前已选中**的那一项（没有就第一项），并把它滚进视野
     // —— pushModal 的默认焦点逻辑按 defaultFocusedIndex 也会找到同一个，

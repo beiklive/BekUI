@@ -230,11 +230,27 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
 
     auto& targetColors = isDefault ? this->defaultColors : this->colors;
     auto& targetNumbers = isDefault ? this->defaultNumbers : this->numbers;
+    auto& targetProps   = isDefault ? this->defaultProps : this->props;
     auto& targetWidgets = isDefault ? this->defaultWidgetJson : this->widgetJson;
     auto& targetViews   = isDefault ? this->defaultViewJson : this->viewJsonMap;
 
     targetColors.clear();
     targetNumbers.clear();
+    targetProps.clear();
+
+    // 行为型配置：theme.json 的 "behavior" 段（字符串；bool/数字也收成字符串）
+    if (meta.contains("behavior") && meta["behavior"].is_object())
+    {
+        for (auto it = meta["behavior"].begin(); it != meta["behavior"].end(); ++it)
+        {
+            if (it.value().is_string())
+                targetProps[it.key()] = it.value().get<std::string>();
+            else if (it.value().is_boolean())
+                targetProps[it.key()] = it.value().get<bool>() ? "true" : "false";
+            else if (it.value().is_number())
+                targetProps[it.key()] = it.value().dump();
+        }
+    }
     targetWidgets.clear();
     targetViews.clear();
 
@@ -414,6 +430,25 @@ bool ThemeData::hasNumber(const std::string& key) const
 {
     return this->numbers.find(key) != this->numbers.end()
         || this->defaultNumbers.find(key) != this->defaultNumbers.end();
+}
+
+std::string ThemeData::text(const std::string& key, const std::string& fallback) const
+{
+    const auto it = this->props.find(key);
+    if (it != this->props.end())
+        return it->second;
+
+    const auto fallbackIt = this->defaultProps.find(key);
+    if (fallbackIt != this->defaultProps.end())
+        return fallbackIt->second;
+
+    return fallback;
+}
+
+bool ThemeData::hasText(const std::string& key) const
+{
+    return this->props.find(key) != this->props.end()
+        || this->defaultProps.find(key) != this->defaultProps.end();
 }
 
 ImU32 ThemeData::color(const std::string& key, ImU32 fallback) const

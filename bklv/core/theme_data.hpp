@@ -39,6 +39,12 @@ class ThemeData
 
     const std::string& getName() const { return this->name; }
 
+    // 行为型配置（theme.json 的 "behavior" 段，如 dropdown.placement）：
+    // 不是颜色也不是数值，但也属于主题的一部分（"居中主题"就是靠它切换默认行为）。
+    // 查找顺序：当前主题 → default 主题 → fallback。
+    std::string text(const std::string& key, const std::string& fallback = std::string()) const;
+    bool hasText(const std::string& key) const;
+
     // 取颜色 / 数值。找不到时先查 default 主题，再返回兜底值（并记一次 debug 日志）。
     ImU32 color(const std::string& key, ImU32 fallback = IM_COL32(255, 0, 255, 255)) const;
     float number(const std::string& key, float fallback = 0.0f) const;
@@ -93,6 +99,7 @@ class ThemeData
     std::string name = "default";
     std::unordered_map<std::string, ImU32> colors;
     std::unordered_map<std::string, float> numbers;
+    std::unordered_map<std::string, std::string> props;
     std::unordered_map<std::string, std::string> widgetJson;
     std::unordered_map<std::string, std::string> viewJsonMap;
 
@@ -103,6 +110,7 @@ class ThemeData
     // default 主题的回退表
     std::unordered_map<std::string, ImU32> defaultColors;
     std::unordered_map<std::string, float> defaultNumbers;
+    std::unordered_map<std::string, std::string> defaultProps;
     std::unordered_map<std::string, std::string> defaultWidgetJson;
     std::unordered_map<std::string, std::string> defaultViewJson;
 

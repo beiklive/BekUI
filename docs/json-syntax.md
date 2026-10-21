@@ -491,6 +491,21 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 所以加/删文件一定要登记）。`author` / `description` 给设计器"打开项目"用；
 老主题的 `widgets[]` 仍然能读，但会打一条"请迁移"的警告。
 
+**`behavior`：主题级的行为默认值**（不是颜色也不是尺寸，但属于主题的一部分）：
+
+```json
+"behavior": { "dropdown.placement": "trigger" }
+```
+
+| key | 取值 | 说明 |
+|---|---|---|
+| `dropdown.placement` | `trigger`（默认）/ `center` / `bottom` | 下拉弹层的默认摆放；`center` = 画布居中，`bottom` = 同宽卡片贴底 |
+
+- 查找顺序：当前主题 → default 主题 → 代码兜底（`trigger`）；
+- 单个 Dropdown 仍可用代码覆盖：`dd->setPlacement(DropdownPlacement::CENTER)`，
+  或视图 JSON 里写 `"placement": "center"`；
+- 想让"居中主题"所有下拉都居中，只改这一行即可，不用改任何 C++。
+
 ### `<主题>/colors.json`
 
 点是分层分隔符：`"button": { "primaryBg": "#..." }` → `@theme/color.button.primaryBg`。

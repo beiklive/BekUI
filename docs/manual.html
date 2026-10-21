@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 f951f63 · 2026-10-21 15:51 · 两套主题（default / ios）</div>
+  <div class="version">提交 c0871bd · 2026-10-21 21:10 · 两套主题（default / ios）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -967,7 +967,7 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 </tbody></table>
 
 <h3 id="sec-64">数值 token（default 主题）</h3>
-<p>尺寸/字号按 1280×720 设计稿写，取值时乘 <code>uiScale</code>（<code>anim.*</code> 毫秒与 <code>font.lineHeight</code> 系数不缩放）。共 <b>164</b> 个键。</p>
+<p>尺寸/字号按 1280×720 设计稿写，取值时乘 <code>uiScale</code>（<code>anim.*</code> 毫秒与 <code>font.lineHeight</code> 系数不缩放）。共 <b>166</b> 个键。</p>
 <h4 id="sec-65">spacing</h4>
 <table><thead><tr><th>键</th><th>default 值</th></tr></thead><tbody>
 <tr><td><code>spacing.xs</code></td><td><code>6</code></td></tr>
@@ -1068,6 +1068,8 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <tr><td><code>dropdown.itemTextSize</code></td><td><code>20</code></td></tr>
 <tr><td><code>dropdown.popupWidth</code></td><td><code>280</code></td></tr>
 <tr><td><code>dropdown.popupMinWidth</code></td><td><code>180</code></td></tr>
+<tr><td><code>dropdown.margin</code></td><td><code>20</code></td></tr>
+<tr><td><code>dropdown.gap</code></td><td><code>4</code></td></tr>
 </tbody></table>
 <h4 id="sec-78">textField</h4>
 <table><thead><tr><th>键</th><th>default 值</th></tr></thead><tbody>
@@ -1587,6 +1589,14 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
   &quot;files&quot;: [&quot;tokens/colors.json&quot;, &quot;tokens/metrics.json&quot;,
             &quot;base/button.json&quot;, &quot;widget/sidebar.json&quot;, &quot;view/page_json.json&quot;] }</code></pre>
 <p><code>files[]</code> 就是这个主题的全部文件清单（<strong>不扫目录</strong>：romfs 上目录迭代真机未验证， 所以加/删文件一定要登记）。<code>author</code> / <code>description</code> 给设计器&quot;打开项目&quot;用； 老主题的 <code>widgets[]</code> 仍然能读，但会打一条&quot;请迁移&quot;的警告。</p>
+<p><strong><code>behavior</code>：主题级的行为默认值</strong>（不是颜色也不是尺寸，但属于主题的一部分）：</p>
+<pre><code class="lang-json">&quot;behavior&quot;: { &quot;dropdown.placement&quot;: &quot;trigger&quot; }</code></pre>
+<table><thead><tr><th>key</th><th>取值</th><th>说明</th></tr></thead><tbody>
+<tr><td><code>dropdown.placement</code></td><td><code>trigger</code>（默认）/ <code>center</code> / <code>bottom</code></td><td>下拉弹层的默认摆放；<code>center</code> = 画布居中，<code>bottom</code> = 同宽卡片贴底</td></tr>
+</tbody></table>
+<ul><li>查找顺序：当前主题 → default 主题 → 代码兜底（<code>trigger</code>）；</li><li>单个 Dropdown 仍可用代码覆盖：<code>dd-&gt;setPlacement(DropdownPlacement::CENTER)</code>，</li></ul>
+<p>或视图 JSON 里写 <code>&quot;placement&quot;: &quot;center&quot;</code>；</p>
+<ul><li>想让&quot;居中主题&quot;所有下拉都居中，只改这一行即可，不用改任何 C++。</li></ul>
 <h4 id="sec-138"><code>&lt;主题&gt;/colors.json</code></h4>
 <p>点是分层分隔符：<code>&quot;button&quot;: { &quot;primaryBg&quot;: &quot;#...&quot; }</code> → <code>@theme/color.button.primaryBg</code>。 值只能是 <code>#RRGGBB</code> / <code>#RRGGBBAA</code>。<strong>不支持 key 之间互相引用</strong>，语义键仍是字面量。</p>
 <p>第一组 <code>common</code> 是通用调色板 + 原始色值：</p>
@@ -1982,7 +1992,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
 
 </section>
-<footer>生成自仓库提交 <code>f951f63</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>c0871bd</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

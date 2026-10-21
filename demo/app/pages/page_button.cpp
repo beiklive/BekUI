@@ -188,6 +188,7 @@ Box* buildButtonShowcasePage()
     theme_dropdown->setTitle("主题");
     theme_dropdown->setOptions({"默认", "深色", "浅色"}, 0);
     theme_dropdown->setWidth(360.0f);
+    theme_dropdown->setPlacement(DropdownPlacement::CENTER); // 单实例覆盖：默认跟主题
     theme_dropdown->setOnChange([](size_t index) {
         demo::toastManager()->showInfo("主题切换到第 " + std::to_string((int)index + 1) + " 项");
     });
@@ -197,6 +198,7 @@ Box* buildButtonShowcasePage()
     quality->setTitle("画质");
     quality->setOptions({"自动", "性能", "画质", "自定义", "省电", "极致"});
     quality->setWidth(360.0f);
+    quality->setPlacement(DropdownPlacement::BOTTOM); // 单实例覆盖：贴底
     quality->setOnChange([](size_t index) {
         demo::toastManager()->showInfo("画质选项：" + std::to_string((int)index));
     });
