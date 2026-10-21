@@ -15,6 +15,9 @@ bklv::Box* buildIconsPage();
 bklv::Box* buildHorizontalTabPage();
 bklv::Box* buildVerticalTabPage();
 
+// demo 级 Toast 宿主（由 DemoApp 创建；页面里弹提示用）
+bklv::ToastManager* toastManager();
+
 // 按钮展示：各种 button 外观的集合（骨架页，细节待补）
 bklv::Box* buildButtonShowcasePage();
 

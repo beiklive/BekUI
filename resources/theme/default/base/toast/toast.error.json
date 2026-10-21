@@ -1,0 +1,21 @@
+{
+  "$comment": "Toast error 变体：只改色条与图标的颜色",
+  "box": {
+    "width": 260,
+    "height": 44,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "id": "bar",
+      "fill": "@theme/color.common.red"
+    },
+    {
+      "id": "icon",
+      "color": "@theme/color.common.red"
+    }
+  ],
+  "import": "base/toast/toast"
+}

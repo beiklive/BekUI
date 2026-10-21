@@ -13,6 +13,13 @@ using namespace bklv::i18n; // "key"_i18n 在这个子命名空间里
 namespace demo
 {
 
+static ToastManager* g_demoToasts = nullptr;
+
+ToastManager* toastManager()
+{
+    return g_demoToasts;
+}
+
 DemoApp::DemoApp()
 {
     this->shell = new Shell();
@@ -25,6 +32,12 @@ DemoApp::DemoApp()
 
     // 预设背景（挂外壳的背景层，铺满视口）
     this->setBackdropPreset(2);
+
+    // Toast：挂在 HUD 层（内容/页头之上），右上角滑入
+    this->toasts = new ToastManager();
+    g_demoToasts = this->toasts;
+    this->toasts->setPositionTop(64.0f); // 避开右上角的帧率覆盖
+    this->shell->getHudLayer()->addView(this->toasts);
 
     this->header = new Header();
     // this->header->setAppearanceVariant("applet");

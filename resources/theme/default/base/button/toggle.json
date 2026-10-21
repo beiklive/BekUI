@@ -1,0 +1,128 @@
+{
+  "$comment": "开关按钮：图标+文字+右侧轨道；on/off 状态由 ToggleButton 驱动，旋钮位移走 states 补间",
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": 0,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        20
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": "@theme/metric.font.size.md",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        52
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "track",
+      "fill": "@theme/color.switch.trackOff",
+      "radius": 13,
+      "width": 46,
+      "height": 26,
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        16
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "knob",
+      "fill": "@theme/color.common.white",
+      "radius": 9,
+      "width": 18,
+      "height": 18,
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        20
+      ],
+      "offset": [
+        -22,
+        0
+      ]
+    }
+  ],
+  "states": {
+    "focused": {},
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.button.defaultPressedBg",
+        "duration": 60
+      }
+    },
+    "on": {
+      "track.fill": {
+        "to": "@theme/color.accent.base",
+        "duration": 140
+      },
+      "knob.offsetX": {
+        "to": 0,
+        "duration": 140,
+        "easing": "cubicOut"
+      }
+    },
+    "off": {
+      "track.fill": {
+        "to": "@theme/color.switch.trackOff",
+        "duration": 140
+      },
+      "knob.offsetX": {
+        "to": -22,
+        "duration": 140,
+        "easing": "cubicOut"
+      }
+    }
+  }
+}

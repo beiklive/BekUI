@@ -1,0 +1,86 @@
+{
+  "$comment": "LR 选项按钮：值来自 info 槽，箭头是两个图标层（OptionButton）",
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": 0,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        20
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": "@theme/metric.font.size.md",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        52
+      ]
+    },
+    {
+      "op": "text",
+      "id": "info",
+      "data_id": "info",
+      "fontSize": "@theme/metric.buttonVariant.infoFontSize",
+      "color": "@theme/color.text.primary",
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        16
+      ],
+      "width": 150
+    }
+  ],
+  "states": {
+    "focused": {},
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.button.defaultPressedBg",
+        "duration": 60
+      }
+    }
+  }
+}

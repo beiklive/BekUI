@@ -1,0 +1,69 @@
+{
+  "$comment": "Toast 卡片基座：左侧色条 + 图标 + 单行文本；变体只覆盖 bar/icon 的颜色",
+  "box": {
+    "width": 260,
+    "height": 44,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "card",
+      "fill": "@theme/color.surface.card",
+      "radius": 3,
+      "inset": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "bar",
+      "fill": "@theme/color.accent.base",
+      "radius": 2,
+      "width": 4,
+      "align": "left",
+      "inset": [
+        2,
+        0,
+        2,
+        2
+      ]
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": 22,
+      "color": "@theme/color.accent.base",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        14
+      ]
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "data_id": "text",
+      "fontSize": "@theme/metric.font.size.sm",
+      "color": "@theme/color.text.primary",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        46
+      ]
+    }
+  ]
+}

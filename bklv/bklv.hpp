@@ -67,6 +67,7 @@
 #include "bklv/widgets/dialog.hpp"
 #include "bklv/widgets/dropdown.hpp"
 #include "bklv/widgets/edit_text_dialog.hpp"
+#include "bklv/widgets/form_buttons.hpp"
 #include "bklv/widgets/header.hpp"
 #include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/notification.hpp"
@@ -76,3 +77,4 @@
 #include "bklv/widgets/slider.hpp"
 #include "bklv/widgets/status_area.hpp"
 #include "bklv/widgets/tab_frame.hpp"
+#include "bklv/widgets/toast.hpp"

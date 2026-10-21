@@ -34,6 +34,9 @@ class DemoApp
     // 0=无 1=网格 2=浮动 3=渐变（--bg 用）
     void setBackdropPreset(int preset);
 
+    // Toast 宿主（页面里要弹通知时用 demo::toastManager()）
+    bklv::ToastManager* getToastManager() const { return this->toasts; }
+
   private:
     void showHome();
     void openPage(const std::string& title, std::function<bklv::Box*()> builder, int index);
@@ -45,6 +48,7 @@ class DemoApp
 
     bklv::Shell* shell          = nullptr;
     bklv::PresetBackdrop* backdrop = nullptr;
+    bklv::ToastManager*   toasts   = nullptr;
     bklv::Header* header        = nullptr;
     bklv::Box*   contentRoot = nullptr;
 

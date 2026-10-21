@@ -4,6 +4,8 @@
 // 想继续加就在 page 上 addView —— 不需要动外层结构。
 
 #include "app/pages.hpp"
+
+#include <string>
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
 
@@ -20,8 +22,9 @@ Box* buildButtonShowcasePage()
     page->setGap(getTheme().number("metric.spacing.md", 12.0f));
     // 按钮保持自然宽度（列方向默认 stretch 会把它拉满整行）
     page->setAlignItems(AlignItems::FLEX_START);
+    
+    // 0) 普通按钮
     page->addView(bklv::makeSectionHeader("基础按钮"));
-
     Box* button_box = new Box(Axis::ROW);
     button_box->setWidthPercentage(100.0f); // 关键：行自身要有确定宽度，grow 才有"剩余空间"可分
     button_box->setGap(getTheme().number("metric.spacing.md", 12.0f));
@@ -51,6 +54,7 @@ Box* buildButtonShowcasePage()
         child->setMinWidth(0.0f); // 外观里的 minWidth（120）会卡住 1 份的宽度
     }
 
+    // 0) 图标按钮
     page->addView(bklv::makeSectionHeader("图标按钮"));
 
     Box* icon_row = new Box(Axis::ROW);
@@ -84,7 +88,83 @@ Box* buildButtonShowcasePage()
     });
     icon_row->addView(icon_text);
 
+    // 0) 信息按钮
+    //LR按钮
+    
+    
+
+
+
+
+
+
+
+
     page->addView(icon_row);
+
+    // ---- 表单按钮（Toggle / Custom / Option / Value）----
+    page->addView(bklv::makeSectionHeader("表单按钮"));
+
+    Box* form_row = new Box(Axis::ROW);
+    form_row->setWidthPercentage(100.0f);
+    form_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    form_row->setAlignItems(AlignItems::CENTER);
+
+    ToggleButton* toggle = new ToggleButton("无线网络", bklv::icon::glyphByName("settings"));
+    toggle->setWidth(240.0f);
+    toggle->setChecked(true);
+    toggle->setOnToggle([](bool on) { demo::toastManager()->showInfo(on ? "无线网络：开" : "无线网络：关"); });
+    form_row->addView(toggle);
+
+    CustomButton* custom = new CustomButton("存储路径");
+    custom->setIcon(bklv::icon::glyphByName("settings"));
+    custom->setRightText("/sd/roms");
+    custom->setWidth(300.0f);
+    form_row->addView(custom);
+
+    OptionButton* option = new OptionButton("画面缩放");
+    option->setIcon(bklv::icon::glyphByName("settings"));
+    option->setOptions({"原始", "拉伸", "整数缩放"}, 0);
+    option->setWidth(300.0f);
+    option->setOnSelectionChanged([](size_t i) {
+        const char* names[] = {"原始", "拉伸", "整数缩放"};
+        demo::toastManager()->showInfo(std::string("画面缩放：") + names[i]);
+    });
+    form_row->addView(option);
+
+    ValueButton* value = new ValueButton("音量");
+    value->setIcon(bklv::icon::glyphByName("settings"));
+    value->setup(50.0f, 0.0f, 100.0f, 1.0f, 0);
+    value->setWidth(300.0f);
+    value->setOnValueChanged([](float v) { demo::toastManager()->showInfo("音量：" + std::to_string((int)v)); });
+    form_row->addView(value);
+
+    page->addView(form_row);
+
+    // ---- Toast ----
+    page->addView(bklv::makeSectionHeader("Toast"));
+    Box* toast_row = new Box(Axis::ROW);
+    toast_row->setWidthPercentage(100.0f);
+    toast_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    toast_row->setAlignItems(AlignItems::CENTER);
+
+    Button* ok = new Button("成功提示");
+    ok->setOnClick([] { demo::toastManager()->showSuccess("存档已保存"); });
+    toast_row->addView(ok);
+
+    Button* bad = new Button("错误提示");
+    bad->setOnClick([] { demo::toastManager()->showError("无法读取 SD 卡"); });
+    toast_row->addView(bad);
+
+    Button* info = new Button("信息提示");
+    info->setOnClick([] { demo::toastManager()->showInfo("已切换到 2 倍速"); });
+    toast_row->addView(info);
+
+    page->addView(toast_row);
+
+    // 页面打开时弹一条，方便截图/验收（只影响 demo）
+    if (demo::toastManager() != nullptr)
+        demo::toastManager()->showInfo("按钮展示页已打开");
 
     return page;
 }

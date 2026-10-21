@@ -398,6 +398,8 @@ set(BKLV_CORE_SOURCES
     widgets/rectangle.cpp
     widgets/button.cpp
     widgets/section.cpp
+    widgets/toast.cpp
+    widgets/form_buttons.cpp
     widgets/selector_button.cpp
     widgets/header.cpp
     widgets/bottom_bar.cpp

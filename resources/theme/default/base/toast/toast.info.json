@@ -1,0 +1,21 @@
+{
+  "$comment": "Toast info 变体：只改色条与图标的颜色",
+  "box": {
+    "width": 260,
+    "height": 44,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "id": "bar",
+      "fill": "@theme/color.accent.base"
+    },
+    {
+      "id": "icon",
+      "color": "@theme/color.accent.base"
+    }
+  ],
+  "import": "base/toast/toast"
+}
