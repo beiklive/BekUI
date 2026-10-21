@@ -47,7 +47,7 @@ Button::Button(const std::string& text, const std::string& variant)
     : AppearanceView(variant.empty() ? "base/button/button" : "base/button/button." + variant, true)
 {
     this->setText(text);
-
+    
     // 点一下就执行（不用先聚焦再按回车），键盘/手柄走 A 键
     this->onPointerAction = true;
     this->registerAction(ControllerButton::A, translate("hints/ok"), [this](View*) { this->trigger(); });

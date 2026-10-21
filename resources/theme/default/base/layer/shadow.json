@@ -6,13 +6,13 @@
       "id": "shadow",
       "fill": "@theme/color.common.shadow",
       "radius": "@theme/metric.radius.md",
-      "feather": 12,
-      "spread": 0,
+      "feather": 1,
+      "spread": 1,
       "offset": [
-        0,
-        4
+        3,
+        3
       ],
-      "cutout": true
+      "cutout": false
     }
   ]
 }

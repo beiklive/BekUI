@@ -35,9 +35,9 @@
   "states": {
     "focused": {},
     "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
+      "self" :
+        { "translateX": { "to": 3, "duration": 60, "easing": "cubicOut" } ,
+        "translateY": { "to": 3, "duration": 60, "easing": "cubicOut" } 
       },
       "title.color": {
         "to": "@theme/color.button.defaultText",

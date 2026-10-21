@@ -1,11 +1,13 @@
 {
+  "import": "base/button/button",
   "box": {
     "height": "@theme/metric.control.height",
     "minWidth": "@theme/metric.control.minWidth"
   },
   "layers": [
     {
-      "import": "base/layer/shadow"
+      "import": "base/layer/shadow",
+      "cutout": true
     },
     {
       "op": "rect",

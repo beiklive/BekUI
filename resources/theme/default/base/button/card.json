@@ -3,7 +3,7 @@
     "width": 220,
     "height": 300,
     "padding": 18,
-    "cornerRadius": 18,
+    "cornerRadius": "@theme/metric.radius.lg",
     "borderThickness": 1,
     "borderColor": "@theme/color.common.divider",
     "backgroundColor": "@theme/color.surface.card"
@@ -16,13 +16,13 @@
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.surface.card",
-      "radius": 18
+      "radius": "@theme/metric.radius.lg"
     },
     {
       "op": "rect",
       "id": "hlBg",
       "fill": "@theme/color.surface.hover",
-      "radius": 18,
+      "radius": "@theme/metric.radius.lg",
       "inset": [
         -3,
         -3,
