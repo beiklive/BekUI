@@ -2,7 +2,6 @@
   "default": "default",
   "available": [
     "default",
-    "ios",
-    "light"
+    "ios"
   ]
 }

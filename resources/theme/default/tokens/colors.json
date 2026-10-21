@@ -33,47 +33,47 @@
     "black": "#000000",
     "white": "#ffffff",
     "transparent": "#00000000",
-    "overlay": "#00000080",
-    "divider": "#ffffff1f",
-    "shadow": "#00000000",
+    "overlay": "#00000066",
+    "divider": "#00000022",
+    "shadow": "#00000026",
     "focusRing": "#00ffcc",
-    "textMuted": "#8b929b"
+    "textMuted": "#8a9099"
   },
   "$comment": "默认主题：对齐 borealis 的暗色主题（Switch 风格）。色值见 borealis core/theme.cpp 的 darkThemeValues。",
   "surface": {
-    "page": "#616161",
-    "card": "#1f2227",
-    "raised": "#505050",
-    "sunken": "#323232",
-    "hover": "#343841"
+    "page": "#f2f3f5",
+    "card": "#ffffff",
+    "raised": "#eceef2",
+    "sunken": "#e3e5ea",
+    "hover": "#e8ebf0"
   },
   "text": {
-    "primary": "#ffffff",
-    "dim": "#a3a3a3",
-    "disabled": "#505050",
-    "onAccent": "#342937",
-    "value": "#58c3a9"
+    "primary": "#1f2328",
+    "dim": "#5f6670",
+    "disabled": "#a3a8af",
+    "onAccent": "#ffffff",
+    "value": "#007a63"
   },
   "accent": {
-    "base": "#00ffcc",
-    "pressed": "#01ffc9"
+    "base": "#007a63",
+    "pressed": "#006353"
   },
   "state": {
     "focus": "#198ac6",
-    "disabled": "#535756",
+    "disabled": "#e3e5ea",
     "danger": "#e66a6a"
   },
   "border": {
-    "default": "#4e4e4e",
-    "subtle": "#515151"
+    "default": "#c9ccd2",
+    "subtle": "#dcdfe4"
   },
   "highlight": {
-    "background": "#1f2227",
+    "background": "#e6f4ff",
     "border": "#198ac6",
-    "glow": "#89f1f233"
+    "glow": "#89f1f266"
   },
   "backdrop": {
-    "fill": "#000000b2"
+    "fill": "#ffffffb2"
   },
   "slider": {
     "pointer": "#505050",
@@ -85,36 +85,36 @@
     "bar": "#c0c0c050"
   },
   "button": {
-    "highlightText": "#07f7c6",
-    "defaultBg": "#505050",
-    "defaultText": "#ffffff",
-    "defaultBorder": "#ffffff",
-    "disabledBorder": "#ffffff",
-    "primaryBg": "#01ffc9",
-    "primaryText": "#342937",
-    "primaryPressedBg": "#00e0b3",
-    "primaryDisabledText": "#474b4a",
-    "defaultPressedBg": "#5c5c5c",
+    "highlightText": "#007a63",
+    "defaultBg": "#ffffff",
+    "defaultText": "#1f2328",
+    "defaultBorder": "#c9ccd2",
+    "disabledBorder": "#d7dade",
+    "primaryBg": "#00cfa8",
+    "primaryText": "#06302a",
+    "primaryPressedBg": "#00b894",
+    "primaryDisabledText": "#9aa0a6",
+    "defaultPressedBg": "#eceef2",
     "defaultDisabledText": "#ffffff",
     "highlightDisabledText": "#07f7c6"
   },
   "card": {
-    "blue": "#396091",
-    "green": "#467d64",
-    "orange": "#915e43",
-    "purple": "#695496"
+    "blue": "#007a63",
+    "green": "#2e7d32",
+    "orange": "#ef6c00",
+    "purple": "#6a1b9a"
   },
   "header": {
-    "rectangle": "#a0a0a0",
-    "subtitle": "#a3a3a3",
-    "border": "#4e4e4e"
+    "rectangle": "#ffffff",
+    "subtitle": "#5f6670",
+    "border": "#dcdfe4"
   },
   "cell": {
     "background": "#00000000"
   },
   "switch": {
-    "trackOff": "#4a4e55",
-    "trackOn": "#00ffcc",
+    "trackOff": "#c9ccd2",
+    "trackOn": "#00cfa8",
     "knob": "#ffffff"
   },
   "radio": {

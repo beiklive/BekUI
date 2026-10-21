@@ -57,13 +57,13 @@ int main()
         // 底线是它必须存在且不透明——半透明的页面底色会让整个界面透出清屏色
         const ImU32 page = theme.color("color.surface.page", 0);
         check((page >> 24) == 0xFF, "color.surface.page 存在且不透明");
-        checkColor(page, IM_COL32(0x61, 0x61, 0x61, 255), "color.surface.page == #616161");
-        checkColor(theme.color("color.surface.card"), IM_COL32(0x1F, 0x22, 0x27, 255),
-            "color.surface.card == #1f2227（brls/highlight/background）");
-        checkColor(theme.color("color.accent.base"), IM_COL32(0x00, 0xFF, 0xCC, 255),
-            "color.accent.base == #00ffcc（brls/accent）");
-        checkColor(theme.color("color.text.primary"), IM_COL32(0xFF, 0xFF, 0xFF, 255),
-            "color.text.primary == #ffffff（brls/text）");
+        checkColor(page, IM_COL32(0xF2, 0xF3, 0xF5, 255), "color.surface.page == #f2f3f5");
+        checkColor(theme.color("color.surface.card"), IM_COL32(0xFF, 0xFF, 0xFF, 255),
+            "color.surface.card == #ffffff（brls/highlight/background）");
+        checkColor(theme.color("color.accent.base"), IM_COL32(0x00, 0x7A, 0x63, 255),
+            "color.accent.base == #007a63（brls/accent）");
+        checkColor(theme.color("color.text.primary"), IM_COL32(0x1F, 0x23, 0x28, 255),
+            "color.text.primary == #1f2328（brls/text）");
         checkColor(theme.color("color.state.focus"), IM_COL32(0x19, 0x8A, 0xC6, 255),
             "color.state.focus == #198ac6（brls/highlight/color1）");
         checkFloat(theme.number("metric.radius.md"), 5.0f, "metric.radius.md == 5（brls/button/corner_radius）");
@@ -190,7 +190,7 @@ int main()
             "皮肤覆盖的 key 用皮肤值");
         checkFloat(getTheme().number("metric.radius.md"), 2.0f, "皮肤覆盖的数值生效");
         // 皮肤没写的 key 回退 default
-        checkColor(getTheme().color("color.text.primary"), IM_COL32(0xFF, 0xFF, 0xFF, 255),
+        checkColor(getTheme().color("color.text.primary"), IM_COL32(0x1F, 0x23, 0x28, 255),
             "皮肤没写的颜色回退 default");
         checkFloat(getTheme().number("metric.font.size.md"), 18.0f, "皮肤没写的数值回退 default");
 
