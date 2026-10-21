@@ -282,9 +282,10 @@ void drawCutoutMesh(ImDrawList* drawList, float minX, float minY, float maxX, fl
             const ImVec2 point(p.x + normal.x * distance, p.y + normal.y * distance);
             rings[r].push_back(point);
 
-            // 贴边 1px 内淡出，避免网格轮廓的硬边；再往外按阴影形状算 alpha
-            const float edgeMask = smoothstep01(distance / 1.0f);
-            const float a = alphaOutside(point) * edgeMask;
+            // 内缘就是控件边界：这里**不做淡出**。以前贴边 1px 淡出会在
+            // "边框 → 阴影"之间留出一圈白（用户截图报的），而这条边界本来就被
+            // 控件自己的 1px 边框/底色盖住，硬边看不出来。
+            const float a = alphaOutside(point);
             ringColors[r].push_back(rgb
                 | ((unsigned int)std::lround(std::max(0.0f, std::min(1.0f, a)) * 255.0f) << 24));
         }
