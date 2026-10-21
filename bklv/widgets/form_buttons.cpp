@@ -68,10 +68,12 @@ void drawLrRow(ImDrawList* drawList, const AppearanceLayer& layer, float x, floa
 
 // ---------------------------------------------------------------- ToggleButton
 
-ToggleButton::ToggleButton(const std::string& text, const std::string& icon)
+ToggleButton::ToggleButton(const std::string& text, const std::string& icon, ToggleStyle style)
     : Button(text, "")
+    , style(style)
 {
-    this->setAppearanceName("base/button/toggle");
+    this->setAppearanceName(style == ToggleStyle::TEXT ? "base/button/toggle_text"
+                                                       : "base/button/toggle");
     if (!icon.empty())
         this->setIcon(icon);
 
@@ -79,6 +81,7 @@ ToggleButton::ToggleButton(const std::string& text, const std::string& icon)
     // 不会替我们打开状态）
     this->setAppearanceState("off", true);
     this->setAppearanceState("on", false);
+    this->refreshStateText();
 
 }
 
@@ -88,8 +91,23 @@ void ToggleButton::setChecked(bool checked, bool notify)
         return;
 
     this->setSwitched(checked);
+    this->refreshStateText();
     if (notify && this->onToggle)
         this->onToggle(checked);
+}
+
+void ToggleButton::setOnOffText(const std::string& on, const std::string& off)
+{
+    this->onText  = on;
+    this->offText = off;
+    this->refreshStateText();
+}
+
+void ToggleButton::refreshStateText()
+{
+    if (this->style != ToggleStyle::TEXT)
+        return;
+    this->setText("state", this->isSwitched() ? this->onText : this->offText);
 }
 
 void ToggleButton::trigger()

@@ -18,18 +18,37 @@
 namespace bklv
 {
 
+// 开关的两种外观：
+//   IMAGE —— 右侧两张 SVG（开/关）交叉淡入
+//   TEXT  —— 右侧只显示「开」/「关」两个字（state 槽）
+enum class ToggleStyle
+{
+    IMAGE,
+    TEXT,
+};
+
 class ToggleButton : public Button
 {
   public:
-    explicit ToggleButton(const std::string& text = "", const std::string& icon = std::string());
+    explicit ToggleButton(const std::string& text = "", const std::string& icon = std::string(),
+        ToggleStyle style = ToggleStyle::IMAGE);
 
     void setChecked(bool checked, bool notify = true);
     bool isChecked() const { return this->isSwitched(); }
     void setOnToggle(std::function<void(bool)> callback) { this->onToggle = std::move(callback); }
 
+    // 文本版的「开 / 关」文案（默认就是这两个字）
+    void setOnOffText(const std::string& onText, const std::string& offText);
+    ToggleStyle getStyle() const { return this->style; }
+
     void trigger() override;
 
   private:
+    void refreshStateText();
+
+    ToggleStyle style = ToggleStyle::IMAGE;
+    std::string onText  = "开";
+    std::string offText = "关";
     std::function<void(bool)> onToggle;
 };
 

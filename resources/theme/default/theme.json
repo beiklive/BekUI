@@ -21,6 +21,7 @@
     "base/button/button.icon.json",
     "base/button/frame.json",
     "base/button/toggle.json",
+    "base/button/toggle_text.json",
     "base/button/custom.json",
     "base/button/option.json",
     "base/button/value.json",

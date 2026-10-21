@@ -119,6 +119,17 @@ Box* buildButtonShowcasePage()
     lock->setChecked(false);
     row1->addView(lock);
 
+    ToggleButton* text_on = new ToggleButton("文字开关", bklv::icon::glyphByName("settings"),
+        ToggleStyle::TEXT);
+    text_on->setWidth(300.0f);
+    text_on->setChecked(true);
+    row1->addView(text_on);
+
+    ToggleButton* text_off = new ToggleButton("文字开关（关）", bklv::icon::glyphByName("settings"),
+        ToggleStyle::TEXT);
+    text_off->setWidth(300.0f);
+    row1->addView(text_off);
+
     CustomButton* custom = new CustomButton("存储路径");
     custom->setIcon(bklv::icon::glyphByName("settings"));
     custom->setRightText("/sd/roms");

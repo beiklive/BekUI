@@ -1,0 +1,68 @@
+{
+  "$comment": "文本版开关：右侧只显示 开/关（state 槽），底框来自 base/button/frame",
+  "import": [
+    "base/button/frame"
+  ],
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.iconSize",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        20
+      ]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": "@theme/metric.font.size.md",
+      "color": "@theme/color.button.defaultText",
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        52
+      ]
+    },
+    {
+      "op": "text",
+      "id": "state",
+      "data_id": "state",
+      "fontSize": "@theme/metric.font.size.md",
+      "color": "@theme/color.text.dim",
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        16,
+        0,
+        0
+      ]
+    }
+  ],
+  "states": {
+    "on": {
+      "state.color": {
+        "to": "@theme/color.accent.base",
+        "duration": 120
+      }
+    },
+    "off": {
+      "state.color": {
+        "to": "@theme/color.text.dim",
+        "duration": 120
+      }
+    }
+  }
+}
