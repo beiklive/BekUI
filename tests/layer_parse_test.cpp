@@ -481,6 +481,33 @@ int main()
             { "op": "rect", "id": "x" })", error);
         check(missing == nullptr, "不存在的层 import：编译失败");
         check(error.find("不存在") != std::string::npos, "错误信息说明外观不存在");
+
+        // 导入的层在 states 里可以用 id 控制（展开后就是普通层）
+        const auto withState = compileLayers(R"({ "import": "base/button/frame" },
+            { "op": "rect", "id": "extra", "fill": "#112233FF" })", error);
+        check(withState != nullptr, "带层 import 的外观能编译");
+        if (withState != nullptr)
+        {
+            std::string stateError;
+            const auto stated = Appearance::compile(R"({
+                "layers": [
+                    { "import": "base/button/frame" },
+                    { "op": "rect", "id": "extra", "fill": "#112233FF" }
+                ],
+                "states": {
+                    "focused": { "bg.fill": { "to": "#FF0000", "duration": 120 } },
+                    "pressed": { "extra.opacity": { "to": 0.5, "duration": 80 } }
+                }
+            })", getTheme(), stateError, "test-layer-import-state");
+            check(stated != nullptr, "states 能引用导入层的 id");
+            if (stated != nullptr)
+            {
+                checkEqualInt((int)stated->getTransitions("focused").size(), 1,
+                    "focused 落在导入的 bg 层上");
+                checkEqualInt((int)stated->getTransitions("pressed").size(), 1,
+                    "pressed 落在本地 extra 层上");
+            }
+        }
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
