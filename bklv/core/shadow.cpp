@@ -83,7 +83,8 @@ int layerCount()
 }
 
 void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY, float radius,
-    ImU32 color, float alphaScale, float feather, float spread, bool cutout)
+    ImU32 color, float alphaScale, float feather, float spread, bool cutout, float offsetX,
+    float offsetY)
 {
     if (drawList == nullptr || maxX <= minX || maxY <= minY)
         return;
@@ -120,10 +121,10 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
         if (alpha == 0)
             continue;
 
-        const float outerMinX = minX - expand;
-        const float outerMinY = minY - expand;
-        const float outerMaxX = maxX + expand;
-        const float outerMaxY = maxY + expand;
+        const float outerMinX = minX + offsetX - expand;
+        const float outerMinY = minY + offsetY - expand;
+        const float outerMaxX = maxX + offsetX + expand;
+        const float outerMaxY = maxY + offsetY + expand;
         const ImU32 col       = rgb | (alpha << 24);
 
         if (!cutout)
@@ -137,6 +138,8 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
         // 不能用"四条矩形带子"：ImGui 的 AddRectFilled 会把圆角钳到边长的一半，
         // 而四条带子又矮又窄，圆角直接被钳没了、看着是直角（用户报的 bug）。
         // 描边法没有这个钳制，而且内缘正好贴合控件的圆角形状，阴影更准。
+        // 孔始终挖在**未偏移**的形状上（也就是控件/上层 layer 自己的位置）：
+        // 阴影可以往下投，但控件底下那块必须保持干净，否则半透明底色会把阴影透出来。
         const float half      = expand * 0.5f;
         const float midRadius = radius + half;
         drawList->PathRect(ImVec2(minX - half, minY - half), ImVec2(maxX + half, maxY + half),

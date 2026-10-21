@@ -46,9 +46,13 @@ void drawShadow(const compile::LayerDrawContext& ctx)
         return;
     }
 
-    shadow::drawSoft(drawList, rect[0] + offsetX, rect[1] + offsetY,
-        rect[2] + offsetX, rect[3] + offsetY, radius, fill, alphaScale, feather,
-        spread, layer.cutout);
+    // appearance_view 的 layerRect 已经把 offset（静态 + 状态补间）加进 rect 了，
+    // 这里先还原成"层自己的形状"，再让 drawSoft 只偏移一次：
+    //   · 阴影环 = 形状 + offset；
+    //   · cutout 的孔 = 形状本身（控件位置），不跟着 offset 走。
+    shadow::drawSoft(drawList, rect[0] - offsetX, rect[1] - offsetY,
+        rect[2] - offsetX, rect[3] - offsetY, radius, fill, alphaScale, feather,
+        spread, layer.cutout, offsetX, offsetY);
 }
 
 } // namespace layers

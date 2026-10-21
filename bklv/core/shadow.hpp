@@ -47,7 +47,7 @@ int layerCount();
 // 这样控件自身矩形里不会留下阴影——底色即使半透明也不会透出阴影（borealis 用 NVG_HOLE 做同一件事）。
 void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY,
     float radius, ImU32 color, float alphaScale, float feather, float spread,
-    bool cutout = false);
+    bool cutout = false, float offsetX = 0.0f, float offsetY = 0.0f);
 
 // 画一圈**内阴影**：贴着形状内缘最暗、往内渐透的内侧渐变带。
 //
