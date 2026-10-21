@@ -133,6 +133,14 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
 
     // 通用字段（颜色/数值字段表 + cutout/inset/offset）：见 compile/appearance_layer_fields.cpp
 
+    // 图片来源：相对主题根（img/xxx.svg）；也允许直接写 resources/ 开头
+    if (node.contains("src") && node["src"].is_string())
+    {
+        out.src = node["src"].get<std::string>();
+        if (!out.src.empty() && out.src.rfind("resources/", 0) != 0)
+            out.src = "resources/theme/" + theme.getName() + "/" + out.src;
+    }
+
     return true;
 }
 

@@ -135,6 +135,9 @@ struct AppearanceLayer
     // 字体种类声明（JSON 键 font_kind）："icon" 用图标字体、"text" 用正文字体。
     // 空 = 正文字体（不再按层 id 推断）。
     std::string fontKind;
+    // 图片来源（可选）：相对主题根，如 "img/switch/switch_on.svg"；
+    // 解析期会补成 "resources/theme/<主题>/<src>"。给了 src 就不需要内容槽。
+    std::string src;
 
     // 初值（编译时已把 @theme/... 解析成具体值）
     // RECT 层的渐变（`gradient` 对象）。写了就以它为准，没写用上面的 fill 单色。

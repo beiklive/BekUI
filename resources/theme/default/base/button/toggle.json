@@ -49,8 +49,8 @@
         0
       ],
       "id": "switch_on",
-      "data_id": "switch_on",
-      "opacity": 0
+      "opacity": 0,
+      "src": "img/switch/switch_on.svg"
     },
     {
       "op": "image",
@@ -66,8 +66,8 @@
         0
       ],
       "id": "switch_off",
-      "data_id": "switch_off",
-      "opacity": 1
+      "opacity": 1,
+      "src": "img/switch/switch_off.svg"
     }
   ],
   "states": {

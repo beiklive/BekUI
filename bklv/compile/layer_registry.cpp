@@ -115,7 +115,7 @@ const std::vector<std::string>& engineLayerKeys()
         // 通用字段：数值
         "strokeWidth", "radius", "opacity", "fontSize", "width", "height", "feather", "spread",
         // 通用字段：结构
-        "cutout", "inset", "offset", "gradient",
+        "cutout", "inset", "offset", "gradient", "src",
     };
     return keys;
 }

@@ -18,6 +18,7 @@
 #include "bklv/core/logger.hpp"
 #include "bklv/core/shadow.hpp"
 #include "bklv/core/time.hpp"
+#include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
 
 namespace bklv
@@ -143,7 +144,7 @@ void AppearanceView::enableContentMeasurement()
             }
             else if (layer.op == AppearanceLayer::Op::IMAGE)
             {
-                const TextureRef texture = this->getLayerImage(layer.dataId);
+                const TextureRef texture = this->resolveLayerImage(layer);
                 if (texture.isValid() && layerWidth <= 0.0f)
                     layerWidth = (float)texture.width;
                 if (texture.isValid() && layerHeight <= 0.0f)
@@ -619,6 +620,14 @@ std::string AppearanceView::getLayerText(const std::string& source)
     return this->getSlotText(source);
 }
 
+TextureRef AppearanceView::resolveLayerImage(const AppearanceLayer& layer)
+{
+    TextureRef texture = this->getLayerImage(layer.dataId);
+    if (!texture.isValid() && !layer.src.empty())
+        texture = loadTexture(resourcePath(layer.src));
+    return texture;
+}
+
 TextureRef AppearanceView::getLayerImage(const std::string& source)
 {
     const ContentSlot* slot = this->findSlot(source);
@@ -858,7 +867,7 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             case AppearanceLayer::Op::IMAGE:
             {
                 // 图与"是否有效"在这里现算；TextureRef 同样要活到调用之后
-                const TextureRef layerImage = this->getLayerImage(layer.dataId);
+                const TextureRef layerImage = this->resolveLayerImage(layer);
                 layerType->draw(hookContext(nullptr, nullptr,
                     layerImage.isValid() ? (void*)layerImage.texture : nullptr));
                 break;

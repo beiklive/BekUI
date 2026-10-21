@@ -5,10 +5,8 @@
 #include <cstdio>
 
 #include "bklv/core/font.hpp"
-#include "bklv/core/graphics.hpp"
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/input.hpp"
-#include "bklv/core/resource.hpp"
 #include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
@@ -82,29 +80,6 @@ ToggleButton::ToggleButton(const std::string& text, const std::string& icon)
     this->setAppearanceState("off", true);
     this->setAppearanceState("on", false);
 
-    this->loadSwitchImages();
-}
-
-void ToggleButton::loadSwitchImages()
-{
-    if (this->imagesLoaded || !isTextureStoreReady())
-        return;
-
-    const TextureRef on  = loadTexture(resourcePath("resources/img/switch/switch_on.svg"));
-    const TextureRef off = loadTexture(resourcePath("resources/img/switch/switch_off.svg"));
-    if (on.isValid())
-        this->setImage("switch_on", on);
-    if (off.isValid())
-        this->setImage("switch_off", off);
-    this->imagesLoaded = on.isValid() && off.isValid();
-}
-
-void ToggleButton::update()
-{
-    // 视图树可能比图形后端先建好：纹理没就绪时每帧重试
-    if (!this->imagesLoaded)
-        this->loadSwitchImages();
-    Button::update();
 }
 
 void ToggleButton::setChecked(bool checked, bool notify)
