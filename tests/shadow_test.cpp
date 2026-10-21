@@ -198,6 +198,9 @@ int main()
                 for (int i = 0; i < list->VtxBuffer.Size; i++)
                 {
                     const ImVec2 p = list->VtxBuffer[i].pos;
+                    // 只看"看得见"的顶点：cutout 的壳层网格会伸到 alpha=0 的远处
+                    if (((list->VtxBuffer[i].col >> 24) & 0xFFu) == 0)
+                        continue;
                     loX = std::min(loX, p.x); hiX = std::max(hiX, p.x);
                     loY = std::min(loY, p.y); hiY = std::max(hiY, p.y);
                     if (p.x <= center.x && p.y <= center.y)
@@ -239,7 +242,7 @@ int main()
             // 开挖空：中心不被覆盖（透明底色也看不到阴影）
             check(!std::get<7>(cutout), "cutout 时控件中心没有被阴影覆盖");
             // 圆角处（方形包围盒的角、控件的圆角外面）仍然有阴影
-            check(!std::get<8>(cutout), "cutout 时控件矩形内（含圆角处）都不留阴影");
+            check(std::get<8>(cutout), "cutout 时圆角外（bbox 内、控件形状外）仍有阴影");
             check(std::get<0>(plain) >= 0, "两种模式的顶点都检查过");
             // 开挖空：控件圆角形状内部一个顶点都没有 → 透明底色也看不到阴影
             checkEqualInt(std::get<0>(cutout), 0, "cutout 时控件形状内部没有任何顶点");

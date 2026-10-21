@@ -82,6 +82,14 @@ int layerCount()
     return getQuality() == ShadowQuality::SMOOTH ? 24 : 8;
 }
 
+namespace
+{
+// cutout 专用：环带网格（圆角孔 = 控件形状，外缘 = offset 后的阴影形状）
+void drawCutoutMesh(ImDrawList* drawList, float minX, float minY, float maxX, float maxY,
+    float radius, ImU32 color, float alphaScale, float feather, float spread,
+    float offsetX, float offsetY);
+} // namespace
+
 void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float maxY, float radius,
     ImU32 color, float alphaScale, float feather, float spread, bool cutout, float offsetX,
     float offsetY)
@@ -111,6 +119,15 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
     const float unit       = 255.0f * target / (weightSum > 0.0f ? weightSum : 1.0f);
     const unsigned int rgb = color & 0x00FFFFFFu;
 
+    // cutout：不能靠矩形裁剪（孔会变成方角）。单独走环带网格，孔的边界是控件的
+    // 圆角形状本身，阴影外缘仍按 offset 平移。
+    if (cutout)
+    {
+        drawCutoutMesh(drawList, minX, minY, maxX, maxY, radius, color, alphaScale, feather,
+            spread, offsetX, offsetY);
+        return;
+    }
+
     // 从最外层往内画：内层后画才盖在上面
     for (int i = 0; i < steps; i++)
     {
@@ -127,40 +144,8 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
         const float outerMaxY = maxY + offsetY + expand;
         const ImU32 col       = rgb | (alpha << 24);
 
-        if (!cutout)
-        {
-            drawList->AddRectFilled(ImVec2(outerMinX, outerMinY), ImVec2(outerMaxX, outerMaxY),
-                col, radius + expand);
-            continue;
-        }
-
-        // cutout：只画**控件矩形之外**的阴影。
-        // 阴影形状跟着 offset 走（外投影该往下就往下），但挖空区域始终是控件自己的
-        // 矩形 —— 两者是不同位置，不能像以前那样沿同一个矩形描边：
-        //   · 沿阴影矩形描边 → 孔跟着阴影跑，看起来"从中间把上层 layer 剪掉一块"；
-        //   · 沿控件矩形描边 → offset 被完全吃掉（"设置 offset 无效"）。
-        // 做法：把同一个外扩圆角矩形分成四块（上/下/左/右，都在控件矩形之外），
-        // 每块用 PushClipRect 裁一下再画。四块互不重叠，圆角形状不受影响。
-        const ImVec2 outerMin(minX + offsetX - expand, minY + offsetY - expand);
-        const ImVec2 outerMax(maxX + offsetX + expand, maxY + offsetY + expand);
-        struct Band
-        {
-            float x0, y0, x1, y1;
-        };
-        const Band bands[4] = {
-            { outerMin.x, outerMin.y, outerMax.x, minY }, // 上
-            { outerMin.x, maxY, outerMax.x, outerMax.y }, // 下
-            { outerMin.x, minY, minX, maxY },             // 左
-            { maxX, minY, outerMax.x, maxY },             // 右
-        };
-        for (const Band& band : bands)
-        {
-            if (band.x1 <= band.x0 || band.y1 <= band.y0)
-                continue;
-            drawList->PushClipRect(ImVec2(band.x0, band.y0), ImVec2(band.x1, band.y1), true);
-            drawList->AddRectFilled(outerMin, outerMax, col, radius + expand);
-            drawList->PopClipRect();
-        }
+        drawList->AddRectFilled(ImVec2(outerMinX, outerMinY), ImVec2(outerMaxX, outerMaxY),
+            col, radius + expand);
     }
 }
 
@@ -205,6 +190,123 @@ void appendRoundedRectBoundary(std::vector<ImVec2>& out, float minX, float minY,
                 * 3.14159265358979323846f / 180.0f;
             out.push_back(ImVec2(
                 cx[c] + std::cos(radians) * corner, cy[c] + std::sin(radians) * corner));
+        }
+    }
+}
+
+} // namespace
+
+namespace
+{
+
+// cutout 专用：从**控件轮廓**向外长的"壳层网格"。
+//   · 起点 = 控件圆角矩形边界（alpha 0）→ 孔永远是圆角形状，不会有方角缺口；
+//   · 每一圈沿外法线走 step，alpha 由"到阴影形状（控件按 offset 平移）的距离"决定；
+//   · 阴影该往哪投由 offset 决定，但控件内部一个顶点都没有。
+// 直边只需要端点（法线方向一致），圆角每角 8 段，所以顶点数很小。
+void drawCutoutMesh(ImDrawList* drawList, float minX, float minY, float maxX, float maxY,
+    float radius, ImU32 color, float alphaScale, float feather, float spread,
+    float offsetX, float offsetY)
+{
+    const int steps = layerCount();
+    const float span = (float)(steps > 1 ? steps - 1 : 1);
+
+    const float target = (float)((color >> 24) & 0xFFu) / 255.0f * alphaScale;
+    if (target <= 0.001f)
+        return;
+
+    float weights[24];
+    float expands[24];
+    float ringAlphas[24];
+    float weightSum = 0.0f;
+    for (int i = 0; i < steps; i++)
+    {
+        const float t = 1.0f - (float)i / span;
+        weights[i]    = std::exp(-4.5f * t * t);
+        expands[i]    = spread + feather * t;
+        weightSum += weights[i];
+    }
+    const float unit = target / (weightSum > 0.0f ? weightSum : 1.0f);
+    for (int i = 0; i < steps; i++)
+        ringAlphas[i] = unit * weights[i];
+
+    const float centerX = (minX + maxX) * 0.5f;
+    const float centerY = (minY + maxY) * 0.5f;
+    const float halfW   = (maxX - minX) * 0.5f;
+    const float halfH   = (maxY - minY) * 0.5f;
+    const unsigned int rgb = color & 0x00FFFFFFu;
+
+    // alpha：把所有"外扩量 >= 该点离阴影形状的距离"的环叠加起来
+    auto alphaOutside = [&](const ImVec2& p) {
+        const float d = roundedRectSdf(p.x, p.y, centerX + offsetX, centerY + offsetY, halfW, halfH,
+            radius);
+        if (d > expands[0])
+            return 0.0f;
+        float accumulated = 0.0f;
+        for (int i = 0; i < steps; i++)
+        {
+            if (expands[i] < d)
+                continue;
+            accumulated = 1.0f - (1.0f - accumulated) * (1.0f - ringAlphas[i]);
+        }
+        return accumulated;
+    };
+
+    // 控件轮廓点 + 外法线（SDF 梯度）
+    std::vector<ImVec2> boundary;
+    appendRoundedRectBoundary(boundary, minX, minY, maxX, maxY, radius);
+    if (boundary.empty())
+        return;
+
+    const float maxReach = expands[0] + std::sqrt(offsetX * offsetX + offsetY * offsetY) + 1.0f;
+    const float step     = std::max(1.5f, maxReach / 24.0f);
+    const int ringCount  = std::max(1, (int)std::ceil(maxReach / step));
+
+    std::vector<std::vector<ImVec2>> rings((size_t)ringCount + 1);
+    std::vector<std::vector<unsigned int>> ringColors((size_t)ringCount + 1);
+    for (size_t r = 0; r <= (size_t)ringCount; r++)
+    {
+        const float distance = step * (float)r;
+        rings[r].reserve(boundary.size());
+        ringColors[r].reserve(boundary.size());
+        for (const ImVec2& p : boundary)
+        {
+            const float e = 0.75f;
+            const float gx = roundedRectSdf(p.x + e, p.y, centerX, centerY, halfW, halfH, radius)
+                - roundedRectSdf(p.x - e, p.y, centerX, centerY, halfW, halfH, radius);
+            const float gy = roundedRectSdf(p.x, p.y + e, centerX, centerY, halfW, halfH, radius)
+                - roundedRectSdf(p.x, p.y - e, centerX, centerY, halfW, halfH, radius);
+            const float len = std::sqrt(gx * gx + gy * gy);
+            const ImVec2 normal = len > 0.0001f ? ImVec2(gx / len, gy / len) : ImVec2(0.0f, 0.0f);
+
+            const ImVec2 point(p.x + normal.x * distance, p.y + normal.y * distance);
+            rings[r].push_back(point);
+
+            // 贴边 1px 内淡出，避免网格轮廓的硬边；再往外按阴影形状算 alpha
+            const float edgeMask = smoothstep01(distance / 1.0f);
+            const float a = alphaOutside(point) * edgeMask;
+            ringColors[r].push_back(rgb
+                | ((unsigned int)std::lround(std::max(0.0f, std::min(1.0f, a)) * 255.0f) << 24));
+        }
+    }
+
+    for (int r = 0; r < ringCount; r++)
+    {
+        const std::vector<ImVec2>& outer = rings[(size_t)r];
+        const std::vector<ImVec2>& inner = rings[(size_t)r + 1];
+        const std::vector<unsigned int>& outerColor = ringColors[(size_t)r];
+        const std::vector<unsigned int>& innerColor = ringColors[(size_t)r + 1];
+        const size_t count = boundary.size();
+        for (size_t j = 0; j < count; j++)
+        {
+            const size_t next = (j + 1) % count;
+            const ImVec2 quad[6] = { outer[j], outer[next], inner[next],
+                outer[j], inner[next], inner[j] };
+            const unsigned int cols[6] = { outerColor[j], outerColor[next], innerColor[next],
+                outerColor[j], innerColor[next], innerColor[j] };
+            drawList->PrimReserve(6, 6);
+            for (int v = 0; v < 6; v++)
+                drawList->PrimVtx(quad[v], ImVec2(0.0f, 0.0f), cols[v]);
         }
     }
 }

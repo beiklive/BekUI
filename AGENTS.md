@@ -622,7 +622,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 
 - **`shadow` 的 `cutout`**：打开后只画外圈（把控件自身矩形挖掉，borealis 用 `NVG_HOLE`
   做同一件事），内圈一个顶点都不落 → 后面加的层即使是**半透明底色也不会透出阴影**。
-  实现是沿中线描一圈（`PathRect` + `PathStroke`），`shadow::drawSoft(..., cutout)`。
+  实现是**壳层网格**：从控件圆角轮廓（alpha 0）沿外法线一圈圈往外长，每圈 alpha 由
+  "到 offset 后阴影形状的距离"决定 —— 孔的边界天然是圆角，offset 只影响阴影投在哪，
+  控件内部一个顶点都没有（矩形 `PushClipRect` 分块会让圆角处出现方角缺口，踩过）。
   默认关，按需在 shadow 层写 `"cutout": true`。
 - **`shadow` 的 `inner`**：同一个 `op`、同一个 `fill`，`"inner": true` 就从外投影变成**内阴影**
   （`shadow::drawInnerSoft`）。四条与"另一种做法"有关的约定：
