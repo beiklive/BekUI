@@ -67,11 +67,45 @@
       "valign": "center",
       "inset": [
         0,
+        48,
         0,
-        0,
-        16
+        0
       ],
-      "width": 150
+      "width": 90
+    },
+    {
+      "op": "text",
+      "id": "arrow_left",
+      "data_id": "arrow_left",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.arrowSize",
+      "color": "@theme/color.text.dim",
+      "width": 26,
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        150,
+        0,
+        0
+      ]
+    },
+    {
+      "op": "text",
+      "id": "arrow_right",
+      "data_id": "arrow_right",
+      "font_kind": "icon",
+      "fontSize": "@theme/metric.buttonVariant.arrowSize",
+      "color": "@theme/color.text.dim",
+      "width": 26,
+      "align": "right",
+      "valign": "center",
+      "inset": [
+        0,
+        16,
+        0,
+        0
+      ]
     }
   ],
   "states": {

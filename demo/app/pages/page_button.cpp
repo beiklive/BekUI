@@ -105,23 +105,31 @@ Box* buildButtonShowcasePage()
     // ---- 表单按钮（Toggle / Custom / Option / Value）----
     page->addView(bklv::makeSectionHeader("表单按钮"));
 
-    Box* form_row = new Box(Axis::ROW);
-    form_row->setWidthPercentage(100.0f);
-    form_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
-    form_row->setAlignItems(AlignItems::CENTER);
+    auto makeFormRow = [&]() {
+        Box* row = new Box(Axis::ROW);
+        row->setWidthPercentage(100.0f);
+        row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+        row->setAlignItems(AlignItems::CENTER);
+        page->addView(row);
+        return row;
+    };
 
+    // 第一行：Toggle + Custom
+    Box* row1 = makeFormRow();
     ToggleButton* toggle = new ToggleButton("无线网络", bklv::icon::glyphByName("settings"));
-    toggle->setWidth(240.0f);
+    toggle->setWidth(300.0f);
     toggle->setChecked(true);
     toggle->setOnToggle([](bool on) { demo::toastManager()->showInfo(on ? "无线网络：开" : "无线网络：关"); });
-    form_row->addView(toggle);
+    row1->addView(toggle);
 
     CustomButton* custom = new CustomButton("存储路径");
     custom->setIcon(bklv::icon::glyphByName("settings"));
     custom->setRightText("/sd/roms");
     custom->setWidth(300.0f);
-    form_row->addView(custom);
+    row1->addView(custom);
 
+    // 第二行：Option + Value
+    Box* row2 = makeFormRow();
     OptionButton* option = new OptionButton("画面缩放");
     option->setIcon(bklv::icon::glyphByName("settings"));
     option->setOptions({"原始", "拉伸", "整数缩放"}, 0);
@@ -130,16 +138,14 @@ Box* buildButtonShowcasePage()
         const char* names[] = {"原始", "拉伸", "整数缩放"};
         demo::toastManager()->showInfo(std::string("画面缩放：") + names[i]);
     });
-    form_row->addView(option);
+    row2->addView(option);
 
     ValueButton* value = new ValueButton("音量");
     value->setIcon(bklv::icon::glyphByName("settings"));
     value->setup(50.0f, 0.0f, 100.0f, 1.0f, 0);
     value->setWidth(300.0f);
     value->setOnValueChanged([](float v) { demo::toastManager()->showInfo("音量：" + std::to_string((int)v)); });
-    form_row->addView(value);
-
-    page->addView(form_row);
+    row2->addView(value);
 
     // ---- Toast ----
     page->addView(bklv::makeSectionHeader("Toast"));

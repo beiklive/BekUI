@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "bklv/core/icon_font.hpp"
+#include "bklv/core/input.hpp"
 #include "bklv/widgets/content_ids.hpp"
 
 using namespace bklv;
@@ -62,6 +63,11 @@ OptionButton::OptionButton()
     : Button("", "")
 {
     this->setAppearanceName("base/button/option");
+    // LR 用 switch_icons 那套（提示栏同款），不是 Material
+    this->setLayerIconFontKind("arrow_left", IconFontKind::SWITCH);
+    this->setLayerIconFontKind("arrow_right", IconFontKind::SWITCH);
+    this->setText("arrow_left", getControllerButtonIcon(ControllerButton::LB));
+    this->setText("arrow_right", getControllerButtonIcon(ControllerButton::RB));
     this->registerAction(ControllerButton::LB, "上一个", [this](View*) { this->stepBy(-1); });
     this->registerAction(ControllerButton::RB, "下一个", [this](View*) { this->stepBy(1); });
 }
@@ -109,7 +115,7 @@ const std::string& OptionButton::getCurrentOption() const
 void OptionButton::refreshText()
 {
     if (!this->options.empty())
-        this->setText(content::INFO, "L  " + this->options[this->index] + "  R");
+        this->setText(content::INFO, this->options[this->index]);
 }
 
 void OptionButton::trigger()
@@ -124,6 +130,10 @@ ValueButton::ValueButton()
     : Button("", "")
 {
     this->setAppearanceName("base/button/value");
+    this->setLayerIconFontKind("arrow_left", IconFontKind::SWITCH);
+    this->setLayerIconFontKind("arrow_right", IconFontKind::SWITCH);
+    this->setText("arrow_left", getControllerButtonIcon(ControllerButton::LB));
+    this->setText("arrow_right", getControllerButtonIcon(ControllerButton::RB));
     this->registerAction(ControllerButton::LB, "减小", [this](View*) { this->stepBy(-1); });
     this->registerAction(ControllerButton::RB, "增大", [this](View*) { this->stepBy(1); });
 }
@@ -192,7 +202,7 @@ void ValueButton::stepBy(int direction)
 
 void ValueButton::refreshText()
 {
-    this->setText(content::INFO, "L  " + formatValue(this->value, this->precision) + "  R");
+    this->setText(content::INFO, formatValue(this->value, this->precision));
 }
 
 void OptionButton::stepBy(int direction)
