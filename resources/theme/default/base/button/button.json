@@ -5,6 +5,9 @@
   },
   "layers": [
     {
+      "import": "base/layer/shadow"
+    },
+    {
       "op": "rect",
       "id": "bg",
       "fill": "@theme/color.button.defaultBg",

@@ -24,6 +24,7 @@
     "base/layer/glass.json",
     "base/layer/cell_bg.json",
     "base/layer/cell_title.json",
+    "base/layer/shadow.json",
     "base/button/toggle.json",
     "base/button/toggle_text.json",
     "base/button/custom.json",

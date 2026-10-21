@@ -1,0 +1,18 @@
+{
+  "$comment": "通用柔和阴影：按钮/卡片共用（shadow 层由 sortLayers 提到最前）",
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.md",
+      "feather": 12,
+      "spread": 0,
+      "offset": [
+        0,
+        4
+      ],
+      "cutout": true
+    }
+  ]
+}

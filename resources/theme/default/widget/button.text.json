@@ -21,6 +21,9 @@
   },
   "layers": [
     {
+      "import": "base/layer/shadow"
+    },
+    {
       "op": "rect",
       "id": "hlBg",
       "fill": "&color.none",
