@@ -1,5 +1,5 @@
 {
-  "$comment": "开关按钮：底框来自 base/button/frame，这里只加内容与开关",
+  "$comment": "开关按钮：轨道/旋钮用两张 SVG（resources/img/switch/），on/off 用 opacity 切换",
   "import": [
     "base/button/frame"
   ],
@@ -36,10 +36,8 @@
       ]
     },
     {
-      "op": "rect",
-      "id": "track",
-      "fill": "@theme/color.switch.trackOff",
-      "radius": 13,
+      "op": "image",
+      "scaling": "fit",
       "width": 46,
       "height": 26,
       "align": "right",
@@ -49,50 +47,48 @@
         16,
         0,
         0
-      ]
+      ],
+      "id": "switch_on",
+      "data_id": "switch_on",
+      "opacity": 0
     },
     {
-      "op": "rect",
-      "id": "knob",
-      "fill": "@theme/color.switch.knob",
-      "radius": 9,
-      "width": 18,
-      "height": 18,
+      "op": "image",
+      "scaling": "fit",
+      "width": 46,
+      "height": 26,
       "align": "right",
       "valign": "center",
       "inset": [
         0,
-        18,
+        16,
         0,
         0
       ],
-      "offset": [
-        -22,
-        0
-      ]
+      "id": "switch_off",
+      "data_id": "switch_off",
+      "opacity": 1
     }
   ],
   "states": {
     "on": {
-      "track.fill": {
-        "to": "@theme/color.accent.base",
+      "switch_on.opacity": {
+        "to": 1,
         "duration": 140
       },
-      "knob.offsetX": {
+      "switch_off.opacity": {
         "to": 0,
-        "duration": 140,
-        "easing": "cubicOut"
+        "duration": 140
       }
     },
     "off": {
-      "track.fill": {
-        "to": "@theme/color.switch.trackOff",
+      "switch_on.opacity": {
+        "to": 0,
         "duration": 140
       },
-      "knob.offsetX": {
-        "to": -22,
-        "duration": 140,
-        "easing": "cubicOut"
+      "switch_off.opacity": {
+        "to": 1,
+        "duration": 140
       }
     }
   }

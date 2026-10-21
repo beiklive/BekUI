@@ -28,9 +28,13 @@ class ToggleButton : public Button
     void setOnToggle(std::function<void(bool)> callback) { this->onToggle = std::move(callback); }
 
     void trigger() override;
+    void update() override;
 
   private:
+    void loadSwitchImages();
+
     std::function<void(bool)> onToggle;
+    bool imagesLoaded = false;
 };
 
 class CustomButton : public Button

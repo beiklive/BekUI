@@ -101,26 +101,23 @@ Box* buildButtonShowcasePage()
 
 
     page->addView(icon_row);
-
+    Box* row1 = new Box(Axis::COLUMN);
+    row1->setWidthPercentage(100.0f);
+    row1->setGap(10.f);
     // ---- 表单按钮（Toggle / Custom / Option / Value）----
     page->addView(bklv::makeSectionHeader("表单按钮"));
 
-    auto makeFormRow = [&]() {
-        Box* row = new Box(Axis::ROW);
-        row->setWidthPercentage(100.0f);
-        row->setGap(getTheme().number("metric.spacing.md", 12.0f));
-        row->setAlignItems(AlignItems::CENTER);
-        page->addView(row);
-        return row;
-    };
-
     // 第一行：Toggle + Custom
-    Box* row1 = makeFormRow();
     ToggleButton* toggle = new ToggleButton("无线网络", bklv::icon::glyphByName("settings"));
     toggle->setWidth(300.0f);
     toggle->setChecked(true);
     toggle->setOnToggle([](bool on) { demo::toastManager()->showInfo(on ? "无线网络：开" : "无线网络：关"); });
     row1->addView(toggle);
+
+    ToggleButton* lock = new ToggleButton("隐私锁", bklv::icon::glyphByName("settings"));
+    lock->setWidth(300.0f);
+    lock->setChecked(false);
+    row1->addView(lock);
 
     CustomButton* custom = new CustomButton("存储路径");
     custom->setIcon(bklv::icon::glyphByName("settings"));
@@ -129,7 +126,6 @@ Box* buildButtonShowcasePage()
     row1->addView(custom);
 
     // 第二行：Option + Value
-    Box* row2 = makeFormRow();
     OptionButton* option = new OptionButton("缩放");
     option->setIcon(bklv::icon::glyphByName("settings"));
     option->setOptions({"原始", "拉伸", "整数缩放"}, 0);
@@ -138,14 +134,19 @@ Box* buildButtonShowcasePage()
         const char* names[] = {"原始", "拉伸", "整数缩放"};
         demo::toastManager()->showInfo(std::string("画面缩放：") + names[i]);
     });
-    row2->addView(option);
+    row1->addView(option);
 
     ValueButton* value = new ValueButton("音量");
     value->setIcon(bklv::icon::glyphByName("settings"));
     value->setup(50.0f, 0.0f, 100.0f, 1.0f, 0);
-    value->setWidth(360.0f);
+    value->setWidth(300.0f);
     value->setOnValueChanged([](float v) { demo::toastManager()->showInfo("音量：" + std::to_string((int)v)); });
-    row2->addView(value);
+    row1->addView(value);
+    for (View* child : row1->getChildren())
+    {
+        child->setWidthPercentage(100.0f); // 外观里的 minWidth（120）会卡住 1 份的宽度
+    }
+    page->addView(row1);
 
     // ---- Toast ----
     page->addView(bklv::makeSectionHeader("Toast"));
