@@ -38,9 +38,25 @@ Box* buildJsonThemePage()
         makeDemoView("demo/gradient_card", "主题卡片", "gradient + shadow", "star"),
         readThemeJson("demo/gradient_card.json")));
 
+    page->addView(makeShowcaseSection("JSON · box 段：尺寸 / 内边距 / 白底 / 圆角 / 边框",
+        makeDemoView("demo/box_card", "box 样式", "padding + border + radius", nullptr),
+        readThemeJson("demo/box_card.json")));
+
+    page->addView(makeShowcaseSection("JSON · 图片层（SVG src）+ 圆形底 + 标题",
+        makeDemoView("demo/badge", "徽章", "", nullptr),
+        readThemeJson("demo/badge.json")));
+
     page->addView(makeShowcaseSection("JSON · 胶囊 + 描边 + 阴影",
         makeDemoView("demo/pill", "开始游戏", "", nullptr),
         readThemeJson("demo/pill.json")));
+
+    page->addView(makeShowcaseSection("JSON · states：聚焦 / 按下（可点击或按 A）",
+        [] {
+            Button* button = new Button("状态按钮");
+            button->setAppearanceName("demo/state_button");
+            return button;
+        }(),
+        readThemeJson("demo/state_button.json")));
 
     page->addView(makeShowcaseSection("JSON · 内阴影 + 描边 + 图标 / 信息",
         makeDemoView("demo/inner_card", "内阴影卡片", "inner: true", "settings"),

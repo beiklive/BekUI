@@ -1,6 +1,8 @@
 #include "app/pages/showcase.hpp"
 
 #include <fstream>
+#include <algorithm>
+#include <cmath>
 #include <sstream>
 
 #include "bklv/core/resource.hpp"
@@ -76,6 +78,28 @@ Box* makeShowcaseSection(const std::string& title, View* demoView, const std::st
     code->setWidth(392.0f);
     code->setFontSize(13.0f);
     code->setTextColor(getTheme().color("color.text.dim"));
+
+    // 显式给内容一个高度：ScrollingFrame 只会"内容高度为 0 时"自己累加，
+    // 而 Label 在受限高度下量出来的高度会被压扁 → 滚动范围永远是 0。
+    // 这里按行数 + 粗略折行估算（代码是等宽-ish 的 JSON，够用）。
+    const float fontSize = 13.0f;
+    const float lineHeight = fontSize * getTheme().number("metric.font.lineHeight", 1.25f);
+    const float charWidth  = fontSize * 0.56f;
+    const size_t perLine   = std::max<size_t>(1, (size_t)(392.0f / charWidth));
+    float codeHeight = 0.0f;
+    size_t begin = 0;
+    while (begin <= jsonText.size())
+    {
+        const size_t end = jsonText.find('\n', begin);
+        const size_t len = (end == std::string::npos ? jsonText.size() : end) - begin;
+        codeHeight += std::max(1.0f, std::ceil((float)len / (float)perLine)) * lineHeight;
+        if (end == std::string::npos)
+            break;
+        begin = end + 1;
+    }
+    codeHeight += fontSize * 2.0f;
+    code->setHeight(codeHeight);
+    codeScroll->getContentBox()->setHeight(codeHeight);
     codeScroll->addView(code);
 
     panel->addView(codeScroll);

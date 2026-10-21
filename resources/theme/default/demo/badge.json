@@ -1,0 +1,17 @@
+{
+  "$comment": "demo：图片层（SVG）+ 圆底 + 标题，图片通过 src 从主题目录加载",
+  "box": { "width": 140, "height": 140 },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": 70, "feather": 16, "offset": [0, 6], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": 70,
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.border.default", "strokeWidth": 1 },
+    { "op": "image", "id": "art", "src": "demo/img/star.svg",
+      "scaling": "fit", "width": 72, "height": 72,
+      "align": "center", "valign": "top", "inset": [18, 0, 0, 0] },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 14, "color": "@theme/color.text.dim",
+      "align": "center", "valign": "bottom", "inset": [0, 12, 16, 12] }
+  ]
+}

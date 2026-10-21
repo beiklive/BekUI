@@ -1,0 +1,26 @@
+{
+  "$comment": "demo：states —— focused 换底色，pressed 下移 + 换按下色",
+  "box": { "width": 220, "height": 52 },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.md", "feather": 12, "offset": [0, 4], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.md",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.border.default", "strokeWidth": 1 },
+    { "op": "rect", "id": "hlBg", "radius": "@theme/metric.radius.md",
+      "fill": "@theme/color.common.transparent" },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 18, "color": "@theme/color.text.primary",
+      "align": "center", "valign": "center", "inset": [0, 16, 0, 16] }
+  ],
+  "states": {
+    "focused": {
+      "bg.fill": { "to": "@theme/color.accent.base", "duration": 120 },
+      "title.color": { "to": "@theme/color.common.white", "duration": 120 }
+    },
+    "pressed": {
+      "self": { "translateY": { "to": 3, "duration": 80, "easing": "cubicOut" } },
+      "bg.fill": { "to": "@theme/color.button.defaultPressedBg", "duration": 60 }
+    }
+  }
+}

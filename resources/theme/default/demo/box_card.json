@@ -1,0 +1,17 @@
+{
+  "$comment": "demo：box 段直接控制尺寸/内边距/白底/圆角/边框（不写背景层）",
+  "box": {
+    "width": 320, "height": 110, "padding": 20,
+    "backgroundColor": "@theme/color.surface.card",
+    "cornerRadius": "@theme/metric.radius.lg",
+    "borderThickness": 1, "borderColor": "@theme/color.border.default"
+  },
+  "layers": [
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 18, "color": "@theme/color.text.primary",
+      "align": "left", "valign": "top" },
+    { "op": "text", "id": "info", "data_id": "info",
+      "fontSize": 14, "color": "@theme/color.text.dim",
+      "align": "left", "valign": "bottom" }
+  ]
+}
