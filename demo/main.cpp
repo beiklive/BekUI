@@ -29,6 +29,8 @@ int main(int argc, char** argv)
     }
 
     bklv::App app;
+    app.setTheme("light");
+    app.setClearColor(0.94f, 0.95f, 0.96f); // 浅色背景
 
     demo::DemoApp host;
     app.setRootView(host.getView());

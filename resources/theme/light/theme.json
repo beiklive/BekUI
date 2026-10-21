@@ -1,0 +1,10 @@
+{
+  "name": "light",
+  "version": 1,
+  "author": "bklv",
+  "description": "浅色主题：只覆盖 tokens/colors.json，外观与数值回退 default",
+  "files": [
+    "tokens/colors.json",
+    "tokens/metrics.json"
+  ]
+}

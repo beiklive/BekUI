@@ -31,7 +31,7 @@ DemoApp::DemoApp()
     this->shell->setFpsOverlayEnabled(true);
 
     // 预设背景（挂外壳的背景层，铺满视口）
-    this->setBackdropPreset(2);
+    this->setBackdropPreset(0); // 实验：浅色背景时不要深色预设
 
     // Toast：挂在 HUD 层（内容/页头之上），右上角滑入
     this->toasts = new ToastManager();
