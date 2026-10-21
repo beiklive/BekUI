@@ -134,20 +134,33 @@ void drawSoft(ImDrawList* drawList, float minX, float minY, float maxX, float ma
             continue;
         }
 
-        // 挖空内圈：沿控件圆角矩形的**中线**描一圈，厚度就是外扩量。
-        // 不能用"四条矩形带子"：ImGui 的 AddRectFilled 会把圆角钳到边长的一半，
-        // 而四条带子又矮又窄，圆角直接被钳没了、看着是直角（用户报的 bug）。
-        // 描边法没有这个钳制，而且内缘正好贴合控件的圆角形状，阴影更准。
-        // 孔始终挖在**未偏移**的形状上（也就是控件/上层 layer 自己的位置）：
-        // 阴影可以往下投，但控件底下那块必须保持干净，否则半透明底色会把阴影透出来。
-        const float half      = expand * 0.5f;
-        const float midRadius = radius + half;
-        drawList->PathRect(ImVec2(minX - half, minY - half), ImVec2(maxX + half, maxY + half),
-            midRadius);
-        // 注意参数顺序是 (col, thickness, flags)：这个 ImGui 版本的 PathStroke
-        // 不是 (col, flags, thickness)。写成后者编译器不报错（都能隐式转换），
-        // 但 thickness 变成 1、flags 变成垃圾 → 什么都画不出来（踩过）。
-        drawList->PathStroke(col, expand, ImDrawFlags_Closed);
+        // cutout：只画**控件矩形之外**的阴影。
+        // 阴影形状跟着 offset 走（外投影该往下就往下），但挖空区域始终是控件自己的
+        // 矩形 —— 两者是不同位置，不能像以前那样沿同一个矩形描边：
+        //   · 沿阴影矩形描边 → 孔跟着阴影跑，看起来"从中间把上层 layer 剪掉一块"；
+        //   · 沿控件矩形描边 → offset 被完全吃掉（"设置 offset 无效"）。
+        // 做法：把同一个外扩圆角矩形分成四块（上/下/左/右，都在控件矩形之外），
+        // 每块用 PushClipRect 裁一下再画。四块互不重叠，圆角形状不受影响。
+        const ImVec2 outerMin(minX + offsetX - expand, minY + offsetY - expand);
+        const ImVec2 outerMax(maxX + offsetX + expand, maxY + offsetY + expand);
+        struct Band
+        {
+            float x0, y0, x1, y1;
+        };
+        const Band bands[4] = {
+            { outerMin.x, outerMin.y, outerMax.x, minY }, // 上
+            { outerMin.x, maxY, outerMax.x, outerMax.y }, // 下
+            { outerMin.x, minY, minX, maxY },             // 左
+            { maxX, minY, outerMax.x, maxY },             // 右
+        };
+        for (const Band& band : bands)
+        {
+            if (band.x1 <= band.x0 || band.y1 <= band.y0)
+                continue;
+            drawList->PushClipRect(ImVec2(band.x0, band.y0), ImVec2(band.x1, band.y1), true);
+            drawList->AddRectFilled(outerMin, outerMax, col, radius + expand);
+            drawList->PopClipRect();
+        }
     }
 }
 

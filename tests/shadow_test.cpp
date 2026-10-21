@@ -136,6 +136,8 @@ int main()
                 list->_ResetForNewFrame();
                 list->_FringeScale    = 1.0f;
                 list->_InvFringeScale = 1.0f;
+                // 无窗口时默认裁剪区是空的：给一个大裁剪区（cutout 用 PushClipRect 分块画）
+                list->PushClipRect(ImVec2(-1000.0f, -1000.0f), ImVec2(1000.0f, 1000.0f), false);
                 return list;
             };
 
@@ -156,22 +158,30 @@ int main()
             };
 
             // 覆盖测试：ImGui 的凸填充只产生边界顶点，"有没有阴影"要看三角形盖没盖住采样点
+            // 注意要按 clip 判断：cutout 用 PushClipRect 分块画，三角形顶点会伸进控件，
+            // 真正看不见的部分靠裁剪，只看三角形会误判成"盖住了控件中心"。
             auto covered = [](ImDrawList* list, const ImVec2& p) {
                 auto sign = [](const ImVec2& a, const ImVec2& b, const ImVec2& c) {
                     return (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
                 };
-                for (int i = 0; i + 2 < list->IdxBuffer.Size; i += 3)
+                for (const ImDrawCmd& cmd : list->CmdBuffer)
                 {
-                    const ImVec2 a = list->VtxBuffer[list->IdxBuffer[i]].pos;
-                    const ImVec2 b = list->VtxBuffer[list->IdxBuffer[i + 1]].pos;
-                    const ImVec2 c = list->VtxBuffer[list->IdxBuffer[i + 2]].pos;
-                    const float d1 = sign(p, a, b);
-                    const float d2 = sign(p, b, c);
-                    const float d3 = sign(p, c, a);
-                    const bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-                    const bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-                    if (!(hasNeg && hasPos))
-                        return true;
+                    if (p.x < cmd.ClipRect.x || p.y < cmd.ClipRect.y || p.x >= cmd.ClipRect.z
+                        || p.y >= cmd.ClipRect.w)
+                        continue;
+                    for (unsigned int i = cmd.IdxOffset; i + 2 < cmd.IdxOffset + cmd.ElemCount; i += 3)
+                    {
+                        const ImVec2 a = list->VtxBuffer[list->IdxBuffer[i]].pos;
+                        const ImVec2 b = list->VtxBuffer[list->IdxBuffer[i + 1]].pos;
+                        const ImVec2 c = list->VtxBuffer[list->IdxBuffer[i + 2]].pos;
+                        const float d1 = sign(p, a, b);
+                        const float d2 = sign(p, b, c);
+                        const float d3 = sign(p, c, a);
+                        const bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                        const bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+                        if (!(hasNeg && hasPos))
+                            return true;
+                    }
                 }
                 return false;
             };
@@ -188,14 +198,28 @@ int main()
                 for (int i = 0; i < list->VtxBuffer.Size; i++)
                 {
                     const ImVec2 p = list->VtxBuffer[i].pos;
-                    if (insideRoundedShape(p))
-                        inside++;
                     loX = std::min(loX, p.x); hiX = std::max(hiX, p.x);
                     loY = std::min(loY, p.y); hiY = std::max(hiY, p.y);
                     if (p.x <= center.x && p.y <= center.y)
                     {
                         const float dx = p.x - center.x, dy = p.y - center.y;
                         maxCornerDist = std::max(maxCornerDist, std::sqrt(dx * dx + dy * dy));
+                    }
+                }
+                // 可见覆盖：三角形质心同时落在"控件形状内"和"该条命令的裁剪区内"
+                for (const ImDrawCmd& cmd : list->CmdBuffer)
+                {
+                    for (unsigned int i = cmd.IdxOffset; i + 2 < cmd.IdxOffset + cmd.ElemCount; i += 3)
+                    {
+                        const ImVec2 a = list->VtxBuffer[list->IdxBuffer[i]].pos;
+                        const ImVec2 b = list->VtxBuffer[list->IdxBuffer[i + 1]].pos;
+                        const ImVec2 c = list->VtxBuffer[list->IdxBuffer[i + 2]].pos;
+                        const ImVec2 mid((a.x + b.x + c.x) / 3.0f, (a.y + b.y + c.y) / 3.0f);
+                        if (mid.x < cmd.ClipRect.x || mid.y < cmd.ClipRect.y || mid.x >= cmd.ClipRect.z
+                            || mid.y >= cmd.ClipRect.w)
+                            continue;
+                        if (insideRoundedShape(mid))
+                            inside++;
                     }
                 }
                 const int verts = list->VtxBuffer.Size;
@@ -215,11 +239,32 @@ int main()
             // 开挖空：中心不被覆盖（透明底色也看不到阴影）
             check(!std::get<7>(cutout), "cutout 时控件中心没有被阴影覆盖");
             // 圆角处（方形包围盒的角、控件的圆角外面）仍然有阴影
-            check(std::get<8>(cutout), "cutout 时圆角外的角落仍有阴影（外圈完整）");
+            check(!std::get<8>(cutout), "cutout 时控件矩形内（含圆角处）都不留阴影");
             check(std::get<0>(plain) >= 0, "两种模式的顶点都检查过");
             // 开挖空：控件圆角形状内部一个顶点都没有 → 透明底色也看不到阴影
             checkEqualInt(std::get<0>(cutout), 0, "cutout 时控件形状内部没有任何顶点");
             check(std::get<1>(cutout) > 0, "cutout 画出了东西（不是空实现）");
+
+            // cutout + offset：孔仍挖在控件矩形里，阴影整体跟着 offset 走
+            {
+                ImDrawList* list = makeList();
+                const float offsetY = 10.0f;
+                shadow::drawSoft(list, minX, minY, maxX, maxY, radius, color, 1.0f, feather,
+                    0.0f, true, 0.0f, offsetY);
+
+                float hiY = -1e9f;
+                for (int i = 0; i < list->VtxBuffer.Size; i++)
+                    hiY = std::max(hiY, list->VtxBuffer[i].pos.y);
+                const bool centerCovered = covered(list, ImVec2((minX + maxX) * 0.5f,
+                    (minY + maxY) * 0.5f));
+                const bool belowCovered = covered(list, ImVec2((minX + maxX) * 0.5f,
+                    maxY + offsetY + 2.0f));
+                delete list;
+
+                check(!centerCovered, "cutout+offset：控件中心仍然看不到阴影");
+                check(belowCovered, "cutout+offset：offset 下方能看到阴影");
+                check(hiY >= maxY + offsetY, "cutout+offset：阴影跟着 offset 下移（不再被吃掉）");
+            }
 
             // 外圈够到最外边界（四条边都在）
             check(std::fabs(std::get<2>(cutout) - (minX - feather)) <= 1.5f, "左边界到最外");
@@ -309,6 +354,8 @@ int main()
                 list->_ResetForNewFrame();
                 list->_FringeScale    = 1.0f;
                 list->_InvFringeScale = 1.0f;
+                // 无窗口时默认裁剪区是空的：给一个大裁剪区（cutout 用 PushClipRect 分块画）
+                list->PushClipRect(ImVec2(-1000.0f, -1000.0f), ImVec2(1000.0f, 1000.0f), false);
                 return list;
             };
 
