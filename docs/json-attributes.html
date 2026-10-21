@@ -241,6 +241,14 @@
 </table>
 <div class="warn">外观里没有的层 = 不画，这是正常情况；但 <b><code>states</code>/<code>transitions</code> 里引用不存在的层 id 会编译失败</b>。删层时要把引用一起删。</div>
 
+<h3>6.0 层 import</h3>
+<p><code>layers</code> 里可以放一条只写 <code>import</code> 的条目（没有 <code>op</code>），它会<b>就地展开</b>成目标外观的 <code>layers</code>；目标外观的 box / states / children 不会带进来。</p>
+<pre><code>"layers": [
+  { "import": "base/button/frame" },   // 展开成 shadow / bg / hlBg
+  { "op": "text", "id": "title", "data_id": "text" }
+]</code></pre>
+<div class="tip">层 id 不能重复；循环引用 / 深度 &gt; 8 / 文件不存在都会报错。适合把阴影、玻璃、背景框拆成独立文件反复叠加。</div>
+
 <h3>6.1 <code>children</code> 段</h3>
 <p>每一项要么引用（<code>appearance</code> / <code>ref</code>），要么只写 <code>box</code> 造一个纯布局盒；<code>text</code> / <code>icon</code> / <code>info</code> 会写进子视图的内容槽，<code>id</code> 让 C++ 能按名字取到它。</p>
 <table>

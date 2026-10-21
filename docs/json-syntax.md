@@ -383,6 +383,24 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 `custom` 层的**内容留给 C++**（`AppearanceView::drawCustomLayer`）：进度弧、滑块轨道、
 开关图形这类语义绘制不该塞进 JSON，否则等于写解释器。
 
+#### 层 import：`{ "import": "base/layer/xxx" }`
+
+`layers` 数组里可以放一条**只有 import** 的条目（没有 `op`），它会**就地展开**成那个外观的
+`layers` 数组（它的 `box` / `states` / `children` 不会带进来），后面的层照常排在它之后：
+
+```json
+"layers": [
+  { "import": "base/button/frame" },      // 展开成 shadow / bg / hlBg
+  { "op": "text", "id": "title", "data_id": "text" }
+]
+```
+
+- 适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；
+- 可以写数组一次导入多份：`{ "import": ["base/layer/shadow", "base/layer/border"] }`；
+- 被导入文件自己的顶层 `import` 也会先解析（例如 `base/button/frame` 本身）；
+- 循环引用、深度 > 8、文件不存在、没有 `layers` 都会**报错**；
+- **层 id 不能重复**（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。
+
 ### `states`：状态动效
 
 key 是 `"<层 id>.<属性名>"`，值是一个补间目标：

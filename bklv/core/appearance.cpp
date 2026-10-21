@@ -373,12 +373,120 @@ namespace
 // layers 段：每一层是一个"绘制声明"（op + 该 op 自己的字段）。
 // 抽成函数是为下一步做准备：**每种 op 的字段解析会各自独立成文件**（compile/layers/<op>.cpp），
 // 那时这里只剩按 op 的调度。
+namespace
+{
+
+// 层级 import 的展开：把 `{ "import": "base/layer/xxx" }` 就地换成那个外观里的
+// **layers 数组**（它的 box/states/children 都不会被带进来）。
+// 解释顺序：先展开变量、再递归解析它自己的顶层 import，最后取出 layers。
+bool expandLayerImports(const Json& layers, const ThemeData& theme, Json& out,
+    std::vector<std::string>& stack, int depth, std::string& error)
+{
+    if (depth > 8)
+    {
+        error = "层 import 嵌套超过 8 层";
+        return false;
+    }
+
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        const Json& node = layers[i];
+        const std::string where = "layers[" + std::to_string(i) + "]";
+
+        if (!node.is_object() || !node.contains("import") || node.contains("op"))
+        {
+            out.push_back(node);
+            continue;
+        }
+
+        std::vector<std::string> names;
+        if (node["import"].is_string())
+            names.push_back(node["import"].get<std::string>());
+        else if (node["import"].is_array())
+        {
+            for (const Json& entry : node["import"])
+                if (entry.is_string())
+                    names.push_back(entry.get<std::string>());
+        }
+        else
+        {
+            error = where + ".import 必须是字符串或字符串数组";
+            return false;
+        }
+
+        for (const std::string& name : names)
+        {
+            if (std::find(stack.begin(), stack.end(), name) != stack.end())
+            {
+                error = where + " 层 import 出现循环引用：" + name;
+                return false;
+            }
+
+            const std::string* json = theme.widgetAppearanceJson(name);
+            if (json == nullptr)
+            {
+                error = where + " 层 import 的外观不存在：\"" + name
+                    + "\"（检查名字与 theme.json 的 files[]）";
+                return false;
+            }
+
+            Json doc;
+            try
+            {
+                doc = Json::parse(*json);
+            }
+            catch (const Json::parse_error& e)
+            {
+                error = where + " 层 import 的 " + name + " 语法错误：" + e.what();
+                return false;
+            }
+
+            if (!compile::expandJsonVars(doc, error))
+            {
+                error = where + " 层 import 的 " + name + " 变量块有问题：" + error;
+                return false;
+            }
+
+            // 被引入的文件自己也可能有顶层 import（比如 import base/button/frame）
+            std::vector<std::string> visited;
+            Json resolved;
+            if (!compile::resolveImports(doc, theme, visited, resolved, error))
+            {
+                error = where + " 层 import 的 " + name + "：" + error;
+                return false;
+            }
+
+            const Json empty = Json::array();
+            const Json& importedLayers = resolved.contains("layers") ? resolved["layers"] : empty;
+            if (!importedLayers.is_array() || importedLayers.empty())
+            {
+                error = where + " 层 import 的 " + name + " 没有 layers 数组（或为空）";
+                return false;
+            }
+
+            stack.push_back(name);
+            const bool ok = expandLayerImports(importedLayers, theme, out, stack, depth + 1, error);
+            stack.pop_back();
+            if (!ok)
+                return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
 bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
     std::vector<AppearanceLayer>& layers, std::string& error)
 {
-        for (size_t i = 0; i < doc["layers"].size(); i++)
+        Json expandedLayers = Json::array();
+        std::vector<std::string> importStack;
+        if (!expandLayerImports(doc["layers"], theme, expandedLayers, importStack, 0, error))
+            return false;
+
+        for (size_t i = 0; i < expandedLayers.size(); i++)
         {
-            const Json& node = doc["layers"][i];
+            const Json& node = expandedLayers[i];
             const std::string where = "layers[" + std::to_string(i) + "]";
 
             AppearanceLayer layer; // 由 parseLayerMeta 造出来（元信息 + 默认 id）
@@ -395,6 +503,22 @@ bool parseLayers(const Json& doc, const ThemeData& theme, AppearanceBox& box,
         return false;
 
             layers.push_back(layer);
+        }
+
+        // 重复 id 会让 states/字体覆盖落到"第一个"上，明确报错而不是默默取第一个
+        for (size_t i = 0; i < layers.size(); i++)
+        {
+            if (layers[i].id.empty())
+                continue;
+            for (size_t j = i + 1; j < layers.size(); j++)
+            {
+                if (layers[j].id == layers[i].id)
+                {
+                    error = "图层 id 重复：\"" + layers[i].id
+                        + "\"（层 import 与本地层不能同名；换一个 id 或去掉重复项）";
+                    return false;
+                }
+            }
         }
 
         // 阴影提到最前、玻璃紧随其后（见 sortLayers 的注释）

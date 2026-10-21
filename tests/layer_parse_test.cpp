@@ -63,6 +63,7 @@ int main()
 {
     // 扩展 op 必须先注册才能编译（第 7 节要编译一段 stripe 的 JSON）
     test_contrib::registerStripe();
+    setTheme("default"); // 层 import 要读主题里的外观文件
 
     std::printf("== 1. 六种 op 都能解析，且各自的键落到该落的字段 ==\n");
     {
@@ -452,6 +453,34 @@ int main()
         check(registerLayer(std::move(collide), error), "参数撞引擎键：注册仍成功（只警告）");
 
         setUiScale(1.0f);
+    }
+
+    std::printf("\n== 8. 层 import（把别的外观的 layers 就地展开）==\n");
+    {
+        std::string error;
+        const auto imported = compileLayers(R"({ "import": "base/button/frame" },
+            { "op": "rect", "id": "extra", "fill": "#112233FF" })", error);
+        check(imported != nullptr, "层 import 能编译");
+        if (imported != nullptr)
+        {
+            check(layerOf(*imported, "bg") != nullptr, "导入的 bg 层在");
+            check(layerOf(*imported, "hlBg") != nullptr, "导入的 hlBg 层在");
+            check(layerOf(*imported, "extra") != nullptr, "本地层追加在后面");
+            check(!imported->getBox().hasHeight, "只导入 layers：box 不会跟着进来");
+            checkEqual(imported->getLayers().back().id, "extra", "顺序：导入层在前、本地层在后");
+        }
+
+        // 重复 id：导入的 bg 与本地 bg 撞名 → 必须报错（而不是默默取第一个）
+        const auto dup = compileLayers(R"({ "import": "base/button/frame" },
+            { "op": "rect", "id": "bg", "fill": "#112233FF" })", error);
+        check(dup == nullptr, "层 import 与本地层 id 重复：编译失败");
+        check(error.find("重复") != std::string::npos, "错误信息说明 id 重复");
+
+        // 不存在的层 bundle
+        const auto missing = compileLayers(R"({ "import": "base/nope_not_here" },
+            { "op": "rect", "id": "x" })", error);
+        check(missing == nullptr, "不存在的层 import：编译失败");
+        check(error.find("不存在") != std::string::npos, "错误信息说明外观不存在");
     }
 
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
