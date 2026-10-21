@@ -399,6 +399,12 @@ bool expandLayerImports(const Json& layers, const ThemeData& theme, Json& out,
             continue;
         }
 
+        // import 的兄弟字段 = 对导入层的覆盖（只在"只导入一层"时成立）
+        Json overrides = Json::object();
+        for (auto it = node.begin(); it != node.end(); ++it)
+            if (it.key() != "import")
+                overrides[it.key()] = it.value();
+
         std::vector<std::string> names;
         if (node["import"].is_string())
             names.push_back(node["import"].get<std::string>());
@@ -465,10 +471,23 @@ bool expandLayerImports(const Json& layers, const ThemeData& theme, Json& out,
             }
 
             stack.push_back(name);
+            const size_t before = out.size();
             const bool ok = expandLayerImports(importedLayers, theme, out, stack, depth + 1, error);
             stack.pop_back();
             if (!ok)
                 return false;
+
+            if (!overrides.empty())
+            {
+                const size_t added = out.size() - before;
+                if (added != 1)
+                {
+                    error = where + " 的 import 带了覆盖字段，但 \"" + name + "\" 展开了 "
+                        + std::to_string(added) + " 层；只有单层 bundle 才能就地覆盖";
+                    return false;
+                }
+                out[before] = compile::mergeJson(out[before], overrides);
+            }
         }
     }
     return true;

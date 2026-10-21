@@ -482,6 +482,27 @@ int main()
         check(missing == nullptr, "不存在的层 import：编译失败");
         check(error.find("不存在") != std::string::npos, "错误信息说明外观不存在");
 
+        // 单层 bundle：import 的兄弟字段是覆盖
+        const auto overridden = compileLayers(R"(
+            { "import": "base/layer/shadow", "cutout": false, "offset": [0, 8] })", error);
+        check(overridden != nullptr, "层 import 支持覆盖字段");
+        if (overridden != nullptr)
+        {
+            const AppearanceLayer* shadow = layerOf(*overridden, "shadow");
+            check(shadow != nullptr, "shadow 层在");
+            if (shadow != nullptr)
+            {
+                check(!shadow->cutout, "cutout 被覆盖成 false");
+                checkFloat(shadow->offset[1], 8.0f, "offset 被覆盖成 [0,8]");
+            }
+        }
+
+        // 多层 bundle 不能就地覆盖（语义不明确）
+        const auto multiOverride = compileLayers(R"(
+            { "import": "base/button/frame", "cutout": false })", error);
+        check(multiOverride == nullptr, "多层 bundle 带覆盖字段：编译失败");
+        check(error.find("单层") != std::string::npos, "错误信息说明只有单层能覆盖");
+
         // 导入的层在 states 里可以用 id 控制（展开后就是普通层）
         const auto withState = compileLayers(R"({ "import": "base/button/frame" },
             { "op": "rect", "id": "extra", "fill": "#112233FF" })", error);
