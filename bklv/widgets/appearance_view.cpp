@@ -768,6 +768,21 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // [left, top, right, bottom]
         this->layerRect(layer, x, y, width, height, rect);
 
+        // 状态里补间的 offsetX/offsetY：layerRect 用的是静态 offset（作为初值），
+        // 这里按「动画值 - 静态值」平移绘制矩形。之前只解析不应用，导致
+        // Toggle 的旋钮只有颜色变、位置不动。
+        const float animOffsetX = this->appearance.getNumber(index, AppearanceProp::OFFSET_X)
+            - layer.offset[0];
+        const float animOffsetY = this->appearance.getNumber(index, AppearanceProp::OFFSET_Y)
+            - layer.offset[1];
+        if (animOffsetX != 0.0f || animOffsetY != 0.0f)
+        {
+            rect[0] += animOffsetX;
+            rect[2] += animOffsetX;
+            rect[1] += animOffsetY;
+            rect[3] += animOffsetY;
+        }
+
         // 设计期叠加：记下被选中层的绘制矩形，以及所有层的并集（画板边框用）
         if ((int)i == this->designSelection)
         {
