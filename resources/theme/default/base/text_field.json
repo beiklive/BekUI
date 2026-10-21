@@ -13,16 +13,7 @@
       "radius": "@theme/metric.radius.md"
     },
     {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
+      "import": "base/layer/hl_bg"
     },
     {
       "op": "text",
@@ -64,32 +55,6 @@
         0,
         10,
         12
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "stroke": "@theme/color.common.transparent",
-      "strokeWidth": 0,
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -6.5,
-        -6.5,
-        -6.5,
-        -6.5
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "stroke": "@theme/color.common.transparent",
-      "strokeWidth": 0,
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
       ]
     }
   ],

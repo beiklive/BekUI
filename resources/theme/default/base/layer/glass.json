@@ -1,0 +1,10 @@
+{
+  "$comment": "default 主题的扁平玻璃底（ios 用自己的 glass 层，不要 import 这个）",
+  "layers": [
+    {
+      "fill": "#10203A6E",
+      "id": "glass",
+      "op": "rect"
+    }
+  ]
+}

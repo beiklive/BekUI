@@ -40,30 +40,6 @@
       "fontSize": "&number.font",
       "align": "center",
       "valign": "center"
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "fill": "&color.none",
-      "radius": "&number.radius",
-      "inset": [
-        "&number.glow",
-        "&number.glow",
-        "&number.glow",
-        "&number.glow"
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "fill": "&color.none",
-      "radius": "&number.radius",
-      "inset": [
-        "&number.gap",
-        "&number.gap",
-        "&number.gap",
-        "&number.gap"
-      ]
     }
   ],
   "states": {

@@ -10,9 +10,7 @@
   },
   "layers": [
     {
-      "id": "glass",
-      "op": "rect",
-      "fill": "#10203A6E"
+      "import": "base/layer/glass"
     }
   ]
 }

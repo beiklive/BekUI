@@ -37,30 +37,6 @@
         0
       ],
       "font_kind": "icon"
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius",
-      "inset": [
-        -6.5,
-        -6.5,
-        -6.5,
-        -6.5
-      ]
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.component.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
     }
   ],
   "states": {

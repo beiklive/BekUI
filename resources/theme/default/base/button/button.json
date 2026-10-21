@@ -11,16 +11,7 @@
       "radius": "@theme/metric.radius.md"
     },
     {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
+      "import": "base/layer/hl_bg"
     },
     {
       "op": "text",
@@ -39,8 +30,7 @@
     }
   ],
   "states": {
-    "focused": {
-    },
+    "focused": {},
     "pressed": {
       "bg.fill": {
         "to": "@theme/color.button.defaultPressedBg",
@@ -51,7 +41,6 @@
         "duration": 60
       }
     },
-    "disabled": {
-    }
+    "disabled": {}
   }
 }

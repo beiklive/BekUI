@@ -1,0 +1,11 @@
+{
+  "$comment": "Cell 行底",
+  "layers": [
+    {
+      "fill": "@theme/color.cell.background",
+      "id": "bg",
+      "op": "rect",
+      "radius": "@theme/metric.radius.sm"
+    }
+  ]
+}

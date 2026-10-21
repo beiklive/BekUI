@@ -1,0 +1,17 @@
+{
+  "$comment": "标准高亮底（hlBg）：states 里的 focused/selected 直接改 bg 或这层的 fill",
+  "layers": [
+    {
+      "fill": "@theme/color.common.transparent",
+      "id": "hlBg",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ],
+      "op": "rect",
+      "radius": "@theme/metric.highlight.radius"
+    }
+  ]
+}

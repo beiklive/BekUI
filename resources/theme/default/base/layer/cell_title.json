@@ -1,0 +1,13 @@
+{
+  "$comment": "Cell 标题文字（data_id = title）",
+  "layers": [
+    {
+      "color": "@theme/color.text.primary",
+      "data_id": "title",
+      "fontSize": "@theme/metric.cell.titleFontSize",
+      "id": "title",
+      "op": "text",
+      "valign": "center"
+    }
+  ]
+}

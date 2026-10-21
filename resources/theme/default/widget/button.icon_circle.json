@@ -13,16 +13,6 @@
       "op": "rect",
       "id": "hlBg",
       "radius": "@theme/metric.radius.round"
-    },
-    {
-      "op": "rect",
-      "id": "hlGlow",
-      "radius": "@theme/metric.radius.round"
-    },
-    {
-      "op": "rect",
-      "id": "hlBorder",
-      "radius": "@theme/metric.radius.round"
     }
   ]
 }
