@@ -63,13 +63,13 @@
       "data_id": "info",
       "fontSize": "@theme/metric.buttonVariant.infoFontSize",
       "color": "@theme/color.text.primary",
-      "align": "right",
+      "align": "center",
       "valign": "center",
       "inset": [
         0,
-        48,
         0,
-        0
+        0,
+        170
       ],
       "width": 90
     },
@@ -85,7 +85,7 @@
       "valign": "center",
       "inset": [
         0,
-        150,
+        148,
         0,
         0
       ]

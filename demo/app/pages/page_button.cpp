@@ -130,10 +130,10 @@ Box* buildButtonShowcasePage()
 
     // 第二行：Option + Value
     Box* row2 = makeFormRow();
-    OptionButton* option = new OptionButton("画面缩放");
+    OptionButton* option = new OptionButton("缩放");
     option->setIcon(bklv::icon::glyphByName("settings"));
     option->setOptions({"原始", "拉伸", "整数缩放"}, 0);
-    option->setWidth(300.0f);
+    option->setWidth(360.0f);
     option->setOnSelectionChanged([](size_t i) {
         const char* names[] = {"原始", "拉伸", "整数缩放"};
         demo::toastManager()->showInfo(std::string("画面缩放：") + names[i]);
@@ -143,7 +143,7 @@ Box* buildButtonShowcasePage()
     ValueButton* value = new ValueButton("音量");
     value->setIcon(bklv::icon::glyphByName("settings"));
     value->setup(50.0f, 0.0f, 100.0f, 1.0f, 0);
-    value->setWidth(300.0f);
+    value->setWidth(360.0f);
     value->setOnValueChanged([](float v) { demo::toastManager()->showInfo("音量：" + std::to_string((int)v)); });
     row2->addView(value);
 
