@@ -28,7 +28,7 @@
 | # | 文件 | 位置 | 作用 | 校验强度 |
 |---|---|---|---|---|
 | 1 | **视图描述** | `<主题>/view/*.json`、`resources/views/*.json` | 节点树（类型 + 属性 + children + include） | 结构错误 → 不建节点 + 报错；**未知属性 → 警告** |
-| 2 | **外观** | `<主题>/base/*.json`、`<主题>/widget/*.json` | `vars` / `import` / `box` / `layers` / `states` / `transitions` | 基本都报错（缺 `layers`、key 不存在、枚举拼错、vars 写错） |
+| 2 | **外观** | `<主题>/base/*.json`、`<主题>/base/widget/*.json` | `vars` / `import` / `box` / `layers` / `states` / `transitions` | 基本都报错（缺 `layers`、key 不存在、枚举拼错、vars 写错） |
 | 3 | **主题令牌** | `<主题>/tokens/colors.json`、`metrics.json` | `a.b` → 颜色 / 数值 | 语法错误报错；**key 名自由**（语义由引用方决定） |
 | 4 | **主题元信息** | `<主题>/theme.json`、`themes.json` | `name`/`author`/`description`/`files[]` | `files[]` 条目必须带 `.json`（少了会静默回退） |
 | 5 | **文案** | `resources/i18n/<locale>.json` | `key` → 字符串、`{}` 占位、`$files` 清单 | 语法错误报错；`$` 开头的键跳过 |
@@ -80,7 +80,7 @@ themes.json            → 主题清单（名字/目录）
 <主题>/theme.json      → 元信息 + files[]（99 条）
   tokens/colors.json   → 展平成 color.a.b   → ThemeData::color(key, fallback)
   tokens/metrics.json  → 展平成 metric.a.b  → ThemeData::number(key, fallback)   ← 这里乘 uiScale
-  base|widget/*.json   → **原文缓存**（widgetAppearanceJson），编译在用到时做
+  base/*.json   → **原文缓存**（widgetAppearanceJson），编译在用到时做
 ```
 
 - 键展平后**不存在就报错**（不静默回退洋红）；`metric.*` 在 `number()` 里乘 `uiScale`，

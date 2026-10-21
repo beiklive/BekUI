@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.list",
+  "import": "base/widget/button.icon_circle",
   "layers": [
     {
       "id": "bg",
@@ -8,8 +8,8 @@
     },
     {
       "id": "glass",
-      "op": "glass",
-      "fill": "#1C1C1ECC"
+      "op": "rect",
+      "fill": "#10203A6E"
     }
   ]
 }

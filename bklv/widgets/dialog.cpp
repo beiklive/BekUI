@@ -23,7 +23,7 @@ DialogBackdrop::DialogBackdrop()
 }
 
 DialogPanel::DialogPanel()
-    : AppearanceView("widget/dialog", false)
+    : AppearanceView("base/widget/dialog", false)
 {
     this->setWidth(getTheme().number("metric.dialog.width", 520.0f));
     this->setHeight(getTheme().number("metric.dialog.height", 220.0f));

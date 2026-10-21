@@ -59,7 +59,7 @@ SelectorButton::SelectorButton(const std::string& text)
     : Button(text)
 {
     // 组合外观：直接给完整路径名（变体是点拼的后缀，这里没有第二个变体）
-    this->setAppearanceName("widget/button.selector");
+    this->setAppearanceName("base/widget/button.selector");
 
     // 箭头的码位（见 getLayerText）只有 switch_icons.ttf 里有，所以这两层指定用 switch 那套；
     // 控件自己的 icon 层（调色板/列表图标）仍走默认的 Material —— 同一个控件两套字体混排。

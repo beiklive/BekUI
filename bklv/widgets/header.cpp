@@ -54,7 +54,7 @@ TextureRef HeaderIcon::getLayerImage(const std::string&)
 }
 
 Header::Header(const std::string& variant)
-    : AppearanceView(variant.empty() ? "widget/header" : "widget/header." + variant, false)
+    : AppearanceView(variant.empty() ? "base/widget/header" : "base/widget/header." + variant, false)
 {
     // 页头是"一行三格"：图标 / 标题 / 右侧区，尺寸留白都在主题里
     this->icon = new HeaderIcon();

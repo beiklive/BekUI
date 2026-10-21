@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.text",
+  "import": "base/widget/button.selector",
   "layers": [
     {
       "id": "bg",
@@ -8,8 +8,8 @@
     },
     {
       "id": "glass",
-      "op": "rect",
-      "fill": "#10203A6E"
+      "op": "glass",
+      "fill": "#1C1C1ECC"
     }
   ]
 }

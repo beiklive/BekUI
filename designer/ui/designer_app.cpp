@@ -402,7 +402,7 @@ bool DesignerApp::openFile(const std::string& relPath)
             this->lastError = viewError;
     }
 
-    const bool isAppearance = relPath.rfind("base/", 0) == 0 || relPath.rfind("widget/", 0) == 0;
+    const bool isAppearance = relPath.rfind("base/", 0) == 0 || relPath.rfind("base/widget/", 0) == 0;
     if (isAppearance)
     {
         std::string parseError;

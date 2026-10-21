@@ -69,7 +69,7 @@ this->getLayerIconFontKind("arrowLeft");       // 没指定 = 返回 ② 那个�
 构造函数里声明两句就够了，**不需要重写 `getLayerFont`**：
 
 ```cpp
-this->setAppearanceName("widget/button.selector");
+this->setAppearanceName("base/widget/button.selector");
 // 箭头的码位只在 switch_icons 里；控件自己的 icon 层仍走默认的 Material
 this->setLayerIconFontKind("arrowLeft", IconFontKind::SWITCH);
 this->setLayerIconFontKind("arrowRight", IconFontKind::SWITCH);

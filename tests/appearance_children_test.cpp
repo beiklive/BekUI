@@ -42,7 +42,7 @@ int main()
         const auto appearance = compileDoc(R"([
             { "appearance": "base/label", "text": "@i18n/x", "box": { "grow": 1 } },
             { "box": { "padding": 12, "gap": 4 } },
-            { "ref": "widget/button.icon_text", "icon": "@icon/check" }
+            { "ref": "base/widget/button.icon_text", "icon": "@icon/check" }
         ])", error);
         check(appearance != nullptr, "三档一起写能编译");
         if (appearance != nullptr)
@@ -65,7 +65,7 @@ int main()
                 check(children[1].box.hasPadding && children[1].box.hasGap, "padding/gap 的标记都在");
 
                 checkEqualInt((int)children[2].kind, (int)AppearanceChild::Kind::VIEW_TEMPLATE, "第 3 档是 ref");
-                check(children[2].name == "widget/button.icon_text", "记下模板名");
+                check(children[2].name == "base/widget/button.icon_text", "记下模板名");
                 check(children[2].icon == "@icon/check", "内容槽 icon");
             }
         }

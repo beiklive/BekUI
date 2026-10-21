@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.icon_circle",
+  "import": "base/widget/button.text",
   "layers": [
     {
       "id": "bg",

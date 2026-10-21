@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 c0871bd · 2026-10-21 21:10 · 两套主题（default / ios）</div>
+  <div class="version">提交 2d1aba5 · 2026-10-21 21:22 · 两套主题（default / ios）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -261,7 +261,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <li><a href="#sec-142">七、常见错误与排查</a></li>
 <li class="sub"><ul>
 <li><a href="#sec-143">渐变（rect 的 gradient）</a></li>
-<li><a href="#sec-144">侧栏面板（widget/sidebar.json）</a></li>
+<li><a href="#sec-144">侧栏面板（base/widget/sidebar.json）</a></li>
 <li><a href="#sec-145">视图过渡（transitions）</a></li>
 </ul></li>
 <li><a href="#sec-146">扩展图层类型（第三方）</a></li>
@@ -1285,7 +1285,7 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <p>bklv 里一共有四类 JSON，各管一件事。这份文档是它们的<strong>完整语法</strong>（键名、取值形式、 枚举拼写、默认值、报错行为），全部对照代码整理，不是示意。</p>
 <table><thead><tr><th>类别</th><th>位置</th><th>用途</th><th>解析处</th></tr></thead><tbody>
 <tr><td>视图描述</td><td><code>resources/views/*.json</code>，或 <code>createFromJSONString()</code></td><td>用 JSON 搭视图树（类型 + 属性 + 子节点）</td><td><code>core/json_view.cpp</code> <code>core/attributes.cpp</code></td></tr>
-<tr><td>控件外观</td><td>`resources/theme/&lt;主题&gt;/base</td><td>widget/&lt;控件&gt;[.&lt;变体&gt;].json`</td><td>一个控件的盒模型 / 绘制层 / 状态动效</td><td><code>core/appearance.cpp</code></td></tr>
+<tr><td>控件外观</td><td><code>resources/theme/&lt;主题&gt;/base/&lt;控件&gt;[.&lt;变体&gt;].json</code></td><td>一个控件的盒模型 / 绘制层 / 状态动效</td><td><code>core/appearance.cpp</code></td></tr>
 <tr><td>页面视图</td><td><code>resources/theme/&lt;主题&gt;/view/&lt;名字&gt;.json</code></td><td>页面/列表项的结构与外观（<code>createViewFromTheme</code>）</td><td><code>core/json_view.cpp</code></td></tr>
 <tr><td>主题</td><td><code>resources/theme/themes.json</code> + <code>&lt;主题&gt;/{theme,colors,metrics}.json</code></td><td>主题清单、颜色表、数值表</td><td><code>core/theme_data.cpp</code></td></tr>
 <tr><td>文案</td><td><code>resources/i18n/&lt;locale&gt;.json</code></td><td>i18n 文本</td><td><code>core/i18n.cpp</code></td></tr>
@@ -1476,7 +1476,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <ul><li>路径要写出 <code>resources/</code> 这一层：<code>createFromJSONFile(&quot;resources/views/x.json&quot;)</code>。</li><li>上限：<strong>深度 32 / 节点 4096 / include 栈 32</strong>。</li><li>出错行为：结构错 → 返回 <code>nullptr</code> + 日志；<strong>未知属性只警告</strong>（带拼写建议），不中断。</li><li>跨「创建视图树」的操作必须 RAII（<code>std::unique_ptr&lt;View&gt;</code>），否则中途失败会泄漏半棵树。</li></ul>
 <hr>
 <h3 id="sec-127">三、控件外观 JSON</h3>
-<p>文件放在 <code>resources/theme/&lt;主题&gt;/base/</code>（基础控件：单个容器/元素）或 <code>widget/</code> （二级控件：引用 base 组合出来的），<strong>必须</strong>在该主题 <code>theme.json</code> 的 <code>files[]</code> 里登记 （<strong>不扫目录</strong>，没登记 = 不生效 + 一条 warn）。</p>
+<p>文件放在 <code>resources/theme/&lt;主题&gt;/base/</code>（基础控件：单个容器/元素）或 <code>base/widget/</code> （二级控件：引用 base 组合出来的），<strong>必须</strong>在该主题 <code>theme.json</code> 的 <code>files[]</code> 里登记 （<strong>不扫目录</strong>，没登记 = 不生效 + 一条 warn）。</p>
 <p><strong>外观名 = 相对主题根的路径去掉扩展名</strong>：<code>base/button.json</code> → <code>&quot;base/button&quot;</code>； 变体是后缀：<code>base/button.json</code> + 变体 <code>primary</code> → 文件 <code>base/button.primary.json</code>。</p>
 <p>一份外观 = 三段，<code>layers</code> 必填（纯布局控件写 <code>&quot;layers&quot;: []</code>），另有一个可选的 <code>import</code>：</p>
 <pre><code class="lang-json">{
@@ -1587,7 +1587,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <pre><code class="lang-json">{ &quot;name&quot;: &quot;default&quot;, &quot;version&quot;: 1, &quot;colorScheme&quot;: &quot;dark&quot;,
   &quot;author&quot;: &quot;beiklive&quot;, &quot;description&quot;: &quot;默认深色主题&quot;,
   &quot;files&quot;: [&quot;tokens/colors.json&quot;, &quot;tokens/metrics.json&quot;,
-            &quot;base/button.json&quot;, &quot;widget/sidebar.json&quot;, &quot;view/page_json.json&quot;] }</code></pre>
+            &quot;base/button.json&quot;, &quot;base/widget/sidebar.json&quot;, &quot;view/page_json.json&quot;] }</code></pre>
 <p><code>files[]</code> 就是这个主题的全部文件清单（<strong>不扫目录</strong>：romfs 上目录迭代真机未验证， 所以加/删文件一定要登记）。<code>author</code> / <code>description</code> 给设计器&quot;打开项目&quot;用； 老主题的 <code>widgets[]</code> 仍然能读，但会打一条&quot;请迁移&quot;的警告。</p>
 <p><strong><code>behavior</code>：主题级的行为默认值</strong>（不是颜色也不是尺寸，但属于主题的一部分）：</p>
 <pre><code class="lang-json">&quot;behavior&quot;: { &quot;dropdown.placement&quot;: &quot;trigger&quot; }</code></pre>
@@ -1675,7 +1675,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 </tbody></table>
 <p>报错规则（都不静默降级）：<code>at</code> 越界、<code>at</code> 不递增、停靠点数量不在 2~4、停靠点缺 <code>color</code>、 <code>type</code> 不认识 —— 都会带上「是哪个 stop / 当前值」的提示。</p>
 <p>与 <code>import</code> 合并时：<code>gradient</code> 是对象按字段合并，<code>stops</code> 是数组<strong>整体替换</strong>。 与 <code>fill</code> 的关系：写了 <code>gradient</code> 以它为准；<code>fill</code> 继续服务状态覆盖（状态里写 <code>fill</code> 的层不带渐变）。 <strong>渐变不做补间</strong>（不是标量通道），也不支持给 <code>stroke</code> 加渐变 —— 见 <a href="rect-gradient.md"><code>rect-gradient.md</code></a>。</p>
-<h4 id="sec-144">侧栏面板（<code>widget/sidebar.json</code>）</h4>
+<h4 id="sec-144">侧栏面板（<code>base/widget/sidebar.json</code>）</h4>
 <p>侧栏的面板观感<strong>只由 <code>box</code> 段决定</strong>（<code>Sidebar::applyPanelLook()</code> 走 <code>applyWidgetBox</code>）：</p>
 <pre><code class="lang-json">&quot;box&quot;: {
   &quot;width&quot;: &quot;@theme/metric.sidebar.width&quot;,
@@ -1992,7 +1992,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
 
 </section>
-<footer>生成自仓库提交 <code>c0871bd</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>2d1aba5</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

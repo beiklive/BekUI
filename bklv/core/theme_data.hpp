@@ -12,7 +12,7 @@
 //   .../view/*.json                      页面/视图描述（结构 + 外观）
 //
 // **名字 = 相对主题根的路径去掉扩展名**：`base/button/button.json` -> "base/button/button"、
-// `widget/sidebar.json` -> "widget/sidebar"。所以挪文件 = 改名字，C++ 里的引用要一起改。
+// `widget/sidebar.json` -> "base/widget/sidebar"。所以挪文件 = 改名字，C++ 里的引用要一起改。
 // 变体仍是后缀：`base/button/button.json` + variant "primary" -> "base/button/button.primary"。
 //
 // 换肤 = 复制 default 改名 + 改 JSON + 在 themes.json 里登记。

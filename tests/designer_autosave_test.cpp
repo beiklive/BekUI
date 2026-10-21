@@ -23,10 +23,10 @@ int main()
     check(error.empty(), "没有草稿不算错误");
 
     const std::string text = "{\n  \"layers\": [ { \"id\": \"bg\", \"text\": \"设置 \\u00e9\" } ]\n}\n";
-    check(writeAutosave(dir, "widget/button.text", text, error), "写入草稿（" + error + "）");
+    check(writeAutosave(dir, "base/widget/button.text", text, error), "写入草稿（" + error + "）");
 
     check(readAutosave(dir, info, error), "读回草稿（" + error + "）");
-    checkEqual(info.file, std::string("widget/button.text"), "文件名一致");
+    checkEqual(info.file, std::string("base/widget/button.text"), "文件名一致");
     checkEqual(info.text, text, "内容逐字节一致");
     check(info.savedAt > 0, "带时间戳");
 
@@ -60,7 +60,7 @@ int main()
             check(path.rfind(expectedRoot, 0) == 0, "草稿落在用户目录下：" + path);
         // 目录会被自动创建，写一次应成功
         std::string error;
-        check(writeAutosave(key, "widget/button.text", "{}", error),
+        check(writeAutosave(key, "base/widget/button.text", "{}", error),
             "写资源主题的草稿能成功（" + error + "）");
         check(clearAutosave(key), "清掉");
     }

@@ -189,7 +189,7 @@ int main()
         Selection a;
         check(!a.valid(), "默认未选中");
         a.kind    = SelectionKind::APPEARANCE;
-        a.file    = "widget/button.text";
+        a.file    = "base/widget/button.text";
         a.pointer = "/layers/1";
         a.layerId = "label";
         check(a.valid(), "填好之后有效");

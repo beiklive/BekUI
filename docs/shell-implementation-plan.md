@@ -1472,7 +1472,7 @@ resources/theme/themes.json             主题清单（不扫目录）
 resources/theme/<主题>/theme.json       元信息（name/author/description）+ files[] 清单
 resources/theme/<主题>/tokens/          colors.json / metrics.json
 resources/theme/<主题>/base/            基础控件外观（单个容器/元素）
-resources/theme/<主题>/widget/          二级控件外观（import base 组合出来）
+resources/theme/<主题>/base/widget/          二级控件外观（import base 组合出来）
 resources/theme/<主题>/view/            页面与视图描述（结构 + 外观，createViewFromTheme 装载）
 ```
 
@@ -1480,7 +1480,7 @@ resources/theme/<主题>/view/            页面与视图描述（结构 + 外�
 - `theme.json` 的清单键从 `widgets[]` 变成 `files[]`；旧布局仍可读但会打迁移警告。
 - C++ 里所有外观引用改成路径名；`ThemeData` 新增 `viewJson/getViewNames/getAuthor/getDescription`。
 - 设计器：名字↔路径映射改为"路径去扩展名"、清单读写换 `files[]`、
-  新建外观允许 `base/`+`widget/` 前缀并自动建目录、视图目录改到 `<主题>/view`。
+  新建外观允许 `base/`+`base/widget/` 前缀并自动建目录、视图目录改到 `<主题>/view`。
 
 ### 二、import（外观继承）
 
@@ -1493,7 +1493,7 @@ resources/theme/<主题>/view/            页面与视图描述（结构 + 外�
 
 - `base/box`（标准容器）、`base/box.layout`（布局容器：无边框无背景 + 默认内边距）、
   `base/box.component`（组件容器）。
-- `widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`：
+- `base/widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`：
   组合外观 + 代码只写内容与行为。内容槽 `setIcon/setInfoText` 上移到 `AppearanceView`
   （Dropdown 触发器也能用）；开关用外观状态 `on/off` 表达（补间由主题描述）；
   `measureContent: "sum"` 让一行的图标+文字+信息按行求和，不再溢出。

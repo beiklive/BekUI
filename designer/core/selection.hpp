@@ -19,7 +19,7 @@ enum class SelectionKind
 struct Selection
 {
     SelectionKind kind = SelectionKind::NONE;
-    std::string   file;    // 相对主题根的路径，如 "widget/button.text"
+    std::string   file;    // 相对主题根的路径，如 "base/widget/button.text"
     std::string   pointer; // JSON Pointer，如 "/layers/2"（层）/ "/children/0"（视图节点）
     std::string   layerId; // 外观层/状态通道的 id（pointer 指向数组时用它更稳）
 

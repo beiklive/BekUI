@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.text",
+  "import": "base/widget/button.text",
   "$comment": "列表按钮：当列表元素用的普通按钮 —— 去掉边框，文字按正常左对齐显示，其余（尺寸/内边距/状态）跟普通按钮一致。",
   "layers": [
     {

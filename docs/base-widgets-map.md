@@ -8,7 +8,7 @@
 1. **外观名 = 主题目录里的相对路径去掉 `.json`**：`base/box.json` → 外观名 `base/box`；
    变体用后缀拼：`base/box` + variant `component` → `base/box.component`。
 2. **外观只覆盖写了的字段**：没写的字段保留上一个值（换外观时旧值不会自动清掉，
-   `widget/button.icon` 就得显式写 `minWidth: 0` 才能压掉 `base/button` 的 120）。
+   `base/widget/button.icon` 就得显式写 `minWidth: 0` 才能压掉 `base/button` 的 120）。
 3. **两套主题**：`default`（扁平）与 `ios`（苹果风格）；清单在各自 `theme.json` 的 `files[]`。
    两套都是整份清单；某一套没写的字段会**回退 default**（下面标了「缺」的只针对后来的精简主题）。
 
@@ -240,11 +240,11 @@
 
 - 文案 key：`base_widgets/sec_btn_text`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.text`
+- 外观：`base/widget/button.text`
 - 备注：普通按钮：文字居中。
 
-**`widget/button.text`**
-- default：`resources/theme/default/widget/button.text.json`
+**`base/widget/button.text`**
+- default：`resources/theme/default/base/widget/button.text.json`
   - 层：hlBg / text / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, justifyContent
 - ios：见 `resources/theme/ios` 同名文件
@@ -266,19 +266,19 @@
 
 - 文案 key：`base_widgets/sec_btn_icon`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.icon`、`widget/button.icon_circle`
+- 外观：`base/widget/button.icon`、`base/widget/button.icon_circle`
 - 备注：两款：正方形（`icon`，48×48 + `minWidth: 0`）/ 圆形（`icon_circle`，五层 radius = `metric.radius.round`）。
 
-**`widget/button.icon`**
-- default：`resources/theme/default/widget/button.icon.json`
+**`base/widget/button.icon`**
+- default：`resources/theme/default/base/widget/button.icon.json`
   - 层：hlBg / icon / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, height, justifyContent, minWidth, padding, width
 - ios：见 `resources/theme/ios` 同名文件
 
-**`widget/button.icon_circle`**
-- default：`resources/theme/default/widget/button.icon_circle.json`
+**`base/widget/button.icon_circle`**
+- default：`resources/theme/default/base/widget/button.icon_circle.json`
   - 层：shadow / bg / hlBg / hlGlow / hlBorder
-  - 状态 / box：（没有状态） import:widget/button.icon
+  - 状态 / box：（没有状态） import:base/widget/button.icon
 - ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
@@ -301,11 +301,11 @@
 
 - 文案 key：`base_widgets/sec_btn_icon_text`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.icon_text`
+- 外观：`base/widget/button.icon_text`
 - 备注：图标 + 文字：靠层的 `inset` 排队。
 
-**`widget/button.icon_text`**
-- default：`resources/theme/default/widget/button.icon_text.json`
+**`base/widget/button.icon_text`**
+- default：`resources/theme/default/base/widget/button.icon_text.json`
   - 层：hlBg / icon / text / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -326,13 +326,13 @@
 
 - 文案 key：`base_widgets/sec_btn_list`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.list`
+- 外观：`base/widget/button.list`
 - 备注：列表按钮：`bg.stroke` 透明 + `strokeWidth: 0` 去边框，文字层 `align: left`。
 
-**`widget/button.list`**
-- default：`resources/theme/default/widget/button.list.json`
+**`base/widget/button.list`**
+- default：`resources/theme/default/base/widget/button.list.json`
   - 层：bg / text
-  - 状态 / box：disabled import:widget/button.text
+  - 状态 / box：disabled import:base/widget/button.text
 - ios：见 `resources/theme/ios` 同名文件
 
 <details><summary>页面里的代码</summary>
@@ -352,11 +352,11 @@
 
 - 文案 key：`base_widgets/sec_btn_info`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.info`
+- 外观：`base/widget/button.info`
 - 备注：信息型：右侧 `info` 层文字由程序给。
 
-**`widget/button.info`**
-- default：`resources/theme/default/widget/button.info.json`
+**`base/widget/button.info`**
+- default：`resources/theme/default/base/widget/button.info.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -387,11 +387,11 @@
 
 - 文案 key：`base_widgets/sec_switch_text`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.switch_text`
+- 外观：`base/widget/button.switch_text`
 - 备注：文字开关：`on` / `off` 两个外观状态。
 
-**`widget/button.switch_text`**
-- default：`resources/theme/default/widget/button.switch_text.json`
+**`base/widget/button.switch_text`**
+- default：`resources/theme/default/base/widget/button.switch_text.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / on / off / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -422,11 +422,11 @@
 
 - 文案 key：`base_widgets/sec_switch_icon`
 - 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
-- 外观：`widget/button.switch_icon`
+- 外观：`base/widget/button.switch_icon`
 - 备注：图案开关：轨道 + 滑块，位移是 `knob.offsetX` 补间。
 
-**`widget/button.switch_icon`**
-- default：`resources/theme/default/widget/button.switch_icon.json`
+**`base/widget/button.switch_icon`**
+- default：`resources/theme/default/base/widget/button.switch_icon.json`
   - 层：hlBg / icon / text / track / knob / hlGlow / hlBorder
   - 状态 / box：focused / on / off / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -453,11 +453,11 @@
 
 - 文案 key：`base_widgets/sec_dropdown`
 - 控件：`Dropdown` · 类文件：`bklv/widgets/dropdown.hpp`
-- 外观：`widget/button.dropdown`、`base/dropdown_popup`、`base/dropdown_item`
+- 外观：`base/widget/button.dropdown`、`base/dropdown_popup`、`base/dropdown_item`
 - 备注：触发器外观挂在 `dropdown->getTrigger()` 上；弹窗是 `base/dropdown_popup` + 选项 `base/dropdown_item`。
 
-**`widget/button.dropdown`**
-- default：`resources/theme/default/widget/button.dropdown.json`
+**`base/widget/button.dropdown`**
+- default：`resources/theme/default/base/widget/button.dropdown.json`
   - 层：hlBg / icon / text / info / hlGlow / hlBorder
   - 状态 / box：focused / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -492,7 +492,7 @@
         dropdown->setOptions({ translate("base_widgets/option_a"), translate("base_widgets/option_b"),
             translate("base_widgets/option_c") }, 0);
         AppearanceView* trigger = dropdown->getTrigger();
-        trigger->setAppearanceName("widget/button.dropdown");
+        trigger->setAppearanceName("base/widget/button.dropdown");
         trigger->setIcon(glyph("list"));
         trigger->setText(translate("base_widgets/btn_dropdown"));
         trigger->setInfoText(dropdown->getSelectedText());
@@ -510,11 +510,11 @@
 
 - 文案 key：`base_widgets/sec_selector_number`
 - 控件：`SelectorButton` · 类文件：`bklv/widgets/selector_button.hpp`
-- 外观：`widget/button.selector`
+- 外观：`base/widget/button.selector`
 - 备注：数值模式：0~100、步长 5；代码里 setNumberRange。
 
-**`widget/button.selector`**
-- default：`resources/theme/default/widget/button.selector.json`
+**`base/widget/button.selector`**
+- default：`resources/theme/default/base/widget/button.selector.json`
   - 层：hlBg / icon / text / arrowLeft / info / arrowRight / hlGlow / hlBorder
   - 状态 / box：focused / editing / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -541,11 +541,11 @@
 
 - 文案 key：`base_widgets/sec_selector_list`
 - 控件：`SelectorButton` · 类文件：`bklv/widgets/selector_button.hpp`
-- 外观：`widget/button.selector`
+- 外观：`base/widget/button.selector`
 - 备注：列表模式：LR 切换、越界环绕；选项文字是代码给的。
 
-**`widget/button.selector`**
-- default：`resources/theme/default/widget/button.selector.json`
+**`base/widget/button.selector`**
+- default：`resources/theme/default/base/widget/button.selector.json`
   - 层：hlBg / icon / text / arrowLeft / info / arrowRight / hlGlow / hlBorder
   - 状态 / box：focused / editing / disabled import:base/box.component box:alignItems, axis, gap
 - ios：见 `resources/theme/ios` 同名文件
@@ -577,7 +577,7 @@
 
 | 控件类别 | 玻璃版本怎么来 |
 |---|---|
-| 有自己面的控件（按钮一族 / 开关 / 下拉触发器 / 选择器） | 外观变体 `glass`（`widget/button.*.glass`）：底换成 `op: "glass"`，文字/图标不变 |
+| 有自己面的控件（按钮一族 / 开关 / 下拉触发器 / 选择器） | 外观变体 `glass`（`base/widget/button.*.glass`）：底换成 `op: "glass"`，文字/图标不变 |
 | 没有面的控件（文字 / 图片 / 滑块 / 进度圈） | 放在玻璃板 `base/glass_plate` 上 |
 
 小节卡片用半透明玻璃卡（`base/rectangle.card.glass`）、壁纸铺在页面第一层，

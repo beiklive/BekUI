@@ -23,7 +23,7 @@ namespace designer
 
 struct FileEntry
 {
-    std::string relPath; // 相对主题根，如 "widget/button.text"
+    std::string relPath; // 相对主题根，如 "base/widget/button.text"
     std::string kind;    // base / widget / view / token
 };
 

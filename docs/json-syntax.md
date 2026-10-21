@@ -6,7 +6,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | 类别 | 位置 | 用途 | 解析处 |
 |---|---|---|---|
 | 视图描述 | `resources/views/*.json`，或 `createFromJSONString()` | 用 JSON 搭视图树（类型 + 属性 + 子节点） | `core/json_view.cpp` `core/attributes.cpp` |
-| 控件外观 | `resources/theme/<主题>/base|widget/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `core/appearance.cpp` |
+| 控件外观 | `resources/theme/<主题>/base/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `core/appearance.cpp` |
 | 页面视图 | `resources/theme/<主题>/view/<名字>.json` | 页面/列表项的结构与外观（`createViewFromTheme`） | `core/json_view.cpp` |
 | 主题 | `resources/theme/themes.json` + `<主题>/{theme,colors,metrics}.json` | 主题清单、颜色表、数值表 | `core/theme_data.cpp` |
 | 文案 | `resources/i18n/<locale>.json` | i18n 文本 | `core/i18n.cpp` |
@@ -298,7 +298,7 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 
 ## 三、控件外观 JSON
 
-文件放在 `resources/theme/<主题>/base/`（基础控件：单个容器/元素）或 `widget/`
+文件放在 `resources/theme/<主题>/base/`（基础控件：单个容器/元素）或 `base/widget/`
 （二级控件：引用 base 组合出来的），**必须**在该主题 `theme.json` 的 `files[]` 里登记
 （**不扫目录**，没登记 = 不生效 + 一条 warn）。
 
@@ -484,7 +484,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 { "name": "default", "version": 1, "colorScheme": "dark",
   "author": "beiklive", "description": "默认深色主题",
   "files": ["tokens/colors.json", "tokens/metrics.json",
-            "base/button.json", "widget/sidebar.json", "view/page_json.json"] }
+            "base/button.json", "base/widget/sidebar.json", "view/page_json.json"] }
 ```
 
 `files[]` 就是这个主题的全部文件清单（**不扫目录**：romfs 上目录迭代真机未验证，
@@ -617,7 +617,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 与 `fill` 的关系：写了 `gradient` 以它为准；`fill` 继续服务状态覆盖（状态里写 `fill` 的层不带渐变）。
 **渐变不做补间**（不是标量通道），也不支持给 `stroke` 加渐变 —— 见 [`rect-gradient.md`](rect-gradient.md)。
 
-### 侧栏面板（`widget/sidebar.json`）
+### 侧栏面板（`base/widget/sidebar.json`）
 
 侧栏的面板观感**只由 `box` 段决定**（`Sidebar::applyPanelLook()` 走 `applyWidgetBox`）：
 

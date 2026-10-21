@@ -35,7 +35,7 @@ std::string firstUtf8Char(const std::string& text)
 } // namespace
 
 AccountWidget::AccountWidget()
-    : AppearanceView("widget/account", false)
+    : AppearanceView("base/widget/account", false)
 {
     // 头像：有图就用图（盖住自绘的圆形），没图就露出圆形 + 首字
     this->avatar = new Image();

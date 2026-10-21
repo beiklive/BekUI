@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.dropdown",
+  "import": "base/widget/button.info",
   "layers": [
     {
       "id": "bg",
@@ -8,8 +8,8 @@
     },
     {
       "id": "glass",
-      "op": "rect",
-      "fill": "#10203A6E"
+      "op": "glass",
+      "fill": "#1C1C1ECC"
     }
   ]
 }

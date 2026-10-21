@@ -50,7 +50,7 @@ int main()
         check(!refs.empty(), "找到引用（" + std::to_string(refs.size()) + " 处）");
         bool hasFile = false;
         for (const TokenRef& ref : refs)
-            hasFile = hasFile || ref.file.rfind("widget/", 0) == 0 || ref.file.rfind("base/", 0) == 0;
+            hasFile = hasFile || ref.file.rfind("base/widget/", 0) == 0 || ref.file.rfind("base/", 0) == 0;
         check(hasFile, "引用里带相对路径");
         check(scanThemeReferences("resources/theme/default", "color", "accent").empty(),
             "键名按完整边界匹配，不把 accent.base 算作 accent");

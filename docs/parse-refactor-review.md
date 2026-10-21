@@ -150,7 +150,7 @@ void registerMyLayers() {
     { "appearance": "base/icon_badge", "box": { "width": 36, "height": 36 }, "icon": "@icon/star" },
     { "box": { "axis": "column", "grow": 1 },
       "children": [ { "appearance": "base/label", "text": "@i18n/x" } ] },
-    { "ref": "widget/button.icon", "text": "@i18n/ok" }
+    { "ref": "base/widget/button.icon", "text": "@i18n/ok" }
   ] }
 ```
 
@@ -325,7 +325,7 @@ struct AppearanceLayer {
     { "appearance": "base/icon_badge", "box": { "width": 36, "height": 36 }, "icon": "@icon/star" },
     { "box": { "axis": "column", "gap": 4, "grow": 1 },
       "children": [ { "appearance": "base/label", "text": "@i18n/card.title" } ] },
-    { "ref": "widget/button.icon_text", "text": "@i18n/ok", "icon": "@icon/check" }
+    { "ref": "base/widget/button.icon_text", "text": "@i18n/ok", "icon": "@icon/check" }
   ]
 }
 ```

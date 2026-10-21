@@ -24,14 +24,14 @@
 **不另开页面。** 基础控件页（demo 的「基础」页）里，**每个控件都有一行液态玻璃版本**：
 
 - 有"自己的面"的控件（按钮一族 / 开关 / 下拉触发器 / 选择器）→ 用它自己的 `glass` 变体
-  （主题里 `<外观>.glass`，如 `widget/button.text.glass`），底换成玻璃，文字/图标不变；
+  （主题里 `<外观>.glass`，如 `base/widget/button.text.glass`），底换成玻璃，文字/图标不变；
 - 没有面的控件（文字 / 图片 / 滑块 / 进度圈）→ 放在一块**玻璃板**上（`base/glass_plate`），
   读作"这个控件在液态玻璃里"。
 
 两种写法的共同点：变体文件只需 `import` 基外观 + 覆盖底色 + 加一层 `op: "glass"`：
 
 ```json
-{ "import": "widget/button.text",
+{ "import": "base/widget/button.text",
   "layers": [ { "id": "bg", "fill": "#00000000", "stroke": "#00000000" },
               { "id": "glass", "op": "glass", "fill": "#10203A6E" } ] }
 ```
@@ -121,7 +121,7 @@ class GlassPanelView : public AppearanceView
   "layers": [ { "id": "glass", "fill": "#0E16263D" } ] }
 ```
 
-`widget/header`、`widget/header.applet`、`widget/bottom_bar` 用这一份：染色更淡（24% vs 77%），
+`base/widget/header`、`base/widget/header.applet`、`base/widget/bottom_bar` 用这一份：染色更淡（24% vs 77%），
 **让底下的内容透出来** —— 栏是"盖在内容上的玻璃"，不是不透明的隔板。高光等其余写法从
 `base/glass_surface` 继承（同 id 的层按字段合并）。
 - 想整体换观感：改这一个文件的 `fill`；想整体关掉：去掉各容器的 `import`（或关 Shell 开关）

@@ -162,10 +162,10 @@ int main()
         compile::setJsonErrorPolicy(compile::JsonErrorPolicy::FALLBACK_DEFAULT);
         compile::clearJsonDiagnostics();
 
-        // 用一份语法坏掉的 JSON 去"冒充"widget/button.text：应回退到 default 里的真身
+        // 用一份语法坏掉的 JSON 去"冒充"base/widget/button.text：应回退到 default 里的真身
         std::string error;
         const auto appearance = Appearance::compileWithFallback(R"({ this is not json )",
-            "widget/button.text", theme, error);
+            "base/widget/button.text", theme, error);
 
         check(appearance != nullptr, "坏 JSON -> 回退成功后仍有外观（" + error + "）");
         checkEqualInt(countRecovered(true), 1, "有一条已回退的诊断");
@@ -174,7 +174,7 @@ int main()
                 "诊断说明是回退");
 
         // 与直接编译 default 的那份应当一致
-        const std::string* plainText = theme.defaultWidgetAppearanceJson("widget/button.text");
+        const std::string* plainText = theme.defaultWidgetAppearanceJson("base/widget/button.text");
         check(plainText != nullptr, "default 主题里能找到 widget/button.text");
         if (plainText != nullptr && appearance != nullptr)
         {
@@ -198,7 +198,7 @@ int main()
 
         std::string error;
         const auto appearance = Appearance::compileWithFallback(R"({ this is not json )",
-            "widget/__no_such_widget__", theme, error);
+            "base/widget/__no_such_widget__", theme, error);
 
         check(appearance == nullptr, "default 里也没有 -> 失败");
         check(!error.empty(), "仍然给出错误原因");

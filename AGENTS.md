@@ -363,7 +363,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   加新枚举字段时用 `enumMatches` + `warnUnknownEnumValue`，别写 `== "flexEnd"` 这种精确比较。
 - **JSON 语法细节查 `docs/json-syntax.md`**（四类 JSON 的完整键表 / 取值 / 枚举拼写 / 报错行为）；
   下面几条是**约定**，别改错了。
-- **控件的样式全在 JSON 里**（`resources/theme/<主题>/base|widget/<控件>[.<变体>].json`）：
+- **控件的样式全在 JSON 里**（`resources/theme/<主题>/base/<控件>[.<变体>].json`）：
   一份外观由三段组成——
   ① `box`：盒模型/布局（width/height/minWidth/minHeight/padding/margin/gap/grow/shrink/
      justifyContent/alignItems/backgroundColor/cornerRadius/borderThickness/borderColor）。
@@ -395,14 +395,14 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      <主题>/theme.json        元信息（name/author/description）+ files[] 清单
      <主题>/tokens/           colors.json / metrics.json（色板与数值）
      <主题>/base/             基础控件外观（单个容器/元素）
-     <主题>/widget/           二级控件外观（引用 base 组合出来的）
+     <主题>/base/widget/           二级控件外观（引用 base 组合出来的）
      <主题>/view/             页面与视图描述（结构 + 外观）
      <主题>/demo/             演示专用外观（不属于基础控件；demo 页面引用）
      ```
      **名字 = 相对主题根的路径去掉扩展名**（`base/button.json` → `"base/button"`），
      变体继续用后缀拼（`base/button` + variant `"primary"` → `base/button.primary`）。
      挪文件 = 改名字，C++ 里的引用（`AppearanceView("base/button")`、
-     `applyWidgetBox(this,"widget/sidebar")`）要一起改。
+     `applyWidgetBox(this,"base/widget/sidebar")`）要一起改。
      视图描述用 `createViewFromTheme("page_json")` / `loadViewTemplateFromTheme(...)` 装载
      （主题内 `view/`，缺了回退 default 主题）。
   ② **装饰层走 JSON，语义绘制留 C++**：底/边框/文字/图片/状态动效由 `layers` 描述；
@@ -420,14 +420,14 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      所有 import 它的按钮一起变"，而按钮自己写的字段仍然赢。
      循环引用、深度 > 8、父级不存在都会**报错**（不静默降级）。
   ⑦b **换外观时"没写的字段不会清掉旧值"**：`applyAppearanceBox` 只覆盖 JSON 里出现的字段，
-     所以从 `base/button`（有 `minWidth: @theme/metric.control.minWidth`）切到 `widget/button.*`
+     所以从 `base/button`（有 `minWidth: @theme/metric.control.minWidth`）切到 `base/widget/button.*`
      之后，**旧的 minWidth=120 会留在节点上** —— 图标按钮明明写了 `width: 48`，
      布局宽度却一直是 120（踩过：量了半天布局才追到这个 token）。
-     要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`widget/button.icon` 就是这么修的）。
+     要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`base/widget/button.icon` 就是这么修的）。
   ⑦a **亚克力/液态玻璃用 `op: "glass"` 层声明**（`docs/glass-layer.md`）。
      玻璃层由解析期**提到最前**，所以主题里做"玻璃变体"的标准写法是
      `import` 基外观 + 覆盖 `bg.fill` 为透明 + 追加一层 `glass`（示例见
-     `resources/theme/default/widget/button.text.glass.json`）；
+     `resources/theme/default/base/widget/button.text.glass.json`）；
      **不要另开演示页面** —— demo 的做法是给每个控件追加一行玻璃版本（基础控件页）。
 
      外观能覆盖的只有**样式**（`fill` 染色 / `opacity` / `radius` / inset 几何）；
@@ -437,7 +437,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      **四个数**（`[上,右,下,左]`），写两个数会编译失败。
 
      **主题分工（用户拍板，2026-10）**：只有两套主题 ——
-     · `default`：**纯扁平风格**。不再有 `shadow` / `glass` 层，玻璃变体（`widget/*.glass.json`、
+     · `default`：**纯扁平风格**。不再有 `shadow` / `glass` 层，玻璃变体（`base/widget/*.glass.json`、
        `base/glass_*.json`）里的 `glass` 层已扁平化成实心/半透明 `rect`；
        `color.common.shadow` 改成全透明（代码驱动的软阴影 —— 滑块把手、侧栏 —— 随之关掉），
        渐变示例外观也从主题里撤出、改成 demo 页面内联（同 stripe / quad 的做法）。
@@ -560,10 +560,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   **一个物理键一个重复状态**：以前两个键（方向键 + WASD）共用一个"边沿状态"，
   互相把对方清掉 → 按住方向键每帧都判成"刚按下"，导航飙到帧率。
 - **侧栏（`widgets/sidebar.*`）的面板观感只吃 `box` 段**：`applyPanelLook()` 走的是
-  `applyWidgetBox(this, "widget/sidebar")` —— 也就是**只应用 box**（宽高/内边距/圆角/
+  `applyWidgetBox(this, "base/widget/sidebar")` —— 也就是**只应用 box**（宽高/内边距/圆角/
   边框/底色/margin），文件里的 `layers` 段**不参与绘制**（但**必须存在**：解析器要求有
   `layers` 数组，删了会报「外观 JSON 缺少 layers 数组」）。所以要让面板有圆角/细边/半透明面，
-  改的是 `widget/sidebar.json` 的 **box 段**，别去写 layers。
+  改的是 `base/widget/sidebar.json` 的 **box 段**，别去写 layers。
   投影没有对应的 box 字段，所以在 `Sidebar::draw()` 里补一层 `shadow::drawSoft(..., cutout=true)`
   （cutout = 只画外圈，不会把面板自己的底色压暗）。
 - **侧栏条目 = 图标 + 文字 + 选中底**（`base/tab_cell.sidebar.json`）：
@@ -576,8 +576,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **页头与底部栏是外壳级的（全局），内容避让是显式的**（`widgets/shell.*` + `widgets/pager.*`）：
   宿主自己建 `Header` / `BottomBar` 交给 `Shell::setHeaderView/setFooterView`（挂覆盖层，
   中间用 `Padding` 顶开），页面再按 `getHeaderInset()/getFooterInset()` 自己留白。
-  其中 `Header = [图标][标题][右侧区]`（widget/header*.json + base/header_icon.json），
-  `BottomBar = [提示(左) | 状态区(右)]`（widget/bottom_bar.json），
+  其中 `Header = [图标][标题][右侧区]`（base/widget/header*.json + base/header_icon.json），
+  `BottomBar = [提示(左) | 状态区(右)]`（base/widget/bottom_bar.json），
   Header 的左右外边距用 `appletFrame.paddingSides`、底栏用 `hints.footerMarginSides`。
   显隐用**实例方法** `Shell::setHeaderVisible(bool)` / `setFooterVisible(bool)`：隐藏时看 `GONE`
   （不占位）；**栏里不能留固定外边距**（页头下边的留白写在页头自己的 padding 里），
@@ -726,9 +726,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   只在**可见**时推进（离屏不占上传带宽）。纹理是视图自己上传的（`ownsTexture`），
   析构/换图时必须 `releaseTexture()`，别漏。
 - **组合按钮与选择器**（`widgets/button.*` + `widgets/selector_button.*`，
-  外观 `widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`）：
+  外观 `base/widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`）：
   1）**变体 = 组合外观**，代码只给内容和行为。`AppearanceView::setAppearanceName(name)`
-     换基名（名字是主题里的完整路径，如 `widget/button.icon_text`）；一行放置靠层 inset。
+     换基名（名字是主题里的完整路径，如 `base/widget/button.icon_text`）；一行放置靠层 inset。
   2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字形）与
      `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
      `getLayerFont` 对图标层返回图标字体（用正文字体会把图标画成方块）；
@@ -1050,7 +1050,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
                     / webp（可选）/ lunasvg + plutovg（可选，SVG）
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
-resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, widget/, view/}
+resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
 demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
@@ -1107,7 +1107,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
                     / webp（可选）/ lunasvg + plutovg（可选，SVG）
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
-resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, widget/, view/}
+resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
 demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo

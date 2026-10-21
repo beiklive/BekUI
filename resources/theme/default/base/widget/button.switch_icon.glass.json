@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.list",
+  "import": "base/widget/button.switch_icon",
   "layers": [
     {
       "id": "bg",

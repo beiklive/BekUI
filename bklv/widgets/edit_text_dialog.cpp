@@ -213,7 +213,7 @@ class EditPanel : public AppearanceView
 {
   public:
     EditPanel()
-        : AppearanceView("widget/edit_text_dialog", true)
+        : AppearanceView("base/widget/edit_text_dialog", true)
     {
     }
 

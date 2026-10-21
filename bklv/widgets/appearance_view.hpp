@@ -73,7 +73,7 @@ class AppearanceView : public Box
     // 传空串表示用控件默认的那份。
     void setAppearanceVariant(const std::string& variant);
 
-    // 换基名（默认由构造函数给）。名字 = 主题里的路径名（"base/button/button"、"widget/button"）。
+    // 换基名（默认由构造函数给）。名字 = 主题里的路径名（"base/button/button"、"base/widget/button"）。
     // 同一个控件类要按不同"组合外观"出场时用它，比给每个变体建子类省事。
     void setAppearanceName(const std::string& name);
 

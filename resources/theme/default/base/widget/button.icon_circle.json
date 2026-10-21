@@ -1,5 +1,5 @@
 {
-  "import": "widget/button.icon",
+  "import": "base/widget/button.icon",
   "$comment": "圆形纯图标按钮：只把尺寸层改成整圆（radius.round = 999），图标仍然完全居中。",
   "layers": [
     {

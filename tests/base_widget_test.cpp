@@ -52,7 +52,7 @@ int main()
         }
 
         // 按钮变体 import 了组件容器：基底层（bg）继承过来，自己的内容层追加在后
-        std::shared_ptr<const Appearance> iconText = getWidgetAppearance("widget/button.icon_text");
+        std::shared_ptr<const Appearance> iconText = getWidgetAppearance("base/widget/button.icon_text");
         check(iconText != nullptr, "图标文字按钮能编译");
         if (iconText != nullptr)
         {
@@ -72,7 +72,7 @@ int main()
 
         // 循环 import 也要拦住
         error.clear();
-        check(Appearance::compile(R"({"import": "widget/button.text", "layers": []})", getTheme(), error)
+        check(Appearance::compile(R"({"import": "base/widget/button.text", "layers": []})", getTheme(), error)
                 != nullptr,
             "自引用之外的单向 import 正常");
     }
@@ -83,7 +83,7 @@ int main()
             "switch_icon", "info", "selector" };
         for (const char* variant : variants)
         {
-            const std::string name = std::string("widget/button.") + variant;
+            const std::string name = std::string("base/widget/button.") + variant;
             std::shared_ptr<const Appearance> appearance = getWidgetAppearance(name);
             check(appearance != nullptr && !appearance->getLayers().empty(),
                 name + " 能编译且非空");
@@ -108,7 +108,7 @@ int main()
     std::printf("\n== 3. 按钮的内容槽与开关状态 ==\n");
     {
         Button* button = new Button("主文字");
-        button->setAppearanceName("widget/button");
+        button->setAppearanceName("base/widget/button");
         button->setAppearanceVariant("icon_text");
         button->setIcon("I");
         checkEqual(button->getSlotText(bklv::content::ICON), "I", "图标槽能设");
@@ -117,7 +117,7 @@ int main()
 
         // 开关变体：on / off 是外观状态（补间由主题描述）
         Button* toggle = new Button("开关");
-        toggle->setAppearanceName("widget/button");
+        toggle->setAppearanceName("base/widget/button");
         toggle->setAppearanceVariant("switch_icon");
         check(!toggle->isSwitched(), "默认关");
         toggle->setSwitched(true);

@@ -13,7 +13,7 @@
 | `Sidebar`：只有纵向，"焦点即切"，外观走 `applyWidgetBox` | 由 `TabFrame(orientation=VERTICAL, trigger=FOCUS)` 表达 |
 
 删除：`tab_bar.{hpp,cpp}`、`sidebar.{hpp,cpp}`、`base/tab_cell*.json`、
-`widget/tab_bar.json`、`widget/sidebar.json`。
+`base/widget/tab_bar.json`、`base/widget/sidebar.json`。
 
 ## 2. 方向与位置
 
@@ -72,9 +72,9 @@ base/frame/tab_content.json          页面框
 |---|---|
 | `base/tab_button.horizontal.json` | 横向按钮：图标在上、文字在下，等分宽度，选中态 `accent` 底部指示条 |
 | `base/tab_button.vertical.json` | 纵向按钮：图标在左、文字在右，固定行高，选中态 `accent` 左侧竖条 + 底色 |
-| `widget/tab_bar.horizontal.json` | 横向栏容器（高度、内边距、背景/玻璃） |
-| `widget/tab_bar.vertical.json` | 纵向栏容器（宽度、内边距、圆角/边框、分组线） |
-| `widget/tab_content.json` | **子页面框：横向纵向共用同一份** |
+| `base/widget/tab_bar.horizontal.json` | 横向栏容器（高度、内边距、背景/玻璃） |
+| `base/widget/tab_bar.vertical.json` | 纵向栏容器（宽度、内边距、圆角/边框、分组线） |
+| `base/widget/tab_content.json` | **子页面框：横向纵向共用同一份** |
 
 控件侧只有**一个** `TabButton` 类，按方向 `setAppearanceVariant("horizontal" | "vertical")`；
 样式差异全部写在 JSON 里（沿用"样式归 JSON、行为归 C++"的约定）。
