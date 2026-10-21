@@ -114,15 +114,18 @@ Box* buildLayoutShowcasePage()
     justify->addView(makeBar(JustifyContent::FLEX_START));
     justify->addView(makeBar(JustifyContent::CENTER));
     justify->addView(makeBar(JustifyContent::SPACE_BETWEEN));
-    page->addView(makeShowcaseSection("布局 · 主轴分布（justifyContent）", justify, JUSTIFY_JSON));
+    page->addView(makeShowcaseSection("布局 · 主轴分布（justifyContent）", justify, JUSTIFY_JSON,
+        "同一个 row，只改 justifyContent：flexStart 靠左、center 居中、spaceBetween 两端对齐。"));
 
     Box* align = new Box(Axis::COLUMN);
     align->setGap(10.0f);
     align->addView(makeAlignRow(AlignItems::CENTER));
     align->addView(makeAlignRow(AlignItems::FLEX_END));
-    page->addView(makeShowcaseSection("布局 · 交叉轴对齐（alignItems）", align, ALIGN_JSON));
+    page->addView(makeShowcaseSection("布局 · 交叉轴对齐（alignItems）", align, ALIGN_JSON,
+        "不同高度的色块按 align 摆放：center 垂直居中，flexEnd 贴底。"));
 
-    page->addView(makeShowcaseSection("布局 · 弹性比例（grow + flexBasis）", makeGrowDemo(), GROW_JSON));
+    page->addView(makeShowcaseSection("布局 · 弹性比例（grow + flexBasis）", makeGrowDemo(), GROW_JSON,
+        "grow 1 : 2 : 1 且 flexBasis 为 0：宽度按比例分剩余空间，而不是先占内容宽。"));
 
     return page;
 }

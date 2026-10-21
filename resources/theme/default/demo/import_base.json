@@ -1,0 +1,32 @@
+{
+  "$comment": "demo：被 import 的基础外观（灰底 + 标题）",
+  "box": {
+    "width": 320,
+    "height": 150
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "radius": "@theme/metric.radius.lg",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.border.default",
+      "strokeWidth": 1
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": 20,
+      "color": "@theme/color.text.primary",
+      "align": "left",
+      "valign": "bottom",
+      "inset": [
+        0,
+        0,
+        18,
+        18
+      ]
+    }
+  ]
+}

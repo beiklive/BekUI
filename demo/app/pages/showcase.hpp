@@ -21,7 +21,7 @@ std::string readThemeJson(const std::string& relativePath);
 
 // 一个展示区块：标题 + 白底盒（左演示 / 右 JSON 滚动区）
 bklv::Box* makeShowcaseSection(const std::string& title, bklv::View* demo,
-    const std::string& jsonText);
+    const std::string& jsonText, const std::string& description = std::string());
 
 // 纯色 rect（用 Box 的 backgroundColor 表达，专门用来演示布局）
 bklv::Box* makeColorRect(ImU32 color, float width, float height, float radius = 8.0f);

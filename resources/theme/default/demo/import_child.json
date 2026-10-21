@@ -1,0 +1,37 @@
+{
+  "$comment": "demo：import 复用基础外观，覆盖 bg.fill / title.color 并追加 info 层 + 阴影",
+  "import": "demo/import_base",
+  "layers": [
+    {
+      "import": "base/layer/shadow",
+      "cutout": true
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "radius": "@theme/metric.radius.lg",
+      "fill": "@theme/color.accent.base"
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "color": "#FFFFFF"
+    },
+    {
+      "op": "text",
+      "id": "info",
+      "data_id": "info",
+      "fontSize": 14,
+      "color": "#D9FFF6",
+      "align": "left",
+      "valign": "bottom",
+      "inset": [
+        0,
+        0,
+        46,
+        18
+      ]
+    }
+  ]
+}

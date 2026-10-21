@@ -1,0 +1,27 @@
+{
+  "$comment": "demo：transitions —— show 淡入+上移，hide 淡出+下移（由代码触发）",
+  "box": { "width": 280, "height": 120 },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.lg", "feather": 16, "offset": [0, 6], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.lg",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.border.default", "strokeWidth": 1 },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 20, "color": "@theme/color.text.primary",
+      "align": "center", "valign": "center" },
+    { "op": "text", "id": "info", "data_id": "info",
+      "fontSize": 14, "color": "@theme/color.text.dim",
+      "align": "center", "valign": "bottom", "inset": [0, 0, 16, 0] }
+  ],
+  "transitions": {
+    "show": {
+      "alpha":      { "from": 0, "to": 1, "duration": 220, "easing": "cubicOut" },
+      "translateY": { "from": 14, "to": 0, "duration": 220, "easing": "cubicOut" }
+    },
+    "hide": {
+      "alpha":      { "to": 0, "duration": 160 },
+      "translateY": { "to": 10, "duration": 160 }
+    }
+  }
+}

@@ -36,12 +36,22 @@ Box* makeColorRect(ImU32 color, float width, float height, float radius)
     return rect;
 }
 
-Box* makeShowcaseSection(const std::string& title, View* demoView, const std::string& jsonText)
+Box* makeShowcaseSection(const std::string& title, View* demoView, const std::string& jsonText,
+    const std::string& description)
 {
     Box* section = new Box(Axis::COLUMN);
     section->setWidthPercentage(100.0f);
     section->setGap(getTheme().number("metric.spacing.sm", 8.0f));
     section->addView(makeSectionHeader(title));
+    if (!description.empty())
+    {
+        Label* desc = new Label();
+        desc->setText(description);
+        desc->setWidthPercentage(100.0f);
+        desc->setFontSize(14.0f);
+        desc->setTextColor(getTheme().color("color.text.dim"));
+        section->addView(desc);
+    }
 
     Box* panel = new Box(Axis::ROW);
     panel->setWidthPercentage(100.0f);

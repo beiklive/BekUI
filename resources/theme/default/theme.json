@@ -127,7 +127,10 @@
     "demo/inner_card.json",
     "demo/box_card.json",
     "demo/badge.json",
-    "demo/state_button.json"
+    "demo/state_button.json",
+    "demo/import_base.json",
+    "demo/import_child.json",
+    "demo/transition_card.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",
