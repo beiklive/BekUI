@@ -26,6 +26,17 @@ Json mergeJson(const Json& base, const Json& over)
             Json merged = Json::array();
             Json consumed = Json::array();
 
+            // 层 import 指令没有 id，按"导入目标"当键合并：
+            //   父级 { "import": "base/layer/shadow" }
+            //   子级 { "import": "base/layer/shadow", "cutout": true }
+            // 应该合成一条（子级覆盖参数），而不是两条展开后 id 重复。
+            auto importTarget = [](const Json& layer) -> std::string {
+                if (layer.is_object() && !layer.contains("op") && layer.contains("import")
+                    && layer["import"].is_string())
+                    return layer["import"].get<std::string>();
+                return std::string();
+            };
+
             for (const Json& baseLayer : result["layers"])
             {
                 Json layer = baseLayer;
@@ -41,6 +52,21 @@ Json mergeJson(const Json& base, const Json& over)
                         }
                     }
                 }
+                else
+                {
+                    const std::string target = importTarget(baseLayer);
+                    if (!target.empty())
+                    {
+                        for (const Json& overLayer : it.value())
+                        {
+                            if (importTarget(overLayer) == target)
+                            {
+                                layer = mergeJson(baseLayer, overLayer);
+                                consumed.push_back("@" + target);
+                            }
+                        }
+                    }
+                }
                 merged.push_back(layer);
             }
 
@@ -50,6 +76,11 @@ Json mergeJson(const Json& base, const Json& over)
                 if (overLayer.is_object() && overLayer.contains("id"))
                     for (const Json& id : consumed)
                         if (id == overLayer["id"])
+                            already = true;
+                const std::string target = importTarget(overLayer);
+                if (!target.empty())
+                    for (const Json& key : consumed)
+                        if (key == "@" + target)
                             already = true;
                 if (!already)
                     merged.push_back(overLayer);

@@ -400,6 +400,9 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 - 被导入文件自己的顶层 `import` 也会先解析（例如 `base/button/frame` 本身）；
 - 循环引用、深度 > 8、文件不存在、没有 `layers` 都会**报错**；
 - **层 id 不能重复**（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。
+- **同一个 bundle 的 import 指令会合并**：顶层 `import` 的父级写了 `{ "import": "base/layer/shadow" }`，
+  子级再写 `{ "import": "base/layer/shadow", "cutout": true }` 时**合成一条**（子级参数覆盖父级），
+  不会展开两次变成重复 id。所以“继承基外观的 states + 覆盖某个 bundle 的参数”可以直接写。
 - **单层 bundle 可以就地覆盖**：import 旁边的字段会合并到那一层，例如
   `{ "import": "base/layer/shadow", "cutout": false, "offset": [0, 8] }`；
   也可以改 `id` 在同一外观里叠两层阴影。**多层 bundle 带覆盖字段会报错**（语义不明确）。

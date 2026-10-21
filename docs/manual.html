@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 cbd7afc · 2026-10-21 14:07 · 两套主题（default / ios）</div>
+  <div class="version">提交 f951f63 · 2026-10-21 15:51 · 两套主题（default / ios）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -1540,7 +1540,9 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
   { &quot;import&quot;: &quot;base/button/frame&quot; },      // 展开成 shadow / bg / hlBg
   { &quot;op&quot;: &quot;text&quot;, &quot;id&quot;: &quot;title&quot;, &quot;data_id&quot;: &quot;text&quot; }
 ]</code></pre>
-<ul><li>适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；</li><li>可以写数组一次导入多份：<code>{ &quot;import&quot;: [&quot;base/layer/shadow&quot;, &quot;base/layer/border&quot;] }</code>；</li><li>被导入文件自己的顶层 <code>import</code> 也会先解析（例如 <code>base/button/frame</code> 本身）；</li><li>循环引用、深度 &gt; 8、文件不存在、没有 <code>layers</code> 都会<strong>报错</strong>；</li><li><strong>层 id 不能重复</strong>（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。</li><li><strong>单层 bundle 可以就地覆盖</strong>：import 旁边的字段会合并到那一层，例如</li></ul>
+<ul><li>适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；</li><li>可以写数组一次导入多份：<code>{ &quot;import&quot;: [&quot;base/layer/shadow&quot;, &quot;base/layer/border&quot;] }</code>；</li><li>被导入文件自己的顶层 <code>import</code> 也会先解析（例如 <code>base/button/frame</code> 本身）；</li><li>循环引用、深度 &gt; 8、文件不存在、没有 <code>layers</code> 都会<strong>报错</strong>；</li><li><strong>层 id 不能重复</strong>（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。</li><li><strong>同一个 bundle 的 import 指令会合并</strong>：顶层 <code>import</code> 的父级写了 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot; }</code>，</li></ul>
+<p>子级再写 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: true }</code> 时<strong>合成一条</strong>（子级参数覆盖父级）， 不会展开两次变成重复 id。所以“继承基外观的 states + 覆盖某个 bundle 的参数”可以直接写。</p>
+<ul><li><strong>单层 bundle 可以就地覆盖</strong>：import 旁边的字段会合并到那一层，例如</li></ul>
 <p><code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: false, &quot;offset&quot;: [0, 8] }</code>； 也可以改 <code>id</code> 在同一外观里叠两层阴影。<strong>多层 bundle 带覆盖字段会报错</strong>（语义不明确）。</p>
 <h4 id="sec-132"><code>states</code>：状态动效</h4>
 <p>key 是 <code>&quot;&lt;层 id&gt;.&lt;属性名&gt;&quot;</code>，值是一个补间目标：</p>
@@ -1980,7 +1982,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
 
 </section>
-<footer>生成自仓库提交 <code>cbd7afc</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>f951f63</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

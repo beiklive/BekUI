@@ -531,6 +531,33 @@ int main()
         }
     }
 
+    std::printf("\n== 9. 顶层 import + 层 import 参数覆盖（不允许变成重复 id）==\n");
+    {
+        std::string error;
+        const auto merged = Appearance::compile(R"({
+            "import": "base/button/button",
+            "layers": [
+                { "import": "base/layer/shadow", "cutout": true }
+            ]
+        })", getTheme(), error, "test-import-layer-override");
+        check(merged != nullptr, "子外观覆盖父级的层 import 参数：能编译");
+        if (merged != nullptr)
+        {
+            int shadowCount = 0;
+            const AppearanceLayer* shadow = nullptr;
+            for (const AppearanceLayer& layer : merged->getLayers())
+                if (layer.id == "shadow")
+                {
+                    shadowCount++;
+                    shadow = &layer;
+                }
+            checkEqualInt(shadowCount, 1, "同一个层 bundle 只展开一次");
+            check(shadow != nullptr && shadow->cutout, "子级写的 cutout 覆盖了父级参数");
+            check(merged->indexOfLayer("bg") >= 0 && merged->indexOfLayer("title") >= 0,
+                "父级的 bg / title 仍然继承");
+        }
+    }
+
     std::printf("\n%d 项检查，%d 项失败\n", g_checks, g_failed);
     return g_failed > 0 ? 1 : 0;
 }
