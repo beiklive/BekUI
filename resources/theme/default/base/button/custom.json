@@ -1,31 +1,9 @@
 {
-  "$comment": "自定义右侧信息按钮：左侧图标+文字，右侧 info 槽（CustomButton::setRightText）",
-  "box": {
-    "height": "@theme/metric.control.height",
-    "minWidth": 0,
-    "padding": 0,
-    "axis": "row",
-    "alignItems": "center"
-  },
+  "$comment": "自定义右侧信息按钮：底框来自 base/button/frame",
+  "import": [
+    "base/button/frame"
+  ],
   "layers": [
-    {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
-    },
     {
       "op": "text",
       "id": "icon",
@@ -72,14 +50,5 @@
         0
       ]
     }
-  ],
-  "states": {
-    "focused": {},
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      }
-    }
-  }
+  ]
 }

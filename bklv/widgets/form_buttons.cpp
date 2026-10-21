@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
+#include "bklv/core/font.hpp"
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/widgets/content_ids.hpp"
@@ -18,6 +19,49 @@ std::string formatValue(float value, int precision)
     char buffer[64];
     std::snprintf(buffer, sizeof(buffer), "%.*f", precision < 0 ? 0 : precision, (double)value);
     return buffer;
+}
+
+// LR 行：右对齐 [L] [值] [R]，值固定 90 宽并居中 —— 宽度变化时整组跟着右边距走，
+// 值相对 L/R 的位置不变（所以不会随控件宽度偏移）。
+void drawLrRow(ImDrawList* drawList, const AppearanceLayer& layer, float x, float y,
+    float width, float height, const std::string& value)
+{
+    if (drawList == nullptr || width <= 0.0f || height <= 0.0f)
+        return;
+
+    ImFont* iconFont = getIconFont();
+    ImFont* textFont = getDefaultFont();
+    const float size    = layer.fontSize > 0.0f ? layer.fontSize : 18.0f;
+    const float iconW   = 26.0f;
+    const float slotW   = 90.0f;
+    const float gap     = 8.0f;
+    const float margin  = 16.0f;
+    const float centerY = y + height * 0.5f;
+
+    const float rightCx = x + width - margin - iconW * 0.5f;
+    const float valueCx = rightCx - iconW * 0.5f - gap - slotW * 0.5f;
+    const float leftCx  = valueCx - slotW * 0.5f - gap - iconW * 0.5f;
+
+    const ImU32 color = layer.fill;
+
+    if (iconFont != nullptr)
+    {
+        const char* leftGlyph  = getControllerButtonIcon(ControllerButton::LB);
+        const char* rightGlyph = getControllerButtonIcon(ControllerButton::RB);
+        const ImVec2 ls = iconFont->CalcTextSizeA(size, FLT_MAX, 0.0f, leftGlyph);
+        const ImVec2 rs = iconFont->CalcTextSizeA(size, FLT_MAX, 0.0f, rightGlyph);
+        drawList->AddText(iconFont, size, ImVec2(leftCx - ls.x * 0.5f, centerY - ls.y * 0.5f),
+            color, leftGlyph);
+        drawList->AddText(iconFont, size, ImVec2(rightCx - rs.x * 0.5f, centerY - rs.y * 0.5f),
+            color, rightGlyph);
+    }
+
+    if (textFont != nullptr && !value.empty())
+    {
+        const ImVec2 ts = textFont->CalcTextSizeA(size, FLT_MAX, 0.0f, value.c_str());
+        drawList->AddText(textFont, size, ImVec2(valueCx - ts.x * 0.5f, centerY - ts.y * 0.5f),
+            color, value.c_str());
+    }
 }
 
 } // namespace
@@ -63,11 +107,6 @@ OptionButton::OptionButton()
     : Button("", "")
 {
     this->setAppearanceName("base/button/option");
-    // LR 用 switch_icons 那套（提示栏同款），不是 Material
-    this->setLayerIconFontKind("arrow_left", IconFontKind::SWITCH);
-    this->setLayerIconFontKind("arrow_right", IconFontKind::SWITCH);
-    this->setText("arrow_left", getControllerButtonIcon(ControllerButton::LB));
-    this->setText("arrow_right", getControllerButtonIcon(ControllerButton::RB));
     this->registerAction(ControllerButton::LB, "上一个", [this](View*) { this->stepBy(-1); });
     this->registerAction(ControllerButton::RB, "下一个", [this](View*) { this->stepBy(1); });
 }
@@ -114,8 +153,7 @@ const std::string& OptionButton::getCurrentOption() const
 
 void OptionButton::refreshText()
 {
-    if (!this->options.empty())
-        this->setText(content::INFO, this->options[this->index]);
+    // 文本由 drawCustomLayer 按宽度绘制，不再走内容槽
 }
 
 void OptionButton::trigger()
@@ -130,10 +168,6 @@ ValueButton::ValueButton()
     : Button("", "")
 {
     this->setAppearanceName("base/button/value");
-    this->setLayerIconFontKind("arrow_left", IconFontKind::SWITCH);
-    this->setLayerIconFontKind("arrow_right", IconFontKind::SWITCH);
-    this->setText("arrow_left", getControllerButtonIcon(ControllerButton::LB));
-    this->setText("arrow_right", getControllerButtonIcon(ControllerButton::RB));
     this->registerAction(ControllerButton::LB, "减小", [this](View*) { this->stepBy(-1); });
     this->registerAction(ControllerButton::RB, "增大", [this](View*) { this->stepBy(1); });
 }
@@ -202,7 +236,7 @@ void ValueButton::stepBy(int direction)
 
 void ValueButton::refreshText()
 {
-    this->setText(content::INFO, formatValue(this->value, this->precision));
+    // 文本由 drawCustomLayer 按宽度绘制，不再走内容槽
 }
 
 void OptionButton::stepBy(int direction)
@@ -220,4 +254,21 @@ void ValueButton::trigger()
 {
     this->stepBy(1);
     Button::trigger();
+}
+
+void OptionButton::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer& layer, float x,
+    float y, float width, float height, const AppearanceInstance&)
+{
+    if (layer.id != "lr")
+        return;
+    drawLrRow(drawList, layer, x, y, width, height, this->getCurrentOption());
+}
+
+void ValueButton::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer& layer, float x,
+    float y, float width, float height, const AppearanceInstance&)
+{
+    if (layer.id != "lr")
+        return;
+    drawLrRow(drawList, layer, x, y, width, height,
+        formatValue(this->value, this->precision));
 }

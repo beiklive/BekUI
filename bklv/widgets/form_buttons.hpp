@@ -63,9 +63,13 @@ class OptionButton : public Button
 
     void trigger() override;
 
+    // L / 值 / R 由代码按控件宽度绘制（外观里只有一条 custom 层）
+    void drawCustomLayer(ImDrawList* drawList, const AppearanceLayer& layer, float x, float y,
+        float width, float height, const AppearanceInstance& instance) override;
+
   private:
     void stepBy(int direction);
-    void refreshText();
+    void refreshText(); // 兼容旧调用点（现在绘制走 custom 层）
     std::vector<std::string> options;
     size_t index = 0;
     bool   wrap  = true;
@@ -91,6 +95,9 @@ class ValueButton : public Button
     }
 
     void trigger() override;
+
+    void drawCustomLayer(ImDrawList* drawList, const AppearanceLayer& layer, float x, float y,
+        float width, float height, const AppearanceInstance& instance) override;
 
   private:
     void stepBy(int direction);

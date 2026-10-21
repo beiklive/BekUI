@@ -1,31 +1,9 @@
 {
-  "$comment": "开关按钮：图标+文字+右侧轨道；on/off 状态由 ToggleButton 驱动，旋钮位移走 states 补间",
-  "box": {
-    "height": "@theme/metric.control.height",
-    "minWidth": 0,
-    "padding": 0,
-    "axis": "row",
-    "alignItems": "center"
-  },
+  "$comment": "开关按钮：底框来自 base/button/frame，这里只加内容与开关",
+  "import": [
+    "base/button/frame"
+  ],
   "layers": [
-    {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
-    },
     {
       "op": "text",
       "id": "icon",
@@ -76,7 +54,7 @@
     {
       "op": "rect",
       "id": "knob",
-      "fill": "@theme/color.common.white",
+      "fill": "@theme/color.switch.knob",
       "radius": 9,
       "width": 18,
       "height": 18,
@@ -95,13 +73,6 @@
     }
   ],
   "states": {
-    "focused": {},
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      }
-    },
     "on": {
       "track.fill": {
         "to": "@theme/color.accent.base",

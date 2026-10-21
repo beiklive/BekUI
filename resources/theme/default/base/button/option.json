@@ -1,31 +1,9 @@
 {
-  "$comment": "LR 选项按钮：值来自 info 槽，箭头是两个图标层（OptionButton）",
-  "box": {
-    "height": "@theme/metric.control.height",
-    "minWidth": 0,
-    "padding": 0,
-    "axis": "row",
-    "alignItems": "center"
-  },
+  "$comment": "LR 按钮：底框来自 base/button/frame；L/值/R 由代码按控件宽度绘制（custom 层）",
+  "import": [
+    "base/button/frame"
+  ],
   "layers": [
-    {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "op": "rect",
-      "id": "hlBg",
-      "fill": "@theme/color.common.transparent",
-      "radius": "@theme/metric.highlight.radius",
-      "inset": [
-        -2.5,
-        -2.5,
-        -2.5,
-        -2.5
-      ]
-    },
     {
       "op": "text",
       "id": "icon",
@@ -58,63 +36,10 @@
       ]
     },
     {
-      "op": "text",
-      "id": "info",
-      "data_id": "info",
-      "fontSize": "@theme/metric.buttonVariant.infoFontSize",
-      "color": "@theme/color.text.primary",
-      "align": "center",
-      "valign": "center",
-      "inset": [
-        0,
-        0,
-        0,
-        170
-      ],
-      "width": 90
-    },
-    {
-      "op": "text",
-      "id": "arrow_left",
-      "data_id": "arrow_left",
-      "font_kind": "icon",
-      "fontSize": "@theme/metric.buttonVariant.arrowSize",
-      "color": "@theme/color.text.dim",
-      "width": 26,
-      "align": "right",
-      "valign": "center",
-      "inset": [
-        0,
-        148,
-        0,
-        0
-      ]
-    },
-    {
-      "op": "text",
-      "id": "arrow_right",
-      "data_id": "arrow_right",
-      "font_kind": "icon",
-      "fontSize": "@theme/metric.buttonVariant.arrowSize",
-      "color": "@theme/color.text.dim",
-      "width": 26,
-      "align": "right",
-      "valign": "center",
-      "inset": [
-        0,
-        16,
-        0,
-        0
-      ]
+      "op": "custom",
+      "id": "lr",
+      "fill": "@theme/color.text.primary",
+      "fontSize": 18
     }
-  ],
-  "states": {
-    "focused": {},
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      }
-    }
-  }
+  ]
 }

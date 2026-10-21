@@ -1,0 +1,54 @@
+{
+  "$comment": "表单按钮共用底框（Toggle/Custom/Option/Value 都 import 它）：改这里 = 改四者的底/边框/阴影/按下态",
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": 0,
+    "padding": 0,
+    "axis": "row",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "shadow",
+      "id": "shadow",
+      "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.md",
+      "feather": 12,
+      "spread": 0,
+      "offset": [
+        0,
+        4
+      ]
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.button.defaultBg",
+      "radius": "@theme/metric.radius.md",
+      "stroke": "@theme/color.button.defaultBorder",
+      "strokeWidth": 1
+    },
+    {
+      "op": "rect",
+      "id": "hlBg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.highlight.radius",
+      "inset": [
+        -2.5,
+        -2.5,
+        -2.5,
+        -2.5
+      ]
+    }
+  ],
+  "states": {
+    "focused": {},
+    "pressed": {
+      "bg.fill": {
+        "to": "@theme/color.button.defaultPressedBg",
+        "duration": 60
+      }
+    },
+    "disabled": {}
+  }
+}
