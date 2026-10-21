@@ -1,0 +1,14 @@
+{
+  "$comment": "demo：胶囊按钮外形（圆角 + 阴影 + 居中文字）",
+  "box": { "width": 200, "height": 52 },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": 26, "feather": 14, "spread": 1, "offset": [0, 5], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": 26,
+      "fill": "@theme/color.accent.base",
+      "stroke": "@theme/color.common.white", "strokeWidth": 1 },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 18, "color": "@theme/color.common.white",
+      "align": "center", "valign": "center", "inset": [0, 16, 0, 16] }
+  ]
+}

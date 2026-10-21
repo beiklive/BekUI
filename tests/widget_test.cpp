@@ -110,8 +110,8 @@ int main()
         Button withState("状态");
         withState.setAppearanceState("pressed", true);
         check(withState.isAppearanceStateActive("pressed"), "pressed 状态打开");
-        check(withState.getAppearanceInstanceForTest().isAnimating(),
-            "pressed 有底色补间");
+        // 具体是"底色补间"还是"self 位移"由主题决定（default 现在是位移）；
+        // 补间的行为基线在 theme_test 第 5 节用自包含外观钉住。
 
         button.onFocusLost();
         check(!button.isAppearanceStateActive("focused"), "失焦后状态关闭");

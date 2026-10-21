@@ -132,6 +132,26 @@ void DemoApp::showHome()
 
     home->addView(cards);
 
+    // 第二排：布局 / JSON 主题能力
+    Box* cards2 = new Box(Axis::ROW);
+    cards2->setWidthPercentage(100.0f);
+    cards2->setGap(getTheme().number("metric.spacing.lg", 24.0f));
+    cards2->setJustifyContent(JustifyContent::CENTER);
+    cards2->setAlignItems(AlignItems::CENTER);
+
+    const Entry entries2[] = {
+        { "布局演示", "Yoga 对齐与伸缩（纯色 rect）", "dashboard", 5 },
+        { "JSON 主题能力", "外观 JSON 的完整表现力", "palette", 6 },
+    };
+    for (const Entry& entry : entries2)
+    {
+        CardButton* card = new CardButton(entry.title, entry.subtitle,
+            bklv::icon::glyphByName(entry.icon));
+        card->setOnClick([this, index = entry.index] { this->openDemo(index); });
+        cards2->addView(card);
+    }
+    home->addView(cards2);
+
     this->contentRoot->addView(home);
 
     // 默认聚焦第一张卡片（会抬起来，能看到动效）
@@ -178,6 +198,10 @@ void DemoApp::openDemo(int index)
         this->openPage("竖直 TabFrame", [] { return buildVerticalTabPage(); }, 3);
     else if (index == 4)
         this->openPage("按钮展示", [] { return buildButtonShowcasePage(); }, 4);
+    else if (index == 5)
+        this->openPage("布局演示", [] { return buildLayoutShowcasePage(); }, 5);
+    else if (index == 6)
+        this->openPage("JSON 主题能力", [] { return buildJsonThemePage(); }, 6);
 }
 
 Box* DemoApp::wrapPage(Box* content)

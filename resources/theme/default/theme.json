@@ -121,7 +121,10 @@
     "base/button/card.json",
     "view/recycler_json_demo.json",
     "view/page_pokedex_json.json",
-    "view/tab_frame_demo.json"
+    "view/tab_frame_demo.json",
+    "demo/gradient_card.json",
+    "demo/pill.json",
+    "demo/inner_card.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -176,6 +176,9 @@ set(BKLV_APP_SOURCES
     app/pages/page_icons.cpp
     app/pages/page_tab_frame.cpp
     app/pages/page_button.cpp
+    app/pages/page_layout.cpp
+    app/pages/page_json_theme.cpp
+    app/pages/showcase.cpp
 )
 
 set(BKLV_APP_ABS "")

@@ -1,0 +1,26 @@
+{
+  "$comment": "demo：渐变 + 阴影 + 图标 + 主标题 + 副信息（只靠外观 JSON 描述）",
+  "box": { "width": 320, "height": 160, "axis": "column" },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.lg", "feather": 18, "spread": 0,
+      "offset": [0, 8], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.lg",
+      "gradient": {
+        "type": "linear", "angle": 135,
+        "stops": [
+          { "at": 0, "color": "#007A63" },
+          { "at": 1, "color": "#00CFA8" }
+        ]
+      } },
+    { "op": "text", "id": "icon", "data_id": "icon", "font_kind": "icon",
+      "fontSize": 26, "color": "#FFFFFF", "align": "left", "valign": "top",
+      "inset": [14, 0, 0, 14] },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 22, "color": "#FFFFFF", "align": "left", "valign": "bottom",
+      "inset": [0, 0, 46, 18] },
+    { "op": "text", "id": "info", "data_id": "info",
+      "fontSize": 14, "color": "#D9FFF6", "align": "left", "valign": "bottom",
+      "inset": [0, 0, 20, 18] }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$comment": "demo：描边 + 内阴影（凹陷感）+ 左图标 / 右信息",
+  "box": { "width": 320, "height": 120 },
+  "layers": [
+    { "op": "shadow", "id": "shadow", "fill": "@theme/color.common.shadow",
+      "radius": "@theme/metric.radius.lg", "feather": 16, "offset": [0, 6], "cutout": true },
+    { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.lg",
+      "fill": "@theme/color.surface.raised",
+      "stroke": "@theme/color.border.default", "strokeWidth": 1 },
+    { "op": "shadow", "id": "inset", "inner": true,
+      "fill": "@theme/color.common.shadow", "feather": 10, "spread": 0 },
+    { "op": "text", "id": "icon", "data_id": "icon", "font_kind": "icon",
+      "fontSize": 26, "color": "@theme/color.accent.base",
+      "align": "left", "valign": "center", "inset": [0, 0, 0, 20] },
+    { "op": "text", "id": "title", "data_id": "text",
+      "fontSize": 18, "color": "@theme/color.text.primary",
+      "align": "left", "valign": "center", "inset": [0, 0, 0, 56] },
+    { "op": "text", "id": "info", "data_id": "info",
+      "fontSize": 14, "color": "@theme/color.text.dim",
+      "align": "right", "valign": "center", "inset": [0, 18, 0, 0] }
+  ]
+}

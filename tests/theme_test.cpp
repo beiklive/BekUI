@@ -117,16 +117,29 @@ int main()
 
     std::printf("\n== 5. 状态动效（tweeny 逐属性插值）==\n");
     {
-        // 用默认按钮的 pressed：底从 defaultBg 补到 defaultPressedBg（60ms）
-        std::shared_ptr<const Appearance> button = getWidgetAppearance("base/button/button");
+        // 用一段自包含外观：底色从白补到红（60ms）。
+        // 不依赖主题里的按钮 states —— 那属于主题内容，会被主题作者改（改成 self 位移等）。
+        std::string error;
+        std::shared_ptr<const Appearance> button = Appearance::compile(R"({
+            "layers": [
+                { "op": "rect", "id": "bg", "fill": "#FFFFFFFF" },
+                { "op": "text", "id": "title", "data_id": "text",
+                  "color": "#000000FF", "fontSize": 18 }
+            ],
+            "states": {
+                "pressed": {
+                    "bg.fill": { "to": "#FF0000FF", "duration": 60 },
+                    "title.color": { "to": "#000000FF", "duration": 60 }
+                }
+            }
+        })", getTheme(), error, "theme-test-tween");
         check(button != nullptr, "取到外观");
-
         AppearanceInstance instance;
         instance.setAppearance(button);
 
         const int bgIndex       = button->indexOfLayer("bg");
-        const ImU32 idleFill    = getTheme().color("color.button.defaultBg");
-        const ImU32 pressedFill = getTheme().color("color.button.defaultPressedBg");
+        const ImU32 idleFill    = IM_COL32(0xFF, 0xFF, 0xFF, 0xFF);
+        const ImU32 pressedFill = IM_COL32(0xFF, 0x00, 0x00, 0xFF);
 
         checkColor(instance.getColor(bgIndex, AppearanceProp::FILL), idleFill,
             "初始：按钮默认底色");
@@ -147,7 +160,7 @@ int main()
 
         // 文字色同样按补间走（pressed 里也写了 title.color）
         checkColor(instance.getColor(button->indexOfLayer("title"), AppearanceProp::TEXT_COLOR),
-            getTheme().color("color.button.defaultText"), "文字色保持按钮字色");
+            IM_COL32(0x00, 0x00, 0x00, 0xFF), "文字色保持字色");
 
         std::printf("\n== 6. 状态取消后回到初值 ==\n");
         // 刚按下就松开：当前值还等于初值时，旧补间必须被撤掉
@@ -322,7 +335,7 @@ int main()
             std::vector<std::string> onDisk;
             std::error_code ec;
             const std::filesystem::path root = resourcePath(themeDir);
-            for (const char* sub : { "tokens", "base", "widget", "view" })
+            for (const char* sub : { "tokens", "base", "widget", "view", "demo" })
             {
                 const std::filesystem::path dir = root / sub;
                 if (!std::filesystem::exists(dir, ec))

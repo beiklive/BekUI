@@ -397,6 +397,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      <主题>/base/             基础控件外观（单个容器/元素）
      <主题>/widget/           二级控件外观（引用 base 组合出来的）
      <主题>/view/             页面与视图描述（结构 + 外观）
+     <主题>/demo/             演示专用外观（不属于基础控件；demo 页面引用）
      ```
      **名字 = 相对主题根的路径去掉扩展名**（`base/button.json` → `"base/button"`），
      变体继续用后缀拼（`base/button` + variant `"primary"` → `base/button.primary`）。

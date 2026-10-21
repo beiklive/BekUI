@@ -21,4 +21,10 @@ bklv::ToastManager* toastManager();
 // 按钮展示：各种 button 外观的集合（骨架页，细节待补）
 bklv::Box* buildButtonShowcasePage();
 
+// 布局演示：纯色 rect 展示 Yoga 的主轴/交叉轴/伸缩
+bklv::Box* buildLayoutShowcasePage();
+
+// JSON 主题能力：控件外观全部来自 default/demo/*.json
+bklv::Box* buildJsonThemePage();
+
 } // namespace demo
