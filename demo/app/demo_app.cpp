@@ -142,6 +142,8 @@ void DemoApp::showHome()
     const Entry entries2[] = {
         { "布局演示", "Yoga 对齐与伸缩（纯色 rect）", "dashboard", 5 },
         { "JSON 主题能力", "外观 JSON 的完整表现力", "palette", 6 },
+        { "Cell 家族", "开关 / 单选 / 选择器 / 输入", "list", 7 },
+        { "滑块", "Slider 与衍生外观", "settings", 8 },
     };
     for (const Entry& entry : entries2)
     {
@@ -202,6 +204,10 @@ void DemoApp::openDemo(int index)
         this->openPage("布局演示", [] { return buildLayoutShowcasePage(); }, 5);
     else if (index == 6)
         this->openPage("JSON 主题能力", [] { return buildJsonThemePage(); }, 6);
+    else if (index == 7)
+        this->openPage("Cell 家族", [] { return buildCellsPage(); }, 7);
+    else if (index == 8)
+        this->openPage("滑块", [] { return buildSliderPage(); }, 8);
 }
 
 Box* DemoApp::wrapPage(Box* content)

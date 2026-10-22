@@ -21,6 +21,10 @@ Cell::Cell(const std::string& appearance, const std::string& title)
     // 一行两格：左标题（占满剩余宽度）+ 右内容区（按内容宽度）
     this->titleLabel = new Label();
     this->titleLabel->setSingleLine(true);
+    // 标题吃掉剩余宽度，右侧内容（说明/开关/滑块）才会贴到单元格右边
+    this->titleLabel->setGrow(1.0f);
+    this->titleLabel->setShrink(1.0f);
+    this->titleLabel->setMinWidth(0.0f);
     this->addView(this->titleLabel);
 
     this->rightBox = new Box(Axis::ROW);
@@ -111,7 +115,7 @@ const AttributeTable& Cell::attributes() const
 // ---------------------------------------------------------------- DetailCell
 
 DetailCell::DetailCell(const std::string& title, const std::string& detail)
-    : Cell("base/cell_detail", title)
+    : Cell("base/cell/detail", title)
 {
     this->setDetail(detail);
     this->applyTheme(); // 基类构造期不会派发到子类，这里补一次
@@ -120,7 +124,7 @@ DetailCell::DetailCell(const std::string& title, const std::string& detail)
 // ---------------------------------------------------------------- BooleanCell
 
 BooleanCell::BooleanCell(const std::string& title, bool value)
-    : Cell("base/cell_bool", title)
+    : Cell("base/cell/bool", title)
 {
     // 注意：Cell 的构造里调的 applyTheme 是基类那份（构造期不派发虚函数），
     // 所以开关的配色要在这里自己再取一次，否则颜色一直是 0（画不出来）。
@@ -242,7 +246,7 @@ void BooleanCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, 
 // ---------------------------------------------------------------- RadioCell
 
 RadioCell::RadioCell(const std::string& title, bool selected)
-    : Cell("base/cell_radio", title)
+    : Cell("base/cell/radio", title)
 {
     this->applyTheme(); // 同上：构造期虚函数不派发
 
@@ -314,7 +318,7 @@ void RadioCell::drawCustomLayer(ImDrawList* drawList, const AppearanceLayer&, fl
 // ---------------------------------------------------------------- SelectorCell
 
 SelectorCell::SelectorCell(const std::string& title)
-    : Cell("base/cell_selector", title)
+    : Cell("base/cell/selector", title)
 {
     this->applyTheme();
     // 左右键 / LB / RB 换值：和 borealis 的 SelectorCell 一致
@@ -414,7 +418,7 @@ void SelectorCell::refreshDetail()
 // ---------------------------------------------------------------- SliderCell
 
 SliderCell::SliderCell(const std::string& title)
-    : Cell("base/cell_slider", title)
+    : Cell("base/cell/slider", title)
 {
     this->applyTheme();
     this->slider = new Slider();
@@ -461,7 +465,7 @@ View* SliderCell::getDefaultFocus()
 // ---------------------------------------------------------------- InputCell
 
 InputCell::InputCell(const std::string& title)
-    : Cell("base/cell_input", title)
+    : Cell("base/cell/input", title)
 {
     this->applyTheme();
     this->setOnClick([this] { this->openInput(); });

@@ -1,0 +1,4 @@
+{
+  "$comment": "选择器 Cell：右侧纯文本（值由 C++ 写 title/detail）",
+  "import": "base/cell/cell"
+}

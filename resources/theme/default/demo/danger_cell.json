@@ -1,0 +1,22 @@
+{
+  "$comment": "demo 衍生：import 基础 Cell，追加一根左侧红色警示条（不改基础层，跨主题也能用）",
+  "import": "base/cell/cell",
+  "layers": [
+    {
+      "op": "rect",
+      "id": "dangerBar",
+      "fill": "@theme/color.common.red",
+      "radius": 2,
+      "width": 4,
+      "height": 32,
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        8
+      ]
+    }
+  ]
+}

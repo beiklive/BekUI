@@ -1,0 +1,11 @@
+{
+  "$comment": "单选 Cell：右侧圆点 + 对勾（custom 层）",
+  "import": "base/cell/cell",
+  "layers": [
+    {
+      "op": "custom",
+      "id": "radio",
+      "data_id": "radio"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "$comment": "开关 Cell：默认文字「开/关」；SWITCH 样式画自定义开关",
+  "import": "base/cell/cell",
+  "layers": [
+    {
+      "op": "custom",
+      "id": "switch",
+      "data_id": "switch"
+    }
+  ]
+}

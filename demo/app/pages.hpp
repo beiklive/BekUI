@@ -27,4 +27,10 @@ bklv::Box* buildLayoutShowcasePage();
 // JSON 主题能力：控件外观全部来自 default/demo/*.json
 bklv::Box* buildJsonThemePage();
 
+// Cell 家族：布尔 / 单选 / 选择器 / 详情 / 输入 / 内嵌滑块
+bklv::Box* buildCellsPage();
+
+// 滑块：基础外观 + demo 衍生外观
+bklv::Box* buildSliderPage();
+
 } // namespace demo

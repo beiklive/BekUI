@@ -1,0 +1,4 @@
+{
+  "$comment": "详情 Cell：标题 + 右侧说明文字",
+  "import": "base/cell/cell"
+}

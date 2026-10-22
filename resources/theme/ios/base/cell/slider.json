@@ -1,0 +1,4 @@
+{
+  "$comment": "内嵌滑块 Cell：焦点给滑块",
+  "import": "base/cell/cell"
+}
