@@ -1,9 +1,11 @@
 #include "designer/core/save_transaction.hpp"
 
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <system_error>
 
 namespace designer
 {
@@ -90,7 +92,12 @@ SaveResult saveText(const std::string& path, const std::string& text, const Save
         }
     }
 
-    if (std::rename(tempPath.c_str(), path.c_str()) != 0)
+    // POSIX 的 rename() 会覆盖已存在的目标文件，Windows CRT 的 rename() 不会
+    // （目标存在时直接失败 EEXIST），所以走 std::filesystem::rename：MSVC 实现
+    // 内部用 MoveFileExW(..., MOVEFILE_REPLACE_EXISTING)，两个平台语义一致。
+    std::error_code renameError;
+    std::filesystem::rename(tempPath, path, renameError);
+    if (renameError)
     {
         error = "改名失败：" + tempPath + " -> " + path;
         std::remove(tempPath.c_str());
