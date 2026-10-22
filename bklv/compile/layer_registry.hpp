@@ -178,8 +178,11 @@ bool boolParam(const LayerDrawContext& ctx, const char* name, bool fallback = fa
 const char* enumParam(const LayerDrawContext& ctx, const char* name);
 
 // 内置 op 的类型：**数组下标查表**（不走字符串哈希）。
-// 绘制分派每层每帧都要问一次，`findLayer("rect")` 每次都要构造 std::string 再哈希 ——
+// 绘制分派每层每帧都要问一次，`findLayer("rect")` 每次都要构造 std::string 再做哈希查找 ——
 // 这个函数把它降成一次数组索引。op 不是内置（EXTENSION）时返回 nullptr。
+//
+// 表里存的是**下标**而不是 LayerType*：注册表是 std::vector，扩展层再 registerLayer()
+// 会让它 realloc，指针会失效（后果是层序随机错乱，见 .cpp 的 cacheBuiltinIndexes）。
 const LayerType* builtinLayer(AppearanceLayer::Op op);
 
 // 注册/替换绘制钩子。**由 widgets 侧在初始化时调用**（compile 只提供钩子类型，

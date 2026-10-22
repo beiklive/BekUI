@@ -20,6 +20,37 @@ std::vector<LayerType>& registry()
     return layers;
 }
 
+// 内置 op -> 注册表里的**下标**（不是指针）。
+//
+// 曾经这里缓存的是 LayerType*：注册表是 std::vector<LayerType>，之后任何一次
+// registerLayer()（第三方在启动时注册扩展层）都可能让它 realloc，缓存下来的指针当场
+// 变成野指针 —— 读 type->order 拿到的是已释放内存里的垃圾值，`sortLayers` 于是把
+// 阴影/玻璃排到随机位置，表现为"同一份 JSON 有时排对有时排错"（MSVC 的堆复用最容易
+// 撞出来，MinGW 上只是恰好还读得到旧内容）。存下标就不会失效。
+std::array<int, 6> g_builtinIndexes = { -1, -1, -1, -1, -1, -1 };
+
+// 内置层注册完之后把下标表填一遍（ensureBuiltins 调用；clearLayersForTest 之后会重填）
+void cacheBuiltinIndexes()
+{
+    const AppearanceLayer::Op ops[6] = { AppearanceLayer::Op::RECT, AppearanceLayer::Op::TEXT,
+        AppearanceLayer::Op::IMAGE, AppearanceLayer::Op::SHADOW, AppearanceLayer::Op::GLASS,
+        AppearanceLayer::Op::CUSTOM };
+    const std::vector<LayerType>& layers = registry();
+    for (size_t i = 0; i < 6; i++)
+    {
+        g_builtinIndexes[i] = -1;
+        const char* name    = layerOpName(ops[i]);
+        for (size_t j = 0; j < layers.size(); j++)
+        {
+            if (layers[j].name == name)
+            {
+                g_builtinIndexes[i] = (int)j;
+                break;
+            }
+        }
+    }
+}
+
 // 内置层是否已经注册过。刻意放**命名空间作用域**而不是函数内 static：
 // clearLayersForTest() / resetGlobals() 要把这个标志一起翻回来 —— 只清 vector 不翻标志的话，
 // 重置之后内置的 rect / text / glass 会静默消失（外表全报"未知 op"，比崩更难查）。
@@ -33,6 +64,7 @@ void ensureBuiltins()
         return;
     g_builtinsRegistered = true;
     registerBuiltinLayers();
+    cacheBuiltinIndexes();
 
     // 注册表的状态是自己的静态表（搬不进全局表），按 core/globals.hpp 的约定登记重置钩子
     globals::getGlobalStore().addResetHook("layers", &clearLayersForTest);
@@ -213,22 +245,17 @@ const LayerType* builtinLayer(AppearanceLayer::Op op)
 {
     ensureBuiltins();
 
-    // 下标 = 枚举值。数组懒建一次：内置 6 种注册完之后就不再变，所以缓存是安全的
-    // （注册表本身是进程级生命周期，指针不会失效）。
-    static const std::array<const LayerType*, 6> table = [] {
-        std::array<const LayerType*, 6> built{};
-        const AppearanceLayer::Op ops[6] = { AppearanceLayer::Op::RECT, AppearanceLayer::Op::TEXT,
-            AppearanceLayer::Op::IMAGE, AppearanceLayer::Op::SHADOW, AppearanceLayer::Op::GLASS,
-            AppearanceLayer::Op::CUSTOM };
-        for (size_t i = 0; i < 6; i++)
-            built[i] = findLayer(layerOpName(ops[i]));
-        return built;
-    }();
-
     const int index = (int)op;
-    if (index < 0 || index >= (int)table.size())
+    if (index < 0 || index >= (int)g_builtinIndexes.size())
         return nullptr; // EXTENSION 或非法值：调用方走 findLayer(extensionType)
-    return table[(size_t)index];
+
+    // 一次数组索引回到注册表（下标在注册内置层时算好，见 cacheBuiltinIndexes）：
+    // 绘制分派每层每帧都要问一次，不能退化成一趟字符串查找。
+    const int slot = g_builtinIndexes[(size_t)index];
+    const std::vector<LayerType>& layers = registry();
+    if (slot < 0 || (size_t)slot >= layers.size())
+        return nullptr; // clearLayersForTest 之后还没重填（ensureBuiltins 会填）
+    return &layers[(size_t)slot];
 }
 
 const LayerType* findLayer(const std::string& name)
@@ -350,6 +377,9 @@ const std::vector<LayerType>& registeredLayers()
 void clearLayersForTest()
 {
     registry().clear();
+    // 下标表跟着作废：下一次 ensureBuiltins() 会重新注册内置层并重填（否则会拿旧下标
+    // 去索引一个空 vector，builtinLayer 只能返回 nullptr）
+    g_builtinIndexes.fill(-1);
     // 一并翻回"没注册过"：下一次用到时会重新注册内置层（否则内置 op 会静默失效）
     g_builtinsRegistered = false;
 }
