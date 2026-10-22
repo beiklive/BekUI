@@ -51,10 +51,10 @@ for backend in gl vk; do
     # （Visual Studio）会编 Debug，而产物目录是共用的，会盖掉 Release 的 exe。
     cmake --build "$dir" --config Release -j 8 > "/tmp/bklv_build_$backend.log" 2>&1 \
         || { grep -E "error( C[0-9]+)?[: ]" "/tmp/bklv_build_$backend.log" | head -10; die "$backend 构建失败"; }
-    if grep -qE "warning( C[0-9]+)?[: ]" "/tmp/bklv_build_$backend.log"; then
-        grep -E "warning( C[0-9]+)?[: ]" "/tmp/bklv_build_$backend.log" | head -10
-        die "$backend 构建有警告（约定是零警告）"
-    fi
+    # 零警告门禁的规则在 scripts/check_warnings.sh 里（只数 bklv 自己的代码，
+    # bklv/3rd/ 下 vendored 的 submodule 不算）。
+    bash scripts/check_warnings.sh "/tmp/bklv_build_$backend.log" \
+        || die "$backend 构建有警告（约定是零警告）"
     echo "构建通过，零警告"
 done
 

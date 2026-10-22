@@ -328,8 +328,10 @@ cmake --preset vk && cmake --build --preset vk
 bash scripts/check.sh</code></pre>
 
 <p>约定：<code>-Wall -Wextra -Wpedantic</code> <b>零警告</b>；每个后端各一个构建目录、产物分目录（<code>dist/</code> 与 <code>dist/vk/</code>）。
-CI 见 <code>.github/workflows/ci.yml</code>：静态检查 + {{Ubuntu, macOS}} × {{GL, Vulkan}} 构建，
-构建出现 warning 即失败（Windows 还没接，那条路要 MSYS2 + <code>build.bat</code>）。</p>
+CI 见 <code>.github/workflows/ci.yml</code>：静态检查一份，构建按平台分份 ——
+{{Linux, macOS, Windows-MinGW}} × {{GL, Vulkan}}、Windows-MSVC（只编 GL）、
+Switch（<code>devkitpro/devkita64</code> 容器）；都走 <code>scripts/ci_build.sh</code>，
+构建出现 warning 即失败。</p>
 
 <h3>用到自己的项目里</h3>
 <pre><code>add_subdirectory(third_party/bklv)

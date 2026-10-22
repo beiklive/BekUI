@@ -2,3 +2,7 @@
 # git apply 匹配不上上下文行（notes/tweeny-msvc-render.patch 由 CMake 在
 # MSVC 配置阶段直接 git apply，见 bklv/CMakeLists.txt）。
 *.patch -text
+
+# 构建脚本按 LF 检出：CI 里 Linux / Switch 容器用 bash 直接执行它们，
+# 带 CRLF 的 shebang 与 `set -e` 都会出问题（本地 MSYS2 里也一样）。
+*.sh text eol=lf

@@ -126,8 +126,8 @@ CMake 覆盖不了，所以 `scripts/build_switch.sh` 是唯一保留的构建�
 ② 改了脚本里的 `DEFINES`（比如开关可选解码器）**必须 `--clean` 重编**：脚本按时间戳增量
    编译，不会因为宏变了重编旧目标文件，会以"undefined reference to lunasvg::…"的形式在
    链接期暴露（那些 .o 是用 `BKLV_USE_SVG` 编的）。
-产物大小（2026-10 实测，移除测试与设计器之后）：`demo.nro` **9.42 MB** = 代码+数据 8.48 MB（strip 后 ELF）
-+ romfs 0.95 MB（245 个资源文件：字体 532 KB / 主题 608 KB / 文案 32 KB）。
+产物大小（2026-10 实测，移除测试与设计器、两套主题之后）：`demo.nro` **9.34 MB** = 代码+数据 8.47 MB（strip 后 ELF）
++ romfs 0.87 MB（149 个资源文件：字体 524 KB / 主题 115 KB / 文案 191 KB）。
 
 桌面（macOS / Linux / Windows）上不再有 shell 构建脚本，`build.sh` 与
 `scripts/build_sdl3.sh` 已删除；SDL3 作为 `add_subdirectory` 的子项目随 CMake 一起编。
@@ -1006,9 +1006,20 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
   `resources/` 放到可执行文件旁边，或调 `initResources()` —— 不然路径按工作目录解析。
 - **本机门禁**：`bash scripts/check.sh`（命名 → 分层 → GL/VK 双后端零警告构建）。
 
-CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，
-`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建，构建出现 warning 即失败。
-**Windows 还没接**（那条路要 `build.bat` + MSYS2，见上面「Windows」）。
+CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，构建按平台分份，
+都走 `scripts/ci_build.sh <gl|vk>`（参数与「出现 warning 即失败」的门禁只有那一份）：
+
+- **Linux**：`ubuntu-latest` + GCC + Unix Makefiles，`{GL, Vulkan}` 两份；
+- **macOS**：`macos-latest` + AppleClang，`{GL, Vulkan}` 两份，Vulkan 用 brew 的 molten-vk；
+- **Windows**：`windows-latest` + MSYS2 MINGW64（就是 `build.bat` 那套工具链），
+  `{GL, Vulkan}` 两份，显式 `-G Ninja`；
+- **Windows/MSVC**：`windows-latest` + VS 2022 生成器，只编 GL —— 专门盯住
+  `notes/tweeny-msvc-render.patch` 这条只在 MSVC 下生效的补丁路径；
+- **Switch**：`devkitpro/devkita64` 容器 + `scripts/build_switch.sh`，产物 `dist/switch/demo.nro`。
+
+本地想复现某一份，就是 `BKLV_CMAKE_GENERATOR=… bash scripts/ci_build.sh gl`（见脚本头注释）。
+"零警告"的判定在 `scripts/check_warnings.sh`：只算 `bklv/` 自己写的代码，`bklv/3rd/` 下
+vendored 的 submodule（SDL3 / Yoga / imgui / webp / lunasvg）按自己的 `-Wall` 编，报的警告不算。
 
 ## 目录
 
