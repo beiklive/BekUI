@@ -1,10 +1,10 @@
 #pragma once
 
-// 内置输入法面板（弹层）：全键 QWERTY + 中英切换 + 大小写 + 拼音候选。
+// 内置输入法面板（弹层）：
+//   上半屏：大输入框（实时文本 + 光标；点击/触摸定位光标，LB/RB 或 ←/→ 移动）
+//   下半屏：左边九宫格数字键盘 + 右边全键 QWERTY + 底部（中/英、大写、空格、取消、确定）
 //
-// 桌面没有系统软键盘，EditTextDialog 通过 ImeManager 拉起它：
-//   setImeManager(&getPanelImeManager());
-// 面板挂在 App 的弹层栈上，确认/取消后 popOverlay 并回调。
+// 桌面没有系统软键盘，EditTextDialog/InputCell 通过 ImeManager 拉起它。
 
 #include <functional>
 #include <string>
@@ -20,6 +20,8 @@ namespace bklv
 class Label;
 class Button;
 
+class ImeField;
+
 class ImePanel : public Box
 {
   public:
@@ -28,44 +30,55 @@ class ImePanel : public Box
 
     std::string getClassString() const override { return "bklv::ImePanel"; }
 
-    // 测试用
+    // 测试/外部驱动
     void insertAscii(const std::string& value);
     void toggleLanguage();
     void toggleShift();
+    void moveCaret(int delta);
+    void setCaret(size_t charIndex);
     const std::string& getText() const { return this->text; }
     const std::string& getComposing() const { return this->composing; }
     std::vector<std::string> getCandidates() const;
     void chooseCandidate(size_t index);
+    size_t getCaret() const { return this->caret; }
+
+    void update() override;
 
   private:
-    void buildKeyboard();
-    void refreshLabels();
+    void buildLayout();
+    void buildNumberPad(Box* parent);
+    void buildFullKeyboard(Box* parent);
     void refreshCandidates();
-    void appendChar(const std::string& value);
+    void refreshLabels();
+    void insertText(const std::string& value);
     void backspace();
-    void commitPinyin();
+    void commitComposing();
     void confirm();
     void cancel();
     void finish(bool accepted);
     void relabelKeys();
 
-    std::string text;
-    std::string composing; // 拼音输入中的字母
-    int maxLength = 32;
-    bool numeric = false;
-    bool chinese = true;
-    bool shift = false;
-    std::vector<std::pair<Button*, std::string>> letterKeys;
+    std::string displayText() const;
+    std::string textWithComposing() const;
+    size_t caretChars() const;
 
-    Label* textLabel = nullptr;
+    std::string text;
+    std::string composing;
+    size_t caret      = 0; // 按"字符"计数
+    int maxLength     = 32;
+    bool numeric      = false;
+    bool chinese      = true;
+    bool shift        = false;
+    float blinkTimer  = 0.0f;
+
+    ImeField* field = nullptr;
     Label* hintLabel = nullptr;
     Box* candidateRow = nullptr;
-    Box* letterRows = nullptr;
-    std::vector<std::pair<std::string, std::string>> dictionary; // pinyin -> 汉字
+    std::vector<Button*> candidateButtons;
+    std::vector<std::pair<Button*, std::string>> letterKeys;
     std::function<void(bool, const std::string&)> callback;
 };
 
-// 把面板挂到弹层栈上的 ImeManager（桌面用；Switch 仍用系统键盘）。
 ImeManager& getPanelImeManager();
 
 } // namespace bklv
