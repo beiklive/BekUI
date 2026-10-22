@@ -1,0 +1,67 @@
+diff --git a/include/tweeny/tween.tcc b/include/tweeny/tween.tcc
+index b685cef..23fc218 100644
+--- a/include/tweeny/tween.tcc
++++ b/include/tweeny/tween.tcc
+@@ -33,6 +33,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ #include "detail/interpolate.h"
+ #include "easing.h"
+ 
++// MSVC 14.4x 编不过 render() 里原来那个「泛型 lambda + if constexpr」：
++//   错误 C2187: 语法错误: 此处出现意外的"attribute specifier"（指向 lambda 的 `[`）
++// 连带 C2938（未能使别名模板专用化）/ C2535，整个 tween 无法实例化。
++// 换成等价的命名函数模板（GCC / Clang / MSVC 行为一致）。
++namespace tweeny::detail {
++  template <std::size_t ValuesCount, typename ValuesT>
++  auto as_tween_return_value(const ValuesT & val) {
++    if constexpr (ValuesCount == 1) {
++      return std::get<0>(val);
++    } else {
++      return val;
++    }
++  }
++}
++
+ template <typename FirstValueType, typename... RemainingValueTypes>
+ tweeny::tween<FirstValueType, RemainingValueTypes...>::tween(const key_frames_t & key_frames_input) : key_frames(key_frames_input), current_value(render(0)) { }
+ 
+@@ -240,14 +255,6 @@ template <typename FirstValueType, typename... RemainingValueTypes>
+ auto tweeny::tween<FirstValueType, RemainingValueTypes...>::render(uint32_t target_frame) const -> tween_value_t {
+   constexpr std::size_t ValuesCount = sizeof...(RemainingValueTypes) + 1;
+ 
+-  const auto as_return_value = [](const auto & val) -> tween_value_t {
+-    if constexpr (ValuesCount == 1) {
+-      return std::get<0>(val);
+-    } else {
+-      return val;
+-    }
+-  };
+-
+   if (key_frames.empty()) {
+     if constexpr (ValuesCount == 1) {
+       return FirstValueType{};
+@@ -265,13 +272,13 @@ auto tweeny::tween<FirstValueType, RemainingValueTypes...>::render(uint32_t targ
+     last_key_frame.position
+   );
+ 
+-  if (target_frame <= first_key_frame.position) return as_return_value(first_key_frame.values);
+-  if (target_frame >= last_key_frame.position) return as_return_value(last_key_frame.values);
++  if (target_frame <= first_key_frame.position) return detail::as_tween_return_value<ValuesCount>(first_key_frame.values);
++  if (target_frame >= last_key_frame.position) return detail::as_tween_return_value<ValuesCount>(last_key_frame.values);
+ 
+   std::size_t base_key_key_frame_idx = find_key_frame_index(target_frame);
+ 
+   if (base_key_key_frame_idx + 1 >= key_frames.size()) {
+-    return as_return_value(last_key_frame.values);
++    return detail::as_tween_return_value<ValuesCount>(last_key_frame.values);
+   }
+ 
+   const key_frame_t & base_key_frame = key_frames[base_key_key_frame_idx];
+@@ -296,7 +303,7 @@ auto tweeny::tween<FirstValueType, RemainingValueTypes...>::render(uint32_t targ
+     std::make_index_sequence<ValuesCount>{}
+   );
+ 
+-  return as_return_value(values);
++  return detail::as_tween_return_value<ValuesCount>(values);
+ }
+ 
+ template <typename FirstValueType, typename... RemainingValueTypes>

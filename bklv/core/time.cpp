@@ -48,6 +48,10 @@ float applyEasing(EasingFunction easing, float t)
     t = std::clamp(t, 0.0f, 1.0f);
 
     constexpr float PI = 3.14159265358979323846f;
+    // elasticIn 的系数放在 lambda **外面**算：MSVC 14.4x 不允许在 lambda 体里用
+    // 外层的 constexpr 变量初始化一个新的 constexpr 变量，会报 C2131
+    // "表达式的计算结果不是常数"（GCC/Clang 正常）。算式本身一样。
+    constexpr float ELASTIC_C4 = (2.0f * PI) / 3.0f;
 
     // 复用：In 型曲线做 Out 就是镜像（1 - f(1-t)），Out 做 InOut 就是两半拼接。
     // 这样每种曲线只写一个公式，其余两挡自动得到，也不容易写错。
@@ -91,8 +95,7 @@ float applyEasing(EasingFunction easing, float t)
             return 0.0f;
         if (x >= 1.0f)
             return 1.0f;
-        constexpr float c4 = (2.0f * PI) / 3.0f;
-        return -std::pow(2.0f, 10.0f * x - 10.0f) * std::sin((x * 10.0f - 10.75f) * c4);
+        return -std::pow(2.0f, 10.0f * x - 10.0f) * std::sin((x * 10.0f - 10.75f) * ELASTIC_C4);
     };
 
     switch (easing)

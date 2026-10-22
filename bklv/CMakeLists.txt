@@ -66,6 +66,61 @@ foreach(required IN ITEMS
 endforeach()
 
 # ---------------------------------------------------------------------------
+# 第三方补丁：tweeny 的 MSVC 兼容修复
+# ---------------------------------------------------------------------------
+#
+# 上游 tween.tcc 的 render() 里，Lambda 内的 `if constexpr (ValuesCount == 1)`
+# 引用了外层局部 constexpr：GCC/Clang 能过，MSVC 直接报
+#   error C2187: 语法错误: 此处出现意外的"attribute specifier"
+#   error C3493: 无法隐式捕获 ValuesCount，因为尚未指定默认捕获模式
+# （去掉尾置返回类型才看得到 C3493 这个真错）。
+#
+# 这个修复只对 MSVC 有意义，所以**按平台在配置阶段打补丁**，不提交改过的子模块：
+# 子模块永远指向上游的 SHA，MinGW / Switch / 其他机器都看不到这件事。
+# 补丁文件在 notes/tweeny-msvc-render.patch（就是子模块里的 git diff），幂等：
+# 先 `git apply --reverse --check` 判断是否已经打过，打不上就明确报错而不是放着不管。
+if(MSVC)
+    set(BKLV_TWEENY_TCC "${BKLV_3RD}/tweeny/include/tweeny/tween.tcc")
+    set(BKLV_TWEENY_PATCH "${BKLV_INCLUDE_ROOT}/notes/tweeny-msvc-render.patch")
+    if(EXISTS "${BKLV_TWEENY_TCC}" AND EXISTS "${BKLV_TWEENY_PATCH}")
+        find_program(BKLV_GIT_EXECUTABLE git)
+        if(NOT BKLV_GIT_EXECUTABLE)
+            message(FATAL_ERROR
+                "MSVC 构建需要给 tweeny 打补丁（${BKLV_TWEENY_PATCH}），但找不到 git。\n"
+                "请装 Git，或手动执行：git -C bklv/3rd/tweeny apply notes/tweeny-msvc-render.patch")
+        endif()
+
+        execute_process(
+            COMMAND "${BKLV_GIT_EXECUTABLE}" apply --reverse --check "${BKLV_TWEENY_PATCH}"
+            WORKING_DIRECTORY "${BKLV_3RD}/tweeny"
+            RESULT_VARIABLE BKLV_TWEENY_ALREADY_PATCHED
+            OUTPUT_QUIET ERROR_QUIET)
+
+        if(NOT BKLV_TWEENY_ALREADY_PATCHED EQUAL 0)
+            execute_process(
+                COMMAND "${BKLV_GIT_EXECUTABLE}" apply --check "${BKLV_TWEENY_PATCH}"
+                WORKING_DIRECTORY "${BKLV_3RD}/tweeny"
+                RESULT_VARIABLE BKLV_TWEENY_CAN_PATCH
+                OUTPUT_QUIET ERROR_QUIET)
+            if(NOT BKLV_TWEENY_CAN_PATCH EQUAL 0)
+                message(FATAL_ERROR
+                    "tweeny 补丁打不上（子模块内容与补丁不匹配）：${BKLV_TWEENY_PATCH}\n"
+                    "子模块应该固定在 68a7f44；先 `git submodule update --force bklv/3rd/tweeny` 再试。")
+            endif()
+            execute_process(
+                COMMAND "${BKLV_GIT_EXECUTABLE}" apply "${BKLV_TWEENY_PATCH}"
+                WORKING_DIRECTORY "${BKLV_3RD}/tweeny"
+                RESULT_VARIABLE BKLV_TWEENY_PATCHED
+                OUTPUT_QUIET ERROR_VARIABLE BKLV_TWEENY_PATCH_ERROR)
+            if(NOT BKLV_TWEENY_PATCHED EQUAL 0)
+                message(FATAL_ERROR "tweeny 补丁应用失败：${BKLV_TWEENY_PATCH_ERROR}")
+            endif()
+            message(STATUS "已给 tweeny 打上 MSVC 兼容补丁（${BKLV_TWEENY_PATCH}）")
+        endif()
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # SDL3：用 SDK 自己的 CMake，编成静态库随仓库一起构建
 # ---------------------------------------------------------------------------
 
@@ -133,6 +188,10 @@ target_include_directories(bklv_opts INTERFACE
 target_compile_options(bklv_opts INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-DGL_SILENCE_DEPRECATION>
+    # 源码是 UTF-8（无 BOM）且注释/文案里有中文。MSVC 默认按系统代码页（简中是
+    # 936/GBK）解释源文件，会刷 C4819 并可能把中文字面量的字节改掉；GCC 一直当
+    # UTF-8 处理，所以这个开关只在 MSVC 下需要。顺带把执行字符集也定成 UTF-8。
+    $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
 )
 
 # C++17 必须在这里声明，不能只写在可执行目标上。
@@ -181,8 +240,13 @@ endif()
 
 if(BKLV_HOST STREQUAL "windows")
     # 静态链接 libgcc / libstdc++，产物不带 MinGW 运行时 DLL 依赖。
-    target_compile_options(bklv_opts INTERFACE -static-libgcc -static-libstdc++)
-    target_link_options(bklv_opts INTERFACE -static-libgcc -static-libstdc++)
+    # **只有 GCC/Clang 认这两个选项**：Windows 上的构建也可能是 MSVC（Visual Studio
+    # generator），它会把它们当未知选项逐条报警告（cl D9002 / link LNK4044），
+    # 破坏"零警告"约定。所以按编译器加保护。
+    target_compile_options(bklv_opts INTERFACE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-static-libgcc;-static-libstdc++>)
+    target_link_options(bklv_opts INTERFACE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-static-libgcc;-static-libstdc++>)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -254,6 +318,12 @@ if(BKLV_WITH_SVG
     # 和它们自己 CMakeLists 的静态构建定义保持一致
     target_compile_definitions(bklv_svg PRIVATE
         LUNASVG_BUILD LUNASVG_BUILD_STATIC PLUTOVG_BUILD PLUTOVG_BUILD_STATIC)
+    # **使用方也要知道这是静态库**：lunasvg.h 只在定义了 LUNASVG_BUILD_STATIC 时才
+    # 不把类标成 __declspec(dllimport)（见 3rd/lunasvg/include/lunasvg.h:31-46）。
+    # 少了这个，bklv_core 里的 image_decoder_svg.cpp 按导入库处理符号，MSVC 链接时
+    # 每个用到 lunasvg 的目标都刷一屏 "warning LNK4217：符号…已在 bklv_svg.lib 中定义，
+    # 已由 … 导入"。GCC 下 LUNASVG_IMPORT 是空的，所以 MinGW 构建从来没暴露过。
+    target_compile_definitions(bklv_svg INTERFACE LUNASVG_BUILD_STATIC PLUTOVG_BUILD_STATIC)
     set_target_properties(bklv_svg PROPERTIES
         CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON C_STANDARD 11 C_STANDARD_REQUIRED ON
         POSITION_INDEPENDENT_CODE ON)

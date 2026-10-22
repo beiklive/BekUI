@@ -125,8 +125,13 @@ class GlobalStore
     template <typename T>
     void set(const char* name, T* value, bool owned = false)
     {
-        this->slotSet(name, typeTag<T>(), typeName<T>(), value,
-            owned ? [](void* pointer) { delete static_cast<T*>(pointer); } : nullptr);
+        // 不能用 `owned ? lambda : nullptr`：lambda 与 nullptr_t 没有共同类型，
+        // MSVC 直接报 C2446（GCC 能过是因为它把 lambda 退化成函数指针再取共同类型）。
+        if (owned)
+            this->slotSet(name, typeTag<T>(), typeName<T>(), value,
+                [](void* pointer) { delete static_cast<T*>(pointer); });
+        else
+            this->slotSet(name, typeTag<T>(), typeName<T>(), value, nullptr);
     }
 
     // 这个槽在不在（不管类型）

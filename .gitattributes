@@ -1,0 +1,4 @@
+# 补丁文件必须按原样存储与检出：core.autocrlf 把 LF 换成 CRLF 之后，
+# git apply 匹配不上上下文行（notes/tweeny-msvc-render.patch 由 CMake 在
+# MSVC 配置阶段直接 git apply，见 bklv/CMakeLists.txt）。
+*.patch -text
