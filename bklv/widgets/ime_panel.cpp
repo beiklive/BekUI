@@ -388,92 +388,130 @@ void ImePanel::buildNumberPad(Box* parent)
 
 void ImePanel::buildFullKeyboard(Box* parent)
 {
-    const char* rows[3] = { "qwertyuiop", "asdfghjkl", "zxcvbnm" };
-    for (int r = 0; r < 3; r++)
-    {
+    // 按 ANSI 电脑键盘的行结构排：数字行 / Tab 行 / Caps 行 / Shift 行 / 底部修饰键
+    // 行宽用固定的键宽 + 前缀功能键的宽度做错位，不再每行各自居中。
+    const float unit = 50.0f;
+    const float gap  = 5.0f;
+
+    auto addRow = [&](float offset) {
         Box* row = new Box(Axis::ROW);
         row->setHeight(48.0f);
-        row->setGap(6.0f);
-        row->setJustifyContent(JustifyContent::CENTER);
-        for (const char* c = rows[r]; *c != 0; c++)
-        {
-            const std::string value(1, *c);
-            Button* key = new Button(value);
-            key->setMinWidth(0.0f);
-            key->setWidth(52.0f);
-            key->setHeight(46.0f);
-            this->letterKeys.emplace_back(key, value);
-            key->setOnClick([this, value] {
-                if (this->chinese && !this->numeric)
-                {
-                    this->composing += value;
-                    this->caret = splitChars(this->text).size();
-                    this->refreshLabels();
-                    this->refreshCandidates();
-                }
-                else
-                    this->insertText(value);
-            });
-            row->addView(key);
-        }
+        row->setGap(gap);
+        row->setPaddingLeft(offset);
         parent->addView(row);
-    }
+        return row;
+    };
 
-    const char* punctuation[2] = { ",.?!:;'\"()", "@#$%&*+-/\\" };
-    for (int r = 0; r < 2; r++)
+    auto addKey = [&](Box* row, const std::string& label, float width,
+                      std::function<void()> action, bool relabel = false,
+                      const std::string& letter = std::string()) {
+        Button* key = new Button(label);
+        key->setMinWidth(0.0f);
+        key->setWidth(width);
+        key->setHeight(46.0f);
+        key->setOnClick(std::move(action));
+        if (relabel)
+            this->letterKeys.emplace_back(key, letter);
+        row->addView(key);
+        return key;
+    };
+
+    auto insert = [this](const std::string& value) {
+        this->insertText(this->chinese ? this->fullWidth(value) : value);
+    };
+
+    // 数字行：Esc 1..0 - = Backspace
+    Box* row0 = addRow(0.0f);
+    addKey(row0, "Esc", 56.0f, [this] { this->cancel(); });
+    for (const char* c = "1234567890"; *c != 0; c++)
     {
-        Box* row = new Box(Axis::ROW);
-        row->setHeight(48.0f);
-        row->setGap(6.0f);
-        row->setJustifyContent(JustifyContent::CENTER);
-        for (const char* c = punctuation[r]; *c != 0; c++)
-        {
-            const std::string value(1, *c);
-            Button* key = new Button(value);
-            key->setMinWidth(0.0f);
-            key->setWidth(52.0f);
-            key->setHeight(46.0f);
-            key->setOnClick([this, value] { this->insertText(this->chinese ? this->fullWidth(value) : value); });
-            row->addView(key);
-        }
-        parent->addView(row);
+        const std::string value(1, *c);
+        addKey(row0, value, unit, [this, value] { this->insertText(value); });
     }
+    addKey(row0, "-", unit, [insert] { insert("-"); });
+    addKey(row0, "=", unit, [insert] { insert("="); });
+    addKey(row0, "退格", 86.0f, [this] { this->backspace(); });
 
-    Box* bottom = new Box(Axis::ROW);
-    bottom->setHeight(48.0f);
-    bottom->setGap(8.0f);
-    bottom->setWidthPercentage(100.0f);
-    bottom->setAlignItems(AlignItems::CENTER);
+    // Tab 行：中/英 q..p 与 [ ] 反斜杠
+    Box* row1 = addRow(10.0f);
+    addKey(row1, "中/英", 74.0f, [this] { this->toggleLanguage(); });
+    for (const char* c = "qwertyuiop"; *c != 0; c++)
+    {
+        const std::string value(1, *c);
+        addKey(row1, value, unit, [this, value] {
+            if (this->chinese && !this->numeric)
+            {
+                this->composing += value;
+                this->caret = splitChars(this->text).size();
+                this->refreshLabels();
+                this->refreshCandidates();
+            }
+            else
+                this->insertText(value);
+        }, true, value);
+    }
+    addKey(row1, "[", unit, [insert] { insert("["); });
+    addKey(row1, "]", unit, [insert] { insert("]"); });
+    addKey(row1, "\\", 62.0f, [insert] { insert("\\"); });
 
-    Button* language = new Button("中/英");
-    language->setMinWidth(0.0f);
-    language->setOnClick([this] { this->toggleLanguage(); });
-    language->setVisibility(this->numeric ? Visibility::GONE : Visibility::VISIBLE);
-    bottom->addView(language);
+    // Caps 行：大写 a..l ; ' Enter
+    Box* row2 = addRow(20.0f);
+    addKey(row2, "大写", 86.0f, [this] { this->toggleShift(); });
+    for (const char* c = "asdfghjkl"; *c != 0; c++)
+    {
+        const std::string value(1, *c);
+        addKey(row2, value, unit, [this, value] {
+            if (this->chinese && !this->numeric)
+            {
+                this->composing += value;
+                this->caret = splitChars(this->text).size();
+                this->refreshLabels();
+                this->refreshCandidates();
+            }
+            else
+                this->insertText(value);
+        }, true, value);
+    }
+    addKey(row2, ";", unit, [insert] { insert(";"); });
+    addKey(row2, "'", unit, [insert] { insert("'"); });
+    addKey(row2, "Enter", 92.0f, [this] { this->confirm(); });
 
-    Button* shiftKey = new Button("大写");
-    shiftKey->setMinWidth(0.0f);
-    shiftKey->setOnClick([this] { this->toggleShift(); });
-    shiftKey->setVisibility(this->numeric ? Visibility::GONE : Visibility::VISIBLE);
-    bottom->addView(shiftKey);
+    // Shift 行：Shift z..m , . / Shift
+    Box* row3 = addRow(30.0f);
+    addKey(row3, "Shift", 100.0f, [this] { this->toggleShift(); });
+    for (const char* c = "zxcvbnm"; *c != 0; c++)
+    {
+        const std::string value(1, *c);
+        addKey(row3, value, unit, [this, value] {
+            if (this->chinese && !this->numeric)
+            {
+                this->composing += value;
+                this->caret = splitChars(this->text).size();
+                this->refreshLabels();
+                this->refreshCandidates();
+            }
+            else
+                this->insertText(value);
+        }, true, value);
+    }
+    addKey(row3, ",", unit, [insert] { insert(","); });
+    addKey(row3, ".", unit, [insert] { insert("."); });
+    addKey(row3, "/", unit, [insert] { insert("/"); });
+    addKey(row3, "Shift", 100.0f, [this] { this->toggleShift(); });
 
+    // 底部：Ctrl Alt Space Alt 取消 确定
+    Box* bottom = addRow(0.0f);
+    addKey(bottom, "Ctrl", 62.0f, [this] { this->moveCaret(-1); });
+    addKey(bottom, "Alt", 62.0f, [this] { this->moveCaret(1); });
     Button* space = new Button("空格");
     space->setMinWidth(0.0f);
     space->setGrow(1.0f);
+    space->setHeight(46.0f);
     space->setOnClick([this] { this->insertText(" "); });
     bottom->addView(space);
-
-    Button* cancelButton = new Button("取消");
-    cancelButton->setMinWidth(0.0f);
-    cancelButton->setOnClick([this] { this->cancel(); });
-    bottom->addView(cancelButton);
-
-    Button* confirmButton = new Button("确定");
-    confirmButton->setMinWidth(0.0f);
-    confirmButton->setOnClick([this] { this->confirm(); });
-    bottom->addView(confirmButton);
-
-    parent->addView(bottom);
+    addKey(bottom, "Alt", 62.0f, [this] { this->moveCaret(1); });
+    addKey(bottom, "取消", 70.0f, [this] { this->cancel(); });
+    addKey(bottom, "确定", 70.0f, [this] { this->confirm(); });
 }
 
 std::string ImePanel::displayText() const
@@ -543,6 +581,9 @@ std::string ImePanel::fullWidth(const std::string& value) const
     if (value == "-") return "－";
     if (value == "/") return "／";
     if (value == "\\") return "＼";
+    if (value == "[") return "【";
+    if (value == "]") return "】";
+    if (value == "=") return "＝";
     return value;
 }
 
