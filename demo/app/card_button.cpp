@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "app/card_button.hpp"
 
 #include <cmath>

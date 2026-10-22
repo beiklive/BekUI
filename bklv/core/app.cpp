@@ -1,4 +1,6 @@
 #include "bklv/core/app.hpp"
+
+#include <chrono>
 #include "bklv/core/decode_queue.hpp"
 
 #include "bklv/core/frame_budget.hpp"

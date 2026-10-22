@@ -14,10 +14,20 @@ namespace demo
 {
 
 static ToastManager* g_demoToasts = nullptr;
+static DemoApp* g_demoApp = nullptr;
 
 ToastManager* toastManager()
 {
     return g_demoToasts;
+}
+
+void applyTheme(const std::string& name)
+{
+    if (g_demoApp == nullptr)
+        return;
+    if (bklv::App* app = bklv::App::getCurrent())
+        app->setTheme(name);
+    g_demoApp->getShell()->setGlassEnabled(name == "glass");
 }
 
 DemoApp::DemoApp()
@@ -34,6 +44,7 @@ DemoApp::DemoApp()
     this->setBackdropPreset(0); // 实验：浅色背景时不要深色预设
 
     // Toast：挂在 HUD 层（内容/页头之上），右上角滑入
+    g_demoApp = this;
     this->toasts = new ToastManager();
     g_demoToasts = this->toasts;
     this->toasts->setPositionTop(64.0f); // 避开右上角的帧率覆盖
@@ -143,6 +154,7 @@ void DemoApp::showHome()
         { "布局演示", "Yoga 对齐与伸缩（纯色 rect）", "dashboard", 5 },
         { "JSON 主题能力", "外观 JSON 的完整表现力", "palette", 6 },
         { "Cell 家族", "开关 / 单选 / 选择器 / 输入", "list", 7 },
+        { "文件浏览", "Recycler + 目录跳转", "folder_open", 8 },
     };
     for (const Entry& entry : entries2)
     {
@@ -205,6 +217,8 @@ void DemoApp::openDemo(int index)
         this->openPage("JSON 主题能力", [] { return buildJsonThemePage(); }, 6);
     else if (index == 7)
         this->openPage("Cell 家族", [] { return buildCellsPage(); }, 7);
+    else if (index == 8)
+        this->openPage("文件浏览", [] { return buildFilesPage(); }, 8);
 }
 
 Box* DemoApp::wrapPage(Box* content)

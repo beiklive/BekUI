@@ -7,6 +7,7 @@
 #include "bklv/core/icon_font.hpp"
 #include "bklv/core/time.hpp"
 #include "bklv/core/transition.hpp"
+#include "bklv/core/json_view.hpp"
 
 using namespace bklv;
 
@@ -179,6 +180,44 @@ Box* buildJsonThemePage()
         readThemeJson("demo/transition_card.json"),
         "外观里的 transitions 描述 show / hide 的 alpha 与 translateY；这里每 1.6s 自动播一次，"
         "hide 播完才真正隐藏。"));
+
+    // 页面级 JSON：整个页面由 view/page_json.json 描述
+    {
+        Box* stage = new Box(Axis::COLUMN);
+        stage->setWidthPercentage(100.0f);
+        stage->setAlignItems(AlignItems::CENTER);
+
+        View* jsonPage = createViewFromTheme("page_json");
+        if (jsonPage != nullptr)
+        {
+            jsonPage->setWidth(440.0f);
+            stage->addView(jsonPage);
+        }
+
+        page->addView(makeShowcaseSection("JSON · 页面级描述（view/page_json.json）", stage,
+            readThemeJson("view/page_json.json"),
+            "控件结构也能由 JSON 描述：createViewFromTheme 建出整棵视图树，C++ 只负责挂上去。"));
+    }
+
+    // 主题切换：default / glass（glass 会打开外壳玻璃）
+    {
+        Box* row = new Box(Axis::ROW);
+        row->setGap(12.0f);
+        row->setAlignItems(AlignItems::CENTER);
+
+        Button* defaultTheme = new Button("默认主题");
+        defaultTheme->setOnClick([] { applyTheme("default"); });
+        row->addView(defaultTheme);
+
+        Button* glassTheme = new Button("玻璃主题");
+        glassTheme->setOnClick([] { applyTheme("glass"); });
+        row->addView(glassTheme);
+
+        page->addView(makeShowcaseSection("主题 · 切换 default / glass", row,
+            readThemeJson("theme.json"),
+            "glass 基于 default 派生：只覆盖上下栏与弹层的玻璃层，其余缺项回退 default；"
+            "切换时同时开关外壳玻璃。"));
+    }
 
     return page;
 }

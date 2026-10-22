@@ -34,6 +34,9 @@ class DemoApp
     // 0=无 1=网格 2=浮动 3=渐变（--bg 用）
     void setBackdropPreset(int preset);
 
+    // 外壳（demo 主题切换要开关玻璃）
+    bklv::Shell* getShell() const { return this->shell; }
+
     // Toast 宿主（页面里要弹通知时用 demo::toastManager()）
     bklv::ToastManager* getToastManager() const { return this->toasts; }
 

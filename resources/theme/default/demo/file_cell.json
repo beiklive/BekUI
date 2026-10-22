@@ -1,0 +1,24 @@
+{
+  "$comment": "demo 衍生：文件列表行（import 基础 Cell 的视觉，换成图标 + 标题 + 右侧大小）",
+  "box": { "width": "100%", "height": 56, "axis": "row", "alignItems": "center",
+           "padding": [6, 16, 6, 16], "gap": 12 },
+  "layers": [
+    { "import": "base/layer/hl_bg" },
+    { "op": "rect", "id": "bg", "radius": "@theme/metric.radius.sm",
+      "fill": "@theme/color.surface.card" },
+    { "op": "text", "id": "icon", "data_id": "icon", "font_kind": "icon",
+      "fontSize": 24, "color": "@theme/color.accent.base",
+      "align": "left", "valign": "center", "inset": [0, 0, 0, 16] },
+    { "op": "text", "id": "title", "data_id": "title",
+      "fontSize": 17, "color": "@theme/color.text.primary",
+      "align": "left", "valign": "center", "inset": [0, 0, 0, 54] },
+    { "op": "text", "id": "info", "data_id": "info",
+      "fontSize": 13, "color": "@theme/color.text.dim",
+      "align": "right", "valign": "center", "inset": [0, 16, 0, 0] }
+  ],
+  "states": {
+    "focused": {
+      "hlBg.fill": { "to": "@theme/color.highlight.background", "duration": 120 }
+    }
+  }
+}

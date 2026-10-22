@@ -74,6 +74,7 @@ Box* buildVerticalTabPage()
     frame->setGrow(1.0f);
 
     frame->addTab("账户", bklv::icon::glyphByName("star"), makeTabPage("账户", "竖直 TabFrame 的第 1 页"));
+    frame->addSeparator();
     frame->addTab("通知", bklv::icon::glyphByName("settings"), makeTabPage("通知", "竖直 TabFrame 的第 2 页"));
     frame->addTab("关于", bklv::icon::glyphByName("menu"), makeTabPage("关于", "竖直 TabFrame 的第 3 页"));
 

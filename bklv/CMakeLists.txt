@@ -316,6 +316,7 @@ set(BKLV_CORE_SOURCES
     core/globals.cpp
     core/frame_budget.cpp
     core/frame_stats.cpp
+    core/file_system.cpp
     core/focus_ring.cpp
     core/gradient.cpp
     core/transition_player.cpp

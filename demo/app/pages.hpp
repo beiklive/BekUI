@@ -18,6 +18,9 @@ bklv::Box* buildVerticalTabPage();
 // demo 级 Toast 宿主（由 DemoApp 创建；页面里弹提示用）
 bklv::ToastManager* toastManager();
 
+// 切主题（glass 主题会同时打开外壳玻璃；default 关闭）
+void applyTheme(const std::string& name);
+
 // 按钮展示：各种 button 外观的集合（骨架页，细节待补）
 bklv::Box* buildButtonShowcasePage();
 
@@ -29,5 +32,8 @@ bklv::Box* buildJsonThemePage();
 
 // Cell 家族：布尔 / 单选 / 选择器 / 详情 / 输入 / 内嵌滑块
 bklv::Box* buildCellsPage();
+
+// 文件浏览器：RecyclerFrame + 跨平台根路径 / 进入目录 / 返回上级
+bklv::Box* buildFilesPage();
 
 } // namespace demo

@@ -1,0 +1,29 @@
+{
+  "box": {
+    "height": "@theme/metric.appletFrame.footerHeight",
+    "shrink": 0,
+    "margin": [
+      0,
+      "@theme/metric.hints.footerMarginSides",
+      0,
+      "@theme/metric.hints.footerMarginSides"
+    ],
+    "padding": [
+      "@theme/metric.hints.footerPaddingTopBottom",
+      "@theme/metric.hints.footerPaddingSides",
+      "@theme/metric.hints.footerPaddingTopBottom",
+      "@theme/metric.hints.footerPaddingSides"
+    ],
+    "alignItems": "stretch",
+    "axis": "row"
+  },
+  "layers": [
+    {
+      "op": "glass",
+      "id": "glass",
+      "fill": "#FFFFFF26",
+      "radius": "@theme/metric.radius.md"
+    }
+  ],
+  "$comment": "glass 主题：在默认盒模型上叠一层玻璃"
+}

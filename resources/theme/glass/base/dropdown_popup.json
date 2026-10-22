@@ -1,0 +1,25 @@
+{
+  "box": {
+    "width": "@theme/metric.dropdown.popupWidth",
+    "padding": "@theme/metric.spacing.xs",
+    "cornerRadius": "@theme/metric.radius.md"
+  },
+  "layers": [
+    {
+      "op": "glass",
+      "id": "glass",
+      "fill": "#FFFFFF26",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "#00000000",
+      "stroke": "@theme/color.common.divider",
+      "strokeWidth": 1,
+      "radius": "@theme/metric.radius.md"
+    }
+  ],
+  "import": "base/glass_surface",
+  "$comment": "glass 主题：面板上叠玻璃（bg 保留，作为玻璃不可用时的降级）"
+}

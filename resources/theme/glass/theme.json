@@ -1,0 +1,13 @@
+{
+  "name": "glass",
+  "version": 1,
+  "author": "bklv",
+  "colorScheme": "light",
+  "description": "基于 default 的玻璃风格主题：只覆盖上下栏 / 弹层，其余回退 default",
+  "files": [
+    "base/widget/header.json",
+    "base/widget/bottom_bar.json",
+    "base/dropdown_popup.json",
+    "base/widget/dialog.json"
+  ]
+}

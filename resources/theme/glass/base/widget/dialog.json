@@ -1,0 +1,81 @@
+{
+  "box": {
+    "width": "@theme/metric.dialog.width",
+    "height": "@theme/metric.dialog.height",
+    "padding": "@theme/metric.spacing.lg",
+    "justifyContent": "flex_end"
+  },
+  "layers": [
+    {
+      "op": "glass",
+      "id": "glass",
+      "fill": "#FFFFFF26",
+      "radius": "@theme/metric.radius.md"
+    },
+    {
+      "op": "rect",
+      "id": "panel",
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.default",
+      "strokeWidth": 1,
+      "radius": "@theme/metric.radius.lg"
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "title",
+      "color": "@theme/color.text.primary",
+      "fontSize": "@theme/metric.font.size.title",
+      "align": "left",
+      "valign": "top",
+      "inset": [
+        16,
+        20,
+        0,
+        20
+      ],
+      "height": 0
+    },
+    {
+      "op": "text",
+      "id": "text",
+      "data_id": "text",
+      "color": "@theme/color.text.dim",
+      "fontSize": "@theme/metric.font.size.md",
+      "align": "left",
+      "valign": "top",
+      "inset": [
+        52,
+        20,
+        0,
+        20
+      ]
+    }
+  ],
+  "states": {
+    "open": {
+      "panel.opacity": {
+        "to": 1,
+        "duration": 160,
+        "easing": "quadraticOut"
+      },
+      "panel.offsetY": {
+        "to": 0,
+        "duration": 160,
+        "easing": "quadraticOut"
+      }
+    },
+    "closed": {
+      "panel.opacity": {
+        "to": 0,
+        "duration": 140
+      },
+      "panel.offsetY": {
+        "to": 24,
+        "duration": 140
+      }
+    }
+  },
+  "import": "base/glass_surface",
+  "$comment": "glass 主题：面板上叠玻璃（bg 保留，作为玻璃不可用时的降级）"
+}
