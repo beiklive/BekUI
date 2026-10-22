@@ -11,6 +11,7 @@
 
 #include "bklv/core/alive.hpp"
 #include "bklv/core/file_system.hpp"
+#include "bklv/core/input.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/icon_font.hpp"
 #include "bklv/views/label.hpp"
@@ -174,7 +175,11 @@ Box* buildFilesPage()
     page->setGap(getTheme().number("metric.spacing.md", 12.0f));
 
     FileBrowserSource* source = new FileBrowserSource();
-    source->showRoots();
+    // 默认进入平台第一个根路径（桌面=主目录，Switch=SD 卡），而不是停在"选择根目录"
+    if (!fsx::roots().empty())
+        source->openDirectory(fsx::roots().front().path);
+    else
+        source->showRoots();
 
     RecyclerFrame* frame = new RecyclerFrame();
     frame->setWidthPercentage(100.0f);
@@ -199,32 +204,38 @@ Box* buildFilesPage()
     Button* up = new Button("上级");
     up->setIcon(bklv::icon::glyphByName("menu"));
 
-    auto refreshHeader = [source, pathLabel, statusLabel, up] {
+    Button* rootButton = new Button("根目录");
+    rootButton->setIcon(bklv::icon::glyphByName("folder_open"));
+
+    auto refreshHeader = [source, pathLabel, statusLabel, up, rootButton] {
         pathLabel->setText(source->rootsMode ? "选择根目录" : source->path);
         statusLabel->setText(source->error);
         up->setEnabled(!source->rootsMode);
-        if (!source->rootsMode)
-        {
-            // 已经在文件系统的根（parent 为空）时，返回上级会回到根列表
-            up->setEnabled(true);
-        }
+        rootButton->setEnabled(!source->rootsMode);
+    };
+
+    // 任何"重建列表"之前先把焦点收回按钮：列表 cell 会被回收，
+    // 若焦点还留在某个 cell 上，焦点框/下一次导航就会踩到已释放的视图（崩溃根因）。
+    auto reload = [frame, up, refreshHeader] {
+        bklv::getInputManager().giveFocus(up);
+        frame->reloadData();
+        refreshHeader();
     };
 
     // 关键：不在 cell 的动作回调里同步 reloadData —— 那会把正在分发动作的 cell
     // 回收/摘掉，回调栈还没退就 use-after-free。延迟一帧再导航，并用 AliveFlag 兜住
     // "页面已经关了"的情况。
-    auto openIndex = [source, frame, refreshHeader, guard = page->alive.handle()](size_t index) {
+    auto openIndex = [source, reload, guard = page->alive.handle()](size_t index) {
         if (index >= source->entries.size())
             return;
         const fsx::Entry entry = source->entries[index];
-        bklv::task::delay(1, [source, frame, refreshHeader, guard, entry] {
+        bklv::task::delay(1, [source, reload, guard, entry] {
             if (guard.expired() || !guard.lock()->isAlive())
                 return;
             if (entry.directory)
             {
                 source->openDirectory(entry.path);
-                frame->reloadData();
-                refreshHeader();
+                reload();
             }
             else
             {
@@ -237,10 +248,14 @@ Box* buildFilesPage()
         return new FileCell(source, openIndex);
     });
 
-    up->setOnClick([source, frame, refreshHeader] {
+    up->setOnClick([source, reload] {
         source->goUp();
-        frame->reloadData();
-        refreshHeader();
+        reload();
+    });
+
+    rootButton->setOnClick([source, reload] {
+        source->showRoots();
+        reload();
     });
 
     Box* header = new Box(Axis::ROW);
@@ -250,6 +265,7 @@ Box* buildFilesPage()
     header->setMarginBottom(4.0f);
     header->setPadding(4.0f);
     header->addView(up);
+    header->addView(rootButton);
     header->addView(pathLabel);
 
     page->addView(header);

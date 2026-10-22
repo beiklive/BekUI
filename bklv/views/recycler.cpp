@@ -125,9 +125,15 @@ void RecyclerFrame::reloadData()
     if (this->contentBox == nullptr)
         return;
 
-    // 旧的全部回收，避免尺寸变化后错位
-    for (auto& entry : this->activeCells)
-        this->recycleCell(entry.first);
+    // 旧的全部回收，避免尺寸变化后错位。
+    // 先收集再回收：recycleCell 会 erase activeCells，边遍历边 erase 会让迭代器失效
+    // （文件列表跳目录时踩过：列表项一多就崩在 reloadData 里）。
+    std::vector<size_t> activeIndices;
+    activeIndices.reserve(this->activeCells.size());
+    for (const auto& entry : this->activeCells)
+        activeIndices.push_back(entry.first);
+    for (size_t index : activeIndices)
+        this->recycleCell(index);
 
     this->buildRowOffsets();
 
