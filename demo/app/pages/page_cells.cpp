@@ -14,8 +14,9 @@ namespace
 Box* cellColumn()
 {
     Box* column = new Box(Axis::COLUMN);
-    column->setWidth(480.0f);
+    column->setWidthPercentage(100.0f);
     column->setGap(2.0f);
+    column->setPadding(2.0f);
     return column;
 }
 

@@ -9,7 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "bklv/core/alive.hpp"
 #include "bklv/core/file_system.hpp"
+#include "bklv/core/task.hpp"
 #include "bklv/core/icon_font.hpp"
 #include "bklv/views/label.hpp"
 #include "bklv/views/recycler.hpp"
@@ -154,9 +156,20 @@ class FileCell : public RecyclerCell
 
 } // namespace
 
+class FilesPage : public Box
+{
+  public:
+    FilesPage()
+        : Box(Axis::COLUMN)
+    {
+    }
+
+    AliveFlag alive;
+};
+
 Box* buildFilesPage()
 {
-    Box* page = new Box(Axis::COLUMN);
+    FilesPage* page = new FilesPage();
     page->setWidthPercentage(100.0f);
     page->setGap(getTheme().number("metric.spacing.md", 12.0f));
 
@@ -175,6 +188,7 @@ Box* buildFilesPage()
 
     Label* pathLabel = new Label();
     pathLabel->setGrow(1.0f);
+    pathLabel->setSingleLine(true);
     pathLabel->setFontSize(15.0f);
     pathLabel->setTextColor(getTheme().color("color.text.dim"));
 
@@ -196,20 +210,27 @@ Box* buildFilesPage()
         }
     };
 
-    auto openIndex = [source, frame, refreshHeader](size_t index) {
+    // 关键：不在 cell 的动作回调里同步 reloadData —— 那会把正在分发动作的 cell
+    // 回收/摘掉，回调栈还没退就 use-after-free。延迟一帧再导航，并用 AliveFlag 兜住
+    // "页面已经关了"的情况。
+    auto openIndex = [source, frame, refreshHeader, guard = page->alive.handle()](size_t index) {
         if (index >= source->entries.size())
             return;
         const fsx::Entry entry = source->entries[index];
-        if (entry.directory)
-        {
-            source->openDirectory(entry.path);
-            frame->reloadData();
-            refreshHeader();
-        }
-        else
-        {
-            toastManager()->showInfo("文件：" + entry.name);
-        }
+        bklv::task::delay(1, [source, frame, refreshHeader, guard, entry] {
+            if (guard.expired() || !guard.lock()->isAlive())
+                return;
+            if (entry.directory)
+            {
+                source->openDirectory(entry.path);
+                frame->reloadData();
+                refreshHeader();
+            }
+            else
+            {
+                toastManager()->showInfo("文件：" + entry.name);
+            }
+        });
     };
 
     frame->registerCell("file", [source, openIndex] {
@@ -226,6 +247,8 @@ Box* buildFilesPage()
     header->setWidthPercentage(100.0f);
     header->setGap(getTheme().number("metric.spacing.sm", 8.0f));
     header->setAlignItems(AlignItems::CENTER);
+    header->setMarginBottom(4.0f);
+    header->setPadding(4.0f);
     header->addView(up);
     header->addView(pathLabel);
 

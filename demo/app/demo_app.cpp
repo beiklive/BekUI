@@ -40,6 +40,11 @@ DemoApp::DemoApp()
 
     this->shell->setFpsOverlayEnabled(true);
 
+#ifndef __SWITCH__
+    // 桌面没有系统软键盘：输入容器拉起内置 IME 面板
+    bklv::setImeManager(&bklv::getPanelImeManager());
+#endif
+
     // 预设背景（挂外壳的背景层，铺满视口）
     this->setBackdropPreset(0); // 实验：浅色背景时不要深色预设
 

@@ -69,6 +69,7 @@
 #include "bklv/widgets/edit_text_dialog.hpp"
 #include "bklv/widgets/form_buttons.hpp"
 #include "bklv/widgets/header.hpp"
+#include "bklv/widgets/ime_panel.hpp"
 #include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/notification.hpp"
 #include "bklv/widgets/pager.hpp"
