@@ -218,7 +218,35 @@ dist\demo.exe
   那时中文会显示成方块。
 - **Vulkan 的颜色格式选 UNORM，不选 sRGB**，否则整屏会发灰。细节见 `docs/bklv-api.md`
   与 `AGENTS.md`。
-- **MSVC 未验证**，这套构建走的是 MinGW-w64。
+- **MSVC 也能编**（VS 2022 / MSVC 14.44 验证过）。注意生成器是**配置时**定下的：
+  PATH 里有 MinGW 时 `cmake` 默认会选 Ninja + gcc，要 MSVC 就得显式要生成器
+  （新的构建目录才行，换生成器必须删目录；不要加 `-A`，默认就是 x64）：
+
+  ```bat
+  cmake -S . -B build\gl -G "Visual Studio 17 2022" -DBKLV_BUILD_TESTS=ON
+  cmake --build build\gl --config Release
+  ctest --test-dir build\gl -C Release
+  ```
+
+  Vulkan 换 `build\vk`，**`-DBKLV_GRAPHICS` 必须显式给**（默认是 gl，漏了会在
+  `build\vk` 里编出一份 GL 版、产物落到 `dist\` 而不是 `dist\vk\`）：
+
+  ```bat
+  cmake -S . -B build\vk -G "Visual Studio 17 2022" -DBKLV_GRAPHICS=vk -DBKLV_BUILD_TESTS=ON
+  cmake --build build\vk --config Release
+  ctest --test-dir build\vk -C Release
+  ```
+
+  80 个测试在两种后端下全过（测试的工作目录已固定为
+  源码根，测试里写的相对路径 `dist/...` 按它解析）。与 MinGW 的差异都是移植性问题：
+  `unistd.h` / `setenv` / `std::rename` 覆盖语义 / GCC 专用选项 / 源码里的 UTF-8 中文
+  （已加 `/utf-8`、`LUNASVG_BUILD_STATIC`）。
+
+  vendored `tweeny` 有一处 MSVC 不接受的 lambda 写法。补丁**只在 MSVC 下、由 CMake 在
+  配置阶段自动打**（`bklv/CMakeLists.txt` 里 `if(MSVC)` 那一段），打的是子模块的工作树
+  文件，gitlink 仍指向上游 `68a7f44`（所以 `git status` 会显示子模块 modified，但不必、
+  也不该把改过的子模块提交进去）。补丁内容就是 `notes/tweeny-msvc-render.patch`，
+  打过了会跳过，打不上会直接报错并提示 `git submodule update --force bklv/3rd/tweeny`。
 
 ### Switch（devkitPro）
 
