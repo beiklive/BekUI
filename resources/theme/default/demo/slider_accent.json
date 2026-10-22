@@ -1,7 +1,0 @@
-{
-  "$comment": "demo 衍生：import 基础 Slider，只覆盖已填充轨道颜色",
-  "import": "base/slider/slider",
-  "layers": [
-    { "op": "rect", "id": "fill", "fill": "@theme/color.common.orange" }
-  ]
-}

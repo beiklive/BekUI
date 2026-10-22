@@ -179,7 +179,6 @@ set(BKLV_APP_SOURCES
     app/pages/page_layout.cpp
     app/pages/page_json_theme.cpp
     app/pages/page_cells.cpp
-    app/pages/page_slider.cpp
     app/pages/showcase.cpp
 )
 

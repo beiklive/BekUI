@@ -131,8 +131,7 @@
     "demo/import_base.json",
     "demo/import_child.json",
     "demo/transition_card.json",
-    "demo/danger_cell.json",
-    "demo/slider_accent.json"
+    "demo/danger_cell.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",
