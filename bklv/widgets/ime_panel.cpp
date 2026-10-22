@@ -296,7 +296,8 @@ void ImePanel::buildLayout()
 
     this->field = new ImeField();
     this->field->setWidthPercentage(70.0f);
-    this->field->setHeightPercentage(60.0f);
+    // 上方剩余空间 = 720 - 键盘 360 - 根 padding/gap；取其中 60%
+    this->field->setHeight(180.0f);
     this->field->textProvider = [this] { return this->textWithComposing(); };
     this->field->caretProvider = [this] { return this->caretChars(); };
     this->field->onCaret = [this](size_t index) { this->setCaret(index); };
@@ -317,6 +318,9 @@ void ImePanel::buildLayout()
 
     Box* keyboard = new Box(Axis::COLUMN);
     keyboard->setWidthPercentage(100.0f);
+    keyboard->setHeight(360.0f); // 固定高度：键盘完全包在面板里，不会溢出到上面
+    keyboard->setMinHeight(360.0f);
+    keyboard->setShrink(0.0f);
     keyboard->setGap(10.0f);
     keyboard->setPadding(14.0f);
     keyboard->setBackgroundColor(getTheme().color("color.surface.card"));
@@ -324,18 +328,22 @@ void ImePanel::buildLayout()
 
     Box* columns = new Box(Axis::ROW);
     columns->setWidthPercentage(100.0f);
+    columns->setHeightPercentage(100.0f);
     columns->setGap(16.0f);
-    columns->setAlignItems(AlignItems::FLEX_END);
+    columns->setAlignItems(AlignItems::STRETCH);
 
     Box* numberPad = new Box(Axis::COLUMN);
     numberPad->setWidth(190.0f);
+    numberPad->setHeightPercentage(100.0f);
     numberPad->setGap(6.0f);
     this->buildNumberPad(numberPad);
     columns->addView(numberPad);
 
     Box* letters = new Box(Axis::COLUMN);
     letters->setGrow(1.0f);
+    letters->setHeightPercentage(100.0f);
     letters->setGap(6.0f);
+    letters->setJustifyContent(JustifyContent::SPACE_BETWEEN);
     this->buildFullKeyboard(letters);
     columns->addView(letters);
 
@@ -345,16 +353,18 @@ void ImePanel::buildLayout()
 
 void ImePanel::buildNumberPad(Box* parent)
 {
-    const char* grid[4][3] = {
+    const char* grid[5][3] = {
+        { "/", "*", "-" },
         { "7", "8", "9" },
         { "4", "5", "6" },
         { "1", "2", "3" },
-        { ".", "0", "退格" },
+        { "0", ".", "退格" },
     };
 
-    for (int r = 0; r < 4; r++)
+    for (int r = 0; r < 5; r++)
     {
         Box* row = new Box(Axis::ROW);
+        row->setHeight(48.0f);
         row->setGap(6.0f);
         row->setJustifyContent(JustifyContent::CENTER);
         for (int c = 0; c < 3; c++)
@@ -367,10 +377,7 @@ void ImePanel::buildNumberPad(Box* parent)
             if (label == "退格")
                 key->setOnClick([this] { this->backspace(); });
             else if (label == ".")
-                key->setOnClick([this] {
-                    if (!this->numeric)
-                        this->insertText(".");
-                });
+                key->setOnClick([this] { this->insertText("."); });
             else
                 key->setOnClick([this, label] { this->insertText(label); });
             row->addView(key);
@@ -385,6 +392,7 @@ void ImePanel::buildFullKeyboard(Box* parent)
     for (int r = 0; r < 3; r++)
     {
         Box* row = new Box(Axis::ROW);
+        row->setHeight(48.0f);
         row->setGap(6.0f);
         row->setJustifyContent(JustifyContent::CENTER);
         for (const char* c = rows[r]; *c != 0; c++)
@@ -415,6 +423,7 @@ void ImePanel::buildFullKeyboard(Box* parent)
     for (int r = 0; r < 2; r++)
     {
         Box* row = new Box(Axis::ROW);
+        row->setHeight(48.0f);
         row->setGap(6.0f);
         row->setJustifyContent(JustifyContent::CENTER);
         for (const char* c = punctuation[r]; *c != 0; c++)
@@ -431,6 +440,7 @@ void ImePanel::buildFullKeyboard(Box* parent)
     }
 
     Box* bottom = new Box(Axis::ROW);
+    bottom->setHeight(48.0f);
     bottom->setGap(8.0f);
     bottom->setWidthPercentage(100.0f);
     bottom->setAlignItems(AlignItems::CENTER);
