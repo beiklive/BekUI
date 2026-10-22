@@ -3,8 +3,8 @@
 // 资源路径解析。
 //
 // 各平台资源的存放方式不同，但代码里希望写同一句相对路径：
-//   Switch  资源由 elf2nro --romfsdir 打进 nro，运行时 romfsInit() 挂成
-//           "romfs:/"，所以解析成 "romfs:/resources/xxx.png"
+//   Switch  资源由 build_romfs 做成镜像、再用 elf2nro --romfs 嵌进 nro，
+//           运行时 romfsInit() 挂成 "romfs:/"，所以解析成 "romfs:/resources/xxx.png"
 //   桌面    构建会把 resources/ 复制到可执行文件旁边，解析成
 //           "<可执行文件目录>/resources/xxx.png"
 //

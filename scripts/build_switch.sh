@@ -78,6 +78,8 @@ DEFINES=(-D__SWITCH__ -DBKLV_SWITCH -DBKLV_GLES3 -DBKLV_USE_STB_IMAGE -DIMGUI_IM
 
 # -I"${ROOT_DIR}"：让 #include "bklv/..." 生效
 # -I"${ROOT_DIR}/demo"：让 demo 的 #include "app/..." 生效
+# devkitPro 的头（portlibs / libnx）用 -isystem：libnx 自己的结构体初始化不完整，
+# 用 -Wall -Wextra 编会刷几百条 -Wmissing-field-initializers，淹没我们自己的警告。
 INCLUDES=(-I"${ROOT_DIR}"
     -I"${ROOT_DIR}/demo"
     -I"${THIRD_DIR}/imgui"
@@ -85,8 +87,8 @@ INCLUDES=(-I"${ROOT_DIR}"
     -I"${THIRD_DIR}/stb"
     -I"${THIRD_DIR}/tweeny/include"
     -I"${THIRD_DIR}/json/single_include"
-    -I"${PORTLIBS}/include"
-    -I"${LIBNX}/include")
+    -isystem "${PORTLIBS}/include"
+    -isystem "${LIBNX}/include")
 
 # 注意：只关 RTTI，**不关异常**。
 # 关掉异常会让 C++ 标准库的部分设施不能用（std::filesystem 出错只能 terminate），

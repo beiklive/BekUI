@@ -19,11 +19,15 @@ std::string lower(std::string value)
     return value;
 }
 
+// Switch 上只有 sdmc:/ 与 romfs:/，不读环境变量；不包 #ifndef 会得到
+// "defined but not used" 警告（Switch 构建是 -Wall -Wextra 零警告的）。
+#ifndef __SWITCH__
 std::string envPath(const char* name)
 {
     const char* value = std::getenv(name);
     return value != nullptr ? std::string(value) : std::string();
 }
+#endif
 
 } // namespace
 
