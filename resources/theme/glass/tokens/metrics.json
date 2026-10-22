@@ -1,5 +1,5 @@
 {
-  "$comment": "ios 主题：苹果风。尺寸按**比例**借鉴 iOS 的层级（大标题/正文/脚注、分组行高、胶囊分段），不照搬点值 —— bklv 画布是 1280×720，iOS 的 17pt/44pt 直接搬会明显偏大。",
+  "$comment": "尺寸对齐 borealis 的 style.cpp（header/applet_frame/sidebar/button 那几组）。",
   "spacing": {
     "xs": 6,
     "sm": 10,
@@ -8,9 +8,9 @@
     "xl": 28
   },
   "radius": {
-    "sm": 6,
-    "md": 8,
-    "lg": 12,
+    "sm": 4,
+    "md": 5,
+    "lg": 8,
     "round": 999
   },
   "border": {
@@ -22,14 +22,14 @@
     "slow": 260
   },
   "control": {
-    "height": 44,
+    "height": 48,
     "minWidth": 120
   },
   "header": {
-    "height": 50,
-    "titleFontSize": 17,
+    "height": 55,
+    "titleFontSize": 18,
     "paddingSides": 0,
-    "paddingTopBottom": 10,
+    "paddingTopBottom": 11,
     "imageSpacing": 18,
     "titleTopOffset": 7,
     "separatorThickness": 1,
@@ -38,21 +38,21 @@
     "fontSize": 18
   },
   "bottomBar": {
-    "height": 60
+    "height": 73
   },
   "appletFrame": {
-    "headerHeight": 50,
-    "footerHeight": 60,
-    "paddingSides": 24,
+    "headerHeight": 55,
+    "footerHeight": 73,
+    "paddingSides": 30,
     "contentTop": 12,
     "separatorThickness": 1,
     "contentPaddingSides": 28,
     "contentPaddingTopBottom": 28
   },
   "sidebar": {
-    "width": 320,
-    "itemHeight": 48,
-    "itemFontSize": 19,
+    "width": 300,
+    "itemHeight": 52,
+    "itemFontSize": 22,
     "gap": 2,
     "paddingTop": 12,
     "paddingBottom": 12,
@@ -63,30 +63,32 @@
     "accentMarginX": 8,
     "separatorHeight": 18,
     "separatorThickness": 1,
-    "radius": 10,
+    "radius": 14,
     "margin": 12,
     "iconSize": 22,
     "iconInset": 22,
     "titleInset": 54,
-    "shadowFeather": 14
+    "shadowFeather": 0
   },
   "tabCell": {
-    "height": 32,
-    "fontSize": 15
+    "height": 40,
+    "fontSize": 22
   },
   "slider": {
-    "height": 28
+    "height": 32
   },
   "dialog": {
-    "width": 460,
+    "width": 520,
     "height": 220
   },
   "dropdown": {
     "height": 70,
-    "itemHeight": 52,
+    "itemHeight": 60,
     "itemTextSize": 20,
-    "popupWidth": 300,
-    "popupMinWidth": 180
+    "popupWidth": 280,
+    "popupMinWidth": 180,
+    "margin": 20,
+    "gap": 4
   },
   "textField": {
     "height": 48
@@ -97,26 +99,26 @@
     "caretWidth": 2
   },
   "button": {
-    "textSize": 17,
-    "borderThickness": 1
+    "textSize": 18,
+    "borderThickness": 2
   },
   "highlight": {
     "radius": 6,
     "strokeWidth": 5
   },
   "hintItem": {
-    "paddingX": 12,
+    "paddingX": 16,
     "paddingY": 4
   },
   "card": {
     "padding": 20
   },
   "list": {
-    "itemHeight": 56,
-    "sectionHeaderHeight": 30
+    "itemHeight": 68,
+    "sectionHeaderHeight": 36
   },
   "hintsBar": {
-    "paddingX": 16
+    "paddingX": 25
   },
   "hints": {
     "footerMarginSides": 30,
@@ -130,19 +132,19 @@
     "batteryLowThreshold": 0.2
   },
   "cell": {
-    "height": 60,
+    "height": 70,
     "paddingX": 16,
     "paddingY": 14,
     "gap": 14,
-    "titleFontSize": 18,
-    "detailFontSize": 18,
-    "detailWidth": 56,
+    "titleFontSize": 22,
+    "detailFontSize": 22,
+    "detailWidth": 50,
     "sliderWidth": 240
   },
   "switch": {
-    "width": 51,
-    "height": 31,
-    "knob": 27
+    "width": 52,
+    "height": 26,
+    "knob": 20
   },
   "radio": {
     "size": 22,
@@ -152,8 +154,8 @@
     "width": 360,
     "paddingX": 20,
     "paddingY": 14,
-    "radius": 14,
-    "fontSize": 17,
+    "radius": 8,
+    "fontSize": 18,
     "gap": 8,
     "duration": 3.0,
     "marginTop": 16,
@@ -229,23 +231,22 @@
     "barWidth": 4,
     "barMargin": 12,
     "titleInset": 16,
-    "fontSize": 15,
+    "fontSize": 18,
     "subtitleSize": 15,
-    "paddingTopBottom": 14
+    "paddingTopBottom": 16
   },
   "tabBar": {
-    "height": 60,
-    "paddingV": 6,
-    "paddingH": 12
+    "height": 64,
+    "paddingV": 8,
+    "paddingH": 16
   },
   "font": {
     "size": {
-      "xs": 13,
+      "xs": 12,
       "sm": 15,
-      "md": 17,
+      "md": 18,
       "lg": 22,
-      "title": 30,
-      "lineHeight": 1.35
+      "title": 28
     },
     "lineHeight": 1.4
   }

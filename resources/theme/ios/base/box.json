@@ -1,8 +1,0 @@
-{
-  "box": {
-    "axis": "column",
-    "height": "auto"
-  },
-  "layers": [],
-  "import": "base/glass_surface"
-}
