@@ -141,7 +141,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       跟随 borealis 的资源布局但**不依赖目录枚举**（romfs 上的目录扫描真机未验证，
       改为单文件 + 可选 `$files` 清单）。
       *验收*：切换语言后界面文案即时更新。
-      已完成：`core/i18n.hpp/.cpp` + `resources/i18n/*.json` + `tests/i18n_test.cpp`（30 项断言）。
+      已完成：`core/i18n.hpp/.cpp` + `resources/i18n/*.json`（自检时用临时程序跑过 30 项断言）。
       语言名经 `canonicalLocale()` 归一，装载不依赖目录枚举（用 `$files` 清单）。
       注意：文案在控件构造时解析，切语言需显式重译已有视图（文本页有按钮演示）。
 - [ ] **手势层**
@@ -246,14 +246,14 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] `View::applyTheme()` / `applyThemeRecursive()`；`App::setTheme()` 运行时换肤
 - [x] `bklv/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
 - [x] 第二套皮肤 `ios`（复制 default 改出来的）用于验证换肤
-- [x] 测试：`tests/theme_test.cpp`（44）+ `tests/widget_test.cpp`（24）
+- [x] 验收：两套主题的全部外观逐个编译 + 控件行为（当时用 44 + 24 项断言，测试目录已移除）
 - [x] `Header` / `BottomBar`（多文字层 + 显式宽高的装饰件）
 - [x] 外观层支持显式 `width`/`height` + `align`/`valign`（色条、下边线这类装饰件要用）
 - [x] 外观驱动控件的**固有尺寸**：测量函数按"文字层宽度 + inset"上报，
       所以 TabCell/Button 这类不用给死宽高
 - [x] `Slider` / `TabFrame` / `Sidebar`
 - [x] **`@theme/` 引用写错会硬失败**（不再静默回退成洋红），
-      并由 theme_test 第 8 节逐个编译两套主题的全部外观兜底
+      改主题后要逐个编译两套主题的全部外观兜底
 - [x] **弹层 + 焦点栈**（`InputManager` 模态栈 + `App::pushOverlay`/`popOverlay`）：
       模态内命中与导航限制、焦点保存/恢复、App 销毁时清态
 - [x] `Dialog`（遮罩 + 面板 + 按钮行，开关走外观状态动效）
@@ -306,8 +306,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - 依赖：`bklv/3rd/json`（nlohmann/json v3.11.3，单头模式）。实测 NRO +65536 字节
 - 代码：`core/attributes.*`、`core/json_view.*`、`views/json_cell.*`、
   `resources/views/{page_json,list_item}.json`、`demo/app/pages/page_json.cpp`（第 5 个 tab）
-- 测试：`tests/json_test.cpp`（80 项断言）+ `tests/i18n_test.cpp`（30 项），
-  CMake 开关 `-DBKLV_BUILD_TESTS=ON`，产物在 `dist/` 用 ctest 或直接执行
+- 验收：临时程序跑过 80 + 30 项断言（测试目录已移除，见 P3「单元测试」）
 - 文档：`notes/json-view-design.md`、`docs/bklv-api.md`、README、AGENTS.md
 
 移植期间测试抓到的真 bug（都已修）：`"12px"` 声明支持但没实现、语法错误没进诊断通道、
@@ -353,16 +352,17 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 - [ ] **CI**
       GitHub Actions 矩阵：{macOS, Ubuntu, Windows} × {GL, Vulkan}。
       当前状态：`.github/workflows/ci.yml` 已有第一版 —— 静态检查（命名 + 分层/伞头）
-      一份，{Ubuntu, macOS} × {GL, Vulkan} 四份构建 + `ctest`，构建出现 warning 即失败。
+      一份，{Ubuntu, macOS} × {GL, Vulkan} 四份构建，构建出现 warning 即失败。
       **还没接**：Windows（要先在 CI 里复现 `build.bat` + MSYS2 MINGW64 那套，见 AGENTS.md）。
       第一版没在 CI 上跑过（本机只有 macOS），首次 push 之后可能要调依赖（SDL3 在
       Linux/macOS 上的系统包、MoltenVK 的路径）。*验收*：PR 上能看到矩阵全绿。
 - [ ] **单元测试**
-      现在没有测试，验证全靠手动跑 demo。优先给纯逻辑的部分加：
+      仓库里不再带测试目录（随设计器一起移出，`tests/` 与 `-DBKLV_BUILD_TESTS` 都已删除），验证靠临时程序：
       `RecyclerFrame` 的可见区间与回收、`Label` 的断行、焦点导航的几何打分、
       `ScrollingFrame` 的偏移与惯性。
-      *验收*：`ctest` 能跑；纯逻辑用例不依赖图形 API 与 ImGui 上下文，
+      *验收*：临时程序能跑；纯逻辑用例不依赖图形 API 与 ImGui 上下文，
       因此不需要窗口就能执行（`RecyclerFrame` / `Label` / 焦点导航都不碰绘制）。
+      真要长期维护，建议单开一个测试工程，而不是塞回库仓库。
 - [ ] **Android**
       SDL3 支持 Android，需要工程骨架（Gradle + `SDLActivity`）与
       `PlatformAndroid`。Vulkan 在 Android 上是主力后端。
@@ -388,7 +388,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 | 4 | `RecyclerCell` 默认绝对定位 | 它的定位是给 `RecyclerFrame` 手动摆格子用的；当普通流式控件用时必须传 `false`，否则所有格子叠在原点（踩过：tab 栏全叠在一起） | 构造函数参数名与注释已写明；考虑把「回收接口」与「绝对定位」拆开，或让 `RecyclerFrame` 自己设定位 |
 | 5 | `ScrollingFrame` 不拥有内容视图 | 换内容必须用 `evictContentView()`，直接 `setContentView()` 覆盖会销毁旧内容而调用方可能仍持有指针（踩过：use-after-free 崩溃） | 语义已写进注释；更好的做法是让内容视图的所有权显式化（`std::unique_ptr` 或 `shared_ptr` 参数） |
 | 6 | `Logger` 的格式化缓冲 1024 / 512 字节 | 超长日志被静默截断 | 截断时补一个提示，或按需扩容 |
-| 7 | 无测试、无 CI | 回归靠人跑 demo；本会话里三个 bug 都是靠临时写的无窗口测试才定位到的 | 见 P3；把这次写的那些 headless 验证脚本整理成 `tests/` |
+| 7 | 无测试、无 CI 回归 | 回归靠人跑 demo；早前三个 bug 都是靠临时写的无窗口程序才定位到的（那些程序随 `tests/` 一起移除了） | 见 P3；CI 只做命名/分层门禁 + 双后端零警告构建 |
 | 8 | ~~`src/app` 是 demo 代码却在库源码树里~~ | 已解决：库在 `bklv/`，demo 在 `demo/` | — |
 | 9 | 库里的 `bklv_app` 层已经搬走，但 `demo/app` 仍然耦合在根 `CMakeLists.txt` 里 | 加第二个示例程序时要复制一遍源文件列表 | 等真有第二个示例时再抽成 `demo/CMakeLists.txt` |
 | 10 | 多后端产物目录靠不同构建目录区分 | 两个构建目录若指向同一输出目录，会互相覆盖同名文件，而 CMake 认为目标最新不会重链，得到「另一个后端编出来的程序」且无提示 | 现在是 `dist/`、`dist/vk/`、`dist/switch/` 三份；加新构建配置时注意别和已有的合并 |

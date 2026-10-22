@@ -241,7 +241,6 @@ def read(rel):
 md_api = read('docs/bklv-api.md')
 md_json = read('docs/json-syntax.md')
 
-checks = run('bash', '-c', "grep -c 'add_test' CMakeLists.txt || true")
 commit = run('git', 'rev-parse', '--short', 'HEAD')
 
 sections = []
@@ -251,7 +250,7 @@ counts = {d: len(list((ROOT / 'bklv' / d).glob('*.cpp'))) + len(list((ROOT / 'bk
           for d in ('core', 'views', 'widgets', 'compile', 'backends', 'platforms')}
 sections.append(('概览', f'''
 <p><b>bklv</b> 是一个跨平台 C++17 界面库：<b>Yoga 算 Flexbox 布局</b>，<b>ImGui 的 ImDrawList 负责绘制</b>。
-目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供 demo 与设计器。</p>
+目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一个 demo 程序。</p>
 
 <table>
 <thead><tr><th>项目</th><th>内容</th></tr></thead>
@@ -273,8 +272,7 @@ sections.append(('概览', f'''
 demo/                展示程序（15 个页面 + 底部导航 + 液态玻璃）
 
 resources/theme/     主题 JSON（default / ios）
-tests/               无窗口测试（ctest 驱动，GL 与 VK 各跑一遍）
-scripts/             check.sh（一次跑完命名/分层/双后端构建/全部测试）
+scripts/             check.sh（一次跑完命名/分层/双后端零警告构建）
 docs/                文档（本手册就是其中一份）</code></pre>
 '''))
 
@@ -322,16 +320,15 @@ core      → platforms                  （工厂：方向由"编译期裁剪 +
 sections.append(('构建与运行', f'''
 <pre><code># GL 版（产物到 dist/）
 cmake --preset gl && cmake --build --preset gl
-ctest --preset gl
 
 # Vulkan 版（产物到 dist/vk/，需要 Vulkan SDK / MoltenVK）
 cmake --preset vk && cmake --build --preset vk
 
-# 一次跑完所有门禁（命名 → 分层 → GL/VK 双后端零警告构建 → 全部测试）
+# 一次跑完所有门禁（命名 → 分层 → GL/VK 双后端零警告构建）
 bash scripts/check.sh</code></pre>
 
 <p>约定：<code>-Wall -Wextra -Wpedantic</code> <b>零警告</b>；每个后端各一个构建目录、产物分目录（<code>dist/</code> 与 <code>dist/vk/</code>）。
-CI 见 <code>.github/workflows/ci.yml</code>：静态检查 + {{Ubuntu, macOS}} × {{GL, Vulkan}} 构建 + <code>ctest</code>，
+CI 见 <code>.github/workflows/ci.yml</code>：静态检查 + {{Ubuntu, macOS}} × {{GL, Vulkan}} 构建，
 构建出现 warning 即失败（Windows 还没接，那条路要 MSYS2 + <code>build.bat</code>）。</p>
 
 <h3>用到自己的项目里</h3>
@@ -520,7 +517,6 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
 <tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>
-<tr><td>离屏/无窗口测试</td><td><code>tests/</code> 下每个 <code>*_test.cpp</code> 编译成独立可执行，纯逻辑 + 布局，不建窗口</td></tr>
 </tbody>
 </table>
 '''))
@@ -536,7 +532,7 @@ sections.append(('约定与已知坑', '''
 <li><b>显式值优先</b>：<code>setCornerRadius(r, explicit=true)</code> 之类不会被外观 JSON 覆盖；外观套用一律 <code>explicit=false</code>。</li>
 <li><b>高亮底顺序</b>：<code>hlBg</code> 必须在内容层之前，否则聚焦时整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
 <li><b>玻璃层顺序</b>：阴影(0) → 玻璃(1) → 其余(2)；玻璃不能排到第一个，否则半透明阴影把它压暗。</li>
-<li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（<code>widget_test</code> 钉住）。</li>
+<li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（排反了会多出一道横线）。</li>
 <li><b>输入 → 响应同帧生效</b>：<code>App::frame</code> 的次序是"布局 → 输入 → 绘制"，别把输入挪到绘制之后。</li>
 <li><b>帧内同步加载图片是违规</b>：批量/滚动场景用 <code>setImageFromFileAsync</code>。</li>
 <li><b>JSON 里没有通用回调</b>：只能写"名字"（<code>data</code> / <code>itemBinder</code> / <code>onEnd</code> / <code>bind</code>），
@@ -546,15 +542,12 @@ sections.append(('约定与已知坑', '''
 
 # 10 验收
 sections.append(('验收与 CI', '''
-<pre><code>scripts/check.sh 一共四步，任何一步失败就停：
+<pre><code>scripts/check.sh 一共三步，任何一步失败就停：
   ① python3 scripts/check_naming.py     接口命名约定
   ② python3 scripts/check_layers.py     反向依赖 + 伞头可达范围
-  ③ cmake GL / VK 双后端构建             零警告
-  ④ 全部无窗口测试（GL 一遍、VK 一遍）   产物在 dist/，也可 ctest --preset gl|vk</code></pre>
-<p>测试是<b>无窗口</b>的：只断言数据层 / 布局 / 解析 / 输入语义，不创建窗口、不依赖图形 API，
-所以 CI 上也能跑。新增测试只要在 <code>tests/</code> 放一个 <code>*_test.cpp</code>（自动收集），
-断言脚手架在 <code>tests/test_util.hpp</code>。</p>
-<p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
+  ③ cmake GL / VK 双后端构建             零警告</code></pre>
+<p>渲染路径（后端本体、平台层、demo 页面）仍靠人工验收 —— 这部分是已知盲区。
+要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 '''))
 
 # --------------------------------------------------------------------------

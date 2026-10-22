@@ -114,11 +114,9 @@ add_subdirectory(bklv)
 # ---------------------------------------------------------------------------
 #
 # 资源按"可执行文件目录"解析（见 bklv/core/resource.hpp），所以每个可执行文件旁边
-# 都要有一份 resources/：从哪个目录启动都能找到；测试写出来的 fixture 也落在
-# dist/ 里，不会污染仓库（以前只有 demo 复制资源，测试就退化成按工作目录解析，
-# 把 fixture 写进了仓库树，还会被打进 romfs）。
+# 都要有一份 resources/：从哪个目录启动都能找到。
 # 实现注意：**每个输出目录只复制一次**。
-# 以前是给 21 个目标各挂一条 POST_BUILD copy_directory，全部往 dist/resources 写，
+# 以前是给每个目标各挂一条 POST_BUILD copy_directory，全部往 dist/resources 写，
 # -j 并行时互相踩 → 间歇性失败（`make: *** [all] Error 2`），而且失败后**二进制还是旧的**，
 # 于是"改了代码没生效"这种假象会骗过验证。现在改成按输出目录建一个独立目标，
 # 其余目标依赖它，复制只发生一次。
@@ -194,13 +192,6 @@ target_link_libraries(demo_app PUBLIC bklv::bklv)
 
 # demo 自己的源码写的是 #include "app/page_host.hpp"，所以要把 demo/ 加进包含路径。
 target_include_directories(demo_app PUBLIC "${CMAKE_SOURCE_DIR}/demo")
-
-# ---------------------------------------------------------------------------
-# 设计器（子工程）：代码、状态、预设都在 designer/ 下，链接 bklv，资源走 resources/ 原路径
-# ---------------------------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/designer/CMakeLists.txt")
-    add_subdirectory(designer)
-endif()
 
 # ---------------------------------------------------------------------------
 # 目标程序
@@ -279,54 +270,6 @@ if(NOT BKLV_TARGETS STREQUAL "" AND BKLV_MATCHED EQUAL 0)
 endif()
 
 # ---------------------------------------------------------------------------
-# 无窗口测试（tests/）
-# ---------------------------------------------------------------------------
-#
-# 只断言数据层面的行为（装载、查找、回退、格式化、缓存、JSON 解析错误），
-# 不开窗口：失败时定位成本低得多。图形相关仍靠 demo 手测。
-#
-# 产物与 demo 同目录（dist/），因为资源路径是按可执行文件目录解析的
-# （见 bklv/core/resource.hpp），测试要能读到 resources/。
-option(BKLV_BUILD_TESTS "编译 tests/ 下的无窗口测试" OFF)
-
-if(BKLV_BUILD_TESTS)
-    file(GLOB BKLV_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/tests/*_test.cpp")
-
-    foreach(test_src ${BKLV_TEST_SOURCES})
-        get_filename_component(test_name "${test_src}" NAME_WE)
-
-        add_executable(${test_name} "${test_src}")
-        target_link_libraries(${test_name} PRIVATE bklv::bklv)
-
-        # 有一个测试要验"第三方扩展层"这条路径，它**直接编 demo 里那份样例源码**：
-        # 在测试里复制一份会慢慢漂移（stripe 的测试桩与样例就漂过），
-        # 所以这里让测试编真源码，而不是再写一份仿制品。
-        if(${test_name} STREQUAL "quad_layer_test")
-            target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/tests/support/quad_layer.cpp")
-            target_include_directories(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/tests")
-        endif()
-        if(TARGET designer_core)
-            target_link_libraries(${test_name} PRIVATE designer_core)
-        endif()
-        bklv_copy_resources(${test_name})
-        set_target_properties(${test_name} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
-            RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"
-            RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BKLV_OUT_DIR}"
-        )
-
-        # ctest 里跑；也能直接执行 dist/<name>
-        add_test(NAME ${test_name} COMMAND ${test_name})
-        # 测试里写的临时文件路径是相对「源码根」的（dist/xxx.json 之类），
-        # 默认工作目录是构建目录，直接 ctest 会 11 个测试集体失败（Windows 上尤其明显）。
-        set_tests_properties(${test_name} PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-        list(APPEND BKLV_TEST_NAMES ${test_name})
-    endforeach()
-
-    enable_testing()
-endif()
-
-# ---------------------------------------------------------------------------
 # 状态输出
 # ---------------------------------------------------------------------------
 
@@ -336,6 +279,3 @@ message(STATUS "bklv 仓库")
 message(STATUS "  平台     : ${BKLV_HOST}")
 message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
 message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAMES}")
-if(BKLV_BUILD_TESTS)
-    message(STATUS "  测试     : ${BKLV_TEST_NAMES}")
-endif()

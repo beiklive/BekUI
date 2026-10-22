@@ -699,7 +699,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 内置 `op` 只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` / `custom`。
 **别人可以加自己的**，而且**不需要改 `bklv/` 里任何文件**：写一个文件 + 注册一行，
-主题里就能写 `"op": "你的名字"`。完整可运行的样例在 `demo/contrib/stripe_layer.cpp`。
+主题里就能写 `"op": "你的名字"`。完整可运行的样例就在本节（`stripe` 与 `quad` 两份）。
 
 ### 推荐写法：注册模板 + 参数模式
 
@@ -819,8 +819,8 @@ static std::vector<bklv::compile::LayerParam> params()
 
 - 时间用 `bklv::getSecondsNow()`（`core/time.hpp`，单调、无窗口安全）；
   **不要**用 `ImGui::GetTime()` 或 `ImGui::GetIO()` —— 无窗口时没有 ImGui 上下文。
-- 随机用**纯哈希 / 值噪声**（同输入同输出），把它放在一个纯函数里，就能无窗口测
-  （见 `tests/quad_layer_test.cpp`：确定性、取值有界、相邻时刻连续、四顶点互不相同）。
+- 随机用**纯哈希 / 值噪声**（同输入同输出），把它放在一个纯函数里，就能无窗口验证
+  （确定性、取值有界、相邻时刻连续、四顶点互不相同）。
 - 幅度夹取要夹**最终位移**：`gain` 这种"乘在后面的系数"能绕过对 `amplitude` 的夹取
   （写 `gain0: 9` 时顶点会飞到层外面）。
 
@@ -858,7 +858,7 @@ static std::vector<bklv::compile::LayerParam> params()
   就地编译一份（demo 的 JSON 页就是这么显示 quad 的）；换主题时若要让内联外观跟着重解析
   `@theme/`，在自己的子类里重写 `applyTheme()` 再套一次。
 - 主题里用扩展 op 时，**主题加载前必须已经注册**（调用方的初始化里注册）。
-  测试侧要整主题校验的话，注册要放在测试开头（见 `tests/test_contrib.hpp`）。
+  要整主题校验的话，注册要放在校验程序的开头（先注册、再 `App::setTheme()`）。
 - 参数**目前不参与 `states` / `transitions` 补间**（补间通道是固定的 `AppearanceProp` 枚举）；
   需要动起来就画在 `custom` 层里、由控件自己按时间算。
 

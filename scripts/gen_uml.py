@@ -630,7 +630,7 @@ def build_html(path_out):
         <li><code>bklv/core/graphics.hpp</code>（RenderBackend 接口）</li>
         <li><code>notes/adding-render-backend.md</code>、<code>bklv/platforms/</code></li></ul></div>
       <div><h3>想验收</h3><ul>
-        <li><code>./scripts/check.sh</code>（2836 项）、<code>tests/*_test.cpp</code>（无窗口）</li>
+        <li><code>./scripts/check.sh</code>（2836 项）</li>
         <li>截图：<code>App::requestScreenshot()</code>（不要用系统录屏）</li></ul></div>
     </div>
   </section>

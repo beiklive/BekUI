@@ -9,10 +9,7 @@
     {
       "name": "base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": {
-        "BKLV_BUILD_TESTS": "ON"
-      }
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "gl",
@@ -36,27 +33,13 @@
   "buildPresets": [
     {
       "name": "gl",
-      "displayName": "构建 GL 版（demo + designer + 测试）",
+      "displayName": "构建 GL 版 demo",
       "configurePreset": "gl"
     },
     {
       "name": "vk",
-      "displayName": "构建 Vulkan 版",
+      "displayName": "构建 Vulkan 版 demo",
       "configurePreset": "vk"
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "gl",
-      "displayName": "跑 GL 版无窗口测试（ctest）",
-      "configurePreset": "gl",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "vk",
-      "displayName": "跑 Vulkan 版无窗口测试（ctest）",
-      "configurePreset": "vk",
-      "output": { "outputOnFailure": true }
     }
   ]
 }

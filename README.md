@@ -88,7 +88,6 @@ tweeny 要 ≥ 3.23）。版本不够时配置阶段会直接告诉你缺什么�
 
 ```bash
 cmake --preset gl && cmake --build --preset gl     # 产物在 dist/
-ctest --preset gl                                  # 无窗口测试（37 个）
 cmake --preset vk && cmake --build --preset vk     # 产物在 dist/vk/
 ```
 
@@ -223,22 +222,19 @@ dist\demo.exe
   （新的构建目录才行，换生成器必须删目录；不要加 `-A`，默认就是 x64）：
 
   ```bat
-  cmake -S . -B build\gl -G "Visual Studio 17 2022" -DBKLV_BUILD_TESTS=ON
+  cmake -S . -B build\gl -G "Visual Studio 17 2022"
   cmake --build build\gl --config Release
-  ctest --test-dir build\gl -C Release
   ```
 
   Vulkan 换 `build\vk`，**`-DBKLV_GRAPHICS` 必须显式给**（默认是 gl，漏了会在
   `build\vk` 里编出一份 GL 版、产物落到 `dist\` 而不是 `dist\vk\`）：
 
   ```bat
-  cmake -S . -B build\vk -G "Visual Studio 17 2022" -DBKLV_GRAPHICS=vk -DBKLV_BUILD_TESTS=ON
+  cmake -S . -B build\vk -G "Visual Studio 17 2022" -DBKLV_GRAPHICS=vk
   cmake --build build\vk --config Release
-  ctest --test-dir build\vk -C Release
   ```
 
-  80 个测试在两种后端下全过（测试的工作目录已固定为
-  源码根，测试里写的相对路径 `dist/...` 按它解析）。与 MinGW 的差异都是移植性问题：
+  两种后端编出来都是零 error 零 warning。与 MinGW 的差异都是移植性问题：
   `unistd.h` / `setenv` / `std::rename` 覆盖语义 / GCC 专用选项 / 源码里的 UTF-8 中文
   （已加 `/utf-8`、`LUNASVG_BUILD_STATIC`）。
 

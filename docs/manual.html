@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 2d1aba5 · 2026-10-21 21:22 · 两套主题（default / ios）</div>
+  <div class="version">提交 544c094 · 2026-10-22 21:36 · 两套主题（default / ios）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -303,7 +303,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <section><h2 id="sec-1">概览</h2>
 
 <p><b>bklv</b> 是一个跨平台 C++17 界面库：<b>Yoga 算 Flexbox 布局</b>，<b>ImGui 的 ImDrawList 负责绘制</b>。
-目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供 demo 与设计器。</p>
+目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一个 demo 程序。</p>
 
 <table>
 <thead><tr><th>项目</th><th>内容</th></tr></thead>
@@ -316,7 +316,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 </tbody>
 </table>
 
-<p>库的代码规模（不含 <code>3rd/</code> 第三方）：<code>core/</code> 72 文件、<code>views/</code> 30 文件、<code>widgets/</code> 64 文件、<code>compile/</code> 23 文件、<code>backends/</code> 21 文件、<code>platforms/</code> 9 文件。</p>
+<p>库的代码规模（不含 <code>3rd/</code> 第三方）：<code>core/</code> 74 文件、<code>views/</code> 30 文件、<code>widgets/</code> 66 文件、<code>compile/</code> 23 文件、<code>backends/</code> 21 文件、<code>platforms/</code> 9 文件。</p>
 
 <h3 id="sec-2">仓库结构</h3>
 <pre><code>bklv/                库本体（自包含：代码 + 3rd/ + 自己的 CMakeLists.txt）
@@ -325,8 +325,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 demo/                展示程序（15 个页面 + 底部导航 + 液态玻璃）
 
 resources/theme/     主题 JSON（default / ios）
-tests/               无窗口测试（ctest 驱动，GL 与 VK 各跑一遍）
-scripts/             check.sh（一次跑完命名/分层/双后端构建/全部测试）
+scripts/             check.sh（一次跑完命名/分层/双后端零警告构建）
 docs/                文档（本手册就是其中一份）</code></pre>
 
 </section>
@@ -337,7 +336,7 @@ docs/                文档（本手册就是其中一份）</code></pre>
 
 <table>
 <thead><tr><th>层</th><th>.cpp</th><th>.hpp</th><th>职责</th></tr></thead>
-<tbody><tr><td><code>core/</code></td><td>34</td><td>38</td><td>接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态</td></tr><tr><td><code>views/</code></td><td>15</td><td>15</td><td>语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView</td></tr><tr><td><code>widgets/</code></td><td>34</td><td>30</td><td>外观驱动控件：Shell / Header / BottomBar / TabBar / Button / Cell 家族 / Dialog …</td></tr><tr><td><code>compile/</code></td><td>12</td><td>11</td><td>解析层：JSON → 视图树 / 外观 / 主题（两段式模板）</td></tr><tr><td><code>backends/</code></td><td>10</td><td>11</td><td>图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3</td></tr><tr><td><code>platforms/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME</td></tr></tbody>
+<tbody><tr><td><code>core/</code></td><td>35</td><td>39</td><td>接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态</td></tr><tr><td><code>views/</code></td><td>15</td><td>15</td><td>语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView</td></tr><tr><td><code>widgets/</code></td><td>35</td><td>31</td><td>外观驱动控件：Shell / Header / BottomBar / TabBar / Button / Cell 家族 / Dialog …</td></tr><tr><td><code>compile/</code></td><td>12</td><td>11</td><td>解析层：JSON → 视图树 / 外观 / 主题（两段式模板）</td></tr><tr><td><code>backends/</code></td><td>10</td><td>11</td><td>图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3</td></tr><tr><td><code>platforms/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME</td></tr></tbody>
 </table>
 
 <h3 id="sec-4">允许的依赖方向</h3>
@@ -371,16 +370,15 @@ core      → platforms                  （工厂：方向由"编译期裁剪 +
 
 <pre><code># GL 版（产物到 dist/）
 cmake --preset gl && cmake --build --preset gl
-ctest --preset gl
 
 # Vulkan 版（产物到 dist/vk/，需要 Vulkan SDK / MoltenVK）
 cmake --preset vk && cmake --build --preset vk
 
-# 一次跑完所有门禁（命名 → 分层 → GL/VK 双后端零警告构建 → 全部测试）
+# 一次跑完所有门禁（命名 → 分层 → GL/VK 双后端零警告构建）
 bash scripts/check.sh</code></pre>
 
 <p>约定：<code>-Wall -Wextra -Wpedantic</code> <b>零警告</b>；每个后端各一个构建目录、产物分目录（<code>dist/</code> 与 <code>dist/vk/</code>）。
-CI 见 <code>.github/workflows/ci.yml</code>：静态检查 + {Ubuntu, macOS} × {GL, Vulkan} 构建 + <code>ctest</code>，
+CI 见 <code>.github/workflows/ci.yml</code>：静态检查 + {Ubuntu, macOS} × {GL, Vulkan} 构建，
 构建出现 warning 即失败（Windows 还没接，那条路要 MSYS2 + <code>build.bat</code>）。</p>
 
 <h3 id="sec-8">用到自己的项目里</h3>
@@ -712,7 +710,7 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <h3 id="sec-34">外观驱动控件（widgets/）</h3>
 <table>
 <thead><tr><th>类型</th><th>头文件</th><th>说明</th></tr></thead>
-<tbody><tr><td><code>AccountWidget</code></td><td><code>account.hpp</code></td><td>账号信息（头像 + 昵称），对应 borealis 的 views/widgets/account。</td></tr><tr><td><code>AppearanceView</code></td><td><code>appearance_view.hpp</code></td><td>外观驱动的控件基类：绘制结构与状态动效全部来自主题里的 JSON（core/appearance.hpp）。</td></tr><tr><td><code>BackdropManager</code></td><td><code>backdrop_manager.hpp</code></td><td>按页背景的管理者：每个页面一份背景视图，切页时交叉淡入（新的从 0 淡入、旧的垫在下面，</td></tr><tr><td><code>BottomBar</code></td><td><code>bottom_bar.hpp</code></td><td>底部栏（对应 borealis 的 views/bottom_bar）：<strong>一个控件同时装提示与状态</strong>。</td></tr><tr><td><code>Button</code></td><td><code>button.hpp</code></td><td>按钮：外观完全来自主题 JSON（<code>widgets/button.json</code>），</td></tr><tr><td><code>Cell</code> <span class=muted>DetailCell / BooleanCell / RadioCell / SelectorCell / SliderCell / InputCell</span></td><td><code>cell.hpp</code></td><td>单元格：列表里的一行（左侧标题 + 右侧内容区），对应 borealis 的 views/cells/*。</td></tr><tr><td><code>ContentStack</code></td><td><code>content_stack.hpp</code></td><td>内容层的层级下钻：<strong>往上叠一层 / 退回上一层</strong>（列表 → 详情，B 逐层返回）。</td></tr><tr><td><code>DialogBackdrop</code> <span class=muted>DialogPanel / Dialog</span></td><td><code>dialog.hpp</code></td><td>弹窗（对应 borealis 的 views/dialog）。</td></tr><tr><td><code>DropdownOption</code> <span class=muted>DropdownPanel / DropdownPopup / Dropdown</span></td><td><code>dropdown.hpp</code></td><td>下拉选择（对应 borealis 的 views/dropdown）。</td></tr><tr><td><code>TextEditModel</code> <span class=muted>EditTextDialog</span></td><td><code>edit_text_dialog.hpp</code></td><td>文本输入弹窗（对应 borealis 的 views/edit_text_dialog）。</td></tr><tr><td><code>FocusRingView</code></td><td><code>focus_ring_view.hpp</code></td><td>焦点框的绘制者：挂在外壳的浮层（HUD）上，每帧<strong>拉取</strong>当前焦点的形状画出来。</td></tr><tr><td><code>ToggleButton</code> <span class=muted>CustomButton / OptionButton / ValueButton</span></td><td><code>form_buttons.hpp</code></td><td>表单类按钮（外观全部在 resources/theme/.../base/button/*.json，代码只管行为）：</td></tr><tr><td><code>HeaderIcon</code> <span class=muted>Header</span></td><td><code>header.hpp</code></td><td>页头（对应 borealis 的 views/header，以及旧 AppletFrame 里那个 88 高的应用页头）。</td></tr><tr><td><code>HintItemView</code> <span class=muted>HintsBar</span></td><td><code>hints_bar.hpp</code></td><td>提示栏（对应 borealis 的 views/hints）：把当前焦点注册的动作显示成</td></tr><tr><td><code>Notification</code> <span class=muted>NotificationManager</span></td><td><code>notification.hpp</code></td><td>通知（Toast），对应 borealis 的 core/notification_manager。</td></tr><tr><td><code>Pager</code></td><td><code>pager.hpp</code></td><td>Pager：内容层的<strong>页面栈 / 同层换页</strong>控制器，对应 borealis 的 Activity 里</td></tr><tr><td><code>Rectangle</code></td><td><code>rectangle.hpp</code></td><td>矩形：外观完全由主题 JSON 描述的纯装饰控件（对应 borealis 的 views/rectangle）。</td></tr><tr><td><code>RecyclerItemCell</code> <span class=muted>RecyclerHeaderCell / RecyclerView</span></td><td><code>recycler_view.hpp</code></td><td>JSON 可描述的回收列表（<code>&quot;type&quot;: &quot;Recycler&quot;</code>）—— <strong>桥接层</strong>。</td></tr><tr><td><code>SelectorButton</code></td><td><code>selector_button.hpp</code></td><td>选择器按钮：组件容器 + 图标 + 文字 + 左右箭头 + 信息文字（外观 widget/button.selector）。</td></tr><tr><td><code>Shell</code></td><td><code>shell.hpp</code></td><td>转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里</td></tr><tr><td><code>Slider</code></td><td><code>slider.hpp</code></td><td>滑块（对应 borealis 的 views/slider）。</td></tr><tr><td><code>BatteryIcon</code> <span class=muted>WirelessIcon / StatusArea</span></td><td><code>status_area.hpp</code></td><td>底栏右侧的状态区（对应 borealis BottomBar 里的 电池 / 无线 / 时间）。</td></tr><tr><td><code>TabButton</code> <span class=muted>TabItem / TabFrame</span></td><td><code>tab_frame.hpp</code></td><td>TabFrame：横向 tab 栏 + 内容区（对应 borealis 的 views/tab_frame）。</td></tr><tr><td><code>ToastManager</code></td><td><code>toast.hpp</code></td><td>Toast：右上角通知浮层（外观在 resources/theme/.../base/toast/*.json）。</td></tr></tbody>
+<tbody><tr><td><code>AccountWidget</code></td><td><code>account.hpp</code></td><td>账号信息（头像 + 昵称），对应 borealis 的 views/widgets/account。</td></tr><tr><td><code>AppearanceView</code></td><td><code>appearance_view.hpp</code></td><td>外观驱动的控件基类：绘制结构与状态动效全部来自主题里的 JSON（core/appearance.hpp）。</td></tr><tr><td><code>BackdropManager</code></td><td><code>backdrop_manager.hpp</code></td><td>按页背景的管理者：每个页面一份背景视图，切页时交叉淡入（新的从 0 淡入、旧的垫在下面，</td></tr><tr><td><code>BottomBar</code></td><td><code>bottom_bar.hpp</code></td><td>底部栏（对应 borealis 的 views/bottom_bar）：<strong>一个控件同时装提示与状态</strong>。</td></tr><tr><td><code>Button</code></td><td><code>button.hpp</code></td><td>按钮：外观完全来自主题 JSON（<code>widgets/button.json</code>），</td></tr><tr><td><code>Cell</code> <span class=muted>DetailCell / BooleanCell / RadioCell / SelectorCell / SliderCell / InputCell</span></td><td><code>cell.hpp</code></td><td>单元格：列表里的一行（左侧标题 + 右侧内容区），对应 borealis 的 views/cells/*。</td></tr><tr><td><code>ContentStack</code></td><td><code>content_stack.hpp</code></td><td>内容层的层级下钻：<strong>往上叠一层 / 退回上一层</strong>（列表 → 详情，B 逐层返回）。</td></tr><tr><td><code>DialogBackdrop</code> <span class=muted>DialogPanel / Dialog</span></td><td><code>dialog.hpp</code></td><td>弹窗（对应 borealis 的 views/dialog）。</td></tr><tr><td><code>DropdownOption</code> <span class=muted>DropdownPanel / DropdownPopup / Dropdown</span></td><td><code>dropdown.hpp</code></td><td>下拉选择（对应 borealis 的 views/dropdown）。</td></tr><tr><td><code>TextEditModel</code> <span class=muted>EditTextDialog</span></td><td><code>edit_text_dialog.hpp</code></td><td>文本输入弹窗（对应 borealis 的 views/edit_text_dialog）。</td></tr><tr><td><code>FocusRingView</code></td><td><code>focus_ring_view.hpp</code></td><td>焦点框的绘制者：挂在外壳的浮层（HUD）上，每帧<strong>拉取</strong>当前焦点的形状画出来。</td></tr><tr><td><code>ToggleButton</code> <span class=muted>CustomButton / OptionButton / ValueButton</span></td><td><code>form_buttons.hpp</code></td><td>表单类按钮（外观全部在 resources/theme/.../base/button/*.json，代码只管行为）：</td></tr><tr><td><code>HeaderIcon</code> <span class=muted>Header</span></td><td><code>header.hpp</code></td><td>页头（对应 borealis 的 views/header，以及旧 AppletFrame 里那个 88 高的应用页头）。</td></tr><tr><td><code>HintItemView</code> <span class=muted>HintsBar</span></td><td><code>hints_bar.hpp</code></td><td>提示栏（对应 borealis 的 views/hints）：把当前焦点注册的动作显示成</td></tr><tr><td><code>ImePanel</code></td><td><code>ime_panel.hpp</code></td><td>内置输入法面板（弹层）：</td></tr><tr><td><code>Notification</code> <span class=muted>NotificationManager</span></td><td><code>notification.hpp</code></td><td>通知（Toast），对应 borealis 的 core/notification_manager。</td></tr><tr><td><code>Pager</code></td><td><code>pager.hpp</code></td><td>Pager：内容层的<strong>页面栈 / 同层换页</strong>控制器，对应 borealis 的 Activity 里</td></tr><tr><td><code>Rectangle</code></td><td><code>rectangle.hpp</code></td><td>矩形：外观完全由主题 JSON 描述的纯装饰控件（对应 borealis 的 views/rectangle）。</td></tr><tr><td><code>RecyclerItemCell</code> <span class=muted>RecyclerHeaderCell / RecyclerView</span></td><td><code>recycler_view.hpp</code></td><td>JSON 可描述的回收列表（<code>&quot;type&quot;: &quot;Recycler&quot;</code>）—— <strong>桥接层</strong>。</td></tr><tr><td><code>SelectorButton</code></td><td><code>selector_button.hpp</code></td><td>选择器按钮：组件容器 + 图标 + 文字 + 左右箭头 + 信息文字（外观 widget/button.selector）。</td></tr><tr><td><code>Shell</code></td><td><code>shell.hpp</code></td><td>转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里</td></tr><tr><td><code>Slider</code></td><td><code>slider.hpp</code></td><td>滑块（对应 borealis 的 views/slider）。</td></tr><tr><td><code>BatteryIcon</code> <span class=muted>WirelessIcon / StatusArea</span></td><td><code>status_area.hpp</code></td><td>底栏右侧的状态区（对应 borealis BottomBar 里的 电池 / 无线 / 时间）。</td></tr><tr><td><code>TabButton</code> <span class=muted>TabItem / TabFrame</span></td><td><code>tab_frame.hpp</code></td><td>TabFrame：横向 tab 栏 + 内容区（对应 borealis 的 views/tab_frame）。</td></tr><tr><td><code>ToastManager</code></td><td><code>toast.hpp</code></td><td>Toast：右上角通知浮层（外观在 resources/theme/.../base/toast/*.json）。</td></tr></tbody>
 </table>
 
 <h3 id="sec-35">几个常用控件的要点</h3>
@@ -1729,7 +1727,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <ul><li>spec 路径收尾<strong>不复位</strong>（终值就是外观里写的，比如出场停在屏幕外）；预设路径照旧复位</li></ul>
 <p>时间账（解析期算好）：<code>totalMs = max(事件时长, 每条条目 delay + duration)</code>， 调用方拿 <code>totalMs</code> 决定&quot;这段动画播完了&quot;的时机 —— 出场播完才摘页 / 摘弹层，报早了动画会被砍。</p>
 <h3 id="sec-146">扩展图层类型（第三方）</h3>
-<p>内置 <code>op</code> 只有 6 种：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>。 <strong>别人可以加自己的</strong>，而且<strong>不需要改 <code>bklv/</code> 里任何文件</strong>：写一个文件 + 注册一行， 主题里就能写 <code>&quot;op&quot;: &quot;你的名字&quot;</code>。完整可运行的样例在 <code>demo/contrib/stripe_layer.cpp</code>。</p>
+<p>内置 <code>op</code> 只有 6 种：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>。 <strong>别人可以加自己的</strong>，而且<strong>不需要改 <code>bklv/</code> 里任何文件</strong>：写一个文件 + 注册一行， 主题里就能写 <code>&quot;op&quot;: &quot;你的名字&quot;</code>。完整可运行的样例就在本节（<code>stripe</code> 与 <code>quad</code> 两份）。</p>
 <h4 id="sec-147">推荐写法：注册模板 + 参数模式</h4>
 <pre><code class="lang-cpp">#include &quot;bklv/compile/layer_register.hpp&quot; // registerLayer&lt;T&gt;() 模板
 
@@ -1809,8 +1807,8 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p><strong>参数补间目前没有</strong>（补间通道是固定的 <code>AppearanceProp</code> 枚举），所以&quot;要动起来&quot;的层 在绘制钩子里自己算时间与随机：</p>
 <ul><li>时间用 <code>bklv::getSecondsNow()</code>（<code>core/time.hpp</code>，单调、无窗口安全）；</li></ul>
 <p><strong>不要</strong>用 <code>ImGui::GetTime()</code> 或 <code>ImGui::GetIO()</code> —— 无窗口时没有 ImGui 上下文。</p>
-<ul><li>随机用<strong>纯哈希 / 值噪声</strong>（同输入同输出），把它放在一个纯函数里，就能无窗口测</li></ul>
-<p>（见 <code>tests/quad_layer_test.cpp</code>：确定性、取值有界、相邻时刻连续、四顶点互不相同）。</p>
+<ul><li>随机用<strong>纯哈希 / 值噪声</strong>（同输入同输出），把它放在一个纯函数里，就能无窗口验证</li></ul>
+<p>（确定性、取值有界、相邻时刻连续、四顶点互不相同）。</p>
 <ul><li>幅度夹取要夹<strong>最终位移</strong>：<code>gain</code> 这种&quot;乘在后面的系数&quot;能绕过对 <code>amplitude</code> 的夹取</li></ul>
 <p>（写 <code>gain0: 9</code> 时顶点会飞到层外面）。</p>
 <h4 id="sec-152">三条硬规则</h4>
@@ -1833,7 +1831,7 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <ul><li><strong>别把用了扩展 op 的外观放进 <code>resources/theme/default/</code></strong>：那是随库发布的默认主题，</li></ul>
 <p>而扩展 op 由<strong>调用方</strong>注册 —— 库的随包资源依赖 demo/第三方代码是本末倒置 （默认主题里曾留下的 <code>base/stripe_demo.json</code> 就是这个反例，已按评审 §4.2 P0④ 撤掉）。 演示/一次性外观直接在页面里<strong>内联</strong>：<code>AppearanceView::applyAppearanceJson(json, error)</code> 就地编译一份（demo 的 JSON 页就是这么显示 quad 的）；换主题时若要让内联外观跟着重解析 <code>@theme/</code>，在自己的子类里重写 <code>applyTheme()</code> 再套一次。</p>
 <ul><li>主题里用扩展 op 时，<strong>主题加载前必须已经注册</strong>（调用方的初始化里注册）。</li></ul>
-<p>测试侧要整主题校验的话，注册要放在测试开头（见 <code>tests/test_contrib.hpp</code>）。</p>
+<p>要整主题校验的话，注册要放在校验程序的开头（先注册、再 <code>App::setTheme()</code>）。</p>
 <ul><li>参数<strong>目前不参与 <code>states</code> / <code>transitions</code> 补间</strong>（补间通道是固定的 <code>AppearanceProp</code> 枚举）；</li></ul>
 <p>需要动起来就画在 <code>custom</code> 层里、由控件自己按时间算。</p>
 <h3 id="sec-155">外观里的子节点（<code>children</code>）</h3>
@@ -1955,7 +1953,6 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
 <tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>
-<tr><td>离屏/无窗口测试</td><td><code>tests/</code> 下每个 <code>*_test.cpp</code> 编译成独立可执行，纯逻辑 + 布局，不建窗口</td></tr>
 </tbody>
 </table>
 
@@ -1971,7 +1968,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <li><b>显式值优先</b>：<code>setCornerRadius(r, explicit=true)</code> 之类不会被外观 JSON 覆盖；外观套用一律 <code>explicit=false</code>。</li>
 <li><b>高亮底顺序</b>：<code>hlBg</code> 必须在内容层之前，否则聚焦时整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
 <li><b>玻璃层顺序</b>：阴影(0) → 玻璃(1) → 其余(2)；玻璃不能排到第一个，否则半透明阴影把它压暗。</li>
-<li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（<code>widget_test</code> 钉住）。</li>
+<li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（排反了会多出一道横线）。</li>
 <li><b>输入 → 响应同帧生效</b>：<code>App::frame</code> 的次序是"布局 → 输入 → 绘制"，别把输入挪到绘制之后。</li>
 <li><b>帧内同步加载图片是违规</b>：批量/滚动场景用 <code>setImageFromFileAsync</code>。</li>
 <li><b>JSON 里没有通用回调</b>：只能写"名字"（<code>data</code> / <code>itemBinder</code> / <code>onEnd</code> / <code>bind</code>），
@@ -1981,18 +1978,15 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 </section>
 <section><h2 id="sec-168">验收与 CI</h2>
 
-<pre><code>scripts/check.sh 一共四步，任何一步失败就停：
+<pre><code>scripts/check.sh 一共三步，任何一步失败就停：
   ① python3 scripts/check_naming.py     接口命名约定
   ② python3 scripts/check_layers.py     反向依赖 + 伞头可达范围
-  ③ cmake GL / VK 双后端构建             零警告
-  ④ 全部无窗口测试（GL 一遍、VK 一遍）   产物在 dist/，也可 ctest --preset gl|vk</code></pre>
-<p>测试是<b>无窗口</b>的：只断言数据层 / 布局 / 解析 / 输入语义，不创建窗口、不依赖图形 API，
-所以 CI 上也能跑。新增测试只要在 <code>tests/</code> 放一个 <code>*_test.cpp</code>（自动收集），
-断言脚手架在 <code>tests/test_util.hpp</code>。</p>
-<p>渲染路径（后端本体、平台层、demo 页面、设计器界面）仍靠人工验收 —— 这部分是已知盲区。</p>
+  ③ cmake GL / VK 双后端构建             零警告</code></pre>
+<p>渲染路径（后端本体、平台层、demo 页面）仍靠人工验收 —— 这部分是已知盲区。
+要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>2d1aba5</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>544c094</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

@@ -17,7 +17,6 @@
 ```bash
 # GL
 cmake --preset gl && cmake --build --preset gl      # 等价 -B build/gl -DBKLV_GRAPHICS=gl
-ctest --preset gl
 
 # Vulkan
 cmake --preset vk && cmake --build --preset vk      # 等价 -B build/vk -DBKLV_GRAPHICS=vk
@@ -82,9 +81,8 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
   （VK 是 `dist/vk/`），所以任何额外构建目录（`build/asan`、`build/dbg`、`/tmp/xxx`）
   都会把可执行文件写进同一个 `dist/`。它们的产物时间戳比 `build/gl` 的目标文件新，
   make 会认为"已是最新"而**不重新链接** —— 于是你以为在验收 A 配置，实际跑的是 B 的二进制
-  （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本，
-  check.sh 的检查项数也跟着少了一截）。跑完额外构建目录后要
-  `rm -f dist/*_test dist/demo && cmake --build build/gl -j 8` 强制重链。
+  （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本）。
+  跑完额外构建目录后要 `rm -f dist/demo && cmake --build build/gl -j 8` 强制重链。
 - 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 查 core/views/widgets，
   根 `CMakeLists.txt` 查 demo），不用等链接期。
 - 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
@@ -128,8 +126,8 @@ CMake 覆盖不了，所以 `scripts/build_switch.sh` 是唯一保留的构建�
 ② 改了脚本里的 `DEFINES`（比如开关可选解码器）**必须 `--clean` 重编**：脚本按时间戳增量
    编译，不会因为宏变了重编旧目标文件，会以"undefined reference to lunasvg::…"的形式在
    链接期暴露（那些 .o 是用 `BKLV_USE_SVG` 编的）。
-产物大小（2026-10 实测）：`demo.nro` **8.89 MB** = 代码+数据 8.14 MB（strip 后 ELF）
-+ romfs 0.82 MB（171 个资源文件：字体 532 KB / 主题 608 KB / 文案 32 KB）。
+产物大小（2026-10 实测，移除测试与设计器之后）：`demo.nro` **9.42 MB** = 代码+数据 8.48 MB（strip 后 ELF）
++ romfs 0.95 MB（245 个资源文件：字体 532 KB / 主题 608 KB / 文案 32 KB）。
 
 桌面（macOS / Linux / Windows）上不再有 shell 构建脚本，`build.sh` 与
 `scripts/build_sdl3.sh` 已删除；SDL3 作为 `add_subdirectory` 的子项目随 CMake 一起编。
@@ -252,7 +250,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   想让调用方调被引入方的值就直接覆盖那个字段。**不做算式**（`"-&number.gap"`、`"&x * 2"` 都不行，
   负数写进变量本身）、不做结构复用（那是 `import` 的活）、不做字符串/枚举变量。
   外观与视图描述两条解析路径都接了（`Appearance::compile` / `ViewTemplate::fromString`），
-  `tests/json_vars_test.cpp` 钉住展开、错法、以及"用 vars 与写字面量编译结果完全一致"。
+  两边共用同一套展开实现，"用 vars"与"直接写字面量"编译结果完全一致。
 - **JSON 错误策略**（`compile/json_policy.*`）：解析失败后按 `JsonErrorPolicy` 选恢复动作 ——
   `STRICT`（默认，整份失败）/ `SKIP_FIELD`（字段级错误跳过该字段、保留默认值）/
   `FALLBACK_DEFAULT`（文件级错误整份退到 default 主题的同名外观，`@theme` 仍按当前主题解析）。
@@ -260,7 +258,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `layers`、`import`/`vars` 循环、渐变结构校验）只能整份回退；② **不管哪种策略都要留诊断**
   （`getJsonDiagnostics()`：file/path/message/recovered），`skip` 不是"没发生"；
   ③ 枚举拼错仍是"警告 + 保持原值"，不受策略影响（改成致命会破坏第三方主题）。
-  环境变量 `BKLV_JSON_POLICY=strict|skip|fallback`，显式 API 优先；`tests/json_policy_test.cpp` 钉住。
+  环境变量 `BKLV_JSON_POLICY=strict|skip|fallback`，显式 API 优先。
   同一套策略还兜住两处以前**静默忽略**的写法：外观**顶层键白名单**
   （`vars`/`import`/`box`/`layers`/`states`/`transitions`/`children`，`$` 开头放过；拼错 `state`
   会报"是否想写 states"）与 **`theme.json` 的 `files[]` 少了 `.json`**（打 error + 诊断，
@@ -268,8 +266,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **主题引用的写法是 `@theme/color.a.b` / `@theme/metric.a.b`**（点是分层分隔符，
   对应 `colors.json` 的 `a.b`）。写成 `@theme/color/a.b` 会被容错成点分
   （带一条警告提示正确写法），
-  **但真正不存在的 key 仍然编译失败**（不静默回退成洋红），
-  theme_test 第 8 节逐个编译两套主题的全部外观兜底。
+  **但真正不存在的 key 仍然编译失败**（不静默回退成洋红）—— 改主题后要逐个编译
+  两套主题的全部外观兜底。
 - **布局是延迟的，一帧最多算一次**（`core/view.cpp` 的 `invalidate()` + `core/app.cpp`）：
   `invalidate()` 只冒泡到根标记"要重算"，真正那一次由 `App::frame` 做。三个触发条件：
   画布尺寸变了 / 首帧 / 有人 invalidate 过。
@@ -302,7 +300,6 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **外观层序：高亮底必须在内容层之前**（`hlBg` 要排在 `text`/`image`/`custom` 之前，
   `hlGlow`/`hlBorder` 排在最后）。排反了的话，聚焦时那块**不透明的高亮底会把内容盖住**
   —— 开关/单选的图形是 `custom` 层，曾因此"聚焦后开关消失"（14 个 Cell 外观全踩了）。
-  `theme_test` 现在会遍历两套主题的每一份外观断言这个顺序，别再犯。
 - **按钮有 5 种 style**（对标 borealis 的 `BUTTONSTYLE_*`）：`button`（=DEFAULT 灰底白字）、
   `button.primary`（强调色底 + 深色字）、`button.highlight`（灰底 + 强调色字）、
   `button.bordered`（**只有边框没有底**）、`button.borderless`（无底无框）；
@@ -374,7 +371,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ② `layers`：绘制结构，op 有 `rect` / `text` / `image` / **`shadow`** / `custom`。
   `shadow` 层是柔化投影（`fill` 浓度、`feather` 羽化、`radius` 圆角、`offset` 位移、`spread` 外扩、
   **`cutout` 挖空开关**），
-  **必须写在自己的底色之前**（`theme_test` 有断言），绘制档位由全局开关
+  **必须写在自己的底色之前**（排反了阴影会被底色压掉），绘制档位由全局开关
   `bklv::shadow::setQuality(FAST/SMOOTH)` 或 `BKLV_SHADOW_QUALITY=smooth` 决定。
   ③ `states`：状态动效。
   **控件在代码里只写行为**（有哪些子节点、数据从哪来、语义绘制）；
@@ -477,8 +474,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      `at` 必须 0..1 且严格递增，五类写错都**报错**（不静默降级）。
      写法优先于 `fill`；**渐变不做补间**，`stroke` 渐变不支持。
      实现是 **ImDrawList 顶点色网格**（`bklv/core/gradient.*` 的 `addGradientRectMesh`）——
-     三条后端零改动；采样/参数/网格都是纯函数，`tests/gradient_test.cpp` 钉住
-     （含「线性渐变投影范围按四个角取 min/max」：45° 写错时 t 会到 1.5）。
+     三条后端零改动；采样/参数/网格都是纯函数（「线性渐变投影范围按四个角取 min/max」：
+     45° 写错时 t 会到 1.5）。
   ⑦ **一行里放多个内容层要用 inset 排队，并写 `measureContent: "sum"`**：
      绘制层不是流式布局（`align: left` 的两个层会叠在左边，参考 `base/hint_item` 给
      文字层写 `inset: [0,0,0,34]` 跳过图标）；默认固有尺寸取"最宽的一层"，
@@ -545,7 +542,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排。
   **不支持滚动**：永远显示最新的一批（"即时显示"），要翻历史就开 `Logger::setFileOutput()`
   去文件里看 —— 所以没有 scrollTo/scrollBy/滚轮那一套（`getFirstVisibleRow()` 永远 = 总行数 − 可见行数）。
-  它的绘制开销是**硬要求**，四条约束（`tests/log_view_draw_test.cpp` 钉住）：
+  它的绘制开销是**硬要求**，四条约束（改这里要守住，否则日志一多就掉帧）：
   ① 缓存里只存 `const LogEntry*`（不复制日志正文），只在「版本/过滤/字号/字体」变化时重建；
   ② 行高固定 + 不滚动 → 可见窗口就是"最后 N 行"，一次除法算出来，不从头遍历；
   ③ 每行只一次 `AddText`，拼接走复用缓冲（稳态零分配）；④ 面板不可见时 `View::frame` 直接返回。
@@ -590,7 +587,6 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `setCollapseProgress()` 手动驱动（测试走这条）。大标题是**绝对定位**在页头下沿之外的子视图，
   所以页头高度不受影响。字号取 `metric.font.size.title`（ios 主题 30、default 28），
   位置取 `metric.appletFrame.headerHeight` + `metric.spacing.sm`。JSON 侧对应属性 `largeTitle`。
-  `tests/header_collapse_test.cpp` 钉住进度映射与"没大标题时小标题常显"。
   **content 避让不自动**：`Shell::setHeaderInset/setFooterInset` 由宿主给（动画期间给**目标值**，
   这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（demo 就是这么做的）。
   栏的"折叠补间"是**宿主**的事：`Animatable` 逐帧改两栏高度 + `App::requestLayout()`，
@@ -633,7 +629,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      而新 op 会牵动 `Op` 枚举 / 注册表 / 文档里的"内置 6 种"口径，收益为零。
   ② **层序与外投影相反**：外投影吃 `LayerOrder::SHADOW` 档、解析期被提到最前（垫在控件下面）；
      内阴影画的是**内缘**，被底盖住就等于没画，所以 `sortLayers` 里按"常规内置层"处理，
-     保持 JSON 书写顺序 —— 作者把 `bg` 写在它前面就行。`theme_test` 对两者分别有断言。
+     保持 JSON 书写顺序 —— 作者把 `bg` 写在它前面就行，排反了内阴影会被底盖住。
   ③ **内阴影没有方向**：它就是"从边缘向内扩散"的一圈带子（贴内缘最暗、往内渐透），
      所以 **`offset` 对它无效** —— 别再给它加方向语义（试过 Figma/PS 那套"offset 反侧最暗"，
      用户明确要的是无方向）。想做出某一侧更重的凹陷感就叠两层、其中一层用 `inset` 收窄。
@@ -642,7 +638,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      而内阴影的 alpha 要按"离轮廓多远"逐点算（圆角上各点不同、直边上相同）。
      顶点 alpha 用圆角矩形 SDF 精确算、圈间线性插值（和 `core/gradient.cpp` 的网格同套路），
      所以它天然待在形状内部、不需要裁剪（ImGui 的裁剪只有矩形，圆角处会漏）。
-- **测试里要画东西就用真 ImGui 上下文**，三件事缺一不可（shadow_test 三个坑都踩过）：
+- **自己建 `ImDrawList` 画东西就要用真 ImGui 上下文**，三件事缺一不可（三个坑都踩过）：
   ① `ImGui::CreateContext()` 要有；
   ② 自建列表必须紧跟 `list._ResetForNewFrame()`，否则内部没有 draw cmd，
      `PrimReserve` 越界崩溃；
@@ -671,7 +667,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      两边都不够就压缩列表高度；
   ⑤ 关掉的入口：选一项 / 点遮罩（非可聚焦 → `hitTest` 返回 nullptr → 模态**空白点击回调**）/ 按 B。
 - **底栏顺序：提示在左、状态在右**（borealis 的 `bottomBarXML` 是 `Hints` 在前，
-  外层 `justifyContent=spaceBetween`）。`widget_test` 里有断言盯住这个顺序。
+  外层 `justifyContent=spaceBetween`）。顺序别改成反的。
 - **有外边距就别写 `width: 100%`**：`100% + margin` 会多出边距那一段（页头/底栏右边被吃掉、
   内容的右上按钮被推出边界，都踩过）。要"填满父容器再留边距"就用 **auto 宽 + margin**，
   父容器负责 stretch（Shell 的内容层／宿主容器自己 `alignItems: stretch`）。
@@ -811,11 +807,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 外观是由一层层 `op` 拼出来的，内置只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` /
 `custom`。**加自己的层不用改库任何文件**：写一个文件 + 注册一行。
 
-可执行检查：`tests/layer_parse_test.cpp` 第 6/7 节（参数模式与实物验收）、第 5 节（parse 钩子）、
-`tests/quad_layer_test.cpp`（多参数 + 每帧自己算位置的层）。
-两个完整样例：`demo/contrib/stripe_layer.cpp`（最小：3 个参数 + 静态绘制）、
-`demo/contrib/quad_layer.cpp`（多参数 + 按 `getSecondsNow()` 每帧算顶点位置，
-是"钩子自己做动画"的参考）。语法面向使用者的说明：`docs/json-syntax.md` 的「扩展图层类型」一节。
+可执行检查：把自定义层写进一份临时外观 JSON，先看解析报错（参数名/类型/数量），
+再建个临时程序把它画出来看形状与顶点数。
+语法面向使用者的说明与一份完整可编译的内联样例：`docs/json-syntax.md` 的「扩展图层类型」一节
+（`demo/contrib/` 里的旧样例目录已随设计器一起移除）。
 
 ```cpp
 // 1) 声明这个层是什么（静态成员 + 参数模式 + 绘制）
@@ -856,7 +851,7 @@ bklv::compile::registerLayer<StripeLayer>();
    按名字的访问器，别自己记下标（参数名就是契约）。
    **参数补间目前没有**（补间通道是固定的 `AppearanceProp` 枚举），所以"要动起来"的层得自己算：
    时间用 `core/time.hpp` 的 `getSecondsNow()`（单调、无窗口安全），随机用纯哈希/值噪声
-   （同输入同输出，可测）—— 参考 `demo/contrib/quad_layer.cpp`。
+   （同输入同输出，可测）—— 下面「扩展图层类型」一节的样例就是这么算的。
    别用 `ImGui::GetTime()`：无窗口时会踩空（见上面"update() 路径不许读 GetIO"那条）。
    自己算出来的位移最好再夹一次边界（`gain` 这类"乘在后面的系数"能绕过前面的夹取）。
 ⑤ **`void*` 别拆**：`LayerDrawContext` 里的 `drawList` / `view` 是不透明指针，
@@ -930,8 +925,8 @@ bklv::globals::resetGlobals();                                   // 一轮结束
    （JSON 报"未知 type/op"，比崩更难查）。现有的 `clearXxxForTest()` 都做了这件事。
 ③ **`resetAll()` 只析构"拥有"的对象**；借用指针（`App` / 平台 / 图形后端 / 玻璃服务）
    只丢引用 —— 谁借的谁保证它活到最后。进程退出时 `GlobalStore` 的析构**刻意不做清理**
-   （它最后析构，那时别的 TU 的静态可能已经先没了：踩过 `json_test` 退出即 abort，
-   而检查项是全绿的）。要干净收尾就在一切还活着时显式调 `resetGlobals()`。
+   （它最后析构，那时别的 TU 的静态可能已经先没了：踩过测试程序退出即 abort，
+   而日志却是全绿的）。要干净收尾就在一切还活着时显式调 `resetGlobals()`。
    时机上注意：纹理仓库的钩子要在**图形后端还活着**时跑（`App::run` 的收尾已经保证了这点）。
 
 现状（别当成"多实例已完成"）：库仍然是"一个进程一套界面"（全局 ImGui 上下文）。
@@ -974,7 +969,7 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 
 边界（别误解成硬实时）：预算的粒度是"一个工作单元"，**不能打断**正在跑的那一个（一张超大图的
 上传、宿主回调里自己做的重活）。单帧仍可能被不可分的单元拖长；要更硬的保证得先把这类单元切细。
-`tests/frame_budget_test.cpp` 钉住状态机、分位数与"推迟不丢活"。
+改这里要守着三项：状态机、分位数、以及"推迟不丢活"（推掉的单元下帧还在）。
 
 ## 截图（离屏，不用系统录屏权限）
 
@@ -987,52 +982,33 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 
 **demo 里不要加环境变量调试开关**（曾经有 `BKLV_DEMO_PAGE` / `BKLV_DEMO_LOG(_SPAM)` /
 `BKLV_DEMO_SCROLL` / `BKLV_DEMO_CLICK` / `BKLV_DEMO_SWEEP` / `BKLV_SCREENSHOT(_FRAMES)`，
-已全部删除）。要验收就写 `tests/` 里的无窗口测试，要截图就在自己的临时程序里调
+已全部删除）。要验收就写一个临时程序（无窗口，自己 include `bklv/` 的头），要截图就在自己的临时程序里调
 `App::requestScreenshot()`；产品程序里不留"只有调试时才走"的分支。
 
-## 设计器（`designer/`）
+## 设计器（独立项目）
 
-上一版（44 文件 / ~11.8k 行）已整体移除，重做时**在这里**写：`designer/` 是它的**项目根**，
-代码、状态文件、预设都在这个目录里。三条已定的边界（用户拍板，2026-10）：
+设计器已从本仓库移出，改为独立项目：`designer/` 目录、它的代码、状态文件与预设都不在这里了。
+两边只靠**资源格式**与**库 API** 对接：
 
-- **子目录、绑定 bklv**：同一个 CMake 工程、直接链接 `bklv::bklv`，可以直接用库的类型与 API。
-  它是一方工具，不需要把库 API 磨成"对外可用"的样子。
-- **资源走原路径**：主题/字体/文案仍读 `resources/`（只读），不复制、不挪路径。
-  设计器自己的东西（窗口状态、预设）写 `designer/` 下，**不写 `dist/`**
-  （上一版把 `designer_state.json` / `designer_project.json` 落在 `dist/`，跟着 `check.sh` 被扫到）。
+- **资源走原路径**：主题 / 字体 / 文案仍读 `resources/`（只读），不复制、不挪路径。
 - **不往库内塞设计器专用分支**：库需要的能力做成通用 API（`GlassService::getCapabilities()`、
   `layer_registry` 的中文名与参数模式、`ThemeData` 按绝对目录装载都是这么来的）。
   判断标准：把设计器删掉之后，这段代码还说得通吗？
 
-重做时的两条工程约束：文档模型（读/改/写回、保序、来源追踪）**先做成无窗口可测的库**，
-UI 只做展示与输入；**先有"源文档 + 有效值"双视图**（`import`/`include`/`vars` 让一份文件
-≠ 一个完整对象，缺口清单见 `docs/json-audit.md`）。细则与构建方式见 `designer/README.md`。
-
-
 ## 测试
 
-无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：
+本仓库**不再带测试目录**（原 `tests/` 已整体移除，`-DBKLV_BUILD_TESTS` 与 `ctest` 目标
+也一并删掉）。现在的验收手段是：
 
-```bash
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=ON
-cmake --build build/gl -j 8
-./dist/i18n_test          # 或 cd build/gl && ctest
-```
-
-产物与 demo 同目录（`dist/`）——资源路径按可执行文件目录解析（见
-`bklv/core/resource.hpp`），测试要能读到 `resources/`。
-加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集；
-断言脚手架在 `tests/test_util.hpp`（`check` / `checkEqual` / `checkFloat` /
-`checkColor` / `checkEqualInt` / `checkEqualSize` + `g_checks` / `g_failed`），
-不要在每个测试里再抄一份。
-**资源按可执行文件目录解析**：每个测试目标都和 demo 一样会把 `resources/` 复制到
-`dist/`，测试开头要调 `initResources()`——不调的话路径按工作目录解析，
-写出来的 fixture 会落进仓库树（还会被打进 romfs）。
+- **纯逻辑回归**：写一个临时程序（自己的 `main.cpp` + 链接 `bklv::bklv`），跑完就删，
+  不提交回仓库。数据层行为（装载、查找、回退、格式化、缓存、JSON 解析错误）都能这样验。
+- **资源按可执行文件目录解析**（见 `bklv/core/resource.hpp`）：临时程序要先把
+  `resources/` 放到可执行文件旁边，或调 `initResources()` —— 不然路径按工作目录解析。
+- **本机门禁**：`bash scripts/check.sh`（命名 → 分层 → GL/VK 双后端零警告构建）。
 
 CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，
-`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建 + `ctest`，构建出现 warning 即失败。
+`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建，构建出现 warning 即失败。
 **Windows 还没接**（那条路要 `build.bat` + MSYS2，见上面「Windows」）。
-本机验收仍然是 `bash scripts/check.sh` —— CI 是它的并行拆版，不是替代品。
 
 ## 目录
 
@@ -1054,67 +1030,11 @@ resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/,
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
 demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
-scripts/            构建脚本（只剩 Switch 的）
+scripts/            脚本：check.sh（本机门禁）、build_switch.sh（Switch）、命名/分层检查与文档生成
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑
 notes/              设计笔记与移植评估
-resources/          demo 用的图片等素材（桌面复制到可执行文件目录，Switch 打进 romfs）
-```
-
-`bklv/` 要能被整个目录拷到别的项目里用，所以**它自己的构建逻辑必须留在
-`bklv/CMakeLists.txt`**，不要往根 `CMakeLists.txt` 里加库相关的东西。
-
-README 只讲项目介绍、拉取编译、怎么用到别的项目里；**代码层面的说明（文件职责表、
-API 速查、踩坑记录）写在 `docs/`**，别往 README 里堆。
-
-## 测试
-
-无窗口测试在 `tests/`（只断言数据层面行为，不开窗口）：
-
-```bash
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_BUILD_TESTS=ON
-cmake --build build/gl -j 8
-./dist/i18n_test          # 或 cd build/gl && ctest
-```
-
-产物与 demo 同目录（`dist/`）——资源路径按可执行文件目录解析（见
-`bklv/core/resource.hpp`），测试要能读到 `resources/`。
-加测试只需在 `tests/` 放一个 `*_test.cpp`，会被 CMake 自动收集；
-断言脚手架在 `tests/test_util.hpp`（`check` / `checkEqual` / `checkFloat` /
-`checkColor` / `checkEqualInt` / `checkEqualSize` + `g_checks` / `g_failed`），
-不要在每个测试里再抄一份。
-**资源按可执行文件目录解析**：每个测试目标都和 demo 一样会把 `resources/` 复制到
-`dist/`，测试开头要调 `initResources()`——不调的话路径按工作目录解析，
-写出来的 fixture 会落进仓库树（还会被打进 romfs）。
-
-CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，
-`{Ubuntu, macOS} × {GL, Vulkan}` 四份构建 + `ctest`，构建出现 warning 即失败。
-**Windows 还没接**（那条路要 `build.bat` + MSYS2，见上面「Windows」）。
-本机验收仍然是 `bash scripts/check.sh` —— CI 是它的并行拆版，不是替代品。
-
-## 目录
-
-```
-bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
-  bklv.hpp          伞头文件：常用类型一次引入（demo 只用它）
-  core/             接口层：view / box / app / platform / graphics / input / ...
-  core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
-  views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
-  widgets/          外壳与外观驱动的控件：shell（四层外壳）/ pager（页面懒加载）/ appearance_view
-                    / rectangle / button / header / bottom_bar / slider / tab_frame / sidebar
-                    / dialog / dropdown / edit_text_dialog / hints_bar / tab_bar（底部导航）
-  backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
-  platforms/        平台实现：sdl3 / switch
-  3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
-                    / webp（可选）/ lunasvg + plutovg（可选，SVG）
-  CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
-resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
-                    （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
-demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
-CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
-scripts/            构建脚本（只剩 Switch 的）
-docs/               速查文档：bklv 文件职责、API 用法、已知的坑
-notes/              设计笔记与移植评估
-resources/          demo 用的图片等素材（桌面复制到可执行文件目录，Switch 打进 romfs）
+resources/          运行期资源：字体 / 文案 / 主题 / demo 用的图片
+                    （桌面复制到可执行文件目录，Switch 打进 romfs）
 ```
 
 `bklv/` 要能被整个目录拷到别的项目里用，所以**它自己的构建逻辑必须留在
