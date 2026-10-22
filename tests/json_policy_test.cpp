@@ -74,11 +74,11 @@ int main()
     std::printf("\n== 2. 环境变量 BKLV_JSON_POLICY：显式设置优先，reset 后才重新读 ==\n");
     {
         // 注意：resetGlobals() 会**清空钩子表**（一轮只 reset 一次），所以这里只 reset 一次。
-        unsetenv("BKLV_JSON_POLICY");
+        unsetEnv("BKLV_JSON_POLICY");
         compile::setJsonErrorPolicy(compile::JsonErrorPolicy::STRICT);
         check(compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::STRICT, "先手动设成 STRICT");
 
-        setenv("BKLV_JSON_POLICY", "fallback", 1);
+        setEnv("BKLV_JSON_POLICY", "fallback");
         compile::setJsonErrorPolicy(compile::JsonErrorPolicy::STRICT);
         check(compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::STRICT,
             "显式设置优先于环境变量");
@@ -87,7 +87,7 @@ int main()
         check(compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::FALLBACK_DEFAULT,
             "reset 后按环境变量生效（fallback）");
 
-        unsetenv("BKLV_JSON_POLICY");
+        unsetEnv("BKLV_JSON_POLICY");
         compile::setJsonErrorPolicy(compile::JsonErrorPolicy::STRICT); // 钩子已用掉，手动复位
         check(compile::getJsonErrorPolicy() == compile::JsonErrorPolicy::STRICT, "手动复位回 STRICT");
     }

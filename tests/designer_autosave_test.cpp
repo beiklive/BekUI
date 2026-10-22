@@ -2,19 +2,40 @@
 
 #include <cstdio>
 #include <cstdlib>
-
-#include <unistd.h> // getpid（每个进程用不同草稿 key）
+#include <filesystem>
 #include <string>
+
+#if defined(_WIN32)
+#include <process.h> // _getpid：MSVC 没有 unistd.h
+#else
+#include <unistd.h> // getpid（每个进程用不同草稿 key）
+#endif
 
 #include "designer/core/autosave.hpp"
 #include "test_util.hpp"
 
 using namespace designer;
 
+namespace
+{
+// 每个进程用不同草稿 key：POSIX 走 getpid()，Windows 只有 _getpid()。
+long processId()
+{
+#if defined(_WIN32)
+    return static_cast<long>(::_getpid());
+#else
+    return static_cast<long>(::getpid());
+#endif
+}
+} // namespace
+
 int main()
 {
     const std::string dir = "dist/designer_autosave_work";
-    std::system(("mkdir -p " + dir).c_str());
+    // 不用 std::system("mkdir -p")：Windows 的 cmd 不认 -p，会在当前目录
+    // 里建出一个叫 "-p" 的目录。
+    std::error_code dirError;
+    std::filesystem::create_directories(dir, dirError);
     clearAutosave(dir);
 
     AutosaveInfo info;
@@ -49,7 +70,7 @@ int main()
     {
         // 主题目录在 dist/resources 下通常是只读的 —— 草稿必须落到用户目录
         // 每个进程用不同的 key：check.sh 会跑 GL/VK 两份测试，固定 key 会互相删同一份草稿（踩过）
-        const std::string key = "resources/theme/default#" + std::to_string(::getpid());
+        const std::string key = "resources/theme/default#" + std::to_string(processId());
         const std::string path = autosavePath(key);
         const char* home = std::getenv("HOME");
         const char* appdata = std::getenv("APPDATA");

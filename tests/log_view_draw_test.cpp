@@ -20,6 +20,8 @@
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/debug_log_view.hpp"
 
+#include "imgui_internal.h" // SetCircleTessellationMaxError / _SetPixelDensity
+
 using namespace bklv;
 
 #include "test_util.hpp"
@@ -81,7 +83,11 @@ int main()
     ImGui::GetIO().Fonts->Build();
     bklv::setDefaultFont(ImGui::GetIO().Fonts->Fonts[0]);
 
+    // 没有 NewFrame() 就没有 ImGui::Style.CircleTessellationMaxError 的拷贝：
+    // shared data 构造时 memset 过，圆角分段表全是 0，画圆角/圆形时会整数除零。
+    ImGui::GetDrawListSharedData()->SetCircleTessellationMaxError(0.3f);
     ImDrawList* list = new ImDrawList(ImGui::GetDrawListSharedData());
+    list->_SetPixelDensity(1.0f);
 
     std::printf("== 1. 绘制量只跟「看得见的行数」有关，与日志总量无关 ==\n");
     {

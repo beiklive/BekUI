@@ -317,6 +317,9 @@ if(BKLV_BUILD_TESTS)
 
         # ctest 里跑；也能直接执行 dist/<name>
         add_test(NAME ${test_name} COMMAND ${test_name})
+        # 测试里写的临时文件路径是相对「源码根」的（dist/xxx.json 之类），
+        # 默认工作目录是构建目录，直接 ctest 会 11 个测试集体失败（Windows 上尤其明显）。
+        set_tests_properties(${test_name} PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
         list(APPEND BKLV_TEST_NAMES ${test_name})
     endforeach()
 

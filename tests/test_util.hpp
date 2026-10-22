@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 #include "bklv/core/geometry.hpp"
@@ -86,4 +87,27 @@ inline void checkColor(ImU32 got, ImU32 want, const std::string& what)
         g_failed++;
         std::printf("  [失败] %s  期望 0x%08X 实际 0x%08X\n", what.c_str(), want, got);
     }
+}
+
+// ---------------------------------------------------------------------------
+// 环境变量：POSIX 用 setenv/unsetenv，MSVC 只有 _putenv_s（传空串即删除）。
+// 有几个测试要验证"进程环境里的策略覆盖"，平台差异集中在这里。
+// ---------------------------------------------------------------------------
+
+inline void setEnv(const char* name, const char* value)
+{
+#if defined(_WIN32)
+    _putenv_s(name, value);
+#else
+    setenv(name, value, 1);
+#endif
+}
+
+inline void unsetEnv(const char* name)
+{
+#if defined(_WIN32)
+    _putenv_s(name, "");
+#else
+    unsetenv(name);
+#endif
 }

@@ -38,6 +38,12 @@ struct DrawResult
     {
         shared.TexUvWhitePixel = ImVec2(0.0f, 0.0f);
         shared.ClipRectFullscreen = ImVec4(-10000.0f, -10000.0f, 10000.0f, 10000.0f);
+        // 手工构造的 shared data 是 memset 出来的：圆角分段表 CircleSegmentCounts
+        // 全是 0，画圆形/圆角时它会被当除数算弧步长（整数除零崩溃）；平铺密度也
+        // 得自己补，否则 _InvFringeScale 为 0 会把半径乘成 0。这两步对应
+        // ImGui::NewFrame() + Begin() 里做的事。
+        shared.SetCircleTessellationMaxError(0.3f);
+        list._SetPixelDensity(1.0f);
         // 手工构造的 ImDrawList 必须先做一次帧初始化：_CmdHeader / 裁剪栈
         // 指向内部缓冲区，不做的话 PrimReserve 会空指针（踩过）
         list._ResetForNewFrame();

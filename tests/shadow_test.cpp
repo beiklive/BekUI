@@ -100,9 +100,9 @@ int main()
 
         // 环境变量只影响"第一次读取"，之后以 setQuality 为准
         shadow::resetEnvironmentProbeForTest();
-        setenv("BKLV_SHADOW_QUALITY", "fast", 1);
+        setEnv("BKLV_SHADOW_QUALITY", "fast");
         check(shadow::getQuality() == ShadowQuality::FAST, "环境变量 BKLV_SHADOW_QUALITY=fast 生效");
-        unsetenv("BKLV_SHADOW_QUALITY");
+        unsetEnv("BKLV_SHADOW_QUALITY");
 
         shadow::setQuality(ShadowQuality::FAST);
     }
@@ -132,6 +132,10 @@ int main()
         ImGui::CreateContext();
         {
             auto makeList = [] {
+                // ③ 没有 NewFrame() 就没人调 SetCircleTessellationMaxError()：
+                //    shared data 构造时 memset 过，CircleSegmentCounts 全是 0，
+                //    画圆角/圆形时它会被当除数算弧步长 → 整数除零崩溃。
+                ImGui::GetDrawListSharedData()->SetCircleTessellationMaxError(0.3f);
                 ImDrawList* list = new ImDrawList(ImGui::GetDrawListSharedData());
                 list->_ResetForNewFrame();
                 list->_FringeScale    = 1.0f;
@@ -353,6 +357,8 @@ int main()
         ImGui::CreateContext();
         {
             auto makeList = [] {
+                // 同 5)：先补圆角分段表，否则圆角弧步长的除法会除零
+                ImGui::GetDrawListSharedData()->SetCircleTessellationMaxError(0.3f);
                 ImDrawList* list = new ImDrawList(ImGui::GetDrawListSharedData());
                 list->_ResetForNewFrame();
                 list->_FringeScale    = 1.0f;
