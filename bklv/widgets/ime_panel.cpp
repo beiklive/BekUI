@@ -10,6 +10,7 @@
 #include "bklv/3rd/imgui/imgui.h"
 #include "bklv/core/app.hpp"
 #include "bklv/core/font.hpp"
+#include "bklv/core/glass/glass_service.hpp"
 #include "bklv/core/gesture.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/theme_data.hpp"
@@ -190,13 +191,12 @@ class ImeField : public View
         if (drawList == nullptr || width <= 0.0f || height <= 0.0f)
             return;
 
-        const ImU32 bg = getTheme().color("color.surface.card");
-        const ImU32 border = getTheme().color("color.border.default");
+        const ImU32 border    = getTheme().color("color.border.default");
         const ImU32 textColor = getTheme().color("color.text.primary");
-        const float radius = getTheme().number("metric.radius.md", 6.0f);
+        const float radius    = getTheme().number("metric.radius.lg", 10.0f);
 
-        drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height), bg, radius);
-        drawList->AddRect(ImVec2(x, y), ImVec2(x + width, y + height), border, radius, 0, 1.0f);
+        // 只要边框，不要底色 —— 让下面的模糊背景透出来
+        drawList->AddRect(ImVec2(x, y), ImVec2(x + width, y + height), border, radius, 0, 2.0f);
 
         const std::string value = this->textProvider ? this->textProvider() : std::string();
         const size_t caretIndex = this->caretProvider ? this->caretProvider() : 0;
@@ -256,10 +256,13 @@ ImePanel::ImePanel(std::string initialText, int maxLengthValue, bool numeric,
 {
     this->setWidthPercentage(100.0f);
     this->setHeightPercentage(100.0f);
-    this->setPadding(20.0f);
-    this->setGap(16.0f);
+    this->setPadding(24.0f);
+    this->setGap(12.0f);
     this->setJustifyContent(JustifyContent::SPACE_BETWEEN);
-    this->setBackgroundColor(getTheme().color("color.common.overlay", IM_COL32(0, 0, 0, 150)));
+
+    // 弹出层背景用高斯模糊：临时打开外壳的玻璃服务，关闭时恢复原状
+    this->glassWasEnabled = glass::getGlassService().isEnabled();
+    glass::getGlassService().setEnabled(true);
 
     this->buildLayout();
     this->caret = splitChars(this->text).size();
@@ -270,25 +273,47 @@ ImePanel::ImePanel(std::string initialText, int maxLengthValue, bool numeric,
     this->registerAction(ControllerButton::RB, "光标右", [this](View*) { this->moveCaret(1); });
 }
 
+ImePanel::~ImePanel()
+{
+    glass::getGlassService().setEnabled(this->glassWasEnabled);
+}
+
 void ImePanel::buildLayout()
 {
+    // 全屏模糊背景（玻璃层；玻璃不可用时退化成很淡的染色）
+    AppearanceView* backdrop = new AppearanceView("base/ime_backdrop", false);
+    backdrop->setPositionType(PositionType::ABSOLUTE);
+    backdrop->setWidthPercentage(100.0f);
+    backdrop->setHeightPercentage(100.0f);
+    this->addView(backdrop);
+
+    Box* top = new Box(Axis::COLUMN);
+    top->setWidthPercentage(100.0f);
+    top->setGrow(1.0f);
+    top->setGap(10.0f);
+    top->setAlignItems(AlignItems::CENTER);
+    top->setJustifyContent(JustifyContent::CENTER);
+
     this->field = new ImeField();
-    this->field->setWidthPercentage(100.0f);
-    this->field->setHeight(84.0f);
-    this->field->setMarginTop(8.0f);
+    this->field->setWidthPercentage(70.0f);
+    this->field->setHeightPercentage(60.0f);
     this->field->textProvider = [this] { return this->textWithComposing(); };
     this->field->caretProvider = [this] { return this->caretChars(); };
     this->field->onCaret = [this](size_t index) { this->setCaret(index); };
-    this->addView(this->field);
+    top->addView(this->field);
 
     this->hintLabel = new Label();
     this->hintLabel->setFontSize(14.0f);
     this->hintLabel->setTextColor(getTheme().color("color.text.dim"));
-    this->addView(this->hintLabel);
+    top->addView(this->hintLabel);
 
     this->candidateRow = new Box(Axis::ROW);
     this->candidateRow->setGap(8.0f);
-    this->addView(this->candidateRow);
+    this->candidateRow->setWidthPercentage(70.0f);
+    this->candidateRow->setJustifyContent(JustifyContent::CENTER);
+    top->addView(this->candidateRow);
+
+    this->addView(top);
 
     Box* keyboard = new Box(Axis::COLUMN);
     keyboard->setWidthPercentage(100.0f);
@@ -386,6 +411,25 @@ void ImePanel::buildFullKeyboard(Box* parent)
         parent->addView(row);
     }
 
+    const char* punctuation[2] = { ",.?!:;'\"()", "@#$%&*+-/\\" };
+    for (int r = 0; r < 2; r++)
+    {
+        Box* row = new Box(Axis::ROW);
+        row->setGap(6.0f);
+        row->setJustifyContent(JustifyContent::CENTER);
+        for (const char* c = punctuation[r]; *c != 0; c++)
+        {
+            const std::string value(1, *c);
+            Button* key = new Button(value);
+            key->setMinWidth(0.0f);
+            key->setWidth(52.0f);
+            key->setHeight(46.0f);
+            key->setOnClick([this, value] { this->insertText(this->chinese ? this->fullWidth(value) : value); });
+            row->addView(key);
+        }
+        parent->addView(row);
+    }
+
     Box* bottom = new Box(Axis::ROW);
     bottom->setGap(8.0f);
     bottom->setWidthPercentage(100.0f);
@@ -465,6 +509,31 @@ void ImePanel::insertText(const std::string& value)
     this->text.insert(offset, insert);
     this->caret += splitChars(insert).size();
     this->refreshLabels();
+}
+
+std::string ImePanel::fullWidth(const std::string& value) const
+{
+    if (value == ",") return "，";
+    if (value == ".") return "。";
+    if (value == "?") return "？";
+    if (value == "!") return "！";
+    if (value == ":") return "：";
+    if (value == ";") return "；";
+    if (value == "(") return "（";
+    if (value == ")") return "）";
+    if (value == "'") return "’";
+    if (value == "\"") return "”";
+    if (value == "@") return "＠";
+    if (value == "#") return "＃";
+    if (value == "$") return "＄";
+    if (value == "%") return "％";
+    if (value == "&") return "＆";
+    if (value == "*") return "＊";
+    if (value == "+") return "＋";
+    if (value == "-") return "－";
+    if (value == "/") return "／";
+    if (value == "\\") return "＼";
+    return value;
 }
 
 void ImePanel::insertAscii(const std::string& value)

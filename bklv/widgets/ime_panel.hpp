@@ -27,6 +27,7 @@ class ImePanel : public Box
   public:
     ImePanel(std::string initialText, int maxLength, bool numeric,
         std::function<void(bool accepted, const std::string& text)> callback);
+    ~ImePanel() override;
 
     std::string getClassString() const override { return "bklv::ImePanel"; }
 
@@ -59,6 +60,7 @@ class ImePanel : public Box
     void relabelKeys();
 
     std::string displayText() const;
+    std::string fullWidth(const std::string& value) const;
     std::string textWithComposing() const;
     size_t caretChars() const;
 
@@ -70,6 +72,7 @@ class ImePanel : public Box
     bool chinese      = true;
     bool shift        = false;
     float blinkTimer  = 0.0f;
+    bool  glassWasEnabled = false;
 
     ImeField* field = nullptr;
     Label* hintLabel = nullptr;
