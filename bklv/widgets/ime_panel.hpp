@@ -31,6 +31,9 @@ class ImePanel : public Box
 
     std::string getClassString() const override { return "bklv::ImePanel"; }
 
+    // 默认焦点：确定键（打开键盘后直接按 A 就能提交）
+    View* getDefaultFocus() override;
+
     // 测试/外部驱动
     void insertAscii(const std::string& value);
     void toggleLanguage();
@@ -76,6 +79,7 @@ class ImePanel : public Box
 
     ImeField* field = nullptr;
     Label* hintLabel = nullptr;
+    Button* confirmButton = nullptr;
     Box* candidateRow = nullptr;
     std::vector<Button*> candidateButtons;
     std::vector<std::pair<Button*, std::string>> letterKeys;

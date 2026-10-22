@@ -208,15 +208,18 @@ class ImeField : public View
         {
             const std::string prefix = joinChars(splitChars(value), caretIndex);
             const float caretX       = x + padding + textWidth(prefix, fontSize);
-            const float baselineY    = y + (height - fontSize) * 0.5f;
+            const float lineHeight = fontSize * 1.2f;
+            const float baselineY  = y + (height - lineHeight) * 0.5f;
+            const float caretTop   = baselineY + (lineHeight - fontSize) * 0.5f;
+            const float caretBottom = caretTop + fontSize;
 
             drawList->AddText(font, fontSize, ImVec2(x + padding, baselineY), textColor,
                 value.c_str());
 
             if (this->blinkTimer < 0.5f)
             {
-                drawList->AddLine(ImVec2(caretX, y + 14.0f),
-                    ImVec2(caretX, y + height - 14.0f), textColor, 2.0f);
+                drawList->AddLine(ImVec2(caretX, caretTop), ImVec2(caretX, caretBottom),
+                    textColor, 2.0f);
             }
         }
     }
@@ -271,6 +274,11 @@ ImePanel::ImePanel(std::string initialText, int maxLengthValue, bool numeric,
     // 手柄 / 键盘 LB、RB：移动光标（触摸点击另有一条路）
     this->registerAction(ControllerButton::LB, "光标左", [this](View*) { this->moveCaret(-1); });
     this->registerAction(ControllerButton::RB, "光标右", [this](View*) { this->moveCaret(1); });
+}
+
+View* ImePanel::getDefaultFocus()
+{
+    return this->confirmButton;
 }
 
 ImePanel::~ImePanel()
@@ -332,13 +340,6 @@ void ImePanel::buildLayout()
     columns->setGap(16.0f);
     columns->setAlignItems(AlignItems::STRETCH);
 
-    Box* numberPad = new Box(Axis::COLUMN);
-    numberPad->setWidth(190.0f);
-    numberPad->setHeightPercentage(100.0f);
-    numberPad->setGap(6.0f);
-    this->buildNumberPad(numberPad);
-    columns->addView(numberPad);
-
     Box* letters = new Box(Axis::COLUMN);
     letters->setGrow(1.0f);
     letters->setHeightPercentage(100.0f);
@@ -346,6 +347,14 @@ void ImePanel::buildLayout()
     letters->setJustifyContent(JustifyContent::SPACE_BETWEEN);
     this->buildFullKeyboard(letters);
     columns->addView(letters);
+
+    // 数字小键盘在右边（和电脑键盘一致）
+    Box* numberPad = new Box(Axis::COLUMN);
+    numberPad->setWidth(190.0f);
+    numberPad->setHeightPercentage(100.0f);
+    numberPad->setGap(6.0f);
+    this->buildNumberPad(numberPad);
+    columns->addView(numberPad);
 
     keyboard->addView(columns);
     this->addView(keyboard);
@@ -499,19 +508,16 @@ void ImePanel::buildFullKeyboard(Box* parent)
     addKey(row3, "/", unit, [insert] { insert("/"); });
     addKey(row3, "Shift", 100.0f, [this] { this->toggleShift(); });
 
-    // 底部：Ctrl Alt Space Alt 取消 确定
+    // 底部：空格（填满）+ 取消 + 确定
     Box* bottom = addRow(0.0f);
-    addKey(bottom, "Ctrl", 62.0f, [this] { this->moveCaret(-1); });
-    addKey(bottom, "Alt", 62.0f, [this] { this->moveCaret(1); });
     Button* space = new Button("空格");
     space->setMinWidth(0.0f);
     space->setGrow(1.0f);
     space->setHeight(46.0f);
     space->setOnClick([this] { this->insertText(" "); });
     bottom->addView(space);
-    addKey(bottom, "Alt", 62.0f, [this] { this->moveCaret(1); });
-    addKey(bottom, "取消", 70.0f, [this] { this->cancel(); });
-    addKey(bottom, "确定", 70.0f, [this] { this->confirm(); });
+    addKey(bottom, "取消", 80.0f, [this] { this->cancel(); });
+    this->confirmButton = addKey(bottom, "确定", 80.0f, [this] { this->confirm(); });
 }
 
 std::string ImePanel::displayText() const
