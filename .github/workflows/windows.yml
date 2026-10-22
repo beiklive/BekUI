@@ -1,0 +1,64 @@
+name: windows
+
+# Windows · GL 版，两套工具链各一个 job：
+#
+#   · mingw   windows-latest + MSYS2 MINGW64 + Ninja —— 就是 build.bat 用的那套，
+#             也是 README 里写的官方构建方式。MSYS2 里的 cmake 是原生 Windows 程序，
+#             会把机器上装的 Visual Studio 当默认生成器，所以显式钉 -G Ninja。
+#   · msvc    windows-latest + VS 2022 生成器（Git Bash 只是 shell）—— 专门盯住
+#             notes/tweeny-msvc-render.patch 这条**只在 MSVC 下生效**的路径
+#             （配置阶段由 bklv/CMakeLists.txt 自动 git apply）。
+#
+# 都只编 GL：Vulkan 版本本地用 `bash scripts/ci_build.sh vk` 验证。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mingw:
+    name: Windows · MinGW-w64 · GL
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 构建（零警告）
+        env:
+          BKLV_CMAKE_GENERATOR: Ninja
+        run: bash scripts/ci_build.sh gl
+
+  msvc:
+    name: Windows · MSVC 2022 · GL
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # VS 生成器自己会找 cl.exe；Git Bash 只是 shell（ci_build.sh 与另外几个平台共用）。
+      - name: 构建（零警告）
+        shell: bash
+        env:
+          BKLV_CMAKE_GENERATOR: Visual Studio 17 2022
+          BKLV_BUILD_DIR: build/msvc-gl
+        run: bash scripts/ci_build.sh gl

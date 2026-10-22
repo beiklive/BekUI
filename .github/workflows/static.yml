@@ -1,0 +1,31 @@
+name: static
+
+# 只做静态扫描：接口命名约定 + 分层依赖方向。
+# 不编译、不需要子模块，所以单独一份，跑得比构建快得多。
+#
+# 构建类的 workflow 一平台一份：linux.yml / macos.yml / windows.yml / switch.yml。
+# 它们都调用 scripts/ci_build.sh，参数与「零警告才算过」的门禁只有那一份
+# （警告判定本身在 scripts/check_warnings.sh）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: static-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 命名 / 分层
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 接口命名约定
+        run: python3 scripts/check_naming.py
+
+      - name: 分层依赖方向 + 伞头可达范围
+        run: python3 scripts/check_layers.py

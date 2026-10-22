@@ -4,9 +4,9 @@
 #   bash scripts/ci_build.sh gl     # -> build/gl,  产物在 dist/
 #   bash scripts/ci_build.sh vk     # -> build/vk,  产物在 dist/vk/
 #
-# 为什么不把命令直接写在 ci.yml 里：Windows(MSYS2) / Linux / macOS 三条路径的参数
+# 为什么不把命令直接写在 workflow 里：Windows(MSYS2) / Linux / macOS 三条路径的参数
 # 完全一样，写成一份才能保证它们真的按同一套参数构建；"构建失败 / 出现警告就算失败"
-# 的门禁逻辑也只出现在这一个地方。
+# 的门禁逻辑也只出现在这一个地方（CI 一个平台一个 yml：linux / macos / windows / switch）。
 #
 # 生成器默认不写死：新目录由 CMake 按 PATH 里的工具链自己挑（Linux/macOS 就是
 # Unix Makefiles），已有的构建目录沿用缓存里的生成器。需要指定就设环境变量

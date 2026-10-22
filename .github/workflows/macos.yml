@@ -1,0 +1,33 @@
+name: macos
+
+# macOS · GL 版（macos-latest，AppleClang + Unix Makefiles）。
+#
+# 只编 GL：Vulkan 在 macOS 上要走 MoltenVK，本地用 `bash scripts/ci_build.sh vk`
+# 验证（需要 `brew install molten-vk vulkan-headers vulkan-loader`，并让 CMake 看见
+# $(brew --prefix)），CI 不重复这一份。
+#
+# macOS 上的第三方依赖全是子模块（SDL3 / yoga / imgui / json / webp / lunasvg），
+# 系统框架 ImageIO / CoreGraphics / CoreMedia / CoreVideo 由 bklv 自己链，
+# 所以这里不需要装任何包。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: macOS · GL
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 构建（零警告）
+        run: bash scripts/ci_build.sh gl

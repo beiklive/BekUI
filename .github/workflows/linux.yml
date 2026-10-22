@@ -1,0 +1,41 @@
+name: linux
+
+# Linux · GL 版（ubuntu-latest，GCC + Unix Makefiles）。
+#
+# 只编 GL：Vulkan 版本本地用 `bash scripts/ci_build.sh vk` / `scripts/check.sh` 验证，
+# CI 上每个平台跑一份就够（省一半时间，GL 这条覆盖的是同一批视图/布局代码）。
+#
+# SDL3 是源码子模块、静态构建，所以要先装它要的 X11 / Wayland / 音频 / DRM 开发包。
+# runner 自带的 cmake ≥ 3.24（SDL3 的 $<LINK_LIBRARY:FRAMEWORK,...> 需要），更旧的
+# 版本 configure 阶段会直接 FATAL_ERROR 说清楚。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Linux · GL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Linux 依赖（SDL3 静态构建）
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libx11-dev libxext-dev libxrandr-dev libxfixes-dev libxi-dev libxcursor-dev \
+            libxinerama-dev libwayland-dev wayland-protocols libxkbcommon-dev \
+            libasound2-dev libpulse-dev libdrm-dev libgbm-dev \
+            libegl1-mesa-dev libgl1-mesa-dev
+
+      - name: 构建（零警告）
+        run: bash scripts/ci_build.sh gl

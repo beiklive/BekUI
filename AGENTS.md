@@ -1006,18 +1006,22 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
   `resources/` 放到可执行文件旁边，或调 `initResources()` —— 不然路径按工作目录解析。
 - **本机门禁**：`bash scripts/check.sh`（命名 → 分层 → GL/VK 双后端零警告构建）。
 
-CI 见 `.github/workflows/ci.yml`：静态检查（命名 + 分层/伞头）一份，构建按平台分份，
-都走 `scripts/ci_build.sh <gl|vk>`（参数与「出现 warning 即失败」的门禁只有那一份）：
+CI 一个平台一份 workflow（`.github/workflows/`），**只编 GL**：
 
-- **Linux**：`ubuntu-latest` + GCC + Unix Makefiles，`{GL, Vulkan}` 两份；
-- **macOS**：`macos-latest` + AppleClang，`{GL, Vulkan}` 两份，Vulkan 用 brew 的 molten-vk；
-- **Windows**：`windows-latest` + MSYS2 MINGW64（就是 `build.bat` 那套工具链），
-  `{GL, Vulkan}` 两份，显式 `-G Ninja`；
-- **Windows/MSVC**：`windows-latest` + VS 2022 生成器，只编 GL —— 专门盯住
-  `notes/tweeny-msvc-render.patch` 这条只在 MSVC 下生效的补丁路径；
-- **Switch**：`devkitpro/devkita64` 容器 + `scripts/build_switch.sh`，产物 `dist/switch/demo.nro`。
+- `static.yml`：接口命名 + 分层/伞头，不编译、不拉子模块；
+- `linux.yml`：`ubuntu-latest` + GCC + Unix Makefiles，先装 SDL3 静态构建要的
+  X11 / Wayland / 音频 / DRM 开发包；
+- `macos.yml`：`macos-latest` + AppleClang，不装任何包（依赖全是子模块，系统框架自己链）；
+- `windows.yml`：两个 job —— `mingw`（MSYS2 MINGW64 + 显式 `-G Ninja`，就是 `build.bat`
+  那套工具链）与 `msvc`（VS 2022 生成器，专门盯住 `notes/tweeny-msvc-render.patch`
+  这条只在 MSVC 下生效的补丁路径）；
+- `switch.yml`：`devkitpro/devkita64` 容器 + `scripts/build_switch.sh`，产物 `dist/switch/demo.nro`。
 
-本地想复现某一份，就是 `BKLV_CMAKE_GENERATOR=… bash scripts/ci_build.sh gl`（见脚本头注释）。
+每个 workflow 自己带一份触发条件与 `concurrency`（YAML 不能跨文件共享 steps，所以重复写）。
+构建都走 `scripts/ci_build.sh gl`（参数与「出现 warning 即失败」的门禁只有那一份）；
+**Vulkan 版不跑 CI**，本地用 `bash scripts/ci_build.sh vk` 或 `scripts/check.sh` 验（双后端
+齐过才算本地通过，CI 只保一份）。本地想复现某个 CI job，就是
+`BKLV_CMAKE_GENERATOR=… bash scripts/ci_build.sh gl`（见脚本头注释）。
 "零警告"的判定在 `scripts/check_warnings.sh`：只算 `bklv/` 自己写的代码，`bklv/3rd/` 下
 vendored 的 submodule（SDL3 / Yoga / imgui / webp / lunasvg）按自己的 `-Wall` 编，报的警告不算。
 

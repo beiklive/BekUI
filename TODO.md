@@ -350,15 +350,16 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 ## P3 —— 平台与工程
 
 - [ ] **CI**
-      GitHub Actions 矩阵：Windows（MinGW + MSVC）/ Linux / macOS × {GL, Vulkan} + Switch。
-      当前状态：`.github/workflows/ci.yml` 已接五个 job —— 静态检查（命名 + 分层/伞头）一份；
-      Linux、macOS、Windows/MSYS2-MINGW64 各 {GL, Vulkan} 两份；Windows/MSVC 只编 GL
-      （专门盯 `notes/tweeny-msvc-render.patch` 那条只在 MSVC 生效的路径）；
-      Switch 用 `devkitpro/devkita64` 容器跑 `scripts/build_switch.sh`。
-      构建命令统一走 `scripts/ci_build.sh`，出现 warning 即失败。
-      本地能复现的（本机 MinGW、Linux 容器、MSVC、Switch）都已跑过，**首次真跑 GH runner
-      仍可能差在依赖版本上**（SDL3 的系统包、MoltenVK 路径、runner 上的 MSVC 警告）。
-      *验收*：PR 上能看到矩阵全绿。
+      GitHub Actions 一平台一份 workflow，都是 GL 版（Vulkan 版本地验，CI 不重复）。
+      当前状态：`.github/workflows/` 下五个文件 —— `static.yml`（命名 + 分层/伞头，不编译）、
+      `linux.yml`（ubuntu + GCC + SDL3 的 X11/Wayland 依赖）、`macos.yml`（AppleClang，不装包）、
+      `windows.yml`（`mingw` job 走 MSYS2 MINGW64 + Ninja，`msvc` job 走 VS 2022 生成器，
+      专门盯 `notes/tweeny-msvc-render.patch` 那条只在 MSVC 生效的路径）、
+      `switch.yml`（`devkitpro/devkita64` 容器跑 `scripts/build_switch.sh`）。
+      构建命令统一走 `scripts/ci_build.sh gl`，出现 warning 即失败（判定在 `scripts/check_warnings.sh`，
+      只算 `bklv/` 自己写的代码）。本地能复现的都跑过（本机 MinGW、Linux 容器、MSVC、Switch），
+      **首次真跑 GH runner 仍可能差在依赖版本上**（SDL3 的系统包、runner 上的 MSVC 警告）。
+      *验收*：PR 上五个 workflow 全绿。
 - [ ] **单元测试**
       仓库里不再带测试目录（随设计器一起移出，`tests/` 与 `-DBKLV_BUILD_TESTS` 都已删除），验证靠临时程序：
       `RecyclerFrame` 的可见区间与回收、`Label` 的断行、焦点导航的几何打分、
