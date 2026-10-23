@@ -70,6 +70,8 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(BKLV_WINDOWS_GUI "Windows 上不弹控制台窗口（会看不到 BKLV_LOG_* 输出）" OFF)
+option(BKLV_BUILD_DEMO "编译 demo 主程序" ON)
+option(BKLV_BUILD_EXAMPLES "编译 examples/ 下的示例" ON)
 set(BKLV_GRAPHICS "gl" CACHE STRING "图形后端：gl 或 vk")
 set_property(CACHE BKLV_GRAPHICS PROPERTY STRINGS gl vk)
 
@@ -168,6 +170,8 @@ endfunction()
 # 这一层属于 demo，不属于库：它用 bklv 的控件拼出「能力总览」这个具体界面。
 # 显式列源文件，不用 GLOB：加删文件比 glob 的便利更重要。
 
+set(BKLV_TARGET_NAMES "")
+if(BKLV_BUILD_DEMO)
 set(BKLV_APP_SOURCES
     app/demo_app.cpp
     app/card_button.cpp
@@ -268,6 +272,7 @@ if(NOT BKLV_TARGETS STREQUAL "" AND BKLV_MATCHED EQUAL 0)
     message(FATAL_ERROR
         "BKLV_TARGETS=${BKLV_TARGETS} 没有匹配到任何目标。可用目标：\n  demo")
 endif()
+endif() # BKLV_BUILD_DEMO
 
 # ---------------------------------------------------------------------------
 # 状态输出
@@ -283,7 +288,7 @@ message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAM
 # ---------------------------------------------------------------------------
 # 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
 # ---------------------------------------------------------------------------
-if(BKLV_GRAPHICS STREQUAL "gl")
+if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")
     add_executable(embed_imgui_gl examples/embed_imgui_gl/main.cpp)
     target_link_libraries(embed_imgui_gl PRIVATE bklv::bklv)
     set_target_properties(embed_imgui_gl PROPERTIES
