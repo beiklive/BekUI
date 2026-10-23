@@ -147,6 +147,9 @@ class EventBus
 
 // 进程级总线（App 构造时清一次；也可以自己 new 一个隔离的）
 EventBus& getEventBus();
+// 当前 Context 的事件总线（nullptr = 全局默认）
+void setContextEventBus(EventBus* bus);
+EventBus* getContextEventBus();
 
 // ---- 框架内置事件 ----
 

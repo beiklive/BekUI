@@ -124,6 +124,10 @@ class App
     // 由 App 构造时登记、析构时清掉；没有实例时返回 nullptr。
     static App* getCurrent();
 
+    // 当前 Context 的 App（多实例；nullptr = 全局默认）
+    static void setContextApp(App* app);
+    static App* getContextApp();
+
     // ---- 弹层（Dialog / Dropdown / applet 面板都用它）----
     //
     // 挂到根视图最上层（绝对定位铺满画布），并把输入层切到模态：

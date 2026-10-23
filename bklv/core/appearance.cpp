@@ -1296,7 +1296,8 @@ std::shared_ptr<const Appearance> Appearance::compileWithFallback(const std::str
 
 std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
 {
-    const std::string key = getTheme().getName() + "/" + widget;
+    // 主题名相同但目录不同（自定义路径主题）不能共用缓存
+    const std::string key = getTheme().getName() + "@" + getTheme().getDirectory() + "/" + widget;
 
     auto& cache = appearanceCache();
     const auto cached = cache.find(key);

@@ -439,6 +439,9 @@ class InputManager
 
 // 全局输入管理器
 InputManager& getInputManager();
+// 当前 Context 的输入管理器（nullptr = 全局默认）
+void setContextInputManager(InputManager* manager);
+InputManager* getContextInputManager();
 
 // 绘制底部提示栏（由 App 每帧调用）
 // 提示栏不再由这里画：改用 widgets/hints_bar 控件（挂在外壳覆盖层的底栏里）。

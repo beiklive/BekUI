@@ -127,6 +127,10 @@ class ThemeData
 // 全局当前主题（App 构造时装载 default；换肤走 appearance.hpp 的 setTheme）。
 const ThemeData& getTheme();
 
+// 当前 Context 的主题（多实例；nullptr = 全局默认主题）
+void setContextTheme(ThemeData* theme);
+ThemeData* getContextTheme();
+
 // 把全局主题换成 name。返回 false 表示没装载成功（全局主题会保持原样）。
 // 一般不用直接调这个——换肤还要清外观缓存并让视图树重新套用外观，
 // 那是 appearance.hpp 的 setTheme()。

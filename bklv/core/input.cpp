@@ -42,8 +42,25 @@ void playUiSound(View* view, Sound sound, const char* trigger)
 // InputManager
 // ---------------------------------------------------------------------------
 
+namespace
+{
+InputManager* g_contextInput = nullptr;
+}
+
+void setContextInputManager(InputManager* manager)
+{
+    g_contextInput = manager;
+}
+
+InputManager* getContextInputManager()
+{
+    return g_contextInput;
+}
+
 InputManager& getInputManager()
 {
+    if (g_contextInput != nullptr)
+        return *g_contextInput;
     // 登记在全局表里（core/globals.hpp）：可列举、可随 resetGlobals() 一起重置。
     // 它握着焦点/模态这类指着视图的状态，重置必须发生在视图销毁之前（App 的收尾就是这么做的）。
     return *globals::getGlobalStore().obtain<InputManager>("inputManager");

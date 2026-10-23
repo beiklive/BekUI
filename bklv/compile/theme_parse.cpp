@@ -612,8 +612,25 @@ bool& themeLoaded()
 
 } // namespace
 
+namespace
+{
+ThemeData* g_contextTheme = nullptr;
+}
+
+void setContextTheme(ThemeData* theme)
+{
+    g_contextTheme = theme;
+}
+
+ThemeData* getContextTheme()
+{
+    return g_contextTheme;
+}
+
 const ThemeData& getTheme()
 {
+    if (g_contextTheme != nullptr)
+        return *g_contextTheme;
     if (!themeLoaded())
     {
         themeLoaded() = true;

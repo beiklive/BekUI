@@ -13,7 +13,10 @@
 #include <memory>
 
 #include "bklv/core/app.hpp"
+#include "bklv/core/event.hpp"
+#include "bklv/core/input.hpp"
 #include "bklv/core/services.hpp"
+#include "bklv/core/theme_data.hpp"
 
 namespace bklv
 {
@@ -39,6 +42,16 @@ class Context
     void detachHost();
     bool isAttached() const;
 
+    // 每个 Context 独立的主题 / 输入 / 事件总线
+    ThemeData& getThemeData() { return this->theme; }
+    InputManager& getInputState() { return this->input; }
+    EventBus& getEventBusState() { return this->bus; }
+    bool loadTheme(const std::string& name) { return this->theme.load(name); }
+
+    // 让这个 Context 成为当前线程的"当前 UI"（输入/主题查找走它）。
+    // 构造、setRootView、step、draw 会自动调用；多实例时构建视图前也要显式调用。
+    void makeCurrent();
+
     // 独立运行 / 需要底层能力时的逃生口
     App& getApp();
     const App& getApp() const;
@@ -46,6 +59,9 @@ class Context
   private:
     Services services;
     bool servicesInstalled = false;
+    ThemeData theme;
+    InputManager input;
+    EventBus bus;
     std::unique_ptr<App> app;
 };
 

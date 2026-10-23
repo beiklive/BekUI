@@ -172,8 +172,25 @@ unsigned int App::getLayoutCount()
     return g_layoutCount;
 }
 
+namespace
+{
+App* g_contextApp = nullptr;
+}
+
+void App::setContextApp(App* app)
+{
+    g_contextApp = app;
+}
+
+App* App::getContextApp()
+{
+    return g_contextApp;
+}
+
 App* App::getCurrent()
 {
+    if (g_contextApp != nullptr)
+        return g_contextApp;
     return globals::getGlobalStore().find<App>(kAppGlobalSlot);
 }
 
