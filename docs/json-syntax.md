@@ -506,6 +506,31 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
   或视图 JSON 里写 `"placement": "center"`；
 - 想让"居中主题"所有下拉都居中，只改这一行即可，不用改任何 C++。
 
+### 外观契约：`requires`
+
+代码需要的内容槽/几何层，可以在外观 JSON 里显式声明（**只能加严，不能替代代码契约**）：
+
+```json
+{
+  "layers": [
+    { "op": "text", "id": "text", "data_id": "text" }
+  ],
+  "requires": {
+    "content": ["text"],
+    "layers": ["bg"]
+  }
+}
+```
+
+- `requires.content`：必须存在 `op=text` 且 `data_id` 等于该名字的层；
+- `requires.layers`：必须存在同 `id` 的层（不校验 op）；
+- 校验发生在 `import` 合并与编译之后；失败会写 error 日志，
+  `validateThemeAppearances()` 返回失败；
+- 代码侧还注册了内置契约（如 `base/widget/button.text` 必须有 `text` 槽、
+  `base/slider/slider` 必须有 `track/fill/knob/geometry`）。JSON 的 `requires`
+  与内置契约取并集，不能放宽；
+- glass 变体自动继承基名契约（`button.text.glass` → `button.text`）。
+
 ### `<主题>/sound.json`：全局 UI 音效
 
 主题根下的独立文件（**不写进 `files[]`**，它不是控件外观）。缺了回退 default 主题。

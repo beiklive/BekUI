@@ -368,6 +368,18 @@ class Appearance
     std::string getSoundOverride(const std::string& trigger) const;
     void addSoundOverride(const std::string& trigger, const std::string& path);
 
+    // ---- 外观契约 ----
+    // 代码声明"这份外观必须有哪些内容槽/几何层"，校验在编译后做。
+    struct Contract
+    {
+        std::vector<std::string> content;             // data_id，op 必须是 text
+        std::vector<std::pair<std::string, int>> layers; // layer id + 期望 op（AppearanceLayer::Op 的整数值）
+    };
+    static void registerContract(const std::string& appearance, Contract contract);
+    // 校验 compiled 是否满足 appearance 的契约；没有注册契约时返回 true
+    static bool checkContract(const std::string& appearance, const Appearance& compiled,
+        std::string& error);
+
   private:
     std::vector<AppearanceLayer> layers;
     std::vector<AppearanceChild> children;
@@ -376,6 +388,8 @@ class Appearance
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
     std::vector<std::pair<std::string, std::vector<ViewChannelClip>>> stateViewClips;
     std::vector<std::pair<std::string, std::string>> soundOverrides;
+    std::vector<std::string> requiredContent;
+    std::vector<std::string> requiredLayers;
     // 四个生命周期事件（外观 JSON 的 transitions 段）；没写就是 defined=false
     std::array<TransitionEventSpec, (size_t)TransitionEvent::COUNT> transitions;
 };

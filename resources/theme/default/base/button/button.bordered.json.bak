@@ -1,0 +1,36 @@
+{
+  "import": "base/button/button",
+  "box": {
+    "height": "@theme/metric.control.height",
+    "minWidth": "@theme/metric.control.minWidth"
+  },
+  "layers": [
+    {
+      "import": "base/layer/shadow",
+      "cutout": true
+    },
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.common.transparent",
+      "radius": "@theme/metric.radius.md",
+      "stroke": "@theme/color.button.defaultBorder",
+      "strokeWidth": "@theme/metric.button.borderThickness"
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "color": "@theme/color.button.defaultText",
+      "fontSize": "@theme/metric.button.textSize",
+      "align": "center",
+      "valign": "center",
+      "inset": [
+        0,
+        25,
+        0,
+        25
+      ]
+    }
+  ]
+}

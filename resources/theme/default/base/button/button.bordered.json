@@ -14,7 +14,7 @@
       "id": "bg",
       "fill": "@theme/color.common.transparent",
       "radius": "@theme/metric.radius.md",
-      "stroke": "@theme/color.button.defaultBorder",
+      "stroke": "#FF5050",
       "strokeWidth": "@theme/metric.button.borderThickness"
     },
     {

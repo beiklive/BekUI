@@ -1187,7 +1187,7 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
     // 现在按错误策略处理：STRICT 报错（带拼错提示），SKIP_FIELD 记诊断后忽略。
     {
         static const char* kKnownKeys[] = { "vars", "import", "box", "layers", "states",
-            "transitions", "children" };
+            "transitions", "children", "requires" };
         std::string unknownKey;
         for (auto it = doc.begin(); it != doc.end(); ++it)
         {
@@ -1236,6 +1236,51 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
     if (!parseLayers(doc, theme, appearance->box, appearance->layers, error))
         return nullptr;
 
+
+    // 外观自带的"必需内容/层"声明（只能加严，不能放宽代码契约）
+    if (doc.contains("requires"))
+    {
+        const Json& requires = doc["requires"];
+        if (!requires.is_object())
+        {
+            error = "requires 必须是对象：{\"content\": [...], \"layers\": [...]}";
+            return nullptr;
+        }
+        if (requires.contains("content"))
+        {
+            if (!requires["content"].is_array())
+            {
+                error = "requires.content 必须是字符串数组";
+                return nullptr;
+            }
+            for (const Json& item : requires["content"])
+            {
+                if (!item.is_string())
+                {
+                    error = "requires.content 的每一项必须是字符串";
+                    return nullptr;
+                }
+                appearance->requiredContent.push_back(item.get<std::string>());
+            }
+        }
+        if (requires.contains("layers"))
+        {
+            if (!requires["layers"].is_array())
+            {
+                error = "requires.layers 必须是字符串数组";
+                return nullptr;
+            }
+            for (const Json& item : requires["layers"])
+            {
+                if (!item.is_string())
+                {
+                    error = "requires.layers 的每一项必须是字符串";
+                    return nullptr;
+                }
+                appearance->requiredLayers.push_back(item.get<std::string>());
+            }
+        }
+    }
 
     // 子节点声明（外观内组合控件；没写这段就是空，行为不变）
     if (!compile::parseChildren(doc, theme, appearance->children, error))
@@ -1294,6 +1339,135 @@ std::shared_ptr<const Appearance> Appearance::compileWithFallback(const std::str
     return fallbackAppearance;
 }
 
+namespace
+{
+
+std::unordered_map<std::string, Appearance::Contract>& contractRegistry()
+{
+    static std::unordered_map<std::string, Appearance::Contract> registry;
+    return registry;
+}
+
+void ensureBuiltinContracts()
+{
+    static bool done = false;
+    if (done)
+        return;
+    done = true;
+
+    auto add = [](const char* name, std::initializer_list<const char*> content,
+                   std::initializer_list<std::pair<const char*, int>> layers = {}) {
+        Appearance::Contract contract;
+        for (const char* slot : content)
+            contract.content.emplace_back(slot);
+        for (const auto& layer : layers)
+            contract.layers.emplace_back(layer.first, layer.second);
+        contractRegistry()[name] = std::move(contract);
+    };
+
+    const int RECT   = (int)AppearanceLayer::Op::RECT;
+    const int CUSTOM = (int)AppearanceLayer::Op::CUSTOM;
+
+    add("base/widget/button.text", { "text" });
+    add("base/widget/button.list", { "text" });
+    add("base/widget/button.icon", { "icon" });
+    add("base/widget/button.icon_circle", { "icon" });
+    add("base/widget/button.icon_text", { "icon", "text" });
+    add("base/widget/button.info", { "icon", "text", "info" });
+    add("base/widget/button.selector", { "icon", "text", "info" });
+    add("base/widget/button.dropdown", { "icon", "text", "info" });
+    add("base/widget/dropdown", { "title", "value" });
+    add("base/slider/slider", {}, { { "track", RECT }, { "fill", RECT }, { "knob", RECT },
+                                      { "geometry", CUSTOM } });
+    add("base/cell/cell", { "title" });
+    add("base/cell/bool", { "title" }, { { "switch", CUSTOM } });
+    add("base/cell/radio", { "title" }, { { "radio", CUSTOM } });
+    add("base/cell/detail", { "title" });
+    add("base/cell/selector", { "title" });
+    add("base/cell/input", { "title" });
+    add("base/cell/slider", { "title" });
+    add("base/widget/dialog", { "title", "text" });
+    add("base/widget/edit_text_dialog", { "title" });
+    add("base/widget/notification", { "text" });
+}
+
+const Appearance::Contract* findContract(const std::string& name)
+{
+    ensureBuiltinContracts();
+    const auto& registry = contractRegistry();
+    auto it = registry.find(name);
+    if (it != registry.end())
+        return &it->second;
+
+    // glass 变体继承基外观契约：base/widget/button.text.glass -> ...button.text
+    if (name.size() > 6 && name.compare(name.size() - 6, 6, ".glass") == 0)
+    {
+        it = registry.find(name.substr(0, name.size() - 6));
+        if (it != registry.end())
+            return &it->second;
+    }
+    return nullptr;
+}
+
+} // namespace
+
+void Appearance::registerContract(const std::string& appearance, Contract contract)
+{
+    contractRegistry()[appearance] = std::move(contract);
+}
+
+bool Appearance::checkContract(const std::string& appearance, const Appearance& compiled,
+    std::string& error)
+{
+    static const Contract emptyContract;
+    const Contract* contract = findContract(appearance);
+    if (contract == nullptr)
+        contract = &emptyContract;
+
+    std::vector<std::string> content = contract->content;
+    content.insert(content.end(), compiled.requiredContent.begin(), compiled.requiredContent.end());
+    for (const std::string& slot : content)
+    {
+        bool found = false;
+        for (const AppearanceLayer& layer : compiled.getLayers())
+        {
+            if (layer.op == AppearanceLayer::Op::TEXT && layer.dataId == slot)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            error = "缺少内容槽 \"" + slot + "\"（需要一层 op=text 且 data_id=\"" + slot + "\"）";
+            return false;
+        }
+    }
+
+    std::vector<std::pair<std::string, int>> layersRequired = contract->layers;
+    for (const std::string& id : compiled.requiredLayers)
+        layersRequired.emplace_back(id, -1);
+    for (const auto& required : layersRequired)
+    {
+        const AppearanceLayer* found = nullptr;
+        for (const AppearanceLayer& layer : compiled.getLayers())
+            if (layer.id == required.first)
+                found = &layer;
+        if (found == nullptr)
+        {
+            error = "缺少必需的层 \"" + required.first + "\"";
+            return false;
+        }
+        if (required.second >= 0 && (int)found->op != required.second)
+        {
+            error = "层 \"" + required.first + "\" 的 op 不符合契约";
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
 {
     // 主题名相同但目录不同（自定义路径主题）不能共用缓存
@@ -1317,6 +1491,13 @@ std::shared_ptr<const Appearance> getWidgetAppearance(const std::string& widget)
         = Appearance::compileWithFallback(*text, widget, getTheme(), error);
     if (appearance == nullptr)
         BKLV_LOG_ERROR("控件外观编译失败（%s）：%s", key.c_str(), error.c_str());
+
+    if (appearance != nullptr)
+    {
+        std::string contractError;
+        if (!Appearance::checkContract(widget, *appearance, contractError))
+            BKLV_LOG_ERROR("外观契约不满足（%s）：%s", key.c_str(), contractError.c_str());
+    }
 
     cache[key] = appearance;
     return appearance;
@@ -1474,7 +1655,13 @@ bool validateThemeAppearances(std::string& error)
             continue;
 
         std::string localError;
-        if (Appearance::compile(*text, theme, localError) == nullptr)
+        std::shared_ptr<const Appearance> compiled = Appearance::compile(*text, theme, localError);
+        if (compiled == nullptr)
+        {
+            error = widget + "：" + localError;
+            return false;
+        }
+        if (!Appearance::checkContract(widget, *compiled, localError))
         {
             error = widget + "：" + localError;
             return false;
