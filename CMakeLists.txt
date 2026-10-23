@@ -294,4 +294,10 @@ if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")
     set_target_properties(embed_imgui_gl PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}")
     bklv_copy_resources(embed_imgui_gl)
+
+    add_executable(multi_context examples/multi_context/main.cpp)
+    target_link_libraries(multi_context PRIVATE bklv::bklv)
+    set_target_properties(multi_context PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}")
+    bklv_copy_resources(multi_context)
 endif()
