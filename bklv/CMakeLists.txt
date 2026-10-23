@@ -23,6 +23,8 @@ set(BKLV_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 get_filename_component(BKLV_INCLUDE_ROOT "${BKLV_DIR}/.." ABSOLUTE)
 set(BKLV_3RD "${BKLV_DIR}/3rd")
 
+option(BKLV_INSTALL "安装 bklv 头文件和库（实验性）" OFF)
+
 # 独立配置时（直接在 bklv/ 里跑 cmake）需要自己的 project()。被 add_subdirectory
 # 引入时 CMAKE_SOURCE_DIR 指向外层工程，就不会重复调用。
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -128,7 +130,11 @@ set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+if(BKLV_INSTALL)
+    set(SDL_INSTALL ON CACHE BOOL "" FORCE)
+else()
+    set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
 set(SDL_INSTALL_TESTS OFF CACHE BOOL "" FORCE)
 
 if(BKLV_HOST STREQUAL "linux")
@@ -177,12 +183,13 @@ add_subdirectory("${BKLV_3RD}/SDL" EXCLUDE_FROM_ALL)
 add_library(bklv_opts INTERFACE)
 
 target_include_directories(bklv_opts INTERFACE
-    "${BKLV_INCLUDE_ROOT}"          # 让调用方能写 #include "bklv/..."
-    "${BKLV_3RD}/imgui"
-    "${BKLV_3RD}/yoga"
-    "${BKLV_3RD}/tweeny/include"
-    "${BKLV_3RD}/stb"
-    "${BKLV_3RD}/json/single_include"   # nlohmann/json：单头文件、全 inline，不需要编源文件
+    $<BUILD_INTERFACE:${BKLV_INCLUDE_ROOT}>          # 让调用方能写 #include "bklv/..."
+    $<BUILD_INTERFACE:${BKLV_3RD}/imgui>
+    $<BUILD_INTERFACE:${BKLV_3RD}/yoga>
+    $<BUILD_INTERFACE:${BKLV_3RD}/tweeny/include>
+    $<BUILD_INTERFACE:${BKLV_3RD}/stb>
+    $<BUILD_INTERFACE:${BKLV_3RD}/json/single_include>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_compile_options(bklv_opts INTERFACE
@@ -342,7 +349,9 @@ file(GLOB_RECURSE YOGA_SOURCES CONFIGURE_DEPENDS "${BKLV_3RD}/yoga/yoga/*.cpp")
 
 add_library(bklv_yoga STATIC ${YOGA_SOURCES})
 target_link_libraries(bklv_yoga PUBLIC bklv_opts)
-target_include_directories(bklv_yoga PUBLIC "${BKLV_3RD}/yoga")
+target_include_directories(bklv_yoga PUBLIC
+    $<BUILD_INTERFACE:${BKLV_3RD}/yoga>
+    $<INSTALL_INTERFACE:include>)
 target_compile_features(bklv_yoga PUBLIC cxx_std_20)
 
 # ---------------------------------------------------------------------------
@@ -368,7 +377,9 @@ if(BKLV_GRAPHICS STREQUAL "vk")
 endif()
 
 add_library(bklv_imgui OBJECT ${BKLV_IMGUI_SOURCES})
-target_link_libraries(bklv_imgui PUBLIC bklv_opts SDL3::SDL3-static)
+target_link_libraries(bklv_imgui PUBLIC bklv_opts
+    $<BUILD_INTERFACE:SDL3::SDL3-static>
+    $<INSTALL_INTERFACE:SDL3::SDL3-static>)
 
 # ---------------------------------------------------------------------------
 # 库本体
@@ -536,7 +547,10 @@ endforeach()
 
 add_library(bklv_core OBJECT ${BKLV_CORE_ABS})
 find_package(Threads REQUIRED)
-target_link_libraries(bklv_core PUBLIC bklv_opts SDL3::SDL3-static Threads::Threads)
+target_link_libraries(bklv_core PUBLIC bklv_opts
+    $<BUILD_INTERFACE:SDL3::SDL3-static>
+    $<INSTALL_INTERFACE:SDL3::SDL3-static>
+    Threads::Threads)
 
 add_library(bklv INTERFACE)
 add_library(bklv::bklv ALIAS bklv)
@@ -567,4 +581,78 @@ message(STATUS "  平台     : ${BKLV_HOST}")
 message(STATUS "  后端     : ${BKLV_GRAPHICS_UPPER}")
 if(BKLV_GRAPHICS STREQUAL "vk")
     message(STATUS "  Vulkan   : ${Vulkan_INCLUDE_DIRS} / ${Vulkan_LIBRARIES}")
+endif()
+
+# ---------------------------------------------------------------------------
+# 安装（实验性：BKLV_INSTALL=ON）
+# ---------------------------------------------------------------------------
+if(BKLV_INSTALL)
+    include(GNUInstallDirs)
+    include(CMakePackageConfigHelpers)
+
+    if(BKLV_WITH_WEBP OR BKLV_WITH_SVG)
+        message(WARNING "bklv install 目前只支持 -DBKLV_WITH_WEBP=OFF -DBKLV_WITH_SVG=OFF 的组合")
+    endif()
+
+    # 安装包用真正的静态库（OBJECT 目标无法可靠地跨安装边界导出对象文件）
+    add_library(bklv_sdk STATIC
+        $<TARGET_OBJECTS:bklv_core>
+        $<TARGET_OBJECTS:bklv_imgui>)
+    target_link_libraries(bklv_sdk PUBLIC bklv_opts bklv_yoga
+        $<BUILD_INTERFACE:SDL3::SDL3-static>
+        $<INSTALL_INTERFACE:SDL3::SDL3-static>
+        Threads::Threads)
+
+    install(TARGETS bklv_sdk bklv_opts bklv_yoga
+        EXPORT bklvTargets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+    install(DIRECTORY "${BKLV_INCLUDE_ROOT}/bklv/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bklv
+        FILES_MATCHING PATTERN "*.hpp" PATTERN "3rd" EXCLUDE)
+
+    # 公开头依赖的第三方头（只装头，不装源码）
+    install(DIRECTORY "${BKLV_3RD}/imgui/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${BKLV_3RD}/yoga/yoga/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yoga
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
+    install(DIRECTORY "${BKLV_3RD}/tweeny/include/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(DIRECTORY "${BKLV_3RD}/json/single_include/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(DIRECTORY "${BKLV_3RD}/stb/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/stb
+        FILES_MATCHING PATTERN "*.h")
+
+    # SDL3：静态库 + 头 + 生成的 CMake 包（SDL_INSTALL 的导出文件已在 build 目录生成）
+    install(FILES $<TARGET_FILE:SDL3-static> DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(DIRECTORY "${BKLV_3RD}/SDL/include/"
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SDL3Config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
+
+    install(EXPORT bklvTargets
+        NAMESPACE bklv::
+        FILE bklvTargets.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bklv)
+
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/bklvConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/bklvConfig.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bklv)
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/bklvConfigVersion.cmake"
+        VERSION 0.1.0 COMPATIBILITY SameMajorVersion)
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/bklvConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/bklvConfigVersion.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bklv)
 endif()

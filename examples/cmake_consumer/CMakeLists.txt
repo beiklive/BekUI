@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.24)
+project(bklv_consumer LANGUAGES CXX)
+find_package(bklv CONFIG REQUIRED)
+add_executable(consumer main.cpp)
+target_link_libraries(consumer PRIVATE bklv::bklv)

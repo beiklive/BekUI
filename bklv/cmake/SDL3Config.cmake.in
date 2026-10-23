@@ -1,0 +1,23 @@
+@PACKAGE_INIT@
+
+# bklv 安装包内置的最小 SDL3 静态库描述（不依赖系统 SDL3）
+if(NOT TARGET SDL3::SDL3-static)
+    add_library(SDL3::SDL3-static STATIC IMPORTED)
+    set_target_properties(SDL3::SDL3-static PROPERTIES
+        IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/libSDL3.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@")
+    if(APPLE)
+        set_property(TARGET SDL3::SDL3-static APPEND PROPERTY INTERFACE_LINK_LIBRARIES
+            "m"
+            "-framework CoreMedia" "-framework CoreVideo" "-framework Cocoa"
+            "-framework IOKit" "-framework ForceFeedback" "-framework Carbon"
+            "-framework CoreAudio" "-framework AudioToolbox" "-framework AVFoundation"
+            "-framework Foundation" "-framework GameController" "-framework Metal"
+            "-framework QuartzCore" "-framework UniformTypeIdentifiers"
+            "-framework CoreHaptics")
+    endif()
+endif()
+if(NOT TARGET SDL3::SDL3)
+    add_library(SDL3::SDL3 ALIAS SDL3::SDL3-static)
+endif()
+set(SDL3_FOUND TRUE)

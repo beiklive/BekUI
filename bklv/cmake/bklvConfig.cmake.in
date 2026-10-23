@@ -1,0 +1,19 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+find_dependency(SDL3 CONFIG)
+if("@BKLV_GRAPHICS@" STREQUAL "gl")
+    find_dependency(OpenGL)
+elseif("@BKLV_GRAPHICS@" STREQUAL "vk")
+    find_dependency(Vulkan)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/bklvTargets.cmake")
+
+if(NOT TARGET bklv::bklv)
+    add_library(bklv::bklv INTERFACE IMPORTED)
+    set_target_properties(bklv::bklv PROPERTIES
+        INTERFACE_LINK_LIBRARIES bklv::bklv_sdk)
+endif()
+check_required_components(bklv)
