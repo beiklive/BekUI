@@ -8,6 +8,7 @@
 #include "bklv/core/globals.hpp"
 #include "bklv/core/image_writer.hpp"
 #include "bklv/core/audio.hpp"
+#include "bklv/core/services.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
 #include "bklv/views/debug_layer.hpp"
@@ -324,8 +325,9 @@ App::App()
     initResources();
     // 文案要在视图树之前就绪：demo 是在 App::run() 之前把树建好的。
     initI18n();
-    // 音效设备（失败不阻塞：没声音也要能用）
-    audio::init();
+    // 音效设备（失败不阻塞：没声音也要能用）；宿主注入了 AudioService 就不再开内置设备
+    if (getServices().audio == nullptr)
+        audio::init();
     BKLV_LOG_INFO("bklv 启动");
 }
 
