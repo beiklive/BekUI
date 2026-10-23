@@ -1240,20 +1240,22 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
     // 外观自带的"必需内容/层"声明（只能加严，不能放宽代码契约）
     if (doc.contains("requires"))
     {
-        const Json& requires = doc["requires"];
-        if (!requires.is_object())
+        // 变量名不叫 requires：那是 C++20 的关键字，语义上"编译成 C++17"的代码
+        // 一旦被按 C++20 编译（比如编译器默认标准已经是 C++20）就直接语法错。
+        const Json& requiresNode = doc["requires"];
+        if (!requiresNode.is_object())
         {
             error = "requires 必须是对象：{\"content\": [...], \"layers\": [...]}";
             return nullptr;
         }
-        if (requires.contains("content"))
+        if (requiresNode.contains("content"))
         {
-            if (!requires["content"].is_array())
+            if (!requiresNode["content"].is_array())
             {
                 error = "requires.content 必须是字符串数组";
                 return nullptr;
             }
-            for (const Json& item : requires["content"])
+            for (const Json& item : requiresNode["content"])
             {
                 if (!item.is_string())
                 {
@@ -1263,9 +1265,9 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 appearance->requiredContent.push_back(item.get<std::string>());
             }
         }
-        if (requires.contains("layers"))
+        if (requiresNode.contains("layers"))
         {
-            const Json& layersNode = requires["layers"];
+            const Json& layersNode = requiresNode["layers"];
             auto opFromNameLocal = [](const std::string& name) -> int {
                 if (name == "rect") return (int)AppearanceLayer::Op::RECT;
                 if (name == "text") return (int)AppearanceLayer::Op::TEXT;

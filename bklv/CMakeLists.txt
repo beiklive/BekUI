@@ -592,6 +592,22 @@ if(BKLV_WITH_SDL)
         $<INSTALL_INTERFACE:SDL3::SDL3-static>)
 endif()
 
+# 把 BKLv 自己的源码钉在 C++17，而不是"至少 C++17"。
+#
+# `target_compile_features(... cxx_std_17)` 只保证"够用"：编译器默认标准已经
+# >= 17 时（GCC 16 的默认是 gnu++20，__cplusplus = 202002L），CMake 认为已满足，
+# 连 -std= 都不传，于是这些源文件实际按编译器默认标准编译。源码是按 C++17 写的，
+# 按 C++20 就会撞关键字 —— 踩过的现场是 appearance.cpp 里一个叫 requires 的局部
+# 变量（C++20 关键字），GCC 16 直接
+#   `error: expected unqualified-id before 'requires'`。
+# CXX_STANDARD_REQUIRED 才是"必须是这个标准"，会让 CMake 无条件传 -std=gnu++17。
+# 不关 CXX_EXTENSIONS：一直用的是 gnu++17，关掉会改掉可用的扩展特性。
+foreach(bklv_pin_target bklv_core bklv_imgui)
+    set_target_properties(${bklv_pin_target} PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON)
+endforeach()
+
 add_library(bklv INTERFACE)
 add_library(bklv::bklv ALIAS bklv)
 
