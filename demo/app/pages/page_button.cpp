@@ -6,6 +6,7 @@
 #include "app/pages.hpp"
 
 #include <string>
+#include "app/pages/showcase.hpp"
 #include "bklv/bklv.hpp"
 #include "bklv/core/icon_font.hpp"
 
@@ -225,6 +226,24 @@ Box* buildButtonShowcasePage()
     toast_row->addView(info);
 
     page->addView(toast_row);
+
+    // ---- 音效 ----
+    page->addView(bklv::makeSectionHeader("音效"));
+    Box* sound_row = new Box(Axis::ROW);
+    sound_row->setWidthPercentage(100.0f);
+    sound_row->setGap(getTheme().number("metric.spacing.md", 12.0f));
+    sound_row->setAlignItems(AlignItems::CENTER);
+
+    Button* defaultSound = new Button("默认点击音");
+    sound_row->addView(defaultSound);
+
+    Button* overrideSound = new Button("覆盖点击音");
+    overrideSound->setAppearanceName("demo/sound_override");
+    sound_row->addView(overrideSound);
+
+    page->addView(makeShowcaseSection("音效 · 全局表 + 控件覆盖", sound_row,
+        readThemeJson("demo/sound_override.json"),
+        "全局音效在 theme/default/sound.json；这个按钮在 states.click.sound 里覆盖成 back.wav。"));
 
     // 页面打开时弹一条，方便截图/验收（只影响 demo）
     if (demo::toastManager() != nullptr)

@@ -65,7 +65,11 @@ void Cell::trigger()
 {
     if (!this->enabled)
     {
-        audio::play(Sound::CLICK_ERROR);
+        const std::string override = this->getSoundOverride("clickError");
+        if (!override.empty())
+            audio::playFile(override);
+        else
+            audio::play(Sound::CLICK_ERROR);
         return;
     }
 

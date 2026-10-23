@@ -17,6 +17,26 @@
 namespace bklv
 {
 
+namespace
+{
+
+// 事件音效：外观里的 states.<trigger>.sound 优先，否则用主题 sound.json / 合成音
+void playUiSound(View* view, Sound sound, const char* trigger)
+{
+    if (view != nullptr)
+    {
+        const std::string override = view->getSoundOverride(trigger);
+        if (!override.empty())
+        {
+            audio::playFile(override);
+            return;
+        }
+    }
+    audio::play(sound);
+}
+
+} // namespace
+
 // ---------------------------------------------------------------------------
 // InputManager
 // ---------------------------------------------------------------------------
@@ -520,7 +540,7 @@ void InputManager::giveFocus(View* view)
     if (view != nullptr)
     {
         const bool sidebar = view->getClassString() == "bklv::TabButton";
-        audio::play(sidebar ? Sound::FOCUS_SIDEBAR : Sound::FOCUS_CHANGE);
+        playUiSound(view, sidebar ? Sound::FOCUS_SIDEBAR : Sound::FOCUS_CHANGE, "focus");
     }
 
     // 换焦点：先通知旧的焦点路径，再通知新的。
@@ -855,7 +875,7 @@ bool InputManager::dispatchPointerClick(const Point& position)
     // 先聚焦，再执行动作。
     // 每次都尝试执行（不判断焦点是否变化）：否则第二次点同一个按钮就没反应了。
     this->focusFromPointer(hit);
-    audio::play(Sound::CLICK);
+    playUiSound(hit, Sound::CLICK, "click");
     hit->triggerAction(ControllerButton::A, true);
     return true;
 }
@@ -1020,12 +1040,12 @@ void InputManager::handleActions()
 
     if (confirm)
     {
-        audio::play(Sound::CLICK);
+        playUiSound(this->currentFocus, Sound::CLICK, "click");
         this->dispatchAction(ControllerButton::A);
     }
     if (back)
     {
-        audio::play(Sound::BACK);
+        playUiSound(this->currentFocus, Sound::BACK, "back");
         this->dispatchAction(ControllerButton::B);
     }
 }

@@ -11,9 +11,18 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace bklv
 {
+
+// 解码后的音效（单声道 48kHz；由 core/sound_bank 装载）
+struct SoundClip
+{
+    std::vector<float> samples;
+};
+using SoundClipPtr = std::shared_ptr<const SoundClip>;
 
 // 和 borealis 的 Sound 一一对应
 enum class Sound
@@ -34,8 +43,10 @@ class AudioMixer
   public:
     static constexpr int MAX_VOICES = 8;
 
-    // 触发一个音效
+    // 触发一个音效（代码合成）
     void trigger(Sound sound);
+    // 触发一个采样音效（主题 sound.json / 外观覆盖）；空指针忽略
+    void triggerClip(const SoundClipPtr& clip);
 
     // 把混好的单声道样本写进 out（frames 个，范围 -1..1）。
     // 没有活动音效时填 0 并返回 false（调用方可以把设备挂起省电）。
@@ -57,6 +68,8 @@ class AudioMixer
     struct Voice
     {
         Sound sound   = Sound::NONE;
+        SoundClipPtr clip;
+        size_t cursor = 0;
         float phase   = 0.0f;
         float elapsed = 0.0f; // 秒
         bool active   = false;
@@ -93,8 +106,10 @@ bool isEnabled();
 void setVolume(float value);
 float getVolume();
 
-// 播一个音效（未初始化/禁用时什么都不做）
+// 播一个音效（未初始化/禁用时什么都不做）：优先主题 sound.json，其次代码合成
 void play(Sound sound);
+// 播一个显式路径（外观里的 states.click.sound）
+void playFile(const std::string& path);
 
 } // namespace audio
 

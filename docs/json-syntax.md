@@ -506,6 +506,38 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
   或视图 JSON 里写 `"placement": "center"`；
 - 想让"居中主题"所有下拉都居中，只改这一行即可，不用改任何 C++。
 
+### `<主题>/sound.json`：全局 UI 音效
+
+主题根下的独立文件（**不写进 `files[]`**，它不是控件外观）。缺了回退 default 主题。
+
+```json
+{
+  "triggers": {
+    "click":      "@res/audio/click.wav",
+    "focus":      "@res/audio/focus.wav",
+    "focusError": "@res/audio/focus_error.wav",
+    "back":       "@res/audio/back.wav",
+    "clickError": "@res/audio/click_error.wav"
+  }
+}
+```
+
+- 路径写 `@res/...`（相对 `resources/`）；支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），
+  运行期重采样到 48kHz 并缓存；
+- 触发点大小写/下划线不敏感；不认识的触发点只警告；
+- 文件缺失、解码失败 → 回退到代码合成音（现有 `Sound`），不影响 UI；
+- **控件级覆盖**：外观 JSON 的 `states.click.sound` 优先于主题表：
+
+```json
+// base/widget/button.text.json
+"states": {
+  "click": { "sound": "@res/audio/button_alt.wav" }
+}
+```
+
+`click` 是**事件**而不是视觉状态：解析器只取 `sound`，不会生成补间。
+覆盖路径同样走缓存；找不到文件时回退主题表。
+
 ### `<主题>/colors.json`
 
 点是分层分隔符：`"button": { "primaryBg": "#..." }` → `@theme/color.button.primaryBg`。

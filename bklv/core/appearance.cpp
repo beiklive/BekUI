@@ -347,6 +347,27 @@ TransitionEventSpec& Appearance::transitionsFor(TransitionEvent event)
     return this->transitions[(size_t)event];
 }
 
+std::string Appearance::getSoundOverride(const std::string& trigger) const
+{
+    for (const auto& entry : this->soundOverrides)
+        if (entry.first == trigger)
+            return entry.second;
+    return {};
+}
+
+void Appearance::addSoundOverride(const std::string& trigger, const std::string& path)
+{
+    for (auto& entry : this->soundOverrides)
+    {
+        if (entry.first == trigger)
+        {
+            entry.second = path;
+            return;
+        }
+    }
+    this->soundOverrides.emplace_back(trigger, path);
+}
+
 int Appearance::indexOfLayer(const std::string& layerId) const
 {
     for (size_t i = 0; i < this->layers.size(); i++)
@@ -752,6 +773,19 @@ bool parseAllStates(const Json& statesNode, const ThemeData& theme, Appearance& 
         {
             error = "states." + stateName + " 必须是对象";
             return false;
+        }
+
+        // states.click 不是视觉状态，而是"点击事件"的音效覆盖：
+        //   "states": { "click": { "sound": "@res/audio/x.wav" } }
+        if (stateName == "click" && stateNode.contains("sound"))
+        {
+            if (!stateNode["sound"].is_string())
+            {
+                error = "states.click.sound 必须是音效文件路径字符串";
+                return false;
+            }
+            target.addSoundOverride("click", stateNode["sound"].get<std::string>());
+            continue;
         }
 
         std::vector<AppearanceTransition> transitions;

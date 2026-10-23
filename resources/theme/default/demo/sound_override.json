@@ -1,0 +1,7 @@
+{
+  "$comment": "演示：只覆盖点击音效，其余外观全部继承 base/button/button",
+  "import": "base/button/button",
+  "states": {
+    "click": { "sound": "@res/audio/back.wav" }
+  }
+}

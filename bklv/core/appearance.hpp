@@ -364,6 +364,10 @@ class Appearance
     // 层索引；找不到返回 -1
     int indexOfLayer(const std::string& layerId) const;
 
+    // 外观里写的事件音效覆盖（states.click.sound）；没有返回空
+    std::string getSoundOverride(const std::string& trigger) const;
+    void addSoundOverride(const std::string& trigger, const std::string& path);
+
   private:
     std::vector<AppearanceLayer> layers;
     std::vector<AppearanceChild> children;
@@ -371,6 +375,7 @@ class Appearance
     std::vector<std::string> stateNames;
     std::vector<std::pair<std::string, std::vector<AppearanceTransition>>> states;
     std::vector<std::pair<std::string, std::vector<ViewChannelClip>>> stateViewClips;
+    std::vector<std::pair<std::string, std::string>> soundOverrides;
     // 四个生命周期事件（外观 JSON 的 transitions 段）；没写就是 defined=false
     std::array<TransitionEventSpec, (size_t)TransitionEvent::COUNT> transitions;
 };

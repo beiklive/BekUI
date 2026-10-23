@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "bklv/core/logger.hpp"
+#include "bklv/core/sound_bank.hpp"
 
 #if !defined(BKLV_SWITCH)
 #include <SDL3/SDL.h>
@@ -80,10 +81,49 @@ void AudioMixer::trigger(Sound sound)
     const SoundSpec spec = specOf(sound);
 
     target->sound   = sound;
+    target->clip.reset();
+    target->cursor  = 0;
     target->phase   = 0.0f;
     target->elapsed = 0.0f;
     target->active  = spec.duration > 0.0f;
     (void)spec;
+}
+
+void AudioMixer::triggerClip(const SoundClipPtr& clip)
+{
+    if (!this->enabled || clip == nullptr || clip->samples.empty())
+        return;
+
+    Voice* target = nullptr;
+    for (Voice& voice : this->voices)
+    {
+        if (!voice.active)
+        {
+            target = &voice;
+            break;
+        }
+    }
+    if (target == nullptr)
+    {
+        float oldest = -1.0f;
+        for (Voice& voice : this->voices)
+        {
+            if (voice.elapsed > oldest)
+            {
+                oldest = voice.elapsed;
+                target = &voice;
+            }
+        }
+    }
+    if (target == nullptr)
+        return;
+
+    target->sound   = Sound::NONE;
+    target->clip    = clip;
+    target->cursor  = 0;
+    target->phase   = 0.0f;
+    target->elapsed = 0.0f;
+    target->active  = true;
 }
 
 bool AudioMixer::fill(float* out, int frames)
@@ -100,6 +140,23 @@ bool AudioMixer::fill(float* out, int frames)
     {
         if (!voice.active)
             continue;
+
+        if (voice.clip != nullptr)
+        {
+            produced = true;
+            for (int i = 0; i < frames; i++)
+            {
+                if (voice.cursor >= voice.clip->samples.size())
+                {
+                    voice.active = false;
+                    break;
+                }
+                out[i] += voice.clip->samples[voice.cursor] * this->volume;
+                voice.cursor++;
+                voice.elapsed += 1.0f / (float)this->sampleRate;
+            }
+            continue;
+        }
 
         const SoundSpec spec = specOf(voice.sound);
         produced             = true;
@@ -310,8 +367,26 @@ void play(Sound sound)
     if (!g_available || sound == Sound::NONE)
         return;
 
+    SoundClipPtr clip = SoundBank::instance().clip(sound);
+
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_mixer.trigger(sound);
+    if (clip != nullptr)
+        g_mixer.triggerClip(clip);
+    else
+        g_mixer.trigger(sound);
+}
+
+void playFile(const std::string& path)
+{
+    if (!g_available || path.empty())
+        return;
+
+    SoundClipPtr clip = SoundBank::instance().clipFromPath(path);
+    if (clip == nullptr)
+        return;
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_mixer.triggerClip(clip);
 }
 
 } // namespace audio

@@ -324,6 +324,9 @@ class View
     virtual bool isScrollable() const { return false; }
 
     // 方向键被"焦点捕获"时先问它（见 InputManager::setFocusCapture）
+    // 事件音效覆盖（外观 JSON 的 states.<trigger>.sound）；默认没有
+    virtual std::string getSoundOverride(const std::string&) const { return {}; }
+
     virtual bool handleDirectionalInput(FocusDirection direction)
     {
         (void)direction;

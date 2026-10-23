@@ -148,6 +148,11 @@ class AppearanceView : public Box
     // custom 层：交给子类画（矩形范围已按 inset/offset 算好）。
 
     const AppearanceInstance& getAppearanceInstance() const { return this->appearance; }
+
+    std::string getSoundOverride(const std::string& trigger) const override
+    {
+        return this->appearance.getAppearance().getSoundOverride(trigger);
+    }
     // 视图过渡的取用点（注意：上面那个 const 版是另一件事，别混）
     AppearanceInstance* getTransitionAppearanceInstance() override { return &this->appearance; }
     const Appearance* getTransitionAppearance() const override

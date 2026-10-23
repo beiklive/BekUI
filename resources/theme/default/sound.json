@@ -1,0 +1,10 @@
+{
+  "$comment": "全局 UI 音效：触发点 -> 音效文件（@res/ 相对 resources/）。控件外观可在 states.click.sound 里覆盖 click",
+  "triggers": {
+    "click": "@res/audio/click.wav",
+    "focus": "@res/audio/focus.wav",
+    "focusError": "@res/audio/focus_error.wav",
+    "back": "@res/audio/back.wav",
+    "clickError": "@res/audio/click_error.wav"
+  }
+}
