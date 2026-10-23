@@ -301,7 +301,11 @@ if(BKLV_WITH_WEBP AND EXISTS "${BKLV_3RD}/webp/CMakeLists.txt")
         set(${_webp_option} OFF CACHE BOOL "" FORCE)
     endforeach()
     add_subdirectory("${BKLV_3RD}/webp" "${CMAKE_CURRENT_BINARY_DIR}/webp" EXCLUDE_FROM_ALL)
-    target_link_libraries(bklv_opts INTERFACE webp webpdemux)
+    target_link_libraries(bklv_opts INTERFACE
+        $<BUILD_INTERFACE:webp>
+        $<BUILD_INTERFACE:webpdemux>
+        $<INSTALL_INTERFACE:WebP::webp>
+        $<INSTALL_INTERFACE:WebP::webpdemux>)
     target_compile_definitions(bklv_opts INTERFACE BKLV_USE_WEBP)
     message(STATUS "bklv：WebP 解码已启用（libwebp 解码器 + demux）")
 elseif(BKLV_WITH_WEBP)
@@ -319,7 +323,9 @@ if(BKLV_WITH_SVG
 
     add_library(bklv_svg STATIC ${BKLV_LUNASVG_SOURCES} ${BKLV_PLUTOVG_SOURCES})
     target_include_directories(bklv_svg
-        PUBLIC "${BKLV_3RD}/lunasvg/include"
+        PUBLIC
+            $<BUILD_INTERFACE:${BKLV_3RD}/lunasvg/include>
+            $<INSTALL_INTERFACE:include>
         PRIVATE "${BKLV_3RD}/lunasvg/source" "${BKLV_3RD}/plutovg/include"
             "${BKLV_3RD}/plutovg/source")
     # 和它们自己 CMakeLists 的静态构建定义保持一致
@@ -603,7 +609,12 @@ if(BKLV_INSTALL)
         $<INSTALL_INTERFACE:SDL3::SDL3-static>
         Threads::Threads)
 
-    install(TARGETS bklv_sdk bklv_opts bklv_yoga
+    set(BKLV_INSTALL_TARGETS bklv_sdk bklv_opts bklv_yoga)
+    if(TARGET bklv_svg)
+        list(APPEND BKLV_INSTALL_TARGETS bklv_svg)
+    endif()
+
+    install(TARGETS ${BKLV_INSTALL_TARGETS}
         EXPORT bklvTargets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -624,9 +635,25 @@ if(BKLV_INSTALL)
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
     install(DIRECTORY "${BKLV_3RD}/json/single_include/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    if(TARGET bklv_svg)
+        install(DIRECTORY "${BKLV_3RD}/lunasvg/include/"
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    endif()
     install(DIRECTORY "${BKLV_3RD}/stb/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/stb
         FILES_MATCHING PATTERN "*.h")
+
+    # WebP：静态库 + 头（安装包里用最小的导入目标，避免依赖 WebP 的导出集）
+    if(TARGET webp)
+        install(FILES
+            $<TARGET_FILE:webp>
+            $<TARGET_FILE:webpdemux>
+            $<TARGET_FILE:sharpyuv>
+            DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        install(DIRECTORY "${BKLV_3RD}/webp/src/webp/"
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/webp
+            FILES_MATCHING PATTERN "*.h")
+    endif()
 
     # SDL3：静态库 + 头 + 生成的 CMake 包（SDL_INSTALL 的导出文件已在 build 目录生成）
     install(FILES $<TARGET_FILE:SDL3-static> DESTINATION ${CMAKE_INSTALL_LIBDIR})

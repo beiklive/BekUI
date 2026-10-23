@@ -3,6 +3,27 @@
 include(CMakeFindDependencyMacro)
 find_dependency(Threads)
 find_dependency(SDL3 CONFIG)
+if("@BKLV_WITH_WEBP@" STREQUAL "ON")
+    if(NOT TARGET WebP::sharpyuv)
+        add_library(WebP::sharpyuv STATIC IMPORTED)
+        set_target_properties(WebP::sharpyuv PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/libsharpyuv.a")
+    endif()
+    if(NOT TARGET WebP::webp)
+        add_library(WebP::webp STATIC IMPORTED)
+        set_target_properties(WebP::webp PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/libwebp.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@"
+            INTERFACE_LINK_LIBRARIES WebP::sharpyuv)
+    endif()
+    if(NOT TARGET WebP::webpdemux)
+        add_library(WebP::webpdemux STATIC IMPORTED)
+        set_target_properties(WebP::webpdemux PROPERTIES
+            IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/libwebpdemux.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@"
+            INTERFACE_LINK_LIBRARIES WebP::webp)
+    endif()
+endif()
 if("@BKLV_GRAPHICS@" STREQUAL "gl")
     find_dependency(OpenGL)
 elseif("@BKLV_GRAPHICS@" STREQUAL "vk")

@@ -91,10 +91,9 @@ ui2.loadTheme("glass");
 cmake -S . -B /tmp/bklv_node -DBKLV_BUILD_DEMO=OFF -DBKLV_BUILD_EXAMPLES=OFF
 cmake --build /tmp/bklv_node
 
-# 安装（当前安装包要求关闭可选解码器）
+# 安装（可选解码器已随包导出）
 cmake -S . -B /tmp/bklv_inst \
   -DBKLV_GRAPHICS=gl -DBKLV_BUILD_DEMO=OFF -DBKLV_BUILD_EXAMPLES=OFF \
-  -DBKLV_WITH_WEBP=OFF -DBKLV_WITH_SVG=OFF \
   -DBKLV_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/tmp/bklv_prefix
 cmake --build /tmp/bklv_inst -j8
 cmake --install /tmp/bklv_inst
@@ -113,7 +112,6 @@ cmake --build /tmp/bklv_cons
 
 ## 8. 已知限制
 
-- 安装包暂不支持 WebP/SVG 解码器；
 - 纹理仓库/字体图集/布局静态量仍全进程共享；
 - 玻璃在嵌入模式下退回半透明（没有 GlassBackend 时）；
 - 未提供 `BKLV_WITH_SDL=OFF` 的纯核心构建。
