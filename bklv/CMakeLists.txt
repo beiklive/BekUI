@@ -386,6 +386,7 @@ set(BKLV_CORE_SOURCES
     core/globals.cpp
     core/frame_budget.cpp
     core/frame_stats.cpp
+    core/services.cpp
     core/sound_bank.cpp
     core/file_system.cpp
     core/focus_ring.cpp

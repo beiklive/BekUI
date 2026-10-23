@@ -1,6 +1,7 @@
 #include "bklv/core/resource.hpp"
 
 #include "bklv/core/logger.hpp"
+#include "bklv/core/services.hpp"
 
 #if defined(BKLV_SWITCH)
 #include <switch.h>
@@ -60,12 +61,26 @@ void initResources()
 #endif
 }
 
-std::string resourcePath(const std::string& relative)
+ResourceProvider* g_provider = nullptr;
+
+void setResourceProvider(ResourceProvider* provider)
+{
+    g_provider = provider;
+}
+
+std::string defaultResourcePath(const std::string& relative)
 {
     if (relative.empty() || isAbsolute(relative) || g_base.empty())
         return relative;
 
     return g_base + relative;
+}
+
+std::string resourcePath(const std::string& relative)
+{
+    if (g_provider != nullptr)
+        return g_provider->resolve(relative);
+    return defaultResourcePath(relative);
 }
 
 } // namespace bklv

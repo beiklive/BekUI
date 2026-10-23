@@ -5,6 +5,7 @@
 
 #include "bklv/core/logger.hpp"
 #include "bklv/core/sound_bank.hpp"
+#include "bklv/core/services.hpp"
 
 #if !defined(BKLV_SWITCH)
 #include <SDL3/SDL.h>
@@ -340,6 +341,8 @@ bool isAvailable()
 
 void setEnabled(bool value)
 {
+    if (AudioService* service = getServices().audio)
+        service->setEnabled(value);
     std::lock_guard<std::mutex> lock(g_mutex);
     g_mixer.setEnabled(value);
 }
@@ -352,6 +355,8 @@ bool isEnabled()
 
 void setVolume(float value)
 {
+    if (AudioService* service = getServices().audio)
+        service->setVolume(value);
     std::lock_guard<std::mutex> lock(g_mutex);
     g_mixer.setVolume(value);
 }
@@ -364,7 +369,14 @@ float getVolume()
 
 void play(Sound sound)
 {
-    if (!g_available || sound == Sound::NONE)
+    if (sound == Sound::NONE)
+        return;
+    if (AudioService* service = getServices().audio)
+    {
+        service->play(sound);
+        return;
+    }
+    if (!g_available)
         return;
 
     SoundClipPtr clip = SoundBank::instance().clip(sound);
@@ -378,7 +390,14 @@ void play(Sound sound)
 
 void playFile(const std::string& path)
 {
-    if (!g_available || path.empty())
+    if (path.empty())
+        return;
+    if (AudioService* service = getServices().audio)
+    {
+        service->playFile(path);
+        return;
+    }
+    if (!g_available)
         return;
 
     SoundClipPtr clip = SoundBank::instance().clipFromPath(path);

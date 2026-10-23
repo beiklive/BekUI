@@ -15,6 +15,7 @@
 #include "bklv/backends/gl_loader.hpp"
 #include "bklv/bklv.hpp"
 #include "bklv/core/graphics.hpp"
+#include "bklv/core/services.hpp"
 
 namespace
 {
@@ -56,6 +57,33 @@ class HostTextures : public bklv::TextureBackend
     }
 };
 
+// 宿主的音频服务：接管所有 UI 音效（这里只打日志，实际可接自己的混音器）
+class HostAudio : public bklv::AudioService
+{
+  public:
+    void play(bklv::Sound sound) override
+    {
+        std::printf("host audio: sound=%d\n", (int)sound);
+    }
+    void playFile(const std::string& path) override
+    {
+        std::printf("host audio: file=%s\n", path.c_str());
+    }
+};
+
+// 宿主的资源解析：从可执行文件旁的 resources/ 读（可替换成 pak/内存资源）
+class HostResources : public bklv::ResourceProvider
+{
+  public:
+    std::string resolve(const std::string& relative) const override
+    {
+        if (!relative.empty() && relative[0] == '/')
+            return relative;
+        const char* base = SDL_GetBasePath();
+        return (base != nullptr ? std::string(base) : std::string()) + relative;
+    }
+};
+
 } // namespace
 
 int main(int, char**)
@@ -94,7 +122,14 @@ int main(int, char**)
     ImGui_ImplSDL3_InitForOpenGL(window, gl);
     ImGui_ImplOpenGL3_Init("#version 150");
 
-    // ---- bklv：只挂一页 UI ----
+    // ---- bklv：先注入宿主服务，再创建 App（App 构造期会读 i18n/资源） ----
+    HostAudio hostAudio;
+    HostResources hostResources;
+    bklv::Services services;
+    services.audio     = &hostAudio;
+    services.resources = &hostResources;
+    bklv::setServices(services);
+
     bklv::App app;
     bklv::Box* root = new bklv::Box(bklv::Axis::COLUMN);
     root->setWidthPercentage(100.0f);
@@ -190,6 +225,7 @@ int main(int, char**)
     }
 
     app.detachHost();
+    bklv::clearServices();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

@@ -24,4 +24,11 @@ void initResources();
 // 已经是绝对路径 / 设备路径（romfs:/、sdmc:/、/、C:\、带 :// 的 URL）时原样返回。
 std::string resourcePath(const std::string& relative);
 
+// 资源提供者（宿主注入；nullptr = 用默认资源根）
+class ResourceProvider;
+void setResourceProvider(ResourceProvider* provider);
+
+// 默认解析（忽略宿主 provider），给 DefaultResourceProvider 用
+std::string defaultResourcePath(const std::string& relative);
+
 } // namespace bklv
