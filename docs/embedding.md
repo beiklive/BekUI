@@ -54,6 +54,21 @@ ui.attachHost(attach);
 
 服务由宿主拥有；`Context` 析构时 `clearServices()`。
 
+### 玻璃
+
+`HostAttachInfo::glassBackend` 可注入宿主的 `glass::GlassBackend`（例如
+`bklv::glass::GlGlassBackend`，宿主已有 GL Context 时可直接用）。
+宿主帧顺序需要多两步：
+
+```cpp
+ui.step(dt);
+ui.draw();
+ImGui::Render();
+ui.prepareDrawData(*ImGui::GetDrawData());
+// 宿主后端提交 ImGui draw data
+ui.finishFrame();
+```
+
 ## 4. 纹理
 
 宿主实现 `TextureBackend`：
@@ -113,5 +128,5 @@ cmake --build /tmp/bklv_cons
 ## 8. 已知限制
 
 - 纹理仓库/字体图集/布局静态量仍全进程共享；
-- 玻璃在嵌入模式下退回半透明（没有 GlassBackend 时）；
+- 玻璃需要宿主注入 `glass::GlassBackend`；未注入时退回半透明；
 - 未提供 `BKLV_WITH_SDL=OFF` 的纯核心构建。

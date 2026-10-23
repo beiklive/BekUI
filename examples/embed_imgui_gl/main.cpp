@@ -15,6 +15,7 @@
 
 #include "bklv/backends/gl_loader.hpp"
 #include "bklv/bklv.hpp"
+#include "bklv/backends/gl_glass.hpp"
 #include "bklv/core/graphics.hpp"
 #include "bklv/core/services.hpp"
 
@@ -189,9 +190,11 @@ int main(int, char**)
     ui.setRootView(root);
 
     HostTextures textures;
+    bklv::glass::GlGlassBackend glassBackend; // 宿主提供玻璃后端（GL）
     bklv::HostAttachInfo attach;
     attach.imguiContext = ImGui::GetCurrentContext();
     attach.textures     = &textures;
+    attach.glassBackend = &glassBackend;
     attach.width        = 1280.0f;
     attach.height       = 720.0f;
     if (!ui.attachHost(attach))
@@ -244,10 +247,12 @@ int main(int, char**)
         ImGui::End();
 
         ImGui::Render();
+        ui.prepareDrawData(*ImGui::GetDrawData());
         glViewport(0, 0, width, height);
         glClearColor(0.90f, 0.92f, 0.95f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ui.finishFrame();
         SDL_GL_SwapWindow(window);
     }
 

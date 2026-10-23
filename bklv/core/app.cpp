@@ -519,8 +519,9 @@ bool App::attachHost(const HostAttachInfo& info)
     loadFonts();
     initTextureStore(info.textures);
 
-    // 嵌入模式没有 bklv 后端的玻璃实现：整层退回半透明。
-    glass::getGlassService().setBackend(nullptr);
+    // 宿主可注入玻璃后端；没有就退回半透明
+    glass::getGlassService().setBackend(info.glassBackend);
+    glass::getGlassService().setEnabled(info.glassBackend != nullptr);
 
     App::requestLayout();
     return true;
@@ -546,6 +547,16 @@ void App::step(float deltaSeconds)
         ImGui::GetIO().DeltaTime = deltaSeconds;
 
     this->beginFrameWork();
+
+    if (glass::getGlassService().isEnabled() && glass::getGlassService().isSupported())
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        const float scaleX = io.DisplayFramebufferScale.x > 0.0f ? io.DisplayFramebufferScale.x : 1.0f;
+        const float scaleY = io.DisplayFramebufferScale.y > 0.0f ? io.DisplayFramebufferScale.y : 1.0f;
+        glass::getGlassService().beginFrame((int)(this->hostWidth * scaleX),
+            (int)(this->hostHeight * scaleY), scaleX);
+    }
+
     this->updateScene(this->hostWidth, this->hostHeight);
 }
 
@@ -554,6 +565,18 @@ void App::draw()
     if (!this->hostAttached || ImGui::GetCurrentContext() == nullptr)
         return;
     this->drawScene();
+}
+
+void App::prepareDrawData(ImDrawData& drawData)
+{
+    if (this->hostAttached)
+        glass::getGlassService().prepareDrawData(drawData);
+}
+
+void App::finishHostFrame()
+{
+    if (this->hostAttached)
+        glass::getGlassService().finishFrame();
 }
 
 void App::detachHost()

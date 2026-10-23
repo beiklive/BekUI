@@ -42,6 +42,8 @@ class Context
     void draw();
     void detachHost();
     bool isAttached() const;
+    void prepareDrawData(ImDrawData& drawData);
+    void finishFrame();
 
     // 每个 Context 独立的主题 / 输入 / 事件总线
     ThemeData& getThemeData() { return this->theme; }

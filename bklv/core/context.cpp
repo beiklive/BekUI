@@ -97,6 +97,16 @@ void Context::detachHost()
     this->app->detachHost();
 }
 
+void Context::prepareDrawData(ImDrawData& drawData)
+{
+    this->app->prepareDrawData(drawData);
+}
+
+void Context::finishFrame()
+{
+    this->app->finishHostFrame();
+}
+
 bool Context::isAttached() const
 {
     return this->app->isHostAttached();

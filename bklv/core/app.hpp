@@ -35,6 +35,7 @@ struct HostAttachInfo
 {
     ImGuiContext* imguiContext = nullptr;
     TextureBackend* textures   = nullptr; // 图片/动图纹理上传；宿主可实现
+    glass::GlassBackend* glassBackend = nullptr; // 宿主玻璃后端（nullptr = 玻璃关闭）
     float width  = 1280.0f;
     float height = 720.0f;
 };
@@ -52,6 +53,11 @@ class App
     void draw();
     void detachHost();
     bool isHostAttached() const { return this->hostAttached; }
+
+    // 宿主帧顺序：ImGui::Render() 之后调用 prepareDrawData，
+    // 自己的后端提交完之后调用 finishHostFrame。
+    void prepareDrawData(ImDrawData& drawData);
+    void finishHostFrame();
 
     // 设置根视图，App 接管其所有权。
     void setRootView(View* view);
