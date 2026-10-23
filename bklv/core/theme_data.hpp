@@ -38,6 +38,7 @@ class ThemeData
     bool loadFromDirectory(const std::string& themeDir, const std::string& themeName);
 
     const std::string& getName() const { return this->name; }
+    int getSchemaVersion() const { return this->schemaVersion; }
 
     // 当前主题目录（带结尾 /）。loadFromDirectory 装的是自定义路径；音效等
     // 主题内资源必须用它，不能假设资源目录。
@@ -102,6 +103,7 @@ class ThemeData
     bool loadIntoDirectory(const std::string& dir, const std::string& themeName, bool isDefault);
 
     std::string name = "default";
+    int schemaVersion = 1;
     std::string directory;
     std::string defaultDirectory;
     std::unordered_map<std::string, ImU32> colors;

@@ -1157,9 +1157,15 @@ void setShrinkAttr(View* v, const ResolvedValue& r)
     v->setShrink(r.number);
 }
 
+void setIdAttr(View* view, const ResolvedValue& value)
+{
+    view->setId(value.text);
+}
+
 const AttributeTable& commonAttributes()
 {
     static const AttributeTable table = {
+        { "id", AttributeKind::STRING, setIdAttr, nullptr },
         { "width", AttributeKind::SIZE, setWidthAttr, nullptr, true },
         { "height", AttributeKind::SIZE, setHeightAttr, nullptr, true },
         { "minWidth", AttributeKind::SIZE, setMinWidthAttr, nullptr, true },

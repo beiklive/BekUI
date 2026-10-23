@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "bklv appearance JSON",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "import": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
+    "vars": { "type": "object" },
+    "box": { "type": "object" },
+    "layers": { "type": "array", "items": { "type": "object" }, "minItems": 1 },
+    "states": { "type": "object" },
+    "transitions": { "type": "object" },
+    "children": { "type": "array" },
+    "requires": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "array", "items": { "type": "string" } },
+        "layers": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object", "minProperties": 1, "maxProperties": 1,
+                "additionalProperties": { "enum": ["rect", "text", "image", "shadow", "glass", "custom"] } }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["layers"],
+  "additionalProperties": false
+}

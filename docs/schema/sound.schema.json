@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "bklv sound.json",
+  "type": "object",
+  "required": ["triggers"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "triggers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

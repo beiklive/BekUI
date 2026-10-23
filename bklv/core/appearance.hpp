@@ -389,7 +389,8 @@ class Appearance
     std::vector<std::pair<std::string, std::vector<ViewChannelClip>>> stateViewClips;
     std::vector<std::pair<std::string, std::string>> soundOverrides;
     std::vector<std::string> requiredContent;
-    std::vector<std::string> requiredLayers;
+    // layer id + 期望 op（-1 = 只校验存在）
+    std::vector<std::pair<std::string, int>> requiredLayers;
     // 四个生命周期事件（外观 JSON 的 transitions 段）；没写就是 defined=false
     std::array<TransitionEventSpec, (size_t)TransitionEvent::COUNT> transitions;
 };

@@ -141,5 +141,6 @@
   "descriptionKey": "theme/default_desc",
   "behavior": {
     "dropdown.placement": "trigger"
-  }
+  },
+  "schemaVersion": 1
 }

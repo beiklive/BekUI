@@ -186,13 +186,19 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | `include` | 字符串路径：把另一个描述文件整棵接进来（栈深上限 32） |
 | `bind` | 数据字段名 → 写到该类型的**主属性**上（Label → `text`，Image → `src`） |
 | `bindTo` | 显式指定属性名（Box 这类没有主属性的必须写它） |
+| `id` | 字符串；`setId()` 的 JSON 形式，供 `findView` / 编辑器定位使用 |
 
 ### 已注册类型
 
-`Box`（默认 `column`）、`Row`、`Label`、`Image`、`ScrollingFrame`、`HScrollingFrame`、
-`ProgressSpinner`、`Padding`。
+核心：`Box`（默认 `column`）、`Row`、`Label`、`Image`、`ScrollingFrame`、
+`HScrollingFrame`、`ProgressSpinner`、`Padding`。
 
-> `RecyclerFrame` **故意不注册**：它必须先有数据源才能用，光有类型没有意义。
+控件（`registerWidgetViewTypes()`）：`Rectangle`、`Shell` / `AppletFrame`、`Header`、
+`BottomBar`、`HintsBar`、`StatusArea`、`TabButton`、`Button`、`TabFrame`、`TabItem`、
+`Slider`、`Dropdown`、`RadioCell`、`BooleanCell`、`DetailCell`、`SliderCell`、
+`SelectorCell`、`InputCell`、`Recycler`。
+
+> `Recycler` 必须配合 `data` + `itemBinder` 使用；单独写类型只会建出空容器。
 
 ### 容器额外属性（`Box` / `Row` / 各类面板都继承，定义在 `Box::attributes()`）
 
@@ -481,7 +487,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 ### `<主题>/theme.json`
 
 ```json
-{ "name": "default", "version": 1, "colorScheme": "dark",
+{ "name": "default", "schemaVersion": 1, "version": 1, "colorScheme": "dark",
   "author": "beiklive", "description": "默认深色主题",
   "files": ["tokens/colors.json", "tokens/metrics.json",
             "base/button.json", "base/widget/sidebar.json", "view/page_json.json"] }
@@ -505,6 +511,21 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 - 单个 Dropdown 仍可用代码覆盖：`dd->setPlacement(DropdownPlacement::CENTER)`，
   或视图 JSON 里写 `"placement": "center"`；
 - 想让"居中主题"所有下拉都居中，只改这一行即可，不用改任何 C++。
+
+### JSON Schema 与版本
+
+`docs/schema/` 提供四类文件的 JSON Schema（draft-07）：
+
+- `view.schema.json`
+- `appearance.schema.json`
+- `theme.schema.json`
+- `sound.schema.json`
+- `i18n.schema.json`
+
+文件可在顶层写 `$schema` 指向它们（`$` 开头的键一律当元数据忽略）。
+`theme.json` 另有 `schemaVersion`（整数，当前为 `1`），由 `ThemeData::getSchemaVersion()`
+读取。音效文件仍按约定读取主题目录下的 `sound.json`（无字段）。
+Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为准**。
 
 ### 外观契约：`requires`
 

@@ -9,5 +9,6 @@
     "base/widget/bottom_bar.json",
     "base/dropdown_popup.json",
     "base/widget/dialog.json"
-  ]
+  ],
+  "schemaVersion": 1
 }

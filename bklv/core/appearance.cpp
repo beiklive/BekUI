@@ -1265,19 +1265,47 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
         }
         if (requires.contains("layers"))
         {
-            if (!requires["layers"].is_array())
+            const Json& layersNode = requires["layers"];
+            auto opFromNameLocal = [](const std::string& name) -> int {
+                if (name == "rect") return (int)AppearanceLayer::Op::RECT;
+                if (name == "text") return (int)AppearanceLayer::Op::TEXT;
+                if (name == "image") return (int)AppearanceLayer::Op::IMAGE;
+                if (name == "shadow") return (int)AppearanceLayer::Op::SHADOW;
+                if (name == "glass") return (int)AppearanceLayer::Op::GLASS;
+                if (name == "custom") return (int)AppearanceLayer::Op::CUSTOM;
+                return -2;
+            };
+
+            if (!layersNode.is_array())
             {
-                error = "requires.layers 必须是字符串数组";
+                error = "requires.layers 必须是数组（字符串或 {\"id\": \"op\"}）";
                 return nullptr;
             }
-            for (const Json& item : requires["layers"])
+            for (const Json& item : layersNode)
             {
-                if (!item.is_string())
+                if (item.is_string())
                 {
-                    error = "requires.layers 的每一项必须是字符串";
+                    appearance->requiredLayers.emplace_back(item.get<std::string>(), -1);
+                    continue;
+                }
+                if (!item.is_object() || item.size() != 1)
+                {
+                    error = "requires.layers 的每一项必须是字符串或单键对象 {\"id\": \"op\"}";
                     return nullptr;
                 }
-                appearance->requiredLayers.push_back(item.get<std::string>());
+                auto it = item.begin();
+                if (!it.value().is_string())
+                {
+                    error = "requires.layers 的对象值必须是 op 名称";
+                    return nullptr;
+                }
+                const int op = opFromNameLocal(it.value().get<std::string>());
+                if (op == -2)
+                {
+                    error = "requires.layers 有不认识的 op：\"" + it.value().get<std::string>() + "\"";
+                    return nullptr;
+                }
+                appearance->requiredLayers.emplace_back(it.key(), op);
             }
         }
     }
@@ -1376,6 +1404,9 @@ void ensureBuiltinContracts()
     add("base/widget/button.info", { "icon", "text", "info" });
     add("base/widget/button.selector", { "icon", "text", "info" });
     add("base/widget/button.dropdown", { "icon", "text", "info" });
+    add("base/widget/button.switch_text", { "text", "info" });
+    add("base/widget/button.switch_icon", { "icon", "text" },
+        { { "track", RECT }, { "knob", RECT } });
     add("base/widget/dropdown", { "title", "value" });
     add("base/slider/slider", {}, { { "track", RECT }, { "fill", RECT }, { "knob", RECT },
                                       { "geometry", CUSTOM } });
@@ -1445,8 +1476,8 @@ bool Appearance::checkContract(const std::string& appearance, const Appearance& 
     }
 
     std::vector<std::pair<std::string, int>> layersRequired = contract->layers;
-    for (const std::string& id : compiled.requiredLayers)
-        layersRequired.emplace_back(id, -1);
+    layersRequired.insert(layersRequired.end(), compiled.requiredLayers.begin(),
+        compiled.requiredLayers.end());
     for (const auto& required : layersRequired)
     {
         const AppearanceLayer* found = nullptr;

@@ -205,6 +205,9 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
     if (!parseFile(dir + "theme.json", meta))
         return false;
 
+    if (meta.contains("schemaVersion") && meta["schemaVersion"].is_number_integer())
+        this->schemaVersion = meta["schemaVersion"].get<int>();
+
     // 元信息：设计器"打开项目"读它
     if (!isDefault)
     {
