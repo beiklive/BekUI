@@ -1,0 +1,10 @@
+{
+  "type": "Box",
+  "axis": "column",
+  "gap": 12,
+  "padding": 12,
+  "children": [
+    { "type": "Label", "text": "JSON 行为示例", "fontSize": 20 },
+    { "type": "Button", "text": "点我（onClick = json.demoToast）", "onClick": "json.demoToast" }
+  ]
+}

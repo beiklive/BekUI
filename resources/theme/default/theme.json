@@ -134,7 +134,8 @@
     "demo/danger_cell.json",
     "demo/file_cell.json",
     "base/ime_backdrop.json",
-    "demo/sound_override.json"
+    "demo/sound_override.json",
+    "view/json_action.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -33,6 +33,7 @@
 #include "bklv/core/ime.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/json_view.hpp"
+#include "bklv/core/json_actions.hpp"
 #include "bklv/core/logger.hpp"
 #include "bklv/core/platform.hpp"
 #include "bklv/core/resource.hpp"

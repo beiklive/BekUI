@@ -200,6 +200,23 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 
 > `Recycler` 必须配合 `data` + `itemBinder` 使用；单独写类型只会建出空容器。
 
+### JSON 行为（`onClick`）
+
+`Button` 与 `Cell` 支持：
+
+```json
+{ "type": "Button", "text": "保存", "onClick": "save" }
+```
+
+- `onClick` 只写**行为名**，实现在 C++：
+
+```cpp
+bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
+```
+
+- 名字未注册时，点击会写 error 日志（不崩）；
+- 与 `Recycler` 的 `data` / `itemBinder` 同一分工：结构归 JSON，行为归 C++。
+
 ### 容器额外属性（`Box` / `Row` / 各类面板都继承，定义在 `Box::attributes()`）
 
 | 键 | 类型 | 说明 |

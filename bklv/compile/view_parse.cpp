@@ -281,21 +281,29 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
     }
 
     const std::string type = stripPrefix(node.value("type", ""));
-    auto creator = viewRegistry().end();
+    registerBuiltinViewTypes();
+
+    std::function<View*()> factory;
     if (g_contextViewTypes != nullptr)
     {
         const auto contextCreator = g_contextViewTypes->find(type);
         if (contextCreator != g_contextViewTypes->end())
-            creator = contextCreator;
+            factory = contextCreator->second;
     }
-    if (creator == viewRegistry().end())
+    if (!factory)
+    {
+        const auto globalCreator = viewRegistry().find(type);
+        if (globalCreator != viewRegistry().end())
+            factory = globalCreator->second;
+    }
+    if (!factory)
     {
         addError(ctx, pointer, "未知类型 \"" + type + "\"，可用：" + getViewTypeNames());
         return nullptr;
     }
 
     // unique_ptr 持有：中途任何一步失败/抛出都不会漏掉子树
-    std::unique_ptr<View> view(creator->second());
+    std::unique_ptr<View> view(factory());
     if (view == nullptr)
     {
         addError(ctx, pointer, "类型 \"" + type + "\" 的构造函数返回了空指针");

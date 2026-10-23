@@ -10,7 +10,8 @@
     "children": { "type": "array", "items": { "$ref": "#" } },
     "include": { "type": "string" },
     "bind": { "type": "string" },
-    "bindTo": { "type": "string" }
+    "bindTo": { "type": "string" },
+    "onClick": { "type": "string" }
   },
   "additionalProperties": true
 }

@@ -432,6 +432,7 @@ set(BKLV_CORE_SOURCES
     core/context.cpp
     core/services.cpp
     core/sound_bank.cpp
+    core/json_actions.cpp
     core/file_system.cpp
     core/focus_ring.cpp
     core/gradient.cpp

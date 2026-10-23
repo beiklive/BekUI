@@ -3,6 +3,8 @@
 #include <utility>
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/json_actions.hpp"
+#include "bklv/core/logger.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/audio.hpp"
@@ -140,6 +142,15 @@ const AttributeTable& Button::attributes() const
         { "iconFont", AttributeKind::ENUM, setButtonIconFontAttr, "material|switch" },
         { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
         { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
+        { "onClick", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             Button* button = static_cast<Button*>(v);
+             const std::string action = r.text;
+             button->setOnClick([button, action] {
+                 std::string error;
+                 if (!invokeJsonAction(action, *button, error))
+                     BKLV_LOG_ERROR("%s", error.c_str());
+             });
+         }, nullptr },
     };
     return table;
 }

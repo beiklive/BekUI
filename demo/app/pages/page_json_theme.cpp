@@ -219,6 +219,21 @@ Box* buildJsonThemePage()
             "切换时同时开关外壳玻璃。"));
     }
 
+    // JSON 行为：onClick 名字 -> C++ 注册
+    {
+        Box* stage = new Box(Axis::COLUMN);
+        stage->setWidthPercentage(100.0f);
+        stage->setAlignItems(AlignItems::CENTER);
+
+        if (View* actionView = createViewFromTheme("json_action"))
+            stage->addView(actionView);
+
+        page->addView(makeShowcaseSection("JSON · 行为段（onClick）", stage,
+            readThemeJson("view/json_action.json"),
+            "结构归 JSON，行为归 C++：onClick 只写名字，"
+            "registerJsonAction(\"json.demoToast\", ...) 在宿主里实现。"));
+    }
+
     return page;
 }
 

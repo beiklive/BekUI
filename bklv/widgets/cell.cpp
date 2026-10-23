@@ -3,6 +3,8 @@
 #include "bklv/widgets/dropdown.hpp"
 
 #include "bklv/core/attributes.hpp"
+#include "bklv/core/json_actions.hpp"
+#include "bklv/core/logger.hpp"
 #include "bklv/core/audio.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
@@ -111,6 +113,15 @@ const AttributeTable& Cell::attributes() const
          }, nullptr },
         { "enabled", AttributeKind::BOOL, [](View* v, const ResolvedValue& r) {
              static_cast<Cell*>(v)->setEnabled(r.boolean);
+         }, nullptr },
+        { "onClick", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
+             Cell* cell = static_cast<Cell*>(v);
+             const std::string action = r.text;
+             cell->setOnClick([cell, action] {
+                 std::string error;
+                 if (!invokeJsonAction(action, *cell, error))
+                     BKLV_LOG_ERROR("%s", error.c_str());
+             });
          }, nullptr },
     };
     return table;

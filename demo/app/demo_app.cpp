@@ -52,6 +52,12 @@ DemoApp::DemoApp()
     g_demoApp = this;
     this->toasts = new ToastManager();
     g_demoToasts = this->toasts;
+
+    // 视图 JSON 的 onClick="json.demoToast" 会走到这里
+    bklv::registerJsonAction("json.demoToast", [](bklv::View&) {
+        if (g_demoToasts != nullptr)
+            g_demoToasts->showInfo("JSON onClick 触发了 C++ 行为");
+    });
     this->toasts->setPositionTop(64.0f); // 避开右上角的帧率覆盖
     this->shell->getHudLayer()->addView(this->toasts);
 
