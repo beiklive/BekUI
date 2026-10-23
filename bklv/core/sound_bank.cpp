@@ -59,6 +59,12 @@ std::string resolvePathWithBase(const std::string& path, const std::string& them
         return themeDir + path.substr(7);
     if (path.empty() || path[0] == '/')
         return path;
+    // 已经是绝对路径就别再拼主题目录。只判断 '/' 开头是不够的：Windows 的
+    // `E:\...` / `E:/...` 与 `\\?\\` 都不以 '/' 开头，会掉到下面那条"相对主题目录"，
+    // 拼出 `resources/theme/default/E:\...\resources/audio/click.wav` 这种路径，
+    // 现象是每个音效都报"音效文件打不开"（@res/ 解析过的结果被二次解析）。
+    if ((path.size() >= 2 && path[1] == ':') || path[0] == '\\')
+        return path;
     // 相对路径默认相对**主题目录**（自定义路径主题也能带着自己的音效）
     return themeDir + path;
 }
@@ -265,7 +271,11 @@ SoundClipPtr SoundBank::clip(Sound sound)
     if (this->paths[index].empty())
         return nullptr;
 
-    this->clips[index] = this->clipFromPath(this->paths[index]);
+    // paths[] 里存的已经是解析过的路径（loadFrom 里走过 resolvePathWithBase），
+    // 这里不能再进 clipFromPath —— 那会按主题目录再解析一次。以前就是这么错的：
+    // 二次解析把绝对路径当成相对路径拼成 `resources/theme/default/E:\...\x.wav`，
+    // 于是每个音效都"打不开"，只剩代码合成的兜底音。
+    this->clips[index] = this->clipResolved(this->paths[index]);
     return this->clips[index];
 }
 
@@ -276,8 +286,11 @@ SoundClipPtr SoundBank::clipFromPath(const std::string& path)
 
     // 覆盖路径按**当前主题目录**解析（@theme/ 或相对路径都能跟着主题走）
     this->ensureTheme(getTheme().getName(), getTheme().getDirectory());
-    const std::string resolved = resolvePathWithBase(path, this->themeDir);
+    return this->clipResolved(resolvePathWithBase(path, this->themeDir));
+}
 
+SoundClipPtr SoundBank::clipResolved(const std::string& resolved)
+{
     for (const auto& entry : this->pathCache)
         if (entry.first == resolved)
             return entry.second;

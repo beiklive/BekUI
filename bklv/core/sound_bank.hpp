@@ -34,6 +34,8 @@ class SoundBank
     SoundBank() = default;
     void ensureTheme(const std::string& themeName, const std::string& themeDir);
     SoundClipPtr loadFile(const std::string& path);
+    // 已经是解析过的绝对路径，只做解码与缓存（不要再解析一次）
+    SoundClipPtr clipResolved(const std::string& resolved);
 
     std::string themeName;
     std::string themeDir;
