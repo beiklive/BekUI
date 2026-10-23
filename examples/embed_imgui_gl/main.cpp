@@ -156,9 +156,8 @@ int main(int, char**)
     services.fonts     = &hostFonts;
     services.ime       = &hostIme;
     services.input     = &hostInput;
-    bklv::setServices(services);
-
-    bklv::App app;
+    // Context 构造时先把服务装好，再创建 App（App 构造期读 i18n/资源）
+    bklv::Context ui(services);
     bklv::Box* root = new bklv::Box(bklv::Axis::COLUMN);
     root->setWidthPercentage(100.0f);
     root->setHeightPercentage(100.0f);
@@ -187,7 +186,7 @@ int main(int, char**)
     button->setOnClick([] { std::printf("bklv button clicked\n"); });
     root->addView(button);
 
-    app.setRootView(root);
+    ui.setRootView(root);
 
     HostTextures textures;
     bklv::HostAttachInfo attach;
@@ -195,7 +194,7 @@ int main(int, char**)
     attach.textures     = &textures;
     attach.width        = 1280.0f;
     attach.height       = 720.0f;
-    if (!app.attachHost(attach))
+    if (!ui.attachHost(attach))
     {
         std::fprintf(stderr, "bklv attachHost 失败\n");
         return 1;
@@ -219,7 +218,7 @@ int main(int, char**)
         SDL_GetWindowSizeInPixels(window, &width, &height);
         if (width <= 0 || height <= 0)
             continue;
-        app.setHostViewport((float)width, (float)height);
+        ui.setViewport((float)width, (float)height);
 
         ImGui_ImplSDL3_NewFrame();
         ImGui_ImplOpenGL3_NewFrame();
@@ -229,8 +228,8 @@ int main(int, char**)
         const float dt   = (float)(now - last) / 1000.0f;
         last             = now;
 
-        app.step(dt);
-        app.draw();
+        ui.step(dt);
+        ui.draw();
 
         if (!imageCheck && ++frameCount > 20)
         {
@@ -252,8 +251,7 @@ int main(int, char**)
         SDL_GL_SwapWindow(window);
     }
 
-    app.detachHost();
-    bklv::clearServices();
+    ui.detachHost();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

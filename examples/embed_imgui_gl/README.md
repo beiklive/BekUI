@@ -48,9 +48,12 @@ services.ime       = &myIme;        // ImeManager：系统软键盘
 services.input     = &myInput;      // InputService：方向/确认/返回
 bklv::setServices(services);
 
-bklv::App app; // 之后按正常流程 attachHost/step/draw
+bklv::Context ui(services); // 构造时先装服务，再创建底层 App
+ui.setRootView(root);
+ui.attachHost(attach);
+// 每帧：ui.step(dt); ui.draw();
 ...
-bklv::clearServices(); // App 销毁前
+ui.detachHost(); // 析构时自动 clearServices
 ```
 
 - `AudioService`：不设置时用内置混音器；设置后所有 UI 音效（含 sound.json/外观覆盖）都走宿主。

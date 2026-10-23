@@ -37,6 +37,7 @@
 #include "bklv/core/platform.hpp"
 #include "bklv/core/resource.hpp"
 #include "bklv/core/shadow.hpp"
+#include "bklv/core/context.hpp"
 #include "bklv/core/services.hpp"
 #include "bklv/core/task.hpp"
 #include "bklv/core/theme_data.hpp"
