@@ -26,7 +26,7 @@ SNAKE_FILE = re.compile(r"^[a-z0-9_]+\.(hpp|cpp)$")
 
 # 返回 bool 但属于"动作是否成功"的动词前缀（AGENTS.md 里写明允许）
 ACTION_PREFIXES = (
-    "init", "open", "close", "push", "pop", "step", "recognize", "fill",
+    "init", "open", "close", "push", "pop", "step", "recognize", "fill", "attach", "detach",
     "set", "play", "trigger", "submit", "handle", "refresh", "load", "apply",
     "run", "dispatch", "insert", "backspace", "delete", "move", "update",
     "create", "mainLoop", "collect", "check", "ensure", "wants",

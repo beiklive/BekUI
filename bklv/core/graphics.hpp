@@ -62,6 +62,34 @@ struct UiPassHook
 };
 
 // ---------------------------------------------------------------------------
+// 纹理后端（嵌入模式的最小契约）
+// ---------------------------------------------------------------------------
+//
+// 宿主已经有自己的 ImGui 渲染后端时，bklv 不需要第二套 GPU 提交，
+// 但图片/动图/头像仍然需要"上传一张 RGBA 纹理"的能力。宿主编一个这个接口即可。
+// 独立运行时由 RenderBackend 适配器实现（见 app.cpp），调用方无感。
+
+class TextureBackend
+{
+  public:
+    virtual ~TextureBackend() = default;
+
+    virtual const char* getName() const = 0;
+    virtual TextureHandle createTexture(const unsigned char* pixels, int width, int height) = 0;
+    virtual bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+        int height)
+    {
+        (void)handle;
+        (void)pixels;
+        (void)width;
+        (void)height;
+        return false;
+    }
+    virtual void destroyTexture(TextureHandle& handle) = 0;
+    virtual bool isReady() const = 0;
+};
+
+// ---------------------------------------------------------------------------
 // 后端接口
 // ---------------------------------------------------------------------------
 
@@ -187,7 +215,7 @@ struct TextureRef
 };
 
 // 设置当前后端。纹理的创建与释放都会走它。
-void initTextureStore(RenderBackend* backend);
+void initTextureStore(TextureBackend* backend);
 
 // 纹理仓库是否已就绪（也就是图形后端是否已经能上传纹理）。
 // 视图树常常在 App::run() 之前就建好了，那时上传还做不了；

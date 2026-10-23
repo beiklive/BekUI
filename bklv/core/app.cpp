@@ -53,6 +53,9 @@ const char* App::getGraphicsBackendName()
 
 App::~App()
 {
+    if (this->hostAttached)
+        this->detachHost();
+
     // 先停后台线程，别让 worker 在 App 析构后再回调
     task::shutdown();
     audio::shutdown();
@@ -326,140 +329,223 @@ App::App()
     BKLV_LOG_INFO("bklv 启动");
 }
 
-void App::frame()
+void App::beginFrameWork()
 {
-    const auto tFrameStart = std::chrono::steady_clock::now();
-    double     tAfterLayout = 0.0;
-    double     tAfterUpdate = 0.0;
     // 帧预算：只管"可以延后"的活（后台回调、上传、动图换帧、SVG 栅格化、缓存淘汰）。
-    // 用完之后它们自己停手、留给下一帧；布局 / update / 输入 / 绘制不吃预算。
-    // 这一帧的预算在函数末尾 endFrame()（动图与 SVG 发生在 root->update() 里，也在预算内）。
     budget::beginFrame(this->frameBudgetMs);
 
     // 后台任务完成的回调统一在主线程执行（视图/纹理/ImGui 都只能主线程碰）
     task::pumpMainThread();
     pumpDecodeQueue(); // 背压：按并发上限启动解码
     pumpUploads();     // 背压：按每帧配额 + 帧预算执行上传
-    trimTextureCache(); // 2d：超预算时每帧收一点（预算用完就停，下一帧继续）
+    trimTextureCache();
+}
 
-    ImGui::NewFrame();
+void App::updateScene(float width, float height)
+{
+    const auto tStart = std::chrono::steady_clock::now();
 
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float width             = viewport->WorkSize.x;
-    const float height            = viewport->WorkSize.y;
+    if (this->root == nullptr)
+        return;
 
-    FrameContext ctx;
-    // 画在主视口的前景绘制列表上：不依赖任何 ImGui 窗口，也不会被窗口遮挡。
-    ctx.drawList   = ImGui::GetForegroundDrawList();
-    ctx.pixelRatio = 1.0f;
+    // 0. 字体是在窗口创建后才加载的，而视图树通常更早就建好了。
+    //    字体就位后必须让所有依赖文本尺寸的节点重算一次。
+    if (this->lastFontGeneration != getFontGeneration())
+    {
+        this->lastFontGeneration = getFontGeneration();
+        this->root->refreshFontDependentLayout();
+    }
+
+    // 1. 布局：**只在需要时算**。
+    App::lastLayoutWidth  = width;
+    App::lastLayoutHeight = height;
+
+    const bool canvasChanged = (this->lastCanvasWidth != width || this->lastCanvasHeight != height);
+
+    // 720p 缩放：主题尺寸按 1280x720 写，窗口宽度变了要重新算缩放。
+    if (canvasChanged && updateUiScaleFromCanvas(width, height))
+    {
+        this->root->applyThemeRecursive();
+        this->root->markMeasureDirtyRecursive();
+        g_layoutDirty = true;
+    }
+
+    auto layoutPass = [&]() {
+        g_layoutDirty          = false;
+        this->lastCanvasWidth  = width;
+        this->lastCanvasHeight = height;
+
+        YGNodeCalculateLayout(this->root->getYGNode(), width, height, YGDirectionLTR);
+        App::noteLayoutPerformed();
+        this->root->notifyLayout();
+    };
+
+    if (forceRelayout() || g_layoutDirty || canvasChanged)
+        layoutPass();
+
+    // 2. 动画与视图逐帧逻辑（滚动等）。
+    Ticking::updateTickings();
+    const auto tAfterLayout = std::chrono::steady_clock::now();
+    this->root->update();
+    const auto tAfterUpdate = std::chrono::steady_clock::now();
+
+    // 3. 输入与焦点（必须在绘制前，读取的是上一帧的命中结果）。
+    getInputManager().update();
+
+    // 4. 业务帧回调。
+    if (this->onUpdate)
+        this->onUpdate();
+
+    // 4b. 补一次布局：2/3/4 任何一步都可能新建或改动视图树。
+    if (g_layoutDirty)
+        layoutPass();
+
+    this->profile.layoutMs += std::chrono::duration<double, std::milli>(
+        tAfterLayout - tStart).count();
+    this->profile.updateMs += std::chrono::duration<double, std::milli>(
+        tAfterUpdate - tAfterLayout).count();
+}
+
+void App::drawScene()
+{
+    const auto tStart = std::chrono::steady_clock::now();
 
     if (this->root != nullptr)
     {
-        // 0. 字体是在窗口创建后才加载的，而视图树通常更早就建好了。
-        //    字体就位后必须让所有依赖文本尺寸的节点重算一次。
-        if (this->lastFontGeneration != getFontGeneration())
-        {
-            this->lastFontGeneration = getFontGeneration();
-            this->root->refreshFontDependentLayout();
-        }
-
-        // 1. 布局：**只在需要时算**。
-        //
-        //    以前是每帧无条件全树重算（保守但白烧）：静态页面每秒白算 60 次 Yoga。
-        //    触发条件只有三个：
-        //      - 画布尺寸变了（resize 这类外部原因不经过 invalidate）
-        //      - requestLayout() / 首帧
-        //      - 视图自己改了：那些 setter 内部会 invalidate()，它**只把根标脏**
-        //        （App::g_layoutDirty），真正那一次由这里做 —— 所以本帧后面还有改动时，
-        //        第 4b 步会再补一次（见那里的注释）
-        App::lastLayoutWidth  = width;
-        App::lastLayoutHeight = height;
-
-        const bool canvasChanged = (this->lastCanvasWidth != width || this->lastCanvasHeight != height);
-
-        // 720p 缩放：主题尺寸按 1280x720 写，窗口宽度变了要重新算缩放。
-        // 缩放变了必须重新套用外观（外观值在 applyTheme 时就取定了）
-        if (canvasChanged && updateUiScaleFromCanvas(width, height))
-        {
-            if (this->root != nullptr)
-                this->root->applyThemeRecursive();
-            if (this->root != nullptr)
-                this->root->markMeasureDirtyRecursive();
-            g_layoutDirty = true;
-        }
-
-        // 一次布局 = 算 Yoga + 计数 + 通知子树。抽成 lambda 是因为一帧里可能要跑两次
-        // （第 4b 步的补算）。
-        auto layoutPass = [&]() {
-            g_layoutDirty          = false;
-            this->lastCanvasWidth  = width;
-            this->lastCanvasHeight = height;
-
-            YGNodeCalculateLayout(this->root->getYGNode(), width, height, YGDirectionLTR);
-            App::noteLayoutPerformed();
-            // 布局变化要通知子树（滚动条夹取、tab 栏反推内容宽等都挂在这里）
-            this->root->notifyLayout();
-        };
-
-        if (forceRelayout() || g_layoutDirty || canvasChanged)
-            layoutPass();
-
-        // 2. 动画与视图逐帧逻辑（滚动等）。
-        Ticking::updateTickings();
-        tAfterLayout = std::chrono::duration<double, std::milli>(
-            std::chrono::steady_clock::now() - tFrameStart).count();
-        this->root->update();
-        tAfterUpdate = std::chrono::duration<double, std::milli>(
-            std::chrono::steady_clock::now() - tFrameStart).count();
-
-        // 3. 输入与焦点（必须在绘制前，读取的是上一帧的命中结果）。
-        //
-        // 次序契约（别调换，也别把这一段挪到绘制之后）：
-        //   布局 → 输入处理 → 绘制。输入处理是**同步完成**的 —— 焦点、动作、指针命中
-        //   在 update() 返回时就已经是新状态，所以第 5 步画出来的就是本次输入的响应，
-        //   不存在"慢一帧生效"。命中用的是上一步算好的布局（因此按钮坐标永远是最新的，
-        //   而不是上一帧的几何）。tests/input_test.cpp 钉住"同一步内完成"这件事。
-        getInputManager().update();
-
-        // 4. 业务帧回调。
-        if (this->onUpdate)
-            this->onUpdate();
-
-        // 4b. 补一次布局：上面 2/3/4 任何一步都可能**新建或改动视图树** ——
-        //     切页（Pager 现建整棵新页子树并挂进槽）、弹层、回收列表重建都属于这条。
-        //     它们的 invalidate() 只是标脏，而第 1 步的布局已经过去了；不补的话这些视图
-        //     会在**没有任何布局结果**的状态下被第 5 步画出来：节点都在默认位置(0,0)，
-        //     现象就是"切 tab 的瞬间所有文字堆在页面顶部，下一帧才排好"（观感很糟）。
-        //     代价可控：只在"这一帧真的动过树"的帧多算一次（静态页面仍然 0 次）。
-        //     验收看 App::getLayoutCount()：切页那帧是 2，静止帧仍是 0。
-        if (g_layoutDirty)
-            layoutPass();
+        FrameContext ctx;
+        // 画在主视口的前景绘制列表上：不依赖任何 ImGui 窗口，也不会被窗口遮挡。
+        ctx.drawList   = ImGui::GetForegroundDrawList();
+        ctx.pixelRatio = 1.0f;
 
         // 5. 绘制视图树。
         this->root->frame(&ctx);
 
-        // （提示栏以前是画在最上层的覆盖层，现在改用 widgets/hints_bar 控件，
-        //   由 AppletFrame 的底栏承载；见 bklv/widgets/hints_bar.*）
-
         // 7. ImGui 窗口（调试窗口、日志窗口）。
-        //    放在视图树之后，所以窗口浮在界面之上；必须在 ImGui::Render() 之前。
         if (this->onDrawWindows)
             this->onDrawWindows();
     }
 
-    {
-        const auto now = std::chrono::steady_clock::now();
-        this->profile.layoutMs += tAfterLayout;
-        this->profile.updateMs += tAfterUpdate - tAfterLayout;
-        this->profile.drawMs   += std::chrono::duration<double, std::milli>(now - tFrameStart).count()
-            - tAfterUpdate;
-        this->profile.frames++;
-    }
-
-    ImGui::Render();
+    this->profile.drawMs += std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - tStart).count();
+    this->profile.frames++;
 
     // 预算在这一帧结束（它覆盖了 root->update() 里的动图换帧与 SVG 栅格化）
     budget::endFrame();
+}
+
+void App::frame()
+{
+    this->beginFrameWork();
+
+    ImGui::NewFrame();
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    this->updateScene(viewport->WorkSize.x, viewport->WorkSize.y);
+    this->drawScene();
+
+    ImGui::Render();
+}
+
+// ---------------------------------------------------------------------------
+// 嵌入模式
+// ---------------------------------------------------------------------------
+
+namespace
+{
+// 独立运行：把 RenderBackend 的纹理能力适配成宿主接口（宿主模式由调用方实现）
+class BackendTextureAdapter : public TextureBackend
+{
+  public:
+    explicit BackendTextureAdapter(RenderBackend* backend)
+        : backend(backend)
+    {
+    }
+
+    const char* getName() const override { return this->backend->getName(); }
+    TextureHandle createTexture(const unsigned char* pixels, int width, int height) override
+    {
+        return this->backend->createTexture(pixels, width, height);
+    }
+    bool updateTexture(TextureHandle& handle, const unsigned char* pixels, int width,
+        int height) override
+    {
+        return this->backend->updateTexture(handle, pixels, width, height);
+    }
+    void destroyTexture(TextureHandle& handle) override
+    {
+        this->backend->destroyTexture(handle);
+    }
+    bool isReady() const override { return this->backend->isReady(); }
+
+  private:
+    RenderBackend* backend = nullptr;
+};
+} // namespace
+
+bool App::attachHost(const HostAttachInfo& info)
+{
+    if (this->hostAttached || info.imguiContext == nullptr || info.textures == nullptr)
+        return false;
+
+    if (ImGui::GetCurrentContext() != info.imguiContext)
+        ImGui::SetCurrentContext(info.imguiContext);
+
+    this->hostAttached = true;
+    this->hostContext  = info.imguiContext;
+    this->hostTextures = info.textures;
+    this->hostWidth    = info.width > 0.0f ? info.width : 1280.0f;
+    this->hostHeight   = info.height > 0.0f ? info.height : 720.0f;
+
+    // 字体必须在宿主第一次 NewFrame() 之前加入图集（调用方契约）
+    loadFonts();
+    initTextureStore(info.textures);
+
+    // 嵌入模式没有 bklv 后端的玻璃实现：整层退回半透明。
+    glass::getGlassService().setBackend(nullptr);
+
+    App::requestLayout();
+    return true;
+}
+
+void App::setHostViewport(float width, float height)
+{
+    if (!this->hostAttached || width <= 0.0f || height <= 0.0f)
+        return;
+    if (this->hostWidth == width && this->hostHeight == height)
+        return;
+    this->hostWidth  = width;
+    this->hostHeight = height;
+    App::requestLayout();
+}
+
+void App::step(float deltaSeconds)
+{
+    if (!this->hostAttached || ImGui::GetCurrentContext() == nullptr)
+        return;
+
+    if (deltaSeconds > 0.0f)
+        ImGui::GetIO().DeltaTime = deltaSeconds;
+
+    this->beginFrameWork();
+    this->updateScene(this->hostWidth, this->hostHeight);
+}
+
+void App::draw()
+{
+    if (!this->hostAttached || ImGui::GetCurrentContext() == nullptr)
+        return;
+    this->drawScene();
+}
+
+void App::detachHost()
+{
+    if (!this->hostAttached)
+        return;
+
+    shutdownTextureStore();
+    this->hostAttached = false;
+    this->hostContext  = nullptr;
+    this->hostTextures = nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -514,7 +600,8 @@ int App::run(const std::string& title, int width, int height)
     BKLV_LOG_INFO("ImGui 渲染后端就绪，进入主循环");
 
     // 到这里上下文与渲染后端都就绪了，图片可以上传纹理了。
-    initTextureStore(backend);
+    this->ownedTextureBackend = std::make_unique<BackendTextureAdapter>(backend);
+    initTextureStore(this->ownedTextureBackend.get());
 
     // 玻璃服务要后端交出来的玻璃实现（没有玻璃能力的后端给 nullptr = 整层关闭）。
     // 两边都是非拥有指针：退出前摘掉，见函数末尾。
@@ -587,6 +674,7 @@ int App::run(const std::string& title, int width, int height)
 
     // 释放顺序很重要：先释放纹理（还要用上下文），再关渲染后端，最后销毁平台。
     shutdownTextureStore();
+    this->ownedTextureBackend.reset();
 
     // 退出一条帧时间流水：每个程序都自动有一条"卡不卡"的验收数据（没有帧就没这行）
     {

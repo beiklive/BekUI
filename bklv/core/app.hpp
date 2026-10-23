@@ -28,11 +28,30 @@ namespace bklv
 class NotificationManager;
 class DebugLayer;
 
+// 宿主嵌入模式：宿主已有窗口/GL/ImGui 循环，bklv 只负责 UI 树与绘制命令。
+// 要求：attach 必须在宿主第一次 ImGui::NewFrame() 之前；每帧先 NewFrame，再 step()，
+// 再 draw()，最后由宿主 ImGui::Render() + 自己的后端提交。
+struct HostAttachInfo
+{
+    ImGuiContext* imguiContext = nullptr;
+    TextureBackend* textures   = nullptr; // 图片/动图纹理上传；宿主可实现
+    float width  = 1280.0f;
+    float height = 720.0f;
+};
+
 class App
 {
   public:
     App();
     ~App();
+
+    // ---- 嵌入模式 ----
+    bool attachHost(const HostAttachInfo& info);
+    void setHostViewport(float width, float height);
+    void step(float deltaSeconds = 0.0f);
+    void draw();
+    void detachHost();
+    bool isHostAttached() const { return this->hostAttached; }
 
     // 设置根视图，App 接管其所有权。
     void setRootView(View* view);
@@ -72,6 +91,21 @@ class App
     // 需要额外注入绘制命令的宿主（比如带自己玻璃后端的工具）就是在这里做的：
     // `App::frame` 之后、ImGui::Render() 之前把命令插进 draw data。
     std::function<void(ImDrawData*)> onPrepareDrawData;
+
+  private:
+    // 独立运行与嵌入模式共用的三段式帧；run() 只是把它们串起来。
+    void beginFrameWork();
+    void updateScene(float width, float height);
+    void drawScene();
+
+    bool hostAttached = false;
+    ImGuiContext* hostContext = nullptr;
+    TextureBackend* hostTextures = nullptr;
+    float hostWidth  = 1280.0f;
+    float hostHeight = 720.0f;
+    std::unique_ptr<TextureBackend> ownedTextureBackend;
+
+  public:
 
     // 触发一次布局重算时用的画布尺寸。
     // invalidate() 从根节点发起重算时需要它：传 Undefined 会让百分比尺寸全部失效。

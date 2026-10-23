@@ -279,3 +279,14 @@ message(STATUS "bklv 仓库")
 message(STATUS "  平台     : ${BKLV_HOST}")
 message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
 message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAMES}")
+
+# ---------------------------------------------------------------------------
+# 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
+# ---------------------------------------------------------------------------
+if(BKLV_GRAPHICS STREQUAL "gl")
+    add_executable(embed_imgui_gl examples/embed_imgui_gl/main.cpp)
+    target_link_libraries(embed_imgui_gl PRIVATE bklv::bklv)
+    set_target_properties(embed_imgui_gl PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}")
+    bklv_copy_resources(embed_imgui_gl)
+endif()

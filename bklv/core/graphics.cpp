@@ -29,7 +29,7 @@ namespace bklv
 namespace
 {
 
-RenderBackend* g_backend = nullptr;
+TextureBackend* g_backend = nullptr;
 
 struct TextureEntry
 {
@@ -103,7 +103,7 @@ bool isTextureStoreReady()
     return g_backend != nullptr;
 }
 
-void initTextureStore(RenderBackend* backend)
+void initTextureStore(TextureBackend* backend)
 {
     // 换后端时缓存全部作废：旧句柄属于上一个后端，不能再拿来用；
     // 之前的失败记录也要清掉，否则新后端明明可用却会被旧的失败标记挡住。
