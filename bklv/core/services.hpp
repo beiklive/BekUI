@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "bklv/core/audio.hpp"
+#include "bklv/core/ime.hpp"
 
 namespace bklv
 {
@@ -33,6 +34,41 @@ class ResourceProvider
     virtual bool hasResource(const std::string& relative) const;
 };
 
+// 字体来源：宿主可提供字体字节或路径。空 = 用库默认的系统字体探测。
+class FontProvider
+{
+  public:
+    virtual ~FontProvider() = default;
+
+    // 返回正文字体文件路径（空 = 继续默认探测）
+    virtual std::string resolveBodyFont() const { return {}; }
+
+    // 直接提供字体字节（优先级高于路径）；返回 false = 没提供
+    virtual bool readBodyFont(std::vector<unsigned char>& out, std::string& error) const
+    {
+        (void)out;
+        (void)error;
+        return false;
+    }
+};
+
+// 输入覆盖：宿主已经采集输入时，用这个接口提供"方向键按住 / 确认 / 返回"，
+// 不走游戏手柄或 ImGui 键盘。返回 false 表示不接管，继续用库内来源。
+class InputService
+{
+  public:
+    virtual ~InputService() = default;
+
+    // direction: 0=上 1=下 2=左 3=右
+    virtual bool isDirectionHeld(int direction) const
+    {
+        (void)direction;
+        return false;
+    }
+    virtual bool isConfirmDown() const { return false; }
+    virtual bool isBackDown() const { return false; }
+};
+
 class AudioService
 {
   public:
@@ -49,6 +85,9 @@ struct Services
 {
     AudioService* audio       = nullptr;
     ResourceProvider* resources = nullptr;
+    FontProvider* fonts       = nullptr;
+    ImeManager* ime           = nullptr;
+    InputService* input       = nullptr;
 };
 
 // 全局服务表（M1 仍是单实例；多实例在 Context 阶段迁移）

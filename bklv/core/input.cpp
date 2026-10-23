@@ -1,4 +1,5 @@
 #include "bklv/core/audio.hpp"
+#include "bklv/core/services.hpp"
 #include "bklv/core/event.hpp"
 #include "bklv/core/input.hpp"
 
@@ -209,10 +210,15 @@ void InputManager::handleNavigation()
 
     // 手柄方向键：由平台提供的 GamepadSource 决定（桌面 SDL3 / Switch libnx）
     GamepadSource& gamepad = getGamepadSource();
-    const bool heldUp    = keysUp || gamepad.isDirectionHeld(FocusDirection::UP);
-    const bool heldDown  = keysDown || gamepad.isDirectionHeld(FocusDirection::DOWN);
-    const bool heldLeft  = keysLeft || gamepad.isDirectionHeld(FocusDirection::LEFT);
-    const bool heldRight = keysRight || gamepad.isDirectionHeld(FocusDirection::RIGHT);
+    InputService* input = getServices().input;
+    const bool heldUp = keysUp || gamepad.isDirectionHeld(FocusDirection::UP)
+        || (input != nullptr && input->isDirectionHeld(0));
+    const bool heldDown = keysDown || gamepad.isDirectionHeld(FocusDirection::DOWN)
+        || (input != nullptr && input->isDirectionHeld(1));
+    const bool heldLeft = keysLeft || gamepad.isDirectionHeld(FocusDirection::LEFT)
+        || (input != nullptr && input->isDirectionHeld(2));
+    const bool heldRight = keysRight || gamepad.isDirectionHeld(FocusDirection::RIGHT)
+        || (input != nullptr && input->isDirectionHeld(3));
 
     // 焦点捕获：方向键直接转给捕获者（选择器设置态靠这条调值），
     // 同时**吃掉**所有方向导航 —— 焦点必须钉在它身上。
@@ -1017,8 +1023,11 @@ void InputManager::handleActions()
     const bool keysBack    = this->isKeyDownAny(ImGuiKey_Escape, -1);
 
     GamepadSource& gamepad = getGamepadSource();
-    const bool heldConfirm = keysConfirm || gamepad.isConfirmPressed();
-    const bool heldBack    = keysBack || gamepad.isBackPressed();
+    InputService* input = getServices().input;
+    const bool heldConfirm = keysConfirm || gamepad.isConfirmPressed()
+        || (input != nullptr && input->isConfirmDown());
+    const bool heldBack = keysBack || gamepad.isBackPressed()
+        || (input != nullptr && input->isBackDown());
 
     const double now = this->clock;
 

@@ -9,6 +9,7 @@
 
 #include "bklv/core/logger.hpp"
 #include "bklv/core/resource.hpp"
+#include "bklv/core/services.hpp"
 
 #if defined(BKLV_SWITCH)
 #include <switch.h>
@@ -275,6 +276,46 @@ void loadFonts()
 
     // 图标字体先装：两个平台都要，不能被下面各分支的 return 跳过
     loadIconFonts(io.Fonts);
+
+    // 宿主字体：优先用 FontProvider 提供的字节/路径（嵌入模式）
+    if (FontProvider* provider = getServices().fonts)
+    {
+        std::vector<unsigned char> bytes;
+        std::string error;
+        if (provider->readBodyFont(bytes, error) && !bytes.empty())
+        {
+            void* data = ImGui::MemAlloc(bytes.size());
+            if (data != nullptr)
+            {
+                std::memcpy(data, bytes.data(), bytes.size());
+                ImFontConfig config;
+                config.OversampleH = 2;
+                config.OversampleV = 1;
+                config.FontDataOwnedByAtlas = true;
+                ImFont* font = io.Fonts->AddFontFromMemoryTTF(data, (int)bytes.size(), FONT_SIZE,
+                    &config, io.Fonts->GetGlyphRangesChineseFull());
+                if (font != nullptr)
+                {
+                    setDefaultFont(font);
+                    Logger::info("已加载宿主字体（FontProvider 字节）");
+                    return;
+                }
+            }
+        }
+
+        const std::string path = provider->resolveBodyFont();
+        if (!path.empty() && fileExists(path.c_str()))
+        {
+            ImFont* font = io.Fonts->AddFontFromFileTTF(path.c_str(), FONT_SIZE, nullptr,
+                io.Fonts->GetGlyphRangesChineseFull());
+            if (font != nullptr)
+            {
+                setDefaultFont(font);
+                Logger::info(std::string("已加载宿主字体：") + path);
+                return;
+            }
+        }
+    }
 
 #if defined(BKLV_SWITCH)
     // 用户自备字体优先（对应 borealis 的自定义字体覆盖）。

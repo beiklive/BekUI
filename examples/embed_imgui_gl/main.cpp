@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 
 #include "imgui.h"
@@ -84,6 +85,27 @@ class HostResources : public bklv::ResourceProvider
     }
 };
 
+class HostFonts : public bklv::FontProvider
+{
+  public:
+    std::string resolveBodyFont() const override
+    {
+        const char* path = std::getenv("BKLV_HOST_FONT");
+        return path != nullptr ? std::string(path) : std::string();
+    }
+};
+
+class HostIme : public bklv::ImeManager
+{
+  public:
+    bool open(const bklv::ImeRequest&) override { return false; } // 桌面宿主交给内联编辑
+};
+
+class HostInput : public bklv::InputService
+{
+    // 全部走默认：宿主没有额外输入源时保持 false
+};
+
 } // namespace
 
 int main(int, char**)
@@ -125,9 +147,15 @@ int main(int, char**)
     // ---- bklv：先注入宿主服务，再创建 App（App 构造期会读 i18n/资源） ----
     HostAudio hostAudio;
     HostResources hostResources;
+    HostFonts hostFonts;
+    HostIme hostIme;
+    HostInput hostInput;
     bklv::Services services;
     services.audio     = &hostAudio;
     services.resources = &hostResources;
+    services.fonts     = &hostFonts;
+    services.ime       = &hostIme;
+    services.input     = &hostInput;
     bklv::setServices(services);
 
     bklv::App app;

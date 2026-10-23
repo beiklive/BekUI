@@ -43,6 +43,9 @@ ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 bklv::Services services;
 services.audio     = &myAudio;      // AudioService：接管 play/playFile
 services.resources = &myResources;  // ResourceProvider：解析 resources/... 路径
+services.fonts     = &myFonts;      // FontProvider：宿主字体字节/路径
+services.ime       = &myIme;        // ImeManager：系统软键盘
+services.input     = &myInput;      // InputService：方向/确认/返回
 bklv::setServices(services);
 
 bklv::App app; // 之后按正常流程 attachHost/step/draw
@@ -52,6 +55,8 @@ bklv::clearServices(); // App 销毁前
 
 - `AudioService`：不设置时用内置混音器；设置后所有 UI 音效（含 sound.json/外观覆盖）都走宿主。
 - `ResourceProvider`：不设置时用可执行文件旁的 `resources/`；设置后可换成自定义根、pak 或内存资源。
+- `FontProvider`：`readBodyFont()` 优先于 `resolveBodyFont()`；都为空时用库默认系统字体。
+- `InputService`：宿主已有输入采集时提供方向按住 / 确认 / 返回（返回 false = 不接管）。
 - 服务由宿主拥有，bklv 只借用；必须在服务销毁前 `clearServices()`。
 
 ## 当前限制（M1）

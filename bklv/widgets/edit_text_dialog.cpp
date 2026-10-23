@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "bklv/core/app.hpp"
+#include "bklv/core/services.hpp"
 #include "bklv/core/i18n.hpp"
 #include "bklv/core/input.hpp"
 #include "bklv/core/logger.hpp"
@@ -450,6 +451,8 @@ bool EditTextDialog::openPlatformIme()
         this->refreshFieldText();
     };
 
+    if (ImeManager* service = getServices().ime)
+        return service->open(request);
     return getImeManager().open(request);
 }
 
