@@ -97,7 +97,14 @@ ui2.loadTheme("glass");
 ```
 
 每个 Context 独立：`ThemeData`、`InputManager`、`EventBus`、App、JSON 视图类型注册表。
-共享：纹理仓库、字体图集（随 ImGui Context）、布局静态量。
+
+共享管理器（显式）：
+
+- **纹理仓库**：全进程共享，按 GPU 设备一份；用 `acquireTextureStore/releaseTextureStore`
+  租约管理，最后一个 Context detach 才释放，避免互相销毁纹理。
+- **字体图集**：由宿主 ImGui Context 拥有，多个 bklv Context 共用；图集重建由宿主负责。
+- **布局静态量**：`App::lastLayoutWidth/Height` 等是线程级共享；构建视图前调用
+  `Context::makeCurrent()`，并保证同一线程同一时刻只驱动一个 Context 的布局。
 
 ## 6. 构建与安装
 
@@ -132,6 +139,6 @@ cmake --build /tmp/bklv_cons
 
 ## 8. 已知限制
 
-- 纹理仓库/字体图集/布局静态量仍全进程共享；
+- 纹理/字体/布局按上面的共享管理器约定使用，不提供每 Context 独立副本。
 - 玻璃需要宿主注入 `glass::GlassBackend`；未注入时退回半透明；
 - 纯核心构建可用：`-DBKLV_WITH_SDL=OFF`（无窗口/音频/平台，仅 View/布局/外观/绘制命令）。

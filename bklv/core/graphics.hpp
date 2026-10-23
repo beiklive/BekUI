@@ -217,6 +217,12 @@ struct TextureRef
 // 设置当前后端。纹理的创建与释放都会走它。
 void initTextureStore(TextureBackend* backend);
 
+// 共享纹理仓库的显式租约：多个 Context 共用同一 GPU 设备时，
+// 第一个 acquire 初始化，最后一个 release 才真正释放；避免 detach 一个 Context
+// 把另一个 Context 的纹理一起销毁。
+void acquireTextureStore(TextureBackend* backend);
+void releaseTextureStore(TextureBackend* backend);
+
 // 纹理仓库是否已就绪（也就是图形后端是否已经能上传纹理）。
 // 视图树常常在 App::run() 之前就建好了，那时上传还做不了；
 // Image 靠这个判断"要不要在每帧里重试加载"。

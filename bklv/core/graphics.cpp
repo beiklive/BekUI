@@ -103,6 +103,32 @@ bool isTextureStoreReady()
     return g_backend != nullptr;
 }
 
+namespace
+{
+int g_textureLeases = 0;
+}
+
+void acquireTextureStore(TextureBackend* backend)
+{
+    if (backend == nullptr)
+        return;
+    if (g_textureLeases <= 0)
+        initTextureStore(backend);
+    else if (g_backend != backend)
+        BKLV_LOG_WARNING("纹理仓库已由另一个后端初始化；多 Context 需共用同一 GPU 设备");
+    g_textureLeases++;
+}
+
+void releaseTextureStore(TextureBackend* backend)
+{
+    (void)backend;
+    if (g_textureLeases <= 0)
+        return;
+    g_textureLeases--;
+    if (g_textureLeases == 0)
+        shutdownTextureStore();
+}
+
 void initTextureStore(TextureBackend* backend)
 {
     // 换后端时缓存全部作废：旧句柄属于上一个后端，不能再拿来用；
@@ -146,6 +172,7 @@ void resetTextureStoreForGlobals()
 {
     shutdownTextureStore();
     g_backend = nullptr;
+    g_textureLeases = 0;
 }
 
 } // namespace
