@@ -139,6 +139,7 @@ struct InstantiateContext
 {
     std::vector<std::string> includeStack;
     std::vector<Binding> bindings;
+    std::vector<JsonCondition> conditions;
     int nodeCount = 0;
     std::vector<std::string> errors;
     std::vector<InstantiatedView>* map = nullptr; // 非空时记录 pointer → View*
@@ -350,12 +351,53 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         ctx.bindings.push_back(binding);
     }
 
+    // ---- 条件可见 ----
+    if (node.contains("visibleIf"))
+    {
+        const Json& conditionNode = node["visibleIf"];
+        JsonCondition condition;
+        condition.view = view.get();
+        if (conditionNode.is_string())
+            condition.field = conditionNode.get<std::string>();
+        else if (conditionNode.is_object())
+        {
+            if (!conditionNode.contains("field") || !conditionNode["field"].is_string())
+            {
+                addError(ctx, pointer + "/visibleIf", "visibleIf 对象必须含字符串 field");
+                return nullptr;
+            }
+            condition.field = conditionNode["field"].get<std::string>();
+            if (conditionNode.contains("equals"))
+            {
+                if (!conditionNode["equals"].is_string())
+                {
+                    addError(ctx, pointer + "/visibleIf/equals", "visibleIf.equals 必须是字符串");
+                    return nullptr;
+                }
+                condition.equals    = conditionNode["equals"].get<std::string>();
+                condition.hasEquals = true;
+            }
+        }
+        else
+        {
+            addError(ctx, pointer + "/visibleIf", "visibleIf 必须是字符串或 {field, equals}");
+            return nullptr;
+        }
+        if (condition.field.empty())
+        {
+            addError(ctx, pointer + "/visibleIf", "visibleIf 字段名不能为空");
+            return nullptr;
+        }
+        ctx.conditions.push_back(condition);
+    }
+
     // ---- 属性 ----
     for (auto it = node.begin(); it != node.end(); ++it)
     {
         const std::string& key = it.key();
         // 特殊键：type / children / include / bind / bindTo
-        if (key == "type" || key == "children" || key == "include" || key == "bind" || key == "bindTo")
+        if (key == "type" || key == "children" || key == "include" || key == "bind"
+            || key == "bindTo" || key == "visibleIf")
             continue;
 
         Value value;
@@ -598,7 +640,8 @@ std::shared_ptr<const ViewTemplate> ViewTemplate::fromString(const std::string& 
     return std::shared_ptr<const ViewTemplate>(new ViewTemplate(shared, source));
 }
 
-View* ViewTemplate::instantiate(std::vector<Binding>* bindings) const
+View* ViewTemplate::instantiate(std::vector<Binding>* bindings,
+    std::vector<JsonCondition>* conditionsOut) const
 {
     if (this->impl == nullptr)
         return nullptr;
@@ -628,6 +671,8 @@ View* ViewTemplate::instantiate(std::vector<Binding>* bindings) const
     // 只在成功时导出绑定：建树失败的话这些指针都指向已经释放的子树
     if (bindings != nullptr && view != nullptr)
         *bindings = ctx.bindings;
+    if (conditionsOut != nullptr && view != nullptr)
+        *conditionsOut = ctx.conditions;
 
     return view;
 }

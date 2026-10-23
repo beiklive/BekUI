@@ -1,0 +1,10 @@
+{
+  "type": "Box",
+  "axis": "column",
+  "gap": 8,
+  "children": [
+    { "type": "Label", "id": "title", "text": "占位", "fontSize": 20, "bind": "title" },
+    { "type": "Label", "id": "advancedHint", "text": "仅 advanced 模式可见",
+      "visibleIf": { "field": "mode", "equals": "advanced" } }
+  ]
+}

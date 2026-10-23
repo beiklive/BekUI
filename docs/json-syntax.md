@@ -186,6 +186,7 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | `include` | 字符串路径：把另一个描述文件整棵接进来（栈深上限 32） |
 | `bind` | 数据字段名 → 写到该类型的**主属性**上（Label → `text`，Image → `src`） |
 | `bindTo` | 显式指定属性名（Box 这类没有主属性的必须写它） |
+| `visibleIf` | 字符串字段名，或 `{ "field": "...", "equals": "..." }`；数据为假/不等于时设为 `GONE` |
 | `id` | 字符串；`setId()` 的 JSON 形式，供 `findView` / 编辑器定位使用 |
 
 ### 已注册类型
@@ -199,6 +200,32 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 `SelectorCell`、`InputCell`、`Recycler`。
 
 > `Recycler` 必须配合 `data` + `itemBinder` 使用；单独写类型只会建出空容器。
+
+### 数据绑定与条件可见（`bind` / `visibleIf`）
+
+```json
+{ "type": "Label", "bind": "title" }
+{ "type": "Label", "visibleIf": { "field": "mode", "equals": "advanced" } }
+```
+
+宿主侧：
+
+```cpp
+auto data = std::make_shared<bklv::JsonData>();
+data->set("title", "Hello");
+data->set("mode", "basic");
+
+bklv::JsonBindingRuntime runtime;
+auto* root = bklv::createViewFromThemeWithData("json_binding", data, &runtime);
+
+data->set("mode", "advanced");
+runtime.refresh();   // 重新写属性 + 可见性
+```
+
+- `bind` 把字段写到该类型的**主属性**（Label → `text`，Image → `src`），也可用 `bindTo` 指定；
+- `visibleIf` 字段缺失或为假 → `GONE`；`equals` 时做字符串比较；
+- `JsonBindingRuntime` 只持有 `View*`，必须在视图树销毁前销毁；
+- 当前**不支持** `foreach` / 循环生成和表达式模板；数据驱动列表用 `Recycler` + 绑定函数。
 
 ### JSON 行为（`onClick`）
 

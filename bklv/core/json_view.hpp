@@ -46,6 +46,15 @@ struct Binding
     View* view = nullptr;  // 目标视图（实例化出来的树里的节点）
 };
 
+// visibleIf：字段为真（或等于 equals）时可见，否则 GONE。
+struct JsonCondition
+{
+    View* view = nullptr;
+    std::string field;
+    std::string equals;
+    bool hasEquals = false;
+};
+
 // 注册一个视图类型，供 JSON 的 "type" 使用。
 void registerViewType(const std::string& name, std::function<View*()> creator);
 
@@ -84,7 +93,8 @@ class ViewTemplate
 
     // 实例化一棵视图树。失败返回 nullptr（错误已进日志）。
     // bindings 非空时，收集模板里所有 `"bind"` 节点（含 include 进来的）。
-    View* instantiate(std::vector<Binding>* bindings = nullptr) const;
+    View* instantiate(std::vector<Binding>* bindings = nullptr,
+        std::vector<JsonCondition>* conditions = nullptr) const;
 
     const std::string& getOrigin() const { return this->origin; }
 
