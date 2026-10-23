@@ -10,6 +10,7 @@
     "author": { "type": "string" },
     "description": { "type": "string" },
     "descriptionKey": { "type": "string" },
+    "sound": { "type": "string" },
     "colorScheme": { "enum": ["light", "dark"] },
     "files": { "type": "array", "items": { "type": "string", "pattern": "\\.json$" } },
     "behavior": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } }

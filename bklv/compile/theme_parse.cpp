@@ -208,6 +208,14 @@ bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& the
     if (meta.contains("schemaVersion") && meta["schemaVersion"].is_number_integer())
         this->schemaVersion = meta["schemaVersion"].get<int>();
 
+    if (meta.contains("sound") && meta["sound"].is_string())
+    {
+        if (isDefault)
+            this->defaultSoundFile = meta["sound"].get<std::string>();
+        else
+            this->soundFile = meta["sound"].get<std::string>();
+    }
+
     // 元信息：设计器"打开项目"读它
     if (!isDefault)
     {

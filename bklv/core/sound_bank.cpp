@@ -209,8 +209,9 @@ void SoundBank::ensureTheme(const std::string& theme, const std::string& dir)
         clip.reset();
     this->pathCache.clear();
 
-    auto loadFrom = [this](const std::string& /*name*/, const std::string& directory) {
-        const std::string file = directory + "sound.json";
+    auto loadFrom = [this](const std::string& name, const std::string& directory) {
+        const std::string file = directory
+            + (name == "default" ? getTheme().getDefaultSoundFile() : getTheme().getSoundFile());
         std::ifstream stream(file);
         if (!stream.is_open())
             return false;

@@ -553,7 +553,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 ### `<主题>/theme.json`
 
 ```json
-{ "name": "default", "schemaVersion": 1, "version": 1, "colorScheme": "dark",
+{ "name": "default", "schemaVersion": 1, "version": 1, "sound": "sound.json", "colorScheme": "dark",
   "author": "beiklive", "description": "默认深色主题",
   "files": ["tokens/colors.json", "tokens/metrics.json",
             "base/button.json", "base/widget/sidebar.json", "view/page_json.json"] }
@@ -590,7 +590,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 
 文件可在顶层写 `$schema` 指向它们（`$` 开头的键一律当元数据忽略）。
 `theme.json` 另有 `schemaVersion`（整数，当前为 `1`），由 `ThemeData::getSchemaVersion()`
-读取。音效文件仍按约定读取主题目录下的 `sound.json`（无字段）。
+读取；`sound` 可指定主题内的音效文件名（缺省 `sound.json`）。
 Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为准**。
 
 ### 外观契约：`requires`

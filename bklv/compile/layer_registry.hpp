@@ -73,6 +73,8 @@ struct LayerDrawContext
     const std::string* text = nullptr;  // getLayerText(layer.source) 的结果（仅 TEXT 层填）
     void* font              = nullptr;  // ImFont*（仅 TEXT 层填）
     void* image             = nullptr;  // TextureRef::texture（仅 IMAGE 层填；nullptr = 没有图）
+    int imageWidth          = 0;        // 源图像素尺寸（IMAGE 层九宫格用）
+    int imageHeight         = 0;
     void* customDraw        = nullptr;  // 保留：CUSTOM 层由视图自己画（见 drawCustomLayer）
 
     // 这一层的注册类型：扩展层靠它把 `layer.params[i]` 对应回名字与类型

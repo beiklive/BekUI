@@ -71,6 +71,25 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
         layer.inner = node["inner"].get<bool>();
     if (node.contains("clip") && node["clip"].is_boolean())
         layer.clip = node["clip"].get<bool>();
+    if (node.contains("slice"))
+    {
+        if (node["slice"].is_number())
+        {
+            const float value = node["slice"].get<float>();
+            for (float& edge : layer.slice)
+                edge = value;
+        }
+        else if (node["slice"].is_array() && node["slice"].size() == 4)
+        {
+            for (size_t i = 0; i < 4; i++)
+                layer.slice[i] = node["slice"][i].get<float>();
+        }
+        else
+        {
+            error = where + ".slice 必须是数字或 [左,上,右,下]";
+            return false;
+        }
+    }
 
     for (const NumberField& field : numberFields)
     {

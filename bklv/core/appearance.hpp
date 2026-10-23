@@ -161,6 +161,8 @@ struct AppearanceLayer
     bool cutout       = false;
     // 这一层的绘制裁到自己的 rect（逐层裁剪；默认关）
     bool clip         = false;
+    // 九宫格拉伸（image 层）：源图像素的四边切片 [左, 上, 右, 下]；全 0 = 普通缩放
+    float slice[4]    = { 0.0f, 0.0f, 0.0f, 0.0f };
     // SHADOW 层：画**内阴影**（贴着内缘最暗、往内渐透的一圈带子）而不是外投影。
     // **没有方向**：`offset` 对内阴影无效（它不是投影，是内侧渐变）；
     // 它也不吃 `cutout`（本来就是空心的）—— 带子始终待在形状内部。

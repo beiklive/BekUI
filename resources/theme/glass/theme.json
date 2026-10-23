@@ -10,5 +10,6 @@
     "base/dropdown_popup.json",
     "base/widget/dialog.json"
   ],
-  "schemaVersion": 1
+  "schemaVersion": 1,
+  "sound": "sound.json"
 }

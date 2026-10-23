@@ -837,11 +837,12 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
 
         // 钩子上下文：内容槽（文字 / 字体 / 图）由各分支按层填。
         // type 一起带进去 —— 扩展层靠它把 layer.params[i] 对应回参数名与类型。
-        auto hookContext = [&](const std::string* text, void* font, void* image) {
+        auto hookContext = [&](const std::string* text, void* font, void* image,
+                               int imageWidth = 0, int imageHeight = 0) {
             return compile::LayerDrawContext{ layer, this->appearance, index, drawList,
                 { rect[0], rect[1], rect[2], rect[3],
                     this->appearance.getNumber(index, AppearanceProp::RADIUS), alphaScale },
-                this, text, font, image, nullptr, layerType };
+                this, text, font, image, imageWidth, imageHeight, nullptr, layerType };
         };
 
         // 没有钩子就什么都不画：注册表是绘制层的**唯一出口**。唯一例外是 CUSTOM ——
@@ -872,7 +873,8 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 // 图与"是否有效"在这里现算；TextureRef 同样要活到调用之后
                 const TextureRef layerImage = this->resolveLayerImage(layer);
                 layerType->draw(hookContext(nullptr, nullptr,
-                    layerImage.isValid() ? (void*)layerImage.texture : nullptr));
+                    layerImage.isValid() ? (void*)layerImage.texture : nullptr,
+                    layerImage.width, layerImage.height));
                 break;
             }
 

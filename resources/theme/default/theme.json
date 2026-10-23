@@ -145,5 +145,6 @@
   "behavior": {
     "dropdown.placement": "trigger"
   },
-  "schemaVersion": 1
+  "schemaVersion": 1,
+  "sound": "sound.json"
 }

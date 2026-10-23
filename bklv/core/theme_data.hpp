@@ -39,6 +39,8 @@ class ThemeData
 
     const std::string& getName() const { return this->name; }
     int getSchemaVersion() const { return this->schemaVersion; }
+    const std::string& getSoundFile() const { return this->soundFile; }
+    const std::string& getDefaultSoundFile() const { return this->defaultSoundFile; }
 
     // 当前主题目录（带结尾 /）。loadFromDirectory 装的是自定义路径；音效等
     // 主题内资源必须用它，不能假设资源目录。
@@ -104,6 +106,8 @@ class ThemeData
 
     std::string name = "default";
     int schemaVersion = 1;
+    std::string soundFile = "sound.json";
+    std::string defaultSoundFile = "sound.json";
     std::string directory;
     std::string defaultDirectory;
     std::unordered_map<std::string, ImU32> colors;
