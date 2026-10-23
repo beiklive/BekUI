@@ -522,8 +522,13 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 }
 ```
 
-- 路径写 `@res/...`（相对 `resources/`）；支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），
-  运行期重采样到 48kHz 并缓存；
+- **音效跟随主题目录**：`sound.json` 从当前主题目录读取（`ThemeData::getDirectory()`），
+  主题用 `loadThemeIntoGlobalFromDirectory()` 装到自定义路径时同样生效；缺文件回退 default。
+- 路径三种写法：
+  - `@res/audio/x.wav`：相对 `resources/`（全局素材）；
+  - `@theme/audio/x.wav`：相对**当前主题目录**（主题自带素材）；
+  - 相对路径（`audio/x.wav`）：同样相对当前主题目录；绝对路径原样使用。
+- 支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），运行期重采样到 48kHz 并缓存；
 - 触发点大小写/下划线不敏感；不认识的触发点只警告；
 - 文件缺失、解码失败 → 回退到代码合成音（现有 `Sound`），不影响 UI；
 - **控件级覆盖**：外观 JSON 的 `states.click.sound` 优先于主题表：

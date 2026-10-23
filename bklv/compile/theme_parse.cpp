@@ -192,6 +192,14 @@ bool ThemeData::loadFromDirectory(const std::string& themeDir, const std::string
 bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& themeName,
     bool isDefault)
 {
+    // 记下目录：自定义路径主题的音效等资源按主题目录解析
+    if (isDefault)
+        this->defaultDirectory = dir;
+    if (!isDefault)
+        this->directory = dir;
+    if (themeName == "default")
+        this->defaultDirectory = dir;
+
 
     Json meta;
     if (!parseFile(dir + "theme.json", meta))

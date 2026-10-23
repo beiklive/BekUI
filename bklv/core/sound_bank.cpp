@@ -49,13 +49,18 @@ bool triggerFromName(const std::string& name, Sound& out)
     return true;
 }
 
-std::string resolvePath(const std::string& path)
+std::string resolvePathWithBase(const std::string& path, const std::string& themeDir)
 {
     if (path.rfind("@res/", 0) == 0)
         return resourcePath("resources/" + path.substr(5));
     if (path.rfind("resources/", 0) == 0)
         return resourcePath(path);
-    return path;
+    if (path.rfind("@theme/", 0) == 0)
+        return themeDir + path.substr(7);
+    if (path.empty() || path[0] == '/')
+        return path;
+    // 相对路径默认相对**主题目录**（自定义路径主题也能带着自己的音效）
+    return themeDir + path;
 }
 
 // 只支持 PCM（8/16/24/32-bit 整数或 32-bit float）；输出单声道 48kHz。
@@ -188,14 +193,15 @@ SoundBank& SoundBank::instance()
 void SoundBank::reload(const std::string& theme)
 {
     this->themeName.clear();
-    this->ensureTheme(theme);
+    this->ensureTheme(theme, resourcePath("resources/theme/" + theme + "/"));
 }
 
-void SoundBank::ensureTheme(const std::string& theme)
+void SoundBank::ensureTheme(const std::string& theme, const std::string& dir)
 {
-    if (this->themeName == theme)
+    if (this->themeName == theme && this->themeDir == dir)
         return;
     this->themeName = theme;
+    this->themeDir  = dir;
 
     for (auto& path : this->paths)
         path.clear();
@@ -203,8 +209,8 @@ void SoundBank::ensureTheme(const std::string& theme)
         clip.reset();
     this->pathCache.clear();
 
-    auto loadFrom = [this](const std::string& name) {
-        const std::string file = resourcePath("resources/theme/" + name + "/sound.json");
+    auto loadFrom = [this](const std::string& /*name*/, const std::string& directory) {
+        const std::string file = directory + "sound.json";
         std::ifstream stream(file);
         if (!stream.is_open())
             return false;
@@ -238,18 +244,18 @@ void SoundBank::ensureTheme(const std::string& theme)
                 BKLV_LOG_WARNING("sound.json 的 triggers.%s 必须是路径字符串", it.key().c_str());
                 continue;
             }
-            this->paths[(size_t)sound] = it.value().get<std::string>();
+            this->paths[(size_t)sound] = resolvePathWithBase(it.value().get<std::string>(), directory);
         }
         return true;
     };
 
-    if (!loadFrom(theme))
-        loadFrom("default");
+    if (!loadFrom(theme, dir))
+        loadFrom("default", getTheme().getDefaultDirectory());
 }
 
 SoundClipPtr SoundBank::clip(Sound sound)
 {
-    this->ensureTheme(getTheme().getName());
+    this->ensureTheme(getTheme().getName(), getTheme().getDirectory());
     const size_t index = (size_t)sound;
     if (index >= (sizeof(this->clips) / sizeof(this->clips[0])))
         return nullptr;
@@ -267,13 +273,22 @@ SoundClipPtr SoundBank::clipFromPath(const std::string& path)
     if (path.empty())
         return nullptr;
 
+    // 覆盖路径按**当前主题目录**解析（@theme/ 或相对路径都能跟着主题走）
+    this->ensureTheme(getTheme().getName(), getTheme().getDirectory());
+    const std::string resolved = resolvePathWithBase(path, this->themeDir);
+
     for (const auto& entry : this->pathCache)
-        if (entry.first == path)
+        if (entry.first == resolved)
             return entry.second;
 
-    SoundClipPtr clip = decodeWav(resolvePath(path));
-    this->pathCache.emplace_back(path, clip);
+    SoundClipPtr clip = decodeWav(resolved);
+    this->pathCache.emplace_back(resolved, clip);
     return clip;
+}
+
+std::string SoundBank::resolvePath(const std::string& path) const
+{
+    return resolvePathWithBase(path, this->themeDir);
 }
 
 const std::string& SoundBank::getPath(Sound sound) const

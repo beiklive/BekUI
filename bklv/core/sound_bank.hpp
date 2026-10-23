@@ -32,10 +32,12 @@ class SoundBank
 
   private:
     SoundBank() = default;
-    void ensureTheme(const std::string& themeName);
+    void ensureTheme(const std::string& themeName, const std::string& themeDir);
     SoundClipPtr loadFile(const std::string& path);
 
     std::string themeName;
+    std::string themeDir;
+    std::string resolvePath(const std::string& path) const;
     std::string paths[(size_t)Sound::HONK + 1];
     SoundClipPtr clips[(size_t)Sound::HONK + 1];
     std::vector<std::pair<std::string, SoundClipPtr>> pathCache;

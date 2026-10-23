@@ -39,6 +39,11 @@ class ThemeData
 
     const std::string& getName() const { return this->name; }
 
+    // 当前主题目录（带结尾 /）。loadFromDirectory 装的是自定义路径；音效等
+    // 主题内资源必须用它，不能假设资源目录。
+    const std::string& getDirectory() const { return this->directory; }
+    const std::string& getDefaultDirectory() const { return this->defaultDirectory; }
+
     // 行为型配置（theme.json 的 "behavior" 段，如 dropdown.placement）：
     // 不是颜色也不是数值，但也属于主题的一部分（"居中主题"就是靠它切换默认行为）。
     // 查找顺序：当前主题 → default 主题 → fallback。
@@ -97,6 +102,8 @@ class ThemeData
     bool loadIntoDirectory(const std::string& dir, const std::string& themeName, bool isDefault);
 
     std::string name = "default";
+    std::string directory;
+    std::string defaultDirectory;
     std::unordered_map<std::string, ImU32> colors;
     std::unordered_map<std::string, float> numbers;
     std::unordered_map<std::string, std::string> props;
