@@ -1,6 +1,7 @@
 #include "bklv/compile/json_vars.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <map>
 #include <set>
 #include <string>
@@ -81,6 +82,163 @@ bool findNestedVars(const Json& node, const std::string& path, std::string& wher
     return false;
 }
 
+bool resolveOne(const std::string& block, const std::string& name, const Json& colors,
+    const Json& numbers, ResolvedVars& out, std::set<std::string>& visiting, int depth,
+    std::string& error);
+
+// 数值表达式：+ - * /、括号、数字、&number.x
+// 只在 vars 的 number 块里启用；颜色仍是字符串引用，不参与运算。
+struct ExprParser
+{
+    const std::string& text;
+    size_t pos = 0;
+    const Json& colors;
+    const Json& numbers;
+    ResolvedVars& out;
+    std::set<std::string>& visiting;
+    int depth;
+    std::string& error;
+
+    void skip()
+    {
+        while (this->pos < this->text.size()
+            && std::isspace((unsigned char)this->text[this->pos]))
+            this->pos++;
+    }
+
+    bool parseNumber(double& value)
+    {
+        this->skip();
+        const size_t start = this->pos;
+        while (this->pos < this->text.size()
+            && (std::isdigit((unsigned char)this->text[this->pos])
+                || this->text[this->pos] == '.'))
+            this->pos++;
+        if (start == this->pos)
+        {
+            this->error = "算式里缺少数字：" + this->text;
+            return false;
+        }
+        try
+        {
+            value = std::stod(this->text.substr(start, this->pos - start));
+        }
+        catch (...)
+        {
+            this->error = "算式里的数字不合法：" + this->text;
+            return false;
+        }
+        return true;
+    }
+
+    bool parseFactor(double& value)
+    {
+        this->skip();
+        if (this->pos >= this->text.size())
+        {
+            this->error = "算式不完整：" + this->text;
+            return false;
+        }
+        if (this->text[this->pos] == '-')
+        {
+            this->pos++;
+            double inner = 0.0;
+            if (!this->parseFactor(inner))
+                return false;
+            value = -inner;
+            return true;
+        }
+        if (this->text[this->pos] == '(')
+        {
+            this->pos++;
+            if (!this->parseExpression(value))
+                return false;
+            this->skip();
+            if (this->pos >= this->text.size() || this->text[this->pos] != ')')
+            {
+                this->error = "算式括号不匹配：" + this->text;
+                return false;
+            }
+            this->pos++;
+            return true;
+        }
+        if (this->text[this->pos] == '&')
+        {
+            if (this->text.compare(this->pos, 8, "&number.") != 0)
+            {
+                this->error = "算式里只支持 &number.名字：" + this->text;
+                return false;
+            }
+            this->pos += 8;
+            const size_t start = this->pos;
+            while (this->pos < this->text.size()
+                && (std::isalnum((unsigned char)this->text[this->pos])
+                    || this->text[this->pos] == '_' || this->text[this->pos] == '.'))
+                this->pos++;
+            const std::string name = this->text.substr(start, this->pos - start);
+            if (name.empty() || !resolveOne("number", name, this->colors, this->numbers,
+                    this->out, this->visiting, this->depth + 1, this->error))
+                return false;
+
+            const Json& resolved = this->out.values["number." + name];
+            if (!resolved.is_number())
+            {
+                this->error = "算式里的 &number." + name + " 不是数字（可能是 @theme/metric）";
+                return false;
+            }
+            value = resolved.get<double>();
+            return true;
+        }
+        return this->parseNumber(value);
+    }
+
+    bool parseTerm(double& value)
+    {
+        if (!this->parseFactor(value))
+            return false;
+        while (true)
+        {
+            this->skip();
+            if (this->pos >= this->text.size()
+                || (this->text[this->pos] != '*' && this->text[this->pos] != '/'))
+                break;
+            const char op = this->text[this->pos++];
+            double rhs = 0.0;
+            if (!this->parseFactor(rhs))
+                return false;
+            if (op == '*')
+                value *= rhs;
+            else if (rhs == 0.0)
+            {
+                this->error = "算式除以 0：" + this->text;
+                return false;
+            }
+            else
+                value /= rhs;
+        }
+        return true;
+    }
+
+    bool parseExpression(double& value)
+    {
+        if (!this->parseTerm(value))
+            return false;
+        while (true)
+        {
+            this->skip();
+            if (this->pos >= this->text.size()
+                || (this->text[this->pos] != '+' && this->text[this->pos] != '-'))
+                break;
+            const char op = this->text[this->pos++];
+            double rhs = 0.0;
+            if (!this->parseTerm(rhs))
+                return false;
+            value = op == '+' ? value + rhs : value - rhs;
+        }
+        return true;
+    }
+};
+
 // 解析一个变量（允许链式 `&color.a` -> `&color.b` -> 值）
 bool resolveOne(const std::string& block, const std::string& name, const Json& colors,
     const Json& numbers, ResolvedVars& out, std::set<std::string>& visiting, int depth,
@@ -117,6 +275,24 @@ bool resolveOne(const std::string& block, const std::string& name, const Json& c
     if (raw.is_string())
     {
         const std::string text = raw.get<std::string>();
+        if (block == "number"
+            && (text.find('+') != std::string::npos || text.find('*') != std::string::npos
+                || text.find('/') != std::string::npos || text.find('(') != std::string::npos
+                || text.rfind("&-", 0) == 0))
+        {
+            double result = 0.0;
+            ExprParser parser{ text, 0, colors, numbers, out, visiting, depth, error };
+            if (!parser.parseExpression(result) || parser.pos != text.size())
+            {
+                if (error.empty())
+                    error = "数值表达式不合法：" + text;
+                return false;
+            }
+            visiting.erase(key);
+            out.values[key] = result;
+            return true;
+        }
+
         if (!text.empty() && text[0] == '&')
         {
             std::string nextBlock;
