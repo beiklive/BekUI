@@ -136,7 +136,7 @@ struct AppearanceLayer
     // 空 = 正文字体（不再按层 id 推断）。
     std::string fontKind;
     // 图片来源（可选）：相对主题根，如 "img/switch/switch_on.svg"；
-    // 解析期会补成 "resources/theme/<主题>/<src>"。给了 src 就不需要内容槽。
+    // 解析期会补成 <当前主题目录>/<src>（自定义目录装载的主题也成立）。给了 src 就不需要内容槽。
     std::string src;
 
     // 初值（编译时已把 @theme/... 解析成具体值）

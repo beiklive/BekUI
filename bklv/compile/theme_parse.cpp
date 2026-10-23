@@ -192,10 +192,12 @@ bool ThemeData::loadFromDirectory(const std::string& themeDir, const std::string
 bool ThemeData::loadIntoDirectory(const std::string& dir, const std::string& themeName,
     bool isDefault)
 {
-    // 记下目录：自定义路径主题的音效等资源按主题目录解析
+    // 记下目录：自定义路径主题的音效等资源按主题目录解析。
+    // 当前主题就是 default 时也得记（isDefault 为 true），否则 getDirectory() 留空：
+    // 外观里相对主题根的 src（图片）和相对路径音效就会拼成相对**进程工作目录**的路径。
     if (isDefault)
         this->defaultDirectory = dir;
-    if (!isDefault)
+    if (!isDefault || themeName == "default")
         this->directory = dir;
     if (themeName == "default")
         this->defaultDirectory = dir;

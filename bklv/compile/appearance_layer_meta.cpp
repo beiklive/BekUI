@@ -138,7 +138,19 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme, Appe
     {
         out.src = node["src"].get<std::string>();
         if (!out.src.empty() && out.src.rfind("resources/", 0) != 0)
-            out.src = "resources/theme/" + theme.getName() + "/" + out.src;
+        {
+            // 前缀用主题的**实际目录**，不能拿 THEME_DIR 拼主题名：
+            // loadFromDirectory 装的主题（SD 卡、设计器里的项目、任何绝对路径）
+            // 根本不在 resources/theme/ 下，硬拼就永远找不到图。
+            // 目录本身带结尾 /（见 ThemeData::loadIntoDirectory）；`sdmc:/` 这类
+            // 设备路径会被 resourcePath() 的 isAbsolute() 原样放行。
+            std::string base = theme.getDirectory();
+            if (base.empty())
+                base = std::string("resources/theme/") + theme.getName() + "/";
+            else if (base.back() != '/')
+                base.push_back('/');
+            out.src = base + out.src;
+        }
     }
 
     return true;
