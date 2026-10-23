@@ -10,7 +10,7 @@
 
 #if defined(BKLV_SWITCH)
 #include "bklv/platforms/switch_platform.hpp"
-#else
+#elif !defined(BKLV_NO_SDL)
 #include "bklv/platforms/sdl3_platform.hpp"
 #endif
 
@@ -47,8 +47,8 @@ Platform* createPlatform(PlatformType type)
     switch (type)
     {
         case PlatformType::DESKTOP_SDL3:
-#if defined(BKLV_SWITCH)
-            Logger::error("Switch 构建不含 SDL3 平台");
+#if defined(BKLV_SWITCH) || defined(BKLV_NO_SDL)
+            Logger::error("当前构建不含 SDL3 平台");
             return nullptr;
 #else
             return new PlatformSDL3();

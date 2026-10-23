@@ -5,9 +5,11 @@
 
 #if defined(BKLV_SWITCH)
 #include <switch.h>
-#else
+#elif !defined(BKLV_NO_SDL)
 // SDL_GetBasePath 不要求先 SDL_Init，可以在 App 构造阶段安全调用。
 #include <SDL3/SDL.h>
+#else
+#include <filesystem>
 #endif
 
 namespace bklv
@@ -50,13 +52,22 @@ void initResources()
         // 挂不上不影响启动，只是图片之类的资源读不到。
         BKLV_LOG_WARNING("romfsInit 失败（0x%x），资源将无法读取", (unsigned)rc);
     }
-#else
+#elif !defined(BKLV_NO_SDL)
     // 桌面：资源在可执行文件旁边（CMake 的 POST_BUILD 会把 resources/ 复制过去）。
     const char* base = SDL_GetBasePath();
     if (base != nullptr)
     {
         g_base = base;
         Logger::info(std::string("资源目录：") + g_base);
+    }
+#else
+    // 纯核心构建没有 SDL：用当前工作目录
+    std::error_code ec;
+    const std::string cwd = std::filesystem::current_path(ec).string();
+    if (!ec)
+    {
+        g_base = cwd + "/";
+        Logger::info(std::string("资源目录（无 SDL）：") + g_base);
     }
 #endif
 }

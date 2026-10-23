@@ -16,7 +16,7 @@
 
 #if defined(BKLV_SWITCH)
 #include <switch.h>
-#else
+#elif !defined(BKLV_NO_SDL)
 // SDL_GetPreferredLocales 是纯查询，不需要先 SDL_Init；
 // 这点很关键——文案要在视图树构建前就绪，那时平台实例还不存在。
 #include <SDL3/SDL.h>
@@ -69,6 +69,22 @@ std::string probeSystemLocale()
         case SetLanguage_KO: return "ko-KR";
         default: return DEFAULT_LOCALE;
     }
+#elif defined(BKLV_NO_SDL)
+    // 无 SDL：用 LANG/LC_ALL 的粗略推断
+    const char* lang = std::getenv("LC_ALL");
+    if (lang == nullptr || *lang == 0)
+        lang = std::getenv("LANG");
+    if (lang == nullptr || *lang == 0)
+        return DEFAULT_LOCALE;
+    std::string raw = lang;
+    const size_t dot = raw.find('.');
+    if (dot != std::string::npos)
+        raw = raw.substr(0, dot);
+    if (raw == "zh_CN" || raw == "zh-CN")
+        return "zh-Hans";
+    if (raw == "zh_TW" || raw == "zh-TW")
+        return "zh-Hant";
+    return raw;
 #else
     int count = 0;
     SDL_Locale** locales = SDL_GetPreferredLocales(&count);

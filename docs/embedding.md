@@ -106,6 +106,11 @@ ui2.loadTheme("glass");
 cmake -S . -B /tmp/bklv_node -DBKLV_BUILD_DEMO=OFF -DBKLV_BUILD_EXAMPLES=OFF
 cmake --build /tmp/bklv_node
 
+# 无 SDL 的纯核心
+cmake -S . -B /tmp/bklv_nosdl -DBKLV_WITH_SDL=OFF \
+  -DBKLV_BUILD_DEMO=OFF -DBKLV_BUILD_EXAMPLES=OFF
+cmake --build /tmp/bklv_nosdl
+
 # 安装（可选解码器已随包导出）
 cmake -S . -B /tmp/bklv_inst \
   -DBKLV_GRAPHICS=gl -DBKLV_BUILD_DEMO=OFF -DBKLV_BUILD_EXAMPLES=OFF \
@@ -129,4 +134,4 @@ cmake --build /tmp/bklv_cons
 
 - 纹理仓库/字体图集/布局静态量仍全进程共享；
 - 玻璃需要宿主注入 `glass::GlassBackend`；未注入时退回半透明；
-- 未提供 `BKLV_WITH_SDL=OFF` 的纯核心构建。
+- 纯核心构建可用：`-DBKLV_WITH_SDL=OFF`（无窗口/音频/平台，仅 View/布局/外观/绘制命令）。

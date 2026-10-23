@@ -2,7 +2,9 @@
 
 include(CMakeFindDependencyMacro)
 find_dependency(Threads)
-find_dependency(SDL3 CONFIG)
+if("@BKLV_WITH_SDL@" STREQUAL "ON")
+    find_dependency(SDL3 CONFIG)
+endif()
 if("@BKLV_WITH_WEBP@" STREQUAL "ON")
     if(NOT TARGET WebP::sharpyuv)
         add_library(WebP::sharpyuv STATIC IMPORTED)

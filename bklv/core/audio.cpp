@@ -7,7 +7,7 @@
 #include "bklv/core/sound_bank.hpp"
 #include "bklv/core/services.hpp"
 
-#if !defined(BKLV_SWITCH)
+#if !defined(BKLV_SWITCH) && !defined(BKLV_NO_SDL)
 #include <SDL3/SDL.h>
 #endif
 
@@ -245,7 +245,7 @@ AudioMixer g_mixer;
 bool g_available = false;
 std::mutex g_mutex;
 
-#if !defined(BKLV_SWITCH)
+#if !defined(BKLV_SWITCH) && !defined(BKLV_NO_SDL)
 SDL_AudioStream* g_stream = nullptr;
 
 void audioCallback(void*, SDL_AudioStream* stream, int additionalAmount, int)
@@ -284,7 +284,9 @@ bool init()
     if (g_available)
         return true;
 
-#if defined(BKLV_SWITCH)
+#if defined(BKLV_NO_SDL)
+    return false;
+#elif defined(BKLV_SWITCH)
     // Switch 的 audren 需要真机调（音频缓冲/服务初始化），暂时不接。
     // 桌面已经可用；这里只记一次日志，不阻塞启动。
     static bool warned = false;
@@ -324,7 +326,7 @@ bool init()
 
 void shutdown()
 {
-#if !defined(BKLV_SWITCH)
+#if !defined(BKLV_SWITCH) && !defined(BKLV_NO_SDL)
     if (g_stream != nullptr)
     {
         SDL_DestroyAudioStream(g_stream);

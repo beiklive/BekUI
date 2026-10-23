@@ -24,6 +24,7 @@ get_filename_component(BKLV_INCLUDE_ROOT "${BKLV_DIR}/.." ABSOLUTE)
 set(BKLV_3RD "${BKLV_DIR}/3rd")
 
 option(BKLV_INSTALL "安装 bklv 头文件和库（实验性）" OFF)
+option(BKLV_WITH_SDL "启用 SDL3 平台/窗口/音频（关掉 = 纯核心构建）" ON)
 
 # 独立配置时（直接在 bklv/ 里跑 cmake）需要自己的 project()。被 add_subdirectory
 # 引入时 CMAKE_SOURCE_DIR 指向外层工程，就不会重复调用。
@@ -174,7 +175,9 @@ if(BKLV_HOST STREQUAL "linux")
     endforeach()
 endif()
 
-add_subdirectory("${BKLV_3RD}/SDL" EXCLUDE_FROM_ALL)
+if(BKLV_WITH_SDL)
+    add_subdirectory("${BKLV_3RD}/SDL" EXCLUDE_FROM_ALL)
+endif()
 
 # ---------------------------------------------------------------------------
 # 公共编译选项
@@ -191,6 +194,10 @@ target_include_directories(bklv_opts INTERFACE
     $<BUILD_INTERFACE:${BKLV_3RD}/json/single_include>
     $<INSTALL_INTERFACE:include>
 )
+
+if(NOT BKLV_WITH_SDL)
+    target_compile_definitions(bklv_opts INTERFACE BKLV_NO_SDL)
+endif()
 
 target_compile_options(bklv_opts INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
@@ -233,8 +240,12 @@ endif()
 # macOS 是 OpenGL.framework，Linux 是 libGL（FindOpenGL 还会带上 GLX 的依赖）。
 # vk 构建也要，因为 ImGui 的 OpenGL3 后端（imgui_impl_opengl3_wrapper.cpp）与
 # Windows 的 GL 运行时加载都在库里，不区分后端。
-find_package(OpenGL REQUIRED)
-target_link_libraries(bklv_opts INTERFACE OpenGL::GL)
+if(BKLV_WITH_SDL)
+    find_package(OpenGL REQUIRED)
+endif()
+if(BKLV_WITH_SDL)
+    target_link_libraries(bklv_opts INTERFACE OpenGL::GL)
+endif()
 
 # 图形后端选择（编译期）。
 if(BKLV_GRAPHICS STREQUAL "vk")
@@ -250,7 +261,11 @@ if(BKLV_HOST STREQUAL "windows")
     # **只有 GCC/Clang 认这两个选项**：Windows 上的构建也可能是 MSVC（Visual Studio
     # generator），它会把它们当未知选项逐条报警告（cl D9002 / link LNK4044），
     # 破坏"零警告"约定。所以按编译器加保护。
-    target_compile_options(bklv_opts INTERFACE
+    if(NOT BKLV_WITH_SDL)
+    target_compile_definitions(bklv_opts INTERFACE BKLV_NO_SDL)
+endif()
+
+target_compile_options(bklv_opts INTERFACE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-static-libgcc;-static-libstdc++>)
     target_link_options(bklv_opts INTERFACE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-static-libgcc;-static-libstdc++>)
@@ -265,14 +280,18 @@ if(BKLV_GRAPHICS STREQUAL "vk")
     # （含 MinGW 的 libvulkan-1.dll.a）。不要请求 glslc 组件：
     # ImGui 的 Vulkan 后端把 shader 内嵌在源码里，不需要 glslc，
     # 而 MSYS2 的 vulkan-headers/loader 包里也没有它。
-    find_package(Vulkan REQUIRED)
+    if(BKLV_WITH_SDL)
+        find_package(Vulkan REQUIRED)
+    endif()
 
     # 必须挂在 bklv_opts 上，不能只链在可执行目标上：
     # vulkan_backend.cpp / imgui_impl_vulkan.cpp 是在 bklv_core、bklv_imgui 这两个
     # OBJECT 库里编译的，可执行目标的链接依赖影响不到它们的 include 路径，
     # 结果就是 GL 构建好好的、vk 构建报 'vulkan/vulkan.h' file not found。
     # 挂在这里顺带把 loader 也带出去，调用方不需要再单独链一次。
-    target_link_libraries(bklv_opts INTERFACE Vulkan::Vulkan)
+    if(BKLV_WITH_SDL)
+        target_link_libraries(bklv_opts INTERFACE Vulkan::Vulkan)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -373,8 +392,6 @@ set(BKLV_IMGUI_SOURCES
     "${BKLV_3RD}/imgui/imgui_draw.cpp"
     "${BKLV_3RD}/imgui/imgui_tables.cpp"
     "${BKLV_3RD}/imgui/imgui_widgets.cpp"
-    "${BKLV_3RD}/imgui/backends/imgui_impl_sdl3.cpp"
-    "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp"
 )
 
 if(BKLV_GRAPHICS STREQUAL "vk")
@@ -382,10 +399,19 @@ if(BKLV_GRAPHICS STREQUAL "vk")
     list(APPEND BKLV_IMGUI_SOURCES "${BKLV_3RD}/imgui/backends/imgui_impl_vulkan.cpp")
 endif()
 
+if(BKLV_WITH_SDL)
+    list(APPEND BKLV_IMGUI_SOURCES
+        "${BKLV_3RD}/imgui/backends/imgui_impl_sdl3.cpp"
+        "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp")
+endif()
+
 add_library(bklv_imgui OBJECT ${BKLV_IMGUI_SOURCES})
-target_link_libraries(bklv_imgui PUBLIC bklv_opts
-    $<BUILD_INTERFACE:SDL3::SDL3-static>
-    $<INSTALL_INTERFACE:SDL3::SDL3-static>)
+target_link_libraries(bklv_imgui PUBLIC bklv_opts)
+if(BKLV_WITH_SDL)
+    target_link_libraries(bklv_imgui PUBLIC
+        $<BUILD_INTERFACE:SDL3::SDL3-static>
+        $<INSTALL_INTERFACE:SDL3::SDL3-static>)
+endif()
 
 # ---------------------------------------------------------------------------
 # 库本体
@@ -415,10 +441,6 @@ set(BKLV_CORE_SOURCES
     core/glass/glass_queue.cpp
     core/glass/glass_tuning.cpp
     core/glass/glass_service.cpp
-    backends/gl_glass.cpp
-    backends/vk_glass.cpp
-    backends/gl_glass_procs.cpp
-    backends/gl_glass_shaders.cpp
     core/logger.cpp
     core/input.cpp
     core/shadow.cpp
@@ -510,12 +532,20 @@ set(BKLV_CORE_SOURCES
     widgets/pager.cpp
     widgets/edit_text_dialog.cpp
     widgets/hints_bar.cpp
-    platforms/sdl3_platform.cpp
-    platforms/sdl3_gamepad.cpp
-    backends/gl_loader.cpp
-    backends/opengl_backend.cpp
-    backends/vulkan_backend.cpp
 )
+
+if(BKLV_WITH_SDL)
+    list(APPEND BKLV_CORE_SOURCES
+        backends/gl_glass.cpp
+        backends/vk_glass.cpp
+        backends/gl_glass_procs.cpp
+        backends/gl_glass_shaders.cpp
+        platforms/sdl3_platform.cpp
+        platforms/sdl3_gamepad.cpp
+        backends/gl_loader.cpp
+        backends/opengl_backend.cpp
+        backends/vulkan_backend.cpp)
+endif()
 
 # ---------------------------------------------------------------------------
 # 源文件清单漏项检查
@@ -553,10 +583,12 @@ endforeach()
 
 add_library(bklv_core OBJECT ${BKLV_CORE_ABS})
 find_package(Threads REQUIRED)
-target_link_libraries(bklv_core PUBLIC bklv_opts
-    $<BUILD_INTERFACE:SDL3::SDL3-static>
-    $<INSTALL_INTERFACE:SDL3::SDL3-static>
-    Threads::Threads)
+target_link_libraries(bklv_core PUBLIC bklv_opts Threads::Threads)
+if(BKLV_WITH_SDL)
+    target_link_libraries(bklv_core PUBLIC
+        $<BUILD_INTERFACE:SDL3::SDL3-static>
+        $<INSTALL_INTERFACE:SDL3::SDL3-static>)
+endif()
 
 add_library(bklv INTERFACE)
 add_library(bklv::bklv ALIAS bklv)
@@ -604,10 +636,12 @@ if(BKLV_INSTALL)
     add_library(bklv_sdk STATIC
         $<TARGET_OBJECTS:bklv_core>
         $<TARGET_OBJECTS:bklv_imgui>)
-    target_link_libraries(bklv_sdk PUBLIC bklv_opts bklv_yoga
-        $<BUILD_INTERFACE:SDL3::SDL3-static>
-        $<INSTALL_INTERFACE:SDL3::SDL3-static>
-        Threads::Threads)
+    target_link_libraries(bklv_sdk PUBLIC bklv_opts bklv_yoga Threads::Threads)
+    if(BKLV_WITH_SDL)
+        target_link_libraries(bklv_sdk PUBLIC
+            $<BUILD_INTERFACE:SDL3::SDL3-static>
+            $<INSTALL_INTERFACE:SDL3::SDL3-static>)
+    endif()
 
     set(BKLV_INSTALL_TARGETS bklv_sdk bklv_opts bklv_yoga)
     if(TARGET bklv_svg)
@@ -656,15 +690,17 @@ if(BKLV_INSTALL)
     endif()
 
     # SDL3：静态库 + 头 + 生成的 CMake 包（SDL_INSTALL 的导出文件已在 build 目录生成）
-    install(FILES $<TARGET_FILE:SDL3-static> DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    install(DIRECTORY "${BKLV_3RD}/SDL/include/"
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-    configure_package_config_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SDL3Config.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
+    if(BKLV_WITH_SDL)
+        install(FILES $<TARGET_FILE:SDL3-static> DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        install(DIRECTORY "${BKLV_3RD}/SDL/include/"
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+        configure_package_config_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SDL3Config.cmake.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
+            INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SDL3Config.cmake"
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/SDL3)
+    endif()
 
     install(EXPORT bklvTargets
         NAMESPACE bklv::
