@@ -1420,6 +1420,10 @@ void ensureBuiltinContracts()
     add("base/widget/dialog", { "title", "text" });
     add("base/widget/edit_text_dialog", { "title" });
     add("base/widget/notification", { "text" });
+    add("base/hint_item", { "icon", "label" });
+    add("base/header_icon", { "icon" });
+    add("base/dropdown_item", { "text" });
+    add("base/text_field", { "text" });
 }
 
 const Appearance::Contract* findContract(const std::string& name)
@@ -1462,7 +1466,8 @@ bool Appearance::checkContract(const std::string& appearance, const Appearance& 
         bool found = false;
         for (const AppearanceLayer& layer : compiled.getLayers())
         {
-            if (layer.op == AppearanceLayer::Op::TEXT && layer.dataId == slot)
+            if ((layer.op == AppearanceLayer::Op::TEXT || layer.op == AppearanceLayer::Op::IMAGE)
+                && layer.dataId == slot)
             {
                 found = true;
                 break;

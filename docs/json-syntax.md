@@ -592,7 +592,10 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 - 校验发生在 `import` 合并与编译之后；失败会写 error 日志，
   `validateThemeAppearances()` 返回失败；
 - 代码侧还注册了内置契约（如 `base/widget/button.text` 必须有 `text` 槽、
-  `base/slider/slider` 必须有 `track/fill/knob/geometry`）。JSON 的 `requires`
+  `base/slider/slider` 必须有 `track/fill/knob/geometry`、
+  `base/hint_item` 需要 `icon`/`label`、`base/header_icon` 需要 `icon`、
+  `base/dropdown_item` 与 `base/text_field` 需要 `text`）。
+  内容槽既可以是 `op=text`，也可以是 `op=image`（图标槽）。JSON 的 `requires`
   与内置契约取并集，不能放宽；
 - glass 变体自动继承基名契约（`button.text.glass` → `button.text`）。
 

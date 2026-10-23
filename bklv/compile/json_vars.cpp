@@ -275,7 +275,10 @@ bool resolveOne(const std::string& block, const std::string& name, const Json& c
     if (raw.is_string())
     {
         const std::string text = raw.get<std::string>();
-        if (block == "number"
+        const bool expressionStart = !text.empty()
+            && (text[0] == '&' || text[0] == '(' || text[0] == '-'
+                || std::isdigit((unsigned char)text[0]));
+        if (block == "number" && expressionStart
             && (text.find('+') != std::string::npos || text.find('*') != std::string::npos
                 || text.find('/') != std::string::npos || text.find('(') != std::string::npos
                 || text.rfind("&-", 0) == 0))
