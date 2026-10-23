@@ -854,6 +854,9 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             continue;
         }
 
+        if (layer.clip)
+            drawList->PushClipRect(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]), true);
+
         switch (layer.op)
         {
             case AppearanceLayer::Op::TEXT:
@@ -884,6 +887,9 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
                 layerType->draw(hookContext(nullptr, nullptr, nullptr));
                 break;
         }
+
+        if (layer.clip)
+            drawList->PopClipRect();
     }
 
     // ---- 设计期叠加（默认关闭）：画板边框 + 选中层描边与四角把手 ----

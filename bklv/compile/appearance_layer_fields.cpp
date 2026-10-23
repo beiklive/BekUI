@@ -69,6 +69,8 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
         layer.cutout = node["cutout"].get<bool>();
     if (node.contains("inner") && node["inner"].is_boolean())
         layer.inner = node["inner"].get<bool>();
+    if (node.contains("clip") && node["clip"].is_boolean())
+        layer.clip = node["clip"].get<bool>();
 
     for (const NumberField& field : numberFields)
     {
