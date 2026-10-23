@@ -187,6 +187,7 @@ for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
 | `bind` | 数据字段名 → 写到该类型的**主属性**上（Label → `text`，Image → `src`） |
 | `bindTo` | 显式指定属性名（Box 这类没有主属性的必须写它） |
 | `visibleIf` | 字符串字段名，或 `{ "field": "...", "equals": "..." }`；数据为假/不等于时设为 `GONE` |
+| `foreach` | 容器节点上的字符串字段名；按 `JsonData::setList()` 的字符串数组重复生成 `children` |
 | `id` | 字符串；`setId()` 的 JSON 形式，供 `findView` / 编辑器定位使用 |
 
 ### 已注册类型
@@ -225,7 +226,28 @@ runtime.refresh();   // 重新写属性 + 可见性
 - `bind` 把字段写到该类型的**主属性**（Label → `text`，Image → `src`），也可用 `bindTo` 指定；
 - `visibleIf` 字段缺失或为假 → `GONE`；`equals` 时做字符串比较；
 - `JsonBindingRuntime` 只持有 `View*`，必须在视图树销毁前销毁；
-- 当前**不支持** `foreach` / 循环生成和表达式模板；数据驱动列表用 `Recycler` + 绑定函数。
+### 循环生成（`foreach`）
+
+```json
+{
+  "type": "Box",
+  "foreach": "items",
+  "children": [
+    { "type": "Label", "bind": "item" }
+  ]
+}
+```
+
+```cpp
+data->setList("items", { "A", "B", "C" });
+auto* root = createViewFromThemeWithData("json_foreach", data, &runtime);
+```
+
+- `foreach` 只写在**容器**节点上，重复的是它的 `children`；
+- 列表来自 `JsonData::setList(field, vector<string>)`；
+- 循环内 `bind:"item"` / `visibleIf:"item"` 使用当前项；
+- 需要数据源，`createViewFromTheme`（不带数据）会报错；
+- 列表仍是字符串数组；对象数组/嵌套循环未实现，复杂列表用 `Recycler`。
 
 ### JSON 行为（`onClick`）
 

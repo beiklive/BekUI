@@ -44,6 +44,8 @@ struct Binding
     std::string field;     // 数据字段名，由 binder 解读
     std::string attribute; // 要设置的属性名
     View* view = nullptr;  // 目标视图（实例化出来的树里的节点）
+    bool hasLocal = false; // foreach 里的 item 绑定
+    std::string localValue;
 };
 
 // visibleIf：字段为真（或等于 equals）时可见，否则 GONE。
@@ -53,7 +55,11 @@ struct JsonCondition
     std::string field;
     std::string equals;
     bool hasEquals = false;
+    bool hasLocal = false;
+    std::string localValue;
 };
+
+class JsonData;
 
 // 注册一个视图类型，供 JSON 的 "type" 使用。
 void registerViewType(const std::string& name, std::function<View*()> creator);
@@ -94,7 +100,8 @@ class ViewTemplate
     // 实例化一棵视图树。失败返回 nullptr（错误已进日志）。
     // bindings 非空时，收集模板里所有 `"bind"` 节点（含 include 进来的）。
     View* instantiate(std::vector<Binding>* bindings = nullptr,
-        std::vector<JsonCondition>* conditions = nullptr) const;
+        std::vector<JsonCondition>* conditions = nullptr,
+        const JsonData* data = nullptr) const;
 
     const std::string& getOrigin() const { return this->origin; }
 

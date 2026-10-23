@@ -136,7 +136,8 @@
     "base/ime_backdrop.json",
     "demo/sound_override.json",
     "view/json_action.json",
-    "view/json_binding.json"
+    "view/json_binding.json",
+    "view/json_foreach.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

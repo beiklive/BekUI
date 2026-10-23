@@ -12,6 +12,7 @@
     "bind": { "type": "string" },
     "bindTo": { "type": "string" },
     "onClick": { "type": "string" },
+    "foreach": { "type": "string" },
     "visibleIf": {
       "oneOf": [
         { "type": "string" },

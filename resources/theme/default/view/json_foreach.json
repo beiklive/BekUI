@@ -1,0 +1,10 @@
+{
+  "type": "Box",
+  "axis": "column",
+  "gap": 6,
+  "foreach": "items",
+  "children": [
+    { "type": "Label", "bind": "item", "fontSize": 18 },
+    { "type": "Label", "text": "分隔线", "visibleIf": { "field": "mode", "equals": "advanced" } }
+  ]
+}

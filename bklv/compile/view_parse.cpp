@@ -1,4 +1,5 @@
 #include "bklv/core/json_view.hpp"
+#include "bklv/core/json_data.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -143,6 +144,9 @@ struct InstantiateContext
     int nodeCount = 0;
     std::vector<std::string> errors;
     std::vector<InstantiatedView>* map = nullptr; // 非空时记录 pointer → View*
+    const JsonData* data = nullptr;               // foreach 的数据源
+    bool inForeach = false;
+    std::string currentItem;
 };
 
 // 正在进行的实例化。**必须整棵树共享**：include 会调回 ViewTemplate::instantiate()，
@@ -327,6 +331,11 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         Binding binding;
         binding.field = node["bind"].get<std::string>();
         binding.view  = view.get();
+        if (ctx.inForeach && binding.field == "item")
+        {
+            binding.hasLocal  = true;
+            binding.localValue = ctx.currentItem;
+        }
 
         if (node.contains("bindTo"))
         {
@@ -357,6 +366,11 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         const Json& conditionNode = node["visibleIf"];
         JsonCondition condition;
         condition.view = view.get();
+        if (ctx.inForeach && condition.field == "item")
+        {
+            condition.hasLocal  = true;
+            condition.localValue = ctx.currentItem;
+        }
         if (conditionNode.is_string())
             condition.field = conditionNode.get<std::string>();
         else if (conditionNode.is_object())
@@ -397,7 +411,7 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
         const std::string& key = it.key();
         // 特殊键：type / children / include / bind / bindTo
         if (key == "type" || key == "children" || key == "include" || key == "bind"
-            || key == "bindTo" || key == "visibleIf")
+            || key == "bindTo" || key == "visibleIf" || key == "foreach")
             continue;
 
         Value value;
@@ -477,15 +491,57 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
             return nullptr;
         }
 
-        for (size_t i = 0; i < children.size(); i++)
-        {
-            const std::string childPointer = pointer + "/children/" + std::to_string(i);
-            std::unique_ptr<View> child(instantiateNode(children[i], childPointer, depth + 1, ctx));
-            if (child == nullptr)
-                return nullptr; // 整棵失败：上层 unique_ptr 会把已建好的部分一起释放
+        auto instantiateChildren = [&]() -> bool {
+            for (size_t i = 0; i < children.size(); i++)
+            {
+                const std::string childPointer = pointer + "/children/" + std::to_string(i);
+                std::unique_ptr<View> child(
+                    instantiateNode(children[i], childPointer, depth + 1, ctx));
+                if (child == nullptr)
+                    return false;
 
-            box->addView(child.get());
-            child.release(); // 所有权移交给父节点
+                box->addView(child.get());
+                child.release();
+            }
+            return true;
+        };
+
+        if (node.contains("foreach"))
+        {
+            if (!node["foreach"].is_string() || node["foreach"].get<std::string>().empty())
+            {
+                addError(ctx, pointer + "/foreach", "foreach 必须是非空字段名");
+                return nullptr;
+            }
+            if (ctx.data == nullptr)
+            {
+                addError(ctx, pointer + "/foreach",
+                    "foreach 需要数据源；请用 createViewFromThemeWithData 实例化");
+                return nullptr;
+            }
+
+            const std::string field = node["foreach"].get<std::string>();
+            const std::vector<std::string>& items = ctx.data->getList(field);
+            const bool previousInForeach = ctx.inForeach;
+            const std::string previousItem = ctx.currentItem;
+
+            ctx.inForeach = true;
+            for (const std::string& item : items)
+            {
+                ctx.currentItem = item;
+                if (!instantiateChildren())
+                {
+                    ctx.inForeach = previousInForeach;
+                    ctx.currentItem = previousItem;
+                    return nullptr;
+                }
+            }
+            ctx.inForeach = previousInForeach;
+            ctx.currentItem = previousItem;
+        }
+        else if (!instantiateChildren())
+        {
+            return nullptr;
         }
     }
 
@@ -641,7 +697,7 @@ std::shared_ptr<const ViewTemplate> ViewTemplate::fromString(const std::string& 
 }
 
 View* ViewTemplate::instantiate(std::vector<Binding>* bindings,
-    std::vector<JsonCondition>* conditionsOut) const
+    std::vector<JsonCondition>* conditionsOut, const JsonData* data) const
 {
     if (this->impl == nullptr)
         return nullptr;
@@ -652,6 +708,7 @@ View* ViewTemplate::instantiate(std::vector<Binding>* bindings,
         return instantiateNode(this->impl->document, this->origin, 0, *g_activeContext);
 
     InstantiateContext ctx;
+    ctx.data = data;
     // 根模板自身入栈，这样 include 绕回自己也能被检测到（fromString 的 origin 是 "<string>"）
     if (this->origin != "<string>")
         ctx.includeStack.push_back(this->origin);

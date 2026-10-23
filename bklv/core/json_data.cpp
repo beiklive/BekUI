@@ -27,14 +27,33 @@ void JsonData::set(const std::string& field, bool value)
     this->values[field] = value ? "true" : "false";
 }
 
+void JsonData::setList(const std::string& field, std::vector<std::string> values)
+{
+    this->lists[field] = std::move(values);
+}
+
+bool JsonData::hasList(const std::string& field) const
+{
+    return this->lists.find(field) != this->lists.end();
+}
+
+const std::vector<std::string>& JsonData::getList(const std::string& field) const
+{
+    static const std::vector<std::string> empty;
+    const auto it = this->lists.find(field);
+    return it != this->lists.end() ? it->second : empty;
+}
+
 void JsonData::erase(const std::string& field)
 {
     this->values.erase(field);
+    this->lists.erase(field);
 }
 
 void JsonData::clear()
 {
     this->values.clear();
+    this->lists.clear();
 }
 
 bool JsonData::has(const std::string& field) const
@@ -78,7 +97,8 @@ void JsonBindingRuntime::refresh()
     {
         if (binding.view == nullptr)
             continue;
-        const std::string value = this->data->get(binding.field);
+        const std::string value = binding.hasLocal ? binding.localValue
+                                                   : this->data->get(binding.field);
         std::string error;
         const ApplyResult result
             = binding.view->applyAttribute(binding.attribute, Value(value), error);
@@ -93,7 +113,12 @@ void JsonBindingRuntime::refresh()
             continue;
 
         bool visible = false;
-        if (this->data->has(condition.field))
+        if (condition.hasLocal)
+        {
+            visible = condition.hasEquals ? condition.localValue == condition.equals
+                                          : !condition.localValue.empty();
+        }
+        else if (this->data->has(condition.field))
         {
             if (condition.hasEquals)
                 visible = this->data->get(condition.field) == condition.equals;
@@ -113,7 +138,7 @@ View* createViewFromThemeWithData(const std::string& name, std::shared_ptr<JsonD
 
     std::vector<Binding> bindings;
     std::vector<JsonCondition> conditions;
-    View* view = tmpl->instantiate(&bindings, &conditions);
+    View* view = tmpl->instantiate(&bindings, &conditions, data.get());
     if (view == nullptr)
         return nullptr;
 

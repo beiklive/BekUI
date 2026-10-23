@@ -23,6 +23,9 @@ class JsonData
     void set(const std::string& field, const char* value);
     void set(const std::string& field, double value);
     void set(const std::string& field, bool value);
+    void setList(const std::string& field, std::vector<std::string> values);
+    bool hasList(const std::string& field) const;
+    const std::vector<std::string>& getList(const std::string& field) const;
     void erase(const std::string& field);
     void clear();
 
@@ -32,6 +35,7 @@ class JsonData
 
   private:
     std::map<std::string, std::string> values;
+    std::map<std::string, std::vector<std::string>> lists;
 };
 
 // 把 bindings / visibleIf 绑定到一棵已经实例化的视图树上。
