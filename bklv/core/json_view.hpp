@@ -25,6 +25,7 @@
 // 未知属性只警告，并给出最接近的名字。
 
 #include <functional>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -47,6 +48,11 @@ struct Binding
 
 // 注册一个视图类型，供 JSON 的 "type" 使用。
 void registerViewType(const std::string& name, std::function<View*()> creator);
+
+// 当前 Context 的视图类型表（多实例扩展；nullptr = 只用库级注册表）
+using ViewTypeMap = std::unordered_map<std::string, std::function<View*()>>;
+void setContextViewTypes(ViewTypeMap* types);
+ViewTypeMap* getContextViewTypes();
 bool isViewTypeRegistered(const std::string& name);
 
 // 清空视图类型注册表（内置的那几个也一起清，并把"已注册"标志翻回来 ——

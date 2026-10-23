@@ -44,6 +44,8 @@ std::unordered_map<std::string, std::function<View*()>>& viewRegistry()
     return registry;
 }
 
+ViewTypeMap* g_contextViewTypes = nullptr;
+
 // 内置类型是否已经注册过。放**命名空间作用域**（不是函数内 static）：
 // clearViewTypesForTest() / resetGlobals() 要把它一起翻回来 —— 只清表不翻标志的话，
 // 重置之后 "Box" / "Label" 这些类型会静默失效（JSON 报"未知 type"，比崩更难查）。
@@ -279,7 +281,13 @@ View* instantiateNode(const Json& node, const std::string& pointer, int depth, I
     }
 
     const std::string type = stripPrefix(node.value("type", ""));
-    const auto creator     = viewRegistry().find(type);
+    auto creator = viewRegistry().end();
+    if (g_contextViewTypes != nullptr)
+    {
+        const auto contextCreator = g_contextViewTypes->find(type);
+        if (contextCreator != g_contextViewTypes->end())
+            creator = contextCreator;
+    }
     if (creator == viewRegistry().end())
     {
         addError(ctx, pointer, "未知类型 \"" + type + "\"，可用：" + getViewTypeNames());
@@ -452,9 +460,21 @@ void clearViewTypesForTest()
     g_builtinsRegistered = false;
 }
 
+void setContextViewTypes(ViewTypeMap* types)
+{
+    g_contextViewTypes = types;
+}
+
+ViewTypeMap* getContextViewTypes()
+{
+    return g_contextViewTypes;
+}
+
 bool isViewTypeRegistered(const std::string& name)
 {
     registerBuiltinViewTypes();
+    if (g_contextViewTypes != nullptr && g_contextViewTypes->find(name) != g_contextViewTypes->end())
+        return true;
     return viewRegistry().find(name) != viewRegistry().end();
 }
 

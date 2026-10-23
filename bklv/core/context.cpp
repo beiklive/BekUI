@@ -42,6 +42,8 @@ Context::~Context()
         setContextInputManager(nullptr);
     if (getContextEventBus() == &this->bus)
         setContextEventBus(nullptr);
+    if (getContextViewTypes() == &this->viewTypes)
+        setContextViewTypes(nullptr);
     if (this->servicesInstalled)
         clearServices();
 }
@@ -51,6 +53,7 @@ void Context::makeCurrent()
     setContextTheme(&this->theme);
     setContextInputManager(&this->input);
     setContextEventBus(&this->bus);
+    setContextViewTypes(&this->viewTypes);
     if (this->app != nullptr)
         App::setContextApp(this->app.get());
 }

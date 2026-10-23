@@ -15,6 +15,7 @@
 #include "bklv/core/app.hpp"
 #include "bklv/core/event.hpp"
 #include "bklv/core/input.hpp"
+#include "bklv/core/json_view.hpp"
 #include "bklv/core/services.hpp"
 #include "bklv/core/theme_data.hpp"
 
@@ -46,6 +47,12 @@ class Context
     ThemeData& getThemeData() { return this->theme; }
     InputManager& getInputState() { return this->input; }
     EventBus& getEventBusState() { return this->bus; }
+
+    // 这个 Context 私有的 JSON 视图类型（扩展控件）
+    void addViewType(const std::string& name, std::function<View*()> creator)
+    {
+        this->viewTypes[name] = std::move(creator);
+    }
     bool loadTheme(const std::string& name) { return this->theme.load(name); }
 
     // 让这个 Context 成为当前线程的"当前 UI"（输入/主题查找走它）。
@@ -62,6 +69,7 @@ class Context
     ThemeData theme;
     InputManager input;
     EventBus bus;
+    ViewTypeMap viewTypes;
     std::unique_ptr<App> app;
 };
 
