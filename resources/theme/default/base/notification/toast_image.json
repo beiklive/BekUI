@@ -2,8 +2,7 @@
   "$comment": "图片 + 文字的通知（ImageNotification）：套通用卡片 toast_base，再叠两层内容 —— image（data_id=image，缩略图）与 title（data_id=text，文案）。缩略图的宽高 / 圆角 / 与文字的间距都在这里调，不用改代码。",
   "import": "base/notification/toast_base",
   "box": {
-    "height": "auto",
-    "padding": [12, 0, 12, "@theme/metric.notification.paddingX"]
+    "height": 80
   },
   "layers": [
     {

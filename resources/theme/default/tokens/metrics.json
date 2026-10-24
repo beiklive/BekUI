@@ -154,7 +154,7 @@
     "width": 360,
     "paddingX": 20,
     "paddingY": 14,
-    "radius": 8,
+    "radius": 4,
     "fontSize": 18,
     "gap": 8,
     "duration": 3.0,
