@@ -1,5 +1,6 @@
 #include "bklv/ui/widgets/controls/hint_bar.hpp"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -90,7 +91,11 @@ void HintBar::refresh()
     {
         if (hint.hintText.empty())
             continue;
-        signature += std::to_string((int)hint.button) + ":" + hint.hintText + "|";
+        // 签名里必须带**动作主人**的地址：换页 / 换主题后新按钮的提示文字与按键
+        // 往往一模一样，只比文字会命中缓存，于是 Hint 留着指向已销毁按钮的 listener，
+        // 点一下就是野指针（踩过：hint 触摸随机崩在 listener 调用里）。
+        signature += std::to_string((int)hint.button) + ":" + hint.hintText + "@"
+            + std::to_string((unsigned long long)(uintptr_t)hint.owner) + "|";
     }
 
     if (signature == this->lastSignature)
