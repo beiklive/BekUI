@@ -1,6 +1,11 @@
 {
   "$comment": "图标按钮：背景 / 边框 / 阴影继承 base/button/button，这里只改盒子尺寸并加 m_icon 内容层。",
   "import": "base/button/button",
+  "requires": {
+    "layers": [
+      { "icon": "text" }
+    ]
+  },
   "box": {
     "width": "@theme/metric.control.height",
     "height": "@theme/metric.control.height",

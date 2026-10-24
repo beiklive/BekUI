@@ -1,6 +1,11 @@
 {
   "$comment": "文字按钮的形态外观：背景 / 边框 / 阴影来自 base/button/button，这里只加 m_text 内容层。",
   "import": "base/button/button",
+  "requires": {
+    "layers": [
+      { "title": "text" }
+    ]
+  },
   "layers": [
     {
       "op": "text",

@@ -1,5 +1,12 @@
 {
   "$comment": "抽象按钮的基础外观：只画背景 / 边框 / 阴影三层（都来自 base/layer/），不含任何内容层。具体形态（text / icon / icon_text …）import 这份再加自己的内容层。",
+  "requires": {
+    "layers": [
+      { "shadow": "shadow" },
+      { "bg": "rect" },
+      { "border": "rect" }
+    ]
+  },
   "box": {
     "height": "@theme/metric.control.height",
     "minWidth": "@theme/metric.control.minWidth"

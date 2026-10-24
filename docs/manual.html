@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 79511f0 · 2026-10-24 10:49 · 两套主题（default / glass）</div>
+  <div class="version">提交 c6d24a0 · 2026-10-24 13:36 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -360,7 +360,7 @@ docs/                文档（本手册就是其中一份）</code></pre>
 
 <table>
 <thead><tr><th>层</th><th>.cpp</th><th>.hpp</th><th>职责</th></tr></thead>
-<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>21</td><td>21</td><td>控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
+<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>22</td><td>22</td><td>控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
 </table>
 
 <h3 id="sec-4">允许的依赖方向</h3>
@@ -1730,13 +1730,19 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
   ],
   &quot;requires&quot;: {
     &quot;content&quot;: [&quot;text&quot;],
-    &quot;layers&quot;: [&quot;bg&quot;]
+    &quot;layers&quot;: [{ &quot;bg&quot;: &quot;rect&quot; }]
   }
 }</code></pre>
-<ul><li><code>requires.content</code>：必须存在 <code>op=text</code> 且 <code>data_id</code> 等于该名字的层；</li><li><code>requires.layers</code>：必须存在同 <code>id</code> 的层（不校验 op）；</li><li>校验发生在 <code>import</code> 合并与编译之后；失败会写 error 日志，</li></ul>
-<p><code>validateThemeAppearances()</code> 返回失败；</p>
-<ul><li>代码侧还注册了内置契约（如 <code>base/widget/notification</code> 必须有 <code>text</code> 槽、</li></ul>
-<p><code>base/slider/slider</code> 必须有 <code>track/fill/knob/geometry</code>、 <code>base/hint_item</code> 需要 <code>icon</code>/<code>label</code>、<code>base/header_icon</code> 需要 <code>icon</code>、 <code>base/dropdown_item</code> 与 <code>base/text_field</code> 需要 <code>text</code>）。 内容槽既可以是 <code>op=text</code>，也可以是 <code>op=image</code>（图标槽）。JSON 的 <code>requires</code> 与内置契约取并集，不能放宽；</p>
+<ul><li><code>requires.content</code>：必须存在 <code>op=text</code>/<code>op=image</code> 且 <code>data_id</code> 等于该名字的层</li></ul>
+<p>（内容槽，代码按 <code>data_id</code> 找到它改文字/贴图）；</p>
+<ul><li><code>requires.layers</code>：<strong>按层 id 断言</strong>，元素两种写法 ——</li></ul>
+<p>字符串（只要求同 <code>id</code> 的层存在）或单键对象 <code>{ &quot;id&quot;: &quot;op&quot; }</code>（同时要求 op 符合， 合法 op：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>）。 层 id 是代码与主题之间唯一的约定名（<code>states</code> 改层、过渡按 id 找层都靠它）， 所以只要代码会动这一层，就该在这里断言它存在；</p>
+<ul><li>校验发生在 <code>import</code> 合并与编译之后；失败会写 error 日志</li></ul>
+<p>（<code>外观契约不满足（主题@文件）：缺少必需的层 &quot;border&quot;</code>）， <code>validateThemeAppearances()</code> 返回失败；</p>
+<ul><li>代码侧还注册了内置契约（当前只有 <code>base/widget/notification</code> 需要 <code>text</code> 槽；</li></ul>
+<p><code>4458a33</code> 那次清理把 <code>base/slider/slider</code>、<code>base/hint_item</code>、<code>base/header_icon</code>、 <code>base/dropdown_item</code>、<code>base/text_field</code> 的契约连同控件一起删了）。 内容槽既可以是 <code>op=text</code>，也可以是 <code>op=image</code>（图标槽）。JSON 的 <code>requires</code> 与内置契约取并集，不能放宽；</p>
+<ul><li>现成的例子：<code>base/button/button.json</code> 断言 <code>shadow</code> / <code>bg</code> / <code>border</code> 三层</li></ul>
+<p>（背景、描边、阴影是按钮行为要改的），<code>button.text.json</code> 断言 <code>title</code>， <code>button.icon.json</code> 断言 <code>icon</code>，<code>button.icon_text.json</code> 两个都断言；</p>
 <ul><li>glass 变体自动继承基名契约（<code>button.text.glass</code> → <code>button.text</code>）。</li></ul>
 <h4 id="sec-147"><code>&lt;主题&gt;/sound.json</code>：全局 UI 音效</h4>
 <p>主题根下的独立文件（<strong>不写进 <code>files[]</code></strong>，它不是控件外观）。缺了回退 default 主题。</p>
@@ -2159,7 +2165,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>79511f0</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>c6d24a0</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

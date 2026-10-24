@@ -610,21 +610,29 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
   ],
   "requires": {
     "content": ["text"],
-    "layers": ["bg"]
+    "layers": [{ "bg": "rect" }]
   }
 }
 ```
 
-- `requires.content`：必须存在 `op=text` 且 `data_id` 等于该名字的层；
-- `requires.layers`：必须存在同 `id` 的层（不校验 op）；
-- 校验发生在 `import` 合并与编译之后；失败会写 error 日志，
+- `requires.content`：必须存在 `op=text`/`op=image` 且 `data_id` 等于该名字的层
+  （内容槽，代码按 `data_id` 找到它改文字/贴图）；
+- `requires.layers`：**按层 id 断言**，元素两种写法 ——
+  字符串（只要求同 `id` 的层存在）或单键对象 `{ "id": "op" }`（同时要求 op 符合，
+  合法 op：`rect` / `text` / `image` / `shadow` / `glass` / `custom`）。
+  层 id 是代码与主题之间唯一的约定名（`states` 改层、过渡按 id 找层都靠它），
+  所以只要代码会动这一层，就该在这里断言它存在；
+- 校验发生在 `import` 合并与编译之后；失败会写 error 日志
+  （`外观契约不满足（主题@文件）：缺少必需的层 "border"`），
   `validateThemeAppearances()` 返回失败；
-- 代码侧还注册了内置契约（如 `base/widget/notification` 必须有 `text` 槽、
-  `base/slider/slider` 必须有 `track/fill/knob/geometry`、
-  `base/hint_item` 需要 `icon`/`label`、`base/header_icon` 需要 `icon`、
-  `base/dropdown_item` 与 `base/text_field` 需要 `text`）。
+- 代码侧还注册了内置契约（当前只有 `base/widget/notification` 需要 `text` 槽；
+  `4458a33` 那次清理把 `base/slider/slider`、`base/hint_item`、`base/header_icon`、
+  `base/dropdown_item`、`base/text_field` 的契约连同控件一起删了）。
   内容槽既可以是 `op=text`，也可以是 `op=image`（图标槽）。JSON 的 `requires`
   与内置契约取并集，不能放宽；
+- 现成的例子：`base/button/button.json` 断言 `shadow` / `bg` / `border` 三层
+  （背景、描边、阴影是按钮行为要改的），`button.text.json` 断言 `title`，
+  `button.icon.json` 断言 `icon`，`button.icon_text.json` 两个都断言；
 - glass 变体自动继承基名契约（`button.text.glass` → `button.text`）。
 
 ### `<主题>/sound.json`：全局 UI 音效
