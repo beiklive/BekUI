@@ -113,8 +113,9 @@ toast 在最上"矛盾。二选一：
    （那边给 NanoVG 加自定义 paint，这边用 ImDrawList 的分段贴图四边形）。**不自己算颜色**。
    跨接缝的段会按 U 比例拆成两段画，否则 UV 会被拉花。
 3. **画在浮层（HUD）上**，永远在最上层（页头/弹窗也盖得住）；浮层不吃输入。
-4. **控件自带的 `hlBg / hlGlow / hlBorder` 不再承担"框"**：聚焦的描边已经从所有主题的
-   focused 状态里删掉（59 份外观），只保留 `hlBg.fill` 这类高亮底；聚焦反馈改成
+4. **控件自带的描边层不再承担"框"**：`hlGlow` / `hlBorder` 已从所有主题的 focused 状态里删掉
+   （59 份外观），`hl_bg` 也已随 2026-10 的通用层改造删除（现状：聚焦反馈只改 `border.stroke`
+   或 `bg.fill`，层片段在 `base/layer/{bg,border,shadow,glass}`）；聚焦反馈改成
    轻微放大（`AppearanceView` 的聚焦缩放，1.05 / 130ms，代码写死）。
 5. **样式不跟主题 JSON 走**（用户要求）：线宽/缝/周期/类型都写在代码里，要改走外壳接口。
    类型：`NONE / FLOW / BREATHING / SOLID / CUSTOM`（CUSTOM 可挂自己的渲染器）。

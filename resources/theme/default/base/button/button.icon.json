@@ -1,4 +1,6 @@
 {
+  "$comment": "图标按钮：背景 / 边框 / 阴影继承 base/button/button，这里只改盒子尺寸并加 m_icon 内容层。",
+  "import": "base/button/button",
   "box": {
     "width": "@theme/metric.control.height",
     "height": "@theme/metric.control.height",
@@ -10,18 +12,6 @@
   },
   "layers": [
     {
-      "import": "base/layer/shadow"
-    },
-    {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "import": "base/layer/hl_bg"
-    },
-    {
       "op": "text",
       "id": "icon",
       "data_id": "m_icon",
@@ -31,15 +21,5 @@
       "align": "center",
       "valign": "center"
     }
-  ],
-  "states": {
-    "focused": {},
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      }
-    },
-    "disabled": {}
-  }
+  ]
 }

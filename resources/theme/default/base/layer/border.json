@@ -1,0 +1,13 @@
+{
+  "$comment": "通用边框层：透明底 + 描边，通常叠在 bg 之上。外观 import 后覆盖 stroke / strokeWidth / radius。",
+  "layers": [
+    {
+      "op": "rect",
+      "id": "border",
+      "fill": "@theme/color.common.transparent",
+      "stroke": "@theme/color.border.default",
+      "strokeWidth": "@theme/metric.component.borderWidth",
+      "radius": "@theme/metric.radius.md"
+    }
+  ]
+}

@@ -827,8 +827,8 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
             contentRect[3] = std::max(contentRect[3], rect[3]);
         }
 
-        // 撞边抖动只作用在高亮层（hlBg / hlGlow / hlBorder，和 borealis 的
-        // drawHighlight 一致）：纯绘制期位移，不进布局、不改命中矩形。
+        // 撞边抖动只作用在高亮层（约定用 hl 前缀命名，如 hlBg / hlGlow / hlBorder，
+        // 和 borealis 的 drawHighlight 一致）：纯绘制期位移，不进布局、不改命中矩形。
         if (layer.id.compare(0, 2, "hl") == 0)
         {
             const Point shake = this->getHighlightShakeOffset();

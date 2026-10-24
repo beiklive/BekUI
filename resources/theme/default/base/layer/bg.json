@@ -1,0 +1,11 @@
+{
+  "$comment": "通用背景层：一个圆角矩形。外观 import 它之后覆盖 fill / radius（同 id 合并，子级赢）。",
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "fill": "@theme/color.surface.card",
+      "radius": "@theme/metric.radius.md"
+    }
+  ]
+}

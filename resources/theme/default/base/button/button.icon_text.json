@@ -1,5 +1,6 @@
 {
-  "$comment": "图标 + 文字按钮：两层都用左侧 inset 排队（层不是流式布局）；文字/图标都由接口改",
+  "$comment": "图标 + 文字按钮：背景 / 边框 / 阴影继承 base/button/button，这里加 m_icon 与 m_text 两层（都用左侧 inset 排队，层不是流式布局）。",
+  "import": "base/button/button",
   "box": {
     "height": "@theme/metric.control.height",
     "minWidth": 0,
@@ -8,18 +9,6 @@
     "alignItems": "center"
   },
   "layers": [
-    {
-      "import": "base/layer/shadow"
-    },
-    {
-      "op": "rect",
-      "id": "bg",
-      "fill": "@theme/color.button.defaultBg",
-      "radius": "@theme/metric.radius.md"
-    },
-    {
-      "import": "base/layer/hl_bg"
-    },
     {
       "op": "text",
       "id": "icon",
@@ -52,15 +41,5 @@
         56
       ]
     }
-  ],
-  "states": {
-    "focused": {},
-    "pressed": {
-      "bg.fill": {
-        "to": "@theme/color.button.defaultPressedBg",
-        "duration": 60
-      }
-    },
-    "disabled": {}
-  }
+  ]
 }

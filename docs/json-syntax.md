@@ -387,7 +387,7 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 
 ```json
 {
-  "import":  "base/box.component",
+  "import":  "base/layer/bg",
   "box":     { "…": "盒模型与布局" },
   "layers":  [ { "op": "rect", "…": "绘制结构，按数组顺序画" } ],
   "states":  { "focused": { "bg.fill": { "to": "#ffffff", "duration": 120 } } }
@@ -453,7 +453,7 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 
 0. **`glass` 层必须排在自己的内容层之前**：玻璃画在这一层的位置上，后面的内容层压在它上面；
    排反了内容会被玻璃盖住。详见 [`glass-layer.md`](glass-layer.md)。
-1. `hlBg`（焦点高亮底）必须在 `text` / `image` / `custom` **之前** —— 排反了聚焦时那块
+1. `bg` / `border`（底与描边）必须在 `text` / `image` / `custom` **之前** —— 排反了聚焦时那块
    不透明高亮底会把内容盖住（开关/单选图形消失过）。
 2. `shadow` 层必须在本控件的底色**之前**。
 3. `hlGlow` / `hlBorder` 排在最后（画在内容之上）。
@@ -468,14 +468,14 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 
 ```json
 "layers": [
-  { "import": "base/button/frame" },      // 展开成 shadow / bg / hlBg
+  { "import": "base/layer/bg" },         // 展开成一层 rect（id = bg）
   { "op": "text", "id": "title", "data_id": "text" }
 ]
 ```
 
 - 适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；
 - 可以写数组一次导入多份：`{ "import": ["base/layer/shadow", "base/layer/border"] }`；
-- 被导入文件自己的顶层 `import` 也会先解析（例如 `base/button/frame` 本身）；
+- 被导入文件自己的顶层 `import` 也会先解析（例如 `base/button/button` 本身）；
 - 循环引用、深度 > 8、文件不存在、没有 `layers` 都会**报错**；
 - **层 id 不能重复**（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。
 - **同一个 bundle 的 import 指令会合并**：顶层 `import` 的父级写了 `{ "import": "base/layer/shadow" }`，
@@ -492,7 +492,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 ```json
 "states": {
   "focused": {
-    "hlBg.fill":         { "to": "@theme/color.highlight.background", "duration": 120, "easing": "quadraticOut" },
+    "border.stroke":     { "to": "@theme/color.highlight.border", "duration": 120, "easing": "quadraticOut" },
     "hlGlow.strokeWidth": { "to": 11, "duration": 120 }
   }
 }
@@ -619,7 +619,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 - `requires.layers`：必须存在同 `id` 的层（不校验 op）；
 - 校验发生在 `import` 合并与编译之后；失败会写 error 日志，
   `validateThemeAppearances()` 返回失败；
-- 代码侧还注册了内置契约（如 `base/widget/button.text` 必须有 `text` 槽、
+- 代码侧还注册了内置契约（如 `base/widget/notification` 必须有 `text` 槽、
   `base/slider/slider` 必须有 `track/fill/knob/geometry`、
   `base/hint_item` 需要 `icon`/`label`、`base/header_icon` 需要 `icon`、
   `base/dropdown_item` 与 `base/text_field` 需要 `text`）。
@@ -655,7 +655,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 - **控件级覆盖**：外观 JSON 的 `states.click.sound` 优先于主题表：
 
 ```json
-// base/widget/button.text.json
+// base/widget/notification.json
 "states": {
   "click": { "sound": "@res/audio/button_alt.wav" }
 }
@@ -757,7 +757,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 | 外观改了没反应 | 文件没登记进 `theme.json` 的 `files[]`（日志有 `主题里没有控件外观 "x"`） |
 | 日志 `控件外观编译失败：… 缺少 layers 数组` | `layers` 是必填，纯 box 的外观写 `"layers": []` |
 | 日志 `引用了主题里不存在的颜色/数值` | key 拼错；写法是 `@theme/color.a.b`，不是 `@theme/color/a.b`（后者会被容错成点分并警告） |
-| 聚焦后控件里的图形消失 | 外观层序反了：`hlBg` 排到了内容层之后 |
+| 聚焦后控件里的图形消失 | 外观层序反了：`bg` / `border` 排到了内容层之后 |
 | 阴影被底色盖住 / 透出来 | **外投影**要写在底色之前（不透明底用不上 `cutout`，半透明底要 `"cutout": true`）；**内阴影相反**，要写在底色之后（`"inner": true`，解析期不会把它提前） |
 | 圆角变成直角 | 自己拼矩形带子会被 `AddRectFilled` 把圆角钳到边长一半；用现成的 `radius` / shadow 实现 |
 | `"50%"` 没效果 | 百分比只对 `width` / `height` 与绝对定位的四边偏移（`top` / `left` / `right` / `bottom`）有效；其它 NUMBER 属性要绝对像素 |

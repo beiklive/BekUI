@@ -384,8 +384,8 @@ namespace
 //   · layers 数组按 id 合并：同 id 的层递归合并（子赢），新 id 追加在后面
 //   · 其它数组整体替换（子赢）
 //   · 标量：子赢
-// 所以"base/box.component 改了内边距，所有 import 它的按钮一起变"，
-// 而按钮自己写的字段仍然优先（用户要的"当前控件设置覆盖导入的"）。
+// 所以"base/layer/bg 改了圆角，所有 import 它的外观一起变"，
+// 而外观自己写的字段仍然优先（用户要的"当前控件设置覆盖导入的"）。
 
 // 把 import 链解析成一份扁平文档；visited 用于循环检测
 
@@ -474,7 +474,7 @@ bool expandLayerImports(const Json& layers, const ThemeData& theme, Json& out,
                 return false;
             }
 
-            // 被引入的文件自己也可能有顶层 import（比如 import base/button/frame）
+            // 被引入的文件自己也可能有顶层 import（比如 import base/button/button）
             std::vector<std::string> visited;
             Json resolved;
             if (!compile::resolveImports(doc, theme, visited, resolved, error))
@@ -1395,19 +1395,8 @@ void ensureBuiltinContracts()
         contractRegistry()[name] = std::move(contract);
     };
 
-    const int RECT   = (int)AppearanceLayer::Op::RECT;
-
-    add("base/widget/button.text", { "text" });
-    add("base/widget/button.list", { "text" });
-    add("base/widget/button.icon", { "icon" });
-    add("base/widget/button.icon_circle", { "icon" });
-    add("base/widget/button.icon_text", { "icon", "text" });
-    add("base/widget/button.info", { "icon", "text", "info" });
-    add("base/widget/button.selector", { "icon", "text", "info" });
-    add("base/widget/button.dropdown", { "icon", "text", "info" });
-    add("base/widget/button.switch_text", { "text", "info" });
-    add("base/widget/button.switch_icon", { "icon", "text" },
-        { { "track", RECT }, { "knob", RECT } });
+    // JSON 视图模板那一族（base/widget/button.*）随控件清理删掉了，只剩通知条还在用：
+    // content 里的槽名就是它外观里的 "data_id"。
     add("base/widget/notification", { "text" });
 }
 

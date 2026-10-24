@@ -450,7 +450,7 @@ sections.append(('主题与外观', f'''
 
 <h3>外观 JSON 的四段</h3>
 <pre><code>{{
-  "import": "base/box",          // 先继承一份，再逐字段合并（可变体可以用后缀拼名字）
+  "import": "base/layer/bg",      // 先继承一份，再逐字段合并（可变体可以用后缀拼名字）
   "box":   /* 尺寸/内边距/圆角/边框（影响布局）*/,
   "layers": [                    // 绘制结构，按顺序画
     {{ "op": "rect",  "id": "bg",   "fill": "@theme/color.surface.card", "radius": 10 }},
@@ -471,7 +471,7 @@ sections.append(('主题与外观', f'''
 <p>六种内置层：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>；
 第三方可以注册自己的层（<code>registerLayer&lt;T&gt;()</code> 一行，参数模式声明一次，解析/缩放/设计器候选键自动跟上）。
 <b>层序</b>：内置层按 JSON 书写顺序画（只有阴影、玻璃被提到最前）；声明 DECORATION / OVERLAY 的扩展层画在所有内置层之上。
-<b>高亮底必须排在内容层之前</b>（<code>hlBg</code> 在 text/image 之前）；聚焦描边由浮层的焦点框绘制，
+<b>底必须排在内容层之前</b>（<code>bg</code> / <code>border</code> 在 text/image 之前）；聚焦框由浮层的焦点框绘制，
 外观里不再需要 <code>hlGlow</code>/<code>hlBorder</code> 占位层。</p>
 
 <h3>主题数值的"计算"规则</h3>
@@ -579,7 +579,7 @@ sections.append(('约定与已知坑', '''
 静态页面布局次数应为 0，排查用 <code>BKLV_FORCE_RELAYOUT=1</code>。</li>
 <li><b>回收列表 cell 必须重写 <code>setSectionIndex</code></b>：分段路径走它，只重写 <code>setIndex</code> 会让绑定函数永不触发（列表整条空白）。</li>
 <li><b>显式值优先</b>：<code>setCornerRadius(r, explicit=true)</code> 之类不会被外观 JSON 覆盖；外观套用一律 <code>explicit=false</code>。</li>
-<li><b>高亮底顺序</b>：<code>hlBg</code> 必须在内容层之前，否则聚焦时整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
+<li><b>层序</b>：<code>bg</code> / <code>border</code> 必须在内容层之前，否则整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
 <li><b>玻璃层顺序</b>：阴影(0) → 玻璃(1) → 其余(2)；玻璃不能排到第一个，否则半透明阴影把它压暗。</li>
 <li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（排反了会多出一道横线）。</li>
 <li><b>输入 → 响应同帧生效</b>：<code>App::frame</code> 的次序是"布局 → 输入 → 绘制"，别把输入挪到绘制之后。</li>

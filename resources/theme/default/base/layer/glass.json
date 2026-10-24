@@ -1,10 +1,12 @@
 {
-  "$comment": "default 主题的扁平玻璃底（ios 用自己的 glass 层，不要 import 这个）",
+  "$comment": "通用玻璃层：半透明底色 + 细描边（default 主题的扁平玻璃）。别的主题可以有自己的玻璃实现，不要 import 这份。",
   "layers": [
     {
-      "fill": "#10203A6E",
+      "op": "rect",
       "id": "glass",
-      "op": "rect"
+      "fill": "#FFFFFF33",
+      "stroke": "#FFFFFF3D",
+      "strokeWidth": 1
     }
   ]
 }

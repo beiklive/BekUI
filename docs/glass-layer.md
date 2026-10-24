@@ -94,21 +94,21 @@ class GlassPanelView : public AppearanceView
 3. **关掉玻璃时**玻璃层什么都不画（不退回自算的颜色）—— 想让面板在这种时候仍可读，
    在视图的 `draw()` 里补一块回退底色（`demo/app/pages/page_glass.cpp` 就是这么做的）。
 
-## 2b. 容器统一玻璃面（`base/glass_surface`）
+## 2b. 容器统一玻璃面（`base/layer/glass`）
 
 **所有"容器 box"（卡片、面板、对话框、下拉弹窗、状态栏、页头/底栏、侧栏）共用一份玻璃面**，
 观感只在一个文件里调：
 
 ```json
-// resources/theme/default/base/glass_surface.json
+// resources/theme/default/base/layer/glass.json
 { "layers": [ { "id": "glass", "op": "glass", "fill": "#0E1626C4" } ] }
 ```
 
-容器外观只要 `"import": "base/glass_surface"` + 把自己的底改透明即可
+容器外观只要 `"import": "base/layer/glass"` + 把自己的底改透明即可
 （玻璃画在**阴影之后、内容之前**，所以自定义的底会盖住玻璃）：
 
 ```json
-{ "import": "base/glass_surface",
+{ "import": "base/layer/glass",
   "box": { "cornerRadius": "@theme/metric.component.radius" },
   "layers": [ { "id": "bg", "fill": "#00000000" } ] }
 ```
@@ -122,14 +122,14 @@ class GlassPanelView : public AppearanceView
 ### chrome 变体：给上下栏的淡玻璃
 
 ```json
-// resources/theme/default/base/glass_surface.chrome.json
-{ "import": "base/glass_surface",
+// resources/theme/default/base/layer/glass.json（chrome 变体已删：要淡版本就覆盖 fill）
+{ "import": "base/layer/glass",
   "layers": [ { "id": "glass", "fill": "#0E16263D" } ] }
 ```
 
 `base/widget/header`、`base/widget/header.applet`、`base/widget/bottom_bar` 用这一份：染色更淡（24% vs 77%），
 **让底下的内容透出来** —— 栏是"盖在内容上的玻璃"，不是不透明的隔板。高光等其余写法从
-`base/glass_surface` 继承（同 id 的层按字段合并）。
+`base/layer/glass` 继承（同 id 的层按字段合并）。
 - 想整体换观感：改这一个文件的 `fill`；想整体关掉：去掉各容器的 `import`（或关 Shell 开关）
 - 侧栏面板不是 `AppearanceView`（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里
   用同一个 `color.sidebar.background` 当染色 —— 行为与上面一致

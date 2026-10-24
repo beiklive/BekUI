@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 54b77ff · 2026-10-24 10:33 · 两套主题（default / glass）</div>
+  <div class="version">提交 79511f0 · 2026-10-24 10:49 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -830,7 +830,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 
 <h3 id="sec-41">外观 JSON 的四段</h3>
 <pre><code>{
-  "import": "base/box",          // 先继承一份，再逐字段合并（可变体可以用后缀拼名字）
+  "import": "base/layer/bg",      // 先继承一份，再逐字段合并（可变体可以用后缀拼名字）
   "box":   /* 尺寸/内边距/圆角/边框（影响布局）*/,
   "layers": [                    // 绘制结构，按顺序画
     { "op": "rect",  "id": "bg",   "fill": "@theme/color.surface.card", "radius": 10 },
@@ -851,7 +851,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 <p>六种内置层：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>；
 第三方可以注册自己的层（<code>registerLayer&lt;T&gt;()</code> 一行，参数模式声明一次，解析/缩放/设计器候选键自动跟上）。
 <b>层序</b>：内置层按 JSON 书写顺序画（只有阴影、玻璃被提到最前）；声明 DECORATION / OVERLAY 的扩展层画在所有内置层之上。
-<b>高亮底必须排在内容层之前</b>（<code>hlBg</code> 在 text/image 之前）；聚焦描边由浮层的焦点框绘制，
+<b>底必须排在内容层之前</b>（<code>bg</code> / <code>border</code> 在 text/image 之前）；聚焦框由浮层的焦点框绘制，
 外观里不再需要 <code>hlGlow</code>/<code>hlBorder</code> 占位层。</p>
 
 <h3 id="sec-42">主题数值的"计算"规则</h3>
@@ -1601,7 +1601,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <p><strong>外观名 = 相对主题根的路径去掉扩展名</strong>：<code>base/button.json</code> → <code>&quot;base/button&quot;</code>； 变体是后缀：<code>base/button.json</code> + 变体 <code>primary</code> → 文件 <code>base/button.primary.json</code>。</p>
 <p>一份外观 = 三段，<code>layers</code> 必填（纯布局控件写 <code>&quot;layers&quot;: []</code>），另有一个可选的 <code>import</code>：</p>
 <pre><code class="lang-json">{
-  &quot;import&quot;:  &quot;base/box.component&quot;,
+  &quot;import&quot;:  &quot;base/layer/bg&quot;,
   &quot;box&quot;:     { &quot;…&quot;: &quot;盒模型与布局&quot; },
   &quot;layers&quot;:  [ { &quot;op&quot;: &quot;rect&quot;, &quot;…&quot;: &quot;绘制结构，按数组顺序画&quot; } ],
   &quot;states&quot;:  { &quot;focused&quot;: { &quot;bg.fill&quot;: { &quot;to&quot;: &quot;#ffffff&quot;, &quot;duration&quot;: 120 } } }
@@ -1653,17 +1653,17 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <p><strong>层序有三条硬约定</strong>（<code>theme_test</code> 会遍历两套主题的每一份外观断言）：</p>
 <ol><li><strong><code>glass</code> 层必须排在自己的内容层之前</strong>：玻璃画在这一层的位置上，后面的内容层压在它上面；</li></ol>
 <p>排反了内容会被玻璃盖住。详见 <a href="glass-layer.md"><code>glass-layer.md</code></a>。</p>
-<ol><li><code>hlBg</code>（焦点高亮底）必须在 <code>text</code> / <code>image</code> / <code>custom</code> <strong>之前</strong> —— 排反了聚焦时那块</li></ol>
+<ol><li><code>bg</code> / <code>border</code>（底与描边）必须在 <code>text</code> / <code>image</code> / <code>custom</code> <strong>之前</strong> —— 排反了聚焦时那块</li></ol>
 <p>不透明高亮底会把内容盖住（开关/单选图形消失过）。</p>
 <ol><li><code>shadow</code> 层必须在本控件的底色<strong>之前</strong>。</li><li><code>hlGlow</code> / <code>hlBorder</code> 排在最后（画在内容之上）。</li></ol>
 <p><code>custom</code> 层的<strong>内容留给 C++</strong>（<code>AppearanceView::drawCustomLayer</code>）：进度弧、滑块轨道、 开关图形这类语义绘制不该塞进 JSON，否则等于写解释器。</p>
 <h4 id="sec-138">层 import：<code>{ &quot;import&quot;: &quot;base/layer/xxx&quot; }</code></h4>
 <p><code>layers</code> 数组里可以放一条<strong>只有 import</strong> 的条目（没有 <code>op</code>），它会<strong>就地展开</strong>成那个外观的 <code>layers</code> 数组（它的 <code>box</code> / <code>states</code> / <code>children</code> 不会带进来），后面的层照常排在它之后：</p>
 <pre><code class="lang-json">&quot;layers&quot;: [
-  { &quot;import&quot;: &quot;base/button/frame&quot; },      // 展开成 shadow / bg / hlBg
+  { &quot;import&quot;: &quot;base/layer/bg&quot; },         // 展开成一层 rect（id = bg）
   { &quot;op&quot;: &quot;text&quot;, &quot;id&quot;: &quot;title&quot;, &quot;data_id&quot;: &quot;text&quot; }
 ]</code></pre>
-<ul><li>适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；</li><li>可以写数组一次导入多份：<code>{ &quot;import&quot;: [&quot;base/layer/shadow&quot;, &quot;base/layer/border&quot;] }</code>；</li><li>被导入文件自己的顶层 <code>import</code> 也会先解析（例如 <code>base/button/frame</code> 本身）；</li><li>循环引用、深度 &gt; 8、文件不存在、没有 <code>layers</code> 都会<strong>报错</strong>；</li><li><strong>层 id 不能重复</strong>（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。</li><li><strong>同一个 bundle 的 import 指令会合并</strong>：顶层 <code>import</code> 的父级写了 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot; }</code>，</li></ul>
+<ul><li>适合把「阴影」「玻璃」「背景框」这类基础层拆成独立文件反复叠加；</li><li>可以写数组一次导入多份：<code>{ &quot;import&quot;: [&quot;base/layer/shadow&quot;, &quot;base/layer/border&quot;] }</code>；</li><li>被导入文件自己的顶层 <code>import</code> 也会先解析（例如 <code>base/button/button</code> 本身）；</li><li>循环引用、深度 &gt; 8、文件不存在、没有 <code>layers</code> 都会<strong>报错</strong>；</li><li><strong>层 id 不能重复</strong>（导入层与本地层撞名会报错）—— states 与字体覆盖都按 id 找层。</li><li><strong>同一个 bundle 的 import 指令会合并</strong>：顶层 <code>import</code> 的父级写了 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot; }</code>，</li></ul>
 <p>子级再写 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: true }</code> 时<strong>合成一条</strong>（子级参数覆盖父级）， 不会展开两次变成重复 id。所以“继承基外观的 states + 覆盖某个 bundle 的参数”可以直接写。</p>
 <ul><li><strong>单层 bundle 可以就地覆盖</strong>：import 旁边的字段会合并到那一层，例如</li></ul>
 <p><code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: false, &quot;offset&quot;: [0, 8] }</code>； 也可以改 <code>id</code> 在同一外观里叠两层阴影。<strong>多层 bundle 带覆盖字段会报错</strong>（语义不明确）。</p>
@@ -1671,7 +1671,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <p>key 是 <code>&quot;&lt;层 id&gt;.&lt;属性名&gt;&quot;</code>，值是一个补间目标：</p>
 <pre><code class="lang-json">&quot;states&quot;: {
   &quot;focused&quot;: {
-    &quot;hlBg.fill&quot;:         { &quot;to&quot;: &quot;@theme/color.highlight.background&quot;, &quot;duration&quot;: 120, &quot;easing&quot;: &quot;quadraticOut&quot; },
+    &quot;border.stroke&quot;:     { &quot;to&quot;: &quot;@theme/color.highlight.border&quot;, &quot;duration&quot;: 120, &quot;easing&quot;: &quot;quadraticOut&quot; },
     &quot;hlGlow.strokeWidth&quot;: { &quot;to&quot;: 11, &quot;duration&quot;: 120 }
   }
 }</code></pre>
@@ -1735,7 +1735,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 }</code></pre>
 <ul><li><code>requires.content</code>：必须存在 <code>op=text</code> 且 <code>data_id</code> 等于该名字的层；</li><li><code>requires.layers</code>：必须存在同 <code>id</code> 的层（不校验 op）；</li><li>校验发生在 <code>import</code> 合并与编译之后；失败会写 error 日志，</li></ul>
 <p><code>validateThemeAppearances()</code> 返回失败；</p>
-<ul><li>代码侧还注册了内置契约（如 <code>base/widget/button.text</code> 必须有 <code>text</code> 槽、</li></ul>
+<ul><li>代码侧还注册了内置契约（如 <code>base/widget/notification</code> 必须有 <code>text</code> 槽、</li></ul>
 <p><code>base/slider/slider</code> 必须有 <code>track/fill/knob/geometry</code>、 <code>base/hint_item</code> 需要 <code>icon</code>/<code>label</code>、<code>base/header_icon</code> 需要 <code>icon</code>、 <code>base/dropdown_item</code> 与 <code>base/text_field</code> 需要 <code>text</code>）。 内容槽既可以是 <code>op=text</code>，也可以是 <code>op=image</code>（图标槽）。JSON 的 <code>requires</code> 与内置契约取并集，不能放宽；</p>
 <ul><li>glass 变体自动继承基名契约（<code>button.text.glass</code> → <code>button.text</code>）。</li></ul>
 <h4 id="sec-147"><code>&lt;主题&gt;/sound.json</code>：全局 UI 音效</h4>
@@ -1752,7 +1752,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <ul><li><strong>音效跟随主题目录</strong>：<code>sound.json</code> 从当前主题目录读取（<code>ThemeData::getDirectory()</code>），</li></ul>
 <p>主题用 <code>loadThemeIntoGlobalFromDirectory()</code> 装到自定义路径时同样生效；缺文件回退 default。</p>
 <ul><li>路径三种写法：</li><li><code>@res/audio/x.wav</code>：相对 <code>resources/</code>（全局素材）；</li><li><code>@theme/audio/x.wav</code>：相对<strong>当前主题目录</strong>（主题自带素材）；</li><li>相对路径（<code>audio/x.wav</code>）：同样相对当前主题目录；绝对路径原样使用。</li><li>支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），运行期重采样到 48kHz 并缓存；</li><li>触发点大小写/下划线不敏感；不认识的触发点只警告；</li><li>文件缺失、解码失败 → 回退到代码合成音（现有 <code>Sound</code>），不影响 UI；</li><li><strong>控件级覆盖</strong>：外观 JSON 的 <code>states.click.sound</code> 优先于主题表：</li></ul>
-<pre><code class="lang-json">// base/widget/button.text.json
+<pre><code class="lang-json">// base/widget/notification.json
 &quot;states&quot;: {
   &quot;click&quot;: { &quot;sound&quot;: &quot;@res/audio/button_alt.wav&quot; }
 }</code></pre>
@@ -1824,7 +1824,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <tr><td>外观改了没反应</td><td>文件没登记进 <code>theme.json</code> 的 <code>files[]</code>（日志有 <code>主题里没有控件外观 &quot;x&quot;</code>）</td></tr>
 <tr><td>日志 <code>控件外观编译失败：… 缺少 layers 数组</code></td><td><code>layers</code> 是必填，纯 box 的外观写 <code>&quot;layers&quot;: []</code></td></tr>
 <tr><td>日志 <code>引用了主题里不存在的颜色/数值</code></td><td>key 拼错；写法是 <code>@theme/color.a.b</code>，不是 <code>@theme/color/a.b</code>（后者会被容错成点分并警告）</td></tr>
-<tr><td>聚焦后控件里的图形消失</td><td>外观层序反了：<code>hlBg</code> 排到了内容层之后</td></tr>
+<tr><td>聚焦后控件里的图形消失</td><td>外观层序反了：<code>bg</code> / <code>border</code> 排到了内容层之后</td></tr>
 <tr><td>阴影被底色盖住 / 透出来</td><td><strong>外投影</strong>要写在底色之前（不透明底用不上 <code>cutout</code>，半透明底要 <code>&quot;cutout&quot;: true</code>）；<strong>内阴影相反</strong>，要写在底色之后（<code>&quot;inner&quot;: true</code>，解析期不会把它提前）</td></tr>
 <tr><td>圆角变成直角</td><td>自己拼矩形带子会被 <code>AddRectFilled</code> 把圆角钳到边长一半；用现成的 <code>radius</code> / shadow 实现</td></tr>
 <tr><td><code>&quot;50%&quot;</code> 没效果</td><td>百分比只对 <code>width</code> / <code>height</code> 与绝对定位的四边偏移（<code>top</code> / <code>left</code> / <code>right</code> / <code>bottom</code>）有效；其它 NUMBER 属性要绝对像素</td></tr>
@@ -2139,7 +2139,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 静态页面布局次数应为 0，排查用 <code>BKLV_FORCE_RELAYOUT=1</code>。</li>
 <li><b>回收列表 cell 必须重写 <code>setSectionIndex</code></b>：分段路径走它，只重写 <code>setIndex</code> 会让绑定函数永不触发（列表整条空白）。</li>
 <li><b>显式值优先</b>：<code>setCornerRadius(r, explicit=true)</code> 之类不会被外观 JSON 覆盖；外观套用一律 <code>explicit=false</code>。</li>
-<li><b>高亮底顺序</b>：<code>hlBg</code> 必须在内容层之前，否则聚焦时整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
+<li><b>层序</b>：<code>bg</code> / <code>border</code> 必须在内容层之前，否则整块不透明底把内容盖住（开关/单选曾整片消失）。</li>
 <li><b>玻璃层顺序</b>：阴影(0) → 玻璃(1) → 其余(2)；玻璃不能排到第一个，否则半透明阴影把它压暗。</li>
 <li><b>顶栏/底栏只是一块区域</b>：任何主题都不给它画底色或边框（排反了会多出一道横线）。</li>
 <li><b>输入 → 响应同帧生效</b>：<code>App::frame</code> 的次序是"布局 → 输入 → 绘制"，别把输入挪到绘制之后。</li>
@@ -2159,7 +2159,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>54b77ff</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>79511f0</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

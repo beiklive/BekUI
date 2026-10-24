@@ -1,4 +1,5 @@
 {
+  "$comment": "通知条：玻璃底 + 描边 + 文本，三层都来自 base/layer/。bg 留着给 hidden/shown 的 opacity / offsetY 动画用。",
   "box": {
     "width": "@theme/metric.notification.width",
     "height": "auto",
@@ -12,12 +13,14 @@
   },
   "layers": [
     {
-      "op": "rect",
-      "id": "bg",
-      "fill": "#00000000",
-      "radius": "@theme/metric.notification.radius",
+      "import": "base/layer/glass"
+    },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.common.transparent",
       "stroke": "@theme/color.border.subtle",
-      "strokeWidth": 1
+      "strokeWidth": 1,
+      "radius": "@theme/metric.notification.radius"
     },
     {
       "op": "text",
@@ -65,6 +68,5 @@
         "duration": 150
       }
     }
-  },
-  "import": "base/glass_surface"
+  }
 }

@@ -318,8 +318,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   代码里写死的像素值**不缩放**——想跟随比例就用主题 metric 或把数字写进外观 JSON。
   画布尺寸变了要重新套用外观（外观值在 `applyTheme()` 时就取定了）并重排，
   这个由 `App::frame` 里调 `updateUiScaleFromCanvas()` 统一处理。
-- **外观层序：高亮底必须在内容层之前**（`hlBg` 要排在 `text`/`image`/`custom` 之前，
-  `hlGlow`/`hlBorder` 排在最后）。排反了的话，聚焦时那块**不透明的高亮底会把内容盖住**
+- **外观层序：底必须在内容层之前**（`bg` / `border` 排在 `text`/`image`/`custom` 之前，
+  `shadow` 解析期提到最前）。排反了的话，聚焦时那块**不透明的底会把内容盖住**
   —— 开关/单选的图形是 `custom` 层，曾因此"聚焦后开关消失"（14 个 Cell 外观全踩了）。
 - **按钮有 5 种 style**（对标 borealis 的 `BUTTONSTYLE_*`）：`button`（=DEFAULT 灰底白字）、
   `button.primary`（强调色底 + 深色字）、`button.highlight`（灰底 + 强调色字）、
@@ -334,13 +334,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   value 色；SelectorCell 右侧是**当前值的纯文本**、点击**弹 Dropdown**（无 App 退化成切下一项）；
   DetailCell 只有两个 Label、**没有箭头**。几何按 `style.cpp`：行高 70、字号 22、
   左右内缩 16、上下 12.5、对勾半径 15。
-- **聚集高亮只剩"高亮底"，框由浮层的焦点框负责**：每个可聚焦控件的外观里仍保留三层
-  （`hlBg` / `hlGlow` / `hlBorder`，顺序：自己的底 → hlBg → 内容 → hlGlow → hlBorder），
-  但 focused 状态里**只补 `hlBg.fill` = `color.highlight.background`**；
-  原来那两条描边（`hlGlow` / `hlBorder`，宽 `metric.highlight.strokeWidth`、圆角
-  `metric.highlight.radius`、外扩 2.5px）已经**从全部主题里删掉**，改由浮层的流光焦点框画
-  （见上面那条"焦点框画在浮层上"）。`hideHighlightBackground` 依然成立：
-  primary / highlight / default 聚焦不出高亮底，只有 bordered / borderless 出。
+- **通用层都在 `base/layer/` 下**，外观按需 `import` 再覆盖字段：`bg`（圆角底）、`border`
+  （透明底 + 描边，叠在 bg 之上）、`shadow`（阴影）、`glass`（半透明底 + 内缘高光；扁平
+  主题里就是半透明 rect）。**没有 `hl_bg` 这层了** —— 聚焦反馈改由浮层的焦点框负责
+  （见上面那条"焦点框画在浮层上"）：控件外观的 `focused` 状态按需改 `border.stroke`
+  （= `color.highlight.border`）或 `bg.fill`（= `color.highlight.background`）；
+  默认灰底按钮聚焦不出高亮底（对标 borealis 的 `hideHighlightBackground`）。
 - **显式设置优先于主题/外观**（`setCornerRadius(r, explicit=true)`）：
   代码里显式设过的值，外观 JSON 不能覆盖它；外观套用一律走 `explicit=false`。
   Label 的 `setFontSizeExplicit` / `setTextColorExplicit` 是同一套约定的老成员。
@@ -431,21 +430,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      换肤不再动它；要跟随主题就 `setXxxExplicit(false)`。
   ⑤ **装饰件用显式 `width`/`height`**：层默认铺满"控件范围按 inset 收缩后"的区域，
      给了 `width`（如色条 4）或 `height`（如下边线 1）就按 `align`/`valign` 摆放。
-  ⑥ **`import` 让外观引用外观**（`"import": "base/box.component"` 或字符串数组）：
+  ⑥ **`import` 让外观引用外观**（`"import": "base/layer/bg"` 或字符串数组）：
      逐字段合并、**当前文件优先**——对象递归合并，`layers` 按 `id` 合并（同 id 的层合并字段，
-     新 id 追加），其它数组整体替换，标量覆盖。所以"改 base/box.component 的边框，
-     所有 import 它的按钮一起变"，而按钮自己写的字段仍然赢。
+     新 id 追加），其它数组整体替换，标量覆盖。所以"改 base/layer/bg 的圆角，
+     所有 import 它的外观一起变"，而外观自己写的字段仍然赢。
      循环引用、深度 > 8、父级不存在都会**报错**（不静默降级）。
   ⑦b **换外观时"没写的字段不会清掉旧值"**：`applyAppearanceBox` 只覆盖 JSON 里出现的字段，
-     所以从 `base/button`（有 `minWidth: @theme/metric.control.minWidth`）切到 `base/widget/button.*`
-     之后，**旧的 minWidth=120 会留在节点上** —— 图标按钮明明写了 `width: 48`，
-     布局宽度却一直是 120（踩过：量了半天布局才追到这个 token）。
-     要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`base/widget/button.icon` 就是这么修的）。
+     所以从 `base/button/button`（有 `minWidth: @theme/metric.control.minWidth`）切到
+     图标形态（`base/button/button.icon`）之后，**旧的 minWidth=120 会留在节点上** ——
+     图标按钮明明写了 `width: 48`，布局宽度却一直是 120（踩过：量了半天布局才追到这个 token）。
+     要固定尺寸的组合外观必须**显式写 `minWidth: 0`**（`base/button/button.icon` 就是这么修的）。
   ⑦a **亚克力/液态玻璃用 `op: "glass"` 层声明**（`docs/glass-layer.md`）。
-     玻璃层由解析期**提到最前**，所以主题里做"玻璃变体"的标准写法是
-     `import` 基外观 + 覆盖 `bg.fill` 为透明 + 追加一层 `glass`（示例见
-     `resources/theme/default/base/widget/button.text.glass.json`）；
-     **不要另开演示页面** —— 做法是给每个控件追加一行玻璃版本（基础控件页）。
+     玻璃层由解析期**提到最前**，所以做"玻璃变体"的标准写法是
+     `import` 基外观 + 覆盖 `bg.fill` 为透明 + 追加一行 `{ "import": "base/layer/glass" }`；
+     **不要另开演示页面** —— 做法是给每个控件追加一行玻璃版本。
 
      外观能覆盖的只有**样式**（`fill` 染色 / `opacity` / `radius` / inset 几何）；
      `blurRadius`、`quality` 与总开关只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
@@ -460,16 +458,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
        渐变示例外观也从主题里撤出、改成页面内联（同 stripe / quad 的做法）。
      · `ios`：苹果风（系统色、分组列表、玻璃上下栏）。`op: "glass"` 现在是"ios 在用"的能力。
      原 `ocean` / `my-skin` 两套已删除，仓库里所有引用都改成了 `ios`。
-  ⑦a2 **容器的玻璃统一走 `base/glass_surface`**（`docs/glass-layer.md` §2b）：
-     容器外观 `"import": "base/glass_surface"`，自己的 `bg.fill` 改透明 —— 玻璃层的 `fill`
+  ⑦a2 **容器的玻璃统一走 `base/layer/glass`**（`docs/glass-layer.md` §2b）：
+     容器外观 `"import": "base/layer/glass"`，自己的 `bg.fill` 改透明 —— 玻璃层的 `fill`
      既是染色、也是玻璃不可用时的降级底。**层序由解析期固定成 阴影(0) → 玻璃(1) → 其余(2)**：
      玻璃不能排到真正的第一个，否则半透明的阴影层会把玻璃压暗（踩过）。
-     `default`（扁平）主题里这一层已经扁平化成普通 `rect`（染色照旧），玻璃只在 `ios` 里出现。
-     侧栏不是 AppearanceView（观感走 `applyWidgetBox`），它的玻璃在 `Sidebar::draw()` 里补，
-     染色同样来自 `color.sidebar.background`。
+     `default`（扁平）主题里这一层就是半透明 `rect`（染色照旧）。
      玻璃层的 **`stroke` / `strokeWidth` = 内缘高光**（沿内缘描一圈，半径跟控件走）——
-     玻璃质感主要靠这一笔；`base/glass_surface.chrome` 是给上下栏的淡版本（染色 24%，
-     让内容透出来），其余写法从 `base/glass_surface` 继承。
+     玻璃质感主要靠这一笔。
   ⑦d **视图生命周期动画写在外观 JSON 的 `transitions` 段**（`docs/json-syntax.md`）：
      四个事件 `enter` / `exit` / `show` / `hide`；**不做预设**（没有 `type: slideFade`），
      效果直接写通道 —— 视图级 `translateX/Y`、`scaleX/Y`、`alpha`（整树一起动，绘制期变换零重排），
@@ -631,8 +626,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      ⚠️ 贴图没加载成功时**什么都不画**，不要退回"自己算的颜色"。
   ③ **所有者是顶层外壳**：`Shell::setFocusRingEnabled/setFocusRingType/getFocusRingStyle()`，
      挂在 HUD 层（永远最上层）。**样式不跟主题 JSON 走**（用户要求），默认值写死在代码里。
-  ④ **外观不再画聚焦的框**：所有主题 focused 状态里的 `hlGlow.stroke(.strokeWidth)` /
-     `hlBorder.stroke(.strokeWidth)` 已删除（59 份外观，只剩 `hlBg.fill` 这类高亮底）；
+  ④ **外观不再画聚焦的框**：聚焦状态里原来的描边层（`hlGlow` / `hlBorder`）与高亮底
+     （`hl_bg` / `hlBg.fill`）在 2026-10 清理里一并删掉了（现状见上面"通用层都在 base/layer 下"）；
      聚焦反馈改成**轻微放大**（`AppearanceView` 的 1.05 / 130ms，代码写死，可用
      `setFocusScaleEnabled(false)` 关掉）。改回"外观画框"之前先想清楚：框在浮层上才能
      跨层、才能不被父容器裁剪。
