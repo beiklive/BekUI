@@ -1395,9 +1395,13 @@ void ensureBuiltinContracts()
         contractRegistry()[name] = std::move(contract);
     };
 
-    // JSON 视图模板那一族（base/widget/button.*）随控件清理删掉了，只剩通知条还在用：
-    // content 里的槽名就是它外观里的 "data_id"。
-    add("base/widget/notification", { "text" });
+    (void)add;
+
+    // 通知的内容（图标 / 图片 + 文案）现在由 Notification 用真视图拼出来，
+    // 外观里不再有 `data_id` 内容层，所以这里不注册内容槽契约 ——
+    // 各通知外观自己用 `requires.layers` 断言它依赖的层（见 base/notification/card.json）。
+    // 以后真要加代码侧契约，用法是：
+    //   add("base/xxx", { "内容槽 data_id" }, { { "层 id", 层 op } });
 }
 
 const Appearance::Contract* findContract(const std::string& name)

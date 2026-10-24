@@ -1,5 +1,5 @@
 {
-  "$comment": "通知卡片：只画背景 / 描边 / 阴影，内容（图标或图片 + 文案）由 Notification 用真视图拼出来。bg 留着给 hidden / shown 的 opacity 淡出用；横向滑入滑出走代码（setTranslateX），所以这里没有 offsetX 动画。",
+  "$comment": "通知卡片（通用）：只画背景 / 描边 / 阴影与尺寸，内容（图标或图片 + 文案）由 Notification 用真视图拼出来。具体形态在 notification/{icon,image}.json 里 import 本文件再写自己的差异。横向滑入滑出走代码（setTranslateX），所以这里没有 offsetX 动画。",
   "box": {
     "width": "@theme/metric.notification.width",
     "height": 70,

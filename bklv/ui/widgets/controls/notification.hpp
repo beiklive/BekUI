@@ -15,8 +15,9 @@
 // 与 borealis 的差别（有意）：
 // - borealis 的 `NotificationManager` 是**全局静态单例**，多实例、测试都难受。
 //   这里做成挂在 `App` 上的一份普通视图：`App::notify(...)` 转发到它。
-// - 卡片本身（底色 / 描边 / 阴影 / 圆角）还是外观 JSON 管
-//   （`base/widget/notification.json` 只画卡片），内容用真视图拼（Label / Image）。
+// - 卡片本身（底色 / 描边 / 阴影 / 圆角）还是外观 JSON 管，而且一种形态一份：
+//   `base/notification/card.json` 是通用卡片，`icon.json` / `image.json` 各自 import 它
+//   再写自己的差异（图标卡片矮一点、图片卡片高度跟着内容走）；内容用真视图拼。
 // - 动画在代码里做：从**屏幕右侧外面**滑进来，消失时滑回右边；换行（上移）
 //   靠收缩自身高度实现，这样下面那几条会在收缩过程中跟着往上挪，而不是"跳一下"。
 // - 堆叠**不设上限**：一列往下排，排到屏幕外也不管（外层容器会裁掉）；
@@ -65,8 +66,9 @@ class Notification : public AppearanceView
     std::string getClassString() const override { return "bklv::Notification"; }
 
   protected:
-    // 基类构造：套卡片外观、建内容行与文案标签，再交给派生类塞自己的东西
-    explicit Notification(const std::string& text, float duration);
+    // 基类构造：套 appearanceName 指定的外观、建内容行与文案标签，
+    // 再交给派生类把自己的东西塞进内容行。外观名由派生类传，一种形态一份 JSON。
+    explicit Notification(const std::string& text, float duration, const std::string& appearanceName);
 
     // 派生类在这个函数里往内容行**最前面**塞图标 / 图片（文字已经在行里了）
     virtual void buildContent() = 0;

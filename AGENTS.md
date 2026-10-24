@@ -819,8 +819,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   **没有"纯文字通知"这一类**：`App::notify(text, seconds)` 等价于带 info 图标的
   `notifyIcon(...)`，要别的图标就显式调 `notifyIcon` / `notifyImage`
   （没有根视图时都先排队，`setRootView` 后补发）。
-  卡片只画背景 / 描边 / 阴影（`base/widget/notification.json`），内容用 `Box(Axis::ROW)` +
-  `Label` / `Image` 拼真视图 —— 别用外观的 `text` 层，图标和图片没法走那条路。
+  卡片只画背景 / 描边 / 阴影，而且**一种形态一份外观**：`base/notification/card.json` 是通用卡片，
+  `icon.json` / `image.json` 各自 `import` 它再写自己的差异（图标卡片矮一点、图片卡片高度跟着内容走）。
+  内容用 `Box(Axis::ROW)` + `Label` / `Image` 拼真视图 —— 别用外观的 `text` 层，
+  图标和图片没法走那条路。
   出现/消失**用 `setTranslateX` 从屏幕右侧滑**，消失时同时把自身高度收到 0，
   这样下面几条是"逐步往上挪"而不是"跳一下"。堆叠**不设上限**，各自倒计时、
   到期各自滑走，`isFinished()`（滑完 + 收完）才真正 `removeView`。

@@ -1,0 +1,11 @@
+{
+  "$comment": "图片 + 文字的通知（ImageNotification）：套通用卡片，高度改成跟着内容走（auto），上下留出与图片等高的呼吸位；缩略图的尺寸 / 圆角由代码的 metric.notification.imageSize|imageRadius 管。",
+  "import": "base/notification/card",
+  "box": {
+    "height": "auto",
+    "padding": [
+      12,0,12,
+      "@theme/metric.notification.paddingX"
+    ]
+  }
+}

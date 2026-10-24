@@ -27,8 +27,9 @@ constexpr ImU32 kTextDefault = IM_COL32(255, 255, 255, 255);
 
 // ---------------------------------------------------------------- 基类
 
-Notification::Notification(const std::string& text, float duration)
-    : AppearanceView("base/widget/notification", false)
+Notification::Notification(
+    const std::string& text, float duration, const std::string& appearanceName)
+    : AppearanceView(appearanceName, false)
 {
     this->text      = text;
     this->duration  = duration > 0.0f ? duration : 3.0f;
@@ -143,7 +144,7 @@ void Notification::update()
 
 IconNotification::IconNotification(
     const std::string& text, const std::string& glyph, float duration)
-    : Notification(text, duration)
+    : Notification(text, duration, "base/notification/icon")
 {
     this->glyph = glyph;
 
@@ -186,7 +187,7 @@ void IconNotification::applyContentTheme()
 
 ImageNotification::ImageNotification(
     const std::string& text, const std::string& imagePath, float duration)
-    : Notification(text, duration)
+    : Notification(text, duration, "base/notification/image")
 {
     this->imagePath = imagePath;
 

@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 1d2769e · 2026-10-24 18:57 · 两套主题（default / glass）</div>
+  <div class="version">提交 9077efe · 2026-10-24 19:10 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -1740,8 +1740,8 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <p>字符串（只要求同 <code>id</code> 的层存在）或单键对象 <code>{ &quot;id&quot;: &quot;op&quot; }</code>（同时要求 op 符合， 合法 op：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>）。 层 id 是代码与主题之间唯一的约定名（<code>states</code> 改层、过渡按 id 找层都靠它）， 所以只要代码会动这一层，就该在这里断言它存在；</p>
 <ul><li>校验发生在 <code>import</code> 合并与编译之后；失败会写 error 日志</li></ul>
 <p>（<code>外观契约不满足（主题@文件）：缺少必需的层 &quot;border&quot;</code>）， <code>validateThemeAppearances()</code> 返回失败；</p>
-<ul><li>代码侧还注册了内置契约（当前只有 <code>base/widget/notification</code> 需要 <code>text</code> 槽；</li></ul>
-<p><code>4458a33</code> 那次清理把 <code>base/slider/slider</code>、<code>base/hint_item</code>、<code>base/header_icon</code>、 <code>base/dropdown_item</code>、<code>base/text_field</code> 的契约连同控件一起删了）。 内容槽既可以是 <code>op=text</code>，也可以是 <code>op=image</code>（图标槽）。JSON 的 <code>requires</code> 与内置契约取并集，不能放宽；</p>
+<ul><li>代码侧的内置契约现在<strong>空的</strong>：<code>4458a33</code> 那次清理把 <code>base/slider/slider</code>、<code>base/hint_item</code>、</li></ul>
+<p><code>base/header_icon</code>、<code>base/dropdown_item</code>、<code>base/text_field</code> 的契约连同控件一起删了； 通知改成&quot;基类 + 图标/图片两种实现&quot;之后，内容（图标 / 图片 + 文案）由代码用真视图拼出来， 外观里不再有 <code>data_id</code> 内容层，那条 <code>text</code> 槽的契约也就删了。 仍然需要代码侧断言时按 <code>add(&quot;外观名&quot;, { &quot;内容槽&quot; }, { { &quot;层 id&quot;, 层 op } })</code> 注册， 与 JSON 的 <code>requires</code> 取并集、不能放宽 —— 但现在一律建议写在外观自己的 <code>requires.layers</code> 里；</p>
 <ul><li>现成的例子：<code>base/button/button.json</code> 断言 <code>shadow</code> / <code>bg</code> / <code>border</code> 三层</li></ul>
 <p>（背景、描边、阴影是按钮行为要改的），<code>button.text.json</code> 断言 <code>title</code>， <code>button.icon.json</code> 断言 <code>icon</code>，<code>button.icon_text.json</code> 两个都断言；</p>
 <ul><li>glass 变体自动继承基名契约（<code>button.text.glass</code> → <code>button.text</code>）。</li></ul>
@@ -1759,7 +1759,7 @@ auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;ru
 <ul><li><strong>音效跟随主题目录</strong>：<code>sound.json</code> 从当前主题目录读取（<code>ThemeData::getDirectory()</code>），</li></ul>
 <p>主题用 <code>loadThemeIntoGlobalFromDirectory()</code> 装到自定义路径时同样生效；缺文件回退 default。</p>
 <ul><li>路径三种写法：</li><li><code>@res/audio/x.wav</code>：相对 <code>resources/</code>（全局素材）；</li><li><code>@theme/audio/x.wav</code>：相对<strong>当前主题目录</strong>（主题自带素材）；</li><li>相对路径（<code>audio/x.wav</code>）：同样相对当前主题目录；绝对路径原样使用。</li><li>支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），运行期重采样到 48kHz 并缓存；</li><li>触发点大小写/下划线不敏感；不认识的触发点只警告；</li><li>文件缺失、解码失败 → 回退到代码合成音（现有 <code>Sound</code>），不影响 UI；</li><li><strong>控件级覆盖</strong>：外观 JSON 的 <code>states.click.sound</code> 优先于主题表：</li></ul>
-<pre><code class="lang-json">// base/widget/notification.json
+<pre><code class="lang-json">// base/button/button.json
 &quot;states&quot;: {
   &quot;click&quot;: { &quot;sound&quot;: &quot;@res/audio/button_alt.wav&quot; }
 }</code></pre>
@@ -2166,7 +2166,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>1d2769e</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>9077efe</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

@@ -625,11 +625,12 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 - 校验发生在 `import` 合并与编译之后；失败会写 error 日志
   （`外观契约不满足（主题@文件）：缺少必需的层 "border"`），
   `validateThemeAppearances()` 返回失败；
-- 代码侧还注册了内置契约（当前只有 `base/widget/notification` 需要 `text` 槽；
-  `4458a33` 那次清理把 `base/slider/slider`、`base/hint_item`、`base/header_icon`、
-  `base/dropdown_item`、`base/text_field` 的契约连同控件一起删了）。
-  内容槽既可以是 `op=text`，也可以是 `op=image`（图标槽）。JSON 的 `requires`
-  与内置契约取并集，不能放宽；
+- 代码侧的内置契约现在**空的**：`4458a33` 那次清理把 `base/slider/slider`、`base/hint_item`、
+  `base/header_icon`、`base/dropdown_item`、`base/text_field` 的契约连同控件一起删了；
+  通知改成"基类 + 图标/图片两种实现"之后，内容（图标 / 图片 + 文案）由代码用真视图拼出来，
+  外观里不再有 `data_id` 内容层，那条 `text` 槽的契约也就删了。
+  仍然需要代码侧断言时按 `add("外观名", { "内容槽" }, { { "层 id", 层 op } })` 注册，
+  与 JSON 的 `requires` 取并集、不能放宽 —— 但现在一律建议写在外观自己的 `requires.layers` 里；
 - 现成的例子：`base/button/button.json` 断言 `shadow` / `bg` / `border` 三层
   （背景、描边、阴影是按钮行为要改的），`button.text.json` 断言 `title`，
   `button.icon.json` 断言 `icon`，`button.icon_text.json` 两个都断言；
@@ -663,7 +664,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 - **控件级覆盖**：外观 JSON 的 `states.click.sound` 优先于主题表：
 
 ```json
-// base/widget/notification.json
+// base/button/button.json
 "states": {
   "click": { "sound": "@res/audio/button_alt.wav" }
 }
