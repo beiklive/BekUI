@@ -555,6 +555,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      根视图一删里面的指针就是野指针，之后的导航/命中会踩崩（测试里踩过）。
   ③ **关掉弹层要等动效播完再摘**：摘掉就脱离视图树，`update()` 不再跑，
      关闭动效根本播不出来。Dialog 是"先切状态、播完再 popOverlay"。
+  ④ **挂上去的时候必须已经可见**：焦点进模态是 `pushModal()` 里
+     `giveFocus(modal->getDefaultFocus())` 做的，而 `InputManager::canFocus()` 要求
+     `isVisibleInTree()` —— 弹层还是 `GONE` 就 `pushOverlay` 的话，一个候选都选不中，
+     **焦点留在外面**（表现就是"模态开着、方向键还在操作后面的页面"）。
+     Dialog 的顺序是"先 `setVisibility(VISIBLE)` + `invalidate()`，再 `pushOverlay`"，
+     失败再回滚成 GONE。
+  ⑤ **模态挂在哪一层由 `View::getOverlayHost()` 决定**（默认返回 nullptr = 挂根容器）：
+     `Shell` 覆写成覆盖层，这样浮层里的焦点框与调试层仍然盖在模态之上
+     （挂根容器的话，焦点框会被面板挡住，看着像"焦点没进去"）。
 - **音效只在用户操作时播**（`ui/input/input.cpp`）：全库只有 `playUiSound()` 一处播音，三个触发点
   —— 方向导航（focus 音，含"没有焦点时取默认焦点"那一支）、确认键 / 点击（click 音）、返回键（back 音）。
   `InputManager::giveFocus(view, playSound = false)` **默认静默**：换根 / 换页 / 弹层进出 /
@@ -837,6 +846,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
     打开 / 关闭走 `App::pushOverlay` / `popOverlay`（模态、焦点自动回位都由输入层负责），
     **面板尺寸由调用方决定**：默认取 `metric.dialog.width` 与 `maxHeight 85%`，`getPanel()->setWidth(...)` 可覆盖。
     点遮罩关闭用的是 `TapGestureRecognizer` + `isPointerTarget()`（"能点"不等于"能当焦点"）。
+    **底部按钮均匀分配**：`addButton()` 给每个按钮 `setGrow(1)`，两个按钮各占一半，
+    只有一个按钮时自然铺满整行（调用方不用自己算宽度）。
   - 遮罩的模糊来自**玻璃层**（`base/box/dialog_backdrop.json` 里一条 `op: "glass"`），
     而 `GlassService` 默认是**关**的（库不主动改变宿主观感）：宿主 `setEnabled(true)` 才有真模糊，
     否则这一层退化成半透明底（不会消失）。demo 在启动时打开了它。

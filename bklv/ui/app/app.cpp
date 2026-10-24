@@ -1,4 +1,4 @@
-﻿#include "bklv/ui/app/app.hpp"
+#include "bklv/ui/app/app.hpp"
 
 #include <chrono>
 #include "bklv/foundation/core/decode_queue.hpp"
@@ -337,7 +337,9 @@ bool App::pushOverlay(View* overlay, bool closeOnBack)
     overlay->setWidthPercentage(100.0f);
     overlay->setHeightPercentage(100.0f);
 
-    rootBox->addView(overlay);
+    // 宿主可以指定挂哪一层（Shell 用覆盖层，焦点框在浮层、仍盖在模态之上）
+    Box* host = this->root->getOverlayHost();
+    (host != nullptr ? host : rootBox)->addView(overlay);
     getInputManager().pushModal(overlay, closeOnBack);
     return true;
 }
@@ -351,8 +353,12 @@ void App::popOverlay(View* overlay, bool free)
     if (getInputManager().getTopModal() == overlay)
         getInputManager().popModal();
 
-    if (Box* rootBox = this->root->asBox())
-        rootBox->removeView(overlay, free);
+    // 从它实际的父节点摘（可能挂在 Shell 的覆盖层，不是根）
+    if (View* parent = overlay->getParent())
+    {
+        if (Box* parentBox = parent->asBox())
+            parentBox->removeView(overlay, free);
+    }
 }
 
 App::App()

@@ -433,6 +433,11 @@ class View
     // Switch 工具链按 devkitPro 惯例带 -fno-rtti，用不了 dynamic_cast。
     virtual Box* asBox() { return nullptr; }
 
+    // ---- 弹层宿主 ----
+    // App::pushOverlay() 把模态挂到哪一层：默认挂根容器（last child 在最上面），
+    // 外壳（Shell）会覆写成覆盖层，这样浮层里的焦点框、调试层仍然盖在模态之上。
+    // 返回 nullptr 表示"就用根容器"。
+    virtual Box* getOverlayHost() { return nullptr; }
     // ---- 布局失效 ----
     // 修改任何影响布局的属性后必须调用，冒泡到根后触发一次全树重算。
     virtual void invalidate();

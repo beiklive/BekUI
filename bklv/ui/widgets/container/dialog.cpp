@@ -179,6 +179,9 @@ TextButton* Dialog::addButton(const std::string& label, std::function<void()> on
     auto* button = new TextButton(label, "dialog");
     if (onPress)
         button->setOnClick(std::move(onPress));
+    // 按钮在底部**均匀分配**宽度：每个都 grow=1，两个就各占一半，
+    // 只有一个时自然铺满整行（不用调用方自己算宽度）。
+    button->setGrow(1.0f);
     this->buttonRow->addView(button);
     this->invalidate();
     return button;
@@ -199,12 +202,19 @@ bool Dialog::open()
     if (app == nullptr)
         return false;
 
-    if (!app->pushOverlay(this, true))
-        return false;
-
+    // 先变可见再挂弹层：pushOverlay 里 pushModal 会给模态里的默认焦点
+    // （canFocus 要求 isVisibleInTree，GONE 的树一个都选不中——踩过，焦点留在外面）。
     this->opened = true;
     this->setVisibility(Visibility::VISIBLE);
     this->invalidate();
+
+    if (!app->pushOverlay(this, true))
+    {
+        this->opened = false;
+        this->setVisibility(Visibility::GONE);
+        return false;
+    }
+
     return true;
 }
 

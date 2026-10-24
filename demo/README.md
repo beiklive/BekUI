@@ -106,7 +106,9 @@ this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
 - `bklv::Dialog`：全屏容器 = 玻璃遮罩 + 居中面板。面板里是「图标 + 标题」表头、
   可滚动内容区、按钮行；`addButton("取消", ...)` 的按钮外观是 `base/button/button.dialog`。
   打开 / 关闭走 `open()` / `close()`（内部是 `App::pushOverlay` / `popOverlay`），
+  打开时焦点自动落到第一个按钮上、关闭后回到原来那个按钮；
   点遮罩关闭，B 键也能关（`pushOverlay` 的 `closeOnBack`）。
+  底部按钮**均匀分配**（每个 `grow = 1`），只有一个按钮时铺满整行。
 - `bklv::ListBox`：只是一个纵向滚动的容器，`addItemText()` / `addItem(View*)` 往里放东西，
   焦点移动时会把那一项滚进可视区。**高度要有界**（示例里 `setHeight(420)`），
   否则它算不出视口高度。
