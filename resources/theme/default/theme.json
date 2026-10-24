@@ -17,9 +17,9 @@
     "base/bottombar.json",
     "base/hintbar.json",
     "base/hintitem.json",
-    "base/notification/card.json",
-    "base/notification/icon.json",
-    "base/notification/image.json"
+    "base/notification/toast_base.json",
+    "base/notification/toast_icon.json",
+    "base/notification/toast_image.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

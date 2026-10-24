@@ -3,37 +3,37 @@
 // 通知（Toast），对应 borealis 的 core/notification_manager。
 //
 // 结构（和 Button 家族一个套路）：
-//   Notification（抽象基类）—— 只管行为与卡片外观
+//   Notification（抽象基类）—— 只管行为（计时、滑入滑出、高度收缩）
 //     ├─ IconNotification   图标 + 文字
 //     └─ ImageNotification  图片 + 文字
 //   NotificationManager —— 右上角一列，管堆叠、各自倒计时、摘除
 //
+// 内容一律由**外观 JSON 的层**表达（和按钮一样用 `data_id` 绑定内容槽）：
+//   图标/文字/图片的尺寸、颜色、间距、位置全写在
+//   `resources/theme/<主题>/base/notification/toast_*.json` 里，
+//   代码只负责把"这一层显示什么"塞进槽（`setIcon` / `setText` / `setImage`）。
+//   所以调图标大小、文字颜色、图片圆角都不需要改代码。
+//
 // 为什么没有"纯文字"的具体类：通知总得有个视觉锚点（图标或缩略图），
-// 只放一行字在深色卡片里既难认也不好看。要纯文字就把图标换成一个字形，
-// 不要为它单开一类。
+// 要纯文字就把图标槽换成一段文字，不必为它单开一类。
 //
 // 与 borealis 的差别（有意）：
 // - borealis 的 `NotificationManager` 是**全局静态单例**，多实例、测试都难受。
 //   这里做成挂在 `App` 上的一份普通视图：`App::notify(...)` 转发到它。
-// - 卡片本身（底色 / 描边 / 阴影 / 圆角）还是外观 JSON 管，而且一种形态一份：
-//   `base/notification/card.json` 是通用卡片，`icon.json` / `image.json` 各自 import 它
-//   再写自己的差异（图标卡片矮一点、图片卡片高度跟着内容走）；内容用真视图拼。
 // - 动画在代码里做：从**屏幕右侧外面**滑进来，消失时滑回右边；换行（上移）
 //   靠收缩自身高度实现，这样下面那几条会在收缩过程中跟着往上挪，而不是"跳一下"。
 // - 堆叠**不设上限**：一列往下排，排到屏幕外也不管（外层容器会裁掉）；
 //   每条各自倒计时，谁到期谁滑回去并让出位置。
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "bklv/ui/view/box.hpp"
-#include "bklv/ui/widgets/basic/label.hpp"
 #include "bklv/ui/widgets/appearance/appearance_view.hpp"
 
 namespace bklv
 {
-
-class Image;
 
 // 通知内容的形态。基类不提供默认实现，派生类各自返回自己的
 // （Switch 带 `-fno-rtti`，判断类型只能靠虚函数，不能 dynamic_cast）。
@@ -43,8 +43,16 @@ enum class NotificationKind
     IMAGE, // 图片 + 文字
 };
 
+// 内容槽 id（外观 JSON 里写 "data_id": "icon" / "text" / "image" 与之一一对应）
+namespace notification_slot
+{
+inline constexpr char ICON[]  = "icon";
+inline constexpr char TEXT[]  = "text";
+inline constexpr char IMAGE[] = "image";
+} // namespace notification_slot
+
 // 一条通知：显示 duration 秒后自动滑回去并把自己从管理器里摘掉。
-// 外观、动画、计时都在基类；派生类只决定"内容行里放什么"。
+// 外观、动画、计时都在基类；派生类只决定往哪个内容槽塞什么。
 class Notification : public AppearanceView
 {
   public:
@@ -66,24 +74,15 @@ class Notification : public AppearanceView
     std::string getClassString() const override { return "bklv::Notification"; }
 
   protected:
-    // 基类构造：套 appearanceName 指定的外观、建内容行与文案标签，
-    // 再交给派生类把自己的东西塞进内容行。外观名由派生类传，一种形态一份 JSON。
-    explicit Notification(const std::string& text, float duration, const std::string& appearanceName);
+    // 基类构造：套 appearanceName 指定的外观、把文案塞进 text 槽。
+    // 外观名由派生类传，一种形态一份 JSON。
+    Notification(const std::string& text, float duration, const std::string& appearanceName);
 
-    // 派生类在这个函数里往内容行**最前面**塞图标 / 图片（文字已经在行里了）
-    virtual void buildContent() = 0;
-
-    // 派生类补自己的样式（基类管行间距、文案字号与颜色、滑动距离）
-    virtual void applyContentTheme();
-
-    Box* getContentRow() const { return this->row; }
-    Label* getTextLabel() const { return this->textLabel; }
+    // 文案改了就刷新槽
+    void setTextContent(const std::string& text);
 
   private:
-    void setupBaseContent();
-
-    Box* row = nullptr; // 内容行：[图标/图片][文案]
-    Label* textLabel = nullptr;
+    void updateSlideDistance();
 
     std::string text;
     float duration = 3.0f;
@@ -110,33 +109,27 @@ class IconNotification : public Notification
     NotificationKind getKind() const override { return NotificationKind::ICON; }
     std::string getClassString() const override { return "bklv::IconNotification"; }
 
-  protected:
-    void buildContent() override;
-    void applyContentTheme() override;
-
   private:
-    Label* iconLabel = nullptr;
     std::string glyph;
 };
 
-// 图片 + 文字：path 走资源路径（`resources/...`），异步解码
+// 图片 + 文字：path 走资源路径（`resources/...`），建的时候同步取纹理
+// （缩略图很小、同一路径只解码一次，之后走纹理缓存）
 class ImageNotification : public Notification
 {
   public:
     ImageNotification(
         const std::string& text, const std::string& imagePath, float duration = 3.0f);
 
+    void setImagePath(const std::string& imagePath);
     const std::string& getImagePath() const { return this->imagePath; }
 
     NotificationKind getKind() const override { return NotificationKind::IMAGE; }
     std::string getClassString() const override { return "bklv::ImageNotification"; }
 
-  protected:
-    void buildContent() override;
-    void applyContentTheme() override;
-
   private:
-    Image* image = nullptr;
+    void reloadImage();
+
     std::string imagePath;
 };
 

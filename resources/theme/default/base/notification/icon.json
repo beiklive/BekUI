@@ -1,7 +1,0 @@
-{
-  "$comment": "图标 + 文字的通知（IconNotification）：套通用卡片，只写自己的差异 —— 图标卡片矮一点，图标与文案的间距由代码的 metric.notification.contentGap 管。",
-  "import": "base/notification/card",
-  "box": {
-    "height": 64
-  }
-}

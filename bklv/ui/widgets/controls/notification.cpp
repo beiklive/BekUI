@@ -3,8 +3,9 @@
 #include <algorithm>
 
 #include "bklv/foundation/anim/time.hpp"
+#include "bklv/foundation/core/resource.hpp"
+#include "bklv/graphics/render/graphics.hpp"
 #include "bklv/ui/theme/theme_data.hpp"
-#include "bklv/ui/widgets/basic/image.hpp"
 
 namespace bklv
 {
@@ -15,14 +16,6 @@ namespace
 // 再短就看不出是滑进来的，再长点两下会觉得通知被"塞"住。
 constexpr float kAppearSeconds  = 0.22f;
 constexpr float kDismissSeconds = 0.22f;
-
-// 内容尺寸兜底（主题里没给值时用）
-constexpr float kIconSizeDefault  = 24.0f;
-constexpr float kImageSizeDefault = 44.0f;
-constexpr float kGapDefault       = 10.0f;
-constexpr float kRadiusDefault    = 6.0f;
-
-constexpr ImU32 kTextDefault = IM_COL32(255, 255, 255, 255);
 } // namespace
 
 // ---------------------------------------------------------------- 基类
@@ -35,47 +28,27 @@ Notification::Notification(
     this->duration  = duration > 0.0f ? duration : 3.0f;
     this->remaining = this->duration;
 
-    this->setupBaseContent();
+    // 文案走内容槽：外观 JSON 里 `"data_id": "text"` 的那一层负责画它
+    this->setText(notification_slot::TEXT, this->text);
 
-    // 卡片外观（底色 / 描边 / 阴影）在 JSON 里，内容样式在这里上：
-    // applyTheme() 会同时刷新两者，换肤不用重建通知。
+    // 外观（底色 / 描边 / 阴影 / 图标与文字的层）全在 JSON 里，换肤不用重建通知
     this->applyTheme();
 
     // 初始停在屏幕右侧外：appearProgress = 0 时位移最大
     this->setTranslateX(this->slideDistance);
 }
 
-void Notification::setupBaseContent()
+void Notification::setTextContent(const std::string& text)
 {
-    // 卡片本身已经带着外观层的背景/描边/内边距，这里只往里塞一行内容：
-    //   [图标 或 图片] [文案]
-    // 图标/图片由派生类的 buildContent() 插到第 0 位，文案固定在后。
-    this->row = new Box(Axis::ROW);
-    this->row->setAlignItems(AlignItems::CENTER);
-    this->addView(this->row);
-
-    this->textLabel = new Label();
-    this->textLabel->setSingleLine(true);
-    this->textLabel->setText(this->text);
-    this->textLabel->setVerticalAlign(VerticalAlign::CENTER);
-    this->row->addView(this->textLabel);
+    this->text = text;
+    this->setText(notification_slot::TEXT, this->text);
 }
 
-void Notification::applyContentTheme()
+void Notification::updateSlideDistance()
 {
-    const ThemeData& theme = getTheme();
-
-    if (this->row != nullptr)
-        this->row->setGap(theme.number("metric.notification.contentGap", kGapDefault));
-
-    if (this->textLabel != nullptr)
-    {
-        this->textLabel->setFontSize(theme.number("metric.notification.fontSize", 18.0f));
-        this->textLabel->setTextColor(theme.color("color.notification.text", kTextDefault));
-    }
-
     // 滑动距离 = 卡片宽度 + 右边距 + 余量。多给一点，保证完全移出可视区，
     // 否则边缘会漏一条（踩过：正好等于宽度时右边缘还看得见）。
+    const ThemeData& theme  = getTheme();
     const float cardWidth   = theme.number("metric.notification.width", 360.0f);
     const float marginRight = theme.number("metric.notification.marginRight", 16.0f);
     this->slideDistance     = cardWidth + marginRight + 32.0f;
@@ -84,7 +57,7 @@ void Notification::applyContentTheme()
 void Notification::applyTheme()
 {
     AppearanceView::applyTheme();
-    this->applyContentTheme();
+    this->updateSlideDistance();
 
     // 外观重套之后把当前动画进度重新映射到位移上（否则换肤会把它"瞬移"回原位）
     if (!this->dismissed)
@@ -144,79 +117,46 @@ void Notification::update()
 
 IconNotification::IconNotification(
     const std::string& text, const std::string& glyph, float duration)
-    : Notification(text, duration, "base/notification/icon")
+    : Notification(text, duration, "base/notification/toast_icon")
 {
     this->glyph = glyph;
-
-    // 派生类构造体里调用虚函数是安全的（此时对象已经是派生类）
-    this->buildContent();
-    this->applyTheme();
-}
-
-void IconNotification::buildContent()
-{
-    this->iconLabel = new Label();
-    this->iconLabel->setIconFontEnabled(true);
-    this->iconLabel->setText(this->glyph);
-    this->iconLabel->setVerticalAlign(VerticalAlign::CENTER);
-
-    // 插到内容行最前面：图标在左、文案在右
-    this->getContentRow()->addView(this->iconLabel, 0);
+    // 图标走内容槽：外观里 `"data_id": "icon"` 的 text 层（font_kind: icon）负责画它
+    AppearanceView::setIcon(notification_slot::ICON, this->glyph);
 }
 
 void IconNotification::setIcon(const std::string& glyph)
 {
     this->glyph = glyph;
-    if (this->iconLabel != nullptr)
-        this->iconLabel->setText(glyph);
-}
-
-void IconNotification::applyContentTheme()
-{
-    Notification::applyContentTheme();
-
-    if (this->iconLabel == nullptr)
-        return;
-
-    const ThemeData& theme = getTheme();
-    this->iconLabel->setFontSize(theme.number("metric.notification.iconSize", kIconSizeDefault));
-    this->iconLabel->setTextColor(theme.color("color.notification.text", kTextDefault));
+    AppearanceView::setIcon(notification_slot::ICON, this->glyph);
 }
 
 // ---------------------------------------------------------------- 图片 + 文字
 
 ImageNotification::ImageNotification(
     const std::string& text, const std::string& imagePath, float duration)
-    : Notification(text, duration, "base/notification/image")
+    : Notification(text, duration, "base/notification/toast_image")
 {
     this->imagePath = imagePath;
-
-    this->buildContent();
-    this->applyTheme();
+    // 图片走内容槽：外观里 `"data_id": "image"` 的 image 层负责画它
+    this->reloadImage();
 }
 
-void ImageNotification::buildContent()
+void ImageNotification::setImagePath(const std::string& imagePath)
 {
-    this->image = new Image();
-    this->image->setScalingType(ImageScalingType::FILL);
-    this->image->setImageFromFileAsync(this->imagePath);
-
-    this->getContentRow()->addView(this->image, 0);
+    this->imagePath = imagePath;
+    this->reloadImage();
 }
 
-void ImageNotification::applyContentTheme()
+void ImageNotification::reloadImage()
 {
-    Notification::applyContentTheme();
-
-    if (this->image == nullptr)
+    if (this->imagePath.empty())
+    {
+        this->clearSlot(notification_slot::IMAGE);
         return;
+    }
 
-    const ThemeData& theme = getTheme();
-    const float size       = theme.number("metric.notification.imageSize", kImageSizeDefault);
-
-    this->image->setWidth(size);
-    this->image->setHeight(size);
-    this->image->setCornerRadius(theme.number("metric.notification.imageRadius", kRadiusDefault));
+    // 缩略图直接取纹理：同一路径第二次就命中纹理缓存，不再解码
+    this->setImage(notification_slot::IMAGE, loadTexture(resourcePath(this->imagePath)));
 }
 
 // ---------------------------------------------------------------- 管理器

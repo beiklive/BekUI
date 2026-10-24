@@ -1,0 +1,34 @@
+{
+  "$comment": "图标 + 文字的通知（IconNotification）：套通用卡片 toast_base，再叠两层内容 —— icon（data_id=icon，图标字体字形）与 title（data_id=text，文案）。图标字号 / 颜色 / 宽度 / 与文字的间距都在这里调，不用改代码。",
+  "import": "base/notification/toast_base",
+  "box": {
+    "height": 64
+  },
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": 24,
+      "color": "@theme/color.notification.text",
+      "width": 24,
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 20]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "text",
+      "fontSize": 18,
+      "color": "@theme/color.notification.text",
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 56]
+    }
+  ],
+  "requires": {
+    "content": ["icon", "text"]
+  }
+}
