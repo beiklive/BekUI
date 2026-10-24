@@ -1,11 +1,16 @@
 {
-  // CMake Tools：本项目用 CMakePresets.json 管理配置（build/gl、build/vk）。
-  // 不设这几项的话，VS Code 默认会去构建 <仓库>/build —— 那个目录从来没配置过，
-  // 于是报 "not a CMake build directory (missing CMakeCache.txt)"。
+  // CMake Tools：本项目用 CMakePresets.json 管理配置（build/gl、build/vk 等）。
+  // 不设 useCMakePresets 的话，VS Code 会按所选 kit 的生成器去配 <仓库>/build，
+  // 与已有的 VS 2022 缓存冲突时报 "generator does not match the generator used previously"。
   "cmake.useCMakePresets": "always",
   "cmake.configurePreset": "gl",
   "cmake.buildPreset": "gl",
-  "cmake.testPreset": "gl",
   "cmake.configureOnOpen": true,
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+  // F5 先构建再启动（launch.json 里的 preLaunchTask 也会构建，这里保证 "运行" 按钮同样可用）
+  "cmake.buildBeforeRun": true,
+  "cmake.parallelJobs": 8,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "C_Cpp.default.cppStandard": "c++17",
+  "C_Cpp.default.cStandard": "c11",
+  "files.encoding": "utf8"
 }

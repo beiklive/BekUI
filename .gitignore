@@ -1,8 +1,9 @@
 # macOS 系统文件。
 .DS_Store
 
-# 构建产物和临时目录（dist/ 按后端/平台分子目录，见 AGENTS.md）。
+# 构建产物和临时目录（dist/ 按后端/平台分子目录，dist-mingw/ 给 MinGW preset，见 AGENTS.md）。
 dist/
+dist-mingw/
 build/
 
 # C/C++ 编译中间文件。
@@ -11,10 +12,14 @@ build/
 *.d
 *.dSYM/
 
-# 常见编辑器配置。只放行 settings.json：里面是"用哪个 CMake preset"这类
-# 本项目特有的设置（VS Code 的 CMake Tools 默认会去构建 build/，而我们是 build/gl）。
+# 常见编辑器配置。放行 settings / tasks / launch / extensions 四个：
+# 里面是"用哪个 CMake preset""F5 怎么起来"这类本项目特有的设置
+# （VS Code 的 CMake Tools 默认会去构建 build/，而我们是 build/gl）。
 .vscode/*
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 
 # ImGui 的 ini 已在代码里通过 io.IniFilename = nullptr 关闭，正常不会生成。

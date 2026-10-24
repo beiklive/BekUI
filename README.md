@@ -127,6 +127,34 @@ cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 > 仓库里的 `.vscode/settings.json` 已经把它指到 `gl` preset；
 > 手动改的话是 `F1` → `CMake: Select Configure Preset` → 选 `gl`。
 
+### VS Code / CLion 一键编译与运行
+
+四个 preset 自己带生成器，所以**不受 IDE 里选的 kit 影响**：
+
+| preset | 生成器 | 构建目录 | 产物 |
+|---|---|---|---|
+| `gl` | Visual Studio 17 2022 | `build/gl` | `dist/` |
+| `vk` | Visual Studio 17 2022 | `build/vk` | `dist/vk/` |
+| `gl-mingw` | Ninja + MSYS2 mingw64 | `build/gl-mingw` | `dist-mingw/` |
+| `vk-mingw` | Ninja + MSYS2 mingw64 | `build/vk-mingw` | `dist-mingw/vk/` |
+
+- **为什么必须写死生成器**：不写的话 CMake Tools 会按当前 kit 传 `-G`。kit 是 MinGW/Ninja
+  而 `build/gl` 里是 VS 2022 的缓存时，配置直接失败：
+  `Error: generator : Ninja / Does not match the generator used previously: Visual Studio 17 2022`。
+  写死之后换 kit 也不影响，工具链由 preset 决定。
+- **只保留 Release 配置**（`CMAKE_CONFIGURATION_TYPES=Release`）：多配置生成器默认编 Debug，
+  而 Debug 与 Release 的产物都往同一个 `dist/` 写 —— 先编 Debug 再编 Release 时，链接器
+  认为"exe 比 obj 新"直接跳过，跑起来还是那个 Debug 版（`dist/demo.exe` 从 4.7 MB 变成 14.8 MB）。
+  要 Debug 就自己加一个 preset 并把 `CMAKE_CONFIGURATION_TYPES` 写回 `Debug;Release`。
+- **编译**：`Ctrl+Shift+B` 走 `.vscode/tasks.json` 的默认任务（= `cmake --build --preset gl`）；
+  或者用底部状态栏 CMake Tools 的 Build 按钮（选的就是 `gl` preset）。
+- **运行**：`F5` 走 `.vscode/launch.json` —— 三个配置分别对应 MSVC、MinGW、Vulkan 产物，
+  都带 `preLaunchTask`（先编再起）。`cwd` 指到产物目录，因为资源按 `<exe 目录>/resources` 找。
+  MinGW 那个用 `cppdbg` + `E:/bin/msys64/mingw64/bin/gdb.exe`，路径不同就改 `miDebuggerPath`。
+- **CLion**：直接 `File → Open` 仓库根，它会读 `CMakePresets.json`，挑 `gl` 即可。
+- **两套工具链的产物分开**：MSVC 的 preset 写 `dist/`，MinGW 的 preset 用 `-DBKLV_OUT_DIR` 指到 `dist-mingw/`。否则同一份 `dist/demo.exe` 会被两套工具链轮流覆盖，配错调试器时很难看出来。
+- 需要装的扩展见 `.vscode/extensions.json`：`ms-vscode.cmake-tools` + `ms-vscode.cpptools`。
+
 产物在 `dist/`。想编 Vulkan 版就换一个构建目录，两版可以并存：
 
 ```bash

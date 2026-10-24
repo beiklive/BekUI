@@ -1,0 +1,42 @@
+{
+  // F5 / “运行” 直接编 demo 并启动。三个配置对应三种产物：
+  //   MSVC 走 cppvsdbg（需要 VS 的 C++ 调试器），MinGW 走 cppdbg + gdb。
+  // cwd 指到产物所在目录，因为 bklv 按 <exe 目录>/resources 找资源。
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "demo（MSVC 2022）",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist/demo.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/dist",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "preLaunchTask": "cmake: build (gl)"
+    },
+    {
+      "name": "demo（MinGW-w64）",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist-mingw/demo.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/dist-mingw",
+      "MIMode": "gdb",
+      "miDebuggerPath": "E:/bin/msys64/mingw64/bin/gdb.exe",
+      "externalConsole": false,
+      "preLaunchTask": "cmake: build (gl-mingw)"
+    },
+    {
+      "name": "demo（Vulkan）",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/dist/vk/demo.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/dist/vk",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "preLaunchTask": "cmake: build (vk)"
+    }
+  ]
+}

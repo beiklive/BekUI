@@ -1,0 +1,59 @@
+{
+  // Ctrl+Shift+B / “生成” 走这里；每个任务先按对应 preset 配置一次，再构建。
+  // 之所以不用 CMake Tools 自带的构建按钮单独负责，是因为 cppvsdbg 的 preLaunchTask
+  // 需要一个可复用的任务名（下面 launch.json 用的就是它们）。
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cmake: configure (gl)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "gl"],
+      "problemMatcher": [],
+      "hide": true
+    },
+    {
+      "label": "cmake: configure (vk)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "vk"],
+      "problemMatcher": [],
+      "hide": true
+    },
+    {
+      "label": "cmake: configure (gl-mingw)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--preset", "gl-mingw"],
+      "problemMatcher": [],
+      "hide": true
+    },
+    {
+      "label": "cmake: build (gl)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "gl"],
+      "dependsOn": ["cmake: configure (gl)"],
+      "problemMatcher": ["$msCompile"],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "cmake: build (vk)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "vk"],
+      "dependsOn": ["cmake: configure (vk)"],
+      "problemMatcher": ["$msCompile"],
+      "group": "build"
+    },
+    {
+      "label": "cmake: build (gl-mingw)",
+      "type": "shell",
+      "command": "cmake",
+      "args": ["--build", "--preset", "gl-mingw"],
+      "dependsOn": ["cmake: configure (gl-mingw)"],
+      "problemMatcher": ["$gcc"],
+      "group": "build"
+    }
+  ]
+}

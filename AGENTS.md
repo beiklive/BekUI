@@ -88,11 +88,20 @@ bklv_copy_resources(my_demo)
   `not a CMake build directory (missing CMakeCache.txt)` —— 仓库里的
   `.vscode/settings.json` 已经把它指向 `gl` preset（`cmake.useCMakePresets: always`），
   手动选的话是 `F1` → `CMake: Select Configure Preset` → `gl`。
-- **多个构建目录共用同一个 `dist/`**：CMake 的输出目录固定是 `${CMAKE_SOURCE_DIR}/dist`
-  （VK 是 `dist/vk/`），所以任何额外构建目录（`build/asan`、`build/dbg`、`/tmp/xxx`）
-  都会把可执行文件写进同一个 `dist/`。它们的产物时间戳比 `build/gl` 的目标文件新，
-  make 会认为"已是最新"而**不重新链接** —— 于是你以为在验收 A 配置，实际跑的是 B 的二进制
-  （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本）。
+- **preset 必须自带生成器**：`CMakePresets.json` 的四个 preset 都写了 `generator`
+  （`gl`/`vk` 是 Visual Studio 17 2022，`*-mingw` 是 Ninja + 写死 gcc/g++ 路径）。
+  不写的话 CMake Tools 会按当前 kit 传 `-G`，kit 是 Ninja 而 `build/gl` 里是 VS 缓存时直接报
+  `generator : Ninja does not match the generator used previously: Visual Studio 17 2022`。
+  改 preset 时别把 `generator` 删掉。
+- **VS 的多配置生成器只保留 Release**（preset 里 `CMAKE_CONFIGURATION_TYPES=Release`）：
+  Debug 与 Release 都钉在同一个 `dist/`，先编 Debug 再编 Release 时链接器认为 exe 比 obj 新、
+  跳过链接，跑起来是那个 14.8 MB 的 Debug 版。要 Debug 就另开 preset 并把输出目录也换掉。
+- **多个构建目录共用同一个 `dist/`**：CMake 的输出目录默认是 `${CMAKE_SOURCE_DIR}/dist`
+  （VK 是 `dist/vk/`，MinGW preset 用 `-DBKLV_OUT_DIR` 指到 `dist-mingw/`），所以任何额外
+  构建目录（`build/asan`、`build/dbg`、`/tmp/xxx`）都会把可执行文件写进同一个 `dist/`。
+  它们的产物时间戳比 `build/gl` 的目标文件新，make 会认为"已是最新"而**不重新链接** ——
+  于是你以为在验收 A 配置，实际跑的是 B 的二进制（这次踩到：用 `-DBKLV_WITH_WEBP=OFF`
+  在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本）。
   跑完额外构建目录后要 `rm -f dist/embed_imgui_gl && cmake --build build/gl -j 8` 强制重链。
 - 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 按目录查 core/views/widgets），
   不用等链接期。

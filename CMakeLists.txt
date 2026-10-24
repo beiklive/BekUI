@@ -92,12 +92,17 @@ else()
 endif()
 
 # 输出目录：GL 走 dist/，Vulkan 走 dist/vk/。
-if(BKLV_GRAPHICS STREQUAL "vk")
-    set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/vk")
-elseif(BKLV_GRAPHICS STREQUAL "gl")
-    set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist")
-else()
+# 允许用 -DBKLV_OUT_DIR 覆盖：VS Code 的 MinGW preset 就是靠它把产物隔到 dist-mingw/，
+# 免得同一份 dist/ 被两套工具链轮流覆盖（VS 会因此跳过链接、跑到上一轮的 exe）。
+if(NOT BKLV_GRAPHICS STREQUAL "gl" AND NOT BKLV_GRAPHICS STREQUAL "vk")
     message(FATAL_ERROR "BKLV_GRAPHICS 只能是 gl 或 vk（当前：${BKLV_GRAPHICS}）")
+endif()
+if(NOT DEFINED BKLV_OUT_DIR OR BKLV_OUT_DIR STREQUAL "")
+    if(BKLV_GRAPHICS STREQUAL "vk")
+        set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist/vk")
+    else()
+        set(BKLV_OUT_DIR "${CMAKE_SOURCE_DIR}/dist")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
