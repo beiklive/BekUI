@@ -1,0 +1,9 @@
+{
+  "$comment": "列表容器：纵向滚动 + 项间距。默认不画底色（需要底色就 import base/layer/bg，或者外面套一层卡片）。",
+  "box": {
+    "axis": "column",
+    "gap": "@theme/metric.list.gap",
+    "padding": ["@theme/metric.list.padding", 0, "@theme/metric.list.padding", 0]
+  },
+  "layers": []
+}

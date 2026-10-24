@@ -1,0 +1,26 @@
+{
+  "$comment": "对话框面板：只画卡片（阴影 / 底色 / 描边）。里面的结构（图标+标题、可滚动内容、按钮行）在 DialogBox 代码里搭，尺寸由调用方决定。",
+  "box": {
+    "axis": "column",
+    "gap": "@theme/metric.dialog.gap",
+    "padding": "@theme/metric.dialog.padding"
+  },
+  "layers": [
+    { "import": "base/layer/shadow" },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.dialog.background"
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": "@theme/metric.dialog.radius"
+    }
+  ],
+  "requires": {
+    "layers": [
+      { "bg": "rect" },
+      { "border": "rect" }
+    ]
+  }
+}

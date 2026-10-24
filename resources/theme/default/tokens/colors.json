@@ -133,6 +133,13 @@
     "background": "#ffffff",
     "text": "#1f2328"
   },
+  "dialog": {
+    "background": "#ffffff",
+    "text": "#1f2328",
+    "title": "#1f2328",
+    "backdrop": "#00000066",
+    "separator": "#e5e8ec"
+  },
   "debug": {
     "bounds": "#00ffcc8c",
     "text": "#ffffffe6"

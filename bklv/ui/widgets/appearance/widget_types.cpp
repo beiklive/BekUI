@@ -2,6 +2,8 @@
 
 #include "bklv/foundation/core/globals.hpp"
 #include "bklv/ui/view/json_view.hpp"
+#include "bklv/ui/widgets/container/dialog.hpp"
+#include "bklv/ui/widgets/container/list_box.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
 
 namespace bklv
@@ -40,6 +42,10 @@ void registerWidgetViewTypes()
     registerViewType("TextButton", [] { return (View*)new TextButton(); });
     registerViewType("IconButton", [] { return (View*)new IconButton(); });
     registerViewType("IconTextButton", [] { return (View*)new IconTextButton(); });
+
+    // 两个派生容器（结构在代码里，样式在 base/box/dialog、base/box/list）。
+    registerViewType("Dialog", [] { return (View*)new Dialog(); });
+    registerViewType("ListBox", [] { return (View*)new ListBox(); });
 }
 
 } // namespace bklv

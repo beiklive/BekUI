@@ -50,6 +50,13 @@ void ScrollBox::addView(View* view)
         Box::addView(view);
 }
 
+void ScrollBox::scrollToView(View* view, bool animated)
+{
+    if (this->frame == nullptr || view == nullptr)
+        return;
+    this->frame->scrollToView(view, animated);
+}
+
 float ScrollBox::getScrollOffset() const
 {
     if (this->direction == Axis::COLUMN)

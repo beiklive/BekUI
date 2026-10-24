@@ -1,0 +1,15 @@
+{
+  "$comment": "对话框遮罩：整屏玻璃（高斯模糊）+ 暗色染色。玻璃总开关在 Shell::setGlassEnabled，后端不可用时自动退化成半透明底。",
+  "layers": [
+    {
+      "op": "glass",
+      "id": "glass",
+      "fill": "@theme/color.dialog.backdrop"
+    }
+  ],
+  "requires": {
+    "layers": [
+      { "glass": "glass" }
+    ]
+  }
+}

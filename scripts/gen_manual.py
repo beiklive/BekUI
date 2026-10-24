@@ -410,7 +410,7 @@ def widget_tables():
 
 sections.append(('内置控件', f'''
 <p><code>widgets/</code> 按职责分六个子目录：<code>appearance/</code>（外观驱动基类与层绘制注册）、
-<code>controls/</code>（Button 家族 / 底栏与提示条）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
+<code>controls/</code>（Button 家族 / 底栏与提示条）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（<code>ScrollBox</code> / <code>Dialog</code> 对话框 / <code>ListBox</code> 列表容器）、
 <code>list/</code>（RecyclerFrame）、<code>debug/</code>（日志层 / FPS / 调试绘制）。
 外观驱动控件继承 <code>AppearanceView</code>，绘制结构与状态动效都来自主题 JSON，代码只写行为；
 语义控件（Label / Image）只认 ImDrawList 与 core 接口。下面按头文件列出全部公开类型。</p>

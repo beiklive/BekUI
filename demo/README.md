@@ -99,6 +99,21 @@ this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
 `fillLayer(view)`（把一个视图铺满某一层）和过渡宿主（`getTransitionHost()`，
 换页动画期间存在、空了自动摘）。
 
+## 对话框与列表容器
+
+「对话框」「列表容器」两个按钮演示 `ui/widgets/container/` 的两个派生容器：
+
+- `bklv::Dialog`：全屏容器 = 玻璃遮罩 + 居中面板。面板里是「图标 + 标题」表头、
+  可滚动内容区、按钮行；`addButton("取消", ...)` 的按钮外观是 `base/button/button.dialog`。
+  打开 / 关闭走 `open()` / `close()`（内部是 `App::pushOverlay` / `popOverlay`），
+  点遮罩关闭，B 键也能关（`pushOverlay` 的 `closeOnBack`）。
+- `bklv::ListBox`：只是一个纵向滚动的容器，`addItemText()` / `addItem(View*)` 往里放东西，
+  焦点移动时会把那一项滚进可视区。**高度要有界**（示例里 `setHeight(420)`），
+  否则它算不出视口高度。
+
+遮罩的高斯模糊来自玻璃层，而玻璃默认是关的（库不改变宿主观感），
+`demo_app.cpp` 启动时 `bklv::glass::getGlassService().setEnabled(true)` 打开了它。
+
 ## 底栏与提示条
 
 底栏是 `bklv::BottomBar`（`bklv/ui/widgets/controls/hint_bar.hpp`），挂在覆盖层贴底，

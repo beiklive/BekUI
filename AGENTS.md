@@ -828,6 +828,23 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   出现/消失**用 `setTranslateX` 从屏幕右侧滑**，消失时同时把自身高度收到 0，
   这样下面几条是"逐步往上挪"而不是"跳一下"。堆叠**不设上限**，各自倒计时、
   到期各自滑走，`isFinished()`（滑完 + 收完）才真正 `removeView`。
+- **两个派生容器：`Dialog` 与 `ListBox`**（`ui/widgets/container/`）：
+  都是"结构在代码、样式在 JSON"，和其它派生控件一个套路（`base/box/dialog`、`base/box/list`）。
+  - `Dialog`（`container/dialog.*`）是**全屏容器**：一个铺满的玻璃遮罩 + 一个居中的面板。
+    面板内部是 `body`（`Axis::COLUMN`）= 表头（图标 + 标题，`setIcon` / `setTitle`，都没设就 GONE）
+    + 可滚动内容区（`ScrollBox`，吃掉剩余高度）+ 按钮行（`Box(Axis::ROW)`，默认靠右，
+    `addButton()` 用的外观是 `base/button/button.dialog`，它 `import` 了 `base/button/button.text`）。
+    打开 / 关闭走 `App::pushOverlay` / `popOverlay`（模态、焦点自动回位都由输入层负责），
+    **面板尺寸由调用方决定**：默认取 `metric.dialog.width` 与 `maxHeight 85%`，`getPanel()->setWidth(...)` 可覆盖。
+    点遮罩关闭用的是 `TapGestureRecognizer` + `isPointerTarget()`（"能点"不等于"能当焦点"）。
+  - 遮罩的模糊来自**玻璃层**（`base/box/dialog_backdrop.json` 里一条 `op: "glass"`），
+    而 `GlassService` 默认是**关**的（库不主动改变宿主观感）：宿主 `setEnabled(true)` 才有真模糊，
+    否则这一层退化成半透明底（不会消失）。demo 在启动时打开了它。
+  - `ListBox`（`container/list_box.*`）**只是个容器**：`ScrollBox(Axis::COLUMN)` + 内容盒，
+    滚动条由 `ScrollingFrame` 用代码画。它只管三件事：纵向滚动、焦点进列表时 `scrollToView`、
+    空列表提示（`setEmptyText`）。**高度必须有界**（父容器给，或自己 `setHeight`）——
+    高度不定时算不出视口高度，会退化成一个点（踩过）。上千条要分页 / 复用就直接用
+    `RecyclerFrame`（`ui/widgets/list/`），不要拿 `ListBox` 硬堆。
   卡片底色走 `color.notification.background`、文字走 `color.notification.text`，
   **两者要成对改**（改成浅色卡片却留着白字，就是白底白字看不见，踩过）。
 - **底栏/页头 `setShrink(0)`**：内容区要的比剩下的多时，该被压缩的是内容区（它会滚动），
@@ -1145,7 +1162,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
     widgets/        外观驱动的控件
       appearance/   appearance_view / appearance_children / widget_types（JSON 视图类型注册）
       basic/        label / image / padding / progress_spinner
-      container/    scrolling_frame / h_scrolling_frame / scroll_box
+      container/    scrolling_frame / h_scrolling_frame / scroll_box / dialog / list_box
       controls/     button / hint_bar（BottomBar + HintBar + Hint）/ notification
       list/         recycler / json_cell / data_source / item_binder
       debug/        debug_layer / debug_log_view / fps_overlay / preset_backdrop

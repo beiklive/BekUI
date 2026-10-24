@@ -531,7 +531,9 @@ set(BKLV_CORE_SOURCES
     ui/widgets/basic/label.cpp
     ui/widgets/basic/padding.cpp
     ui/widgets/basic/progress_spinner.cpp
+    ui/widgets/container/dialog.cpp
     ui/widgets/container/h_scrolling_frame.cpp
+    ui/widgets/container/list_box.cpp
     ui/widgets/container/scroll_box.cpp
     ui/widgets/container/scrolling_frame.cpp
     ui/widgets/controls/button.cpp

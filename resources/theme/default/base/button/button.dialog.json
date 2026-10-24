@@ -1,0 +1,8 @@
+{
+  "$comment": "对话框按钮的形态：套文字按钮（base/button/button.text），只把最小宽度 / 高度改成对话框里更舒展的尺寸。",
+  "import": "base/button/button.text",
+  "box": {
+    "minWidth": "@theme/metric.dialog.buttonMinWidth",
+    "height": "@theme/metric.dialog.buttonHeight"
+  }
+}

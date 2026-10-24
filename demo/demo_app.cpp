@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "bklv/graphics/render/glass/glass_service.hpp"
 #include "bklv/ui/input/input.hpp"
 #include "bklv/ui/view/view.hpp"
 #include "page.hpp"
@@ -23,6 +24,10 @@ constexpr int kThemeCount    = static_cast<int>(sizeof(kThemes) / sizeof(kThemes
 
 DemoApp::DemoApp()
 {
+    // 玻璃（高斯模糊）默认是关的：库不主动改变宿主观感，宿主自己开。
+    // 对话框的遮罩就是一块玻璃，所以 demo 里打开它，切换主题时也能看到模糊。
+    bklv::glass::getGlassService().setEnabled(true);
+
     this->buildShell();
     this->application.setRootView(this->root);
 

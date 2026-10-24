@@ -41,6 +41,9 @@ class ScrollBox : public Box
     // 是否显示滚动条（默认显示）
     void setShowScrollingIndicator(bool show);
 
+    // 把某个子视图滚进可视区（焦点移动、新内容追加时用）。
+    void scrollToView(View* view, bool animated = true);
+
     std::string getClassString() const override { return "bklv::ScrollBox"; }
 
   private:
