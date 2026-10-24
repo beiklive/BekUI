@@ -131,8 +131,8 @@ virtual void   onWindowReleased(size_t from, size_t to) { }          // 库告�
     `const uint64_t generation = ++this->loadGeneration;`，回调第一件事就是
     `if (generation != this->loadGeneration) return;` -> **"同一个 Image 被复用后旧结果写进新内容"
     这件事已经被挡住**。⚠️ 我此前在对话里说它"只是推断、未实测"——**那是我说错了**，
-    代码里本来就有（`views/image.cpp`，发起时自增那行之下几行）。
-  · ✅ **共享纹理缓存也已经有** —— `core/graphics.cpp` 里有 `std::map<std::string, int> g_pathCache`
+    代码里本来就有（`widgets/basic/image.cpp`，发起时自增那行之下几行）。
+  · ✅ **共享纹理缓存也已经有** —— `render/graphics.cpp` 里有 `std::map<std::string, int> g_pathCache`
     （path -> 纹理下标），命中就直接复用；`initTextureStore()` 换后端时才清空。
     ⚠️ 我先前说"同一张图被多个 cell 显示就是多份，内存 ×N"——**那也是我说错了**，
     路径缓存本来就在。（这是我在这一小块里第二次凭印象说错，都记在这里备查。）
@@ -317,7 +317,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 
 #### 小步2 的实现设计（引用计数 + LRU 淘汰，定稿待实现）
 
-现状：`core/graphics.cpp` 里 `std::vector<TextureEntry> g_textures`（`handle` + `alive`）+
+现状：`render/graphics.cpp` 里 `std::vector<TextureEntry> g_textures`（`handle` + `alive`）+
 `std::map<std::string,int> g_pathCache`（路径 -> 下标）。纹理**只在 `shutdownTextureStore()`
 时统一释放**，平时只增不减（小步1 只加了账目与预算旋钮）。
 
@@ -349,7 +349,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 **没有任何并发上限、没有优先级、没有每帧配额**。
 
 **协议**：
-1. **可配置旋钮**（与 `RecyclerLoadConfig` 同风格，放 `core/graphics.hpp` 的纹理预算旁边，
+1. **可配置旋钮**（与 `RecyclerLoadConfig` 同风格，放 `render/graphics.hpp` 的纹理预算旁边，
    未来由 JSON 属性或 C++ 直接设）：
    - `maxConcurrentDecodes`（默认 4）：同时在飞的解码任务上限
    - `maxUploadsPerFrame`（默认 2）：主线程每帧最多把几个"解码完成"的结果上传成纹理
@@ -372,7 +372,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 
 ##### 2d 施工单（已定位到确切位置，照做即可）
 
-**先看清了现有所有权模型**（`views/image.cpp` 的析构注释就写着）：
+**先看清了现有所有权模型**（`widgets/basic/image.cpp` 的析构注释就写着）：
 
 | 类型 | 纹理归谁 | 现有行为 |
 |---|---|---|
@@ -382,13 +382,13 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 **结论**：2d 的引用计数**不是**为了"谁能释放"（那已经分好了），
 而是为了让缓存知道"哪张静态图正被用着、能不能淘汰" -> `refCount > 0` 不许淘汰。
 
-**接线位置（`views/image.cpp`）**：赋值 `this->texture = loaded;` 的四处 —— **270 / 291 / 328 / 341 行**。
+**接线位置（`widgets/basic/image.cpp`）**：赋值 `this->texture = loaded;` 的四处 —— **270 / 291 / 328 / 341 行**。
 - 每处：先 `releaseTexture(this->texture.index)`（换图时释放旧的；首次为无效下标 -> 安全 no-op），
   再 `this->texture = loaded;`，再 `retainTexture(loaded.index)`（**仅静态/非 owned 的路径**）
 - `releaseOwnedTexture()` 只处理 owned（**不要**在这里 release 静态图）
 - `Image::~Image()` 里：若**不是** owned 且下标有效 -> `releaseTexture(this->texture.index)`
 
-**淘汰（`core/graphics.cpp`）**：`trimTextureCache()` —— 候选 = `refCount == 0 && alive` 的 LRU
+**淘汰（`render/graphics.cpp`）**：`trimTextureCache()` —— 候选 = `refCount == 0 && alive` 的 LRU
 （按 `lastUseTick` 升序），淘汰时**同步 `g_pathCache.erase(path)`** 并释放 GPU 纹理；
 `refCount > 0` 绝不淘汰。调用时机：`Image::updateTexture()` 之后 + `setTextureBudget()` 变小后各一次。
 

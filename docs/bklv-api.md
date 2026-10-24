@@ -15,53 +15,71 @@
 
 | 文件 | 职责 |
 |---|---|
-| `core/geometry.hpp` | Point / Size / Rect 与颜色辅助 |
-| `core/theme_data.hpp/.cpp` | JSON 主题：颜色表 / 度量表 / 各控件外观 |
-| `core/time.hpp/.cpp` | `Animatable` 补间（自带实现，不依赖 tweeny） |
-| `core/font.hpp/.cpp` | 字体加载：桌面读系统字体文件；Switch 用 `pl` 服务取内置共享字体并合并 fallback 链；都没有则退回内置字体 |
-| `core/platform.hpp/.cpp` | **平台接口**：窗口、事件循环、子系统工厂、系统能力 |
-| `platforms/sdl3_platform.*` | macOS/Linux/Windows 的 SDL3 平台实现 |
-| `platforms/switch_platform.*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言） |
-| `core/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
-| `core/json_view.hpp/.cpp` | JSON 视图描述：类型注册、模板缓存、实例化、include、错误 |
-| `core/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/`（主题数值）`@theme/`（主题颜色）`@res/` 前缀 |
-| `views/json_cell.*` | JSON 模板驱动的列表项（数据绑定 + 焦点视觉） |
-| `core/appearance.hpp/.cpp` | 外观编译与运行：`AppearanceBox`（盒模型段）、layers、状态动效、缓存 |
-| `core/ui_scale.hpp/.cpp` | UI 缩放：主题尺寸按 1280x720 写，运行时按画布宽等比放大 |
-| `core/ime.hpp/.cpp` | 文本输入：平台接管（Switch swkbd）或控件自己读键盘 |
-| `widgets/appearance_view.*` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量 |
-| `widgets/button.*` | 唯一的 JSON 视图类型（`"type": "Button"`）：外观驱动 + `registerAction` 挂手柄键 |
-| `widgets/notification.*` | `App::notify()` 的通知视图（外观驱动，出现/消失状态动效） |
-| `widgets/layer_draw_*.cpp` | 六个内置层的绘制实现（rect / text / image / shadow / glass / custom） |
-
-> **2026-10 清理**：`widgets/shell.*`、`pager.*`、`header.*`、`bottom_bar.*`、`sidebar.*`、
-> `tab_frame.*`、`cell.*`、`dialog.*`、`dropdown.*`、`edit_text_dialog.*`、`slider.*`、
-> `toast.*`、`hints_bar.*`、`status_area.*`、`focus_ring_view.*` 已删除（连同主题里对应的
-> 外观 JSON）。下面提到它们的段落是对"重做时的约定"的历史记录，别当成现成 API。
-| `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
+| `geom/geometry.hpp` | Point / Size / Rect 与颜色辅助 |
+| `geom/transform.hpp` | 绘制期变换（平移 / 缩放 / 旋转 / 斜切） |
+| `paint/gradient.hpp/.cpp` | 线性/径向渐变的顶点色网格（ImDrawList 网格，三后端零改动） |
+| `paint/shadow.hpp/.cpp` | 柔化阴影（外投影 / 内阴影 / cutout 壳层网格） |
+| `paint/focus_ring.hpp/.cpp` | 焦点框形状与 LUT 采样 |
+| `anim/time.hpp/.cpp` | `Animatable` 补间与缓动（自带实现，不依赖 tweeny） |
+| `anim/transition.hpp` | 视图级转场（`ViewTransition`：入场 / 出场，绘制期变换零重排） |
+| `anim/transition_player.hpp/.cpp` | 外观 `transitions` 段的通道播放器 |
+| `json/json_util.hpp/.cpp` | JSON 读取工具：取值 / 报错 / 诊断收集 |
+| `json/json_vars.hpp/.cpp` | JSON 变量块：`@` 跨文件、`&` 同文件 |
+| `json/json_policy.hpp/.cpp` | JSON 错误策略（`STRICT` / `SKIP_FIELD` / `FALLBACK_DEFAULT`） |
+| `core/globals.hpp/.cpp` | 进程级状态登记（`getGlobalStore()`：对象槽 / 数值槽 / 重置钩子） |
 | `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
-| `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
-| `backends/opengl_backend.*` | 桌面 OpenGL 后端 |
-| `backends/vulkan_backend.*` | Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传） |
-| `backends/gles3_backend.*` | Switch 的 EGL + OpenGL ES 3 后端 |
-| `backends/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
-| `backends/gl_loader.hpp/.cpp` | 跨平台 GL 入口：macOS framework / Linux libGL 直接用原型，Windows 用运行时加载（复用 ImGui 自带的 imgl3w，不引入 glad/gl3w） |
-| `backends/gles3_loader.hpp` | Switch 的 GLES3 头 |
-| `core/image_decoder.hpp/.cpp` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |
-| `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
-| `core/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
-| `core/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
-| `core/app.hpp/.cpp` | 帧循环：ImGui 上下文、布局、绘制调度。窗口由 `Platform` 负责 |
+| `core/file_system.hpp/.cpp` | 文件读取与目录操作（平台差异集中在这里） |
 | `core/logger.hpp/.cpp` | 日志：级别过滤、时间戳、文件行号、环形缓冲（日志窗口读它） |
-| `core/input.hpp/.cpp` | 输入与焦点：hitTest、方向导航、动作注册、手柄 |
-| `views/label.hpp/.cpp` | 文本：自动换行、单行省略号、对齐、排版缓存 |
-| `views/scrolling_frame.hpp/.cpp` | 纵向滚动：惯性、拖拽、滚动条、焦点自动滚动 |
-| `views/h_scrolling_frame.hpp/.cpp` | 横向滚动 |
-| `views/recycler.hpp/.cpp` | 虚拟列表：对象池、复用、视口预取与回收 |
-| `views/image.hpp/.cpp` | 图片：四种缩放模式、圆角 |
-| `views/progress_spinner.hpp/.cpp` | 加载转圈 |
-| `widgets/hints_bar.hpp/.cpp` | 提示栏（底栏左侧内容）：按当前焦点的动作生成条目 |
-| `views/debug_log_view.hpp/.cpp` | 调试日志视图：读 `Logger` 环形缓冲、`ImDrawList` 直接画（零重排）；挂在哪由宿主决定（`Shell` 已移除） |
+| `core/task.hpp/.cpp` | 线程池与主线程延迟任务（回调带生命周期护栏约定） |
+| `core/event.hpp/.cpp` | 事件总线（RAII 订阅句柄，不用 RTTI） |
+| `core/services.hpp/.cpp` | 进程级服务登记（纹理仓库等） |
+| `core/alive.hpp` | `AliveFlag`：异步回调的生命周期护栏 |
+| `core/cache.hpp` | 通用缓存容器 |
+| `core/ui_scale.hpp/.cpp` | UI 缩放：主题尺寸按 1280x720 写，运行时按画布宽等比放大 |
+| `core/frame_budget.hpp/.cpp` | 帧预算：把可推迟的工作摊到后续帧 |
+| `core/frame_stats.hpp/.cpp` | 帧耗时统计（p50 / p99） |
+| `core/decode_queue.hpp/.cpp` | 图片解码队列（离主线程解码、按帧上限回传） |
+| `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
+| `core/platform.hpp/.cpp` | **平台接口**：窗口、事件循环、子系统工厂、系统能力 |
+| `core/frame_stats` / `core/frame_budget` | 见上（帧统计与帧预算） |
+| `theme/theme_data.hpp` + `theme/theme_parse.cpp` | JSON 主题：颜色表 / 度量表 / 外观清单 |
+| `theme/appearance*.{hpp,cpp}` | 外观编译与运行：`box` 段、`layers`、`states`、`import`、缓存 |
+| `theme/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/`（主题数值）`@theme/`（主题颜色）`@res/` 前缀 |
+| `theme/layer_registry.hpp/.cpp` | 图层类型表：能写哪些层、每层有哪些参数（`LayerType` / `LayerParam`） |
+| `theme/appearance_layer_fields.*` / `appearance_layer_meta.*` | 层的通用字段表与 op 元信息（拼写、默认 id、对齐枚举） |
+| `layer/layer_draw_*.cpp` | 六个内置层的绘制实现（rect / text / image / shadow / glass / custom） |
+| `layer/layer_register.hpp` | 第三方层的注册模板（`registerLayer<T>()`） |
+| `view/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
+| `view/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |
+| `view/json_view.hpp` + `view/view_parse.cpp` | JSON 视图描述：类型注册、模板缓存、实例化、include、错误 |
+| `view/json_data.hpp/.cpp` / `view/json_actions.hpp/.cpp` | JSON 里的数据源与动作绑定 |
+| `app/app.hpp/.cpp` | 帧循环：ImGui 上下文、布局、绘制调度。窗口由 `Platform` 负责 |
+| `app/context.hpp/.cpp` | 每上下文状态（ImGui Context / 后端 / 平台 / 输入） |
+| `media/font.hpp/.cpp` | 字体加载：桌面读系统字体文件；Switch 用 `pl` 服务取内置共享字体并合并 fallback 链 |
+| `media/icon_font.hpp/.cpp` | 图标字体：私有区码位扫描与字体选择 |
+| `media/image_decoder*.{hpp,cpp}` | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image；GIF / WebP / SVG 各一份 |
+| `media/image_writer.hpp/.cpp` | 截图 / 图片写出 |
+| `media/audio.hpp/.cpp` | 音频设备与混音（音效，不做流式播放） |
+| `media/sound_bank.hpp/.cpp` | 音效表：JSON `sound.json` + WAV 解码与缓存 |
+| `input/input.hpp/.cpp` | 输入与焦点：hitTest、方向导航、动作注册、模态栈 |
+| `input/gamepad.hpp/.cpp` | 手柄输入抽象（桌面 SDL3 / Switch libnx） |
+| `input/gesture.hpp/.cpp` | 手势识别（点击 / 拖拽 / 长按） |
+| `input/ime.hpp/.cpp` | 文本输入：平台接管（Switch swkbd）或控件自己读键盘 |
+| `render/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
+| `render/gl/opengl_backend.*` + `render/gl/gl_loader.*` | 桌面 OpenGL 后端与跨平台 GL 入口（Windows 运行时加载，复用 ImGui 的 imgl3w） |
+| `render/vk/vulkan_backend.*` | Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传） |
+| `render/gles3/gles3_backend.*` + `gles3_loader.hpp` | Switch 的 EGL + OpenGL ES 3 后端 |
+| `render/libnx/imgui_impl_libnx.*` | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |
+| `render/glass/` + `render/glass/gl|vk/` | 玻璃（背景模糊）子系统：服务 / 队列 / 模糊计划 + 两套后端实现 |
+| `platform/sdl3_*` | macOS/Linux/Windows 的 SDL3 平台实现（窗口 / 手柄） |
+| `platform/switch_*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言 + swkbd） |
+| `widgets/appearance/` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量；`widget_types.cpp` 注册 `Button` |
+| `widgets/controls/` | `Button`（唯一的 JSON 视图类型）与 `Notification`（`App::notify()` 的落点） |
+| `widgets/basic/` | `Label` / `Image` / `Padding` / `ProgressSpinner` —— 语义控件，只认 ImDrawList 与 core 接口 |
+| `widgets/container/` | `ScrollingFrame` / `HScrollingFrame` / `ScrollBox` |
+| `widgets/list/` | `RecyclerFrame` 与数据源 / JSON 列表项桥接 |
+| `widgets/debug/` | 日志层 `DebugLogView`、FPS 覆盖层、`PresetBackdrop` |
+| `widgets/view_types.cpp` | 内置视图类型的注册入口（`registerBuiltinWidgetViewTypes()`） |
 
 ## 布局（Box）
 
@@ -356,7 +374,7 @@ app.setIniPersistenceEnabled(true);
 ## 日志与调试窗口
 
 日志用 `BKLV_LOG_INFO(...)` 等宏，输出带 `文件:行号`。日志同时进控制台与
-`Logger` 的环形缓冲，界面上的调试日志视图（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染；
+`Logger` 的环形缓冲，界面上的调试日志视图（`widgets/debug/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染；
 它挂在宿主指定的调试层上（`Shell` 已移除，层级由宿主自己管），不吃输入。
 
 **不要为每条日志创建 View** —— borealis 那样做会不断触发 Yoga 重排。
@@ -445,18 +463,21 @@ root->addView(new PresetBackdrop(BackdropPreset::GRID));   // 放在内容之下
 ## 分层约定
 
 ```
-bklv/views/*               Image / Label / ScrollingFrame / RecyclerFrame
-                            只认 ImDrawList 和 ImTextureID
+bklv/widgets/*             Button / Label / Image / RecyclerFrame / 调试层
+                            只认 ImDrawList 与 view/ core/ 的接口
         ↓
-bklv/core/graphics.hpp     RenderBackend 接口 + 纹理管理
+bklv/view/*                View / Box（Yoga 布局）/ ViewTemplate
+bklv/theme/* + layer/*     外观数据模型 + 图层绘制
+        ↓
+bklv/render/graphics.hpp   RenderBackend 接口 + 纹理管理
 bklv/core/platform.hpp     Platform 接口（窗口 / 事件循环 / 系统能力）
         ↓
-bklv/backends/*            OpenGLBackend / VulkanBackend（桌面）/ GLES3Backend（Switch）
-bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）
+bklv/render/gl|vk|gles3|libnx   具体后端实现（核心玻璃在 render/glass/）
+bklv/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（libnx）
 ```
 
 **后端选择是编译期的**，没有运行时开关——后端代码、链接库、shader 版本都不同。
-选择点在 `bklv/platforms/*.cpp` 的 `createBackend()`，是几行 `#if`，
+选择点在 `bklv/platform/*.cpp` 的 `createBackend()`，是几行 `#if`，
 没有注册表、没有优先级列表。加后端的步骤见 [`notes/adding-render-backend.md`](../notes/adding-render-backend.md)。
 
 ## 学习提示

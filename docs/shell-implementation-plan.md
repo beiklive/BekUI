@@ -171,7 +171,7 @@ struct PageState {            // v2：页面级记忆
 
 ## 5. v1 审查的 5 个必修项（已并入）
 
-**5.1 焦点真相合一**（实现时已定位到具体位置）：焦点状态就在 **`bklv/core/input.hpp`** 里
+**5.1 焦点真相合一**（实现时已定位到具体位置）：焦点状态就在 **`bklv/input/input.hpp`** 里
 （`currentFocus`（:201）、`getCurrentFocus()`（:150）、`isInsideModal()`（:162）、
 `resetFocusState()`（:166））→ **不要新建一个独立的 `FocusManager` 类**，
 而是**扩展现有的这个类**（同一份状态上加跨层/记忆/循环/撞边），否则必然两套真相。
@@ -374,14 +374,14 @@ focusManager->setEdgeHitMinInterval(0.12f);
 
 | # | 现象 | 位置 |
 |---|---|---|
-| 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `core/attributes.cpp` SIZE 分支 |
+| 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `theme/attributes.cpp` SIZE 分支 |
 | 2 | 文档称视图 JSON 数字按 uiScale 缩放，实现不缩放 | `docs/json-syntax.md:21` |
 | 3 | 定位原语此前只有 JSON 键（`position`/`top`…），无 `addToCorner` 之类的语义封装 | 第 2 步已补（Shell 上） |
 
 ### v7 第 1 步收尾（实际交付与两个新发现）
 
 **实际交付**：定位原语**本来就齐全**（`position` + `top/left/right/bottom`，`view.cpp:1044-1049`），
-所以第 1 步缩水为：`EdgeInsets`（`core/geometry.hpp:44`）+ `tests/layout_primitive_test.cpp`
+所以第 1 步缩水为：`EdgeInsets`（`geom/geometry.hpp:44`）+ `tests/layout_primitive_test.cpp`
 （**53 项**：绝对定位不参与 flex、四边偏移、百分比、`alignSelf` 覆盖父、JSON 通路）+ 文档核对。
 临时加的 5 个同义键（`positionType`/`positionTop…`）**已删除**，同一件事只留一套名字。
 
@@ -404,8 +404,8 @@ focusManager->setEdgeHitMinInterval(0.12f);
 `shell_test` 断言，验证后 shell_test 应为 29 项）与 `step3-subagent-partial`（子代理早期半成品保留待查）。
 
 **子代理当前在写的文件**（本轮快照，属于第 3 步范围）：
-`views/h_scrolling_frame.{cpp,hpp}`、`views/scrolling_frame.cpp`、`widgets/appearance_view.cpp`、
-`widgets/button.hpp`、`widgets/cell.hpp` —— 正在按 borealis 的 `getParentNavigationDecision`
+`views/h_scrolling_frame.{cpp,hpp}`、`widgets/container/scrolling_frame.cpp`、`widgets/appearance/appearance_view.cpp`、
+`widgets/controls/button.hpp`、`widgets/cell.hpp` —— 正在按 borealis 的 `getParentNavigationDecision`
 导航链与 `shakeHighlight` 抖动铺开；构建错误数 115 → 20 → 11，在收敛。
 
 **工作纪律（新增，血泪）**：
@@ -525,10 +525,10 @@ bool loadFocusFor(const std::string& key);
 ### 执行者的文件范围（我在它活跃期间绝不 reset/stash/commit）
 
 ```
-bklv/core/input.hpp  bklv/core/input.cpp
-bklv/core/box.hpp    bklv/core/box.cpp
-bklv/core/view.hpp   bklv/core/view.cpp
-bklv/views/scrolling_frame.hpp
+bklv/input/input.hpp  bklv/input/input.cpp
+bklv/view/box.hpp    bklv/view/box.cpp
+bklv/view/view.hpp   bklv/view/view.cpp
+bklv/widgets/container/scrolling_frame.hpp
 tests/focus_test.cpp            ← 新建，归它
 ```
 
@@ -542,7 +542,7 @@ tests/focus_test.cpp            ← 新建，归它
 
 | 文件 | 归属 | 说明 |
 |---|---|---|
-| `core/input.{hpp,cpp}`、`core/box.{hpp,cpp}`、`core/view.{hpp,cpp}`、`views/scrolling_frame.hpp` | **b0d57e0a** | 已实现主体且编译通过 |
+| `core/input.{hpp,cpp}`、`core/box.{hpp,cpp}`、`core/view.{hpp,cpp}`、`widgets/container/scrolling_frame.hpp` | **b0d57e0a** | 已实现主体且编译通过 |
 | **`tests/focus_test.cpp`** | **013c1519** | 只写这一个文件，按附录 C4 的 10 节 |
 
 **两条禁令（避免再撞）**：
@@ -698,7 +698,7 @@ python3 scripts/check_naming.py
 
 ## v14 第 4 步剩余部分的落点（已定位，下一轮直接用）
 
-查证结果：**输入是逐帧泵** —— `InputManager::handleNavigation()`（`bklv/core/input.cpp:142`）里
+查证结果：**输入是逐帧泵** —— `InputManager::handleNavigation()`（`bklv/input/input.cpp:142`）里
 先累加 `clock += getFrameDeltaSeconds()`，再按"按住 + 边缘状态"处理方向键/手柄，
 长按重复走 `KeyRepeater`（`setRepeatDelay/setRepeatInterval`）。方法清单（grep）：
 `update`(:97)、`isKeyDownAny`(:111)、`setRepeatDelay`(:120)、`setRepeatInterval`(:131)、
@@ -1095,7 +1095,7 @@ BKLV_DEMO_SWEEP=2（快速连按）→ 转场被跳过、内容立刻可见，�
 
 ### 2. 转场：入场 / 出场分开的接口
 
-- 新增 `bklv/core/transition.hpp`：`ContentTransition` 枚举 + **`ViewTransition`** 播放器
+- 新增 `bklv/anim/transition.hpp`：`ContentTransition` 枚举 + **`ViewTransition`** 播放器
   （`playEnter(view, width)` / `playExit(view, width, onFinished)` / `step(dt)` /
   `finishNow()` / `isEntering()` / `isExiting()` / `isActive()`）。
   只做绘制期变换、不碰视图树生命周期；出场回调在**清完状态之后**才调，所以回调里可以接着入场。
@@ -1136,7 +1136,7 @@ BKLV_DEMO_SWEEP=40 + FRAMES=43 的中间帧：旧页正在向左滑出并淡出�
 
 ### 1. 日志面板：绘制做到"日志再多也不影响性能"
 
-四条约束（都写进 `views/debug_log_view.hpp` 的注释，并由 `tests/log_view_draw_test.cpp` 钉住）：
+四条约束（都写进 `widgets/debug/debug_log_view.hpp` 的注释，并由 `tests/log_view_draw_test.cpp` 钉住）：
 1. 缓存里**只存 `const LogEntry*`**（不复制日志正文、不预先拼字符串），只在
    「日志版本 / 级别过滤 / 字号 / **字体**」变化时重建；一次 `update` 里来 1000 条也只重建一次。
 2. 行高固定 → 可见起点用 **一次除法**（`scrollOffset / rowHeight`）算出来，不从头遍历。
@@ -1350,7 +1350,7 @@ demo 启动冒烟：正常起来跑若干帧后被外部结束，无崩溃
 - 评审里我建议"GIF 动图用 gifdec"；实际翻 stb 后发现 **`stbi_load_gif_from_memory()` 已经
   返回合成好的整幅帧 + 每帧延迟（毫秒）**，帧内局部矩形/透明/disposal 全在 stb 里处理完 ——
   于是 GIF 播放里最重的一块（帧合成）不用自己写，也就**不需要引入任何新库**。
-- 实现：新增 `core/image_decoder_gif.cpp`，单独实例化一份 stb（`STB_IMAGE_STATIC` +
+- 实现：新增 `media/image_decoder_gif.cpp`，单独实例化一份 stb（`STB_IMAGE_STATIC` +
   `STBI_ONLY_GIF` + `STBI_NO_STDIO`），和 `image_decoder.cpp` 里那份 stb 靠 static 避免符号冲突；
   第三方警告只在这两个 TU 里局部压掉（沿用 `image_writer.cpp` 的约定）。
 - 延迟 0/1（很多老图）按 100ms 兜底；循环次数 stb 没暴露，统一按循环处理。

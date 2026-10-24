@@ -95,8 +95,8 @@ resources/theme/
 ## 7. 相关文件
 
 ```
-bklv/core/theme_data.hpp/.cpp     主题装载、拍平、回退
-bklv/core/appearance.hpp/.cpp     外观编译 + 运行期补间（tweeny）
+bklv/theme/theme_data.hpp/.cpp     主题装载、拍平、回退
+bklv/theme/appearance.hpp/.cpp     外观编译 + 运行期补间（tweeny）
 bklv/widgets/appearance_view.*    外观驱动的控件基类（解释并绘制 layers）
 bklv/widgets/rectangle.*          纯装饰控件（示例：本身没有绘制代码）
 bklv/widgets/button.*             按钮（语义：文字/点击/禁用；外观全在 JSON）

@@ -13,9 +13,9 @@
 #include "backends/imgui_impl_sdl3.h"
 #include "backends/imgui_impl_opengl3.h"
 
-#include "bklv/backends/gl_loader.hpp"
+#include "bklv/render/gl/gl_loader.hpp"
 #include "bklv/bklv.hpp"
-#include "bklv/core/graphics.hpp"
+#include "bklv/render/graphics.hpp"
 #include "bklv/core/services.hpp"
 
 namespace

@@ -158,7 +158,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       语言名经 `canonicalLocale()` 归一，装载不依赖目录枚举（用 `$files` 清单）。
       注意：文案在控件构造时解析，切语言需显式重译已有视图（文本页有按钮演示）。
 - [ ] **手势层**
-      Switch 触摸屏的原始状态已经在 `bklv/backends/imgui_impl_libnx.cpp` 里取到了，
+      Switch 触摸屏的原始状态已经在 `bklv/render/libnx/imgui_impl_libnx.cpp` 里取到了，
       缺上层：点击 / 长按 / 滑动 / 捏合，并接入焦点系统（点选、拖拽滚动）。
 - [ ] **属性动画**
       有 `Animatable` + tweeny，但缺 borealis `animation.hpp` 那种
@@ -182,11 +182,11 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       桌面注入演示数据）+ demo 底栏可见
 - [x] Notification / Toast（`widgets/notification.*` + `App::notify`；外观状态驱动出现/消失，
       没有根视图时先排队）+ demo 设置页有"弹一条通知"入口
-- [x] View 绘制期变换（`core/transform.hpp` + `View::setScaleX/Y`、`setSkewX/Y`、`setRotate`、
+- [x] View 绘制期变换（`geom/transform.hpp` + `View::setScaleX/Y`、`setSkewX/Y`、`setRotate`、
       `setTranslateX/Y`、`Label::setFontScaleX/Y`）+ demo 变换页（对标 borealis Transform test）
 - [x] 缓动曲线补齐到 tweeny 那一套（borealis 的 `EasingFunction` 就是 tweeny 枚举）：
       quadratic/cubic/quartic/quintic/sine/circular/exponential/elastic/back/bounce 的 In/Out/InOut
-- [x] 手势（`core/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
+- [x] 手势（`input/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
       + demo 变换页支持拖动方块、轻触复位
 - [x] **P0 控件补齐**：6 个 Cell、Battery/Wireless 图标化、Notification、手势、
       View 变换（scale/rotate/skew/fontScale）、account + 对应 demo 页面
@@ -201,7 +201,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       设置页有 wireframe 开关）
 - [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +
       `Image::setImageFromFileAsync` + `loadTextureFromPixels`）
-- [x] audio（`core/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
+- [x] audio（`media/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
       Switch 的 audren 输出未接 —— 需要真机，已在文档写明）
 - [ ] **P1 核心能力**（剩余）：event 补齐
 - [x] 阴影（外观 JSON 的 `shadow` 层 + fast/smooth 档位开关；卡片/弹窗/下拉/通知/滑块把手）
@@ -346,7 +346,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 
 - [ ] **脏标记布局**
       现在 `App::frame()` 每帧无条件 `YGNodeCalculateLayout` 全树重算
-      （`bklv/core/app.cpp`，注释自认"比 borealis 保守"）。
+      （`bklv/app/app.cpp`，注释自认"比 borealis 保守"）。
       borealis 的做法是 `invalidate()` 冒泡到根时才重算。
       改法：`View` 加脏标志 + 冒泡；`App::frame()` 条件重算；
       文本变更 / 子节点增删 / Style 主题切换 / 窗口 resize / 字体换代 全部置脏；

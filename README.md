@@ -163,7 +163,7 @@ image->setImageFromFile("resources/testcard.png");
 `Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
 界面也可以用 JSON 描述（解析层在 `bklv/compile/view_parse.*`）。能用哪些类型取决于
-`bklv/widgets/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
+`bklv/widgets/appearance/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
 
 ```cpp
 bklv::View* view = bklv::createFromJSONFile("resources/views/xxx.json");  // 路径相对资源目录
@@ -220,7 +220,7 @@ dist\embed_imgui_gl.exe
   `MINGW_PREFIX` 是空的，CMake 找不到编译器；`CMakeLists.txt` 只在 `MINGW_PREFIX`
   存在时兜底，找不到就打印一句提示，不会去猜路径。用 `build.bat` 不受影响。
 - **OpenGL 是运行时加载的。** `opengl32.dll` 只导出 GL 1.1，GL 3.2 Core 的函数必须取地址，
-  `bklv/backends/gl_loader.cpp` 复用 ImGui 自带的 imgl3w 完成，不引入 glad/gl3w 之类的依赖。
+  `bklv/render/gl/gl_loader.cpp` 复用 ImGui 自带的 imgl3w 完成，不引入 glad/gl3w 之类的依赖。
 - **中文字体走系统字体**（优先微软雅黑，其次黑体、宋体），一个都找不到才退回 ImGui 内置字体，
   那时中文会显示成方块。
 - **Vulkan 的颜色格式选 UNORM，不选 sRGB**，否则整屏会发灰。细节见 `docs/bklv-api.md`
@@ -303,7 +303,7 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 包含路径不用自己加：`bklv::bklv` 会把 `bklv/` 的父目录一起带出来，所以直接写
 
 ```cpp
-#include "bklv/core/app.hpp"
+#include "bklv/app/app.hpp"
 ```
 
 `-DBKLV_GRAPHICS=gl|vk` 选图形后端；它不设默认值时会自己判成 `gl`。

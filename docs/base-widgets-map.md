@@ -131,7 +131,7 @@
 ## 4. 元素 · 文本 Label
 
 - 文案 key：`base_widgets/sec_label`
-- 控件：`Label` · 类文件：`bklv/views/label.hpp`
+- 控件：`Label` · 类文件：`bklv/widgets/basic/label.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观**：字号/颜色/换行/截断都是代码设的。
 
@@ -156,7 +156,7 @@
 ## 5. 元素 · 图片 Image
 
 - 文案 key：`base_widgets/sec_image`
-- 控件：`Image` · 类文件：`bklv/views/image.hpp`
+- 控件：`Image` · 类文件：`bklv/widgets/basic/image.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观**：资源 `resources/testcard.png`，尺寸代码设。
 
@@ -219,7 +219,7 @@
 ## 7. 元素 · 进度圈 Spinner
 
 - 文案 key：`base_widgets/sec_spinner`
-- 控件：`ProgressSpinner` · 类文件：`bklv/views/progress_spinner.hpp`
+- 控件：`ProgressSpinner` · 类文件：`bklv/widgets/basic/progress_spinner.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观 JSON**（纯视图）：颜色取主题 `color.spinner.bar`，时长/粗细是代码写的（1.2s / 2.4s）。
 
@@ -245,7 +245,7 @@
 ## 8. 按钮 · 纯文字
 
 - 文案 key：`base_widgets/sec_btn_text`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.text`
 - 备注：普通按钮：文字居中。
 
@@ -271,7 +271,7 @@
 ## 9. 按钮 · 纯图标
 
 - 文案 key：`base_widgets/sec_btn_icon`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.icon`、`base/widget/button.icon_circle`
 - 备注：两款：正方形（`icon`，48×48 + `minWidth: 0`）/ 圆形（`icon_circle`，五层 radius = `metric.radius.round`）。
 
@@ -306,7 +306,7 @@
 ## 10. 按钮 · 图标 + 文字
 
 - 文案 key：`base_widgets/sec_btn_icon_text`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.icon_text`
 - 备注：图标 + 文字：靠层的 `inset` 排队。
 
@@ -331,7 +331,7 @@
 ## 11. 按钮 · 列表（无边框）
 
 - 文案 key：`base_widgets/sec_btn_list`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.list`
 - 备注：列表按钮：`bg.stroke` 透明 + `strokeWidth: 0` 去边框，文字层 `align: left`。
 
@@ -357,7 +357,7 @@
 ## 12. 按钮 · 信息型
 
 - 文案 key：`base_widgets/sec_btn_info`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.info`
 - 备注：信息型：右侧 `info` 层文字由程序给。
 
@@ -392,7 +392,7 @@
 ## 13. 按钮 · 开关（文字）
 
 - 文案 key：`base_widgets/sec_switch_text`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.switch_text`
 - 备注：文字开关：`on` / `off` 两个外观状态。
 
@@ -427,7 +427,7 @@
 ## 14. 按钮 · 开关（图案）
 
 - 文案 key：`base_widgets/sec_switch_icon`
-- 控件：`Button` · 类文件：`bklv/widgets/button.hpp`
+- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
 - 外观：`base/widget/button.switch_icon`
 - 备注：图案开关：轨道 + 滑块，位移是 `knob.offsetX` 补间。
 

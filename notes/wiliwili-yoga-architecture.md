@@ -52,7 +52,7 @@
 
 这是整套封装最关键的决策：**没有独立的 render tree**。
 
-`library/include/borealis/core/view.hpp:231`
+`library/include/borealis/view/view.hpp:231`
 
 ```cpp
 class View
@@ -193,7 +193,7 @@ facebook::yoga::Event::subscribe([](const YGNode& node,
 ## 4. 测量（measure）：让 Yoga 知道文本有多宽
 
 Yoga 只管几何，不认字形。文本尺寸通过自定义 measure 函数注入，**measure 内部直接调 NanoVG**
-（`views/label.cpp:74`）：
+（`widgets/basic/label.cpp:74`）：
 
 ```cpp
 static YGSize labelMeasureFunc(YGNodeRef node, float width, YGMeasureMode widthMode,
@@ -314,7 +314,7 @@ float View::getX() {
   等焦点动画状态，绘制阶段统一处理。
 - **动作绑定** `View::registerAction(hint, ButtonType, listener)`（view.cpp:765）
   注册后自动出现在底部提示栏（`Hints`），不需要业务层自己画提示。
-- 手势在 `core/touch/`、`core/gesture.hpp`，`gestureRecognizerRequest` 沿父链冒泡。
+- 手势在 `core/touch/`、`input/gesture.hpp`，`gestureRecognizerRequest` 沿父链冒泡。
 
 ---
 
@@ -414,12 +414,12 @@ hit-test 与导航）、XML/theme/style（学习项目用不上）。
 
 | 文件 | 行数 | 职责 |
 |---|---|---|
-| `library/include/borealis/core/view.hpp` | 1559 | `View` 声明，Yoga 样式 API 透传、XML 属性注册宏 |
-| `library/lib/core/view.cpp` | 2590 | `View` 实现：`frame()` 绘制模板、`invalidate()`、`getX/Y()` |
-| `library/lib/core/box.cpp` | 775 | 容器：子节点增删（同步 `YGNodeInsertChild`）、绘制递归、剔除、焦点导航 |
+| `library/include/borealis/view/view.hpp` | 1559 | `View` 声明，Yoga 样式 API 透传、XML 属性注册宏 |
+| `library/lib/view/view.cpp` | 2590 | `View` 实现：`frame()` 绘制模板、`invalidate()`、`getX/Y()` |
+| `library/lib/view/box.cpp` | 775 | 容器：子节点增删（同步 `YGNodeInsertChild`）、绘制递归、剔除、焦点导航 |
 | `library/lib/core/application.cpp` | 1340 | 主循环、活动栈、`frame()` 帧管线、Yoga 全局事件订阅、窗口缩放 |
 | `library/lib/core/activity.cpp` | 188 | 页面基类、`resizeToFitWindow()` |
-| `library/lib/views/label.cpp` | 681 | 文本 measure 函数 + 截断/换行/跑马灯的完整示例 |
+| `library/lib/widgets/basic/label.cpp` | 681 | 文本 measure 函数 + 截断/换行/跑马灯的完整示例 |
 | `library/include/borealis/core/frame_context.hpp` | — | `{ vg, pixelRatio, fontStash, theme }` |
 | `library/lib/core/style.cpp` | 435 | 样式表（`brls/label/default_font_size` 等） |
 | `library/lib/core/theme.cpp` | 193 | 主题色板 |

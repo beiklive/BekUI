@@ -12,7 +12,7 @@
 ## 0. 结论摘要
 
 1. **语法是闭合的**：五类 JSON 各有唯一写法，取值域、枚举拼写、报错口径都有单一实现点
-   （`compile/json_util.*`、`compile/appearance_layer_fields.cpp`、`core/attributes.cpp`），
+   （`compile/json_util.*`、`layer/appearance_layer_fields.cpp`、`theme/attributes.cpp`），
    没有"两种写法等价但只认一种"的暗坑（`@theme/color.a.b` 写斜杠会被容错成点分并警告）。
 2. **有三处天然"开放"，决定了任何静态工具都不可能穷举**：`op: EXTENSION`（第三方在运行期注册）、
    `op: custom`（像素由 C++ 画）、`import`/`include`（一份文件 ≠ 一个完整对象）。
@@ -37,11 +37,11 @@
 
 | 前缀 | 作用域 | 例子 | 解析点 |
 |---|---|---|---|
-| `@theme/` | 跨文件（主题色/数值） | `@theme/color.accent.base`、`@theme/metric.control.height` | `compile/json_util.cpp`、`core/attributes.cpp` |
-| `@style/` | 跨文件（视图侧的数值） | `@style/metric.radius.md` | `core/attributes.cpp` |
+| `@theme/` | 跨文件（主题色/数值） | `@theme/color.accent.base`、`@theme/metric.control.height` | `json/json_util.cpp`、`theme/attributes.cpp` |
+| `@style/` | 跨文件（视图侧的数值） | `@style/metric.radius.md` | `theme/attributes.cpp` |
 | `@i18n/` | 跨文件（文案） | `@i18n/page/shadow/title` | 实例化期（模板缓存里保留原文） |
 | `@res/` | 跨文件（路径，相对 `resources/`） | `@res/img/a.png` | 使用处自己解析 |
-| `&color.` / `&number.` | **同文件** `vars` | `&color.none`、`&number.radius` | `compile/json_vars.cpp`（合并/实例化前展开） |
+| `&color.` / `&number.` | **同文件** `vars` | `&color.none`、`&number.radius` | `json/json_vars.cpp`（合并/实例化前展开） |
 | `$...` | **只用于键**（元数据） | `$comment`、`$files` | 不参与取值；i18n 装载器跳过 `$` 开头的键 |
 
 长度 / 数值写法：`12`、`"12"`、`"auto"`、`"50%"`、`@theme/metric.a.b`；`padding`/`margin` 接受
@@ -53,7 +53,7 @@
 |---|---|---|
 | `box` 字段、`layers` 的 `op`（6 种内置）、`states` 的通道名、`transitions` 的四个事件 | **闭合** | 枚举拼错有提示，未知键有警告/报错 |
 | 视图属性 | **半开** | 27 种类型各自的 `attributes()` 静态表 + 公共属性；**未知属性只警告** |
-| `op: EXTENSION` | **开放** | 第三方在运行期 `registerLayer<T>()` 注册类型 + 参数模式（`compile/layer_register.hpp`） |
+| `op: EXTENSION` | **开放** | 第三方在运行期 `registerLayer<T>()` 注册类型 + 参数模式（`layer/layer_register.hpp`） |
 | `op: custom` | **不可枚举** | JSON 只声明"这层由控件自己画"（`AppearanceView::drawCustomLayer`） |
 | `import` / `include` | **组合** | 一份文件的有效内容 = 合并/包含结果，文件本身不是完整对象 |
 | `vars` | **间接** | 值是引用还是字面量，取决于同文件 `vars` |
@@ -63,9 +63,9 @@
 
 | # | 问题 | 后果 | 位置 |
 |---|---|---|---|
-| 1 | 视图未知属性只警告 | 拼错的属性名能存能跑、静默忽略；"合法 JSON"不可判定 | `core/attributes.cpp`（既有约定） |
+| 1 | 视图未知属性只警告 | 拼错的属性名能存能跑、静默忽略；"合法 JSON"不可判定 | `theme/attributes.cpp`（既有约定） |
 | 2 | 外观对 `layers` 以外的顶层键不敏感 | `$comment` 之类可随便放；但拼错的顶层键（如 `state`）不会报错 | `Appearance::compile` 只查 `layers` 必需 |
-| 3 | `theme.json` 的 `files[]` 少了 `.json` | 该外观静默回退到空外观（有警告）；theme_test 才兜住 | `compile/theme_parse.cpp` |
+| 3 | `theme.json` 的 `files[]` 少了 `.json` | 该外观静默回退到空外观（有警告）；theme_test 才兜住 | `theme/theme_parse.cpp` |
 | 4 | `colors.json` 不支持 key 间引用 | 语义色只能写字面量；改整体配色要一起改 | 文档约定 |
 | 5 | 数值多形态 | `12` 与 `"12"` 都合法；做"原样回写"的工具必须保住原文，不能统一成 float | 解析器宽容 |
 
@@ -73,7 +73,7 @@
 
 ## 2. 代码解析
 
-### 2.1 主题装载链（`compile/theme_parse.cpp`）
+### 2.1 主题装载链（`theme/theme_parse.cpp`）
 
 ```
 themes.json            → 主题清单（名字/目录）
@@ -87,7 +87,7 @@ themes.json            → 主题清单（名字/目录）
   但 `metric.anim.*`（毫秒）与 `metric.font.lineHeight`（系数）不乘。
 - 缺项回退链：当前主题 → `default` → 空外观（警告）。
 
-### 2.2 外观编译链（`Appearance::compile`，`core/appearance.cpp:825`）
+### 2.2 外观编译链（`Appearance::compile`，`theme/appearance.cpp:825`）
 
 ```
 ① Json::parse（语法错误带行号）
@@ -110,7 +110,7 @@ themes.json            → 主题清单（名字/目录）
 缓存：`getWidgetAppearance()` 按 **`主题名/外观名`** 缓存编译结果（`appearanceCache()`），
 换主题或热重载时 `clear()`。所以同一份外观只编译一次。
 
-### 2.3 视图解析链（`compile/view_parse.cpp`）
+### 2.3 视图解析链（`view/view_parse.cpp`）
 
 **两段式**（关键设计，决定 `@i18n` 的行为）：
 
@@ -154,7 +154,7 @@ themes.json            → 主题清单（名字/目录）
 
 ## 3. 渲染
 
-### 3.1 一帧的顺序（`core/app.cpp`）
+### 3.1 一帧的顺序（`app/app.cpp`）
 
 | # | 步骤 | 关键点 |
 |---|---|---|
@@ -200,7 +200,7 @@ AppearanceView::frame → draw(drawList, x, y, w, h)
 ### 3.4 文本与图片（语义绘制在 C++）
 
 - **Label**：宽度由测量函数算、可用宽度由 Yoga 算，比较留 **0.5px 容差**（否则会把够短的中文
-  截成一个省略号、或把两字标题拆两行）。换行/截断/对齐都在 `views/label.cpp`。
+  截成一个省略号、或把两字标题拆两行）。换行/截断/对齐都在 `widgets/basic/label.cpp`。
 - **Image**：缩放模式（fit/fill/stretch）、九宫？不，按 `scaling`；动图在 `update()` 里按帧时钟
   推进、**就地 `updateTexture()`**（不重建纹理、不参与布局）；离屏不推进。
 - **图标**：两套字体（Material = 控件图标，Switch = 按键/系统图标），层可声明用哪套。
@@ -211,7 +211,7 @@ AppearanceView::frame → draw(drawList, x, y, w, h)
 |---|---|---|
 | `box.*` | `AppearanceBox`（数值已乘缩放） | `applyAppearanceBox` 写进 Yoga 节点 |
 | `layers[i].fill/stroke/radius/inset/offset/opacity` | `AppearanceLayer` 的定长字段 | `layer_draw_*` |
-| `layers[i].gradient` | `AppearanceLayer::Gradient`（不做补间） | `core/gradient.cpp` 顶点网格 |
+| `layers[i].gradient` | `AppearanceLayer::Gradient`（不做补间） | `paint/gradient.cpp` 顶点网格 |
 | `layers[i].inner/cutout` | 布尔 | `layer_draw_shadow.cpp` 选 drawSoft / drawInnerSoft |
 | `states.*` | 通道表（目标值 + 时长 + 曲线） | `AppearanceInstance` 补间 → 绘制期读值 |
 | `transitions.*` | 视图级通道 + 层内通道（delay 已折算） | `TransitionPlayer`（绘制期变换 = 零重排） |

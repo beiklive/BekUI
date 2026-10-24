@@ -135,24 +135,34 @@ CXXFLAGS=(-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -fno-rtti
 CFLAGS=(-std=c11 -O2 "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 
 # ---- 源文件 ----
-# core 与 views 全都要，按目录收集。
+# 平台无关的模块全都要，按目录收集（render 与 platform 有平台分支，单独列）。
 BKLV_SOURCES=()
+for _module in core json geom paint anim theme layer view app media input widgets; do
+    while IFS= read -r -d '' f; do
+        BKLV_SOURCES+=("$f")
+    done < <(find "${BKLV_DIR}/${_module}" -name '*.cpp' -print0 | sort -z)
+done
+
+# 玻璃子系统的跨后端部分在 render/glass/ 顶层（服务 / 队列 / 模糊计划 / 几何 / 调参），
+# 与具体图形 API 无关，两种后端都要；gl/ 与 vk/ 里的后端实现各自单独列。
 while IFS= read -r -d '' f; do
     BKLV_SOURCES+=("$f")
-done < <(find "${BKLV_DIR}/compile" "${BKLV_DIR}/core" "${BKLV_DIR}/core/glass" "${BKLV_DIR}/views" "${BKLV_DIR}/widgets" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
+done < <(find "${BKLV_DIR}/render/glass" -maxdepth 1 -name '*.cpp' -print0 | sort -z)
 
-# backends / platforms 里 Switch 只取这几个：
+# render / platform 里 Switch 只取这几个：
 # 桌面的 opengl/vulkan/sdl3 那几份不参与（文件内部也有 BKLV_SWITCH 守卫，但不必编）。
 BKLV_SOURCES+=(
-    "${BKLV_DIR}/backends/gles3_backend.cpp"
+    # 后端注册表与纹理管理（平台无关）
+    "${BKLV_DIR}/render/graphics.cpp"
+    "${BKLV_DIR}/render/gles3/gles3_backend.cpp"
     # 玻璃的 GL 后端（桌面 GL 与 Switch GLES3 共用同一份实现与着色器）
-    "${BKLV_DIR}/backends/gl_glass.cpp"
-    "${BKLV_DIR}/backends/gl_glass_procs.cpp"
-    "${BKLV_DIR}/backends/gl_glass_shaders.cpp"
-    "${BKLV_DIR}/backends/imgui_impl_libnx.cpp"
-    "${BKLV_DIR}/platforms/switch_platform.cpp"
-    "${BKLV_DIR}/platforms/switch_ime.cpp"
-    "${BKLV_DIR}/platforms/switch_gamepad.cpp"
+    "${BKLV_DIR}/render/glass/gl/gl_glass.cpp"
+    "${BKLV_DIR}/render/glass/gl/gl_glass_procs.cpp"
+    "${BKLV_DIR}/render/glass/gl/gl_glass_shaders.cpp"
+    "${BKLV_DIR}/render/libnx/imgui_impl_libnx.cpp"
+    "${BKLV_DIR}/platform/switch_platform.cpp"
+    "${BKLV_DIR}/platform/switch_ime.cpp"
+    "${BKLV_DIR}/platform/switch_gamepad.cpp"
 )
 
 IMGUI_SOURCES=(
@@ -160,7 +170,7 @@ IMGUI_SOURCES=(
     "${THIRD_DIR}/imgui/imgui_draw.cpp"
     "${THIRD_DIR}/imgui/imgui_tables.cpp"
     "${THIRD_DIR}/imgui/imgui_widgets.cpp"
-    "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp"
+    "${BKLV_DIR}/render/gl/imgui_impl_opengl3_wrapper.cpp"
 )
 
 # 宿主：examples/switch 里的全部 .cpp（现在是单文件）

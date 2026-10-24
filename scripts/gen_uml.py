@@ -241,45 +241,44 @@ class Sequence:
 # ---------------------------------------------------------------- 图 1：模块总览
 
 def diagram_packages():
-    d = Diagram("模块总览", 1520, 620)
-    d.cls("demo", "demo（示例程序）", ["三页示例：基础控件 / 图标总览 / 布局", "只用 bklv.hpp 伞头文件"],
-          x=60, y=30, w=300, kind="group")
+    d = Diagram("模块总览", 1520, 700)
+    d.cls("host", "examples/（宿主示例）", ["embed_imgui_gl / multi_context / switch", "cmake_consumer：安装后 find_package"],
+          x=60, y=30, w=360, kind="group")
     d.cls("switch", "Switch / 桌面", ["同一套上层代码，换平台实现"],
           x=740, y=30, w=240, kind="group")
 
-    d.group("lib", "bklv（BekUI）—— 库本体，自包含", 60, 140, 1400, 250,
+    d.group("lib", "bklv（BekUI）—— 库本体，自包含", 60, 140, 1400, 340,
             note="上层与图形 API 无关：示例不写任何 GL / Vulkan 代码")
-    d.cls("core", "core/", ["App / View / Box / ThemeData", "Appearance / RenderBackend / Platform",
-                            "task / event / input / ime / logger"],
-          x=90, y=190, w=290, kind="group")
-    d.cls("views", "views/", ["Label / Image / Padding / Scroll", "Recycler / DebugLogView"],
-          x=410, y=190, w=230, kind="group")
-    d.cls("widgets", "widgets/", ["AppearanceView / Button", "Notification / layer_draw_*",
-                                  "（Shell / Cell / Dialog 等已移除）"],
-          x=670, y=190, w=270, kind="group")
-    d.cls("backends", "backends/", ["RenderBackend 接口", "OpenGLBackend / VulkanBackend",
-                                    "VulkanUiPassHook（通用钩子）"],
-          x=970, y=190, w=270, kind="group")
-    d.cls("platforms", "platforms/", ["PlatformSDL（桌面）", "PlatformSwitch（devkitA64）"],
-          x=1270, y=190, w=170, kind="group")
+    d.cls("core", "core/", ["全局状态 / 资源 / 日志", "任务 / 事件 / 服务", "ui_scale / 帧预算"], x=90, y=190, w=250, kind="group")
+    d.cls("geom", "geom/ paint/ anim/ json/", ["几何 / 渐变与阴影", "缓动与转场", "JSON 工具与策略"], x=360, y=190, w=250, kind="group")
+    d.cls("media", "media/", ["字体 / 图标字体", "图片解码（PNG/GIF/WebP/SVG）", "音频与音效表"], x=630, y=190, w=250, kind="group")
+    d.cls("input", "input/", ["键盘 / 手柄 / 手势", "焦点与 IME"], x=900, y=190, w=210, kind="group")
+    d.cls("view", "view/", ["View / Box（Yoga 布局）", "ViewTemplate 两段式"], x=1130, y=190, w=310, kind="group")
 
-    d.group("third", "3rd/（全部走 git submodule，构建脚本自己编）", 60, 420, 1400, 160)
+    d.cls("theme", "theme/", ["ThemeData / Appearance", "图层类型表 + 解析"], x=90, y=340, w=250, kind="group")
+    d.cls("layer", "layer/", ["layer_draw_*（六个内置层）", "注册模板"], x=360, y=340, w=210, kind="group")
+    d.cls("app", "app/", ["App 帧循环", "Context / 通知层"], x=590, y=340, w=190, kind="group")
+    d.cls("widgets", "widgets/", ["appearance / controls / basic", "container / list / debug"], x=800, y=340, w=250, kind="group")
+    d.cls("render", "render/", ["RenderBackend 接口", "gl / vk / gles3 / libnx", "glass/{gl,vk}"], x=1070, y=340, w=210, kind="group")
+    d.cls("platform", "platform/", ["PlatformSDL", "PlatformSwitch"], x=1300, y=340, w=150, kind="group")
+
+    d.group("third", "3rd/（全部走 git submodule，构建脚本自己编）", 60, 500, 1400, 140)
     for i, (name, use) in enumerate([
             ("imgui", "GUI 与绘制"), ("yoga", "Flexbox 布局"), ("SDL", "窗口 / 输入"),
             ("stb", "PNG/JPEG/GIF"), ("webp", "WebP 可选"), ("lunasvg", "SVG 可选"),
             ("json", "JSON / i18n"), ("tweeny", "补间动画")]):
-        d.cls(f"t{i}", name, [use], x=90 + i * 168, y=470, w=152, kind="group")
+        d.cls(f"t{i}", name, [use], x=90 + i * 168, y=550, w=152, kind="group")
 
-    d.link("demo", "core", kind="depend", label="链接 bklv::bklv", b_side="t", a_side="b",
-           route=[(210, 100), (210, 190)])
-    d.link("switch", "platforms", kind="depend", b_side="t", a_side="b",
-           route=[(860, 100), (1010, 100), (1010, 190)])
+    d.link("host", "view", kind="depend", label="链接 bklv::bklv", b_side="t", a_side="b",
+           route=[(140, 100), (140, 170), (1280, 170), (1280, 190)])
+    d.link("switch", "platform", kind="depend", b_side="t", a_side="b",
+           route=[(860, 100), (1375, 100), (1375, 340)])
     d.link("core", "t6", kind="depend", dashed=True, a_side="b", b_side="t",
-           route=[(235, 410), (235, 470)])
-    d.link("backends", "t0", kind="depend", dashed=True, a_side="b", b_side="t",
-           route=[(1105, 410), (1105, 470)])
-    d.link("platforms", "t2", kind="depend", dashed=True, a_side="b", b_side="t",
-           route=[(1355, 410), (1355, 470)])
+           route=[(215, 480), (215, 550)])
+    d.link("render", "t0", kind="depend", dashed=True, a_side="b", b_side="t",
+           route=[(1175, 480), (1175, 520), (166, 520), (166, 550)])
+    d.link("platform", "t2", kind="depend", dashed=True, a_side="b", b_side="t",
+           route=[(1375, 480), (1375, 505), (502, 505), (502, 550)], label="SDL3")
     return d.svg("图 1：谁依赖谁 —— 库自包含，3rd 全部随构建一起编；上层不出现任何图形 API 代码")
 
 
@@ -621,14 +620,14 @@ def build_html(path_out):
     <h2>8 · 读代码的几个入口</h2>
     <div class="cols">
       <div><h3>想看"一帧怎么跑"</h3><ul>
-        <li><code>bklv/core/app.cpp</code> 的 <code>App::frame()</code>（布局 → update → frame → Render）</li>
-        <li><code>bklv/core/view.cpp</code> 的 <code>View::frame()</code> / <code>draw()</code></li></ul></div>
+        <li><code>bklv/app/app.cpp</code> 的 <code>App::frame()</code>（布局 → update → frame → Render）</li>
+        <li><code>bklv/view/view.cpp</code> 的 <code>View::frame()</code> / <code>draw()</code></li></ul></div>
       <div><h3>想看"控件长什么样"</h3><ul>
         <li>外观 <code>resources/theme/default/base|widget/*.json</code>（54 份）</li>
-        <li>语义绘制 <code>bklv/core/appearance.cpp</code> 的 <code>drawCustomLayer</code></li></ul></div>
+        <li>语义绘制 <code>bklv/theme/appearance.cpp</code> 的 <code>drawCustomLayer</code></li></ul></div>
       <div><h3>想看"怎么加后端 / 平台"</h3><ul>
-        <li><code>bklv/core/graphics.hpp</code>（RenderBackend 接口）</li>
-        <li><code>notes/adding-render-backend.md</code>、<code>bklv/platforms/</code></li></ul></div>
+        <li><code>bklv/render/graphics.hpp</code>（RenderBackend 接口）</li>
+        <li><code>notes/adding-render-backend.md</code>、<code>bklv/platform/</code></li></ul></div>
       <div><h3>想验收</h3><ul>
         <li><code>./scripts/check.sh</code>（2836 项）</li>
         <li>截图：<code>App::requestScreenshot()</code>（不要用系统录屏）</li></ul></div>

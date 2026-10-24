@@ -1,7 +1,7 @@
 #include "bklv/core/frame_budget.hpp"
 
 #include "bklv/core/globals.hpp"
-#include "bklv/core/time.hpp"
+#include "bklv/anim/time.hpp"
 
 namespace bklv::budget
 {

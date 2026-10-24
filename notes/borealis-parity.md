@@ -45,29 +45,29 @@
 > 顶点段实现，所以**任何控件**都能用（这是升级点）。实现细节与踩坑见下。
 | 可见性 VISIBLE/INVISIBLE/GONE | 同名 | 同名 | ✅ |
 | 动作系统 registerAction / 冒泡 | ✅ | ✅（沿父链冒泡） | ✅ |
-| 手势（tap / pan / scroll） | `core/gesture.hpp` + Tap/Pan/Scroll 识别器 | ✅ 改良 | 状态机简化成 START/STAY/END/CANCEL/SCROLL + "吃掉与否"；**识别器生命周期归 View**（`unique_ptr`，borealis 存裸指针）；纯逻辑可无窗口测 |
+| 手势（tap / pan / scroll） | `input/gesture.hpp` + Tap/Pan/Scroll 识别器 | ✅ 改良 | 状态机简化成 START/STAY/END/CANCEL/SCROLL + "吃掉与否"；**识别器生命周期归 View**（`unique_ptr`，borealis 存裸指针）；纯逻辑可无窗口测 |
 | 数据绑定 / cache_helper | `View::setId/getId/getView(id)` + `core/cache.hpp` | ✅ 改良 | `bind` 那套（`BRLS_BIND` 宏 + `BoundView`）是 **XML 时代**的产物：从 XML 建树只能按 id 找子视图。我们代码建树直接持指针，JSON 建的树用 `getView(id)` 就够，不需要宏；`cache_helper` 补成 `LruCache`（容量 + LRU + 脏标记 + `Pin` 钉住 + 命中统计），接口收成三个动作、纯数据可无窗口测 |
 
 ## 三、core 层
 
 | borealis | bklv | 状态 |
 |---|---|---|
-| application（全局单例） | `core/app.hpp`（实例） | ✅ 改良：无全局静态、模态栈、`resetFocusState()` |
-| style / theme（字符串 key 的全局表） | `core/theme_data.hpp` + `resources/theme/*.json` | ✅ 改良：JSON 主题、严格 key（写错报错不回退）、720p 缩放、可换肤 |
-| animation / time / timer | `core/time.hpp`（`Animatable` + `Ticking` + 缓动） | ✅ |
+| application（全局单例） | `app/app.hpp`（实例） | ✅ 改良：无全局静态、模态栈、`resetFocusState()` |
+| style / theme（字符串 key 的全局表） | `theme/theme_data.hpp` + `resources/theme/*.json` | ✅ 改良：JSON 主题、严格 key（写错报错不回退）、720p 缩放、可换肤 |
+| animation / time / timer | `anim/time.hpp`（`Animatable` + `Ticking` + 缓动） | ✅ |
 | i18n | `core/i18n.hpp` | ✅ |
-| ime | `core/ime.hpp` | ✅（Switch swkbd / 控件自绘） |
-| input | `core/input.hpp` + `core/gamepad.hpp` | ✅ |
+| ime | `input/ime.hpp` | ✅（Switch swkbd / 控件自绘） |
+| input | `input/input.hpp` + `input/gamepad.hpp` | ✅ |
 | logger | `core/logger.hpp` + `views/debug_log_view`（挂外壳调试层）+ `views/debug_layer`（线框） | ✅ |
 | platform / assets | `core/platform.hpp` / `core/resource.hpp` | ✅ |
-| view / box / frame_context | `core/view.hpp` / `core/box.hpp` | ✅ |
+| view / box / frame_context | `view/view.hpp` / `view/box.hpp` | ✅ |
 | activity（Activity 栈 + 转场动画） | `AppletFrame` 内容栈 + `ContentTransition` | ✅ 改良 | 内容栈等价于 Activity 栈；转场用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，不参与布局所以过渡期间零重排。borealis 的转场捆在 Activity/XML 上，我们做成 `setContentTransition(NONE/SLIDE/FADE/SLIDE_FADE)` + 时长，push/pop 对称；**pop 的回调等转场播完再执行**（和 Dialog"播完再摘"同一约定），popped 视图在转场结束时释放 |
-| audio（8 种系统音效） | `core/audio.hpp`（8 种音效，**代码合成**） | ✅ 改良 | borealis **只有 Switch 出声**（用 Nintendo 内置音效）、桌面什么都不做；我们代码合成，桌面 + Switch 同一套，且不随包带任何音频素材。Switch 的 audren 输出还没接（需要真机） |
+| audio（8 种系统音效） | `media/audio.hpp`（8 种音效，**代码合成**） | ✅ 改良 | borealis **只有 Switch 出声**（用 Nintendo 内置音效）、桌面什么都不做；我们代码合成，桌面 + Switch 同一套，且不随包带任何音频素材。Switch 的 audren 输出还没接（需要真机） |
 | **video** | — | ❌ 见"无法实现"一节 |
 | notification_manager（Toast） | `widgets/notification.*` + `App::notify` | ✅ 改良（实例而非全局单例；没根视图时排队） |
 | task / thread（异步任务、线程池） | `core/task.hpp` + `core/alive.hpp` | ✅ 改良 | borealis 的 `sync`/`async` 是同一套的两个入口：`sync(f)` 把函数排到主线程（每帧 `performSyncTasks()` 取出，还兼 `delay(ms,f)`/`cancelDelay`），`async(f)` 丢给**一个**后台线程且循环里 `retro_sleep(500)`——任务最多等 500ms、彼此串行。我们用 `task::run/runResult`（2 worker + 条件变量唤醒，无轮询延迟），`done` 由 `App::frame` pump 到主线程，等于把他们的 async+sync 合成一个 API。他们为"回调时视图可能已析构"发明的 `ASYNC_RETAIN/ASYNC_RELEASE/ASYNC_TOKEN` 三个宏，我们换成 `core/alive.hpp` 的 `AliveFlag`（弱引用护栏，无宏、可测）。他们的 `delay(ms,f)` / `cancelDelay(iter)` 也补齐了：`task::delay(ms, cb)` + `DelayHandle::cancel()`（不占线程、不每帧复制队列，fire-and-forget 可用；演示见 demo 导航页事件行的 3 秒自动复位） |
 | event（事件总线） | `core/event.hpp` + 焦点/动作内置事件 | ✅ 改良 | 按事件类型订阅（`subscribe<FocusChangedEvent>`）；**不用 typeid**（Switch 带 `-fno-rtti`），改用静态 token 取地址当 key；订阅句柄是 **RAII** 的，析构自动退订；派发期间增删订阅安全（快照语义） |
-| gesture / touch/ | `core/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
+| gesture / touch/ | `input/gesture.hpp`（Tap / Pan / Scroll） | ✅ 改良（识别器归 View 所有，`unique_ptr`） |
 | singleton / util / main | — | ➖ 工具类，不逐个对等 |
 
 ## 四、平台与渲染
@@ -219,7 +219,7 @@ scroll / pokedex / settings（popups、hos_layout、misc_layouts、misc_componen
 
 ### Padding 占位视图（本轮）
 
-borealis 有 `brls:Padding`（`core/box.hpp`）："An empty view that has auto x auto and grow=1.0
+borealis 有 `brls:Padding`（`view/box.hpp`）："An empty view that has auto x auto and grow=1.0
 to push all the next views in its box to the right (or to the bottom)"，它的 header XML 就是
 `[矩形][标题][Padding][副标题]`。**我们之前没做**（页头是用"给右侧区加 grow"绕过去的）。
 

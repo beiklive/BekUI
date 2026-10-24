@@ -19,7 +19,7 @@
 #include <functional>
 #include <string>
 
-#include "bklv/core/graphics.hpp"
+#include "bklv/render/graphics.hpp"
 
 namespace bklv
 {

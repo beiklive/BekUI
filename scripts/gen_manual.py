@@ -147,15 +147,23 @@ def run(*cmd):
 def layer_stats():
     rows = []
     for layer, purpose in [
-        ('core', '接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态'),
-        ('views', '语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView'),
-        ('widgets', '外观驱动控件：AppearanceView（外观解析 + 层绘制）/ Button / Notification'),
-        ('compile', '解析层：JSON → 视图树 / 外观 / 主题（两段式模板）'),
-        ('backends', '图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3'),
-        ('platforms', '平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME'),
+        ('core', '基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算'),
+        ('geom', '几何：Point / Rect / 变换（渐变顶点网格在 paint/）'),
+        ('paint', '绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT'),
+        ('anim', '动画：缓动、补间、视图转场'),
+        ('json', 'JSON 工具：变量展开（& 与 @）、错误策略、诊断'),
+        ('theme', '外观与主题：ThemeData、Appearance 解析、图层类型表'),
+        ('layer', '图层绘制：六个内置层的绘制实现与注册模板'),
+        ('view', '视图：View / Box（Yoga 布局）/ ViewTemplate 两段式'),
+        ('app', '应用：App 帧循环、Context、通知层'),
+        ('media', '媒体：字体与图标字体、图片解码、音频与音效'),
+        ('input', '输入：键盘 / 手柄 / 手势、焦点、IME'),
+        ('render', '渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）'),
+        ('platform', '平台实现：SDL3（桌面三平台）/ libnx（Switch）'),
+        ('widgets', '控件：AppearanceView / Button / Notification / Label / 列表 / 调试层'),
     ]:
-        cpp = len(list((ROOT / 'bklv' / layer).glob('*.cpp')))
-        hpp = len(list((ROOT / 'bklv' / layer).glob('*.hpp')))
+        cpp = len(list((ROOT / 'bklv' / layer).rglob('*.cpp')))
+        hpp = len(list((ROOT / 'bklv' / layer).rglob('*.hpp')))
         rows.append((layer, cpp, hpp, purpose))
     return rows
 
@@ -192,7 +200,7 @@ def header_classes(layer):
 def view_types():
     """JSON 里能写的 "type"：内置 + 控件层。"""
     names = []
-    for rel in ('bklv/compile/view_parse.cpp', 'bklv/widgets/widget_types.cpp'):
+    for rel in ('bklv/view/view_parse.cpp', 'bklv/widgets/appearance/widget_types.cpp'):
         text = (ROOT / rel).read_text(encoding='utf-8', errors='ignore')
         for m in re.finditer(r'registerViewType\("([^"]+)"', text):
             if m.group(1) not in names:
@@ -252,8 +260,8 @@ commit = run('git', 'rev-parse', '--short', 'HEAD')
 sections = []
 
 # 1 概览
-counts = {d: len(list((ROOT / 'bklv' / d).glob('*.cpp'))) + len(list((ROOT / 'bklv' / d).glob('*.hpp')))
-          for d in ('core', 'views', 'widgets', 'compile', 'backends', 'platforms')}
+counts = {d: len(list((ROOT / 'bklv' / d).rglob('*.cpp'))) + len(list((ROOT / 'bklv' / d).rglob('*.hpp')))
+          for d in ('core', 'geom', 'paint', 'anim', 'json', 'theme', 'layer', 'view', 'app', 'media', 'input', 'render', 'platform', 'widgets')}
 sections.append(('概览', f'''
 <p><b>bklv</b> 是一个跨平台 C++17 界面库：<b>Yoga 算 Flexbox 布局</b>，<b>ImGui 的 ImDrawList 负责绘制</b>。
 目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一组示例程序（<code>examples/</code>）。</p>
@@ -274,7 +282,20 @@ sections.append(('概览', f'''
 <h3>仓库结构</h3>
 <pre><code>bklv/                库本体（自包含：代码 + 3rd/ + 自己的 CMakeLists.txt）
   bklv.hpp           伞头：常用类型一次引入（示例只 include 它）
-  core/  views/  widgets/  compile/  backends/  platforms/
+  core/   基础机制（全局状态 / 资源 / 日志 / 任务 / 事件 / UI 缩放）
+  geom/   几何：Point / Rect / 变换
+  paint/  绘制效果：渐变网格 / 柔化阴影 / 焦点框
+  anim/   动画：缓动 / 补间 / 视图转场
+  json/   JSON 工具：变量展开 / 错误策略
+  theme/  外观与主题：ThemeData / Appearance / 图层类型表
+  layer/  图层绘制：layer_draw_* + 注册模板
+  view/   视图：View / Box（Yoga 布局）/ ViewTemplate
+  app/    应用：App 帧循环 / Context
+  media/  媒体：字体 / 图片解码 / 音频
+  input/  输入：键盘 / 手柄 / 手势 / IME
+  render/ 渲染：接口 + gl / vk / gles3 / libnx（+ glass/）
+  platform/ 平台实现：SDL3 / libnx
+  widgets/  控件：appearance/ basic/ container/ controls/ list/ debug/
 examples/            宿主示例（embed_imgui_gl / multi_context / switch / cmake_consumer）
 
 resources/theme/     主题 JSON（default / glass）
@@ -296,23 +317,28 @@ sections.append(('分层架构', f'''
 </table>
 
 <h3>允许的依赖方向</h3>
-<pre><code>widgets   → views / core / compile     （视图与外观驱动的控件在下游）
-views     → core                       （语义控件只认 ImDrawList 与 core 接口）
-compile   → core                       （解析实现用到 core 的数据类型）
-backends  → core                       （后端实现 core 的接口，含 core/glass）
-platforms → core / backends            （平台创建并持有后端）
-core      → platforms                  （工厂：方向由"编译期裁剪 + 工厂"反转，属预期）
-任何一层  → 3rd                        （第三方是叶子）</code></pre>
+<pre><code>core / geom / json                     （最底层：不认识上层任何东西）
+anim / media / paint / render / input  → core, geom, json
+theme                                  → core, geom, json, anim, media
+layer                                  → core, theme（层绘制只认 theme 的图层表与绘制上下文）
+view                                   → core, geom, anim, theme, media, input
+app                                    → core, view, theme, media, input, render, widgets（组合根）
+platform                               → core, input, render（创建并持有后端）
+widgets                                → 除 platform / render 之外的所有层
+任何一层                               → 3rd（第三方是叶子）</code></pre>
 
-<p>禁止的方向：<code>core → widgets / views / compile / backends</code>、<code>compile → views / widgets</code>、
-<code>views → widgets</code>。存量的 4 条反向依赖记在 <code>check_layers.py</code> 的 BASELINE 里（白名单必须精确：
-消解一条就要删一行，脚本会报"白名单已过期"）。</p>
+<p>禁止的方向（<code>scripts/check_layers.py</code> 逐对检查）：<code>core</code> 不许碰 <code>theme / layer / view / app / widgets</code>；
+<code>json / media / render</code> 同上；<code>theme</code> 不许碰 <code>view / app / widgets</code>；
+<code>layer</code> 不许碰 <code>view / app / widgets</code>；<code>view</code> 不许碰 <code>app / widgets</code>；
+<code>platform</code> 不许碰 <code>theme / layer / view / widgets</code>。存量 4 条反向依赖记在 BASELINE 里
+（白名单必须精确：消解一条就要删一行，脚本会报"白名单已过期"）。</p>
 
 <h3>两条机械门禁</h3>
 <ul>
 <li><code>python3 scripts/check_naming.py</code> —— 枚举值 UPPER_SNAKE、类型 PascalCase、方法/自由函数 camelCase、布尔开关 <code>set&lt;名词&gt;Enabled</code>、状态查询 <code>is*/has*/can*</code>。</li>
 <li><code>python3 scripts/check_layers.py</code> —— 禁止新增反向依赖；另外查<b>伞头可达范围</b>：
-<code>bklv/bklv.hpp</code> 顺着 include 不许碰到 <code>backends/</code> / <code>platforms/</code> 或 <code>&lt;vulkan/vulkan.h&gt;</code>。</li>
+<code>bklv/bklv.hpp</code> 顺着 include 不许碰到具体后端（<code>render/vk/</code>、<code>render/gl/</code>、
+<code>render/gles3/</code>、<code>render/libnx/</code>、<code>render/glass/{{gl,vk}}/</code>）、<code>platform/</code> 或 <code>&lt;vulkan/vulkan.h&gt;</code>。</li>
 </ul>
 
 <h3>全局状态（core/globals.hpp）</h3>
@@ -345,10 +371,10 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 
 #include "bklv/bklv.hpp"
 auto* app = new bklv::App();
-app->setRootView(new bklv::Shell());
+app->setRootView(new bklv::Box(bklv::Axis::COLUMN));
 app->run("我的应用", 1280, 720);</code></pre>
 <p>包含路径不用自己加：<code>bklv::bklv</code> 会把 <code>bklv/</code> 的父目录带出来，所以直接写
-<code>#include "bklv/core/app.hpp"</code>。图形后端是编译期决定的（<code>-DBKLV_GRAPHICS=gl|vk</code>）。</p>
+<code>#include "bklv/app/app.hpp"</code>。图形后端是编译期决定的（<code>-DBKLV_GRAPHICS=gl|vk</code>）。</p>
 '''))
 
 # 4 接口速查（docs/bklv-api.md）
@@ -357,7 +383,12 @@ sections.append(('接口速查', R.render(md_api)))
 # 5 内置控件
 def widget_tables():
     out = []
-    for layer, title in (('views', '语义控件（views/）'), ('widgets', '外观驱动控件（widgets/）')):
+    for layer, title in (('widgets/appearance', '外观驱动控件（widgets/appearance/）'),
+                         ('widgets/controls', '标准控件（widgets/controls/）'),
+                         ('widgets/basic', '基础件（widgets/basic/）'),
+                         ('widgets/container', '容器（widgets/container/）'),
+                         ('widgets/list', '列表（widgets/list/）'),
+                         ('widgets/debug', '调试视图（widgets/debug/）')):
         rows = ''.join(
             f'<tr><td><code>{html.escape(cls)}</code>{(" <span class=muted>" + html.escape(rest) + "</span>") if rest else ""}</td>'
             f'<td><code>{html.escape(file)}</code></td>'
@@ -373,9 +404,11 @@ def widget_tables():
 
 
 sections.append(('内置控件', f'''
-<p>控件分两类：<code>views/</code> 是<b>语义控件</b>（只认 ImDrawList 与 core 接口，语义直白）；
-<code>widgets/</code> 是<b>外观驱动控件</b>（继承 <code>AppearanceView</code>，绘制结构、状态动效都来自主题 JSON，
-代码只写行为）。下面按头文件列出全部公开类型。</p>
+<p><code>widgets/</code> 按职责分六个子目录：<code>appearance/</code>（外观驱动基类与层绘制注册）、
+<code>controls/</code>（Button）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
+<code>list/</code>（RecyclerFrame）、<code>debug/</code>（日志层 / FPS / 调试绘制）。
+外观驱动控件继承 <code>AppearanceView</code>，绘制结构与状态动效都来自主题 JSON，代码只写行为；
+语义控件（Label / Image）只认 ImDrawList 与 core 接口。下面按头文件列出全部公开类型。</p>
 {widget_tables()}
 
 <h3>几个常用控件的要点</h3>
@@ -390,8 +423,8 @@ sections.append(('内置控件', f'''
 <tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
 <tr><td><code>Button</code></td><td>目前唯一注册进 JSON 视图类型的控件（<code>"type": "Button"</code>）；<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
 <tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
-<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（在 <code>views/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
-<tr><td><code>Box</code> / <code>Label</code></td><td>布局容器与文字分别在 <code>core/box.*</code>、<code>views/label.*</code> —— 它们是基础件，不在 <code>widgets/</code> 里。</td></tr>
+<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（<code>widgets/list/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
+<tr><td><code>Box</code> / <code>Label</code></td><td>布局容器在 <code>view/box.*</code>（与 Yoga 一起），文字在 <code>widgets/basic/label.*</code>。</td></tr>
 </tbody>
 </table>
 '''))

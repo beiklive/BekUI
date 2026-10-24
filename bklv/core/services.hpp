@@ -13,8 +13,8 @@
 #include <string>
 #include <vector>
 
-#include "bklv/core/audio.hpp"
-#include "bklv/core/ime.hpp"
+#include "bklv/media/audio.hpp"
+#include "bklv/input/ime.hpp"
 
 namespace bklv
 {

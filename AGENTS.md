@@ -149,7 +149,7 @@ Windows 上有几条平台约定，改相关代码时要留意：
 - CMake 里的平台判定不能只看 `WIN32`：在 MSYS 终端里 `CMAKE_SYSTEM_NAME` 是 `MSYS`
   而 `WIN32` 为空。需要跨平台分支时用 `WIN32`，需要区分 MSYS 用 `CMAKE_SYSTEM_NAME`。
 - `opengl32.dll` 只导出 GL 1.1，GL 3.2 Core 的函数必须在 `loadGLFunctions()`
-  里运行时取地址（`bklv/backends/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
+  里运行时取地址（`bklv/render/gl/gl_loader.cpp`，复用 ImGui 自带的 imgl3w）。
   **任何在 GL 上下文就绪后直接调 `gl*` 的地方，都要先确保它被调用过。**
 - 不要在 `REM` 行里写右括号：cmd 会把它当成语句块结束，让后面的命令被吞掉。
 - JSON 用 `bklv/3rd/json`（nlohmann/json **v3.11.3**）。**不要降到 v3.11.2**：
@@ -163,14 +163,14 @@ Windows 上有几条平台约定，改相关代码时要留意：
   （参数能解析，但同时给 `--romfs` 与 `--romfsdir` 会报冲突；而只用 `--romfsdir`
   时产物与不带参数逐字节相同，NRO 里既无 ASET 段也无 IVFC）。必须两步：
   `build_romfs <dir> <img>` 再 `elf2nro ... --romfs=<img>`。
-- 中文字体各平台拿法不同（`bklv/core/font.cpp`），别只写 macOS 的系统字体路径：
+- 中文字体各平台拿法不同（`bklv/media/font.cpp`），别只写 macOS 的系统字体路径：
   桌面读系统字体文件；**Switch 上没有可读的系统字体目录**，要用 `pl` 系统服务
   （`plInitialize(PlServiceType_User)` + `plGetSharedFontByType`）拿内置共享字体，
   再把 Standard / 简中扩展 / 繁中 / 韩文合并成 fallback 链。
   注意 `AddFontFromMemoryTTF` 默认接管内存所有权，共享内存必须设
   `FontDataOwnedByAtlas = false`，否则销毁图集时会 free 掉系统内存。
 
-Vulkan 后端（`bklv/backends/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
+Vulkan 后端（`bklv/render/vk/vulkan_backend.cpp`）有几条不好从代码一眼看出的约定：
 
 - `appInfo.apiVersion` 与 `ImGui_ImplVulkan_InitInfo::ApiVersion` **不要写
   `VK_API_VERSION_1_0`**：实例请求的版本决定 loader 能返回哪些 core 函数名，
@@ -245,7 +245,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ③ **属性表按类静态**：新控件要支持 JSON 就重写 `attributes()` 返回自己的静态表，
      handler 写成不捕获的 lambda 或普通函数（会转成函数指针）；公共属性在 `view.cpp` 里。
   结构错误返回 `nullptr` + 日志，未知属性只警告（带拼错提示）。上限：深度 32 / 节点 4096 / include 栈 32。
-- **Label 的宽度比较都留了 0.5px 容差**（`views/label.cpp`）：文本宽度由测量函数算、
+- **Label 的宽度比较都留了 0.5px 容差**（`widgets/basic/label.cpp`）：文本宽度由测量函数算、
   可用宽度由 Yoga 算，父容器又常把子节点定成"恰好等于文字宽度"。不留容差时：
   ① 单行截断会把够短的文字截成一个省略号（tab 标题踩过：中文全变 `…`，ASCII 反而正常）；
   ② 多行换行会把"两个字一行"的标题拆成两行（侧栏标题"导航"踩过）。
@@ -287,7 +287,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （带一条警告提示正确写法），
   **但真正不存在的 key 仍然编译失败**（不静默回退成洋红）—— 改主题后要逐个编译
   两套主题的全部外观兜底。
-- **布局是延迟的，一帧最多算一次**（`core/view.cpp` 的 `invalidate()` + `core/app.cpp`）：
+- **布局是延迟的，一帧最多算一次**（`view/view.cpp` 的 `invalidate()` + `app/app.cpp`）：
   `invalidate()` 只冒泡到根标记"要重算"，真正那一次由 `App::frame` 做。三个触发条件：
   画布尺寸变了 / 首帧 / 有人 invalidate 过。
   这样静态页面每秒 0 次布局（以前 60 次），回收列表 1 次/帧（以前十几个 cell
@@ -345,7 +345,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   踩过的坑：外观 JSON 里写了 `radius`，代码里 `setCornerRadius(60)` 就完全不起作用
   （想画圆形头像，画出来是圆角方块）。
 - **`update()` 路径不许读 `ImGui::GetIO()`**：无窗口（测试）时没有 ImGui 上下文会直接空指针。
-  时间统一用 `core/time.hpp` 的 `getFrameDeltaSeconds()`；确实需要鼠标状态的地方
+  时间统一用 `anim/time.hpp` 的 `getFrameDeltaSeconds()`；确实需要鼠标状态的地方
   用 `ImGui::GetCurrentContext() != nullptr` 判一下再取（`ScrollingFrame`/`HScrollingFrame` 就是这么做的）。
   这个坑在 `Animatable`、`ScrollingFrame`、`ProgressSpinner` 上先后踩过三次。
 - **回收列表可以分段**（`views/recycler.*`）：单段只重写 `getItemCount()`；
@@ -508,7 +508,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **裸 `AppearanceView` 也会在构造时 `applyTheme()`**：不这么做的话，
   直接 `new AppearanceView("xxx")` 的地方会拿到空外观，一笔都画不出来
   （EditTextDialog 的遮罩/面板踩过：结构对、颜色对，就是什么都不显示）。
-- **转场：入场 / 出场分开**（`core/transition.hpp` 的 `ViewTransition`，
+- **转场：入场 / 出场分开**（`anim/transition.hpp` 的 `ViewTransition`，
   `widgets/shell.*` 的内容栈与 `widgets/pager.*` 的同级换页共用它）。
   入场 = 新页面板从右滑入 + 淡入；出场 = 旧页面板向左滑出 + 淡出。两段都是**绘制期变换**
   （`setTranslateX`/`setAlpha`，`View::frame` 会把整棵子树一起变）→ 过渡期间**零重排**。
@@ -539,7 +539,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `ActionTriggeredEvent`。
   **不许用 `typeid`/`std::type_index`**（Switch 带 `-fno-rtti`）——总线内部用
   "每个事件类型一个静态 token，取地址当 key"；派发期间增删订阅按快照处理。
-- **弹层与模态输入**（`core/input.cpp` 的模态栈 + `core/app.cpp` 的 `pushOverlay`）：
+- **弹层与模态输入**（`input/input.cpp` 的模态栈 + `app/app.cpp` 的 `pushOverlay`）：
   `App::pushOverlay(view)` 把弹层挂到根视图最上层并切模态；`popOverlay` 摘下并恢复焦点。
   三条：
   ① **模态生效时指针命中从模态根开始**（点到外面等于点空白，不穿透），
@@ -548,13 +548,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      根视图一删里面的指针就是野指针，之后的导航/命中会踩崩（测试里踩过）。
   ③ **关掉弹层要等动效播完再摘**：摘掉就脱离视图树，`update()` 不再跑，
      关闭动效根本播不出来。Dialog 是"先切状态、播完再 popOverlay"。
-- **状态动效的取消要撤掉旧补间**（`core/appearance.cpp` 的 `setState`）：
+- **状态动效的取消要撤掉旧补间**（`theme/appearance.cpp` 的 `setState`）：
   重算目标时**先撤该通道正在跑的补间，再决定要不要建新的**。
   不能等"目标与当前值不同"才撤——刚打开又马上关掉时当前值还等于初值，
   旧补间会被漏掉、继续往旧目标跑（弹窗面板整块补到透明就是这么来的）。
 - 不生成 `imgui.ini`：绘制全在 viewport 绘制列表上，`io.IniFilename` 置空
 - 日志用 `BKLV_LOG_INFO(...)` 等宏（带 文件:行号）。日志同时进控制台与
-  `Logger` 的环形缓冲，界面上的日志窗口（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染。
+  `Logger` 的环形缓冲，界面上的日志窗口（`widgets/debug/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染。
   它**是视图树里的 View**（挂在外壳的调试层 `Shell::getDebugLayer()` 上，在 HudLayer 之上、
   永远最后绘制），直接用 `ImDrawList` 画文本、**不为每条日志建视图**，所以日志再多也不重排。
   **不要**为每条日志创建 View —— borealis 那样做会不断触发 Yoga 重排。
@@ -567,7 +567,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   实测：30 条与 1000 条日志的顶点数/命令数**完全相同**（162/3），一帧约 2 微秒。
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）。
   日志窗口本身已经是视图（`DebugLogView`）；这条路留给"需要自己的 ImGui 面板"的宿主。
-- **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
+- **按键重复（长按连续移动）**：`input/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
   按住则等 `repeatDelay`（默认 250ms）后每 `repeatInterval`（默认 100ms）一次，
   和 borealis 的 `BUTTOM_REPEAT_TRIGGER` / `BUTTON_REPEAT_DELAY` 一致。
   时间来自 `getFrameDeltaSeconds()` 累加，键盘/手柄/各平台共用一套，不用平台 API；
@@ -654,7 +654,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      四角由圆角矩形 SDF 保证**等宽内缩**，不是"到最近边的距离"（后者四角会叠得更黑）。
   ④ **实现是逐顶点算 alpha 的网格**（不是描边）：`PathStroke` 一个路径只有一个颜色，
      而内阴影的 alpha 要按"离轮廓多远"逐点算（圆角上各点不同、直边上相同）。
-     顶点 alpha 用圆角矩形 SDF 精确算、圈间线性插值（和 `core/gradient.cpp` 的网格同套路），
+     顶点 alpha 用圆角矩形 SDF 精确算、圈间线性插值（和 `paint/gradient.cpp` 的网格同套路），
      所以它天然待在形状内部、不需要裁剪（ImGui 的裁剪只有矩形，圆角处会漏）。
 - **自己建 `ImDrawList` 画东西就要用真 ImGui 上下文**，三件事缺一不可（三个坑都踩过）：
   ① `ImGui::CreateContext()` 要有；
@@ -868,7 +868,7 @@ bklv::compile::registerLayer<StripeLayer>();
    与内置层同一条约定。取参数用 `numberParam(ctx, "名字")` / `enumParam(ctx, "名字")` 这类
    按名字的访问器，别自己记下标（参数名就是契约）。
    **参数补间目前没有**（补间通道是固定的 `AppearanceProp` 枚举），所以"要动起来"的层得自己算：
-   时间用 `core/time.hpp` 的 `getSecondsNow()`（单调、无窗口安全），随机用纯哈希/值噪声
+   时间用 `anim/time.hpp` 的 `getSecondsNow()`（单调、无窗口安全），随机用纯哈希/值噪声
    （同输入同输出，可测）—— 下面「扩展图层类型」一节的样例就是这么算的。
    别用 `ImGui::GetTime()`：无窗口时会踩空（见上面"update() 路径不许读 GetIO"那条）。
    自己算出来的位移最好再夹一次边界（`gain` 这类"乘在后面的系数"能绕过前面的夹取）。
@@ -882,26 +882,37 @@ bklv::compile::registerLayer<StripeLayer>();
 
 ## 分层依赖方向
 
-`core` / `views` / `widgets` / `compile` / `backends` / `platforms` **全部编进同一个
-OBJECT 库、共用一个 include 根**，所以"分层"是目录约定而不是编译单元边界 ——
-编译器不会因为 `core/app.cpp` 反向 include 了 `widgets/` 而报错。
+所有模块**编进同一个 OBJECT 库、共用一个 include 根**，所以"分层"是目录约定而不是
+编译单元边界 —— 编译器不会因为 `app/app.cpp` 反向 include 了 `widgets/` 而报错。
 可执行检查：`python3 scripts/check_layers.py`（有新增反向依赖时退出码 1，`--list` 看全量）。
 
-**层 = `bklv/` 下的第一级目录**，一共六个（`core` 里的 `glass/` 是 core 的子系统，
-不是独立一层 —— 脚本按第一级目录归类，所以 `core/glass/*` 算 core）：
+**层 = `bklv/` 下的第一级目录**，一共十四层（`render/glass/` 是 render 的子系统，
+不是独立一层 —— 脚本按第一级目录归类）：
 
 ```
-core    → widgets / views / compile
-compile → views / widgets
-views   → widgets
+底层基础设施   core（生命周期/事件/日志/资源/任务/服务/平台抽象）
+               geom（几何与颜色换算）      json（JSON 读取、变量块、错误策略）
+能力层         anim（时间/缓动/过渡）      media（字体/图标/图片/音频）
+               render（图形接口 + GL/VK/GLES3/libnx 后端 + glass 子系统）
+               paint（渐变/投影/焦点框）    input（键盘/手柄/手势/输入法）
+领域层         theme（外观数据模型与解析，层类型表 layer_registry 也在这里）
+               layer（层绘制实现与注册模板）
+视图层         view（View / Box / 视图树 / JSON 视图）
+应用与适配层   app（App / Context）        platform（SDL3、Switch 宿主适配）
+控件层         widgets（外观驱动控件、基础件、容器、列表、调试覆盖层）
 ```
 
-允许的方向：`widgets → views/core/compile`、`views → core`、`compile → core`、
-`backends → core`（含 `core/glass/`：后端实现玻璃的抽象接口）、`platforms → core/backends`、
-`core → platforms`（工厂：方向由「编译期裁剪 + 工厂」反转，属预期）、任何一层 → `3rd`。
-脚本另外还查一条**伞头可达范围**：`bklv/bklv.hpp` 顺着 include 不许碰到
-`backends/` / `platforms/` 或 `<vulkan/vulkan.h>`（曾经 GlassService 直接 include
-`vk_glass.hpp`，于是每个包含伞头的翻译单元都被拖进 Vulkan 头）。
+被禁止的方向逐条列在 `scripts/check_layers.py` 的 `FORBIDDEN` 里，摘几条最容易踩的：
+基础机制（core/geom/json）不许认识外观、视图树与控件；渲染后端不许认识外观与视图；
+外观解析不许认识视图树（现存两处已记进 `BASELINE`）；视图层不许认识 `app/` 与 `widgets/`。
+
+允许的"上行"依赖是刻意保留的**依赖倒置**，不是"底层可以随便 include 上层"：
+`core/platform.hpp` 声明 `RenderBackend*`（图形接口由平台注入）、`core/services.hpp` 汇总
+宿主可替换的音频/输入服务、`core/frame_budget.cpp` 用 `anim/time.hpp` 的帧时钟、
+`core/platform.cpp` 是平台工厂（方向由「编译期裁剪 + 工厂」反转）。
+脚本另外还查一条**伞头可达范围**：`bklv/bklv.hpp` 顺着 include 不许碰到具体后端目录
+（`render/gl|vk|gles3|libnx`、`render/glass/gl|vk`）、`platform/` 或 `<vulkan/vulkan.h>`
+（曾经 GlassService 直接 include `vk_glass.hpp`，于是每个包含伞头的翻译单元都被拖进 Vulkan 头）。
 
 三条约定：
 
@@ -909,7 +920,7 @@ views   → widgets
    `App::App()` 调 `registerWidgetViewTypes()`（注册表在 core、类型在 widgets）就是标准写法；
    `platforms/*.cpp` 的 `createBackend()` 是工厂式反转。
    两个"曾经违规、现已收口"的范例，改的时候照着走：
-   · 液态玻璃：core 只认 `core/glass/glass_backend.hpp` 的纯虚接口，GL / Vulkan 的实现
+   · 液态玻璃：core 只认 `render/glass/glass_backend.hpp` 的纯虚接口，GL / Vulkan 的实现
      分别由 `OpenGLBackend` / `GLES3Backend` / `VulkanBackend` 持有，`App::run` 用
      `RenderBackend::getGlassBackend()` 转交给服务（`setBackend`，非拥有指针，退出前摘掉）。
    · 视图类型注册：注册表在 core，具体类型在 widgets，由 `App` 组合根注册。
@@ -1047,15 +1058,32 @@ vendored 的 submodule（SDL3 / Yoga / imgui / webp / lunasvg）按自己的 `-W
 
 ```
 bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
-  bklv.hpp          伞头文件：常用类型一次引入（示例只用它）
-  core/             接口层：view / box / app / platform / graphics / input / ...
-  core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
-  views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
-  widgets/          外观驱动的控件（清理后只剩基础件）：appearance_view / appearance_children
-                    / button（唯一注册进 JSON 视图类型的控件）/ notification
-                    / layer_draw_{custom,glass,image,rect,shadow,text}
-  backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
-  platforms/        平台实现：sdl3 / switch
+  bklv.hpp          伞头文件：常用类型一次引入（示例只用它；按模块分段）
+  app/              组合根与上下文：app.cpp（帧循环/主题/弹层）、context.*
+  core/             基础机制：alive / cache / event / globals / logger / services / resource
+                    / file_system / task / frame_budget / frame_stats / decode_queue
+                    / ui_scale（主题按 720p 写、运行时等比放大）/ i18n / platform.*（平台抽象）
+  geom/             几何与颜色换算：geometry / transform
+  json/             JSON 读取工具：json_util（取值/错误）/ json_vars（变量块）/ json_policy
+  anim/             时间源、缓动、过渡与补间：time / transition / transition_player
+  media/            字体 / 图标 / 图片解码（含 gif、svg、webp）/ 图片写出 / 音频 / 音效表
+  render/           图形接口 graphics.* + gl / vk / gles3 / libnx 四个后端；glass/ 是玻璃子系统
+  paint/            绘制效果：gradient / shadow / focus_ring
+  input/            键盘 / 手柄 / 手势 / 输入法 / 模态栈
+  theme/            外观数据模型与解析：appearance（外观编译）/ theme_data / attributes
+                    / layer_registry（层类型表）/ appearance_{box,gradient,layer_fields,layer_meta}
+  layer/            层绘制实现：layer_draw_{custom,glass,image,rect,shadow,text} + 注册模板
+  view/             View / Box / 视图树 / JSON 视图：view / box / json_view / json_data
+                    / json_actions / view_parse
+  platform/         平台实现：sdl3_platform / sdl3_input / sdl3_window / switch_*
+  widgets/          外观驱动的控件
+    appearance/     appearance_view / appearance_children / widget_types（JSON 视图类型注册）
+    basic/          label / image / padding / progress_spinner
+    container/      scrolling_frame / h_scrolling_frame / scroll_box
+    controls/       button / notification
+    list/           recycler / json_cell / data_source / item_binder
+    debug/          debug_layer / debug_log_view / fps_overlay / preset_backdrop
+    view_types.cpp  内置视图类型（Box/Row/Label/Image/...）的注册实现
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
                     / webp（可选）/ lunasvg + plutovg（可选，SVG）
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）

@@ -7,7 +7,7 @@
 #     target_link_libraries(my_app PRIVATE bklv::bklv)
 #
 # 包含路径由 bklv::bklv 自带（把 bklv/ 的父目录也带上了），所以调用方可以直接写
-#     #include "bklv/core/app.hpp"
+#     #include "bklv/app/app.hpp"
 # 不需要自己加 include 目录。
 #
 # 两个影响构建的变量，独立使用（没有外层工程）时本文件会自己给默认值：
@@ -225,7 +225,7 @@ target_compile_options(bklv_opts INTERFACE
 # bklv_yoga 另外要求 cxx_std_20，CMake 取较高者，不冲突。
 target_compile_features(bklv_opts INTERFACE cxx_std_17)
 
-# ImGui 的 OpenGL3 后端由 bklv/backends/imgui_impl_opengl3_wrapper.cpp 提供，
+# ImGui 的 OpenGL3 后端由 bklv/render/gl/imgui_impl_opengl3_wrapper.cpp 提供，
 # 它自己先包含 bklv 的 GL 头，再包含 ImGui 的实现文件，这里只告诉 ImGui
 # 别用它自带的 loader。
 target_compile_definitions(bklv_opts INTERFACE IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
@@ -412,7 +412,7 @@ endif()
 if(BKLV_WITH_SDL)
     list(APPEND BKLV_IMGUI_SOURCES
         "${BKLV_3RD}/imgui/backends/imgui_impl_sdl3.cpp"
-        "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp")
+        "${BKLV_DIR}/render/gl/imgui_impl_opengl3_wrapper.cpp")
 endif()
 
 add_library(bklv_imgui OBJECT ${BKLV_IMGUI_SOURCES})
@@ -436,104 +436,128 @@ endif()
 # ImGui 静态初始化的问题。
 
 set(BKLV_CORE_SOURCES
-    core/globals.cpp
+    # ---- 基础机制：日志、事件、任务、全局状态、资源路径、帧预算 ----
+    core/decode_queue.cpp
+    core/event.cpp
+    core/file_system.cpp
     core/frame_budget.cpp
     core/frame_stats.cpp
-    core/context.cpp
-    core/services.cpp
-    core/sound_bank.cpp
-    core/json_data.cpp
-    core/json_actions.cpp
-    core/file_system.cpp
-    core/focus_ring.cpp
-    core/gradient.cpp
-    core/transition_player.cpp
-    core/glass/glass_blur_plan.cpp
-    core/glass/glass_geometry.cpp
-    core/glass/glass_queue.cpp
-    core/glass/glass_tuning.cpp
-    core/glass/glass_service.cpp
-    core/logger.cpp
-    core/input.cpp
-    core/shadow.cpp
-    core/task.cpp
-    core/time.cpp
-    core/font.cpp
-    core/icon_font.cpp
-    core/event.cpp
-    core/gesture.cpp
-    core/graphics.cpp
-    core/decode_queue.cpp
-    core/image_decoder.cpp
-    core/image_decoder_gif.cpp
-    core/image_decoder_webp.cpp
-    core/image_decoder_svg.cpp
-    core/image_writer.cpp
-    core/resource.cpp
+    core/globals.cpp
     core/i18n.cpp
-    core/attributes.cpp
-    compile/view_parse.cpp
-    compile/theme_parse.cpp
-    core/ime.cpp
-    core/ui_scale.cpp
-    core/appearance.cpp
-    compile/json_util.cpp
-    compile/json_vars.cpp
-    compile/json_policy.cpp
-    compile/layer_registry.cpp
-    compile/appearance_box.cpp
-    compile/appearance_gradient.cpp
-    compile/appearance_imports.cpp
-    compile/appearance_layer_fields.cpp
-    compile/appearance_layer_meta.cpp
-    compile/appearance_children.cpp
-    core/audio.cpp
+    core/logger.cpp
     core/platform.cpp
-    core/gamepad.cpp
-    core/view.cpp
-    core/box.cpp
-    core/app.cpp
-    views/label.cpp
-    views/scrolling_frame.cpp
-    views/h_scrolling_frame.cpp
-    views/json_cell.cpp
-    views/recycler.cpp
-    views/data_source.cpp
-    views/item_binder.cpp
-    views/debug_layer.cpp
-    views/image.cpp
-    views/padding.cpp
-    views/progress_spinner.cpp
-    views/debug_log_view.cpp
-    views/fps_overlay.cpp
-    views/preset_backdrop.cpp
-    views/scroll_box.cpp
-    # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
-    # 目前只留基础框架（外观解析/层绘制/通知）与 Button；Box 与 Label 在 core/、views/。
-    widgets/appearance_view.cpp
-    widgets/appearance_children.cpp
-    widgets/layer_draw_rect.cpp
-    widgets/layer_draw_shadow.cpp
-    widgets/layer_draw_glass.cpp
-    widgets/layer_draw_text.cpp
-    widgets/layer_draw_image.cpp
-    widgets/layer_draw_custom.cpp
-    widgets/notification.cpp
-    widgets/button.cpp
-    widgets/widget_types.cpp
+    core/resource.cpp
+    core/services.cpp
+    core/task.cpp
+    core/ui_scale.cpp
+    # ---- JSON 读取工具（取数/取色/报错位置、vars 展开、错误策略） ----
+    json/json_policy.cpp
+    json/json_util.cpp
+    json/json_vars.cpp
+    # ---- 绘制数学：渐变 / 阴影 / 焦点框几何（纯函数） ----
+    paint/focus_ring.cpp
+    paint/gradient.cpp
+    paint/shadow.cpp
+    # ---- 时间与补间动画 ----
+    anim/time.cpp
+    anim/transition_player.cpp
+    # ---- 主题与外观数据模型（含外观 JSON 的各段解析） ----
+    theme/appearance.cpp
+    theme/appearance_box.cpp
+    theme/appearance_children.cpp
+    theme/appearance_gradient.cpp
+    theme/appearance_imports.cpp
+    theme/attributes.cpp
+    theme/theme_parse.cpp
+    # ---- 图层类型注册表与内置层绘制（外观里的一层） ----
+    theme/appearance_layer_fields.cpp
+    theme/appearance_layer_meta.cpp
+    layer/layer_draw_custom.cpp
+    layer/layer_draw_glass.cpp
+    layer/layer_draw_image.cpp
+    layer/layer_draw_rect.cpp
+    layer/layer_draw_shadow.cpp
+    layer/layer_draw_text.cpp
+    theme/layer_registry.cpp
+    # ---- 视图基类、Box、JSON 视图运行时（模板/绑定/行为） ----
+    view/box.cpp
+    view/json_actions.cpp
+    view/json_data.cpp
+    view/view.cpp
+    view/view_parse.cpp
+    # ---- 应用宿主与上下文 ----
+    app/app.cpp
+    app/context.cpp
+    # ---- 字体 / 图片解码 / 音频 ----
+    media/audio.cpp
+    media/font.cpp
+    media/icon_font.cpp
+    media/image_decoder.cpp
+    media/image_decoder_gif.cpp
+    media/image_decoder_svg.cpp
+    media/image_decoder_webp.cpp
+    media/image_writer.cpp
+    media/sound_bank.cpp
+    # ---- 输入、手柄、手势、输入法 ----
+    input/gamepad.cpp
+    input/gesture.cpp
+    input/ime.cpp
+    input/input.cpp
+    # ---- 渲染后端接口（实现按图形 API 分支） ----
+    render/gl/gl_loader.cpp
+    render/gl/opengl_backend.cpp
+    render/glass/gl/gl_glass.cpp
+    render/glass/gl/gl_glass_procs.cpp
+    render/glass/gl/gl_glass_shaders.cpp
+    render/glass/glass_blur_plan.cpp
+    render/glass/glass_geometry.cpp
+    render/glass/glass_queue.cpp
+    render/glass/glass_service.cpp
+    render/glass/glass_tuning.cpp
+    render/glass/vk/vk_glass.cpp
+    render/gles3/gles3_backend.cpp
+    render/graphics.cpp
+    render/libnx/imgui_impl_libnx.cpp
+    render/vk/vulkan_backend.cpp
+    # ---- 控件：外观驱动、基础件、容器、列表、调试覆盖层 ----
+    widgets/appearance/appearance_children.cpp
+    widgets/appearance/appearance_view.cpp
+    widgets/appearance/widget_types.cpp
+    widgets/view_types.cpp
+    widgets/basic/image.cpp
+    widgets/basic/label.cpp
+    widgets/basic/padding.cpp
+    widgets/basic/progress_spinner.cpp
+    widgets/container/h_scrolling_frame.cpp
+    widgets/container/scroll_box.cpp
+    widgets/container/scrolling_frame.cpp
+    widgets/controls/button.cpp
+    widgets/controls/notification.cpp
+    widgets/debug/debug_layer.cpp
+    widgets/debug/debug_log_view.cpp
+    widgets/debug/fps_overlay.cpp
+    widgets/debug/preset_backdrop.cpp
+    widgets/list/data_source.cpp
+    widgets/list/item_binder.cpp
+    widgets/list/json_cell.cpp
+    widgets/list/recycler.cpp
 )
 
 if(BKLV_WITH_SDL)
     list(APPEND BKLV_CORE_SOURCES
-        backends/gl_glass.cpp
-        backends/vk_glass.cpp
-        backends/gl_glass_procs.cpp
-        backends/gl_glass_shaders.cpp
-        platforms/sdl3_platform.cpp
-        platforms/sdl3_gamepad.cpp
-        backends/gl_loader.cpp
-        backends/opengl_backend.cpp
-        backends/vulkan_backend.cpp)
+        # ---- OpenGL 后端与 GL 入口加载 ----
+        render/gl/gl_loader.cpp
+        render/gl/opengl_backend.cpp
+        # ---- Vulkan 后端 ----
+        render/vk/vulkan_backend.cpp
+        # ---- 玻璃的 GL / Vulkan 后端 ----
+        render/glass/gl/gl_glass.cpp
+        render/glass/gl/gl_glass_procs.cpp
+        render/glass/gl/gl_glass_shaders.cpp
+        render/glass/vk/vk_glass.cpp
+        # ---- SDL3 平台实现 ----
+        platform/sdl3_platform.cpp
+        platform/sdl3_gamepad.cpp)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -541,18 +565,26 @@ endif()
 # ---------------------------------------------------------------------------
 #
 # AGENTS.md 里写着"加了新 .cpp 要加进列表，漏一个会以 undefined reference 的形式在
-# 链接期才暴露"。这条在 configure 阶段就能查：core / views / widgets 是两个平台
-# 共用的，必须是列全的（backends / platforms 有平台分支，各脚本按需收集，不查）。
+# 链接期才暴露"。这条在 configure 阶段就能查：core / json / geom / paint / anim /
+# theme / layer / view / app / media / input / render / widgets 的 .cpp 都在列表里，
+# 必须是列全的（render 的各后端与 platform 有平台分支，各脚本按需收集，不查）。
 set(_bklv_listed "")
 foreach(_src IN LISTS BKLV_CORE_SOURCES BKLV_IMGUI_SOURCES)
-    get_filename_component(_abs "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" ABSOLUTE)
+    # 清单里两种写法都有：相对路径（本项目源码）与绝对路径（${BKLV_3RD}/...、${BKLV_DIR}/...）。
+    # 绝对路径再拼一次 CMAKE_CURRENT_SOURCE_DIR 会得到拼坏的值，这里分开处理。
+    if(IS_ABSOLUTE "${_src}")
+        set(_abs "${_src}")
+    else()
+        get_filename_component(_abs "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" ABSOLUTE)
+    endif()
     list(APPEND _bklv_listed "${_abs}")
 endforeach()
 
-file(GLOB_RECURSE _bklv_found
-    "${CMAKE_CURRENT_SOURCE_DIR}/core/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/views/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/*.cpp")
+set(_bklv_checked_dirs "")
+foreach(_dir core json geom paint anim theme layer view app media input render widgets)
+    list(APPEND _bklv_checked_dirs "${CMAKE_CURRENT_SOURCE_DIR}/${_dir}/*.cpp")
+endforeach()
+file(GLOB_RECURSE _bklv_found ${_bklv_checked_dirs})
 
 foreach(_file ${_bklv_found})
     if(NOT _file IN_LIST _bklv_listed)

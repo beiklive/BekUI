@@ -12,9 +12,9 @@ GL / Switch-GLES3 / Vulkan 三条后端自动都支持（现在那些自绘几�
 
 | 位置 | 现状 |
 |---|---|
-| `bklv/core/appearance.hpp` 的 `AppearanceLayer` | `fill` / `stroke` 都是**单个 `ImU32`**；另有 `strokeWidth` / `radius` / `opacity` / `inset` / `width` / `height` / `align` / `valign` |
-| `bklv/core/appearance.cpp` | 解析表里 `{ "fill", &layer.fill }`、`{ "stroke", &layer.stroke }`、`radius` 走长度缩放 |
-| `bklv/widgets/appearance_view.cpp` 的 `Op::RECT` | `AddRectFilled(p_min, p_max, scaleAlpha(fill), radius)` + `AddRect(...)` 描边 —— **单色，没有渐变** |
+| `bklv/theme/appearance.hpp` 的 `AppearanceLayer` | `fill` / `stroke` 都是**单个 `ImU32`**；另有 `strokeWidth` / `radius` / `opacity` / `inset` / `width` / `height` / `align` / `valign` |
+| `bklv/theme/appearance.cpp` | 解析表里 `{ "fill", &layer.fill }`、`{ "stroke", &layer.stroke }`、`radius` 走长度缩放 |
+| `bklv/widgets/appearance/appearance_view.cpp` 的 `Op::RECT` | `AddRectFilled(p_min, p_max, scaleAlpha(fill), radius)` + `AddRect(...)` 描边 —— **单色，没有渐变** |
 | 现有"渐变"用法 | 只有 demo 壁纸与设计器边框带用 `AddRectFilledMultiColor`（4 角双线性，**不支持圆角**） |
 | 自绘几何的先例 | 焦点框用 LUT 贴图 + `AddImageQuad`（纹理路线）；`shadow` 用 `PathRect`+`PathStroke` 描一圈（路径路线） |
 
@@ -88,7 +88,7 @@ struct Gradient
 
 ## 5. 绘制实现（三后端零改动）
 
-新增一个纯函数与一个绘制助手（放在 `core/appearance.cpp` / `widgets/appearance_view.cpp`，
+新增一个纯函数与一个绘制助手（放在 `theme/appearance.cpp` / `widgets/appearance/appearance_view.cpp`，
 或单独开 `core/gradient.{hpp,cpp}` 便于单测）：
 
 ```cpp
@@ -162,7 +162,7 @@ float gradientParameter(const Gradient& gradient, const ImVec2& p, const ImVec2&
 |---|---|
 | `bklv/core/gradient.{hpp,cpp}` | `GradientStop` / `Gradient`、`sampleGradient`、`gradientParameter`、`gradientTypeFromName`、网格生成 `addGradientRectMesh` |
 | `bklv/core/appearance.{hpp,cpp}` | 层里加 `Gradient gradient`；解析 `gradient`（`type`/`angle`/`center`/`stops`，五类错误全部报错） |
-| `bklv/widgets/appearance_view.cpp` | `Op::RECT`：有渐变就走网格，没写仍是原来的单色 `AddRectFilled` |
+| `bklv/widgets/appearance/appearance_view.cpp` | `Op::RECT`：有渐变就走网格，没写仍是原来的单色 `AddRectFilled` |
 | `demo/app/pages/page_base_widgets.cpp` | 示例外观**内联在页面里**（蓝→紫 90° 渐变卡，`applyAppearanceJson`）：默认主题是扁平风格，能力示例不占随机发布的主题资源 |
 | `tests/gradient_test.cpp` | **55 项**：采样（端点/中点/多段/钳制/无效）、参数（0°/90°/45°/径向）、枚举名、解析正例与五类反例、网格（顶点数/角点颜色/圆角/羽边/整体 alpha） |
 

@@ -9,9 +9,9 @@
 #include "bklv/core/logger.hpp"
 
 #if defined(BKLV_SWITCH)
-#include "bklv/platforms/switch_platform.hpp"
+#include "bklv/platform/switch_platform.hpp"
 #elif !defined(BKLV_NO_SDL)
-#include "bklv/platforms/sdl3_platform.hpp"
+#include "bklv/platform/sdl3_platform.hpp"
 #endif
 
 namespace bklv

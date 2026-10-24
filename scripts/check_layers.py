@@ -4,34 +4,43 @@
     python3 scripts/check_layers.py          # 有新增反向依赖时退出码 1
     python3 scripts/check_layers.py --list   # 打印当前全部跨层依赖（含计数），总是 0
 
-**为什么需要它**：bklv 的 core / views / widgets / compile / backends / platforms
-全部编进同一个 OBJECT 库、共用一个 include 根，所以"分层"目前只是目录约定 ——
-编译器不会因为 `core/app.cpp` 反向 include 了 `widgets/` 而报错。
-命名规范有 check_naming.py 兜着，"依赖方向"这一条一直没有对应的检查，于是它只能靠评审维持。
-这个脚本把约定变成门禁：**禁止新增反向依赖**，存量（下面 BASELINE）先记账，谁消解谁删行。
+**为什么需要它**：bklv 的所有模块编进同一个 OBJECT 库、共用一个 include 根，所以"分层"
+只有目录约定 —— 编译器不会因为 `core/resource.cpp` 反向 include 了 `widgets/` 而报错。
+命名规范有 check_naming.py 兜着，"依赖方向"这一条只能靠评审维持；这个脚本把它变成门禁：
+**禁止新增反向依赖**，存量（下面 BASELINE）先记账，谁消解谁删行。
 
-禁止的方向（左侧的层不许 include 右侧的层）：
+## 现在的模块与方向
 
-    core    → widgets / views / compile / backends
-    compile → views / widgets
-    views   → widgets
+`bklv/` 下的第一级目录就是一层（玻璃子系统在 `render/glass/`，算 render）：
 
-允许的方向（不在检查范围，属正常分层）：
+    底层基础设施   core / geom / json
+    能力层         anim / media / render / paint / input
+    领域层         theme（外观数据与解析）/ layer（层绘制实现）
+    视图层         view（View / Box / 视图树 / JSON 视图解析）
+    应用与适配层   app（App / Context）/ platform（SDL3、Switch 宿主适配）
+    控件层         widgets（外观驱动控件、基础件、容器、列表、调试覆盖层）
 
-    widgets → views / core / compile              视图与外观驱动的控件在下游
-    views → core                                  语义控件只认 ImDrawList 与 core 接口
-    compile → core                                解析实现用到 core 的数据类型
-    backends → core                               后端实现 core 的接口（含 core/glass）
-    platforms → core / backends                   平台创建并持有后端
-    core → platforms                              工厂：方向由"编译期裁剪 + 工厂"反转，属预期
-    任何一层 → 3rd                                第三方是叶子
+一个模块可以往下依赖（widgets → view → theme → core），不能往上。上面这张表是"意图"，
+真正被拦的是下面 FORBIDDEN 里列出的方向 —— 它们不是全部的上行组合，因为有些上行依赖
+是**接口与服务**：core 里的 `platform.hpp` 声明 `RenderBackend*`、`services.hpp` 汇总
+宿主可替换的音频/输入服务，这类"底层持有上层接口"的地方是刻意的（依赖倒置），不拦。
 
-注意"层"是 `bklv/` 下的第一级目录：玻璃子系统在 `core/glass/`，算 core 而不是独立一层
-（它曾经在根路径的 `glass/` 下，那次搬家把 `core → glass` 与 `glass → backends` 两条
-同层/反向依赖一起消化掉了）。
+允许的方向（不检查，属正常分层）：
+
+    widgets → view / theme / layer / anim / media / render / paint / input / core / json
+    view    → theme / layer / anim / media / render / paint / input / core / json
+    theme   → media / paint / json / geom / core
+    layer   → theme / media / render / paint / json / geom / core
+    app     → 上面所有（组合根；它会创建通知层、调试层，所以也用 widgets）
+    platform→ render / input / media / core（平台创建并持有后端）
+    core    → platform（工厂：方向由"编译期裁剪 + 工厂"反转，属预期）
+    core    → render / media / anim / input（底层只持有它们的**接口**，见上）
+    任何一层 → 3rd（第三方是叶子）
+
+注意"层"是 `bklv/` 下的第一级目录：玻璃子系统在 `render/glass/`，算 render 而不是独立一层。
 
 另外还查一条伞头可达范围（见 `check_umbrella()`）：使用者的入口 `bklv/bklv.hpp`
-不许间接碰到 `backends/` / `platforms/` 或 `<vulkan/vulkan.h>` —— 曾经
+不许间接碰到具体后端/平台目录，也不许出现 Vulkan 头 —— 曾经
 `bklv.hpp → shell.hpp → glass_service.hpp → vk_glass.hpp → <vulkan/vulkan.h>` 让每个
 包含伞头的翻译单元都被拖进 Vulkan 头（评审 §4.2 P1）。
 """
@@ -43,15 +52,72 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LIB = ROOT / "bklv"
 
-# 被禁止的反向依赖：(源层, 目标层)
+# 被禁止的反向依赖：(源层, 目标层)。
+#
+# 只列"确实不该发生"的方向（见模块说明里的分层表）；刻意保留的依赖倒置
+# （core → render/media/anim/input/platform）不在里面。
 FORBIDDEN = {
+    # 基础机制不许认识外观、视图树与控件
+    ("core", "theme"),
+    ("core", "layer"),
+    ("core", "view"),
+    ("core", "app"),
     ("core", "widgets"),
-    ("core", "views"),
-    ("core", "compile"),
-    ("core", "backends"),
-    ("compile", "views"),
-    ("compile", "widgets"),
-    ("views", "widgets"),
+    # 几何是纯数学，不许认识绘制/外观/视图
+    ("geom", "paint"),
+    ("geom", "anim"),
+    ("geom", "theme"),
+    ("geom", "layer"),
+    ("geom", "view"),
+    ("geom", "app"),
+    ("geom", "widgets"),
+    # JSON 工具是通用能力，不许认识主题/视图
+    ("json", "theme"),
+    ("json", "layer"),
+    ("json", "view"),
+    ("json", "app"),
+    ("json", "widgets"),
+    # 媒体解码/字体/音频是能力，不许认识外观与控件
+    ("media", "theme"),
+    ("media", "layer"),
+    ("media", "view"),
+    ("media", "app"),
+    ("media", "widgets"),
+    # 绘制效果（渐变/阴影/焦点环）不许认识外观层与控件
+    ("paint", "layer"),
+    ("paint", "view"),
+    ("paint", "app"),
+    ("paint", "widgets"),
+    # 渲染接口与后端不许认识外观/视图/控件
+    ("render", "theme"),
+    ("render", "layer"),
+    ("render", "view"),
+    ("render", "app"),
+    ("render", "widgets"),
+    # 动画机制可以作用于 View/Transition，但不许认识控件与 App
+    ("anim", "layer"),
+    ("anim", "app"),
+    ("anim", "widgets"),
+    # 输入分发可以驱动 View，但不许认识控件与 App
+    ("input", "layer"),
+    ("input", "app"),
+    ("input", "widgets"),
+    # 外观数据与解析不许认识视图树与控件（应用外观的那两处见 BASELINE）
+    ("theme", "view"),
+    ("theme", "app"),
+    ("theme", "widgets"),
+    # 层绘制实现只认上下文，不许认识视图树与控件
+    ("layer", "view"),
+    ("layer", "app"),
+    ("layer", "widgets"),
+    # 视图层不许认识组合根与具体控件
+    ("view", "app"),
+    ("view", "widgets"),
+    # 适配层不许认识外观/视图/控件
+    ("platform", "theme"),
+    ("platform", "layer"),
+    ("platform", "view"),
+    ("platform", "widgets"),
 }
 
 # 存量白名单：(源层, 目标层, 相对仓库路径)。
@@ -59,18 +125,28 @@ FORBIDDEN = {
 # 留着不删这个脚本会报"白名单已过期"（和 CMake 源清单漏项检查同一个取向：
 # 记账必须精确，否则白名单会慢慢变成摆设）。
 BASELINE = {
-    # App 是组合根：弹层（通知）、调试层、视图类型注册、默认字体都挂在这里。
-    ("core", "widgets", "bklv/core/app.cpp"),
-    ("core", "views", "bklv/core/app.cpp"),
-    # 外观的内存类型在 core、解析实现在 compile —— 两个模块互相 include（模块级环）。
-    ("core", "compile", "bklv/core/appearance.cpp"),
-    # 解析层为了注册 8 个内置视图类型而认识具体 views 实现。
-    ("compile", "views", "bklv/compile/view_parse.cpp"),
+    # 外观解析的结果要写回 View/Box（applyAppearanceBox / applyWidgetBox、属性表 setter）。
+    # 拆开是"theme 只解析、view 负责应用"，但 apply* 与解析共用大量内部助手，
+    # 硬拆会在两个模块间开一堆半成品接口，先记账。
+    ("theme", "view", "bklv/theme/appearance.cpp"),
+    ("theme", "view", "bklv/theme/attributes.cpp"),
+    # 音效表（sound.json）是主题的一部分，SoundBank 读主题目录才知道在哪。
+    ("media", "theme", "bklv/media/sound_bank.cpp"),
+    # JSON 的错误信息要拼主题键路径（"color.button.defaultBg"），共用同一套命名规则。
+    ("json", "theme", "bklv/json/json_util.hpp"),
 }
 
-# 伞头（使用者入口）不许间接碰到的目录 / 头文件
+# 伞头（使用者入口）不许间接碰到的目录前缀 / 头文件
 UMBRELLA = ROOT / "bklv" / "bklv.hpp"
-UMBRELLA_FORBIDDEN_DIRS = ("backends", "platforms")
+UMBRELLA_FORBIDDEN_PREFIXES = (
+    "render/vk/",
+    "render/gl/",
+    "render/gles3/",
+    "render/libnx/",
+    "render/glass/vk/",
+    "render/glass/gl/",
+    "platform/",
+)
 UMBRELLA_FORBIDDEN_HEADERS = ("<vulkan/vulkan.h>", "vulkan/vulkan.h")
 
 INCLUDE_RE = re.compile(r'#include\s+"(bklv/[^"]+)"')
@@ -93,7 +169,7 @@ def collect():
     )
     for path in files:
         rel = path.relative_to(ROOT).as_posix()
-        src_layer = layer_of(rel[len("bklv/") :])
+        src_layer = layer_of(rel[len("bklv/"):])
         if src_layer == ".":
             continue  # 伞头 bklv.hpp 是给使用者聚合用的，不参与分层规则
         try:
@@ -101,7 +177,7 @@ def collect():
         except OSError:
             continue
         for m in INCLUDE_RE.finditer(text):
-            target = m.group(1)[len("bklv/") :]
+            target = m.group(1)[len("bklv/"):]
             if target.startswith("3rd/"):
                 continue
             dst_layer = layer_of(target)
@@ -115,7 +191,7 @@ def collect():
 
 def check_umbrella():
     """伞头可达范围：bklv/bklv.hpp 顺着 `#include "bklv/..."` 能走到的头，
-    不许落在 backends/ 或 platforms/ 里，也不许出现 Vulkan 头。
+    不许落在具体后端 / 平台目录里，也不许出现 Vulkan 头。
 
     返回 [(可达文件, 原因)]，空表示通过。第三方（bklv/3rd/）是叶子，不再往下走。
     """
@@ -141,7 +217,7 @@ def check_umbrella():
             rel = target.relative_to(LIB).as_posix()
             if rel.startswith("3rd/"):
                 continue
-            if rel.split("/")[0] in UMBRELLA_FORBIDDEN_DIRS:
+            if rel.startswith(UMBRELLA_FORBIDDEN_PREFIXES):
                 problems.append(
                     (path.relative_to(ROOT).as_posix(), f"可达 {target.relative_to(ROOT).as_posix()}")
                 )
@@ -178,7 +254,7 @@ def main():
             for rel, why in umbrella:
                 print(f"  ✗ {rel}：{why}")
         else:
-            print("  ✓ 没有可达的 backends/ platforms/ 或 Vulkan 头")
+            print("  ✓ 没有可达的具体后端 / 平台目录或 Vulkan 头")
         return 0
 
     current = set(edges.keys())
@@ -214,7 +290,7 @@ def main():
         return 1
 
     print(f"分层依赖检查：{len(current)} 条存量反向依赖（白名单内），无新增；"
-          f"伞头可达范围内没有 backends/ platforms/ 或 Vulkan 头")
+          f"伞头可达范围内没有具体后端 / 平台目录或 Vulkan 头")
     return 0
 
 

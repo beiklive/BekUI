@@ -40,7 +40,7 @@ Shell（取代旧 AppletFrame 的位置）
 | 焦点 | **只在内容层与覆盖层之间切换**（背景层、浮层不参与） |
 | 模态 | 用**挂载标记**（`pushModal` / `modalityRoot`）表示，**不用层号判断** |
 | 内容避让 | **不自动**：页面显式调用 `getHeaderInsets()/getFooterInsets()` 决定留白 |
-| 坐标 | 跨层读 `View::getFrame()`（`core/view.cpp:413` 就是**绝对坐标**），不做换算、不重排 |
+| 坐标 | 跨层读 `View::getFrame()`（`view/view.cpp:413` 就是**绝对坐标**），不做换算、不重排 |
 | 层尺寸 | 绝对层跟随视口尺寸（要挂"画布尺寸变化"的通知，否则改窗口后尺寸不同步） |
 
 ### 一个待定决策

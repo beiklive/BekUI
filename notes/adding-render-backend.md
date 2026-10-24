@@ -7,7 +7,7 @@ bklv/views/*            Image / Label / ScrollingFrame ...   ← 只认 ImDrawLi
 bklv/core/graphics.*    RenderBackend 接口 + 纹理管理        ← 唯一的分界点
 bklv/backends/*         OpenGLBackend / VulkanBackend / GLES3Backend  ← 图形 API 代码全在这里
 bklv/platforms/*        PlatformSDL3 / PlatformSwitch        ← 窗口 + 事件循环 + 创建后端
-bklv/core/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰图形 API
+bklv/app/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰图形 API
 ```
 
 **后端是编译期选择的**，没有运行时注册表。加 Vulkan 时的接法就是在对应平台的
@@ -20,7 +20,7 @@ bklv/core/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰�
 
 ## 第 1 步：写 VulkanBackend
 
-新建 `bklv/backends/vulkan_backend.hpp/.cpp`，实现 `RenderBackend` 的 10 个方法：
+新建 `bklv/render/vk/vulkan_backend.hpp/.cpp`，实现 `RenderBackend` 的 10 个方法：
 
 | 方法 | Vulkan 下要做的事 |
 |---|---|
@@ -37,7 +37,7 @@ bklv/core/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰�
 
 构造函数里把 `this->ready = true` 放在设备建好之后——**`ready` 是 "能不能创建纹理" 的闸门**。
 
-`bklv/backends/vulkan_backend.cpp` 是这份清单的完整实现，写新后端时可以直接照着看。
+`bklv/render/vk/vulkan_backend.cpp` 是这份清单的完整实现，写新后端时可以直接照着看。
 实现时踩到、但清单里不容易一眼看出的几点：
 
 - **`appInfo.apiVersion` / `ImGui_ImplVulkan_InitInfo::ApiVersion` 别写 `VK_API_VERSION_1_0`。**
@@ -58,7 +58,7 @@ bklv/core/app.cpp       ImGui 上下文 + 帧调度                 ← 不碰�
 ## 第 2 步：在平台里换上它
 
 图形后端由平台在 `createBackend()` 里创建，编译期决定。例如
-`bklv/platforms/sdl3_platform.cpp`：
+`bklv/platform/sdl3_platform.cpp`：
 
 ```cpp
 void PlatformSDL3::createBackend()
@@ -111,7 +111,7 @@ ImGui 1.92 之后字体图集由渲染后端按需创建。每个后端都要：
 
 ```bash
 # 1. 上层不许出现图形 API 调用（应该没有输出）
-grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" bklv/views bklv/core/view.cpp bklv/core/box.cpp bklv/core/input.cpp
+grep -rn "gl[A-Z]\|OpenGL\|imgui_impl_opengl3" bklv/views bklv/view/view.cpp bklv/view/box.cpp bklv/input/input.cpp
 
 # 2. 两个后端都跑一遍同一个 demo：换后端能跑起来，才说明没有漏抽象
 ./dist/demo

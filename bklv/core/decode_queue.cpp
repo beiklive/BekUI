@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "bklv/core/frame_budget.hpp"
-#include "bklv/core/graphics.hpp"
+#include "bklv/render/graphics.hpp"
 
 namespace bklv
 {
