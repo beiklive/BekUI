@@ -5,6 +5,7 @@
     "width": "auto",
     "axis": "row",
     "alignItems": "center",
+    "JustifyContent": "center",
     "padding": [
       "@theme/metric.hintItem.paddingY",
       "@theme/metric.hintItem.paddingX",
@@ -14,11 +15,34 @@
   },
   "layers": [
     {
+      "import": "base/layer/shadow",
+      "cutout": true,
+      "radius": 20,
+      "inset": [
+        -3,
+        20,
+        -3,
+        -10
+      ]
+
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": 20,
+      "inset": [
+        -3,
+        20,
+        -3,
+        -10
+      ]
+    },
+    {
       "op": "text",
       "id": "icon",
       "data_id": "icon",
       "color": "@theme/color.text.primary",
-      "fontSize": 25.5,
+      "fontSize": 21.5,
       "align": "left",
       "valign": "center",
       "font_kind": "icon"
@@ -27,7 +51,7 @@
       "op": "text",
       "id": "label",
       "data_id": "label",
-      "color": "@theme/color.text.dim",
+      "color": "@theme/color.text.primary",
       "fontSize": 21.5,
       "align": "left",
       "valign": "center",
@@ -35,7 +59,7 @@
         0,
         0,
         0,
-        34
+        28
       ]
     }
   ],

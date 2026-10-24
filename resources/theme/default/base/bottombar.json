@@ -2,7 +2,7 @@
   "$comment": "底栏：满宽 100px，顶部 1px 分隔线，提示条靠右居中。挂在外壳的覆盖层上；内容层要自己让出 100px。",
   "box": {
     "width": "100%",
-    "height": 100,
+    "height": 60,
     "axis": "row",
     "justifyContent": "flexEnd",
     "alignItems": "center",
@@ -22,14 +22,15 @@
     {
       "op": "rect",
       "id": "separator",
-      "fill": "@theme/color.border.subtle",
+      "fill": "@theme/color.common.transparent",
       "height": 1,
       "valign": "top",
+      "align": "center",
       "inset": [
         0,
+        20,
         0,
-        0,
-        0
+        20
       ]
     }
   ],

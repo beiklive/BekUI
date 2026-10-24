@@ -4,8 +4,10 @@
     "width": "auto",
     "height": "auto",
     "axis": "row",
+    "grow":1,
     "alignItems": "center",
-    "gap": "@theme/metric.spacing.md"
+    "justifyContent": "flexEnd",
+    "gap": 10
   },
   "layers": []
 }
