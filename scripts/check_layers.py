@@ -19,6 +19,7 @@
     领域层         theme（外观数据与解析）/ layer（层绘制实现）
     视图层         view（View / Box / 视图树 / JSON 视图解析）
     应用与适配层   app（App / Context）/ platform（SDL3、Switch 宿主适配）
+    外壳层         shell（五层容器：背景 / 内容 / 覆盖 / 浮层 / 调试）
     控件层         widgets（外观驱动控件、基础件、容器、列表、调试覆盖层）
 
 一个模块可以往下依赖（widgets → view → theme → core），不能往上。上面这张表是"意图"，
@@ -30,6 +31,8 @@
 
     widgets → view / theme / layer / anim / media / render / paint / input / core / json
     view    → theme / layer / anim / media / render / paint / input / core / json
+    shell   → view / theme / layer / anim / media / render / paint / input / core / json
+    app     → shell（组合根装外壳）
     theme   → media / paint / json / geom / core
     layer   → theme / media / render / paint / json / geom / core
     app     → 上面所有（组合根；它会创建通知层、调试层，所以也用 widgets）
@@ -58,6 +61,22 @@ LIB = ROOT / "bklv"
 # 只列"确实不该发生"的方向（见模块说明里的分层表）；刻意保留的依赖倒置
 # （core → render/media/anim/input/platform）不在里面。
 FORBIDDEN = {
+    # 外壳层在上（它在 view 之上），底下任何模块都不许 include 它 —— 否则
+    # "谁负责分五层"这件事就散到各处了，焦点框也会绕回控件。反向（shell → 下层）
+    # 是正常的，见模块说明里的允许方向表。
+    ("core", "shell"),
+    ("geom", "shell"),
+    ("json", "shell"),
+    ("media", "shell"),
+    ("paint", "shell"),
+    ("render", "shell"),
+    ("anim", "shell"),
+    ("input", "shell"),
+    ("theme", "shell"),
+    ("layer", "shell"),
+    ("view", "shell"),
+    ("platform", "shell"),
+    ("widgets", "shell"),
     # 基础机制不许认识外观、视图树与控件
     ("core", "theme"),
     ("core", "layer"),
@@ -114,6 +133,11 @@ FORBIDDEN = {
     # 视图层不许认识组合根与具体控件
     ("view", "app"),
     ("view", "widgets"),
+    # 外壳只负责"分层 + 焦点框"，不许认识具体控件、外观数据与弹层实现
+    ("shell", "widgets"),
+    ("shell", "theme"),
+    ("shell", "layer"),
+    ("shell", "app"),
     # 适配层不许认识外观/视图/控件
     ("platform", "theme"),
     ("platform", "layer"),

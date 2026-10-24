@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 c6d24a0 · 2026-10-24 13:36 · 两套主题（default / glass）</div>
+  <div class="version">提交 1eca34a · 2026-10-24 14:01 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -360,7 +360,7 @@ docs/                文档（本手册就是其中一份）</code></pre>
 
 <table>
 <thead><tr><th>层</th><th>.cpp</th><th>.hpp</th><th>职责</th></tr></thead>
-<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>22</td><td>22</td><td>控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
+<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>21</td><td>21</td><td>控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>ui/shell/</code></td><td>2</td><td>2</td><td>外壳：背景 / 内容 / 覆盖 / 浮层 / 调试 五层容器与焦点框</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
 </table>
 
 <h3 id="sec-4">允许的依赖方向</h3>
@@ -2165,7 +2165,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>c6d24a0</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>1eca34a</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

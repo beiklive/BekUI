@@ -520,6 +520,9 @@ set(BKLV_CORE_SOURCES
     graphics/render/libnx/imgui_impl_libnx.cpp
     graphics/render/vk/vulkan_backend.cpp
     # ---- 控件：外观驱动、基础件、容器、列表、调试覆盖层 ----
+    ui/shell/focus_ring_view.cpp
+    ui/shell/shell.cpp
+
     ui/widgets/appearance/appearance_children.cpp
     ui/widgets/appearance/appearance_view.cpp
     ui/widgets/appearance/widget_types.cpp
@@ -535,7 +538,6 @@ set(BKLV_CORE_SOURCES
     ui/widgets/controls/notification.cpp
     ui/widgets/debug/debug_layer.cpp
     ui/widgets/debug/debug_log_view.cpp
-    ui/widgets/debug/focus_ring_view.cpp
     ui/widgets/debug/fps_overlay.cpp
     ui/widgets/debug/preset_backdrop.cpp
     ui/widgets/list/data_source.cpp
@@ -584,7 +586,7 @@ set(_bklv_checked_dirs "")
 foreach(_dir
         foundation/core foundation/geom foundation/json foundation/anim
         graphics/paint graphics/render
-        ui/view ui/theme ui/layer ui/widgets ui/input ui/app
+        ui/view ui/theme ui/layer ui/widgets ui/input ui/app ui/shell
         system/media)
     list(APPEND _bklv_checked_dirs "${CMAKE_CURRENT_SOURCE_DIR}/${_dir}/*.cpp")
 endforeach()

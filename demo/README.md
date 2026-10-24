@@ -6,7 +6,7 @@
 ```
 demo/
   main.cpp            入口：解析参数、构造 DemoApp、run
-  demo_app.hpp/.cpp   外壳与页面栈（窗口、顶栏、内容区、底栏、主题轮换）
+  demo_app.hpp/.cpp   外壳与页面栈（Shell 五层容器、顶栏、内容区、底栏、主题轮换）
   page.hpp            页面接口（getTitle / build）
   style.hpp           从主题取页面底色与文字色的小工具
   pages/
@@ -75,18 +75,39 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
   `showCurrentPage()` 末尾因此有一句 `giveFocus(root->getDefaultFocus())`
   （`giveFocus` 默认静音，不会出声）；不补的话既没有焦点框，方向键也无从下手。
 
-## 焦点框
+## 外壳：Shell 的五层
 
-`demo_app.cpp` 的 `buildShell()` 在根视图最后加了一个 `bklv::FocusRingView`：
+根视图是 `bklv::Shell`（`bklv/ui/shell/shell.hpp`），它在构造时按顺序建好五层，
+层次就是绘制顺序：
+
+| 层 | 放什么 | demo 里怎么用 |
+|---|---|---|
+| `getBackdropLayer()` | 背景（底色 / 底图），绝对定位铺满、不参与布局 | 铺页面底色 |
+| `getContentLayer()` | 正文内容，正常参与 Yoga 布局（它本身是竖直 Box） | 顶栏 + 内容区 + 底栏 |
+| `getOverlayLayer()` | 覆盖层：页头 / 底栏 / 对话框 | 暂未用（页头暂时画在内容层里） |
+| `getHudLayer()` | 浮层，不吃输入：toast、常驻提示、焦点框 | 焦点框由 Shell 自己挂在这里 |
+| `getDebugLayer()` | 调试覆盖层，永远最后画 | 可放 `DebugLogView` |
 
 ```cpp
-this->focusRing = new bklv::FocusRingView();
-this->root->addView(this->focusRing);   // 加在最后 → 画在所有内容之上
+this->root = new bklv::Shell();
+this->root->getContentLayer()->addView(header);
+this->root->getContentLayer()->addView(this->content);
+this->root->getContentLayer()->addView(footer);
+this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
 ```
+
+另外 Shell 还提供 `setSafeAreaInsets()`（五层统一内缩，Switch 的屏幕边距用得上）、
+`fillLayer(view)`（把一个视图铺满某一层）和过渡宿主（`getTransitionHost()`，
+换页动画期间存在、空了自动摘）。
+
+## 焦点框
+
+焦点框归 Shell 所有：`Shell` 构造时把 `FocusRingView` 挂在 HUD 层上，
+demo 只需要 `root->setFocusRingEnabled(true)`（默认就是开的）。
 
 它自己是绝对定位铺满父容器、不吃输入，每帧问输入管理器"当前焦点是谁"、
 再问那个控件"你是什么形状"（`View::getFocusOutline()`）—— 控件完全不知道它的存在。
-样式写死在代码里（`getRingStyle()` 可调），不跟主题 JSON 走。
+样式写死在代码里（`root->getFocusRingStyle()` 可调），不跟主题 JSON 走。
 
 ## 换肤与资源
 

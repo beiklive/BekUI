@@ -262,7 +262,8 @@ def diagram_packages():
                                "theme/ ThemeData / Appearance / 图层表",
                                "layer/ 六个内置层 + 注册模板",
                                "input/ 键盘手柄手势 / 焦点 / IME",
-                               "app/ App 帧循环 / Context / 通知层"],
+                               "app/ App 帧循环 / Context / 通知层",
+ "shell/ 五层容器 + 焦点框"],
           x=90, y=420, w=640, kind="group")
     d.cls("widgets", "ui/widgets/（控件）", ["appearance / controls / basic",
                                             "container / list / debug"],

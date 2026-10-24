@@ -1,4 +1,4 @@
-#include "bklv/ui/widgets/debug/focus_ring_view.hpp"
+#include "bklv/ui/shell/focus_ring_view.hpp"
 
 #include "bklv/foundation/anim/time.hpp"
 #include "bklv/foundation/core/logger.hpp"

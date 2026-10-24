@@ -11,7 +11,7 @@
 // 由代码写死；宿主想调就通过 `getRingStyle()` 改。
 //
 // 用法：
-//   root->addView(new bklv::FocusRingView());   // 加在最后，保证画在内容之上
+//   shell->getFocusRingView()   // Shell 已经建好并挂在浮层上，宿主不用自己加
 // 它自己是绝对定位铺满父容器、不参与布局、也不吃输入（可聚焦性默认 false）。
 
 #include "bklv/graphics/paint/focus_ring.hpp"

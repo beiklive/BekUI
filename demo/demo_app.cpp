@@ -45,7 +45,11 @@ DemoApp::~DemoApp() = default;
 
 void DemoApp::buildShell()
 {
-    this->root = new bklv::Box(bklv::Axis::COLUMN);
+    // 外壳自带五层（背景 / 内容 / 覆盖 / 浮层 / 调试）。demo 只用到其中三层：
+    //   backdropLayer  页底色
+    //   contentLayer   顶栏 + 内容区 + 底栏（它本身就是竖直排布，布局与以前一致）
+    //   hudLayer       焦点框（Shell 建好就挂好了，不用自己加）
+    this->root = new bklv::Shell();
 
     // 顶栏：返回 + 标题。
     auto* header = new bklv::Box(bklv::Axis::ROW);
@@ -84,14 +88,13 @@ void DemoApp::buildShell()
     this->footerLabel->setGrow(1.0f);
     footer->addView(this->footerLabel);
 
-    this->root->addView(header);
-    this->root->addView(this->content);
-    this->root->addView(footer);
+    // 内容层是竖直排布的层容器，直接往里放这三段，布局与"根 Box 一列"时完全一致。
+    this->root->getContentLayer()->addView(header);
+    this->root->getContentLayer()->addView(this->content);
+    this->root->getContentLayer()->addView(footer);
 
-    // 焦点框：绝对定位铺满根视图，加在最后 → 画在所有内容之上。
-    // 它自己问输入管理器要当前焦点，不依赖任何控件知道它的存在。
-    this->focusRing = new bklv::FocusRingView();
-    this->root->addView(this->focusRing);
+    // 焦点框归 Shell 所有（挂在浮层上，永远画在内容/覆盖层之上），这里只确认它开着。
+    this->root->setFocusRingEnabled(true);
 
     // 根视图兜一个 BACK：焦点在内容区时 Esc 也能返回。
     this->root->registerAction(bklv::ControllerButton::BACK, "返回", [this](bklv::View*) { this->goBack(); });
@@ -101,8 +104,9 @@ void DemoApp::buildShell()
 
 void DemoApp::applyThemeColors()
 {
-    // 底色铺在根视图上（盖住 App 的深色清屏色），文字用主题里配套的深色。
-    this->root->setBackgroundColor(pageBackgroundColor());
+    // 底色铺在背景层上（盖住 App 的深色清屏色），文字用主题里配套的深色。
+    // 铺背景层而不是外壳本身：背景层永远在最底下，页头/弹窗不会把它当底色刷掉。
+    this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
     this->titleLabel->setTextColor(textColor());
     this->footerLabel->setTextColor(mutedColor());
 }

@@ -226,7 +226,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 > 下面提到 `ui/widgets/shell.*`、`ui/widgets/pager.*`、`ui/widgets/header.*`、`ui/widgets/bottom_bar.*`、
 > `ui/widgets/sidebar.*`、`ui/widgets/dropdown.*`、`ui/widgets/selector_button.*`、
 > `ui/widgets/edit_text_dialog.*`、`ui/widgets/cell.*`、`ui/widgets/tab_frame.*`、`ui/widgets/slider.*`、
-> `ui/widgets/toast.*`、`ui/widgets/hints_bar.*`、`ui/widgets/status_area.*`、`ui/widgets/focus_ring_view.*`
+> `ui/widgets/toast.*`、`ui/widgets/hints_bar.*`、`ui/widgets/status_area.*`
 > 的段落，都是对**已移除控件**的历史约定（连同它们在 `resources/theme/default/base/**`
 > 下的外观一起删了）。重做这些控件时按这些约束实现，别再假设文件还在。
 
@@ -629,8 +629,8 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   （以前写死 13，加两个属性后 per-layer 数组少两格，越界写把堆写坏、崩在 malloc 里）。
   加 `AppearanceProp` + `ALL_PROPS` + `PROP_NAMES` + 每层初值 + `getNumber` 回落，
   五处要同步，`static_assert` 与顺序自检会兜住。
-- **焦点框（流光框）画在浮层上，控件只声明形状**（`foundation/core/focus_ring.*` +
-  `ui/widgets/focus_ring_view.*` + `View::getFocusOutline()`）：
+- **焦点框（流光框）画在浮层上，控件只声明形状**（`graphics/paint/focus_ring.*` +
+  `ui/shell/focus_ring_view.*` + `View::getFocusOutline()`）：
   ① **单向依赖**：`FocusRingView` 每帧问 `getInputManager().getCurrentFocus()`，再问那个视图
      `getFocusOutline()` → 控件完全不知道谁在画框，换画法/换类型/开关都不用动控件。
      形状用**圆角矩形**统一表达（半径自动钳到短边一半）：矩形 r=0、胶囊 r=高/2、正圆 r=短边/2，
@@ -923,16 +923,19 @@ bklv::compile::registerLayer<StripeLayer>();
                        widgets（外观驱动控件、基础件、容器、列表、调试覆盖层）
                        input（键盘/手柄/手势/输入法）
                        app（App / Context，组合根）
+                       shell（五层容器 + 焦点框，宿主装页面的地方）
   system/       运行时 media（字体/图标/图片/音频）   platform（SDL3、Switch 宿主适配）
 ```
 
 大类之间只有一条硬规则：**下层不必认识上层，上层可以整体依赖下层**。
-再加一条实践取向：`ui/` 里 view → theme/layer → widgets 是三层递进，
-`ui/widgets/` 认识 `ui/view/`，反过来不行。
+再加一条实践取向：`ui/` 里 view → theme/layer → widgets → shell 是四层递进，
+后一层认识前一层，反过来不行：`ui/widgets/` 认识 `ui/view/`，`ui/shell/` 认识 `ui/view/`
+但不认识 `ui/widgets/`（外壳只跟 `View` 与焦点接口打交道，不 import 任何控件）。
 
 被禁止的方向逐条列在 `scripts/check_layers.py` 的 `FORBIDDEN` 里，摘几条最容易踩的：
 基础机制（core/geom/json）不许认识外观、视图树与控件；渲染后端不许认识外观与视图；
-外观解析不许认识视图树（现存两处已记进 `BASELINE`）；视图层不许认识 `ui/app/` 与 `ui/widgets/`。
+外观解析不许认识视图树（现存两处已记进 `BASELINE`）；视图层不许认识 `ui/app/` 与 `ui/widgets/`；
+外壳不许认识控件、外观实现与 `ui/app/`，其余模块一律不许 include `ui/shell/`。
 
 允许的"上行"依赖是刻意保留的**依赖倒置**，不是"底层可以随便 include 上层"：
 `foundation/core/platform.hpp` 声明 `RenderBackend*`（图形接口由平台注入）、`foundation/core/services.hpp` 汇总

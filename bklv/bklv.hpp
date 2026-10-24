@@ -21,6 +21,10 @@
 
 // ---- app：组合根与上下文 ----
 #include "bklv/ui/app/app.hpp"
+
+// ---- shell（应用外壳）：背景 / 内容 / 覆盖 / 浮层 / 调试 五层容器 ----
+#include "bklv/ui/shell/focus_ring_view.hpp"
+#include "bklv/ui/shell/shell.hpp"
 #include "bklv/ui/app/context.hpp"
 
 // ---- core：基础机制（生命周期、事件、日志、资源、平台抽象、宿主服务）----
@@ -90,6 +94,5 @@
 #include "bklv/ui/widgets/container/scrolling_frame.hpp"
 #include "bklv/ui/widgets/debug/debug_layer.hpp"
 #include "bklv/ui/widgets/debug/debug_log_view.hpp"
-#include "bklv/ui/widgets/debug/focus_ring_view.hpp"
 #include "bklv/ui/widgets/list/json_cell.hpp"
 #include "bklv/ui/widgets/list/recycler.hpp"

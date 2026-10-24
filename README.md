@@ -38,6 +38,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 | `ui/widgets/` | 42 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 家族：`TextButton` / `IconButton` / `IconTextButton`）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
 | `ui/input/` | 8 | 键盘 / 手柄 / 手势、焦点与模态栈、IME |
 | `ui/app/` | 4 | `App` 帧循环、`Context`、通知层（组合根） |
+| `ui/shell/` | 4 | `Shell` 五层容器（背景 / 内容 / 覆盖 / 浮层 / 调试）+ 焦点框 `FocusRingView` |
 | `system/media/` | 15 | 字体与图标字体、图片解码与写出（PNG/JPEG/GIF/WebP/SVG）、音频与音效表 |
 | `system/platform/` | 9 | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现与 IME |
 
@@ -398,6 +399,7 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 demo/                                 演示程序（最小框架：外壳 + 页面栈 + 两个页面）
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
+bklv/ui/shell/*                            应用外壳：五层容器 + 焦点框（只认识 View 与焦点接口）
 bklv/ui/widgets/*                          外观驱动控件：Button 家族 / Notification（样式来自主题 JSON）
         ↓                               （样式来自主题 JSON，代码只写行为）
 bklv/ui/widgets/*                            Image / Label / ScrollingFrame / RecyclerFrame

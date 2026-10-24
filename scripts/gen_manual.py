@@ -159,6 +159,7 @@ def layer_stats():
         ('ui', 'widgets', '控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层'),
         ('ui', 'input', '输入：键盘 / 手柄 / 手势、焦点、IME'),
         ('ui', 'app', '应用：App 帧循环、Context、通知层'),
+        ('ui', 'shell', '外壳：背景 / 内容 / 覆盖 / 浮层 / 调试 五层容器与焦点框'),
         ('system', 'media', '媒体：字体与图标字体、图片解码、音频与音效'),
         ('system', 'platform', '平台实现：SDL3（桌面三平台）/ libnx（Switch）'),
     ]:
