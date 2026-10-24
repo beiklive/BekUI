@@ -84,7 +84,7 @@ class DemoApp
     bklv::Box* content        = nullptr;
     bklv::Label* titleLabel   = nullptr;
     bklv::Label* footerLabel  = nullptr;
-    bklv::Button* backButton  = nullptr;
+    bklv::TextButton* backButton  = nullptr;
 
     std::vector<std::unique_ptr<Page>> pages;
     // 待执行的导航动作（按插入顺序在下一帧开头依次执行）。

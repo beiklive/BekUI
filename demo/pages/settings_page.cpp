@@ -23,10 +23,10 @@ bklv::View* SettingsPage::build(DemoApp& app)
     actions->setGap(12.0f);
     actions->setPadding(8.0f, 0.0f, 0.0f, 0.0f);
 
-    auto* themeButton = new bklv::Button("切换主题");
+    auto* themeButton = new bklv::TextButton("切换主题");
     themeButton->setOnClick([&app]() { app.cycleTheme(); });
 
-    auto* backButton = new bklv::Button("返回上一页");
+    auto* backButton = new bklv::TextButton("返回上一页");
     backButton->setOnClick([&app]() { app.goBack(); });
 
     actions->addView(themeButton);

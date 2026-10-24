@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 be25605 · 2026-10-24 09:43 · 两套主题（default / glass）</div>
+  <div class="version">提交 e6f9930 · 2026-10-24 10:22 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -360,7 +360,7 @@ docs/                文档（本手册就是其中一份）</code></pre>
 
 <table>
 <thead><tr><th>层</th><th>.cpp</th><th>.hpp</th><th>职责</th></tr></thead>
-<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>21</td><td>21</td><td>控件：AppearanceView / Button / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
+<tbody><tr><td><code>foundation/core/</code></td><td>13</td><td>15</td><td>基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算</td></tr><tr><td><code>foundation/geom/</code></td><td>0</td><td>2</td><td>几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）</td></tr><tr><td><code>foundation/json/</code></td><td>3</td><td>3</td><td>JSON 工具：变量展开（&amp; 与 @）、错误策略、诊断</td></tr><tr><td><code>foundation/anim/</code></td><td>2</td><td>3</td><td>动画：缓动、补间、视图转场</td></tr><tr><td><code>graphics/paint/</code></td><td>3</td><td>3</td><td>绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT</td></tr><tr><td><code>graphics/render/</code></td><td>16</td><td>20</td><td>渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）</td></tr><tr><td><code>ui/view/</code></td><td>5</td><td>5</td><td>视图：View / Box（Yoga 布局）/ ViewTemplate 两段式</td></tr><tr><td><code>ui/theme/</code></td><td>10</td><td>10</td><td>外观与主题：ThemeData、Appearance 解析、图层类型表</td></tr><tr><td><code>ui/layer/</code></td><td>6</td><td>2</td><td>图层绘制：六个内置层的绘制实现与注册模板</td></tr><tr><td><code>ui/widgets/</code></td><td>21</td><td>21</td><td>控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层</td></tr><tr><td><code>ui/input/</code></td><td>4</td><td>4</td><td>输入：键盘 / 手柄 / 手势、焦点、IME</td></tr><tr><td><code>ui/app/</code></td><td>2</td><td>2</td><td>应用：App 帧循环、Context、通知层</td></tr><tr><td><code>system/media/</code></td><td>9</td><td>6</td><td>媒体：字体与图标字体、图片解码、音频与音效</td></tr><tr><td><code>system/platform/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）</td></tr></tbody>
 </table>
 
 <h3 id="sec-4">允许的依赖方向</h3>
@@ -494,7 +494,7 @@ app->run("我的应用", 1280, 720);</code></pre>
 <tr><td><code>system/platform/sdl3_*</code></td><td>macOS/Linux/Windows 的 SDL3 平台实现（窗口 / 手柄）</td></tr>
 <tr><td><code>system/platform/switch_*</code></td><td>Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言 + swkbd）</td></tr>
 <tr><td><code>ui/widgets/appearance/</code></td><td>外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量；<code>widget_types.cpp</code> 注册 <code>Button</code></td></tr>
-<tr><td><code>ui/widgets/controls/</code></td><td><code>Button</code>（唯一的 JSON 视图类型）与 <code>Notification</code>（<code>App::notify()</code> 的落点）</td></tr>
+<tr><td><code>ui/widgets/controls/</code></td><td><code>Button</code> 家族（抽象基类 + <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code>；JSON 里 <code>&quot;type&quot;: &quot;Button&quot;</code> 等价于 <code>TextButton</code>）与 <code>Notification</code>（<code>App::notify()</code> 的落点）</td></tr>
 <tr><td><code>ui/widgets/basic/</code></td><td><code>Label</code> / <code>Image</code> / <code>Padding</code> / <code>ProgressSpinner</code> —— 语义控件，只认 ImDrawList 与 core 接口</td></tr>
 <tr><td><code>ui/widgets/container/</code></td><td><code>ScrollingFrame</code> / <code>HScrollingFrame</code> / <code>ScrollBox</code></td></tr>
 <tr><td><code>ui/widgets/list/</code></td><td><code>RecyclerFrame</code> 与数据源 / JSON 列表项桥接</td></tr>
@@ -624,11 +624,11 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
     &quot;focused&quot;: { &quot;bg.fill&quot;: { &quot;to&quot;: &quot;@theme/color.accent.base&quot;, &quot;duration&quot;: 120,
                               &quot;easing&quot;: &quot;quadraticOut&quot; } } } }</code></pre>
 <pre><code class="lang-cpp">// 控件：外观全在 JSON 里，C++ 只写语义
-bklv::Button* button = new bklv::Button(&quot;确定&quot;);
+bklv::TextButton* button = new bklv::TextButton(&quot;确定&quot;);
 button-&gt;setOnClick([] { /* ... */ });
 
-bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
-bklv::Button* ghost = new bklv::Button(&quot;取消&quot;, &quot;ghost&quot;);  // variant -&gt; button.ghost.json
+bklv::IconButton* gear = new bklv::IconButton(bklv::icon::glyph(bklv::icon::Id::SETTINGS));
+bklv::TextButton* ghost = new bklv::TextButton(&quot;取消&quot;, &quot;ghost&quot;);  // variant -&gt; button.ghost
 
 app.setTheme(&quot;glass&quot;);  // 运行时换肤：重新取外观 + 重排，已建视图立即更新</code></pre>
 <h4 id="sec-18">常用色（<code>color.common.*</code>）</h4>
@@ -728,7 +728,7 @@ list-&gt;setScrollOffset(120, true);</code></pre>
 <pre><code class="lang-cpp">root-&gt;addView(new PresetBackdrop(BackdropPreset::GRID));   // 放在内容之下（Shell 已移除）
 // GRID / FLOATING / GRADIENT；颜色全部来自主题（surface.card / accent.base / common.grey）</code></pre>
 <h3 id="sec-30">分层约定</h3>
-<pre><code>bklv/ui/widgets/*             Button / Label / Image / RecyclerFrame / 调试层
+<pre><code>bklv/ui/widgets/*             Button 家族 / Label / Image / Recycler / 调试层
                             只认 ImDrawList 与 view/ core/ 的接口
         ↓
 bklv/ui/view/*                View / Box（Yoga 布局）/ ViewTemplate
@@ -755,7 +755,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 <section><h2 id="sec-32">内置控件</h2>
 
 <p><code>widgets/</code> 按职责分六个子目录：<code>appearance/</code>（外观驱动基类与层绘制注册）、
-<code>controls/</code>（Button）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
+<code>controls/</code>（Button 家族）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
 <code>list/</code>（RecyclerFrame）、<code>debug/</code>（日志层 / FPS / 调试绘制）。
 外观驱动控件继承 <code>AppearanceView</code>，绘制结构与状态动效都来自主题 JSON，代码只写行为；
 语义控件（Label / Image）只认 ImDrawList 与 core 接口。下面按头文件列出全部公开类型。</p>
@@ -798,7 +798,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 
 <h3 id="sec-39">几个常用控件的要点</h3>
 <p class=muted><b>2026-10 清理</b>：<code>widgets/</code> 只保留基础件（<code>AppearanceView</code> /
-<code>Button</code> / <code>Notification</code> + 层绘制）。<code>Shell</code> / <code>Header</code> /
+<code>Button</code> 家族 / <code>Notification</code> + 层绘制）。<code>Shell</code> / <code>Header</code> /
 <code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>Cell</code> 家族 /
 <code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> 等已移除，
 等 demo 重做时按需加回。</p>
@@ -806,7 +806,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 <thead><tr><th>控件</th><th>要点</th></tr></thead>
 <tbody>
 <tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
-<tr><td><code>Button</code></td><td>目前唯一注册进 JSON 视图类型的控件（<code>"type": "Button"</code>）；<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
+<tr><td><code>Button</code> 家族</td><td>抽象基类 <code>Button</code> + <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code>；JSON 里 <code>"type": "Button"</code> 等价于 <code>TextButton</code>。两个预留内容位 <code>text</code> / <code>icon</code> 由外观的 <code>"data_id"</code> 索引，视图 id（<code>"id"</code> + <code>findViewById</code>）是另一个维度。<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
 <tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
 <tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（<code>widgets/list/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
 <tr><td><code>Box</code> / <code>Label</code></td><td>布局容器在 <code>view/box.*</code>（与 Yoga 一起），文字在 <code>widgets/basic/label.*</code>。</td></tr>
@@ -1364,7 +1364,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 <tr><td><code>"bind": "字段名"</code></td><td>数据绑定：写到该类型的主属性（Label→text，Image→src）；别的类型要显式 <code>"bindTo"</code></td><td>列表项 setIndex 时</td></tr>
 </tbody>
 </table>
-<p>能写的 <code>"type"</code>（注册表实测）：<code>Button</code>。</p>
+<p>能写的 <code>"type"</code>（注册表实测）：<code>Button</code>、<code>TextButton</code>、<code>IconButton</code>、<code>IconTextButton</code>。</p>
 
 <h3 id="sec-112">JSON 语法速查</h3>
 <blockquote><strong>2026-10 控件清理</strong>：<code>bklv/widgets</code> 现在只剩 <code>AppearanceView</code> / <code>Button</code> / <code>Notification</code> + 六个 <code>layer_draw_*</code>。本文提到的 <code>Shell</code> / <code>Header</code> / <code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>TabFrame</code> / <code>Cell</code> 家族 / <code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> / <code>StatusArea</code> 以及它们在 <code>resources/theme/default/base/**</code> 下的外观 JSON 都已删除 —— 这些段落作为 &quot;重做时的约定&quot;保留，别当成现成 API。</blockquote>
@@ -2159,7 +2159,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>be25605</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>e6f9930</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

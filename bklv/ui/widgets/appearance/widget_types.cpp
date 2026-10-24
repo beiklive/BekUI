@@ -31,9 +31,15 @@ void registerWidgetViewTypes()
         return;
     g_widgetTypesRegistered = true;
 
-    // 只剩 Button 一种外观驱动的控件（其余控件已随 demo 重做一起移除）。
+    // 只剩 Button 家族（其余控件已随 demo 重做一起移除）。
     // Box / Label 属于 core 与 views，JSON 里用它们自己的类型名构造。
-    registerViewType("Button", [] { return (View*)new Button(); });
+    //
+    // "Button" 保留给旧 JSON：等价于 TextButton（历史上 Button 就是带文字的按钮）。
+    // 新的按钮类型用具体名字注册，JSON 里写 `"type": "IconButton"` 这种更清楚。
+    registerViewType("Button", [] { return (View*)new TextButton(); });
+    registerViewType("TextButton", [] { return (View*)new TextButton(); });
+    registerViewType("IconButton", [] { return (View*)new IconButton(); });
+    registerViewType("IconTextButton", [] { return (View*)new IconTextButton(); });
 }
 
 } // namespace bklv

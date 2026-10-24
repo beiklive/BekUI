@@ -35,7 +35,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 | `ui/view/` | 10 | `View` / `Box`（Yoga Flexbox 与节点管理）/ `ViewTemplate` 两段式、JSON 数据与动作绑定 |
 | `ui/theme/` | 20 | 外观与主题：`ThemeData` 与主题解析、`Appearance` 编译（box / layers / states / import）、图层类型表与参数表 |
 | `ui/layer/` | 8 | 六个内置层的绘制实现 + 第三方层的注册模板 |
-| `ui/widgets/` | 42 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 等）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
+| `ui/widgets/` | 42 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 家族：`TextButton` / `IconButton` / `IconTextButton`）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
 | `ui/input/` | 8 | 键盘 / 手柄 / 手势、焦点与模态栈、IME |
 | `ui/app/` | 4 | `App` 帧循环、`Context`、通知层（组合根） |
 | `system/media/` | 15 | 字体与图标字体、图片解码与写出（PNG/JPEG/GIF/WebP/SVG）、音频与音效表 |
@@ -185,7 +185,7 @@ image->setImageFromFile("resources/testcard.png");
 `Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
 界面也可以用 JSON 描述（解析层在 `bklv/ui/view/view_parse.*`）。能用哪些类型取决于
-`bklv/ui/widgets/appearance/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
+`bklv/ui/widgets/appearance/widget_types.cpp` 里注册了什么 —— 清理后注册的是 Button 家族（`"type": "Button"` 等价于 `TextButton`）：
 
 ```cpp
 bklv::View* view = bklv::createFromJSONFile("resources/views/xxx.json");  // 路径相对资源目录
@@ -370,7 +370,7 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 demo/                                 演示程序（最小框架：外壳 + 页面栈 + 两个页面）
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
-bklv/ui/widgets/*                          外观驱动控件：Button / Notification（样式来自主题 JSON）
+bklv/ui/widgets/*                          外观驱动控件：Button 家族 / Notification（样式来自主题 JSON）
         ↓                               （样式来自主题 JSON，代码只写行为）
 bklv/ui/widgets/*                            Image / Label / ScrollingFrame / RecyclerFrame
                                         只认 ImDrawList 和 ImTextureID

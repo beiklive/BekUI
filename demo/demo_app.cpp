@@ -54,7 +54,7 @@ void DemoApp::buildShell()
     header->setGap(16.0f);
     header->setPadding(20.0f, 20.0f, 10.0f, 20.0f);
 
-    this->backButton = new bklv::Button("< 返回");
+    this->backButton = new bklv::TextButton("< 返回");
     this->backButton->setOnClick([this]() { this->goBack(); });
     // 手柄 / 键盘的 BACK（Esc）走同一条路：焦点停在顶栏按钮上时按键直达。
     this->backButton->registerAction(bklv::ControllerButton::BACK, "返回", [this](bklv::View*) { this->goBack(); });

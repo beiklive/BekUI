@@ -183,7 +183,7 @@ int main(int, char**)
     image->setHeight(180.0f);
     root->addView(image);
 
-    bklv::Button* button = new bklv::Button("来自 bklv 的按钮");
+    bklv::TextButton* button = new bklv::TextButton("来自 bklv 的按钮");
     button->setOnClick([] { std::printf("bklv button clicked\n"); });
     root->addView(button);
 

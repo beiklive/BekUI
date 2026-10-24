@@ -2,15 +2,14 @@
 
 #include <utility>
 
-#include "bklv/ui/theme/attributes.hpp"
-#include "bklv/ui/view/json_actions.hpp"
-#include "bklv/foundation/core/logger.hpp"
-#include "bklv/foundation/core/i18n.hpp"
-#include "bklv/ui/input/input.hpp"
-#include "bklv/system/media/audio.hpp"
-#include "bklv/ui/theme/theme_data.hpp"
 #include "bklv/foundation/anim/time.hpp"
-#include "bklv/ui/widgets/appearance/content_ids.hpp"
+#include "bklv/foundation/core/i18n.hpp"
+#include "bklv/foundation/core/logger.hpp"
+#include "bklv/system/media/audio.hpp"
+#include "bklv/ui/input/input.hpp"
+#include "bklv/ui/theme/attributes.hpp"
+#include "bklv/ui/theme/theme_data.hpp"
+#include "bklv/ui/view/json_actions.hpp"
 
 namespace bklv
 {
@@ -18,9 +17,16 @@ namespace bklv
 namespace
 {
 
+// ---- 属性表的 setter（函数指针，静态表里只存地址，不随实例分配）----
+
 void setButtonTextAttr(View* v, const ResolvedValue& r)
 {
-    static_cast<Button*>(v)->setText(content::TEXT, r.text);
+    static_cast<Button*>(v)->setText(r.text);
+}
+
+void setButtonIconAttr(View* v, const ResolvedValue& r)
+{
+    static_cast<Button*>(v)->setIcon(r.text);
 }
 
 void setButtonVariantAttr(View* v, const ResolvedValue& r)
@@ -33,7 +39,46 @@ void setButtonEnabledAttr(View* v, const ResolvedValue& r)
     static_cast<Button*>(v)->setEnabled(r.boolean);
 }
 
+void setButtonIconFontAttr(View* v, const ResolvedValue& r)
+{
+    Button* button = static_cast<Button*>(v);
+    if (enumMatches(r.text, "material"))
+        button->setIconFontKind(IconFontKind::MATERIAL);
+    else if (enumMatches(r.text, "switch"))
+        button->setIconFontKind(IconFontKind::SWITCH);
+    else
+        warnUnknownEnumValue("iconFont", r.text, "material|switch");
+}
+
+void setButtonOnClickAttr(View* v, const ResolvedValue& r)
+{
+    Button* button            = static_cast<Button*>(v);
+    const std::string action  = r.text;
+    button->setOnClick([button, action] {
+        std::string error;
+        if (!invokeJsonAction(action, *button, error))
+            BKLV_LOG_ERROR("%s", error.c_str());
+    });
+}
+
 } // namespace
+
+// ---- 基类：只做"按钮都有什么" ----
+
+Button::Button(std::string appearanceName, std::string variant)
+    : AppearanceView(std::move(appearanceName), true)
+{
+    // 点一下就执行（不用先聚焦再按回车），键盘/手柄走 A 键
+    this->onPointerAction = true;
+    this->registerAction(ControllerButton::A, translate("hints/ok"), [this](View*) { this->trigger(); });
+
+    // 具体形态的默认外观就是"基名 + variant"，由基类统一拼（子类不各写一份路径）
+    if (!variant.empty())
+        this->setAppearanceVariant(variant);
+
+    this->enableContentMeasurement();
+    this->applyTheme();
+}
 
 void Button::setText(const std::string& text)
 {
@@ -43,19 +88,6 @@ void Button::setText(const std::string& text)
 void Button::setIcon(const std::string& glyph)
 {
     AppearanceView::setIcon(content::ICON, glyph);
-}
-
-Button::Button(const std::string& text, const std::string& variant)
-    : AppearanceView(variant.empty() ? "base/button/button" : "base/button/button." + variant, true)
-{
-    this->setText(text);
-    
-    // 点一下就执行（不用先聚焦再按回车），键盘/手柄走 A 键
-    this->onPointerAction = true;
-    this->registerAction(ControllerButton::A, translate("hints/ok"), [this](View*) { this->trigger(); });
-
-    this->enableContentMeasurement();
-    this->applyTheme();
 }
 
 void Button::setEnabled(bool value)
@@ -69,11 +101,8 @@ void Button::setEnabled(bool value)
 
 void Button::trigger()
 {
-    if (!this->enabled || !this->onClick)
-    {
-        if (!this->enabled)
-            return;
-    }
+    if (!this->enabled)
+        return;
 
     // 按下反馈：打开 pressed 状态，过一小段时间由 update() 关掉。
     // 外观 JSON 里可以给 pressed 定义颜色/位移等动效。
@@ -111,46 +140,59 @@ void Button::setSwitched(bool on)
     this->invalidate();
 }
 
-namespace
-{
+// ---- 三个具体形态：只差"用哪份外观 + 填哪几个内容位" ----
 
-void setButtonIconAttr(View* v, const ResolvedValue& r)
+TextButton::TextButton(const std::string& text, const std::string& variant)
+    : Button("base/button/button", variant)
 {
-    static_cast<Button*>(v)->setIcon(content::ICON, r.text);
+    this->setText(text);
 }
 
-void setButtonIconFontAttr(View* v, const ResolvedValue& r)
+const AttributeTable& TextButton::attributes() const
 {
-    Button* button = static_cast<Button*>(v);
-    if (enumMatches(r.text, "material"))
-        button->setIconFontKind(IconFontKind::MATERIAL);
-    else if (enumMatches(r.text, "switch"))
-        button->setIconFontKind(IconFontKind::SWITCH);
-    else
-        warnUnknownEnumValue("iconFont", r.text, "material|switch");
+    static const AttributeTable table = {
+        { "text", AttributeKind::TEXT, setButtonTextAttr, nullptr },
+        { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
+        { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
+        { "onClick", AttributeKind::STRING, setButtonOnClickAttr, nullptr },
+    };
+    return table;
 }
 
-} // namespace
-
-const AttributeTable& Button::attributes() const
+IconButton::IconButton(const std::string& glyph, const std::string& variant)
+    : Button("base/button/button", variant)
 {
-    // Button 自己的 text 语义与基类不同（还要更新子 Label），所以 text 留在这儿；
-    // icon / iconFont 与基类同义，照抄表项（AttributeTable 只收 initializer_list，不能拼接）。
+    this->setIcon(glyph);
+}
+
+const AttributeTable& IconButton::attributes() const
+{
+    static const AttributeTable table = {
+        { "icon", AttributeKind::TEXT, setButtonIconAttr, nullptr },
+        { "iconFont", AttributeKind::ENUM, setButtonIconFontAttr, "material|switch" },
+        { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
+        { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
+        { "onClick", AttributeKind::STRING, setButtonOnClickAttr, nullptr },
+    };
+    return table;
+}
+
+IconTextButton::IconTextButton(const std::string& text, const std::string& glyph, const std::string& variant)
+    : Button("base/button/button", variant)
+{
+    this->setText(text);
+    this->setIcon(glyph);
+}
+
+const AttributeTable& IconTextButton::attributes() const
+{
     static const AttributeTable table = {
         { "text", AttributeKind::TEXT, setButtonTextAttr, nullptr },
         { "icon", AttributeKind::TEXT, setButtonIconAttr, nullptr },
         { "iconFont", AttributeKind::ENUM, setButtonIconFontAttr, "material|switch" },
         { "variant", AttributeKind::STRING, setButtonVariantAttr, nullptr },
         { "enabled", AttributeKind::BOOL, setButtonEnabledAttr, nullptr },
-        { "onClick", AttributeKind::STRING, [](View* v, const ResolvedValue& r) {
-             Button* button = static_cast<Button*>(v);
-             const std::string action = r.text;
-             button->setOnClick([button, action] {
-                 std::string error;
-                 if (!invokeJsonAction(action, *button, error))
-                     BKLV_LOG_ERROR("%s", error.c_str());
-             });
-         }, nullptr },
+        { "onClick", AttributeKind::STRING, setButtonOnClickAttr, nullptr },
     };
     return table;
 }

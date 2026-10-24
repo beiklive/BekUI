@@ -74,7 +74,7 @@
 | `system/platform/sdl3_*` | macOS/Linux/Windows 的 SDL3 平台实现（窗口 / 手柄） |
 | `system/platform/switch_*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言 + swkbd） |
 | `ui/widgets/appearance/` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量；`widget_types.cpp` 注册 `Button` |
-| `ui/widgets/controls/` | `Button`（唯一的 JSON 视图类型）与 `Notification`（`App::notify()` 的落点） |
+| `ui/widgets/controls/` | `Button` 家族（抽象基类 + `TextButton` / `IconButton` / `IconTextButton`；JSON 里 `"type": "Button"` 等价于 `TextButton`）与 `Notification`（`App::notify()` 的落点） |
 | `ui/widgets/basic/` | `Label` / `Image` / `Padding` / `ProgressSpinner` —— 语义控件，只认 ImDrawList 与 core 接口 |
 | `ui/widgets/container/` | `ScrollingFrame` / `HScrollingFrame` / `ScrollBox` |
 | `ui/widgets/list/` | `RecyclerFrame` 与数据源 / JSON 列表项桥接 |
@@ -277,11 +277,11 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 
 ```cpp
 // 控件：外观全在 JSON 里，C++ 只写语义
-bklv::Button* button = new bklv::Button("确定");
+bklv::TextButton* button = new bklv::TextButton("确定");
 button->setOnClick([] { /* ... */ });
 
-bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
-bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button.ghost.json
+bklv::IconButton* gear = new bklv::IconButton(bklv::icon::glyph(bklv::icon::Id::SETTINGS));
+bklv::TextButton* ghost = new bklv::TextButton("取消", "ghost");  // variant -> button.ghost
 
 app.setTheme("glass");  // 运行时换肤：重新取外观 + 重排，已建视图立即更新
 ```
@@ -463,7 +463,7 @@ root->addView(new PresetBackdrop(BackdropPreset::GRID));   // 放在内容之下
 ## 分层约定
 
 ```
-bklv/ui/widgets/*             Button / Label / Image / RecyclerFrame / 调试层
+bklv/ui/widgets/*             Button 家族 / Label / Image / Recycler / 调试层
                             只认 ImDrawList 与 view/ core/ 的接口
         ↓
 bklv/ui/view/*                View / Box（Yoga 布局）/ ViewTemplate

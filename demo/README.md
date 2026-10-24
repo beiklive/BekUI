@@ -53,13 +53,13 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
    };
    ```
 
-2. `build()` 里用 `bklv::Box` / `bklv::Label` / `bklv::Button` 拼一棵子树返回。
+2. `build()` 里用 `bklv::Box` / `bklv::Label` / `bklv::TextButton`（或 `IconButton` / `IconTextButton`）拼一棵子树返回。
    每次进入页面都会重新 build，旧子树随出栈销毁 —— 要跨次保留的数据放页面成员里。
 
 3. 从某个按钮的回调里压栈：
 
    ```cpp
-   button->setOnClick([&app]() { app.pushPage(new XxxPage()); });
+   button->setOnClick([&app]() { app.pushPage(new XxxPage()); });  // button 是 bklv::TextButton*
    ```
 
 4. 把新的 `.cpp` 加进根 `CMakeLists.txt` 的 `add_executable(demo ...)`。

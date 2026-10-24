@@ -24,13 +24,13 @@ bklv::View* HomePage::build(DemoApp& app)
     actions->setGap(12.0f);
     actions->setPadding(8.0f, 0.0f, 0.0f, 0.0f);
 
-    auto* settingsButton = new bklv::Button("打开设置");
+    auto* settingsButton = new bklv::TextButton("打开设置");
     settingsButton->setOnClick([&app]() { app.openSettings(); });
 
-    auto* themeButton = new bklv::Button("切换主题");
+    auto* themeButton = new bklv::TextButton("切换主题");
     themeButton->setOnClick([&app]() { app.cycleTheme(); });
 
-    auto* notifyButton = new bklv::Button("发一条通知");
+    auto* notifyButton = new bklv::TextButton("发一条通知");
     notifyButton->setOnClick([&app]() { app.app().notify("Hello, BekUI demo"); });
 
     actions->addView(settingsButton);

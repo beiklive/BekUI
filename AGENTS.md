@@ -741,11 +741,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   → 帧变了才 `updateTexture()` **就地换内容**（不重建纹理、不参与布局）。
   只在**可见**时推进（离屏不占上传带宽）。纹理是视图自己上传的（`ownsTexture`），
   析构/换图时必须 `releaseTexture()`，别漏。
-- **组合按钮与选择器**（`ui/widgets/button.*` + `ui/widgets/selector_button.*`，
-  外观 `base/widget/button.{text,icon,icon_text,dropdown,switch_text,switch_icon,info,selector}`）：
+- **按钮家族**（`ui/widgets/controls/button.*`）：抽象基类 `Button` 只留按钮语义
+  （点击 / 禁用 / 开关 / 按下反馈 / 属性表套路），具体形态是 `TextButton` / `IconButton` /
+  `IconTextButton`，各自绑外观 `base/button/button`、`button.icon`、`button.icon_text`
+  （variant 继续拼后缀：`base/button/button.<variant>`）。
+  两个预留内容位由基类给名字：`Button::TEXT_SLOT`（`"text"`）/ `Button::ICON_SLOT`（`"icon"`），
+  外观 JSON 用 `"data_id": "text"|"icon"` 索引；视图 id 是另一个维度，走 `View::setId()`
+  （JSON 里写 `"id"`，之后 `findViewById("ok")` 取控件）。选择器按钮已随控件清理移除，重做时照下面的约定：
   1）**变体 = 组合外观**，代码只给内容和行为。`AppearanceView::setAppearanceName(name)`
      换基名（名字是主题里的完整路径，如 `base/widget/button.icon_text`）；一行放置靠层 inset。
-  2）内容槽在 `AppearanceView` 上（不是 Button）：`setIcon()`（图标字形）与
+  2）内容槽在 `AppearanceView` 上（Button 只给 `text` / `icon` 两个约定槽起了名字）：`setIcon()`（图标字形）与
      `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
      `getLayerFont` 对图标层返回图标字体（用正文字体会把图标画成方块）；
      同一个控件里要多套图标字体混排就按层声明 `setLayerIconFontKind(layerId, kind)`
