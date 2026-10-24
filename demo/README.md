@@ -64,12 +64,29 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
 
 4. 把新的 `.cpp` 加进根 `CMakeLists.txt` 的 `add_executable(demo ...)`。
 
-## 两个约定
+## 三个约定
 
 - **导航必须走 `pushPage()` / `goBack()`**：它们把动作推迟到下一帧开头执行。
   按钮回调里直接改页面栈会把正在执行的子树删掉（call-after-free）。
 - 页面里写死的状态文字（比如「当前主题」）在换肤后不会自己变，
   `cycleTheme()` 会重建当前页，所以拼文字时读 `app.getThemeName()` 即可。
+- **装完页要自己补一次焦点**：`App::setRootView()` 只在换根那一刻找默认焦点，
+  而这里的页面是在第一帧（或每次换页）才进树，那次查找会拿到空。
+  `showCurrentPage()` 末尾因此有一句 `giveFocus(root->getDefaultFocus())`
+  （`giveFocus` 默认静音，不会出声）；不补的话既没有焦点框，方向键也无从下手。
+
+## 焦点框
+
+`demo_app.cpp` 的 `buildShell()` 在根视图最后加了一个 `bklv::FocusRingView`：
+
+```cpp
+this->focusRing = new bklv::FocusRingView();
+this->root->addView(this->focusRing);   // 加在最后 → 画在所有内容之上
+```
+
+它自己是绝对定位铺满父容器、不吃输入，每帧问输入管理器"当前焦点是谁"、
+再问那个控件"你是什么形状"（`View::getFocusOutline()`）—— 控件完全不知道它的存在。
+样式写死在代码里（`getRingStyle()` 可调），不跟主题 JSON 走。
 
 ## 换肤与资源
 

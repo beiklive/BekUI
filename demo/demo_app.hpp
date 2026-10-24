@@ -25,6 +25,7 @@
 #include "bklv/ui/view/box.hpp"
 #include "bklv/ui/widgets/basic/label.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
+#include "bklv/ui/widgets/debug/focus_ring_view.hpp"
 
 namespace demo
 {
@@ -85,6 +86,7 @@ class DemoApp
     bklv::Label* titleLabel   = nullptr;
     bklv::Label* footerLabel  = nullptr;
     bklv::TextButton* backButton  = nullptr;
+    bklv::FocusRingView* focusRing = nullptr;
 
     std::vector<std::unique_ptr<Page>> pages;
     // 待执行的导航动作（按插入顺序在下一帧开头依次执行）。

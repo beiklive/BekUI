@@ -90,5 +90,6 @@
 #include "bklv/ui/widgets/container/scrolling_frame.hpp"
 #include "bklv/ui/widgets/debug/debug_layer.hpp"
 #include "bklv/ui/widgets/debug/debug_log_view.hpp"
+#include "bklv/ui/widgets/debug/focus_ring_view.hpp"
 #include "bklv/ui/widgets/list/json_cell.hpp"
 #include "bklv/ui/widgets/list/recycler.hpp"

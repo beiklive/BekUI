@@ -31,7 +31,6 @@ DemoApp::DemoApp()
     this->application.onUpdate = [this]() {
         if (this->pendingNavigation.empty())
             return;
-
         std::vector<std::function<void()>> actions;
         actions.swap(this->pendingNavigation);
         for (auto& action : actions)
@@ -88,6 +87,11 @@ void DemoApp::buildShell()
     this->root->addView(header);
     this->root->addView(this->content);
     this->root->addView(footer);
+
+    // 焦点框：绝对定位铺满根视图，加在最后 → 画在所有内容之上。
+    // 它自己问输入管理器要当前焦点，不依赖任何控件知道它的存在。
+    this->focusRing = new bklv::FocusRingView();
+    this->root->addView(this->focusRing);
 
     // 根视图兜一个 BACK：焦点在内容区时 Esc 也能返回。
     this->root->registerAction(bklv::ControllerButton::BACK, "返回", [this](bklv::View*) { this->goBack(); });
@@ -156,6 +160,12 @@ void DemoApp::showCurrentPage()
     }
 
     this->refreshHeader();
+
+    // 重新装页之后焦点要落在新页面上：`App::setRootView()` 只在换根那一刻找一次默认焦点，
+    // 而这里是在第一帧（甚至每次换页）才把页面内容塞进树里，那次查找拿到的是 nullptr。
+    // 没有焦点就没有焦点框，方向键也无从下手 —— 所以补一次（giveFocus 默认静音）。
+    if (bklv::getInputManager().getCurrentFocus() == nullptr && this->root != nullptr)
+        bklv::getInputManager().giveFocus(this->root->getDefaultFocus());
 }
 
 void DemoApp::refreshHeader()

@@ -535,6 +535,7 @@ set(BKLV_CORE_SOURCES
     ui/widgets/controls/notification.cpp
     ui/widgets/debug/debug_layer.cpp
     ui/widgets/debug/debug_log_view.cpp
+    ui/widgets/debug/focus_ring_view.cpp
     ui/widgets/debug/fps_overlay.cpp
     ui/widgets/debug/preset_backdrop.cpp
     ui/widgets/list/data_source.cpp
