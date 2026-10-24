@@ -59,7 +59,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 demo/main.cpp               参数解析：--theme / --page / --screenshot / --frames / --size
 demo/demo_app.*             外壳：视图树、页面栈、导航（pushPage / goBack 都推迟到下一帧）
 demo/page.hpp               页面接口：getTitle() + build(DemoApp&)
-demo/pages/home_page.*      首页：打开设置 / 切换主题 / 发一条通知
+demo/pages/home_page.*      首页：导航、换肤，三种通知（文字 / 图标 / 图片）与连发 5 条
 demo/pages/settings_page.*  设置页：切换主题 / 返回上一页
 demo/style.hpp              从主题取页面底色与文字色
 ```
@@ -400,7 +400,7 @@ demo/                                 演示程序（最小框架：外壳 + 页
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
 bklv/ui/shell/*                            应用外壳：五层容器 + 焦点框（只认识 View 与焦点接口）
-bklv/ui/widgets/*                          外观驱动控件：Button 家族 / Notification（样式来自主题 JSON）
+bklv/ui/widgets/*                          外观驱动控件：Button 家族 / Notification（卡片样式来自主题 JSON，内容与滑动动画在代码里）
         ↓                               （样式来自主题 JSON，代码只写行为）
 bklv/ui/widgets/*                            Image / Label / ScrollingFrame / RecyclerFrame
                                         只认 ImDrawList 和 ImTextureID

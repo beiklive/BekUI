@@ -319,7 +319,19 @@ bool init()
 
     SDL_ResumeAudioStreamDevice(g_stream);
     g_available = true;
-    BKLV_LOG_INFO("音频已就绪（音效是代码合成的，不依赖素材）");
+    BKLV_LOG_INFO("音频已就绪（音效是主题的 sound.json 里配的 wav，缺项回退代码合成）");
+
+    // 预热：先低声放一声（约 -60 dBFS，听不见）。
+    // 原因：Windows 上音频端点/会话是在"第一次真有输出"时才被唤醒的，唤醒过程自带
+    // 几百毫秒的淡入 —— 表现为"前几次按键没声音，然后音量从小变大"。启动时先放一点
+    // 极低电平的信号，把端点叫醒，用户第一次按键就是正常音量。（踩过）
+    {
+        constexpr int kHomeSamples = 2400; // 50ms @ 48kHz，够触发一次输出即可
+        auto warmup = std::make_shared<SoundClip>();
+        warmup->samples.assign(kHomeSamples, 0.001f);
+        std::lock_guard<std::mutex> lock(g_mutex);
+        g_mixer.triggerClip(warmup);
+    }
     return true;
 #endif
 }

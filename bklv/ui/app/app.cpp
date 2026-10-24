@@ -112,10 +112,17 @@ void App::setRootView(View* view)
     // 补发排队中的通知（在此之前 App::notify 只能先记下来）
     if (!this->pendingNotifications.empty())
     {
-        std::vector<std::pair<std::string, float>> queued;
+        std::vector<PendingNotification> queued;
         queued.swap(this->pendingNotifications);
-        for (const auto& item : queued)
-            this->notify(item.first, item.second);
+        for (const PendingNotification& item : queued)
+        {
+            if (item.kind == 1)
+                this->notifyIcon(item.text, item.glyphOrPath, item.duration);
+            else if (item.kind == 2)
+                this->notifyImage(item.text, item.glyphOrPath, item.duration);
+            else
+                this->notify(item.text, item.duration);
+        }
     }
 }
 
@@ -225,11 +232,38 @@ void App::notify(const std::string& text, float duration)
     if (manager == nullptr)
     {
         // 根视图还没设好（窗口创建前 notify）：先排队，setRootView 之后补发
-        this->pendingNotifications.emplace_back(text, duration);
+        this->pendingNotifications.push_back({0, text, std::string(), duration});
         return;
     }
 
     manager->notify(text, duration);
+    this->requestLayout();
+}
+
+void App::notifyIcon(const std::string& text, const std::string& glyph, float duration)
+{
+    NotificationManager* manager = this->getNotifications();
+    if (manager == nullptr)
+    {
+        this->pendingNotifications.push_back({1, text, glyph, duration});
+        return;
+    }
+
+    manager->notifyIcon(text, glyph, duration);
+    this->requestLayout();
+}
+
+void App::notifyImage(
+    const std::string& text, const std::string& imagePath, float duration)
+{
+    NotificationManager* manager = this->getNotifications();
+    if (manager == nullptr)
+    {
+        this->pendingNotifications.push_back({2, text, imagePath, duration});
+        return;
+    }
+
+    manager->notifyImage(text, imagePath, duration);
     this->requestLayout();
 }
 

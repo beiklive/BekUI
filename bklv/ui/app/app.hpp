@@ -142,6 +142,13 @@ class App
     // 对应 borealis 的 NotificationManager::notify，但这里是实例而不是全局单例。
     void notify(const std::string& text, float duration = 3.0f);
 
+    // 图标 + 文字的通知（glyph 取 `bklv::icon::glyph(...)`）
+    void notifyIcon(const std::string& text, const std::string& glyph, float duration = 3.0f);
+
+    // 图片 + 文字的通知（imagePath 走资源路径，例如 "resources/testcard.png"）
+    void notifyImage(
+        const std::string& text, const std::string& imagePath, float duration = 3.0f);
+
     // 通知层（想改位置/上限/样式就自己拿它调）
     NotificationManager* getNotifications();
 
@@ -214,7 +221,15 @@ class App
     FrameProfile profile;
     bool debugLayerRequested = false; // 根视图还没就绪时先记下（setRootView 后再开）
     // 还没有根视图时先排队（比如窗口建好前就 notify），setRootView 之后补发
-    std::vector<std::pair<std::string, float>> pendingNotifications;
+    // 三种形态都要能排队，所以这里不能只存 (文字, 时长)
+    struct PendingNotification
+    {
+        int kind = 0; // 0 = 文字，1 = 图标 + 文字，2 = 图片 + 文字
+        std::string text;
+        std::string glyphOrPath;
+        float duration = 3.0f;
+    };
+    std::vector<PendingNotification> pendingNotifications;
 
 #if defined(BKLV_SWITCH)
     PlatformType platformType = PlatformType::SWITCH;

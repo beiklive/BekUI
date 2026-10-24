@@ -1,5 +1,5 @@
 {
-  "$comment": "通知条：玻璃底 + 描边 + 文本，三层都来自 base/layer/。bg 留着给 hidden/shown 的 opacity / offsetY 动画用。",
+  "$comment": "通知卡片：只画背景 / 描边 / 阴影，内容（图标或图片 + 文案）由 Notification 用真视图拼出来。bg 留着给 hidden / shown 的 opacity 淡出用；横向滑入滑出走代码（setTranslateX），所以这里没有 offsetX 动画。",
   "box": {
     "width": "@theme/metric.notification.width",
     "height": "auto",
@@ -9,26 +9,31 @@
       "@theme/metric.notification.paddingY",
       "@theme/metric.notification.paddingX"
     ],
-    "alignItems": "center"
+    "alignItems": "flexStart"
+  },
+  "requires": {
+    "layers": [
+      {
+        "shadow": "shadow"
+      },
+      {
+        "bg": "rect"
+      }
+    ]
   },
   "layers": [
     {
-      "import": "base/layer/glass"
+      "import": "base/layer/shadow"
+    },
+    {
+      "import": "base/layer/border"
     },
     {
       "import": "base/layer/bg",
-      "fill": "@theme/color.common.transparent",
-      "stroke": "@theme/color.border.subtle",
+      "fill": "@theme/color.notification.background",
+      "stroke": "@theme/color.border.default",
       "strokeWidth": 1,
       "radius": "@theme/metric.notification.radius"
-    },
-    {
-      "op": "text",
-      "id": "text",
-      "data_id": "text",
-      "color": "@theme/color.notification.text",
-      "fontSize": "@theme/metric.notification.fontSize",
-      "valign": "center"
     }
   ],
   "states": {
@@ -36,35 +41,11 @@
       "bg.opacity": {
         "to": 0.0,
         "duration": 150
-      },
-      "text.opacity": {
-        "to": 0.0,
-        "duration": 150
-      },
-      "bg.offsetY": {
-        "to": -12.0,
-        "duration": 150
-      },
-      "text.offsetY": {
-        "to": -12.0,
-        "duration": 150
       }
     },
     "shown": {
       "bg.opacity": {
         "to": 1.0,
-        "duration": 150
-      },
-      "text.opacity": {
-        "to": 1.0,
-        "duration": 150
-      },
-      "bg.offsetY": {
-        "to": 0.0,
-        "duration": 150
-      },
-      "text.offsetY": {
-        "to": 0.0,
         "duration": 150
       }
     }

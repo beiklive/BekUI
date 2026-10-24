@@ -811,6 +811,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   Switch 靠系统字体 `NintendoExt` 回退，桌面随包带 `resources/font/switch_icons.ttf`。
   这一层必须 `setLayerIconFontKind("icon", IconFontKind::SWITCH)` —— 不指定时基类默认 Material
   那套，同一个码位会画出灯泡/书本之类的东西（踩过）。
+- **通知（Toast）也是视图，动画在代码里做**（`ui/widgets/controls/notification.*`）：
+  `NotificationManager`（挂右上角、绝对定位、不吃焦点）→ `Notification` × N。
+  三种内容走 `NotificationKind`：纯文字 / 图标 + 文字 / 图片 + 文字
+  （`App::notify` / `notifyIcon` / `notifyImage`，没有根视图时都先排队）。
+  卡片只画背景 / 描边 / 阴影（`base/widget/notification.json`），内容用 `Box(Axis::ROW)` +
+  `Label` / `Image` 拼真视图 —— 别用外观的 `text` 层，图标和图片没法走那条路。
+  出现/消失**用 `setTranslateX` 从屏幕右侧滑**，消失时同时把自身高度收到 0，
+  这样下面几条是"逐步往上挪"而不是"跳一下"。堆叠**不设上限**，各自倒计时、
+  到期各自滑走，`isFinished()`（滑完 + 收完）才真正 `removeView`。
 - **底栏/页头 `setShrink(0)`**：内容区要的比剩下的多时，该被压缩的是内容区（它会滚动），
   不是底栏（压了连图标都放不下，踩过：22px 被压成 14px）。
 - **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。

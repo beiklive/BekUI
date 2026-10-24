@@ -428,7 +428,7 @@ sections.append(('内置控件', f'''
 <tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
 <tr><td><code>Button</code> 家族</td><td>抽象基类 <code>Button</code> 只描述行为与基础外观（<code>base/button/button</code>：背景 / 边框 / 阴影，无内容层）+ <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code> 三种形态（外观 <code>button.text</code> / <code>button.icon</code> / <code>button.icon_text</code>）；JSON 里 <code>"type": "Button"</code> 等价于 <code>TextButton</code>。内容位 id 是 <code>m_icon</code> / <code>m_text</code> / <code>m_subtext</code> / <code>m_infotext</code>（外观的 <code>"data_id"</code> 与它一致），视图 id（<code>"id"</code> + <code>findViewById</code>）是另一个维度。<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
 <tr><td><code>BottomBar</code> / <code>HintBar</code> / <code>Hint</code></td><td>底栏与提示条（<code>widgets/controls/hint_bar.*</code>）：<code>BottomBar</code> 挂在 <code>Shell</code> 的覆盖层贴底，内部是 <code>HintBar</code>，每条提示是一个 <code>Hint</code>（键位图标 + 文案）。内容来自 <code>InputManager::getActiveHints()</code>（沿焦点父链收集、按按键去重、<code>START</code> 最前、<code>B</code>/<code>A</code> 最后、没有 A 时补一条「确定」）。三个类都不吃焦点：<code>Hint</code> 覆写 <code>isPointerTarget()</code> + 挂 <code>TapGestureRecognizer</code>，点得到但不抢焦点。图标层要 <code>setLayerIconFontKind("icon", IconFontKind::SWITCH)</code>。</td></tr>
-<tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
+<tr><td><code>Notification</code></td><td><code>App::notify()</code> / <code>notifyIcon()</code> / <code>notifyImage()</code> 的落点：没有根视图时先排队；卡片画背景，内容用 Label / Image 拼；滑入滑出与高度收缩都在代码里，堆叠不设上限。</td></tr>
 <tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（<code>widgets/list/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
 <tr><td><code>Box</code> / <code>Label</code></td><td>布局容器在 <code>view/box.*</code>（与 Yoga 一起），文字在 <code>widgets/basic/label.*</code>。</td></tr>
 </tbody>
@@ -562,7 +562,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <thead><tr><th>能力</th><th>入口</th></tr></thead>
 <tbody>
 <tr><td>事件总线</td><td><code>getEventBus().subscribe&lt;事件&gt;(handler)</code>（RAII 句柄，析构自动退订）</td></tr>
-<tr><td>通知 / Toast</td><td><code>App::notify(text, seconds)</code></td></tr>
+<tr><td>通知 / Toast</td><td><code>App::notify(text, seconds)</code> / <code>notifyIcon(text, glyph, seconds)</code> / <code>notifyImage(text, path, seconds)</code></td></tr>
 <tr><td>弹层</td><td><code>App::pushOverlay(view)</code> / <code>popOverlay(view)</code>（模态输入 + 焦点恢复）</td></tr>
 <tr><td>i18n</td><td><code>translate("a/b")</code>（或 <code>using namespace bklv::i18n;</code> 后写 <code>"a/b"_i18n</code>），文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
