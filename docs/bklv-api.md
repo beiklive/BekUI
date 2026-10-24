@@ -74,7 +74,7 @@
 | `system/platform/sdl3_*` | macOS/Linux/Windows 的 SDL3 平台实现（窗口 / 手柄） |
 | `system/platform/switch_*` | Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言 + swkbd） |
 | `ui/widgets/appearance/` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量；`widget_types.cpp` 注册 `Button` |
-| `ui/widgets/controls/` | `Button` 家族（抽象基类 + `TextButton` / `IconButton` / `IconTextButton`；JSON 里 `"type": "Button"` 等价于 `TextButton`）与 `Notification`（`App::notify()` 的落点） |
+| `ui/widgets/controls/` | `Button` 家族（抽象基类只管行为与基础外观 `base/button/button`，形态是 `TextButton` / `IconButton` / `IconTextButton`，内容位 id 为 `m_icon` / `m_text` / `m_subtext` / `m_infotext`；JSON 里 `"type": "Button"` 等价于 `TextButton`）与 `Notification`（`App::notify()` 的落点） |
 | `ui/widgets/basic/` | `Label` / `Image` / `Padding` / `ProgressSpinner` —— 语义控件，只认 ImDrawList 与 core 接口 |
 | `ui/widgets/container/` | `ScrollingFrame` / `HScrollingFrame` / `ScrollBox` |
 | `ui/widgets/list/` | `RecyclerFrame` 与数据源 / JSON 列表项桥接 |

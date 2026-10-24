@@ -1,0 +1,29 @@
+{
+  "$comment": "文字按钮的形态外观：背景 / 边框 / 阴影来自 base/button/button，这里只加 m_text 内容层。",
+  "import": "base/button/button",
+  "layers": [
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "m_text",
+      "color": "@theme/color.button.defaultText",
+      "fontSize": "@theme/metric.button.textSize",
+      "align": "center",
+      "valign": "center",
+      "inset": [
+        0,
+        25,
+        0,
+        25
+      ]
+    }
+  ],
+  "states": {
+    "pressed": {
+      "title.color": {
+        "to": "@theme/color.button.defaultText",
+        "duration": 60
+      }
+    }
+  }
+}

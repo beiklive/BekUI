@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 e6f9930 · 2026-10-24 10:22 · 两套主题（default / glass）</div>
+  <div class="version">提交 54b77ff · 2026-10-24 10:33 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -494,7 +494,7 @@ app->run("我的应用", 1280, 720);</code></pre>
 <tr><td><code>system/platform/sdl3_*</code></td><td>macOS/Linux/Windows 的 SDL3 平台实现（窗口 / 手柄）</td></tr>
 <tr><td><code>system/platform/switch_*</code></td><td>Switch 的 libnx 平台实现（EGL/GLES3 + pad + 电源/网络/语言 + swkbd）</td></tr>
 <tr><td><code>ui/widgets/appearance/</code></td><td>外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量；<code>widget_types.cpp</code> 注册 <code>Button</code></td></tr>
-<tr><td><code>ui/widgets/controls/</code></td><td><code>Button</code> 家族（抽象基类 + <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code>；JSON 里 <code>&quot;type&quot;: &quot;Button&quot;</code> 等价于 <code>TextButton</code>）与 <code>Notification</code>（<code>App::notify()</code> 的落点）</td></tr>
+<tr><td><code>ui/widgets/controls/</code></td><td><code>Button</code> 家族（抽象基类只管行为与基础外观 <code>base/button/button</code>，形态是 <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code>，内容位 id 为 <code>m_icon</code> / <code>m_text</code> / <code>m_subtext</code> / <code>m_infotext</code>；JSON 里 <code>&quot;type&quot;: &quot;Button&quot;</code> 等价于 <code>TextButton</code>）与 <code>Notification</code>（<code>App::notify()</code> 的落点）</td></tr>
 <tr><td><code>ui/widgets/basic/</code></td><td><code>Label</code> / <code>Image</code> / <code>Padding</code> / <code>ProgressSpinner</code> —— 语义控件，只认 ImDrawList 与 core 接口</td></tr>
 <tr><td><code>ui/widgets/container/</code></td><td><code>ScrollingFrame</code> / <code>HScrollingFrame</code> / <code>ScrollBox</code></td></tr>
 <tr><td><code>ui/widgets/list/</code></td><td><code>RecyclerFrame</code> 与数据源 / JSON 列表项桥接</td></tr>
@@ -806,7 +806,7 @@ bklv/system/platform/*            PlatformSDL3（桌面）/ PlatformSwitch（lib
 <thead><tr><th>控件</th><th>要点</th></tr></thead>
 <tbody>
 <tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
-<tr><td><code>Button</code> 家族</td><td>抽象基类 <code>Button</code> + <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code>；JSON 里 <code>"type": "Button"</code> 等价于 <code>TextButton</code>。两个预留内容位 <code>text</code> / <code>icon</code> 由外观的 <code>"data_id"</code> 索引，视图 id（<code>"id"</code> + <code>findViewById</code>）是另一个维度。<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
+<tr><td><code>Button</code> 家族</td><td>抽象基类 <code>Button</code> 只描述行为与基础外观（<code>base/button/button</code>：背景 / 边框 / 阴影，无内容层）+ <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code> 三种形态（外观 <code>button.text</code> / <code>button.icon</code> / <code>button.icon_text</code>）；JSON 里 <code>"type": "Button"</code> 等价于 <code>TextButton</code>。内容位 id 是 <code>m_icon</code> / <code>m_text</code> / <code>m_subtext</code> / <code>m_infotext</code>（外观的 <code>"data_id"</code> 与它一致），视图 id（<code>"id"</code> + <code>findViewById</code>）是另一个维度。<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
 <tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
 <tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（<code>widgets/list/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
 <tr><td><code>Box</code> / <code>Label</code></td><td>布局容器在 <code>view/box.*</code>（与 Yoga 一起），文字在 <code>widgets/basic/label.*</code>。</td></tr>
@@ -2159,7 +2159,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>e6f9930</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>54b77ff</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

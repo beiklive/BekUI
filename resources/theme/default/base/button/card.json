@@ -33,7 +33,7 @@
     {
       "op": "text",
       "id": "icon",
-      "data_id": "icon",
+      "data_id": "m_icon",
       "color": "@theme/color.accent.base",
       "fontSize": 44,
       "align": "center",
@@ -49,7 +49,7 @@
     {
       "op": "text",
       "id": "text",
-      "data_id": "text",
+      "data_id": "m_text",
       "color": "@theme/color.text.primary",
       "fontSize": "@theme/metric.font.size.lg",
       "align": "center",
@@ -64,7 +64,7 @@
     {
       "op": "text",
       "id": "info",
-      "data_id": "info",
+      "data_id": "m_infotext",
       "color": "@theme/color.text.dim",
       "fontSize": "@theme/metric.font.size.xs",
       "align": "center",

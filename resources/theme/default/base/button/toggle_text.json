@@ -7,7 +7,7 @@
     {
       "op": "text",
       "id": "icon",
-      "data_id": "icon",
+      "data_id": "m_icon",
       "font_kind": "icon",
       "fontSize": "@theme/metric.buttonVariant.iconSize",
       "color": "@theme/color.button.defaultText",
@@ -23,7 +23,7 @@
     {
       "op": "text",
       "id": "title",
-      "data_id": "text",
+      "data_id": "m_text",
       "fontSize": "@theme/metric.font.size.md",
       "color": "@theme/color.button.defaultText",
       "align": "left",

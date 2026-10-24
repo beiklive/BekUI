@@ -15,6 +15,7 @@
     "base/box.layout.json",
     "base/box.component.json",
     "base/button/button.json",
+    "base/button/button.text.json",
     "base/button/frame.json",
     "base/button/button.icon.json",
     "base/button/button.icon_circle.json",

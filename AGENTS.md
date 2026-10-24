@@ -741,16 +741,20 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   → 帧变了才 `updateTexture()` **就地换内容**（不重建纹理、不参与布局）。
   只在**可见**时推进（离屏不占上传带宽）。纹理是视图自己上传的（`ownsTexture`），
   析构/换图时必须 `releaseTexture()`，别漏。
-- **按钮家族**（`ui/widgets/controls/button.*`）：抽象基类 `Button` 只留按钮语义
-  （点击 / 禁用 / 开关 / 按下反馈 / 属性表套路），具体形态是 `TextButton` / `IconButton` /
-  `IconTextButton`，各自绑外观 `base/button/button`、`button.icon`、`button.icon_text`
-  （variant 继续拼后缀：`base/button/button.<variant>`）。
-  两个预留内容位由基类给名字：`Button::TEXT_SLOT`（`"text"`）/ `Button::ICON_SLOT`（`"icon"`），
-  外观 JSON 用 `"data_id": "text"|"icon"` 索引；视图 id 是另一个维度，走 `View::setId()`
-  （JSON 里写 `"id"`，之后 `findViewById("ok")` 取控件）。选择器按钮已随控件清理移除，重做时照下面的约定：
+- **按钮家族**（`ui/widgets/controls/button.*`）：抽象基类 `Button` **只描述行为与基础外观** ——
+  行为是点击 / 禁用 / 开关 / 按下反馈 / 属性表套路；基础外观是 `base/button/button`，只画
+  背景 / 边框 / 阴影 / 高亮底，**没有任何内容层**，所以子类不用管外观。
+  具体形态 `TextButton` / `IconButton` / `IconTextButton` 只声明"我有哪些内容位"，外观是
+  `base/button/button.<形态>`（`button.text` / `button.icon` / `button.icon_text`）；
+  换皮肤就把 variant 换成别的后缀（`TextButton("确定", "bordered")` 走 `button.bordered`）。
+  内容位 id 是按钮这一层的约定，写在 `button_slot` 里，外观 JSON 的 `"data_id"` 与它逐字一致：
+  `m_icon`（字体图标）/ `m_text`（主文本）/ `m_subtext`（次文本）/ `m_infotext`（信息文本）。
+  新形态从这四个里挑，别另造名字 —— 名字就是槽，换名字等于换槽，皮肤里会取不到内容。
+  视图 id 是另一个维度，走 `View::setId()`（JSON 里写 `"id"`，之后 `findViewById("ok")` 取控件）。
+  选择器按钮已随控件清理移除，重做时照下面的约定：
   1）**变体 = 组合外观**，代码只给内容和行为。`AppearanceView::setAppearanceName(name)`
      换基名（名字是主题里的完整路径，如 `base/widget/button.icon_text`）；一行放置靠层 inset。
-  2）内容槽在 `AppearanceView` 上（Button 只给 `text` / `icon` 两个约定槽起了名字）：`setIcon()`（图标字形）与
+  2）内容槽在 `AppearanceView` 上（按钮只把四个内容位起了名字，见上）：`setIcon()`（图标字形）与
      `setInfoText()`（右侧信息）；`getLayerText` 认 `"text"/"icon"/"info"`，
      `getLayerFont` 对图标层返回图标字体（用正文字体会把图标画成方块）；
      同一个控件里要多套图标字体混排就按层声明 `setLayerIconFontKind(layerId, kind)`
