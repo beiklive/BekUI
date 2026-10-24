@@ -923,7 +923,13 @@ bool InputManager::dispatchPointerClick(const Point& position)
     // 否则拖一个按钮会顺手把它按下去。
     if (this->gestureTarget != nullptr && hit == this->gestureTarget
         && !this->gestureTarget->getGestures().empty())
+    {
+        // 手势接管了这次按下：拖动/轻触识别器已经把"点击"这件事做完了。
+        // 但**音效还是要响** —— 否则点提示条（能点、不可聚焦、靠 TapGestureRecognizer
+        // 触发动作的视图）没有任何听觉反馈。这里只播音，不再触发 A 动作。
+        playUiSound(hit, Sound::CLICK, "click");
         return true;
+    }
 
     // 先聚焦，再执行动作。
     // 每次都尝试执行（不判断焦点是否变化）：否则第二次点同一个按钮就没反应了。

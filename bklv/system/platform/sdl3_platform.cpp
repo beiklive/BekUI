@@ -83,6 +83,13 @@ bool PlatformSDL3::createWindow(const std::string& title, uint32_t width, uint32
         return false;
     }
 
+    // 把窗口提到前台并要键盘焦点。
+    //
+    // 键盘事件只送给**有焦点**的窗口，而刚启动的窗口未必抢到焦点（从终端 / VS Code
+    // 启动时焦点往往还在启动它的那个窗口上）——于是"刚启动按方向键没反应、按键音也不响，
+    // 过一会儿（手动点一下窗口）才正常"。鼠标事件不受这个影响，所以只有键盘听起来像坏的。
+    SDL_RaiseWindow(this->window);
+
     // ImGui 的平台后端：键鼠与窗口事件。与图形 API 无关。
     ImGui_ImplSDL3_InitForOther(this->window);
 
