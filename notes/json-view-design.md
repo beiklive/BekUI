@@ -130,9 +130,9 @@ list->registerCell(RecyclerDataSource::DEFAULT_CELL_ID, [tmpl] {
 ## 8. 相关文件
 
 ```
-bklv/theme/attributes.hpp/.cpp   属性值与属性表
-bklv/view/json_view.hpp/.cpp    模板、缓存、注册表、实例化、错误
-bklv/widgets/list/json_cell.hpp/.cpp   JSON 模板驱动的列表项（绑定 + 焦点视觉）
+bklv/ui/theme/attributes.hpp/.cpp   属性值与属性表
+bklv/ui/view/json_view.hpp/.cpp    模板、缓存、注册表、实例化、错误
+bklv/ui/widgets/list/json_cell.hpp/.cpp   JSON 模板驱动的列表项（绑定 + 焦点视觉）
 resources/views/*.json          示例描述（page_json.json / list_item.json）
 tests/json_test.cpp             80 项断言：往返 / 尺寸 / 畸形 / 绑定 / 缓存 / 语言
 ```

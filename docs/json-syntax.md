@@ -11,11 +11,11 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 
 | 类别 | 位置 | 用途 | 解析处 |
 |---|---|---|---|
-| 视图描述 | `resources/views/*.json`，或 `createFromJSONString()` | 用 JSON 搭视图树（类型 + 属性 + 子节点） | `core/json_view.cpp` `theme/attributes.cpp` |
-| 控件外观 | `resources/theme/<主题>/base/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `theme/appearance.cpp` |
-| 页面视图 | `resources/theme/<主题>/view/<名字>.json` | 页面/列表项的结构与外观（`createViewFromTheme`） | `core/json_view.cpp` |
-| 主题 | `resources/theme/themes.json` + `<主题>/{theme,colors,metrics}.json` | 主题清单、颜色表、数值表 | `core/theme_data.cpp` |
-| 文案 | `resources/i18n/<locale>.json` | i18n 文本 | `core/i18n.cpp` |
+| 视图描述 | `resources/views/*.json`，或 `createFromJSONString()` | 用 JSON 搭视图树（类型 + 属性 + 子节点） | `foundation/core/json_view.cpp` `ui/theme/attributes.cpp` |
+| 控件外观 | `resources/theme/<主题>/base/<控件>[.<变体>].json` | 一个控件的盒模型 / 绘制层 / 状态动效 | `ui/theme/appearance.cpp` |
+| 页面视图 | `resources/theme/<主题>/view/<名字>.json` | 页面/列表项的结构与外观（`createViewFromTheme`） | `foundation/core/json_view.cpp` |
+| 主题 | `resources/theme/themes.json` + `<主题>/{theme,colors,metrics}.json` | 主题清单、颜色表、数值表 | `foundation/core/theme_data.cpp` |
+| 文案 | `resources/i18n/<locale>.json` | i18n 文本 | `foundation/core/i18n.cpp` |
 
 ---
 
@@ -25,7 +25,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 
 | 写法 | 含义 |
 |---|---|
-| `12` 或 `"12"` | 像素，按 **1280x720 设计稿**写，运行时乘 `uiScale`（见 `core/ui_scale.*`） |
+| `12` 或 `"12"` | 像素，按 **1280x720 设计稿**写，运行时乘 `uiScale`（见 `foundation/core/ui_scale.*`） |
 | `"auto"` | 由内容决定（只有 `width` / `height` 支持） |
 | `"50%"` | 相对父容器的百分比（`width` / `height` 与绝对定位的四边偏移支持） |
 | `"@theme/metric.a.b"` | 引用主题数值。**取值时已经乘过缩放**，不要再自己乘 |
@@ -48,7 +48,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `@theme/color.a.b` | 主题颜色 | 实例化期 |
 | `@style/metric.a.b` | 主题数值 | 实例化期 |
 | `@res/x` | 文件路径，**相对 `resources/` 目录** | 使用处自己解析 |
-| `@icon/star` | **内置图标字形**（按名字，名字表见 `media/icon_font.cpp`） | 实例化期（TEXT 解析里换成 UTF-8 字形） |
+| `@icon/star` | **内置图标字形**（按名字，名字表见 `system/media/icon_font.cpp`） | 实例化期（TEXT 解析里换成 UTF-8 字形） |
 | `@icon/U+E000` | 同上，**按码位**（名字表是子集，码位能取到字体里的全部字形） | 同上 |
 
 > **长度/坐标/偏移都按 1280x720 写**，和主题 metric、外观 JSON 用同一个基准：
@@ -147,7 +147,7 @@ bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完�
 | `FALLBACK_DEFAULT` | 仍然失败 | **整份退到 default 主题的同名外观**（`@theme` 引用仍按当前主题解析） |
 
 ```cpp
-#include "bklv/json/json_policy.hpp"
+#include "bklv/foundation/json/json_policy.hpp"
 
 compile::setJsonErrorPolicy(compile::JsonErrorPolicy::SKIP_FIELD);   // App 启动前设
 for (const compile::JsonDiagnostic& d : compile::getJsonDiagnostics())
@@ -852,7 +852,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 4. **`duration: 0` = 瞬变**；写 `when: "before"` 会报错（出现之前 / 消失之后看不见，
    想让内容先动、整页后动请用 `delay` 表达提前量）
 
-运行时（`core/transition_player.*` + `anim/transition.hpp` 的 `ViewTransition`）：
+运行时（`foundation/core/transition_player.*` + `foundation/anim/transition.hpp` 的 `ViewTransition`）：
 
 - **外观里写了就用外观的**：视图级通道走 `View` 的绘制期变换（整树一起动、过渡期间零重排），
   层内通道写进 `AppearanceInstance`（开始前先撤掉同通道的状态补间 —— 状态动效和过渡不能同时对一条属性下手）
@@ -876,7 +876,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 ### 推荐写法：注册模板 + 参数模式
 
 ```cpp
-#include "bklv/layer/layer_register.hpp" // registerLayer<T>() 模板
+#include "bklv/ui/layer/layer_register.hpp" // registerLayer<T>() 模板
 
 struct StripeLayer
 {
@@ -932,7 +932,7 @@ static void draw(const bklv::compile::LayerDrawContext& ctx)
 }
 ```
 
-**`void*` 是有意的**：`layer/` 不认识 ImGui 与 widgets，所以上下文里的
+**`void*` 是有意的**：`ui/layer/` 不认识 ImGui 与 widgets，所以上下文里的
 `drawList`（= `ImDrawList*`）与 `view`（= `AppearanceView*`）用不透明指针传，
 扩展层自己转回去。
 
@@ -989,7 +989,7 @@ static std::vector<bklv::compile::LayerParam> params()
 **参数补间目前没有**（补间通道是固定的 `AppearanceProp` 枚举），所以"要动起来"的层
 在绘制钩子里自己算时间与随机：
 
-- 时间用 `bklv::getSecondsNow()`（`anim/time.hpp`，单调、无窗口安全）；
+- 时间用 `bklv::getSecondsNow()`（`foundation/anim/time.hpp`，单调、无窗口安全）；
   **不要**用 `ImGui::GetTime()` 或 `ImGui::GetIO()` —— 无窗口时没有 ImGui 上下文。
 - 随机用**纯哈希 / 值噪声**（同输入同输出），把它放在一个纯函数里，就能无窗口验证
   （确定性、取值有界、相邻时刻连续、四顶点互不相同）。
@@ -1061,7 +1061,7 @@ C++ 一行都不用写，也不用新加控件类。
 |---|---|
 | `"appearance": "<外观名>"` | 一个 `AppearanceView`（名字规则与 `AppearanceView` 一样，含 `.变体`） |
 | 只写 `"box"` | 一个纯布局 `Box`（递归嵌套的载体，想套多深都行） |
-| `"ref": "<视图模板名>"` | 用主题 `view/` 里的**视图模板**实例化 —— **库里已有的一切控件都能这么引用** |
+| `"ref": "<视图模板名>"` | 用主题 `ui/view/` 里的**视图模板**实例化 —— **库里已有的一切控件都能这么引用** |
 
 公共可选键：
 - `"box"`：覆盖/追加盒模型字段（**只覆盖写了的字段**，沿用"没写不动"的既有约定）
@@ -1096,7 +1096,7 @@ C++ 一行都不用写，也不用新加控件类。
 - **父外观改子节点的状态**：`states` 的寻址空间仍然只有"层"（`<层id>.<属性>`），
   不会扩成树路径
 - ~~`children` 的 `box` 段只认少数几个键~~ **已解决**：它现在与外观主 `box` 段**共用同一份解析**
-  （`theme/appearance_box.cpp`），所以 `axis` / `alignItems` / `justifyContent` / `margin` /
+  （`ui/theme/appearance_box.cpp`），所以 `axis` / `alignItems` / `justifyContent` / `margin` /
   `padding` / `minWidth` / 背景 / 圆角 / 边框 / `measureContent` 等**全套字段都支持**，
   "只覆盖写了的字段"（`hasXxx` 标记）的语义也天然一致
 
@@ -1106,11 +1106,11 @@ C++ 一行都不用写，也不用新加控件类。
 
 | 谁 | 负责 | 在哪 |
 |---|---|---|
-| **JSON** | 容器类型、**一份** item 模板、列规则、数据源**名字**、绑定函数**名字**、段头模板、预加载数值 | 主题 `view/*.json` |
+| **JSON** | 容器类型、**一份** item 模板、列规则、数据源**名字**、绑定函数**名字**、段头模板、预加载数值 | 主题 `ui/view/*.json` |
 | **数据源**（注册） | "第 N 项是谁"：总数/高度/身份/分段 | C++ `data::registerSource("名字", 工厂)` |
 | **绑定函数**（注册） | "第 N 项长什么样、点了干什么" | C++ `binding::registerItemBinder("名字", 函数)` |
 
-**JSON 属性表**（`widgets/recycler_view.cpp` 的 `attributes()`）：
+**JSON 属性表**（`ui/widgets/recycler_view.cpp` 的 `attributes()`）：
 
 | 键 | 类型 | 说明 |
 |---|---|---|

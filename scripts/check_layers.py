@@ -11,7 +11,8 @@
 
 ## 现在的模块与方向
 
-`bklv/` 下的第一级目录就是一层（玻璃子系统在 `render/glass/`，算 render）：
+`bklv/` 下分四个大类（`foundation` / `graphics` / `ui` / `system`），大类下再分模块，
+**规则按模块判**（玻璃子系统在 `graphics/render/glass/`，算 render）：
 
     底层基础设施   core / geom / json
     能力层         anim / media / render / paint / input
@@ -37,7 +38,7 @@
     core    → render / media / anim / input（底层只持有它们的**接口**，见上）
     任何一层 → 3rd（第三方是叶子）
 
-注意"层"是 `bklv/` 下的第一级目录：玻璃子系统在 `render/glass/`，算 render 而不是独立一层。
+注意"层"指模块（大类的下一级）：玻璃子系统在 `graphics/render/glass/`，算 render 而不是独立一层。
 
 另外还查一条伞头可达范围（见 `check_umbrella()`）：使用者的入口 `bklv/bklv.hpp`
 不许间接碰到具体后端/平台目录，也不许出现 Vulkan 头 —— 曾经
@@ -128,24 +129,24 @@ BASELINE = {
     # 外观解析的结果要写回 View/Box（applyAppearanceBox / applyWidgetBox、属性表 setter）。
     # 拆开是"theme 只解析、view 负责应用"，但 apply* 与解析共用大量内部助手，
     # 硬拆会在两个模块间开一堆半成品接口，先记账。
-    ("theme", "view", "bklv/theme/appearance.cpp"),
-    ("theme", "view", "bklv/theme/attributes.cpp"),
+    ("theme", "view", "bklv/ui/theme/appearance.cpp"),
+    ("theme", "view", "bklv/ui/theme/attributes.cpp"),
     # 音效表（sound.json）是主题的一部分，SoundBank 读主题目录才知道在哪。
-    ("media", "theme", "bklv/media/sound_bank.cpp"),
+    ("media", "theme", "bklv/system/media/sound_bank.cpp"),
     # JSON 的错误信息要拼主题键路径（"color.button.defaultBg"），共用同一套命名规则。
-    ("json", "theme", "bklv/json/json_util.hpp"),
+    ("json", "theme", "bklv/foundation/json/json_util.hpp"),
 }
 
 # 伞头（使用者入口）不许间接碰到的目录前缀 / 头文件
 UMBRELLA = ROOT / "bklv" / "bklv.hpp"
 UMBRELLA_FORBIDDEN_PREFIXES = (
-    "render/vk/",
-    "render/gl/",
-    "render/gles3/",
-    "render/libnx/",
-    "render/glass/vk/",
-    "render/glass/gl/",
-    "platform/",
+    "graphics/render/vk/",
+    "graphics/render/gl/",
+    "graphics/render/gles3/",
+    "graphics/render/libnx/",
+    "graphics/render/glass/vk/",
+    "graphics/render/glass/gl/",
+    "system/platform/",
 )
 UMBRELLA_FORBIDDEN_HEADERS = ("<vulkan/vulkan.h>", "vulkan/vulkan.h")
 
@@ -153,9 +154,12 @@ INCLUDE_RE = re.compile(r'#include\s+"(bklv/[^"]+)"')
 
 
 def layer_of(rel_posix):
-    """'core/app.cpp' -> 'core'；直接在 bklv/ 下的文件（伞头）返回 '.'。"""
+    """'ui/widgets/button.cpp' -> 'widgets'；直接在 bklv/ 下的文件（伞头）返回 '.'。
+
+    目录是"大类/模块"两级，模块名在整个 bklv/ 里唯一，所以规则表仍按模块名写。
+    """
     parts = rel_posix.split("/")
-    return parts[0] if len(parts) > 1 else "."
+    return parts[1] if len(parts) > 2 else "."
 
 
 def collect():

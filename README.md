@@ -26,12 +26,24 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 
 | 目录 | 文件数 | 内容 |
 |---|---|---|
-| `core/` | 97 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger` / 全局状态登记表（`globals.*`，可列举·可重置）；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
-| `views/` | 30 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
-| `widgets/` | 18 | **外观驱动的控件（清理后只剩基础件）**：`AppearanceView`（基类）、`appearance_children`（children 外观）、`Button`（唯一注册进 JSON 的视图类型）与 `Notification`，加六个 `layer_draw_*` 绘制钩子。其余控件（Shell / TabFrame / Cell 家族 / Dialog / Dropdown / Slider / HintsBar / StatusArea …）已移除，等 demo 重做时按需加回 |
-| `compile/` | 23 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |
-| `backends/` | 21 | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
-| `platforms/` | 9 | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现与 IME |
+| `foundation/core/` | 28 | 基础机制：`View` 基类与生命周期、别名与类型转换（`asBox()`）、`App` 帧循环、`Context`、外观与 `ThemeData`、`Platform` 抽象、`RenderBackend` 接口、任务与事件、`Logger`、全局状态登记表（`globals.*`，可列举·可重置）、解码队列、i18n、`ui_scale` |
+| `foundation/geom/` | 2 | `Point` / `Size` / `Rect` 与绘制期变换 |
+| `foundation/json/` | 6 | JSON 工具：取值与诊断、变量块展开（`&` / `@`）、错误策略 |
+| `foundation/anim/` | 5 | 时间源、缓动与补间、视图转场、外观 transitions 播放器 |
+| `graphics/paint/` | 6 | 渐变顶点网格、柔化阴影（外投影 / 内阴影 / cutout）、焦点框形状与 LUT |
+| `graphics/render/` | 36 | `RenderBackend` 接口 + `gl/` `vk/` `gles3/` `libnx/` 四个后端；`glass/` 是液态玻璃子系统（跨后端部分在顶层，`gl/` `vk/` 是后端实现） |
+| `ui/view/` | 10 | `View` / `Box`（Yoga Flexbox 与节点管理）/ `ViewTemplate` 两段式、JSON 数据与动作绑定 |
+| `ui/theme/` | 20 | 外观与主题：`ThemeData` 与主题解析、`Appearance` 编译（box / layers / states / import）、图层类型表与参数表 |
+| `ui/layer/` | 8 | 六个内置层的绘制实现 + 第三方层的注册模板 |
+| `ui/widgets/` | 42 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 等）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
+| `ui/input/` | 8 | 键盘 / 手柄 / 手势、焦点与模态栈、IME |
+| `ui/app/` | 4 | `App` 帧循环、`Context`、通知层（组合根） |
+| `system/media/` | 15 | 字体与图标字体、图片解码与写出（PNG/JPEG/GIF/WebP/SVG）、音频与音效表 |
+| `system/platform/` | 9 | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现与 IME |
+
+四个大类各自回答一个问题：`foundation/` 是"不认识界面的基础"，`graphics/` 是"只认
+`ImDrawList` 与渲染接口的绘制"，`ui/` 是"视图树 / 外观 / 控件 / 输入"，`system/` 是
+"素材与平台落地"。新增文件先判断职责属于哪一类，再落到对应模块。
 
 目录之间的依赖方向有约定、也有机械检查（`python3 scripts/check_layers.py`，见
 [`AGENTS.md`](AGENTS.md) 的「分层依赖方向」）；`docs/architecture-review.html` 里有完整的
@@ -59,10 +71,10 @@ examples/cmake_consumer/   安装后 find_package(bklv) 的消费示例
 
 | 平台 | 实现方式 | 图片解码 | 状态 |
 |---|---|---|---|
-| macOS | SDL3（`bklv/platforms/sdl3_platform.*`） | ImageIO（系统） | 已跑通 |
+| macOS | SDL3（`bklv/system/platform/sdl3_platform.*`） | ImageIO（系统） | 已跑通 |
 | Linux | 同上 | stb_image | 已在 Ubuntu 24.04 容器验证构建 |
 | Windows | 同上（MSYS2 / MinGW-w64） | stb_image | 已构建并跑通（GL 与 Vulkan） |
-| Nintendo Switch | libnx + EGL/GLES3（`bklv/platforms/switch_platform.*`） | stb_image | 编译产出 .nro 通过；画面待真机确认 |
+| Nintendo Switch | libnx + EGL/GLES3（`bklv/system/platform/switch_platform.*`） | stb_image | 编译产出 .nro 通过；画面待真机确认 |
 | Android / iOS | 待定（SDL3 支持，需各自工程骨架） | stb_image | 未开始 |
 
 Switch 上不用 SDL3：SDL3 上游没有 Switch 后端，devkitPro 的 portlibs 里只有 SDL2。
@@ -154,7 +166,7 @@ bklv 页面树（default 与 glass 主题），日志里能看到两次主题装
 | macOS / Linux / Windows | 构建后 `resources/` 自动复制到可执行文件目录（CMake 的 POST_BUILD） | `<可执行文件目录>/resources/...` |
 | Switch | 用 `build_romfs` 打包，再由 `elf2nro --romfs` 嵌进 nro | `romfs:/resources/...`（`romfsInit()` 挂载） |
 
-代码里统一写相对路径，由 `bklv::resourcePath()` 按平台解析（见 `bklv/core/resource.hpp`）：
+代码里统一写相对路径，由 `bklv::resourcePath()` 按平台解析（见 `bklv/foundation/core/resource.hpp`）：
 
 ```cpp
 image->setImageFromFile("resources/testcard.png");
@@ -162,8 +174,8 @@ image->setImageFromFile("resources/testcard.png");
 
 `Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
-界面也可以用 JSON 描述（解析层在 `bklv/compile/view_parse.*`）。能用哪些类型取决于
-`bklv/widgets/appearance/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
+界面也可以用 JSON 描述（解析层在 `bklv/ui/view/view_parse.*`）。能用哪些类型取决于
+`bklv/ui/widgets/appearance/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
 
 ```cpp
 bklv::View* view = bklv::createFromJSONFile("resources/views/xxx.json");  // 路径相对资源目录
@@ -220,7 +232,7 @@ dist\embed_imgui_gl.exe
   `MINGW_PREFIX` 是空的，CMake 找不到编译器；`CMakeLists.txt` 只在 `MINGW_PREFIX`
   存在时兜底，找不到就打印一句提示，不会去猜路径。用 `build.bat` 不受影响。
 - **OpenGL 是运行时加载的。** `opengl32.dll` 只导出 GL 1.1，GL 3.2 Core 的函数必须取地址，
-  `bklv/render/gl/gl_loader.cpp` 复用 ImGui 自带的 imgl3w 完成，不引入 glad/gl3w 之类的依赖。
+  `bklv/graphics/render/gl/gl_loader.cpp` 复用 ImGui 自带的 imgl3w 完成，不引入 glad/gl3w 之类的依赖。
 - **中文字体走系统字体**（优先微软雅黑，其次黑体、宋体），一个都找不到才退回 ImGui 内置字体，
   那时中文会显示成方块。
 - **Vulkan 的颜色格式选 UNORM，不选 sRGB**，否则整屏会发灰。细节见 `docs/bklv-api.md`
@@ -287,7 +299,7 @@ MSYS2 装的层放在 `mingw64\bin`，还要同时设 `VK_LAYER_PATH`。
 your_project/
 ├── CMakeLists.txt
 ├── third_party/bklv/          ← 从本仓库整个拷过来（含它自己的 3rd/）
-│   ├── core/ views/ backends/ platforms/
+│   ├── foundation/ graphics/ ui/ system/
 │   ├── 3rd/                   imgui / yoga / tweeny / SDL / stb
 │   └── CMakeLists.txt
 └── src/main.cpp
@@ -303,7 +315,7 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 包含路径不用自己加：`bklv::bklv` 会把 `bklv/` 的父目录一起带出来，所以直接写
 
 ```cpp
-#include "bklv/app/app.hpp"
+#include "bklv/ui/app/app.hpp"
 ```
 
 `-DBKLV_GRAPHICS=gl|vk` 选图形后端；它不设默认值时会自己判成 `gl`。
@@ -312,7 +324,7 @@ target_link_libraries(my_app PRIVATE bklv::bklv)
 ### 全局状态
 
 库里的进程级状态（事件总线、输入管理器、纹理仓库、几个注册表、当前 `App`）都登记在
-一张表里：`bklv::globals::getGlobalStore()`（见 `bklv/core/globals.hpp`）。三件事因此可做：
+一张表里：`bklv::globals::getGlobalStore()`（见 `bklv/foundation/core/globals.hpp`）。三件事因此可做：
 
 ```cpp
 auto& store = bklv::globals::getGlobalStore();
@@ -347,21 +359,21 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ```
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
-bklv/widgets/*                          外观驱动控件：Button / Notification（样式来自主题 JSON）
+bklv/ui/widgets/*                          外观驱动控件：Button / Notification（样式来自主题 JSON）
         ↓                               （样式来自主题 JSON，代码只写行为）
-bklv/views/*                            Image / Label / ScrollingFrame / RecyclerFrame
+bklv/ui/widgets/*                            Image / Label / ScrollingFrame / RecyclerFrame
                                         只认 ImDrawList 和 ImTextureID
         ↓
-bklv/compile/*                          解析层：JSON → 外观 / 主题 / 视图模板
+bklv/ui/theme/*                          解析层：JSON → 外观 / 主题 / 视图模板
         ↓
-bklv/core/*                             View / Box / App / 外观与主题 / 输入 / 解码 / i18n
+bklv/foundation/core/*                             View / Box / App / 外观与主题 / 输入 / 解码 / i18n
   ├ graphics.hpp                        RenderBackend 接口 + 纹理管理
   ├ platform.hpp                        Platform 接口（窗口 / 事件循环 / 系统能力）
   └ glass/                              液态玻璃子系统（服务 + 请求队列 + 模糊计划 + 调参）
         ↓
-bklv/backends/*                         OpenGLBackend / VulkanBackend / GLES3Backend
+bklv/graphics/render/*                         OpenGLBackend / VulkanBackend / GLES3Backend
                                         （玻璃的模糊实现在 backends/gl_glass.* 与 vk_glass.*）
-bklv/platforms/*                        PlatformSDL3 / PlatformSwitch
+bklv/system/platform/*                        PlatformSDL3 / PlatformSwitch
 ```
 
 **依赖方向是单向的、并且有检查脚本**：`widgets → views → core`、
@@ -375,10 +387,10 @@ bklv/platforms/*                        PlatformSDL3 / PlatformSwitch
 
 - **换后端**：实现 `RenderBackend` 的那 11 个纯虚方法。步骤和三个后端都踩过的坑见
   [`notes/adding-render-backend.md`](notes/adding-render-backend.md)。
-- **换平台**：实现 `Platform` 子类。Switch 那份（`bklv/platforms/switch_platform.*`）
+- **换平台**：实现 `Platform` 子类。Switch 那份（`bklv/system/platform/switch_platform.*`）
   是最小参考实现——没有 SDL3，窗口、事件循环、电源/网络/语言能力都自己接。
 - **只要一部分**：`bklv/CMakeLists.txt` 里的 `BKLV_CORE_SOURCES` 就是库的全部源文件，
-  想裁剪就从那里删；`bklv/backends/` 与 `bklv/platforms/` 里没用到的可以整个去掉
+  想裁剪就从那里删；`bklv/graphics/render/` 与 `bklv/system/platform/` 里没用到的后端可以整个去掉
   （它们在源码里也有 `BKLV_SWITCH` 之类的条件编译守卫）。
 - **别直接改 `bklv/3rd/` 下的子模块**，它们是指定提交的第三方代码，改动会在更新子模块时丢失。
   需要绕过的都在项目自己的头文件里处理（例如 Windows 的 GL 加载、

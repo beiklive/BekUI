@@ -12,7 +12,7 @@
 ## 1. 为什么改：三段式的限制
 
 现在 `AppletFrame : Box(COLUMN)`，`header / contentBox / footer` 三个兄弟
-（`widgets/applet_frame.cpp:15-40`），内容区由 Yoga 自动避让页头底栏。问题：
+（`ui/widgets/applet_frame.cpp:15-40`），内容区由 Yoga 自动避让页头底栏。问题：
 
 - 内容被限制在中间那条带子里：封面大图铺不到状态栏下面、转场元素飞不过页头；
 - 背景（图片，后续视频）无处安放；
@@ -40,7 +40,7 @@ Shell（取代旧 AppletFrame 的位置）
 | 焦点 | **只在内容层与覆盖层之间切换**（背景层、浮层不参与） |
 | 模态 | 用**挂载标记**（`pushModal` / `modalityRoot`）表示，**不用层号判断** |
 | 内容避让 | **不自动**：页面显式调用 `getHeaderInsets()/getFooterInsets()` 决定留白 |
-| 坐标 | 跨层读 `View::getFrame()`（`view/view.cpp:413` 就是**绝对坐标**），不做换算、不重排 |
+| 坐标 | 跨层读 `View::getFrame()`（`ui/view/view.cpp:413` 就是**绝对坐标**），不做换算、不重排 |
 | 层尺寸 | 绝对层跟随视口尺寸（要挂"画布尺寸变化"的通知，否则改窗口后尺寸不同步） |
 
 ### 一个待定决策
@@ -100,9 +100,9 @@ toast 在最上"矛盾。二选一：
 | 角色 | 职责 | 位置 |
 |---|---|---|
 | 控件 | 只回答"我是什么形状" | `View::getFocusOutline()`（外观驱动的控件补上圆角） |
-| 浮层 | 每帧**拉取**焦点形状并画出来 | `FocusRingView`（`widgets/focus_ring_view.*`） |
+| 浮层 | 每帧**拉取**焦点形状并画出来 | `FocusRingView`（`ui/widgets/focus_ring_view.*`） |
 | 外壳 | 拥有它 + 全局开关 / 换类型 / 调参数 | `Shell::setFocusRingEnabled/Type`、`getFocusRingStyle()` |
-| 几何与画法 | 纯函数（周长、取点、UV 区间、贴图采样） | `core/focus_ring.*` |
+| 几何与画法 | 纯函数（周长、取点、UV 区间、贴图采样） | `foundation/core/focus_ring.*` |
 
 要点：
 

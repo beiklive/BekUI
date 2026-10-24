@@ -110,7 +110,7 @@ add_subdirectory(bklv)
 # 资源复制
 # ---------------------------------------------------------------------------
 #
-# 资源按"可执行文件目录"解析（见 bklv/core/resource.hpp），所以每个可执行文件旁边
+# 资源按"可执行文件目录"解析（见 bklv/foundation/core/resource.hpp），所以每个可执行文件旁边
 # 都要有一份 resources/：从哪个目录启动都能找到。
 # 实现注意：**每个输出目录只复制一次**。
 # 以前是给每个目标各挂一条 POST_BUILD copy_directory，全部往 dist/resources 写，

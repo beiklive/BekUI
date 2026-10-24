@@ -83,7 +83,7 @@ public:
 };
 ```
 
-### 3.2 焦点（`bklv/core/focus_manager.*`）
+### 3.2 焦点（`bklv/foundation/core/focus_manager.*`）
 ```cpp
 enum class FocusDirection { UP, DOWN, LEFT, RIGHT };
 enum class CrossBoxPolicy { ALLOW, SAME_PARENT_ONLY, NONE };
@@ -117,7 +117,7 @@ public:
 };
 ```
 
-### 3.3 页面（`bklv/widgets/pager.*`）
+### 3.3 页面（`bklv/ui/widgets/pager.*`）
 ```cpp
 using PageFactory = std::function<View*(PageContext&)>;
 
@@ -171,7 +171,7 @@ struct PageState {            // v2：页面级记忆
 
 ## 5. v1 审查的 5 个必修项（已并入）
 
-**5.1 焦点真相合一**（实现时已定位到具体位置）：焦点状态就在 **`bklv/input/input.hpp`** 里
+**5.1 焦点真相合一**（实现时已定位到具体位置）：焦点状态就在 **`bklv/ui/input/input.hpp`** 里
 （`currentFocus`（:201）、`getCurrentFocus()`（:150）、`isInsideModal()`（:162）、
 `resetFocusState()`（:166））→ **不要新建一个独立的 `FocusManager` 类**，
 而是**扩展现有的这个类**（同一份状态上加跨层/记忆/循环/撞边），否则必然两套真相。
@@ -284,7 +284,7 @@ focusManager->setEdgeHitMinInterval(0.12f);
 ### B1 焦点状态（**没有 FocusManager 类**）
 
 焦点是 `Application` 的静态量：`currentFocus`（`View*`）+ `focusStack`（`std::vector<View*>`）
-（`core/application.hpp:375-378`）。入口只有 `getCurrentFocus()` / `giveFocus(View*)` / `navigate()`。
+（`foundation/core/application.hpp:375-378`）。入口只有 `getCurrentFocus()` / `giveFocus(View*)` / `navigate()`。
 
 - `giveFocus`（`application.cpp:882-905`）：入参先过 `view->getDefaultFocus()`，
   然后 `oldFocus->onFocusLost()` → 换 `currentFocus` → 发 `globalFocusChangeEvent` → `onFocusGained()`
@@ -374,14 +374,14 @@ focusManager->setEdgeHitMinInterval(0.12f);
 
 | # | 现象 | 位置 |
 |---|---|---|
-| 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `theme/attributes.cpp` SIZE 分支 |
+| 1 | 视图 JSON 的 SIZE 属性不支持 `@theme/metric.*`，只支持 `@style/metric.*` | `ui/theme/attributes.cpp` SIZE 分支 |
 | 2 | 文档称视图 JSON 数字按 uiScale 缩放，实现不缩放 | `docs/json-syntax.md:21` |
 | 3 | 定位原语此前只有 JSON 键（`position`/`top`…），无 `addToCorner` 之类的语义封装 | 第 2 步已补（Shell 上） |
 
 ### v7 第 1 步收尾（实际交付与两个新发现）
 
 **实际交付**：定位原语**本来就齐全**（`position` + `top/left/right/bottom`，`view.cpp:1044-1049`），
-所以第 1 步缩水为：`EdgeInsets`（`geom/geometry.hpp:44`）+ `tests/layout_primitive_test.cpp`
+所以第 1 步缩水为：`EdgeInsets`（`foundation/geom/geometry.hpp:44`）+ `tests/layout_primitive_test.cpp`
 （**53 项**：绝对定位不参与 flex、四边偏移、百分比、`alignSelf` 覆盖父、JSON 通路）+ 文档核对。
 临时加的 5 个同义键（`positionType`/`positionTop…`）**已删除**，同一件事只留一套名字。
 
@@ -404,8 +404,8 @@ focusManager->setEdgeHitMinInterval(0.12f);
 `shell_test` 断言，验证后 shell_test 应为 29 项）与 `step3-subagent-partial`（子代理早期半成品保留待查）。
 
 **子代理当前在写的文件**（本轮快照，属于第 3 步范围）：
-`views/h_scrolling_frame.{cpp,hpp}`、`widgets/container/scrolling_frame.cpp`、`widgets/appearance/appearance_view.cpp`、
-`widgets/controls/button.hpp`、`widgets/cell.hpp` —— 正在按 borealis 的 `getParentNavigationDecision`
+`views/h_scrolling_frame.{cpp,hpp}`、`ui/widgets/container/scrolling_frame.cpp`、`ui/widgets/appearance/appearance_view.cpp`、
+`ui/widgets/controls/button.hpp`、`ui/widgets/cell.hpp` —— 正在按 borealis 的 `getParentNavigationDecision`
 导航链与 `shakeHighlight` 抖动铺开；构建错误数 115 → 20 → 11，在收敛。
 
 **工作纪律（新增，血泪）**：
@@ -427,11 +427,11 @@ focusManager->setEdgeHitMinInterval(0.12f);
 2. **不派子代理**：本步骤由执行者自己实现，**每改一处立刻 `cmake --build build/gl -j 8`**，
    不攒着改完再编（前一个子代理攒改 7 个文件、连续 5 轮零交付的教训）。
 
-### C1 落点（都在 `bklv/core/input.*`，不要新建 FocusManager 类）
+### C1 落点（都在 `bklv/foundation/core/input.*`，不要新建 FocusManager 类）
 
 焦点状态已在这里：`currentFocus`(:201)、`getCurrentFocus()`(:150)、`isInsideModal()`(:162)、
 `resetFocusState()`(:166)、`navigate()`(input.cpp:172)。**扩展它**，否则就是两套真相。
-配套改动只在 `bklv/core/box.*`（导航/默认焦点）、`bklv/core/view.*`（抖动 + 可聚焦查询）。
+配套改动只在 `bklv/foundation/core/box.*`（导航/默认焦点）、`bklv/foundation/core/view.*`（抖动 + 可聚焦查询）。
 
 ### C2 要实现的 API（最终名）
 
@@ -458,7 +458,7 @@ void  shakeHighlightOnEdge(FocusDirection dir);          // 抖动：绘制期�
 - **不循环**（默认）；`setNavigationWrap(box, true)` 才在同级里绕回另一端
 - **撞边**：确实无法移动时触发一次回调（带方向）→ 上层挂 `SOUND_FOCUS_ERROR` + 抖动；节流 0.12s
 - **模态**：`isInsideModal` 为假的目标一律丢弃
-- **焦点变化**发**既有** `FocusChangedEvent`（`core/event.hpp`），不要新增并行事件
+- **焦点变化**发**既有** `FocusChangedEvent`（`foundation/core/event.hpp`），不要新增并行事件
 
 ### C4 测试清单（`tests/focus_test.cpp`，脚手架照 `tests/overlay_test.cpp`）
 
@@ -514,7 +514,7 @@ bool loadFocusFor(const std::string& key);
 
 ### 更正 2：我的 `git reset --hard` 抹掉了执行者当时在写的 4 个文件
 
-`bklv/core/{input.hpp,input.cpp,view.hpp,view.cpp}` 当时从未入库 → 不可恢复（执行者已按上下文重写）。
+`bklv/foundation/core/{input.hpp,input.cpp,view.hpp,view.cpp}` 当时从未入库 → 不可恢复（执行者已按上下文重写）。
 `box.*` 完整保留在 `stash@{2} step3-subagent-partial`；`views/widgets` 那 7 个文件在
 `stash@{0} step3-subagent-WIP-全部保留` —— 执行者已自行取回这 9 个文件
 （`scripts/check_naming.py` 的改动**没有**取回，按 C0.1 不动白名单）。
@@ -525,14 +525,14 @@ bool loadFocusFor(const std::string& key);
 ### 执行者的文件范围（我在它活跃期间绝不 reset/stash/commit）
 
 ```
-bklv/input/input.hpp  bklv/input/input.cpp
-bklv/view/box.hpp    bklv/view/box.cpp
-bklv/view/view.hpp   bklv/view/view.cpp
-bklv/widgets/container/scrolling_frame.hpp
+bklv/ui/input/input.hpp  bklv/ui/input/input.cpp
+bklv/ui/view/box.hpp    bklv/ui/view/box.cpp
+bklv/ui/view/view.hpp   bklv/ui/view/view.cpp
+bklv/ui/widgets/container/scrolling_frame.hpp
 tests/focus_test.cpp            ← 新建，归它
 ```
 
-其余（`widgets/**`、`demo/**`、`designer/**`、`docs/**`、我的两个 test、`scripts/**`）仍归我。
+其余（`ui/widgets/**`、`demo/**`、`designer/**`、`docs/**`、我的两个 test、`scripts/**`）仍归我。
 
 ---
 
@@ -542,7 +542,7 @@ tests/focus_test.cpp            ← 新建，归它
 
 | 文件 | 归属 | 说明 |
 |---|---|---|
-| `core/input.{hpp,cpp}`、`core/box.{hpp,cpp}`、`core/view.{hpp,cpp}`、`widgets/container/scrolling_frame.hpp` | **b0d57e0a** | 已实现主体且编译通过 |
+| `foundation/core/input.{hpp,cpp}`、`foundation/core/box.{hpp,cpp}`、`foundation/core/view.{hpp,cpp}`、`ui/widgets/container/scrolling_frame.hpp` | **b0d57e0a** | 已实现主体且编译通过 |
 | **`tests/focus_test.cpp`** | **013c1519** | 只写这一个文件，按附录 C4 的 10 节 |
 
 **两条禁令（避免再撞）**：
@@ -584,8 +584,8 @@ Lead 独立复跑验收：`focus_test` 82/82、`check.sh` **1996 项全绿零警
 v11 把它划给 `013c1519`，但它在**读到 v11 之前**就已写完并跑通；`013c1519` 已**零改动退出**。
 -> **保留 `b0d57e0a` 的版本**（对方已退出，不存在互写）。
 
-### 裁决点 2：`widgets/**` 归属
-v10 说 `widgets/**` 归 Lead，但它按原任务书改了 3 个文件：
+### 裁决点 2：`ui/widgets/**` 归属
+v10 说 `ui/widgets/**` 归 Lead，但它按原任务书改了 3 个文件：
 `appearance_view.cpp`（hl* 层叠加抖动位移）、`button.hpp` / `cell.hpp`（`isDisabled` override）。
 **收下** —— 没有它们，抖动与"禁用不聚焦"就是死代码；三个改动都在第 3 步语义范围内。
 
@@ -608,7 +608,7 @@ v10 说 `widgets/**` 归 Lead，但它按原任务书改了 3 个文件：
 
 前置：第 4 步完成（动作路由 / `pushDialog` / `enterLayer-leaveLayer`）。
 
-### D1 新增 `bklv/widgets/pager.{hpp,cpp}`（登记进 `bklv/CMakeLists.txt`）
+### D1 新增 `bklv/ui/widgets/pager.{hpp,cpp}`（登记进 `bklv/CMakeLists.txt`）
 
 ```cpp
 using PageFactory = std::function<View*(PageContext&)>;
@@ -679,7 +679,7 @@ python3 scripts/check_naming.py
 
 | 坑 | 说明 |
 |---|---|
-| 页面视图生命周期 | 切页会 `delete` 旧页；异步回调必须带 `AliveFlag`（`core/alive.hpp`），否则 use-after-free |
+| 页面视图生命周期 | 切页会 `delete` 旧页；异步回调必须带 `AliveFlag`（`foundation/core/alive.hpp`），否则 use-after-free |
 | 页头/底栏不再自动避让 | 忘了显式留白 → 内容被页头盖住或底部留空白 |
 | 焦点交接顺序 | 必须先挂新页、给焦点，再删旧页（顺序反了会留下悬空焦点） |
 | `AppletFrame` 尚未删除 | 第 7 步才删；第 5 步先并存，`AppletFrame` 继续可用（`widget_test`/`transition_test` 还在用） |
@@ -698,7 +698,7 @@ python3 scripts/check_naming.py
 
 ## v14 第 4 步剩余部分的落点（已定位，下一轮直接用）
 
-查证结果：**输入是逐帧泵** —— `InputManager::handleNavigation()`（`bklv/input/input.cpp:142`）里
+查证结果：**输入是逐帧泵** —— `InputManager::handleNavigation()`（`bklv/ui/input/input.cpp:142`）里
 先累加 `clock += getFrameDeltaSeconds()`，再按"按住 + 边缘状态"处理方向键/手柄，
 长按重复走 `KeyRepeater`（`setRepeatDelay/setRepeatInterval`）。方法清单（grep）：
 `update`(:97)、`isKeyDownAny`(:111)、`setRepeatDelay`(:120)、`setRepeatInterval`(:131)、
@@ -862,7 +862,7 @@ closeOnBack（读取点生效、焦点回原控件、遮罩同摘）、B 限定�
 
 ### 交付
 
-1. **`bklv/widgets/pager.{hpp,cpp}`**（前一提交）：工厂式页面、可取消预加载、失败/loading 占位、
+1. **`bklv/ui/widgets/pager.{hpp,cpp}`**（前一提交）：工厂式页面、可取消预加载、失败/loading 占位、
    页面级记忆（焦点 + 滚动位置）。`Pager::update()` 负责把记忆的滚动位置延后到布局算完之后落位
    （布局是延迟的：`show()` 里刚挂上的内容高度还是 0，`getScrollRange()` 为 0，当场
    `setContentOffsetY` 会被钳成 0）。
@@ -952,11 +952,11 @@ demo 的 `resources/` 里没有可用的背景素材（只有 testcard.png），
    语义照旧：用**绘制期变换**（`setTranslateX`/`setAlpha`）实现，过渡期间零重排；
    下钻时旧层**只脱离树、留在栈里**，返回时旧的被释放；pop 的回调等转场播完才执行。
    方案 5.5 里"页面转场归 Pager"说的是**同层换页**；这里是**层级下钻**，归内容栈的持有者。
-2. **删掉 `bklv/widgets/applet_frame.{hpp,cpp}`**（CMake 清单与 `bklv.hpp` 伞头文件同步移除），
+2. **删掉 `bklv/ui/widgets/applet_frame.{hpp,cpp}`**（CMake 清单与 `bklv.hpp` 伞头文件同步移除），
    `View` 的 `Box::getChildrenCount()` 语义不变：内容层里始终只挂当前那一层。
 3. **JSON 类型名保留**（方案 5.3）：`registerWidgetViewTypes()` 里
    `"AppletFrame"` 现在构造 `Shell`，并新增 `"Shell"`。已有 JSON 不失效。
-4. **`Shell::applyTheme()`**：套用 `widgets/applet_frame.json`（铺满 + `color.surface.page` 底色）——
+4. **`Shell::applyTheme()`**：套用 `ui/widgets/applet_frame.json`（铺满 + `color.surface.page` 底色）——
    这份外观原来是旧 AppletFrame 的，现在归外壳用，**文件名保持不变**（用户主题不用改，
    `theme_test` 里"applet_frame 声明了底色"那条断言也继续有意义）。
 5. 测试迁移：
@@ -972,7 +972,7 @@ demo 的 `resources/` 里没有可用的背景素材（只有 testcard.png），
    `"type": "AppletFrame"`（现在构造 Shell，子节点按普通列布局，和旧的三段式排布一致），
    注释里写明原因；`./dist/designer` 离屏截图正常（1024x640 → 2048x1280 png）。
 7. 文档收尾：`docs/bklv-api.md`（文件职责表换成 Shell/Pager/Header/BottomBar）、
-   `docs/designer.md`、以及 `core/{appearance,input,app,view}.cpp`、`widgets/{header,widget_types}`、
+   `docs/designer.md`、以及 `foundation/core/{appearance,input,app,view}.cpp`、`ui/widgets/{header,widget_types}`、
    `demo/app/pages/pages.hpp` 里的注释。
 
 ### 验收原文
@@ -998,8 +998,8 @@ python3 scripts/check_naming.py → 命名检查：136 个文件全部符合约�
 
 ### 交付
 
-1. **删掉旧的 `bklv/views/debug_window.{hpp,cpp}`**（ImGui 窗口版，靠 `App::onDrawWindows` 下发）。
-2. **新增 `bklv/views/debug_log_view.{hpp,cpp}`（`DebugLogView`）**：
+1. **删掉旧的 `bklv/ui/widgets/debug_window.{hpp,cpp}`**（ImGui 窗口版，靠 `App::onDrawWindows` 下发）。
+2. **新增 `bklv/ui/widgets/debug_log_view.{hpp,cpp}`（`DebugLogView`）**：
    - 它是**视图树里的 View**，不是 ImGui 窗口；`App::frame` 的 `drawChildren` 就会画它。
    - 读 `Logger` 的环形缓冲，**缓冲里有多少条就显示多少条**（默认上限 1000），
      级别过滤（D/I/W/E 四位掩码）只影响行集合。
@@ -1095,7 +1095,7 @@ BKLV_DEMO_SWEEP=2（快速连按）→ 转场被跳过、内容立刻可见，�
 
 ### 2. 转场：入场 / 出场分开的接口
 
-- 新增 `bklv/anim/transition.hpp`：`ContentTransition` 枚举 + **`ViewTransition`** 播放器
+- 新增 `bklv/foundation/anim/transition.hpp`：`ContentTransition` 枚举 + **`ViewTransition`** 播放器
   （`playEnter(view, width)` / `playExit(view, width, onFinished)` / `step(dt)` /
   `finishNow()` / `isEntering()` / `isExiting()` / `isActive()`）。
   只做绘制期变换、不碰视图树生命周期；出场回调在**清完状态之后**才调，所以回调里可以接着入场。
@@ -1136,7 +1136,7 @@ BKLV_DEMO_SWEEP=40 + FRAMES=43 的中间帧：旧页正在向左滑出并淡出�
 
 ### 1. 日志面板：绘制做到"日志再多也不影响性能"
 
-四条约束（都写进 `widgets/debug/debug_log_view.hpp` 的注释，并由 `tests/log_view_draw_test.cpp` 钉住）：
+四条约束（都写进 `ui/widgets/debug/debug_log_view.hpp` 的注释，并由 `tests/log_view_draw_test.cpp` 钉住）：
 1. 缓存里**只存 `const LogEntry*`**（不复制日志正文、不预先拼字符串），只在
    「日志版本 / 级别过滤 / 字号 / **字体**」变化时重建；一次 `update` 里来 1000 条也只重建一次。
 2. 行高固定 → 可见起点用 **一次除法**（`scrollOffset / rowHeight`）算出来，不从头遍历。
@@ -1156,7 +1156,7 @@ BKLV_DEMO_SWEEP=40 + FRAMES=43 的中间帧：旧页正在向左滑出并淡出�
 
 ### 2. 下拉框：点击后弹出**列表弹窗**（有面板，不再是一行行悬空文字）
 
-- 真因：主题里注册好的 `widgets/dropdown_popup.json`（含阴影层）**根本没人用** ——
+- 真因：主题里注册好的 `ui/widgets/dropdown_popup.json`（含阴影层）**根本没人用** ——
   `DropdownPopup` 与它的锚定盒都是裸 `Box`，所以弹出来只有选项自己的底色，
   没有"一块板"，看着就不像弹窗。
 - 修复：新增 `DropdownPanel : AppearanceView`（外观名 `dropdown_popup`）作为**锚定的那块板**，
@@ -1233,7 +1233,7 @@ demo 截图：日志面板显示最新 #230~#244（不滚动）；下拉弹窗�
 - 手写表 `bklv::icon::all()` 只有 **60** 个常用图标；两份字体都是按整个私有区
   （`U+E000~U+F8FF`）装进图集的，字体里其实有：
   **switch_icons.ttf 1022 个**、**MaterialIcons-Regular.ttf 2188 个**。
-- 新增（`core/font.*` + `core/icon_font.*`）：
+- 新增（`foundation/core/font.*` + `foundation/core/icon_font.*`）：
   ```
   bklv::scanFontCodepoints(ImFont*)   // 扫一个字体在私有区里实际存在的码位（升序）
   bklv::getIconFontCodepoints()       // switch_icons.ttf 的全部码位（带缓存）
@@ -1350,7 +1350,7 @@ demo 启动冒烟：正常起来跑若干帧后被外部结束，无崩溃
 - 评审里我建议"GIF 动图用 gifdec"；实际翻 stb 后发现 **`stbi_load_gif_from_memory()` 已经
   返回合成好的整幅帧 + 每帧延迟（毫秒）**，帧内局部矩形/透明/disposal 全在 stb 里处理完 ——
   于是 GIF 播放里最重的一块（帧合成）不用自己写，也就**不需要引入任何新库**。
-- 实现：新增 `media/image_decoder_gif.cpp`，单独实例化一份 stb（`STB_IMAGE_STATIC` +
+- 实现：新增 `system/media/image_decoder_gif.cpp`，单独实例化一份 stb（`STB_IMAGE_STATIC` +
   `STBI_ONLY_GIF` + `STBI_NO_STDIO`），和 `image_decoder.cpp` 里那份 stb 靠 static 避免符号冲突；
   第三方警告只在这两个 TU 里局部压掉（沿用 `image_writer.cpp` 的约定）。
 - 延迟 0/1（很多老图）按 100ms 兜底；循环次数 stb 没暴露，统一按循环处理。

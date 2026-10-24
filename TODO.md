@@ -90,7 +90,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 这是「用 bklv 做真实应用」和「demo 拼凑」的分界线。
 
 - [ ] **Activity / 页面栈**
-      borealis 的 `core/activity`：页面入栈出栈、生命周期回调
+      borealis 的 `foundation/core/activity`：页面入栈出栈、生命周期回调
       （`onCreate` / `onResume` / `onPause` / `onDestroy`）、返回栈、转场。
       现在 `App::setRootView()` 只有一个根视图，写多页要自己管。
       *验收*：demo 里能实现「列表 → 详情 → 返回」且返回时列表滚动位置保留。
@@ -135,7 +135,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 ## P2 —— 框架能力
 
 - [ ] **事件总线**
-      borealis 的 `core/event`：类型化事件订阅 / 派发，跨视图通信不靠层层传指针。
+      borealis 的 `foundation/core/event`：类型化事件订阅 / 派发，跨视图通信不靠层层传指针。
       `DebugLayer` 就是靠它订阅日志的；bklv 现在是 Logger 缓冲 + 界面轮询。
 - [ ] **通知 / Toast**
       borealis 的 `notification_manager`：横幅通知、超时、队列。
@@ -146,7 +146,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       后台解码 + 主线程上传 + 按路径缓存 + 占位图。
       *验收*：加载 4K 图时帧率不掉，同一路径第二次加载不重复解码。
 - [ ] **异步任务队列**
-      borealis 的 `core/task`（含 Switch 用的线程封装）。Switch 上
+      borealis 的 `foundation/core/task`（含 Switch 用的线程封装）。Switch 上
       文件 IO / 网络必须先丢后台线程，主线程只做上传。
       与上一项配套；也是事件总线在跨线程方向的用途。
 - [x] **i18n**
@@ -154,11 +154,11 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       跟随 borealis 的资源布局但**不依赖目录枚举**（romfs 上的目录扫描真机未验证，
       改为单文件 + 可选 `$files` 清单）。
       *验收*：切换语言后界面文案即时更新。
-      已完成：`core/i18n.hpp/.cpp` + `resources/i18n/*.json`（自检时用临时程序跑过 30 项断言）。
+      已完成：`foundation/core/i18n.hpp/.cpp` + `resources/i18n/*.json`（自检时用临时程序跑过 30 项断言）。
       语言名经 `canonicalLocale()` 归一，装载不依赖目录枚举（用 `$files` 清单）。
       注意：文案在控件构造时解析，切语言需显式重译已有视图（文本页有按钮演示）。
 - [ ] **手势层**
-      Switch 触摸屏的原始状态已经在 `bklv/render/libnx/imgui_impl_libnx.cpp` 里取到了，
+      Switch 触摸屏的原始状态已经在 `bklv/graphics/render/libnx/imgui_impl_libnx.cpp` 里取到了，
       缺上层：点击 / 长按 / 滑动 / 捏合，并接入焦点系统（点选、拖拽滚动）。
 - [ ] **属性动画**
       有 `Animatable` + tweeny，但缺 borealis `animation.hpp` 那种
@@ -176,17 +176,17 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 清单与原因见 [`notes/borealis-parity.md`](notes/borealis-parity.md)（对照方式：逐个头文件对读）。
 分批：
 
-- [x] 6 个列表 Cell（`widgets/cell.*`：detail / bool / radio / selector / slider / input）
+- [x] 6 个列表 Cell（`ui/widgets/cell.*`：detail / bool / radio / selector / slider / input）
       + demo 设置页（对标 borealis Settings tab）
 - [x] Battery / Wireless 图标化（矢量自绘 + 数据源可插拔；Switch 走 psm/nifm，
       桌面注入演示数据）+ demo 底栏可见
-- [x] Notification / Toast（`widgets/notification.*` + `App::notify`；外观状态驱动出现/消失，
+- [x] Notification / Toast（`ui/widgets/notification.*` + `App::notify`；外观状态驱动出现/消失，
       没有根视图时先排队）+ demo 设置页有"弹一条通知"入口
-- [x] View 绘制期变换（`geom/transform.hpp` + `View::setScaleX/Y`、`setSkewX/Y`、`setRotate`、
+- [x] View 绘制期变换（`foundation/geom/transform.hpp` + `View::setScaleX/Y`、`setSkewX/Y`、`setRotate`、
       `setTranslateX/Y`、`Label::setFontScaleX/Y`）+ demo 变换页（对标 borealis Transform test）
 - [x] 缓动曲线补齐到 tweeny 那一套（borealis 的 `EasingFunction` 就是 tweeny 枚举）：
       quadratic/cubic/quartic/quintic/sine/circular/exponential/elastic/back/bounce 的 In/Out/InOut
-- [x] 手势（`input/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
+- [x] 手势（`ui/input/gesture.hpp`：Tap / Pan / Scroll + 沿父链分发 + 归 View 所有的生命周期）
       + demo 变换页支持拖动方块、轻触复位
 - [x] **P0 控件补齐**：6 个 Cell、Battery/Wireless 图标化、Notification、手势、
       View 变换（scale/rotate/skew/fontScale）、account + 对应 demo 页面
@@ -199,15 +199,15 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       （可选；popups 一类已由「弹层」页覆盖）
 - [x] debug_layer（`views/debug_layer.*` + `App::setDebugLayerEnabled`；收集边界是纯函数；
       设置页有 wireframe 开关）
-- [x] task/thread + 异步图片加载（`core/task.hpp` 线程池 + `App::frame` 主线程 pump +
+- [x] task/thread + 异步图片加载（`foundation/core/task.hpp` 线程池 + `App::frame` 主线程 pump +
       `Image::setImageFromFileAsync` + `loadTextureFromPixels`）
-- [x] audio（`media/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
+- [x] audio（`system/media/audio.hpp`：8 种音效**代码合成** + SDL3 输出；焦点/点击/返回/禁用都有反馈；
       Switch 的 audren 输出未接 —— 需要真机，已在文档写明）
 - [ ] **P1 核心能力**（剩余）：event 补齐
 - [x] 阴影（外观 JSON 的 `shadow` 层 + fast/smooth 档位开关；卡片/弹窗/下拉/通知/滑块把手）
 - [x] Padding 占位视图（对标 borealis 的 `brls:Padding`；页头已改用它）
 - [x] 数据绑定/缓存：`bind` 不需要（代码建树直接持指针，JSON 树用 `getView(id)`）；
-      `cache_helper` 补成 `core/cache.hpp` 的 `LruCache`
+      `cache_helper` 补成 `foundation/core/cache.hpp` 的 `LruCache`
 - [ ] **P2 平台扩展**：D3D11（待定）、Android/iOS 骨架（无法本机验证）、
       video（需要决定是否引解码依赖）
 - [ ] **P3 demo 对标**：把 borealis demo 的 7 个启用页 + 3 个注释页全部做出来
@@ -224,7 +224,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 ## 对齐 borealis 的视觉与 demo 重做
 
-- [x] **UI 按 720p 比例缩放**（`core/ui_scale.*`）：主题尺寸按 1280x720 写，
+- [x] **UI 按 720p 比例缩放**（`foundation/core/ui_scale.*`）：主题尺寸按 1280x720 写，
       运行时 `uiScale = 宽/1280`；metric 与外观里的像素量都跟着缩放
 - [x] **还原 borealis 的焦点高亮**：每个可聚焦控件三层高亮
       （高亮底 / 辉光 / 描边），参数取 `brls/highlight/*`（描边 5、圆角 6、外扩 2.5）
@@ -244,7 +244,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
       （按钮高亮字色、滑块三段、遮罩、页头色条、侧栏选中色条）
 - [x] 图标字体 `resources/font/switch_icons.ttf` + `getControllerButtonIcon()`
       （码位同 borealis）+ 文字层字体钩子 `AppearanceView::getLayerFont()`
-- [x] 提示栏 `widgets/hints_bar.*`（AppletFrame 底栏），撤掉旧的顶部覆盖层
+- [x] 提示栏 `ui/widgets/hints_bar.*`（AppletFrame 底栏），撤掉旧的顶部覆盖层
 - [x] demo 重构：AppletFrame（页头 + 提示栏）+ 左侧栏导航 + 右侧子页面
 
 ## 主题与外观系统（数据驱动换肤）
@@ -257,7 +257,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] 外观引擎：`layers`（rect/text/image/custom）+ `states`（`<层>.<属性>` → 目标值/时长/缓动），
       13 个可插值属性，颜色 4 通道 + 标量 1 通道各自一个 tweeny tween，状态有优先级
 - [x] `View::applyTheme()` / `applyThemeRecursive()`；`App::setTheme()` 运行时换肤
-- [x] `bklv/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
+- [x] `bklv/ui/widgets/`：`AppearanceView` 基类 + `Rectangle` + `Button`（含 ghost 变体、禁用态、按下反馈）
 - [x] 第二套皮肤 `ios`（复制 default 改出来的）用于验证换肤
 - [x] 验收：两套主题的全部外观逐个编译 + 控件行为（当时用 44 + 24 项断言，测试目录已移除）
 - [x] `Header` / `BottomBar`（多文字层 + 显式宽高的装饰件）
@@ -273,7 +273,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 - [x] `Dropdown`（触发器 + 弹层列表；选完/点外面自动关）
 - [x] `AppletFrame`（宿主框架：页头 + 内容栈 + 底栏；页头 Regular/Popup 走 variant）
 - [x] **动作沿父链冒泡**（`View::triggerAction`）：容器级 B 动作在焦点位于子节点时才真的生效
-- [x] **IME**（`core/ime.*`：接口 + 平台注入）+ Switch 的 swkbd 实现 + 桌面内联键盘输入
+- [x] **IME**（`foundation/core/ime.*`：接口 + 平台注入）+ Switch 的 swkbd 实现 + 桌面内联键盘输入
 - [x] `EditTextDialog`（文本模型 + 输入框外观 + 光标闪烁）
 - [x] **控件移植清单全部完成**（对照 borealis 20 个控件）
 - [x] 主题引用容错：`@theme/color/a.b` 自动按点分解析并警告（不存在的 key 仍硬失败）
@@ -288,17 +288,17 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 | progress_spinner | `views/progress_spinner` | 已有 |
 | hint | `views/hints` | 已有（等价） |
 | debug_layer | `views/debug_log_view` + `views/debug_layer` | 已有（日志面板是视图、零重排；线框层也是视图） |
-| rectangle | `widgets/rectangle` | 新增（外观驱动，零绘制代码） |
-| button | `widgets/button` | 新增（外观驱动 + ghost 变体） |
-| header | `widgets/header` | 新增 |
-| bottom_bar | `widgets/bottom_bar` | 新增 |
-| tab_frame | `widgets/tab_frame` | 新增（tab 栏 + 内容区，切页只脱离不销毁） |
-| sidebar | `widgets/sidebar` | 新增（条目复用 tab_cell 外观） |
-| slider | `widgets/slider` | 新增（外观分段 track/fill/knob，进度几何留 C++） |
-| applet_frame | `widgets/applet_frame` | 新增（页头 + 内容栈 + 底栏，B 逐层返回） |
-| dialog | `widgets/dialog` | 新增（含弹层 + 焦点栈：模态输入、焦点保存/恢复） |
-| dropdown | `widgets/dropdown` | 新增（触发器 + 弹层列表，锚在触发器下方） |
-| edit_text_dialog | `widgets/edit_text_dialog` | 新增（TextEditModel + 桌面内联输入 / Switch swkbd） |
+| rectangle | `ui/widgets/rectangle` | 新增（外观驱动，零绘制代码） |
+| button | `ui/widgets/button` | 新增（外观驱动 + ghost 变体） |
+| header | `ui/widgets/header` | 新增 |
+| bottom_bar | `ui/widgets/bottom_bar` | 新增 |
+| tab_frame | `ui/widgets/tab_frame` | 新增（tab 栏 + 内容区，切页只脱离不销毁） |
+| sidebar | `ui/widgets/sidebar` | 新增（条目复用 tab_cell 外观） |
+| slider | `ui/widgets/slider` | 新增（外观分段 track/fill/knob，进度几何留 C++） |
+| applet_frame | `ui/widgets/applet_frame` | 新增（页头 + 内容栈 + 底栏，B 逐层返回） |
+| dialog | `ui/widgets/dialog` | 新增（含弹层 + 焦点栈：模态输入、焦点保存/恢复） |
+| dropdown | `ui/widgets/dropdown` | 新增（触发器 + 弹层列表，锚在触发器下方） |
+| edit_text_dialog | `ui/widgets/edit_text_dialog` | 新增（TextEditModel + 桌面内联输入 / Switch swkbd） |
 
 ## JSON 视图系统（移植 borealis 的 XML 视图）
 
@@ -317,7 +317,7 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 
 已完成（P0–P3 + demo 接入）：
 - 依赖：`bklv/3rd/json`（nlohmann/json v3.11.3，单头模式）。实测 NRO +65536 字节
-- 代码：`core/attributes.*`、`core/json_view.*`、`views/json_cell.*`、
+- 代码：`foundation/core/attributes.*`、`foundation/core/json_view.*`、`views/json_cell.*`、
   `resources/views/{page_json,list_item}.json`、`demo/app/pages/page_json.cpp`（第 5 个 tab）
 - 验收：临时程序跑过 80 + 30 项断言（测试目录已移除，见 P3「单元测试」）
 - 文档：`notes/json-view-design.md`、`docs/bklv-api.md`、README、AGENTS.md
@@ -346,7 +346,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 
 - [ ] **脏标记布局**
       现在 `App::frame()` 每帧无条件 `YGNodeCalculateLayout` 全树重算
-      （`bklv/app/app.cpp`，注释自认"比 borealis 保守"）。
+      （`bklv/ui/app/app.cpp`，注释自认"比 borealis 保守"）。
       borealis 的做法是 `invalidate()` 冒泡到根时才重算。
       改法：`View` 加脏标志 + 冒泡；`App::frame()` 条件重算；
       文本变更 / 子节点增删 / Style 主题切换 / 窗口 resize / 字体换代 全部置脏；
@@ -409,7 +409,7 @@ include 循环检测失效导致爆栈、单行 Label 缺容差把中文截成�
 | 8 | ~~`src/app` 是 demo 代码却在库源码树里~~ | 已解决：库在 `bklv/`，demo 在 `demo/` | — |
 | 9 | 库里的 `bklv_app` 层已经搬走，但 `demo/app` 仍然耦合在根 `CMakeLists.txt` 里 | 加第二个示例程序时要复制一遍源文件列表 | 等真有第二个示例时再抽成 `demo/CMakeLists.txt` |
 | 10 | 多后端产物目录靠不同构建目录区分 | 两个构建目录若指向同一输出目录，会互相覆盖同名文件，而 CMake 认为目标最新不会重链，得到「另一个后端编出来的程序」且无提示 | 现在是 `dist/`、`dist/vk/`、`dist/switch/` 三份；加新构建配置时注意别和已有的合并 |
-| 11 | 进程级状态仍是「一个进程一套界面」 | 已经集中到 `core/globals.*`（可列举 / 可重置：`EventBus`、`InputManager`、`App` 当前实例、玻璃服务 + 四条注册表的重置钩子），但**多实例做不到** —— 全局 ImGui 上下文、`App::getCurrent()`、玻璃服务都假定单实例 | 真要同进程跑两个 App，先定「App 边界」的形态（注册表按实例传入 + 上下文按实例），再逐个子系统搬；见 `docs/architecture-review.html` §0 的 §4.2 P0② |
+| 11 | 进程级状态仍是「一个进程一套界面」 | 已经集中到 `foundation/core/globals.*`（可列举 / 可重置：`EventBus`、`InputManager`、`App` 当前实例、玻璃服务 + 四条注册表的重置钩子），但**多实例做不到** —— 全局 ImGui 上下文、`App::getCurrent()`、玻璃服务都假定单实例 | 真要同进程跑两个 App，先定「App 边界」的形态（注册表按实例传入 + 上下文按实例），再逐个子系统搬；见 `docs/architecture-review.html` §0 的 §4.2 P0② |
 
 ---
 

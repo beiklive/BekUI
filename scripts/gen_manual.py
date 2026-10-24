@@ -146,32 +146,33 @@ def run(*cmd):
 
 def layer_stats():
     rows = []
-    for layer, purpose in [
-        ('core', '基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算'),
-        ('geom', '几何：Point / Rect / 变换（渐变顶点网格在 paint/）'),
-        ('paint', '绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT'),
-        ('anim', '动画：缓动、补间、视图转场'),
-        ('json', 'JSON 工具：变量展开（& 与 @）、错误策略、诊断'),
-        ('theme', '外观与主题：ThemeData、Appearance 解析、图层类型表'),
-        ('layer', '图层绘制：六个内置层的绘制实现与注册模板'),
-        ('view', '视图：View / Box（Yoga 布局）/ ViewTemplate 两段式'),
-        ('app', '应用：App 帧循环、Context、通知层'),
-        ('media', '媒体：字体与图标字体、图片解码、音频与音效'),
-        ('input', '输入：键盘 / 手柄 / 手势、焦点、IME'),
-        ('render', '渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）'),
-        ('platform', '平台实现：SDL3（桌面三平台）/ libnx（Switch）'),
-        ('widgets', '控件：AppearanceView / Button / Notification / Label / 列表 / 调试层'),
+    for category, module, purpose in [
+        ('foundation', 'core', '基础机制：全局状态 / 资源 / 日志 / 任务与事件 / 服务 / UI 缩放与帧预算'),
+        ('foundation', 'geom', '几何：Point / Rect / 变换（渐变顶点网格在 graphics/paint/）'),
+        ('foundation', 'json', 'JSON 工具：变量展开（& 与 @）、错误策略、诊断'),
+        ('foundation', 'anim', '动画：缓动、补间、视图转场'),
+        ('graphics', 'paint', '绘制效果：线性/径向渐变网格、柔化阴影、焦点框 LUT'),
+        ('graphics', 'render', '渲染：RenderBackend 接口 + gl / vk / gles3 / libnx（玻璃后端在 glass/）'),
+        ('ui', 'view', '视图：View / Box（Yoga 布局）/ ViewTemplate 两段式'),
+        ('ui', 'theme', '外观与主题：ThemeData、Appearance 解析、图层类型表'),
+        ('ui', 'layer', '图层绘制：六个内置层的绘制实现与注册模板'),
+        ('ui', 'widgets', '控件：AppearanceView / Button / Notification / Label / 列表 / 调试层'),
+        ('ui', 'input', '输入：键盘 / 手柄 / 手势、焦点、IME'),
+        ('ui', 'app', '应用：App 帧循环、Context、通知层'),
+        ('system', 'media', '媒体：字体与图标字体、图片解码、音频与音效'),
+        ('system', 'platform', '平台实现：SDL3（桌面三平台）/ libnx（Switch）'),
     ]:
-        cpp = len(list((ROOT / 'bklv' / layer).rglob('*.cpp')))
-        hpp = len(list((ROOT / 'bklv' / layer).rglob('*.hpp')))
-        rows.append((layer, cpp, hpp, purpose))
+        base = ROOT / 'bklv' / category / module
+        cpp = len(list(base.rglob('*.cpp')))
+        hpp = len(list(base.rglob('*.hpp')))
+        rows.append((f'{category}/{module}', cpp, hpp, purpose))
     return rows
 
 
-def header_classes(layer):
+def header_classes(rel):
     """(类名, 头文件, 一句话说明) —— 说明取文件顶部注释里第一句像描述的话。"""
     items = []
-    for path in sorted((ROOT / 'bklv' / layer).glob('*.hpp')):
+    for path in sorted((ROOT / 'bklv' / rel).glob('*.hpp')):
         text = path.read_text(encoding='utf-8', errors='ignore')
         classes = []
         for m in re.finditer(r'^class\s+(\w+)\s*(?::|$)', text, re.M):
@@ -200,7 +201,7 @@ def header_classes(layer):
 def view_types():
     """JSON 里能写的 "type"：内置 + 控件层。"""
     names = []
-    for rel in ('bklv/view/view_parse.cpp', 'bklv/widgets/appearance/widget_types.cpp'):
+    for rel in ('bklv/ui/view/view_parse.cpp', 'bklv/ui/widgets/appearance/widget_types.cpp'):
         text = (ROOT / rel).read_text(encoding='utf-8', errors='ignore')
         for m in re.finditer(r'registerViewType\("([^"]+)"', text):
             if m.group(1) not in names:
@@ -308,7 +309,7 @@ layer_rows = ''.join(
     f'<tr><td><code>{name}/</code></td><td>{cpp}</td><td>{hpp}</td><td>{html.escape(p)}</td></tr>'
     for name, cpp, hpp, p in layer_stats())
 sections.append(('分层架构', f'''
-<p>层 = <code>bklv/</code> 下的第一级目录。所有层编进同一个 OBJECT 库、共用一个 include 根，
+<p>模块 = <code>bklv/&lt;大类&gt;/&lt;模块&gt;</code>：四个大类是 <code>foundation/</code>（基础，不认识界面）、<code>graphics/</code>（绘制）、<code>ui/</code>（视图 / 外观 / 控件 / 输入）、<code>system/</code>（素材与平台）。所有模块编进同一个 OBJECT 库、共用一个 include 根，
 所以"分层"是目录约定而不是编译单元边界 —— 靠 <code>scripts/check_layers.py</code> 门禁维持。</p>
 
 <table>
@@ -317,15 +318,18 @@ sections.append(('分层架构', f'''
 </table>
 
 <h3>允许的依赖方向</h3>
-<pre><code>core / geom / json                     （最底层：不认识上层任何东西）
-anim / media / paint / render / input  → core, geom, json
-theme                                  → core, geom, json, anim, media
-layer                                  → core, theme（层绘制只认 theme 的图层表与绘制上下文）
-view                                   → core, geom, anim, theme, media, input
-app                                    → core, view, theme, media, input, render, widgets（组合根）
-platform                               → core, input, render（创建并持有后端）
-widgets                                → 除 platform / render 之外的所有层
-任何一层                               → 3rd（第三方是叶子）</code></pre>
+<pre><code>foundation: core / geom / json         （最底层：不认识上层任何东西）
+foundation: anim                       → core, geom, json
+graphics: paint / render               → core, geom, json, anim
+system: media                          → core, geom, json, anim
+ui: input                              → core, geom, json, anim
+ui: theme                              → core, geom, json, anim, media
+ui: layer                              → core, theme（层绘制只认 theme 的图层表与绘制上下文）
+ui: view                               → core, geom, anim, theme, media, input
+ui: app                                → core, view, theme, media, input, render, widgets（组合根）
+system: platform                       → core, input, render（创建并持有后端）
+ui: widgets                            → 除 platform / render 之外的所有模块
+任何模块                               → 3rd（第三方是叶子）</code></pre>
 
 <p>禁止的方向（<code>scripts/check_layers.py</code> 逐对检查）：<code>core</code> 不许碰 <code>theme / layer / view / app / widgets</code>；
 <code>json / media / render</code> 同上；<code>theme</code> 不许碰 <code>view / app / widgets</code>；
@@ -374,7 +378,7 @@ auto* app = new bklv::App();
 app->setRootView(new bklv::Box(bklv::Axis::COLUMN));
 app->run("我的应用", 1280, 720);</code></pre>
 <p>包含路径不用自己加：<code>bklv::bklv</code> 会把 <code>bklv/</code> 的父目录带出来，所以直接写
-<code>#include "bklv/app/app.hpp"</code>。图形后端是编译期决定的（<code>-DBKLV_GRAPHICS=gl|vk</code>）。</p>
+<code>#include "bklv/ui/app/app.hpp"</code>。图形后端是编译期决定的（<code>-DBKLV_GRAPHICS=gl|vk</code>）。</p>
 '''))
 
 # 4 接口速查（docs/bklv-api.md）
@@ -383,7 +387,7 @@ sections.append(('接口速查', R.render(md_api)))
 # 5 内置控件
 def widget_tables():
     out = []
-    for layer, title in (('widgets/appearance', '外观驱动控件（widgets/appearance/）'),
+    for layer, title in (('ui/widgets/appearance', '外观驱动控件（ui/widgets/appearance/）'),
                          ('widgets/controls', '标准控件（widgets/controls/）'),
                          ('widgets/basic', '基础件（widgets/basic/）'),
                          ('widgets/container', '容器（widgets/container/）'),

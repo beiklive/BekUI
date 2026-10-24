@@ -11,7 +11,7 @@
 
 这是 borealis 里除了 View/Box 之外价值最高的部分，也是任何内容型应用的第一需求。
 
-### 1. ScrollingFrame（`widgets/container/scrolling_frame.cpp` 618 行）
+### 1. ScrollingFrame（`ui/widgets/container/scrolling_frame.cpp` 618 行）
 
 | 机制 | 说明 | 移植成本 |
 |---|---|---|
@@ -24,7 +24,7 @@
 评价：**建议做**。它与现有 `View` 的契合度很高，`translation` 和 `clipsToBounds`
 当初就是为它预留的。约 200~300 行。
 
-### 2. RecyclerFrame（`widgets/list/recycler.cpp` 591 行）
+### 2. RecyclerFrame（`ui/widgets/list/recycler.cpp` 591 行）
 
 | 机制 | 说明 |
 |---|---|
@@ -37,7 +37,7 @@
 不复杂；难点是数据源刷新（`reloadData`/`notifyDataChanged`）与焦点保持。
 约 300~400 行。
 
-### 3. HScrollingFrame（`widgets/container/h_scrolling_frame.cpp` 122 行头文件）
+### 3. HScrollingFrame（`ui/widgets/container/h_scrolling_frame.cpp` 122 行头文件）
 
 横向滚动，逻辑与 ScrollingFrame 同构。做完纵向后基本是复制改轴，成本很低。
 
@@ -55,7 +55,7 @@ borealis 这一层是完整的一套：`View::registerAction` + `Box::hitTest` +
 | 方向键/摇杆导航 | `Box::getNextFocus(FocusDirection, View*)` | 中（几何打分，按方向选最近邻） |
 | 焦点状态 | `currentFocus` + `onFocusGained/Lost` | 低 |
 | 动作注册与提示栏 | `registerAction(hint, Button, listener)` | 中 |
-| 手势（长按/滑动） | `core/touch/` + `gesture.hpp` | 低 |
+| 手势（长按/滑动） | `foundation/core/touch/` + `gesture.hpp` | 低 |
 
 评价：**建议做**。这是"应用能不能用"的分水岭。特别是做手柄/键盘导航的项目，
 ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
@@ -64,7 +64,7 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 
 ## 第三优先：内容控件
 
-### 4. Image（`widgets/basic/image.cpp` 454 行）
+### 4. Image（`ui/widgets/basic/image.cpp` 454 行）
 
 | 机制 | ImGui 对应 |
 |---|---|
@@ -110,7 +110,7 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 
 | 能力 | 说明 | 评价 |
 |---|---|---|
-| `DebugLayer`（`widgets/debug/debug_layer.cpp`） | 显示日志流、当前焦点、帧耗时 | **已做**：日志面板是视图树里的 `views/debug_log_view.*`（读环形缓冲、ImDrawList 直接画，不为每条日志建视图）；线框层是 `widgets/debug/debug_layer.cpp` |
+| `DebugLayer`（`ui/widgets/debug/debug_layer.cpp`） | 显示日志流、当前焦点、帧耗时 | **已做**：日志面板是视图树里的 `views/debug_log_view.*`（读环形缓冲、ImDrawList 直接画，不为每条日志建视图）；线框层是 `ui/widgets/debug/debug_layer.cpp` |
 | `setFlexWrap` | Yoga 的 flex-wrap，做网格流式布局 | 已有 setter，如需网格可打开 |
 | `collapse/expand`（`Animatable` 驱动高度） | 折叠动画 | 成本低，按需 |
 | `Padding` 视图 | 纯占位 | 可有可无 |
@@ -123,15 +123,15 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 |---|---|
 | `platforms/`（glfw/sdl/switch/ps4/psv/android/winrt） | 已有 SDL3 单平台方案，抽象层在这里是负担 |
 | `Application` 的 Activity 栈与转场动画 | 你的项目还没有多页导航需求，等有了再说 |
-| `core/video.hpp` + VideoContext | ImGui 后端已经接管窗口与 GL |
+| `foundation/core/video.hpp` + VideoContext | ImGui 后端已经接管窗口与 GL |
 | `AudioPlayer` | 与 UI 框架无关 |
 | `ImeManager` | ImGui 有自己的 IME 支持 |
 | `NotificationManager` | 依赖 Activity 栈 |
 | XML / tinyxml2 / `BRLS_BIND` | 你已明确不要 XML |
-| `core/style.cpp` 的文件加载与主题叠加 | 现在是硬编码表，够用 |
-| `core/i18n` | 现在没有多语言需求 |
-| `core/task` / `thread` / `cache_helper` | 属于工具层，跟 UI 框架没关系 |
-| `core/singleton` / `bind` | 和 XML 绑定耦合 |
+| `foundation/core/style.cpp` 的文件加载与主题叠加 | 现在是硬编码表，够用 |
+| `foundation/core/i18n` | 现在没有多语言需求 |
+| `foundation/core/task` / `thread` / `cache_helper` | 属于工具层，跟 UI 框架没关系 |
+| `foundation/core/singleton` / `bind` | 和 XML 绑定耦合 |
 
 ---
 
@@ -141,6 +141,6 @@ ImGui 自带的导航和这套是两回事，别混用。约 400~600 行。
 2. **RecyclerFrame** —— 数据量大了必须要有，依赖第 1 步
 3. **输入与焦点** —— 决定应用能不能真正操作，也是第 1 步"焦点自动滚动"的前提
 4. **Image** —— 内容展示的刚需
-5. ~~**DebugLayer**~~ —— 已实现为视图树里的日志面板（`widgets/debug/debug_log_view.hpp`，挂外壳调试层）
+5. ~~**DebugLayer**~~ —— 已实现为视图树里的日志面板（`ui/widgets/debug/debug_log_view.hpp`，挂外壳调试层）
 
 前四项做完，`bklv` 就从"能摆布局"变成"能写内容型应用"了。

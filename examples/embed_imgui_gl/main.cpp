@@ -13,11 +13,11 @@
 #include "backends/imgui_impl_sdl3.h"
 #include "backends/imgui_impl_opengl3.h"
 
-#include "bklv/render/gl/gl_loader.hpp"
+#include "bklv/graphics/render/gl/gl_loader.hpp"
 #include "bklv/bklv.hpp"
-#include "bklv/render/glass/gl/gl_glass.hpp"
-#include "bklv/render/graphics.hpp"
-#include "bklv/core/services.hpp"
+#include "bklv/graphics/render/glass/gl/gl_glass.hpp"
+#include "bklv/graphics/render/graphics.hpp"
+#include "bklv/foundation/core/services.hpp"
 
 namespace
 {

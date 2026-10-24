@@ -198,11 +198,11 @@ VK 那条路没有 `App::requestScreenshot`（截图是 GL 侧实现的），所
 
 | 文件 | 作用 |
 |---|---|
-| `bklv/render/glass/glass_style.hpp` / `glass_request.hpp` / `glass_blur_plan.*` / `glass_tuning.*` / `glass_geometry.*` | 思路层：参数、请求、模糊计划、形状解析（纯逻辑，无平台依赖） |
-| `bklv/core/glass/glass_queue.*` | 一帧的请求队列（只收 opt-in 的声明，不做裁剪） |
-| `bklv/render/glass/glass_backend.hpp` | 后端抽象接口（core 只认它；实现由图形后端持有、经 `RenderBackend::getGlassBackend()` 转交） |
-| `bklv/core/glass/glass_service.*` | 服务：帧首/提交/注入/帧末；`submitBackdrop`；能力与开关（不拥有后端，`setBackend` 注入） |
-| `bklv/backends/gl_glass.{hpp,cpp}` + `gl_glass_procs.*` + `gl_glass_shaders.*` | GL / GLES3 后端（抓帧 + 高斯 + 合成）；实现 `GlassBackend`，由 OpenGL / GLES3 图形后端持有 |
-| `bklv/backends/vk_glass.{hpp,cpp}` | Vulkan 路线 A（mip 链模糊 + ImGui 叠染色）；实现 `GlassBackend`，由 Vulkan 图形后端持有并懒挂 UI 通道钩子 |
-| `bklv/core/focus_ring.*` | **无关**，但形状表达（圆角矩形 + 半径钳制）与玻璃共用同一套思路 |
+| `bklv/graphics/render/glass/glass_style.hpp` / `glass_request.hpp` / `glass_blur_plan.*` / `glass_tuning.*` / `glass_geometry.*` | 思路层：参数、请求、模糊计划、形状解析（纯逻辑，无平台依赖） |
+| `bklv/foundation/core/glass/glass_queue.*` | 一帧的请求队列（只收 opt-in 的声明，不做裁剪） |
+| `bklv/graphics/render/glass/glass_backend.hpp` | 后端抽象接口（core 只认它；实现由图形后端持有、经 `RenderBackend::getGlassBackend()` 转交） |
+| `bklv/foundation/core/glass/glass_service.*` | 服务：帧首/提交/注入/帧末；`submitBackdrop`；能力与开关（不拥有后端，`setBackend` 注入） |
+| `bklv/graphics/render/glass/gl/gl_glass.{hpp,cpp}` + `gl_glass_procs.*` + `gl_glass_shaders.*` | GL / GLES3 后端（抓帧 + 高斯 + 合成）；实现 `GlassBackend`，由 OpenGL / GLES3 图形后端持有 |
+| `bklv/graphics/render/glass/vk/vk_glass.{hpp,cpp}` | Vulkan 路线 A（mip 链模糊 + ImGui 叠染色）；实现 `GlassBackend`，由 Vulkan 图形后端持有并懒挂 UI 通道钩子 |
+| `bklv/foundation/core/focus_ring.*` | **无关**，但形状表达（圆角矩形 + 半径钳制）与玻璃共用同一套思路 |
 | `resources/theme/default/base/glass_panel.json` | 玻璃面板外观（`op: "glass"` 的示例） |

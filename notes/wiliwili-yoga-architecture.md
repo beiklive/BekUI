@@ -193,7 +193,7 @@ facebook::yoga::Event::subscribe([](const YGNode& node,
 ## 4. 测量（measure）：让 Yoga 知道文本有多宽
 
 Yoga 只管几何，不认字形。文本尺寸通过自定义 measure 函数注入，**measure 内部直接调 NanoVG**
-（`widgets/basic/label.cpp:74`）：
+（`ui/widgets/basic/label.cpp:74`）：
 
 ```cpp
 static YGSize labelMeasureFunc(YGNodeRef node, float width, YGMeasureMode widthMode,
@@ -314,7 +314,7 @@ float View::getX() {
   等焦点动画状态，绘制阶段统一处理。
 - **动作绑定** `View::registerAction(hint, ButtonType, listener)`（view.cpp:765）
   注册后自动出现在底部提示栏（`Hints`），不需要业务层自己画提示。
-- 手势在 `core/touch/`、`input/gesture.hpp`，`gestureRecognizerRequest` 沿父链冒泡。
+- 手势在 `foundation/core/touch/`、`ui/input/gesture.hpp`，`gestureRecognizerRequest` 沿父链冒泡。
 
 ---
 
@@ -395,7 +395,7 @@ wiliwili 里直接 `#include <yoga/YGNode.h>` 的只有 2 个文件
 | 绘制入口 | `View::draw(vg, x, y, w, h, style, ctx)`，父链提供坐标系 | `ImDrawList::AddXxx(绝对坐标)` |
 | 容器递归 | `Box::draw()` 递归 + 多层剔除 + scissor 裁剪 | demo_04 手动算 3 张卡片坐标 |
 | 样式 | `Style`/`Theme` + XML 属性 | 硬编码颜色常量 |
-| 动画 | `core/animation.hpp` 时间轴补间 | demo_05 用 Tweeny |
+| 动画 | `foundation/core/animation.hpp` 时间轴补间 | demo_05 用 Tweeny |
 
 如果想把 imgui_learn 往这个架构靠，最小增量是三步（不需要抄全部）：
 

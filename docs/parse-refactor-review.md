@@ -7,11 +7,11 @@
 
 | 文件 | 行数 | 里面装了什么 |
 |---|---|---|
-| `theme/appearance.cpp` | 1906 | 解析（`compile` **501 行**）+ 编译产物查询 + 状态补间运行时 + `AppearanceInstance`（带 tweeny） |
-| `theme/appearance.hpp` | 357 | Layer / Box / 过渡 spec / Appearance / Instance 五个概念 |
-| `core/json_view.cpp` | 649 | 视图 JSON 解析（第二套） |
-| `core/theme_data.cpp` | 567 | 主题 JSON 解析（第三套） |
-| `widgets/appearance/appearance_view.cpp` | 631 | 按 op 分支绘制 |
+| `ui/theme/appearance.cpp` | 1906 | 解析（`compile` **501 行**）+ 编译产物查询 + 状态补间运行时 + `AppearanceInstance`（带 tweeny） |
+| `ui/theme/appearance.hpp` | 357 | Layer / Box / 过渡 spec / Appearance / Instance 五个概念 |
+| `foundation/core/json_view.cpp` | 649 | 视图 JSON 解析（第二套） |
+| `foundation/core/theme_data.cpp` | 567 | 主题 JSON 解析（第三套） |
+| `ui/widgets/appearance/appearance_view.cpp` | 631 | 按 op 分支绘制 |
 | `designer/core/appearance_doc.cpp` + `ui/designer_window.cpp` | 482 + 大 | 设计器**又一套** op/键表（字符串版） |
 
 两个直接后果：
@@ -26,7 +26,7 @@
 
 - **单一事实来源**：一种 op 的名字、默认字段、可编键、层序档位、解析与绘制钩子，只写一处
 - **可读**：`compile` 瘦到 < 80 行；解析按「段 / 类型」分文件，同层级的代码在同一文件里
-- **低耦合**：解析（`compile/`）与运行时（`core/`）分 TU；tweeny 只出现在运行时
+- **低耦合**：解析（`compile/`）与运行时（`foundation/core/`）分 TU；tweeny 只出现在运行时
 - **第三方可扩展**：加一种 op = **新增 1 个文件 + 1 行注册**，不改库任何现存文件；设计器自动认它
 - **行为不变**：重构期间所有既有测试与截图结果不变
 
@@ -55,7 +55,7 @@
 ## 4. 目录结构
 
 ```
-bklv/compile/                      ← 新增：JSON → 数据（解析、校验、编译）
+bklv/ui/theme/                      ← 新增：JSON → 数据（解析、校验、编译）
   json_util.{hpp,cpp}              取数字/颜色/枚举/数组 + 带 key 路径的统一报错
   appearance_parse.{hpp,cpp}       外观入口：调度 + 错误汇总（<80 行）
   appearance_box.cpp               第 1 层：box 段
@@ -68,7 +68,7 @@ bklv/compile/                      ← 新增：JSON → 数据（解析、校�
   view_parse.{hpp,cpp}             视图描述解析（从 core/json_view.cpp 搬）
   theme_parse.{hpp,cpp}            主题解析（从 core/theme_data.cpp 搬）
 
-bklv/core/                         运行时与公开数据类型（几乎不动）
+bklv/foundation/core/                         运行时与公开数据类型（几乎不动）
   appearance.hpp                   公开 API 保留；内部 include 拆分后的碎片
   appearance_instance.{hpp,cpp}    运行时状态机（tweeny 只在这里）
 ```
@@ -76,9 +76,9 @@ bklv/core/                         运行时与公开数据类型（几乎不动
 **边界五条（评审重点）**
 
 1. `compile/` 只做「JSON → 数据 + 错误」，不含运行时、不含绘制
-2. `core/` 只放运行时数据与状态机；tweeny 只能出现在 `appearance_instance.*`
-3. 绘制留在 `widgets/appearance/appearance_view.cpp`，它按注册表调各 op 的 draw 钩子，自己不再写 `if (op == …)`
-4. 公开头路径不变（`bklv/theme/appearance.hpp`），调用方零改动
+2. `foundation/core/` 只放运行时数据与状态机；tweeny 只能出现在 `appearance_instance.*`
+3. 绘制留在 `ui/widgets/appearance/appearance_view.cpp`，它按注册表调各 op 的 draw 钩子，自己不再写 `if (op == …)`
+4. 公开头路径不变（`bklv/ui/theme/appearance.hpp`），调用方零改动
 5. 四套 JSON（主题/视图/外观/i18n）共用 `json_util`：宽容规则与错误格式只写一遍
 
 ## 5. 图层类型注册表（核心扩展点）
@@ -86,7 +86,7 @@ bklv/core/                         运行时与公开数据类型（几乎不动
 设计取向按常见 C++ 规范：**无宏、显式注册、不做静态初始化依赖**（本项目已有先例：事件总线刻意不用宏/typeid）。
 
 ```cpp
-// bklv/theme/layer_registry.hpp
+// bklv/ui/theme/layer_registry.hpp
 namespace bklv::compile {
 
 enum class LayerOrder { SHADOW, GLASS, BACKGROUND, HIGHLIGHT_BG, CONTENT, DECORATION, OVERLAY };
@@ -218,7 +218,7 @@ struct AppearanceLayer {
 
 ## 10. 评审请重点看这五条
 
-1. 目录与命名（`bklv/compile/` + `layers/` 一种 op 一文件）
+1. 目录与命名（`bklv/ui/theme/` + `layers/` 一种 op 一文件）
 2. 注册机制：**无宏、显式注册、不依赖静态初始化**
 3. `children` 三档节点 + 复用视图模板（不另写解析器）
 4. v1 明确不做：op 进布局、父改子状态
@@ -273,8 +273,8 @@ struct AppearanceLayer {
 
 1. ①c-3：把 `parse` / `draw` 钩子接上注册表 → `parseLayers` 退化成"查表 + 分派"，
    键校验读键表；每种 op 的字段解析迁进 `compile/layers/<op>.cpp`（一文件一 op）
-2. ③ `widgets/appearance/appearance_view.cpp` 改读注册表的 draw 钩子，删掉 `if (op == ...)` 链
-3. ④ 把 view / theme 解析搬进 `compile/`（`core/` 只留运行时；tweeny 只出现在运行时 TU）
+2. ③ `ui/widgets/appearance/appearance_view.cpp` 改读注册表的 draw 钩子，删掉 `if (op == ...)` 链
+3. ④ 把 view / theme 解析搬进 `compile/`（`foundation/core/` 只留运行时；tweeny 只出现在运行时 TU）
 4. ⑤ `appearance.children`（三档节点 + 递归 + 复用 ViewTemplate + 循环/深度报错）
 5. ⑥ 设计器改读注册表（加层菜单/键表/层序校验自动认新 op）
 6. **可扩展性验收**：在 `bklv/` 之外新增 `stripe` op（1 文件 + 1 行注册）→
@@ -304,7 +304,7 @@ struct AppearanceLayer {
 
 1. **①c-3 余下**：内置 6 种的字段解析仍挤在 `parseLayers`（382 行）里，尚未按 op 拆进
    `compile/layers/<op>.cpp`（扩展路径已经走注册表，内置路径还是老样子）
-2. **④** view / theme 解析搬进 `compile/`（`core/` 只留运行时；tweeny 只出现在运行时 TU）
+2. **④** view / theme 解析搬进 `compile/`（`foundation/core/` 只留运行时；tweeny 只出现在运行时 TU）
 3. **⑤** `appearance.children`（外观内组合控件：`appearance` / 只写 `box` / `ref` 三档）——
    设计已在本文 §6，实现尚未开始；这是"一份外观 = 一个完整控件"的关键一步
 
@@ -336,7 +336,7 @@ struct AppearanceLayer {
 |---|---|---|
 | `"appearance": "<名>"` | 一个 `AppearanceView`（名字同现有规则，含 `.变体`） | 本步实现 |
 | 只写 `box` | 一个 `Box`，套用该 `box` 段（纯布局盒，递归嵌套的载体） | 本步实现 |
-| `"ref": "<视图模板名>"` | 用主题 `view/` 里的**视图模板**实例化（可产出任意控件类型） | 复用现成机制 |
+| `"ref": "<视图模板名>"` | 用主题 `ui/view/` 里的**视图模板**实例化（可产出任意控件类型） | 复用现成机制 |
 
 第三档刻意复用**视图模板**（`ViewTemplate` + `instantiate()`），而不是新造"控件注册表" ✗ ——
 这样"引用别的控件"能把库里已有的一切（Button / Label / Image / Cell…）都用上，
@@ -348,7 +348,7 @@ struct AppearanceLayer {
 ### 12.3 数据模型与文件
 
 ```cpp
-// bklv/theme/appearance.hpp（编译产物里的**纯数据**，不含视图）
+// bklv/ui/theme/appearance.hpp（编译产物里的**纯数据**，不含视图）
 struct AppearanceChild {
     enum class Kind { APPEARANCE, BOX, VIEW_TEMPLATE };
     Kind kind = Kind::BOX;
@@ -360,10 +360,10 @@ struct AppearanceChild {
 // Appearance 增：std::vector<AppearanceChild> children; + getChildren()
 ```
 
-- **解析**：`bklv/compile/appearance_children.{hpp,cpp}`（新文件；`compile/` 已在 CMake 与
+- **解析**：`bklv/ui/theme/appearance_children.{hpp,cpp}`（新文件；`compile/` 已在 CMake 与
   Switch 的按目录收集里 ✓，不用再改构建清单）
-- **实例化**：`bklv/widgets/appearance/appearance_children.cpp`（建视图是 widgets 的事，compile 不建视图）
-- 公开头 `theme/appearance.hpp` 只多一个**纯数据**结构 + getter（不引 nlohmann）✓
+- **实例化**：`bklv/ui/widgets/appearance/appearance_children.cpp`（建视图是 widgets 的事，compile 不建视图）
+- 公开头 `ui/theme/appearance.hpp` 只多一个**纯数据**结构 + getter（不引 nlohmann）✓
 
 ### 12.4 时机与生命周期
 
@@ -428,7 +428,7 @@ bool buildChildViews(AppearanceView& parent, const std::vector<AppearanceChild>&
   （v1 不做"规格逐字段比较"，按名字变即重建 —— 简单且够用）
 
 ⚠️ **里程碑 1 需要先修的一处隐患**：`AppearanceBox` 是靠"哪些字段写过"来决定套不套用的
-（AGENTS ⑦b：没写的字段不会清掉旧值），而我在 `theme/appearance_children.cpp` 里手搓的
+（AGENTS ⑦b：没写的字段不会清掉旧值），而我在 `ui/theme/appearance_children.cpp` 里手搓的
 `parseChildBox` **只填了值、没设那些存在标记** —— 直接拿它去 `applyAppearanceBox` 会把
 width/height/padding 等**清零套用** ✗。
 
@@ -484,7 +484,7 @@ child[1] 内层盒 x=473 y=1806 w=345 h=188 ownChildren=2  （两个标签在盒
    ```
    把 750 行那段**整块切进去**（含 `readLength` 等局部助手），`doc["box"]` 的取用留在调用方
 2. `parseLayers` 开头改成调 `parseBoxNode(doc["box"], …)` -> 从 382 行降到 ~230 行
-3. `theme/appearance_children.cpp` 删掉手搓的 `parseChildBox`，改调同一个 `parseBoxNode`
+3. `ui/theme/appearance_children.cpp` 删掉手搓的 `parseChildBox`，改调同一个 `parseBoxNode`
    -> **`axis`/`margin`/`justifyContent`/`alignItems` 等自动全都支持**，未知键告警也由同一份逻辑管
 4. 验收：`check.sh` 3410 项全过（纯搬家、行为不变）+ `children` 的主题示例可以去掉那条
    "axis 不认识" 的告警；测试里补一条"children 的 box 能写 alignItems"
@@ -532,7 +532,7 @@ child[1] 内层盒 x=473 y=1806 w=345 h=188 ownChildren=2  （两个标签在盒
 互相复制的分支，反而把现在的好设计拆坏。
 
 **每种 op 的"个性"其实已经集中了**：名字 / 中文名 / 默认 id 前缀 / 层序档位 / 键表 / help /
-parse / draw 全在 `layer/layer_registry.cpp` ✓ —— 也就是说 §2 想要的"一种 op 一个文件"
+parse / draw 全在 `ui/layer/layer_registry.cpp` ✓ —— 也就是说 §2 想要的"一种 op 一个文件"
 在**注册表层**已经达成；字段解析层**本来就应该通用**。
 
 **修正后的切法（按"关注点"切，不按 op 切）**
@@ -604,7 +604,7 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 | `parseLayers` ≤80 行 | **30 行** ✓（起点 382）|
 | `parseStates` ≤80 行 | **87 行** ✗（差 7 行）|
 | `appearance.cpp` | 1906 -> **1465 行** |
-| 解析层落点 | `bklv/compile/`：json_util / layer_registry / appearance_box / appearance_layer_meta /
+| 解析层落点 | `bklv/ui/theme/`：json_util / layer_registry / appearance_box / appearance_layer_meta /
   appearance_layer_fields / appearance_gradient / appearance_children |
 
 `parseStates` 是唯一没达标的：结构是"一个 `if` 包一个循环"，要压到 ≤80 只能把**循环体**提成
@@ -641,7 +641,7 @@ bool parseLayerMeta(const Json& node, size_t index, const ThemeData& theme,
 | `Appearance::compile` | 501 行 | **53 行** ✓ |
 | `parseLayers` | 382 行 | **30 行** ✓ |
 | `parseStates` | 87 行 | **12 行** ✓（+ parseAllStates 23 / parseStateProps 67）|
-| `theme/appearance.cpp` | 1906 行 | **1354 行** |
+| `ui/theme/appearance.cpp` | 1906 行 | **1354 行** |
 
 - ①（助手抽进 `compile/json_util`）✓ ②（`compile` 与各解析函数 ≤80 行 + 注册表）✓
 - ④（view/theme 解析搬进 `compile/`，core 只留运行时；tweeny 只在 appearance.cpp）✓
@@ -689,7 +689,7 @@ bool setLayerDraw(const std::string& name, LayerDrawFn draw);
 const char* layerOpName(AppearanceLayer::Op op);
 ```
 
-然后：`widgets/layers/<op>.cpp` 各写一个 `drawRect/drawText/...`（6 个文件，每个 ≤80 行），
+然后：`ui/widgets/layers/<op>.cpp` 各写一个 `drawRect/drawText/...`（6 个文件，每个 ≤80 行），
 `appearance_view.cpp` 的 switch 变成
 
 ```cpp
@@ -700,7 +700,7 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 }
 ```
 
-**分层要点**：钩子的**类型**在 `compile/`（纯函数签名），**实现**在 `widgets/`（由 widgets 在
+**分层要点**：钩子的**类型**在 `compile/`（纯函数签名），**实现**在 `ui/widgets/`（由 widgets 在
 初始化时 `setLayerDraw` 注册）—— 这样 compile 不会反向依赖 widgets，`EXTENSION` 那条路
 （第三方注册）也天然一致。
 
@@ -710,7 +710,7 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 
 ### 12.19 ③ 第二刀（RECT）的两次失败与正确做法
 
-搬 `case Op::RECT` 那 21 行到 `layer/layer_draw_rect.cpp`，两次构建失败、**两次都脚本自动回滚**
+搬 `case Op::RECT` 那 21 行到 `ui/layer/layer_draw_rect.cpp`，两次构建失败、**两次都脚本自动回滚**
 （树零改动）。错误信息把做法说清楚了：
 
 1. **切片带上了 switch 的包装** ✗：区域是 `case ...: { <body> break; }`，
@@ -761,9 +761,9 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 
 ### 12.21 ③ 第二、三刀落地：RECT ✓ / SHADOW ✓（补齐两条变换规则）
 
-- **RECT** 已搬进 `layer/layer_draw_rect.cpp`，并**截图确认**画面无变化（JSON 页的
+- **RECT** 已搬进 `ui/layer/layer_draw_rect.cpp`，并**截图确认**画面无变化（JSON 页的
   `bg · 填色` 深色圆角卡片、`bg · 描边` 行都正常）
-- **SHADOW** 已搬进 `layer/layer_draw_shadow.cpp`
+- **SHADOW** 已搬进 `ui/layer/layer_draw_shadow.cpp`
 - 两次都走「写入 -> 构建 -> 失败自动回滚」：RECT 失败 3 次、SHADOW 失败 2 次，**每次都树零改动**
 
 搬 case 时**除 §12.20 的表**之外，还必须做两条替换（都是编译器当场指出来的）：
@@ -786,8 +786,8 @@ if (const LayerType* t = findLayer(layerOpName(layer.op)); t && t->draw) {
 |---|---|---|
 | ① 解析助手进 `compile/json_util` | ✓ | 4 套 JSON 共用；`check.sh` 3422 项全过 |
 | ② 解析函数 ≤80 行 + 注册表 | ✓ | `compile` 501->53、`parseLayers` 382->30、`parseStates` 87->12（+23/67）；注册表无宏显式注册、6 种内置全在册 |
-| ③ 绘制走注册表、不再 if(op==) 链 | ✓ | `appearance_view.cpp` 710->**610**；6 种内置绘制各一个 `widgets/layer_draw_<op>.cpp` |
-| ④ view/theme 解析搬进 `compile/` | ✓ | `core/json_view.cpp`->`view/view_parse.cpp`、`theme_data.cpp`->`theme_parse.cpp`、`mergeJson/resolveImports`->`appearance_imports.cpp`；`theme/appearance.cpp` 1906->**1354**，tweeny 只在这里 |
+| ③ 绘制走注册表、不再 if(op==) 链 | ✓ | `appearance_view.cpp` 710->**610**；6 种内置绘制各一个 `ui/widgets/layer_draw_<op>.cpp` |
+| ④ view/theme 解析搬进 `compile/` | ✓ | `foundation/core/json_view.cpp`->`ui/view/view_parse.cpp`、`theme_data.cpp`->`theme_parse.cpp`、`mergeJson/resolveImports`->`appearance_imports.cpp`；`ui/theme/appearance.cpp` 1906->**1354**，tweeny 只在这里 |
 | ⑤ `appearance.children` 三档 | ✓ | 数据模型/解析/实例化/循环检测 + 31+19 项测试 + 主题示例 + 截图 + 使用者文档 |
 | ⑥ 设计器读注册表 | ✓ | 加层菜单/中文名/候选键自动认新 op；顺手修掉"设计器里切不到 glass"的 bug |
 | 第三方加 op（`stripe`）| ✓ | `bklv/` 之外 1 文件 + 1 行注册 -> 主题可用 -> 绘制出条纹（截图确认）；另加保留键防呆 |
@@ -804,7 +804,7 @@ GL/VK/Switch 退出码 0 且本仓告警 0；命名 196 文件全过；绘制路
 
 ### 13.1 多列（Grid）的侦察结论 —— 别动 `rows[]` 的语义
 
-`RecyclerFrame` 的布局接缝（`widgets/list/recycler.cpp:284`）：
+`RecyclerFrame` 的布局接缝（`ui/widgets/list/recycler.cpp:284`）：
 
 ```cpp
 void RecyclerFrame::layoutCell(RecyclerCell* cell, size_t row) {

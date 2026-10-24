@@ -95,11 +95,11 @@ resources/theme/
 ## 7. 相关文件
 
 ```
-bklv/theme/theme_data.hpp/.cpp     主题装载、拍平、回退
-bklv/theme/appearance.hpp/.cpp     外观编译 + 运行期补间（tweeny）
-bklv/widgets/appearance_view.*    外观驱动的控件基类（解释并绘制 layers）
-bklv/widgets/rectangle.*          纯装饰控件（示例：本身没有绘制代码）
-bklv/widgets/button.*             按钮（语义：文字/点击/禁用；外观全在 JSON）
+bklv/ui/theme/theme_data.hpp/.cpp     主题装载、拍平、回退
+bklv/ui/theme/appearance.hpp/.cpp     外观编译 + 运行期补间（tweeny）
+bklv/ui/widgets/appearance_view.*    外观驱动的控件基类（解释并绘制 layers）
+bklv/ui/widgets/rectangle.*          纯装饰控件（示例：本身没有绘制代码）
+bklv/ui/widgets/button.*             按钮（语义：文字/点击/禁用；外观全在 JSON）
 resources/theme/default|ios/    两套皮肤（ios 是复制 default 改出来的）
 tests/theme_test.cpp              44 项：装载/回退/外观编译/状态动效/换肤
 tests/widget_test.cpp             24 项：外观绑定/状态/换肤对已建视图生效/显式值不被覆盖

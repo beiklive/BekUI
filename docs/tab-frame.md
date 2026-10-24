@@ -156,5 +156,5 @@ class TabFrame : public Box {
 | P1 | `TabButton` → `TabButton`（加图标层、双外观）+ 两份按钮 JSON | `check.sh` 绿；外观能编译 |
 | P2 | 重写 `TabFrame`（方向/位置/触发/栏+内容框） | 新测试全过 |
 | P3 | 删除 `TabBar`/`Sidebar`，迁移 demo 与 `widget_test` | demo 启动、无残留引用 |
-| P4 | JSON 注册 + 属性表 + 样例 `view/tab_frame_demo.json` | 视图 JSON 能建出两种方向 |
+| P4 | JSON 注册 + 属性表 + 样例 `ui/view/tab_frame_demo.json` | 视图 JSON 能建出两种方向 |
 | P5 | 文档（`docs/json-syntax.md` 的 TabFrame 一节）、旧注释清理、截图 | 全量门禁 + 截图 |

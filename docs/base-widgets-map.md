@@ -34,7 +34,7 @@
 ## 1. 容器 · 基本盒
 
 - 文案 key：`base_widgets/sec_box`
-- 控件：`Rectangle` · 类文件：`bklv/widgets/rectangle.hpp`
+- 控件：`Rectangle` · 类文件：`bklv/ui/widgets/rectangle.hpp`
 - 外观：`base/box`
 - 备注：**只有盒模型**（axis/height），`layers` 是空的 —— 底/边框在 `base/box.component` 里。
 
@@ -63,7 +63,7 @@
 ## 2. 容器 · 布局
 
 - 文案 key：`base_widgets/sec_layout`
-- 控件：`Rectangle` · 类文件：`bklv/widgets/rectangle.hpp`
+- 控件：`Rectangle` · 类文件：`bklv/ui/widgets/rectangle.hpp`
 - 外观：`base/box`、`base/box.layout`
 - 备注：布局容器：`setAppearanceVariant("layout")` → 无底无框、只有内边距。
 
@@ -103,7 +103,7 @@
 ## 3. 容器 · 组件内嵌
 
 - 文案 key：`base_widgets/sec_component`
-- 控件：`Rectangle` · 类文件：`bklv/widgets/rectangle.hpp`
+- 控件：`Rectangle` · 类文件：`bklv/ui/widgets/rectangle.hpp`
 - 外观：`base/box.component`
 - 备注：组件容器：`setAppearanceVariant("component")`，它 `import` 了 `base/box` —— 改 base，所有按钮一起变。边框/圆角就在这份文件的 `metric.component.*` 上。
 
@@ -131,7 +131,7 @@
 ## 4. 元素 · 文本 Label
 
 - 文案 key：`base_widgets/sec_label`
-- 控件：`Label` · 类文件：`bklv/widgets/basic/label.hpp`
+- 控件：`Label` · 类文件：`bklv/ui/widgets/basic/label.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观**：字号/颜色/换行/截断都是代码设的。
 
@@ -156,7 +156,7 @@
 ## 5. 元素 · 图片 Image
 
 - 文案 key：`base_widgets/sec_image`
-- 控件：`Image` · 类文件：`bklv/widgets/basic/image.hpp`
+- 控件：`Image` · 类文件：`bklv/ui/widgets/basic/image.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观**：资源 `resources/testcard.png`，尺寸代码设。
 
@@ -182,7 +182,7 @@
 ## 6. 元素 · 滑块 Slider
 
 - 文案 key：`base_widgets/sec_slider`
-- 控件：`Slider` · 类文件：`bklv/widgets/slider.hpp`
+- 控件：`Slider` · 类文件：`bklv/ui/widgets/slider.hpp`
 - 外观：`base/slider`
 - 备注：几何是 C++ 语义绘制；颜色/圆角/粗细在 JSON。
 
@@ -219,7 +219,7 @@
 ## 7. 元素 · 进度圈 Spinner
 
 - 文案 key：`base_widgets/sec_spinner`
-- 控件：`ProgressSpinner` · 类文件：`bklv/widgets/basic/progress_spinner.hpp`
+- 控件：`ProgressSpinner` · 类文件：`bklv/ui/widgets/basic/progress_spinner.hpp`
 - 外观：**没有外观**
 - 备注：**没有外观 JSON**（纯视图）：颜色取主题 `color.spinner.bar`，时长/粗细是代码写的（1.2s / 2.4s）。
 
@@ -245,7 +245,7 @@
 ## 8. 按钮 · 纯文字
 
 - 文案 key：`base_widgets/sec_btn_text`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.text`
 - 备注：普通按钮：文字居中。
 
@@ -271,7 +271,7 @@
 ## 9. 按钮 · 纯图标
 
 - 文案 key：`base_widgets/sec_btn_icon`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.icon`、`base/widget/button.icon_circle`
 - 备注：两款：正方形（`icon`，48×48 + `minWidth: 0`）/ 圆形（`icon_circle`，五层 radius = `metric.radius.round`）。
 
@@ -306,7 +306,7 @@
 ## 10. 按钮 · 图标 + 文字
 
 - 文案 key：`base_widgets/sec_btn_icon_text`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.icon_text`
 - 备注：图标 + 文字：靠层的 `inset` 排队。
 
@@ -331,7 +331,7 @@
 ## 11. 按钮 · 列表（无边框）
 
 - 文案 key：`base_widgets/sec_btn_list`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.list`
 - 备注：列表按钮：`bg.stroke` 透明 + `strokeWidth: 0` 去边框，文字层 `align: left`。
 
@@ -357,7 +357,7 @@
 ## 12. 按钮 · 信息型
 
 - 文案 key：`base_widgets/sec_btn_info`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.info`
 - 备注：信息型：右侧 `info` 层文字由程序给。
 
@@ -392,7 +392,7 @@
 ## 13. 按钮 · 开关（文字）
 
 - 文案 key：`base_widgets/sec_switch_text`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.switch_text`
 - 备注：文字开关：`on` / `off` 两个外观状态。
 
@@ -427,7 +427,7 @@
 ## 14. 按钮 · 开关（图案）
 
 - 文案 key：`base_widgets/sec_switch_icon`
-- 控件：`Button` · 类文件：`bklv/widgets/controls/button.hpp`
+- 控件：`Button` · 类文件：`bklv/ui/widgets/controls/button.hpp`
 - 外观：`base/widget/button.switch_icon`
 - 备注：图案开关：轨道 + 滑块，位移是 `knob.offsetX` 补间。
 
@@ -458,7 +458,7 @@
 ## 15. 按钮 · 下拉触发器
 
 - 文案 key：`base_widgets/sec_dropdown`
-- 控件：`Dropdown` · 类文件：`bklv/widgets/dropdown.hpp`
+- 控件：`Dropdown` · 类文件：`bklv/ui/widgets/dropdown.hpp`
 - 外观：`base/widget/button.dropdown`、`base/dropdown_popup`、`base/dropdown_item`
 - 备注：触发器外观挂在 `dropdown->getTrigger()` 上；弹窗是 `base/dropdown_popup` + 选项 `base/dropdown_item`。
 
@@ -515,7 +515,7 @@
 ## 16. 选择器 · 数值
 
 - 文案 key：`base_widgets/sec_selector_number`
-- 控件：`SelectorButton` · 类文件：`bklv/widgets/selector_button.hpp`
+- 控件：`SelectorButton` · 类文件：`bklv/ui/widgets/selector_button.hpp`
 - 外观：`base/widget/button.selector`
 - 备注：数值模式：0~100、步长 5；代码里 setNumberRange。
 
@@ -546,7 +546,7 @@
 ## 17. 选择器 · 列表
 
 - 文案 key：`base_widgets/sec_selector_list`
-- 控件：`SelectorButton` · 类文件：`bklv/widgets/selector_button.hpp`
+- 控件：`SelectorButton` · 类文件：`bklv/ui/widgets/selector_button.hpp`
 - 外观：`base/widget/button.selector`
 - 备注：列表模式：LR 切换、越界环绕；选项文字是代码给的。
 

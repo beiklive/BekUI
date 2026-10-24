@@ -64,7 +64,7 @@ this->getLayerIconFontKind("arrowLeft");       // 没指定 = 返回 ② 那个�
 
 指定/撤销都会 `markMeasureDirty()`：两套字体的字宽不一样，不重新测会让尺寸算错。
 
-### 例子：选择器箭头（`widgets/selector_button.cpp`）
+### 例子：选择器箭头（`ui/widgets/selector_button.cpp`）
 
 构造函数里声明两句就够了，**不需要重写 `getLayerFont`**：
 

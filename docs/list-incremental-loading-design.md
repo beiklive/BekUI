@@ -131,8 +131,8 @@ virtual void   onWindowReleased(size_t from, size_t to) { }          // 库告�
     `const uint64_t generation = ++this->loadGeneration;`，回调第一件事就是
     `if (generation != this->loadGeneration) return;` -> **"同一个 Image 被复用后旧结果写进新内容"
     这件事已经被挡住**。⚠️ 我此前在对话里说它"只是推断、未实测"——**那是我说错了**，
-    代码里本来就有（`widgets/basic/image.cpp`，发起时自增那行之下几行）。
-  · ✅ **共享纹理缓存也已经有** —— `render/graphics.cpp` 里有 `std::map<std::string, int> g_pathCache`
+    代码里本来就有（`ui/widgets/basic/image.cpp`，发起时自增那行之下几行）。
+  · ✅ **共享纹理缓存也已经有** —— `graphics/render/graphics.cpp` 里有 `std::map<std::string, int> g_pathCache`
     （path -> 纹理下标），命中就直接复用；`initTextureStore()` 换后端时才清空。
     ⚠️ 我先前说"同一张图被多个 cell 显示就是多份，内存 ×N"——**那也是我说错了**，
     路径缓存本来就在。（这是我在这一小块里第二次凭印象说错，都记在这里备查。）
@@ -170,7 +170,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 - `RecyclerItemCell` 的两个入口都天然有段号（`setSectionIndex` 直接给；`setIndex` 补 0）
 
 影响面（都在本仓库内，一次改完）：`views/item_binder.{hpp,cpp}`（类型与测试）、
-`widgets/recycler_view.{hpp,cpp}`（两个索引入口）、`demo/app/pages/page_pokedex.cpp`（绑定函数）、
+`ui/widgets/recycler_view.{hpp,cpp}`（两个索引入口）、`demo/app/pages/page_pokedex.cpp`（绑定函数）、
 `tests/item_binder_test.cpp` 与 `tests/recycler_json_test.cpp`。
 
 之后再做：夹具换成**分段 + 分页**的数据源 + `sectionHeaderAppearance`，图鉴页即可恢复
@@ -317,7 +317,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 
 #### 小步2 的实现设计（引用计数 + LRU 淘汰，定稿待实现）
 
-现状：`render/graphics.cpp` 里 `std::vector<TextureEntry> g_textures`（`handle` + `alive`）+
+现状：`graphics/render/graphics.cpp` 里 `std::vector<TextureEntry> g_textures`（`handle` + `alive`）+
 `std::map<std::string,int> g_pathCache`（路径 -> 下标）。纹理**只在 `shutdownTextureStore()`
 时统一释放**，平时只增不减（小步1 只加了账目与预算旋钮）。
 
@@ -349,12 +349,12 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 **没有任何并发上限、没有优先级、没有每帧配额**。
 
 **协议**：
-1. **可配置旋钮**（与 `RecyclerLoadConfig` 同风格，放 `render/graphics.hpp` 的纹理预算旁边，
+1. **可配置旋钮**（与 `RecyclerLoadConfig` 同风格，放 `graphics/render/graphics.hpp` 的纹理预算旁边，
    未来由 JSON 属性或 C++ 直接设）：
    - `maxConcurrentDecodes`（默认 4）：同时在飞的解码任务上限
    - `maxUploadsPerFrame`（默认 2）：主线程每帧最多把几个"解码完成"的结果上传成纹理
    - `0` 一律表示"不限"（保持现有行为，安全默认）
-2. **解码队列**（`core/graphics.*` 或新建 `core/texture_queue.*`）：
+2. **解码队列**（`foundation/core/graphics.*` 或新建 `foundation/core/texture_queue.*`）：
    - `Image` 不再直接 `task::runResult`，而是 `enqueueDecode(path, priority, 完成回调)`
    - 队列在 `pumpMainThread()`（每帧）里：把"等待中"的任务按 `priority`（= 离视口距离，越小越优先）
      启动，直到在飞数达到 `maxConcurrentDecodes`
@@ -372,7 +372,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 
 ##### 2d 施工单（已定位到确切位置，照做即可）
 
-**先看清了现有所有权模型**（`widgets/basic/image.cpp` 的析构注释就写着）：
+**先看清了现有所有权模型**（`ui/widgets/basic/image.cpp` 的析构注释就写着）：
 
 | 类型 | 纹理归谁 | 现有行为 |
 |---|---|---|
@@ -382,13 +382,13 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 **结论**：2d 的引用计数**不是**为了"谁能释放"（那已经分好了），
 而是为了让缓存知道"哪张静态图正被用着、能不能淘汰" -> `refCount > 0` 不许淘汰。
 
-**接线位置（`widgets/basic/image.cpp`）**：赋值 `this->texture = loaded;` 的四处 —— **270 / 291 / 328 / 341 行**。
+**接线位置（`ui/widgets/basic/image.cpp`）**：赋值 `this->texture = loaded;` 的四处 —— **270 / 291 / 328 / 341 行**。
 - 每处：先 `releaseTexture(this->texture.index)`（换图时释放旧的；首次为无效下标 -> 安全 no-op），
   再 `this->texture = loaded;`，再 `retainTexture(loaded.index)`（**仅静态/非 owned 的路径**）
 - `releaseOwnedTexture()` 只处理 owned（**不要**在这里 release 静态图）
 - `Image::~Image()` 里：若**不是** owned 且下标有效 -> `releaseTexture(this->texture.index)`
 
-**淘汰（`render/graphics.cpp`）**：`trimTextureCache()` —— 候选 = `refCount == 0 && alive` 的 LRU
+**淘汰（`graphics/render/graphics.cpp`）**：`trimTextureCache()` —— 候选 = `refCount == 0 && alive` 的 LRU
 （按 `lastUseTick` 升序），淘汰时**同步 `g_pathCache.erase(path)`** 并释放 GPU 纹理；
 `refCount > 0` 绝不淘汰。调用时机：`Image::updateTexture()` 之后 + `setTextureBudget()` 变小后各一次。
 
@@ -400,7 +400,7 @@ using ItemBinder = std::function<void(View& item, size_t section, size_t indexIn
 | 块 | 内容 | 状态 |
 |---|---|---|
 | 3-1 | 旋钮与默认值：`setDecodeConcurrency`(默认 4) / `setMaxUploadsPerFrame`(默认 2)，`0 = 不限` | ✅ `215da06`（26 项测试）|
-| 3-2 | **队列纯调度**：`core/decode_queue.*`（优先级出队 / 并发上限 / 每帧上传配额 / 去重 / 取消，回调注入，可无窗口测）| ✅ `a3d7500`（16 项测试）|
+| 3-2 | **队列纯调度**：`foundation/core/decode_queue.*`（优先级出队 / 并发上限 / 每帧上传配额 / 去重 / 取消，回调注入，可无窗口测）| ✅ `a3d7500`（16 项测试）|
 | 3-3 | **解码限并发接线**：`Image::setImageFromFileAsync` 的 `task::runResult` 包进 `enqueueDecode(resolved, 0, ...)`；`App::frame` 每帧 `pumpDecodeQueue()` + `pumpUploads()` | ✅ `4c87fec` |
 | 3-4 | **上传改由 `pumpUploads()` 按每帧配额消费**（把上传体从解码回调里挪进 `notifyDecodeFinished(resolved, upload)`）| ⬜ 未做（见下）|
 

@@ -42,7 +42,7 @@ ui.setRootView(root);
 ui.attachHost(attach);
 ```
 
-服务（[`bklv/core/services.hpp`](../bklv/core/services.hpp)）：
+服务（[`bklv/foundation/core/services.hpp`](../bklv/foundation/core/services.hpp)）：
 
 | 服务 | 用途 |
 |---|---|
