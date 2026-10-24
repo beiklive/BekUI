@@ -90,7 +90,7 @@ void DemoApp::buildShell()
     this->root->getContentLayer()->addView(this->content);
 
     // 底栏挂在覆盖层（overlay）上：它不吃方向键焦点，但会盖住内容层底部，
-    // 所以内容层要让出同样的高度（100 来自 base/bottombar.json 的 box.height）。
+    // 所以内容层要让出同样的高度（数值要跟 base/hint/bottombar.json 的 box.height 一致）。
     this->root->getOverlayLayer()->addView(this->bottomBar);
     this->root->getContentLayer()->setPadding(0.0f, 0.0f, 100.0f, 0.0f);
 

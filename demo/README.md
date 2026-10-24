@@ -116,7 +116,7 @@ this->root->getContentLayer()->setPadding(0, 0, 100, 0);   // 给底栏让位
 
 三个类都**不吃焦点**：`Hint` 覆写 `isPointerTarget()` 并挂一个 `TapGestureRecognizer`，
 所以提示条能点（点了执行对应动作、焦点不动），方向键和焦点框却当它不存在。
-底栏高度/分隔线/内边距全在 `resources/theme/default/base/{bottombar,hintbar,hintitem}.json`，
+底栏高度/分隔线/内边距全在 `resources/theme/default/base/hint/{bottombar,hintbar,hintitem}.json`，
 `Hint` 的图标层必须用开关图标字体（`setLayerIconFontKind("icon", IconFontKind::SWITCH)`），
 否则同一个码位会画成 Material 的灯泡/书本。
 

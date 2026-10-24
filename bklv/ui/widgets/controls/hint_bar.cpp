@@ -18,7 +18,7 @@ namespace bklv
 // ---------------------------------------------------------------------------
 
 Hint::Hint()
-    : AppearanceView("base/hintitem", false)
+    : AppearanceView("base/hint/hintitem", false)
 {
     // 高度 / 内边距来自 widgets 的 box 段；内容尺寸按文字量。
     this->enableContentMeasurement();
@@ -76,7 +76,7 @@ void Hint::invoke()
 // ---------------------------------------------------------------------------
 
 HintBar::HintBar()
-    : AppearanceView("base/hintbar", false)
+    : AppearanceView("base/hint/hintbar", false)
 {
     this->applyTheme();
 }
@@ -133,12 +133,12 @@ void HintBar::update()
 // ---------------------------------------------------------------------------
 
 BottomBar::BottomBar()
-    : AppearanceView("base/bottombar", false)
+    : AppearanceView("base/hint/bottombar", false)
 {
     this->applyTheme();
 
     // 提示条是子视图（不是层）：它要按内容量宽度、还要能被点，
-    // 层只是绘制回调，建不了子视图。位置靠 bottombar.json 的
+    // 层只是绘制回调，建不了子视图。位置靠 base/hint/bottombar.json 的
     // justifyContent: flexEnd + alignItems: center。
     this->hintBar = new HintBar();
     this->addView(this->hintBar);

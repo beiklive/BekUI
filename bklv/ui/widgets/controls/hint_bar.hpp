@@ -2,9 +2,9 @@
 
 // 提示栏三件套：BottomBar（底栏）→ HintBar（提示条）→ Hint（一条提示）。
 //
-//   ┌──────────────────────────────────────────────┐  ← bottombar.json：100px 高、满宽
+//   ┌──────────────────────────────────────────────┐  ← base/hint/bottombar.json：满宽、高度看 box.height
 //   │                                              │     顶部 1px 分隔线（separator 层）
-//   │                        Ⓐ 确认   Ⓑ 返回       │  ← hintbar.json：靠右居中
+//   │                        Ⓐ 确认   Ⓑ 返回       │  ← base/hint/hintbar.json：靠右居中
 //   └──────────────────────────────────────────────┘
 //
 // 分工（和 Button 家族一样"代码管结构与行为、JSON 只管样式"）：
@@ -30,7 +30,7 @@ namespace bklv
 
 // 一条提示：按键图标 + 说明文字。
 //
-// 两个内容位的 id 与 `resources/theme/default/base/hintitem.json` 里的 `data_id` 对齐：
+// 两个内容位的 id 与 `resources/theme/default/base/hint/hintitem.json` 里的 `data_id` 对齐：
 // `icon`（图标字体字形）、`label`（说明文字）。
 class Hint : public AppearanceView
 {

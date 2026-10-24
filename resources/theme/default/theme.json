@@ -14,9 +14,9 @@
     "base/button/button.text.json",
     "base/button/button.icon.json",
     "base/button/button.icon_text.json",
-    "base/bottombar.json",
-    "base/hintbar.json",
-    "base/hintitem.json",
+    "base/hint/bottombar.json",
+    "base/hint/hintbar.json",
+    "base/hint/hintitem.json",
     "base/notification/toast_base.json",
     "base/notification/toast_icon.json",
     "base/notification/toast_image.json"
