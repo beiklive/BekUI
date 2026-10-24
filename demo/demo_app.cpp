@@ -77,21 +77,22 @@ void DemoApp::buildShell()
     this->content->setPadding(20.0f);
     this->content->setClipsToBounds(true);
 
-    // 底栏：把"能按什么"写出来（bklv 不再自带 hints 栏，宿主自己拼）。
-    // Label 没有内边距，所以套一层 Box 做 padding，文字居中靠 Label 自己的对齐。
-    auto* footer          = new bklv::Box(bklv::Axis::ROW);
-    this->footerLabel     = new bklv::Label();
-    footer->setPadding(12.0f, 20.0f, 16.0f, 20.0f);
-    this->footerLabel->setText("方向键 / 摇杆移动焦点 · Enter 确认 · Esc 返回 · 鼠标可以直接点");
-    this->footerLabel->setFontSize(16.0f);
-    this->footerLabel->setHorizontalAlign(bklv::HorizontalAlign::CENTER);
-    this->footerLabel->setGrow(1.0f);
-    footer->addView(this->footerLabel);
+    // 底栏：bklv 自带的 BottomBar（覆盖层上的一条 100px 横条 + 右侧提示）。
+    // 提示内容来自 currentFocus 沿父链注册的动作，宿主不用自己拼字符串。
+    this->bottomBar = new bklv::BottomBar();
+    // 覆盖层是铺满外壳的普通容器，里面的东西默认从顶往下摆；
+    // 底栏要贴底，所以它自己绝对定位到左下角（高度仍由 JSON 的 box.height 给）。
+    this->bottomBar->setPositionType(bklv::PositionType::ABSOLUTE);
+    this->bottomBar->setPositionBottom(0.0f);
 
-    // 内容层是竖直排布的层容器，直接往里放这三段，布局与"根 Box 一列"时完全一致。
+    // 内容层是竖直排布的层容器，直接往里放这两段，布局与"根 Box 一列"时一致。
     this->root->getContentLayer()->addView(header);
     this->root->getContentLayer()->addView(this->content);
-    this->root->getContentLayer()->addView(footer);
+
+    // 底栏挂在覆盖层（overlay）上：它不吃方向键焦点，但会盖住内容层底部，
+    // 所以内容层要让出同样的高度（100 来自 base/bottombar.json 的 box.height）。
+    this->root->getOverlayLayer()->addView(this->bottomBar);
+    this->root->getContentLayer()->setPadding(0.0f, 0.0f, 100.0f, 0.0f);
 
     // 焦点框归 Shell 所有（挂在浮层上，永远画在内容/覆盖层之上），这里只确认它开着。
     this->root->setFocusRingEnabled(true);
@@ -108,7 +109,6 @@ void DemoApp::applyThemeColors()
     // 铺背景层而不是外壳本身：背景层永远在最底下，页头/弹窗不会把它当底色刷掉。
     this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
     this->titleLabel->setTextColor(textColor());
-    this->footerLabel->setTextColor(mutedColor());
 }
 
 Page* DemoApp::currentPage() const

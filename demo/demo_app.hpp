@@ -25,6 +25,7 @@
 #include "bklv/ui/view/box.hpp"
 #include "bklv/ui/widgets/basic/label.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
+#include "bklv/ui/widgets/controls/hint_bar.hpp"
 #include "bklv/ui/shell/shell.hpp"
 
 namespace demo
@@ -84,7 +85,7 @@ class DemoApp
     bklv::Shell* root         = nullptr;
     bklv::Box* content        = nullptr;
     bklv::Label* titleLabel   = nullptr;
-    bklv::Label* footerLabel  = nullptr;
+    bklv::BottomBar* bottomBar    = nullptr;
     bklv::TextButton* backButton  = nullptr;
 
     std::vector<std::unique_ptr<Page>> pages;

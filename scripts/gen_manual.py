@@ -156,7 +156,7 @@ def layer_stats():
         ('ui', 'view', '视图：View / Box（Yoga 布局）/ ViewTemplate 两段式'),
         ('ui', 'theme', '外观与主题：ThemeData、Appearance 解析、图层类型表'),
         ('ui', 'layer', '图层绘制：六个内置层的绘制实现与注册模板'),
-        ('ui', 'widgets', '控件：AppearanceView / Button 家族 / Notification / Label / 列表 / 调试层'),
+        ('ui', 'widgets', '控件：AppearanceView / Button 家族 / 底栏与提示条 / Notification / Label / 列表 / 调试层'),
         ('ui', 'input', '输入：键盘 / 手柄 / 手势、焦点、IME'),
         ('ui', 'app', '应用：App 帧循环、Context、通知层'),
         ('ui', 'shell', '外壳：背景 / 内容 / 覆盖 / 浮层 / 调试 五层容器与焦点框'),
@@ -410,7 +410,7 @@ def widget_tables():
 
 sections.append(('内置控件', f'''
 <p><code>widgets/</code> 按职责分六个子目录：<code>appearance/</code>（外观驱动基类与层绘制注册）、
-<code>controls/</code>（Button 家族）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
+<code>controls/</code>（Button 家族 / 底栏与提示条）、<code>basic/</code>（Label / Image / Padding / 滚动）、<code>container/</code>（Box 之外的容器）、
 <code>list/</code>（RecyclerFrame）、<code>debug/</code>（日志层 / FPS / 调试绘制）。
 外观驱动控件继承 <code>AppearanceView</code>，绘制结构与状态动效都来自主题 JSON，代码只写行为；
 语义控件（Label / Image）只认 ImDrawList 与 core 接口。下面按头文件列出全部公开类型。</p>
@@ -418,15 +418,16 @@ sections.append(('内置控件', f'''
 
 <h3>几个常用控件的要点</h3>
 <p class=muted><b>2026-10 清理</b>：<code>widgets/</code> 只保留基础件（<code>AppearanceView</code> /
-<code>Button</code> 家族 / <code>Notification</code> + 层绘制）。<code>Shell</code> / <code>Header</code> /
-<code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>Cell</code> 家族 /
-<code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> 等已移除，
-等 demo 重做时按需加回。</p>
+<code>Button</code> 家族 / <code>BottomBar</code> + <code>HintBar</code> / <code>Notification</code> + 层绘制）。
+<code>Header</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>Cell</code> 家族 /
+<code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> 等已移除，
+重做 demo 时按需加回。</p>
 <table>
 <thead><tr><th>控件</th><th>要点</th></tr></thead>
 <tbody>
 <tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
 <tr><td><code>Button</code> 家族</td><td>抽象基类 <code>Button</code> 只描述行为与基础外观（<code>base/button/button</code>：背景 / 边框 / 阴影，无内容层）+ <code>TextButton</code> / <code>IconButton</code> / <code>IconTextButton</code> 三种形态（外观 <code>button.text</code> / <code>button.icon</code> / <code>button.icon_text</code>）；JSON 里 <code>"type": "Button"</code> 等价于 <code>TextButton</code>。内容位 id 是 <code>m_icon</code> / <code>m_text</code> / <code>m_subtext</code> / <code>m_infotext</code>（外观的 <code>"data_id"</code> 与它一致），视图 id（<code>"id"</code> + <code>findViewById</code>）是另一个维度。<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
+<tr><td><code>BottomBar</code> / <code>HintBar</code> / <code>Hint</code></td><td>底栏与提示条（<code>widgets/controls/hint_bar.*</code>）：<code>BottomBar</code> 挂在 <code>Shell</code> 的覆盖层贴底，内部是 <code>HintBar</code>，每条提示是一个 <code>Hint</code>（键位图标 + 文案）。内容来自 <code>InputManager::getActiveHints()</code>（沿焦点父链收集、按按键去重、<code>START</code> 最前、<code>B</code>/<code>A</code> 最后、没有 A 时补一条「确定」）。三个类都不吃焦点：<code>Hint</code> 覆写 <code>isPointerTarget()</code> + 挂 <code>TapGestureRecognizer</code>，点得到但不抢焦点。图标层要 <code>setLayerIconFontKind("icon", IconFontKind::SWITCH)</code>。</td></tr>
 <tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
 <tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（<code>widgets/list/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
 <tr><td><code>Box</code> / <code>Label</code></td><td>布局容器在 <code>view/box.*</code>（与 Yoga 一起），文字在 <code>widgets/basic/label.*</code>。</td></tr>

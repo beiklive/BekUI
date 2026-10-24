@@ -900,7 +900,8 @@ View* View::hitTest(Point point)
     if (!bounds.contains(local))
         return nullptr;
 
-    if (!this->isFocusable())
+    // 能点 ≠ 能当焦点：提示栏的 HintItem 就属于"点得到但不抢焦点"。
+    if (!this->isPointerTarget())
         return nullptr;
 
     // 返回时把点还原成屏幕坐标，调用方拿到的是同一个坐标系。

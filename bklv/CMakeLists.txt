@@ -535,6 +535,7 @@ set(BKLV_CORE_SOURCES
     ui/widgets/container/scroll_box.cpp
     ui/widgets/container/scrolling_frame.cpp
     ui/widgets/controls/button.cpp
+    ui/widgets/controls/hint_bar.cpp
     ui/widgets/controls/notification.cpp
     ui/widgets/debug/debug_layer.cpp
     ui/widgets/debug/debug_log_view.cpp

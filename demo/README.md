@@ -83,8 +83,8 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
 | 层 | 放什么 | demo 里怎么用 |
 |---|---|---|
 | `getBackdropLayer()` | 背景（底色 / 底图），绝对定位铺满、不参与布局 | 铺页面底色 |
-| `getContentLayer()` | 正文内容，正常参与 Yoga 布局（它本身是竖直 Box） | 顶栏 + 内容区 + 底栏 |
-| `getOverlayLayer()` | 覆盖层：页头 / 底栏 / 对话框 | 暂未用（页头暂时画在内容层里） |
+| `getContentLayer()` | 正文内容，正常参与 Yoga 布局（它本身是竖直 Box） | 顶栏 + 内容区（下边留 100px 给底栏） |
+| `getOverlayLayer()` | 覆盖层：页头 / 底栏 / 对话框 | 底栏 `BottomBar`（贴底、靠右显示提示） |
 | `getHudLayer()` | 浮层，不吃输入：toast、常驻提示、焦点框 | 焦点框由 Shell 自己挂在这里 |
 | `getDebugLayer()` | 调试覆盖层，永远最后画 | 可放 `DebugLogView` |
 
@@ -92,13 +92,33 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
 this->root = new bklv::Shell();
 this->root->getContentLayer()->addView(header);
 this->root->getContentLayer()->addView(this->content);
-this->root->getContentLayer()->addView(footer);
 this->root->getBackdropLayer()->setBackgroundColor(pageBackgroundColor());
 ```
 
 另外 Shell 还提供 `setSafeAreaInsets()`（五层统一内缩，Switch 的屏幕边距用得上）、
 `fillLayer(view)`（把一个视图铺满某一层）和过渡宿主（`getTransitionHost()`，
 换页动画期间存在、空了自动摘）。
+
+## 底栏与提示条
+
+底栏是 `bklv::BottomBar`（`bklv/ui/widgets/controls/hint_bar.hpp`），挂在覆盖层贴底，
+内部自己套一个 `HintBar`，内容来自 `InputManager::getActiveHints()` ——
+沿当前焦点的父链收集按键提示（按按键去重、`START` 排最前、`B`/`A` 排最后、
+没有 A 时补一条「Ⓐ 确定」）。
+
+```cpp
+this->bottomBar = new bklv::BottomBar();
+this->bottomBar->setPositionType(bklv::PositionType::ABSOLUTE);
+this->bottomBar->setPositionBottom(0);
+this->root->getOverlayLayer()->addView(this->bottomBar);
+this->root->getContentLayer()->setPadding(0, 0, 100, 0);   // 给底栏让位
+```
+
+三个类都**不吃焦点**：`Hint` 覆写 `isPointerTarget()` 并挂一个 `TapGestureRecognizer`，
+所以提示条能点（点了执行对应动作、焦点不动），方向键和焦点框却当它不存在。
+底栏高度/分隔线/内边距全在 `resources/theme/default/base/{bottombar,hintbar,hintitem}.json`，
+`Hint` 的图标层必须用开关图标字体（`setLayerIconFontKind("icon", IconFontKind::SWITCH)`），
+否则同一个码位会画成 Material 的灯泡/书本。
 
 ## 焦点框
 

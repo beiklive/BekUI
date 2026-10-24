@@ -382,8 +382,8 @@ View* Box::hitTest(Point point)
             return hit;
     }
 
-    // 自己兜底：可聚焦且点在自己范围内。
-    if (this->isFocusable() && bounds.contains(local))
+    // 自己兜底：能点（默认就是可聚焦）且点在自己范围内。
+    if (this->isPointerTarget() && bounds.contains(local))
         return this;
 
     return nullptr;

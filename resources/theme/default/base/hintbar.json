@@ -1,0 +1,11 @@
+{
+  "$comment": "提示条：一排 hintitem。宽度随内容（auto），在底栏里靠右居中。",
+  "box": {
+    "width": "auto",
+    "height": "auto",
+    "axis": "row",
+    "alignItems": "center",
+    "gap": "@theme/metric.spacing.md"
+  },
+  "layers": []
+}

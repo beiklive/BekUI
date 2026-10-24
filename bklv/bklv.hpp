@@ -82,6 +82,7 @@
 // Box 在 `view/box.hpp`，Label 在 `widgets/basic/label.hpp`。
 #include "bklv/ui/widgets/appearance/appearance_view.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
+#include "bklv/ui/widgets/controls/hint_bar.hpp"
 #include "bklv/ui/widgets/controls/notification.hpp"
 
 // ---- widgets（语义件）：文本 / 图片 / 容器 / 列表 / 调试覆盖层 ----

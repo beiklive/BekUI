@@ -12,6 +12,7 @@
 #include "bklv/ui/view/box.hpp"
 #include "bklv/ui/input/gamepad.hpp"
 #include "bklv/foundation/core/globals.hpp"
+#include "bklv/foundation/core/i18n.hpp"
 #include "bklv/foundation/core/logger.hpp"
 #include "bklv/ui/view/view.hpp"
 
@@ -20,6 +21,23 @@ namespace bklv
 
 namespace
 {
+
+// 提示栏排序：START 最前（"菜单"类动作习惯靠边）、B 次之、A 最后（确认键永远压尾），
+// 其余按键一律 1、保持沿链注册的顺序。顺序照抄 borealis 的 buttonToSortableVal。
+int hintSortRank(ControllerButton button)
+{
+    switch (button)
+    {
+        case ControllerButton::START:
+            return 0;
+        case ControllerButton::B:
+            return 2;
+        case ControllerButton::A:
+            return 3;
+        default:
+            return 1;
+    }
+}
 
 // 事件音效：外观里的 states.<trigger>.sound 优先，否则用主题 sound.json / 合成音
 void playUiSound(View* view, Sound sound, const char* trigger)
@@ -1093,6 +1111,66 @@ std::vector<HintItem> InputManager::getHints() const
         if (hints.size() >= 6)
             break;
     }
+
+    return hints;
+}
+
+std::vector<HintItem> InputManager::getActiveHints() const
+{
+    std::vector<HintItem> hints;
+
+    if (this->currentFocus == nullptr)
+        return hints;
+
+    // 同一个按键只留离焦点最近的一条：外层（页面根 / 外壳）注册的"B 返回"
+    // 不该压掉里层自己的同名按键。用"按键网格"当下标，顺便天然去重。
+    constexpr size_t kButtonCount = (size_t)ControllerButton::RIGHT + 1;
+    bool seen[kButtonCount] = {};
+
+    for (View* view = this->currentFocus; view != nullptr; view = view->getParent())
+    {
+        for (const InputAction& action : view->getActions())
+        {
+            if (action.hidden || action.button == ControllerButton::NONE)
+                continue;
+            if (action.listener == nullptr || action.hintText.empty())
+                continue;
+
+            const size_t index = (size_t)action.button;
+            if (index >= kButtonCount || seen[index])
+                continue;
+
+            seen[index] = true;
+
+            HintItem hint;
+            hint.button   = action.button;
+            hint.hintText = action.hintText;
+            hint.listener = action.listener;
+            hint.owner    = view;
+            hints.push_back(hint);
+
+            if (hints.size() >= 6)
+                return hints;
+        }
+    }
+
+    // 一条 A 都没有时补"确认"：焦点控件可操作却没注册 A 的情况很少，但提示栏
+    // 空着更奇怪（borealis 的 addUnableAButtonAction 就是这个意思）。
+    // 这条没有 listener，点了不做事 —— 同样照 borealis：A 那条默认不可点。
+    if (!seen[(size_t)ControllerButton::A] && hints.size() < 6)
+    {
+        HintItem hint;
+        hint.button   = ControllerButton::A;
+        hint.hintText = translate("hints/ok");
+        hints.push_back(hint);
+    }
+
+    // START 最前、B 次之、A 最后（borealis 的 buttonToSortableVal 同序），
+    // 其余按键保持沿链注册的顺序 —— 用 stable_sort 才保得住这一点。
+    std::stable_sort(hints.begin(), hints.end(),
+        [](const HintItem& left, const HintItem& right) {
+            return hintSortRank(left.button) < hintSortRank(right.button);
+        });
 
     return hints;
 }

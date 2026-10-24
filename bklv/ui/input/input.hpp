@@ -116,6 +116,11 @@ struct HintItem
 {
     ControllerButton button = ControllerButton::NONE;
     std::string hintText;
+    // 这条提示对应的动作（点提示条 = 按这个键）。可能为空：自动补的"确认"就是
+    // 纯装饰，点了没反应 —— 和 borealis 里 A 那条默认不可点一致。
+    ActionListener listener;
+    // 注册这个动作的视图（listener 收到的是它）；为空时提示项传自己。
+    View* owner = nullptr;
 };
 
 // 长按重复：首次按下立刻响应，按住则等 delay 毫秒后每隔 interval 毫秒响应一次。
@@ -226,6 +231,17 @@ class InputManager
 
     // 底部提示栏内容（来自当前焦点视图注册的动作）
     std::vector<HintItem> getHints() const;
+
+    // 提示栏该显示的全部提示：**沿焦点父链一路往上收**，而不是只看焦点自己。
+    //
+    // 和 getHints() 的区别有两条，都是为了提示栏别漏项：
+    //   * 冒泡 —— "B 返回"这种挂在外壳 / 页面根上的动作，焦点在里面的按钮上时
+    //     也要显示（动作派发本身就是冒泡的，提示跟着派发走才不会骗人）；
+    //   * 去重 —— 同一个按键只留**离焦点最近**的那条（与派发顺序一致）。
+    // 另外：跳过 hidden / NONE / 没 listener 的；有的键一个都没注册 A 时补一条
+    // "ⓐ 确认"（borealis 的 addUnableAButtonAction 同义）；排序 START 最前、
+    // B 次之、A 最后，其余保持注册顺序；上限 6 条。
+    std::vector<HintItem> getActiveHints() const;
 
     // 鼠标/触摸位置，用于 hitTest
     Point getPointerPosition() const;

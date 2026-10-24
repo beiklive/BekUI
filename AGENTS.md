@@ -221,8 +221,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 
 ## 代码
 
-> **2026-10 控件大清理**：`bklv/widgets` 现在只剩基础件 —— `appearance_view` /
-> `appearance_children` / `button` / `notification` / 六个 `layer_draw_*`。
+> **2026-10 控件大清理**：`ui/widgets` 现在只剩基础件 —— `appearance_view` /
+> `appearance_children` / `button` / `hint_bar`（底栏 + 提示条）/ `notification` /
+> 六个 `layer_draw_*`。
 > 下面提到 `ui/widgets/shell.*`、`ui/widgets/pager.*`、`ui/widgets/header.*`、`ui/widgets/bottom_bar.*`、
 > `ui/widgets/sidebar.*`、`ui/widgets/dropdown.*`、`ui/widgets/selector_button.*`、
 > `ui/widgets/edit_text_dialog.*`、`ui/widgets/cell.*`、`ui/widgets/tab_frame.*`、`ui/widgets/slider.*`、
@@ -800,19 +801,27 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 - **`AppearanceView` 是容器，`update()` 必须先 `Box::update()` 递归子树**：
   底栏里的提示栏/状态区、页头里的标题、弹窗面板里的按钮行都靠这条，
   漏了的话子树永远不会 update（踩过：提示栏一直不刷新、看着像空的）。
-- **提示栏用控件而不是覆盖层**（`ui/widgets/hints_bar.*`）：它是底栏的左侧内容，
-  条目按当前焦点的动作重建（签名没变就不重建，避免每帧重排）。
+- **提示栏是视图不是层**（`ui/widgets/controls/hint_bar.*`：`BottomBar` → `HintBar` → `Hint`）：
+  层只是绘制回调、建不了子视图，而提示条目要按内容量宽度、还要能被点，所以必须是真的视图树。
+  三个类都**不可聚焦**（不参与方向键导航，也不会被焦点框框到）；`Hint` 覆写
+  `isPointerTarget()` 让自己"能点但不抢焦点"，点击走 `TapGestureRecognizer`（同 borealis 的 `Hint`）。
+  内容来自 `InputManager::getActiveHints()`（沿焦点父链收集 + 按按键去重 + START/B/A 排序 + A 兜底），
+  `HintBar` 用签名比对只在内容变化时重建条目，别每帧重建（会一直触发 Yoga 重排）。
   图标是**图标字体的私有区字形**（码位同 borealis 的 `Hint::getKeyIcon`）：
   Switch 靠系统字体 `NintendoExt` 回退，桌面随包带 `resources/font/switch_icons.ttf`。
-  文字层要用哪个字体由 `AppearanceView::getLayerFont()` 决定——
-  图标层必须返回 `getIconFont()`，用正文字体会量错尺寸并画成方块。
+  这一层必须 `setLayerIconFontKind("icon", IconFontKind::SWITCH)` —— 不指定时基类默认 Material
+  那套，同一个码位会画出灯泡/书本之类的东西（踩过）。
 - **底栏/页头 `setShrink(0)`**：内容区要的比剩下的多时，该被压缩的是内容区（它会滚动），
   不是底栏（压了连图标都放不下，踩过：22px 被压成 14px）。
 - **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。
   容器级的动作必须能在焦点位于其子节点时生效，否则形同虚设：
   `Shell` 的 "B 返回上一层"（`setOnBackRequested`）、`Dialog` 的 "B 关闭" 都靠这条
   （不冒泡时焦点在内容里的按钮上按 B 完全没反应）。
-  指针不冒泡是因为 `hitTest` 只返回可聚焦视图，命中的本来就是控件本身。
+  指针不冒泡是因为 `hitTest` 只返回可命中的视图，命中的本来就是控件本身。
+- **"能点"与"能当焦点"是两件事**（`View::isPointerTarget()`）：默认等于 `isFocusable()`，
+  所以现有控件一行都不用改。要"能点但别抢焦点"（提示条、可点的静态卡片）就覆写它并保持
+  `isFocusable() == false`：`hitTest` 与手势派发都看这一条，覆写等于"点得到、也收得到手势"，
+  而 `focusFromPointer()` / 方向键导航 / 焦点框仍然当它不存在。
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
   `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
 
@@ -1111,7 +1120,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
       appearance/   appearance_view / appearance_children / widget_types（JSON 视图类型注册）
       basic/        label / image / padding / progress_spinner
       container/    scrolling_frame / h_scrolling_frame / scroll_box
-      controls/     button / notification
+      controls/     button / hint_bar（BottomBar + HintBar + Hint）/ notification
       list/         recycler / json_cell / data_source / item_binder
       debug/        debug_layer / debug_log_view / fps_overlay / preset_backdrop
       view_types.cpp 内置视图类型（Box/Row/Label/Image/...）的注册实现

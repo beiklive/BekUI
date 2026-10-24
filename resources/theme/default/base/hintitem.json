@@ -1,0 +1,52 @@
+{
+  "$comment": "一条提示：按键图标 + 说明。两个内容位的 data_id 与 HintItem::setText 用的槽 id 一致（icon / label）。",
+  "box": {
+    "height": "auto",
+    "width": "auto",
+    "axis": "row",
+    "alignItems": "center",
+    "padding": [
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX",
+      "@theme/metric.hintItem.paddingY",
+      "@theme/metric.hintItem.paddingX"
+    ]
+  },
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "color": "@theme/color.text.primary",
+      "fontSize": 25.5,
+      "align": "left",
+      "valign": "center",
+      "font_kind": "icon"
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "data_id": "label",
+      "color": "@theme/color.text.dim",
+      "fontSize": 21.5,
+      "align": "left",
+      "valign": "center",
+      "inset": [
+        0,
+        0,
+        0,
+        34
+      ]
+    }
+  ],
+  "requires": {
+    "layers": [
+      {
+        "icon": "text"
+      },
+      {
+        "label": "text"
+      }
+    ]
+  }
+}

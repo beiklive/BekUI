@@ -14,6 +14,9 @@
     "base/button/button.text.json",
     "base/button/button.icon.json",
     "base/button/button.icon_text.json",
+    "base/bottombar.json",
+    "base/hintbar.json",
+    "base/hintitem.json",
     "base/widget/notification.json"
   ],
   "author": "beiklive",

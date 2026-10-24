@@ -309,6 +309,16 @@ class View
     // 这个 View 能否成为焦点（可点、可操作）。只看控件自己（不看 visibility）。
     virtual bool isFocusable() const { return false; }
 
+    // 指针（触摸 / 鼠标）能否命中自己。
+    //
+    // 默认跟随 isFocusable()，所以现有控件的行为一点不变。它单独存在的理由是
+    // "能点" 与 "能当焦点" 不是一回事：提示栏里的 HintItem 要能点（点一下等于
+    // 按那个键），但绝不该抢焦点（抢了焦点提示栏会跟着变，焦点框也会跑过去）。
+    // 这类视图覆写它，同时保持 isFocusable() == false。
+    //
+    // hitTest 与手势派发都走这里，所以覆写它等于"点得到、也收得到手势"。
+    virtual bool isPointerTarget() const { return this->isFocusable(); }
+
     // 这个 View 是否被禁用（禁用控件不参与焦点与动作）。
     // 库里有"禁用"概念的控件（Button / Cell）重写它；canFocus() 会查这一条。
     virtual bool isDisabled() const { return false; }

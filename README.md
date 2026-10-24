@@ -35,7 +35,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 | `ui/view/` | 10 | `View` / `Box`（Yoga Flexbox 与节点管理）/ `ViewTemplate` 两段式、JSON 数据与动作绑定 |
 | `ui/theme/` | 20 | 外观与主题：`ThemeData` 与主题解析、`Appearance` 编译（box / layers / states / import）、图层类型表与参数表 |
 | `ui/layer/` | 8 | 六个内置层的绘制实现 + 第三方层的注册模板 |
-| `ui/widgets/` | 42 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 家族：`TextButton` / `IconButton` / `IconTextButton`）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
+| `ui/widgets/` | 44 | 控件：`appearance/`（外观驱动基类与 `layer_draw_*`）、`controls/`（Button 家族 `TextButton` / `IconButton` / `IconTextButton`；提示栏 `BottomBar` → `HintBar` → `Hint`）、`basic/`（Label / Image）、`container/`、`list/`（Recycler）、`debug/` |
 | `ui/input/` | 8 | 键盘 / 手柄 / 手势、焦点与模态栈、IME |
 | `ui/app/` | 4 | `App` 帧循环、`Context`、通知层（组合根） |
 | `ui/shell/` | 4 | `Shell` 五层容器（背景 / 内容 / 覆盖 / 浮层 / 调试）+ 焦点框 `FocusRingView` |

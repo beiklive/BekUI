@@ -1,0 +1,46 @@
+{
+  "$comment": "底栏：满宽 100px，顶部 1px 分隔线，提示条靠右居中。挂在外壳的覆盖层上；内容层要自己让出 100px。",
+  "box": {
+    "width": "100%",
+    "height": 100,
+    "axis": "row",
+    "justifyContent": "flexEnd",
+    "alignItems": "center",
+    "padding": [
+      0,
+      "@theme/metric.hints.footerPaddingSides",
+      0,
+      "@theme/metric.hints.footerPaddingSides"
+    ]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "surface",
+      "fill": "@theme/color.surface.page"
+    },
+    {
+      "op": "rect",
+      "id": "separator",
+      "fill": "@theme/color.border.subtle",
+      "height": 1,
+      "valign": "top",
+      "inset": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "requires": {
+    "layers": [
+      {
+        "surface": "rect"
+      },
+      {
+        "separator": "rect"
+      }
+    ]
+  }
+}
