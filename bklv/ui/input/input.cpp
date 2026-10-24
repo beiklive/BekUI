@@ -326,7 +326,7 @@ void InputManager::navigate(FocusDirection direction)
     {
         View* scope = this->navigationScope();
         if (View* defaultFocus = scope != nullptr ? scope->getDefaultFocus() : nullptr)
-            this->giveFocus(defaultFocus);
+            this->giveFocus(defaultFocus, true);
         return;
     }
 
@@ -352,7 +352,7 @@ void InputManager::navigate(FocusDirection direction)
 
         if (this->canFocus(next))
         {
-            this->giveFocus(next);
+            this->giveFocus(next, true);
             return;
         }
         // 目标不可聚焦（被禁用 / 隐藏 / 模态挡住）→ 落到下面的"走不动"分支
@@ -543,7 +543,7 @@ void InputManager::setFocusCapture(View* view)
         this->giveFocus(view);
 }
 
-void InputManager::giveFocus(View* view)
+void InputManager::giveFocus(View* view, bool playSound)
 {
     if (view == this->currentFocus)
         return;
@@ -559,8 +559,9 @@ void InputManager::giveFocus(View* view)
         getEventBus().publish(event);
     }
 
-    // 焦点反馈音：侧栏条目单独一种（和 borealis 的 SOUND_FOCUS_SIDEBAR 一致）
-    if (view != nullptr)
+    // 焦点反馈音：只给用户驱动的导航播（见头文件里的说明）。
+    // 换根 / 换页 / 弹层进出这些程序化赋值传 false，否则每加载一页都要响一声。
+    if (playSound && view != nullptr)
     {
         const bool sidebar = view->getClassString() == "bklv::TabButton";
         playUiSound(view, sidebar ? Sound::FOCUS_SIDEBAR : Sound::FOCUS_CHANGE, "focus");

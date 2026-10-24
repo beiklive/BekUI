@@ -183,7 +183,10 @@ class InputManager
     int getRepeatInterval() const { return this->repeatIntervalMs; }
 
     // 焦点管理
-    void giveFocus(View* view);
+    //
+    // playSound 默认 false：程序化赋值（换根 / 换页 / 弹层进出 / 焦点兜底 / 焦点记忆恢复）
+    // 一律静默，只有**用户驱动的导航**才传 true —— 否则每次加载页面都会响一声 focus 音。
+    void giveFocus(View* view, bool playSound = false);
     View* getCurrentFocus() const { return this->currentFocus; }
 
     // ---- 焦点捕获（选择器进入设置态时用）----

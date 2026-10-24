@@ -554,6 +554,12 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      根视图一删里面的指针就是野指针，之后的导航/命中会踩崩（测试里踩过）。
   ③ **关掉弹层要等动效播完再摘**：摘掉就脱离视图树，`update()` 不再跑，
      关闭动效根本播不出来。Dialog 是"先切状态、播完再 popOverlay"。
+- **音效只在用户操作时播**（`ui/input/input.cpp`）：全库只有 `playUiSound()` 一处播音，三个触发点
+  —— 方向导航（focus 音，含"没有焦点时取默认焦点"那一支）、确认键 / 点击（click 音）、返回键（back 音）。
+  `InputManager::giveFocus(view, playSound = false)` **默认静默**：换根 / 换页 / 弹层进出 /
+  焦点兜底 / 焦点记忆恢复都属于程序化赋值，传 false；只有 `navigate()` 的两处传 true。
+  踩过：以前 giveFocus 无条件播 focus 音，宿主每加载一页都会"叮"一声；鼠标点按钮时还会
+  focus + click 双响（`focusFromPointer` 不播 focus，点击只留 click）。
 - **状态动效的取消要撤掉旧补间**（`ui/theme/appearance.cpp` 的 `setState`）：
   重算目标时**先撤该通道正在跑的补间，再决定要不要建新的**。
   不能等"目标与当前值不同"才撤——刚打开又马上关掉时当前值还等于初值，
