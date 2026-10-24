@@ -8,10 +8,9 @@
 只在一个后端上验证过的界面代码不算验证过。双版本让「上层与图形 API 无关」这条设计
 随时可被检验——如果某个演示换后端跑不起来，说明它漏了抽象。
 
-> 现状（demo 已移除、重做中）：仓库里只剩 `examples/` 下的**宿主示例**
-> （`embed_imgui_gl` / `multi_context`），它们自带 SDL3 + GL 的宿主循环，所以在 VK 构建下
-> 不编（`if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")`）。
-> 重新写 demo 时这条双版本要求照旧适用。
+> 现状：`demo/` 已按这条重做成最小框架，GL 与 VK 两版都编（`dist/demo`、`dist/vk/demo`）；
+> `examples/` 下的宿主示例自带 SDL3 + GL 循环，所以在 VK 构建下不编
+> （`if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")`）。
 
 ### 构建
 
@@ -61,9 +60,12 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 因为分目录，可执行文件名不带后缀（Windows 上带 `.exe`）。
 
-### 加新示例（或重做的 demo）时
+### 加新示例时
 
-在根 `CMakeLists.txt` 末尾的 examples 段里加一个 `add_executable`，链接 `bklv::bklv`，
+给 `demo/` 加页面不需要新目标：把新 .cpp 加进根 `CMakeLists.txt` 的
+`add_executable(demo ...)` 那一行（`demo/` 没有自己的 CMakeLists）。
+加一个**新的可执行程序**时，在根 `CMakeLists.txt` 末尾的 examples 段里加一个
+`add_executable`，链接 `bklv::bklv`，
 再用 `bklv_set_output_dir(<目标>)` 把产物钉到 `BKLV_OUT_DIR`（不然 VS 多配置生成器会
 落到 `dist/Release/`，资源就找不到了），最后 `bklv_copy_resources(<目标>)`。
 SDL3 / OpenGL / Vulkan / ImGui 都由 `bklv::bklv` 带出来，不要在目标上重复列。
@@ -608,7 +610,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   **content 避让不自动**：`Shell::setHeaderInset/setFooterInset` 由宿主给（动画期间给**目标值**，
   这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（宿主就是这么做的）。
   栏的"折叠补间"是**宿主**的事：`Animatable` 逐帧改两栏高度 + `App::requestLayout()`，
-  补间结束才真正 GONE（demo 已移除，重做时由宿主自己实现）。
+  补间结束才真正 GONE（demo 里由宿主自己实现）。
 - **占位挤压用 `Padding`**（`views/padding.*`，对标 borealis 的 `brls:Padding`）：
   空视图、auto 尺寸、`grow=1`，把后面的兄弟挤到另一端；页头就是
   `[图标][标题][Padding][右侧区]`。JSON 里写 `{ "type": "Padding" }` 也能用。
@@ -1102,8 +1104,9 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
 resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
+demo/               演示程序（最小框架）：外壳 + 页面栈 + 首页 / 设置页
 examples/           宿主示例：embed_imgui_gl（嵌进宿主循环）/ multi_context / switch / cmake_consumer
-CMakeLists.txt      仓库入口：判定平台、定输出目录、编 examples/
+CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo/ 与 examples/
 scripts/            脚本：check.sh（本机门禁）、build_switch.sh（Switch）、命名/分层检查与文档生成
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑
 notes/              设计笔记与移植评估

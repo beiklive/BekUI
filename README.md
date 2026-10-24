@@ -2,7 +2,7 @@
 
 **bklv** 是一个跨平台 C++17 界面库：布局交给 [Yoga](https://github.com/facebook/yoga)
 算 Flexbox，绘制交给 [Dear ImGui](https://github.com/ocornut/imgui) 的 `ImDrawList`。
-本仓库既是这个库本身，也是一组用它写的示例程序（`examples/`）。
+本仓库既是这个库本身，也带一个演示程序（`demo/`）与一组宿主示例（`examples/`）。
 
 - **视图即布局节点**：一个 `View` 持有一个 `YGNode`，尺寸与位置全部由 Yoga 递归算出，
   不需要手写坐标；绘制由 `View::draw()` 递归完成。
@@ -49,10 +49,23 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 [`AGENTS.md`](AGENTS.md) 的「分层依赖方向」）；`docs/architecture-review.html` 里有完整的
 分层图与实测的反向依赖清单。
 
-### 示例：`examples/`
+### 演示程序：`demo/`
 
-原来的展示程序 `demo/` 已移除（控件一并清理、准备重做），现在仓库里只有几个
-用来验证库本身的小程序：
+`demo/` 是重做后的最小框架：一个外壳（顶栏返回 + 标题、内容区、底栏提示）+ 页面栈，
+新页面照着 `demo/pages/` 里的两个抄就能加。它只用公开 API，GL 与 Vulkan 两版都编。
+
+```
+demo/main.cpp               参数解析：--theme / --page / --screenshot / --frames / --size
+demo/demo_app.*             外壳：视图树、页面栈、导航（pushPage / goBack 都推迟到下一帧）
+demo/page.hpp               页面接口：getTitle() + build(DemoApp&)
+demo/pages/home_page.*      首页：打开设置 / 切换主题 / 发一条通知
+demo/pages/settings_page.*  设置页：切换主题 / 返回上一页
+demo/style.hpp              从主题取页面底色与文字色
+```
+
+产物是 `dist/demo`（GL）与 `dist/vk/demo`（Vulkan），用法见 [`demo/README.md`](demo/README.md)。
+
+### 宿主示例：`examples/`
 
 ```
 examples/embed_imgui_gl/   把 bklv 嵌进宿主自己的 SDL3 + GL + ImGui 循环
@@ -61,11 +74,8 @@ examples/switch/           Switch 的最小宿主，scripts/build_switch.sh 编�
 examples/cmake_consumer/   安装后 find_package(bklv) 的消费示例
 ```
 
-前两个由根 `CMakeLists.txt` 编出来（只编 GL），第三个只由 Switch 脚本使用。
-它们属于"宿主示例"而不属于库：真正验证"库能干什么"的展示程序等 demo 重做完再补。
-
-后端是编译期决定的：`embed_imgui_gl` / `multi_context` 在 VK 构建下不编（宿主后端不同），
-所以要验证 Vulkan 路径得自己写一个用 `bklv::vk` 的宿主，或者等 demo 重做时的双后端版本。
+前两个由根 `CMakeLists.txt` 编出来（只编 GL），第三个只由 Switch 脚本使用；
+它们自带宿主循环，所以验证 Vulkan 路径要用 `demo/` 的 VK 版本。
 
 ## 平台支持
 
@@ -182,7 +192,7 @@ bklv::View* view = bklv::createFromJSONFile("resources/views/xxx.json");  // 路
 ```
 
 语法与全部字段见 [`docs/json-syntax.md`](docs/json-syntax.md)。仓库里暂时没有随包的
-示例 JSON（原来 demo 的 `resources/views/` 已随 demo 一起删除）。
+示例 JSON（`resources/views/` 目前没随仓库提供，照语法写一份就能用）。
 
 文案也走同一套资源目录：`resources/i18n/zh-Hans.json`、`resources/i18n/en-US.json`，
 用 `bklv::translate("hints/ok")` 取（`Button` 自己的动作名就来自这条）；
@@ -357,6 +367,7 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ### 分层
 
 ```
+demo/                                 演示程序（最小框架：外壳 + 页面栈 + 两个页面）
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
 bklv/ui/widgets/*                          外观驱动控件：Button / Notification（样式来自主题 JSON）

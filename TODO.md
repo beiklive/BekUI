@@ -8,9 +8,9 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 已完成的项不留在本文件里，历史见 `git log`。
 
 > **2026-10 现状变更（读旧条目时先看这里）**
-> - `demo/` 已整个移除，可执行目标改成 `examples/`（`embed_imgui_gl` / `multi_context` /
->   `switch` / `cmake_consumer`）。下面提到 `demo/`、`demo/app/*` 的条目都是**历史记录**，
->   等重做 demo 时再按当时的结论去落地。
+> - `demo/` 已重建为最小框架（`demo/demo_app.*` + `demo/page.hpp` + `demo/pages/`），
+>   `examples/` 仍是宿主示例（`embed_imgui_gl` / `multi_context` / `switch` / `cmake_consumer`）。
+>   下面提到旧 `demo/app/*` 的条目都是**历史记录**，挑当时的结论落地。
 > - `bklv/widgets` 只保留基础件：`AppearanceView` / `appearance_children` / `Button` /
 >   `Notification` + 六个 `layer_draw_*`。`Shell` / `Header` / `BottomBar` / `TabBar` /
 >   `Sidebar` / `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` /

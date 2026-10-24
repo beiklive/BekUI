@@ -70,6 +70,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(BKLV_WINDOWS_GUI "Windows 上不弹控制台窗口（会看不到 BKLV_LOG_* 输出）" OFF)
+option(BKLV_BUILD_DEMO "编译 demo/ 下的演示程序" ON)
 option(BKLV_BUILD_EXAMPLES "编译 examples/ 下的示例" ON)
 set(BKLV_GRAPHICS "gl" CACHE STRING "图形后端：gl 或 vk")
 set_property(CACHE BKLV_GRAPHICS PROPERTY STRINGS gl vk)
@@ -166,10 +167,10 @@ endfunction()
 message(STATUS "bklv 仓库")
 message(STATUS "  平台     : ${BKLV_HOST}")
 message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
-message(STATUS "  可执行   : 由 examples/ 提供（demo 已移除，待重做）")
+message(STATUS "  可执行   : demo/（演示程序）与 examples/（嵌入示例）")
 
 # ---------------------------------------------------------------------------
-# 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
+# 可执行目标
 # ---------------------------------------------------------------------------
 
 # 多配置生成器（Visual Studio / Xcode）默认会再插一层 Release/ 子目录，
@@ -183,6 +184,25 @@ function(bklv_set_output_dir target_name)
         RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${BKLV_OUT_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${BKLV_OUT_DIR}")
 endfunction()
+
+# ---------------------------------------------------------------------------
+# demo：演示程序（只用 bklv 的公开接口，GL 与 VK 两种后端都编）
+# ---------------------------------------------------------------------------
+
+if(BKLV_BUILD_DEMO)
+    add_executable(demo
+        demo/main.cpp
+        demo/demo_app.cpp
+        demo/pages/home_page.cpp
+        demo/pages/settings_page.cpp)
+    target_link_libraries(demo PRIVATE bklv::bklv)
+    bklv_set_output_dir(demo)
+    bklv_copy_resources(demo)
+endif()
+
+# ---------------------------------------------------------------------------
+# 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
+# ---------------------------------------------------------------------------
 
 if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")
     add_executable(embed_imgui_gl examples/embed_imgui_gl/main.cpp)
