@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一次跑完该跑的全部检查：命名规范 → 分层依赖方向 → GL/VK 双后端零警告构建。
+# 一次跑完该跑的全部检查：命名规范 → 分层依赖方向 → 主题资源清单 → GL/VK 双后端零警告构建。
 #
 # 存在的理由：以前用 `cmake --build ... | grep -c " error|warning:"` 判断构建结果，
 # 并行构建失败时（例如资源复制的竞态）grep 数到 0，就被当成"构建成功"，
@@ -32,6 +32,11 @@ python3 scripts/check_naming.py || die "命名检查未通过"
 # core / views / widgets / compile / glass 之间的反向依赖禁止新增。
 step "分层依赖方向检查"
 python3 scripts/check_layers.py || die "出现新的反向依赖（改法见脚本头部注释）"
+
+# 主题的外观清单是手写的 files[]（romfs 上不能列目录），删文件忘改清单就只有运行期才炸：
+# 这里把"清单 ↔ 磁盘"对齐、import 目标、src 图片一起校验。
+step "主题资源清单检查"
+python3 scripts/check_theme.py || die "主题外观清单与磁盘不一致（见上面输出）"
 
 for backend in gl vk; do
     step "构建 $backend"

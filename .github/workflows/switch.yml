@@ -3,7 +3,7 @@ name: switch
 # Switch · GLES3（devkitPro 的 devkitA64 工具链，官方容器镜像）。
 #
 # Switch 不走 CMake：工具链与编译参数和桌面完全不同，且不能链接 SDL3，
-# 唯一入口是 scripts/build_switch.sh，产物 dist/switch/demo.nro。
+# 唯一入口是 scripts/build_switch.sh，产物 dist/switch/bklv_switch.nro。
 #
 # 容器里没有 git（checkout 需要），所以先按需装一份；零警告门禁与桌面那几个
 # workflow 共用 scripts/check_warnings.sh。

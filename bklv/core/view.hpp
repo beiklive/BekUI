@@ -115,6 +115,16 @@ enum class AlignSelf
     BASELINE,
 };
 
+// Windows 的 <windows.h>（wingdi.h）把 ABSOLUTE / RELATIVE 定义成宏，
+// 任何先包含它的翻译单元都会让下面的枚举直接变成 `enum class PositionType { 2, 1 };`。
+// 宿主程序包含 <windows.h> 是常态，头文件只能自己把宏摘掉。
+#ifdef ABSOLUTE
+#undef ABSOLUTE
+#endif
+#ifdef RELATIVE
+#undef RELATIVE
+#endif
+
 // 定位方式，对应 borealis 的 PositionType。
 enum class PositionType
 {

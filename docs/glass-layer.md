@@ -1,5 +1,11 @@
 # 液态玻璃（外观层 `op: "glass"`）
 
+> **2026-10 控件清理**：`bklv/widgets` 现在只剩 `AppearanceView` / `Button` / `Notification`
+> + 六个 `layer_draw_*`。本文提到的 `Shell` / `Header` / `BottomBar` / `TabBar` / `Sidebar` /
+> `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` / `StatusArea`
+> 以及它们在 `resources/theme/default/base/**` 下的外观 JSON 都已删除 —— 这些段落作为
+> "重做时的约定"保留，别当成现成 API。
+
 一句话：**视图声明"这块要玻璃"，玻璃画在它下面，它自己的内容压在玻璃上面。**
 视图不写任何玻璃代码，样式由外观 JSON 决定，开关与帧级参数由 `Shell` 决定。
 

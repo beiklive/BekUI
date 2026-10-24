@@ -85,7 +85,7 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 4bb83dc · 2026-10-22 22:58 · 两套主题（default / ios）</div>
+  <div class="version">提交 c4693b5 · 2026-10-24 09:02 · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   <ul class="toc">
 <li><a href="#sec-1">概览</a></li>
@@ -231,69 +231,76 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <li class="sub"><ul>
 <li><a href="#sec-118">保留键</a></li>
 <li><a href="#sec-119">已注册类型</a></li>
-<li><a href="#sec-120">容器额外属性（Box / Row / 各类面板都继承，定义在 Box::attributes()）</a></li>
-<li><a href="#sec-121">公共属性（所有控件，定义在 View::attributes()）</a></li>
-<li><a href="#sec-122">Box / Row 追加</a></li>
-<li><a href="#sec-123">AppearanceView / Button 追加（内容槽）</a></li>
-<li><a href="#sec-124">Label 追加</a></li>
-<li><a href="#sec-125">Image 追加</a></li>
-<li><a href="#sec-126">行为与限制</a></li>
+<li><a href="#sec-120">数据绑定与条件可见（bind / visibleIf）</a></li>
+<li><a href="#sec-121">循环生成（foreach）</a></li>
+<li><a href="#sec-122">JSON 行为（onClick）</a></li>
+<li><a href="#sec-123">容器额外属性（Box / Row / 各类面板都继承，定义在 Box::attributes()）</a></li>
+<li><a href="#sec-124">公共属性（所有控件，定义在 View::attributes()）</a></li>
+<li><a href="#sec-125">Box / Row 追加</a></li>
+<li><a href="#sec-126">AppearanceView / Button 追加（内容槽）</a></li>
+<li><a href="#sec-127">Label 追加</a></li>
+<li><a href="#sec-128">Image 追加</a></li>
+<li><a href="#sec-129">行为与限制</a></li>
 </ul></li>
-<li><a href="#sec-127">三、控件外观 JSON</a></li>
+<li><a href="#sec-130">三、控件外观 JSON</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-128">import：外观引用外观</a></li>
-<li><a href="#sec-129">box：盒模型 / 布局</a></li>
-<li><a href="#sec-130">layers：绘制结构</a></li>
-<li><a href="#sec-131">层 import：{ &amp;quot;import&amp;quot;: &amp;quot;base/layer/xxx&amp;quot; }</a></li>
-<li><a href="#sec-132">states：状态动效</a></li>
-<li><a href="#sec-133">分组目标与 self（视图级通道）</a></li>
-<li><a href="#sec-134">变体与回退</a></li>
+<li><a href="#sec-131">import：外观引用外观</a></li>
+<li><a href="#sec-132">box：盒模型 / 布局</a></li>
+<li><a href="#sec-133">layers：绘制结构</a></li>
+<li><a href="#sec-134">层 import：{ &amp;quot;import&amp;quot;: &amp;quot;base/layer/xxx&amp;quot; }</a></li>
+<li><a href="#sec-135">states：状态动效</a></li>
+<li><a href="#sec-136">分组目标与 self（视图级通道）</a></li>
+<li><a href="#sec-137">变体与回退</a></li>
 </ul></li>
-<li><a href="#sec-135">四、主题 JSON</a></li>
+<li><a href="#sec-138">四、主题 JSON</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-136">resources/theme/themes.json</a></li>
-<li><a href="#sec-137">&amp;lt;主题&amp;gt;/theme.json</a></li>
-<li><a href="#sec-138">&amp;lt;主题&amp;gt;/colors.json</a></li>
-<li><a href="#sec-139">&amp;lt;主题&amp;gt;/metrics.json</a></li>
+<li><a href="#sec-139">resources/theme/themes.json</a></li>
+<li><a href="#sec-140">&amp;lt;主题&amp;gt;/theme.json</a></li>
+<li><a href="#sec-141">JSON Schema 与版本</a></li>
+<li><a href="#sec-142">外观契约：requires</a></li>
+<li><a href="#sec-143">&amp;lt;主题&amp;gt;/sound.json：全局 UI 音效</a></li>
+<li><a href="#sec-144">&amp;lt;主题&amp;gt;/colors.json</a></li>
+<li><a href="#sec-145">&amp;lt;主题&amp;gt;/metrics.json</a></li>
 </ul></li>
-<li><a href="#sec-140">五、文案 JSON</a></li>
-<li><a href="#sec-141">六、枚举与字段的容错规则</a></li>
-<li><a href="#sec-142">七、常见错误与排查</a></li>
+<li><a href="#sec-146">五、文案 JSON</a></li>
+<li><a href="#sec-147">五·补、JSON 能力边界（明确不做/只做子集）</a></li>
+<li><a href="#sec-148">六、枚举与字段的容错规则</a></li>
+<li><a href="#sec-149">七、常见错误与排查</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-143">渐变（rect 的 gradient）</a></li>
-<li><a href="#sec-144">侧栏面板（base/widget/sidebar.json）</a></li>
-<li><a href="#sec-145">视图过渡（transitions）</a></li>
+<li><a href="#sec-150">渐变（rect 的 gradient）</a></li>
+<li><a href="#sec-151">侧栏面板（base/widget/sidebar.json）</a></li>
+<li><a href="#sec-152">视图过渡（transitions）</a></li>
 </ul></li>
-<li><a href="#sec-146">扩展图层类型（第三方）</a></li>
+<li><a href="#sec-153">扩展图层类型（第三方）</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-147">推荐写法：注册模板 + 参数模式</a></li>
-<li><a href="#sec-148">参数类型（五种）</a></li>
-<li><a href="#sec-149">引擎白送的字段（任何 op 都能用）</a></li>
-<li><a href="#sec-150">需要自己的结构参数时（可选 parse 钩子）</a></li>
-<li><a href="#sec-151">样例二：不规则四边形（多参数 + 钩子自己算动画）</a></li>
-<li><a href="#sec-152">三条硬规则</a></li>
-<li><a href="#sec-153">注册之后免费得到</a></li>
-<li><a href="#sec-154">注意</a></li>
+<li><a href="#sec-154">推荐写法：注册模板 + 参数模式</a></li>
+<li><a href="#sec-155">参数类型（五种）</a></li>
+<li><a href="#sec-156">引擎白送的字段（任何 op 都能用）</a></li>
+<li><a href="#sec-157">需要自己的结构参数时（可选 parse 钩子）</a></li>
+<li><a href="#sec-158">样例二：不规则四边形（多参数 + 钩子自己算动画）</a></li>
+<li><a href="#sec-159">三条硬规则</a></li>
+<li><a href="#sec-160">注册之后免费得到</a></li>
+<li><a href="#sec-161">注意</a></li>
 </ul></li>
-<li><a href="#sec-155">外观里的子节点（children）</a></li>
+<li><a href="#sec-162">外观里的子节点（children）</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-156">三档节点（互斥，写两个报错）</a></li>
-<li><a href="#sec-157">与 layers 的本质区别</a></li>
-<li><a href="#sec-158">错误规则（全部硬错误，不静默降级）</a></li>
-<li><a href="#sec-159">有什么、没什么（当前版本）</a></li>
+<li><a href="#sec-163">三档节点（互斥，写两个报错）</a></li>
+<li><a href="#sec-164">与 layers 的本质区别</a></li>
+<li><a href="#sec-165">错误规则（全部硬错误，不静默降级）</a></li>
+<li><a href="#sec-166">有什么、没什么（当前版本）</a></li>
 </ul></li>
-<li><a href="#sec-160">Recycler：JSON 描述列表/网格（结构归 JSON，数据与行为归 C++）</a></li>
+<li><a href="#sec-167">Recycler：JSON 描述列表/网格（结构归 JSON，数据与行为归 C++）</a></li>
 </ul></li>
-<li><a href="#sec-161">运行期能力</a></li>
+<li><a href="#sec-168">运行期能力</a></li>
 <li class="sub"><ul>
-<li><a href="#sec-162">帧预算：界面永不卡，任务可以晚</a></li>
-<li><a href="#sec-163">任务与线程池（core/task.hpp）</a></li>
-<li><a href="#sec-164">图片：异步解码 + 背压</a></li>
-<li><a href="#sec-165">输入 → 动作绑定</a></li>
-<li><a href="#sec-166">其它常用能力</a></li>
+<li><a href="#sec-169">帧预算：界面永不卡，任务可以晚</a></li>
+<li><a href="#sec-170">任务与线程池（core/task.hpp）</a></li>
+<li><a href="#sec-171">图片：异步解码 + 背压</a></li>
+<li><a href="#sec-172">输入 → 动作绑定</a></li>
+<li><a href="#sec-173">其它常用能力</a></li>
 </ul></li>
-<li><a href="#sec-167">约定与已知坑</a></li>
-<li><a href="#sec-168">验收与 CI</a></li>
+<li><a href="#sec-174">约定与已知坑</a></li>
+<li><a href="#sec-175">验收与 CI</a></li>
 </ul>
 </aside>
 <main>
@@ -303,28 +310,28 @@ footer { color: var(--muted); font-size: 12px; border-top: 1px solid var(--line)
 <section><h2 id="sec-1">概览</h2>
 
 <p><b>bklv</b> 是一个跨平台 C++17 界面库：<b>Yoga 算 Flexbox 布局</b>，<b>ImGui 的 ImDrawList 负责绘制</b>。
-目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一个 demo 程序。</p>
+目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一组示例程序（<code>examples/</code>）。</p>
 
 <table>
 <thead><tr><th>项目</th><th>内容</th></tr></thead>
 <tbody>
 <tr><td>平台</td><td>macOS / Linux / Windows（SDL3）、Nintendo Switch（libnx + EGL/GLES3）</td></tr>
 <tr><td>图形后端</td><td>OpenGL 3.2 Core、Vulkan、OpenGL ES 3（编译期选择，所有功能都要双后端验证）</td></tr>
-<tr><td>主题</td><td>两套：<code>default</code>（纯扁平）与 <code>ios</code>（苹果风：系统色 / 分组列表 / 大标题 / 底部 Tab 栏 / 玻璃上下栏）</td></tr>
+<tr><td>主题</td><td>两套：<code>default</code>（纯扁平）与 <code>glass</code>（玻璃质感；缺项逐键回退 default）</td></tr>
 <tr><td>界面描述</td><td>C++ 建树，或 JSON 视图描述（<code>template</code> / <code>instantiate</code> 两段式）</td></tr>
-<tr><td>不做</td><td>XML 布局与绑定、视频、PS4/PSV（音频由应用层负责，库里只有音效合成）</td></tr>
+<tr><td>不做</td><td>XML 布局与绑定、视频、PS4/PSV（音频只做音效：JSON 音效表 + WAV，不做 BGM/流式播放）</td></tr>
 </tbody>
 </table>
 
-<p>库的代码规模（不含 <code>3rd/</code> 第三方）：<code>core/</code> 74 文件、<code>views/</code> 30 文件、<code>widgets/</code> 66 文件、<code>compile/</code> 23 文件、<code>backends/</code> 21 文件、<code>platforms/</code> 9 文件。</p>
+<p>库的代码规模（不含 <code>3rd/</code> 第三方）：<code>core/</code> 84 文件、<code>views/</code> 30 文件、<code>widgets/</code> 18 文件、<code>compile/</code> 23 文件、<code>backends/</code> 21 文件、<code>platforms/</code> 9 文件。</p>
 
 <h3 id="sec-2">仓库结构</h3>
 <pre><code>bklv/                库本体（自包含：代码 + 3rd/ + 自己的 CMakeLists.txt）
-  bklv.hpp           伞头：常用类型一次引入（demo 只 include 它）
+  bklv.hpp           伞头：常用类型一次引入（示例只 include 它）
   core/  views/  widgets/  compile/  backends/  platforms/
-demo/                展示程序（15 个页面 + 底部导航 + 液态玻璃）
+examples/            宿主示例（embed_imgui_gl / multi_context / switch / cmake_consumer）
 
-resources/theme/     主题 JSON（default / ios）
+resources/theme/     主题 JSON（default / glass）
 scripts/             check.sh（一次跑完命名/分层/双后端零警告构建）
 docs/                文档（本手册就是其中一份）</code></pre>
 
@@ -336,7 +343,7 @@ docs/                文档（本手册就是其中一份）</code></pre>
 
 <table>
 <thead><tr><th>层</th><th>.cpp</th><th>.hpp</th><th>职责</th></tr></thead>
-<tbody><tr><td><code>core/</code></td><td>35</td><td>39</td><td>接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态</td></tr><tr><td><code>views/</code></td><td>15</td><td>15</td><td>语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView</td></tr><tr><td><code>widgets/</code></td><td>35</td><td>31</td><td>外观驱动控件：Shell / Header / BottomBar / TabBar / Button / Cell 家族 / Dialog …</td></tr><tr><td><code>compile/</code></td><td>12</td><td>11</td><td>解析层：JSON → 视图树 / 外观 / 主题（两段式模板）</td></tr><tr><td><code>backends/</code></td><td>10</td><td>11</td><td>图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3</td></tr><tr><td><code>platforms/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME</td></tr></tbody>
+<tbody><tr><td><code>core/</code></td><td>40</td><td>44</td><td>接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态</td></tr><tr><td><code>views/</code></td><td>15</td><td>15</td><td>语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView</td></tr><tr><td><code>widgets/</code></td><td>11</td><td>7</td><td>外观驱动控件：AppearanceView（外观解析 + 层绘制）/ Button / Notification</td></tr><tr><td><code>compile/</code></td><td>12</td><td>11</td><td>解析层：JSON → 视图树 / 外观 / 主题（两段式模板）</td></tr><tr><td><code>backends/</code></td><td>10</td><td>11</td><td>图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3</td></tr><tr><td><code>platforms/</code></td><td>5</td><td>4</td><td>平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME</td></tr></tbody>
 </table>
 
 <h3 id="sec-4">允许的依赖方向</h3>
@@ -418,37 +425,35 @@ app->run("我的应用", 1280, 720);</code></pre>
 <tr><td><code>core/ui_scale.hpp/.cpp</code></td><td>UI 缩放：主题尺寸按 1280x720 写，运行时按画布宽等比放大</td></tr>
 <tr><td><code>core/ime.hpp/.cpp</code></td><td>文本输入：平台接管（Switch swkbd）或控件自己读键盘</td></tr>
 <tr><td><code>widgets/appearance_view.*</code></td><td>外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量</td></tr>
-<tr><td><code>widgets/rectangle.*</code> <code>widgets/button.*</code> <code>widgets/header.*</code> <code>widgets/bottom_bar.*</code> <code>widgets/slider.*</code> <code>widgets/tab_frame.*</code> <code>widgets/sidebar.*</code></td><td>外观驱动的控件（绘制结构在主题 JSON 里）</td></tr>
-<tr><td><code>widgets/shell.*</code></td><td>应用外壳：四层结构（背景 / 内容 / 覆盖 / 浮层）+ 弹窗模态 + 内容栈下钻 + 按页背景 + 过渡层</td></tr>
-<tr><td><code>widgets/pager.*</code></td><td>页面控制器：工厂式懒加载、可取消预加载、失败/loading 占位、页面级记忆（焦点 + 滚动）</td></tr>
-<tr><td><code>widgets/header.*</code> <code>widgets/bottom_bar.*</code></td><td>页头 / 底栏（宿主自己建好交给 <code>Shell::setHeaderView/setFooterView</code>）</td></tr>
-<tr><td><code>widgets/dialog.*</code> <code>widgets/dropdown.*</code> <code>widgets/edit_text_dialog.*</code></td><td>弹窗、下拉、文本输入弹窗</td></tr>
-<tr><td><code>widgets/hints_bar.*</code> <code>widgets/status_area.*</code></td><td>底栏的两块内容：左侧提示、右侧状态（时钟 / Switch 电量）</td></tr>
-<tr><td><code>core/i18n.hpp/.cpp</code></td><td>文案系统：JSON 资源、三级回退、查找缓存、运行中切语言</td></tr>
-<tr><td><code>core/resource.hpp/.cpp</code></td><td>资源路径解析：桌面用可执行文件目录，Switch 用 <code>romfs:/</code></td></tr>
-<tr><td><code>core/graphics.hpp/.cpp</code></td><td><strong>渲染后端接口</strong> + 纹理管理，上层与图形 API 的唯一分界</td></tr>
-<tr><td><code>backends/opengl_backend.*</code></td><td>桌面 OpenGL 后端</td></tr>
-<tr><td><code>backends/vulkan_backend.*</code></td><td>Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传）</td></tr>
-<tr><td><code>backends/gles3_backend.*</code></td><td>Switch 的 EGL + OpenGL ES 3 后端</td></tr>
-<tr><td><code>backends/imgui_impl_libnx.*</code></td><td>ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO）</td></tr>
-<tr><td><code>backends/gl_loader.hpp/.cpp</code></td><td>跨平台 GL 入口：macOS framework / Linux libGL 直接用原型，Windows 用运行时加载（复用 ImGui 自带的 imgl3w，不引入 glad/gl3w）</td></tr>
-<tr><td><code>backends/gles3_loader.hpp</code></td><td>Switch 的 GLES3 头</td></tr>
-<tr><td><code>core/image_decoder.hpp/.cpp</code></td><td>图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image</td></tr>
-<tr><td><code>core/resource.hpp/.cpp</code></td><td>资源路径解析：桌面用可执行文件目录，Switch 用 <code>romfs:/</code></td></tr>
-<tr><td><code>core/view.hpp/.cpp</code></td><td>视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调</td></tr>
-<tr><td><code>core/box.hpp/.cpp</code></td><td>容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制</td></tr>
-<tr><td><code>core/app.hpp/.cpp</code></td><td>帧循环：ImGui 上下文、布局、绘制调度。窗口由 <code>Platform</code> 负责</td></tr>
-<tr><td><code>core/logger.hpp/.cpp</code></td><td>日志：级别过滤、时间戳、文件行号、环形缓冲（日志窗口读它）</td></tr>
-<tr><td><code>core/input.hpp/.cpp</code></td><td>输入与焦点：hitTest、方向导航、动作注册、手柄</td></tr>
-<tr><td><code>views/label.hpp/.cpp</code></td><td>文本：自动换行、单行省略号、对齐、排版缓存</td></tr>
-<tr><td><code>views/scrolling_frame.hpp/.cpp</code></td><td>纵向滚动：惯性、拖拽、滚动条、焦点自动滚动</td></tr>
-<tr><td><code>views/h_scrolling_frame.hpp/.cpp</code></td><td>横向滚动</td></tr>
-<tr><td><code>views/recycler.hpp/.cpp</code></td><td>虚拟列表：对象池、复用、视口预取与回收</td></tr>
-<tr><td><code>views/image.hpp/.cpp</code></td><td>图片：四种缩放模式、圆角</td></tr>
-<tr><td><code>views/progress_spinner.hpp/.cpp</code></td><td>加载转圈</td></tr>
-<tr><td><code>widgets/hints_bar.hpp/.cpp</code></td><td>提示栏（底栏左侧内容）：按当前焦点的动作生成条目</td></tr>
-<tr><td><code>views/debug_log_view.hpp/.cpp</code></td><td>调试日志视图：读 <code>Logger</code> 环形缓冲、<code>ImDrawList</code> 直接画（零重排），挂在 <code>Shell::getDebugLayer()</code> 上</td></tr>
+<tr><td><code>widgets/button.*</code></td><td>唯一的 JSON 视图类型（<code>&quot;type&quot;: &quot;Button&quot;</code>）：外观驱动 + <code>registerAction</code> 挂手柄键</td></tr>
+<tr><td><code>widgets/notification.*</code></td><td><code>App::notify()</code> 的通知视图（外观驱动，出现/消失状态动效）</td></tr>
+<tr><td><code>widgets/layer_draw_*.cpp</code></td><td>六个内置层的绘制实现（rect / text / image / shadow / glass / custom）</td></tr>
 </tbody></table>
+<blockquote><strong>2026-10 清理</strong>：<code>widgets/shell.*</code>、<code>pager.*</code>、<code>header.*</code>、<code>bottom_bar.*</code>、<code>sidebar.*</code>、 <code>tab_frame.*</code>、<code>cell.*</code>、<code>dialog.*</code>、<code>dropdown.*</code>、<code>edit_text_dialog.*</code>、<code>slider.*</code>、 <code>toast.*</code>、<code>hints_bar.*</code>、<code>status_area.*</code>、<code>focus_ring_view.*</code> 已删除（连同主题里对应的 外观 JSON）。下面提到它们的段落是对&quot;重做时的约定&quot;的历史记录，别当成现成 API。</blockquote>
+<p>| <code>core/i18n.hpp/.cpp</code> | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |</p>
+<p>| <code>core/resource.hpp/.cpp</code> | 资源路径解析：桌面用可执行文件目录，Switch 用 <code>romfs:/</code> |</p>
+<p>| <code>core/graphics.hpp/.cpp</code> | <strong>渲染后端接口</strong> + 纹理管理，上层与图形 API 的唯一分界 |</p>
+<p>| <code>backends/opengl_backend.*</code> | 桌面 OpenGL 后端 |</p>
+<p>| <code>backends/vulkan_backend.*</code> | Vulkan 后端（动态渲染优先，退到 render pass；交换链重建、纹理上传） |</p>
+<p>| <code>backends/gles3_backend.*</code> | Switch 的 EGL + OpenGL ES 3 后端 |</p>
+<p>| <code>backends/imgui_impl_libnx.*</code> | ImGui 的 libnx 平台后端（把按键/触摸喂进 ImGuiIO） |</p>
+<p>| <code>backends/gl_loader.hpp/.cpp</code> | 跨平台 GL 入口：macOS framework / Linux libGL 直接用原型，Windows 用运行时加载（复用 ImGui 自带的 imgl3w，不引入 glad/gl3w） |</p>
+<p>| <code>backends/gles3_loader.hpp</code> | Switch 的 GLES3 头 |</p>
+<p>| <code>core/image_decoder.hpp/.cpp</code> | 图片解码抽象：macOS 走 ImageIO，其余平台走 stb_image |</p>
+<p>| <code>core/resource.hpp/.cpp</code> | 资源路径解析：桌面用可执行文件目录，Switch 用 <code>romfs:/</code> |</p>
+<p>| <code>core/view.hpp/.cpp</code> | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |</p>
+<p>| <code>core/box.hpp/.cpp</code> | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |</p>
+<p>| <code>core/app.hpp/.cpp</code> | 帧循环：ImGui 上下文、布局、绘制调度。窗口由 <code>Platform</code> 负责 |</p>
+<p>| <code>core/logger.hpp/.cpp</code> | 日志：级别过滤、时间戳、文件行号、环形缓冲（日志窗口读它） |</p>
+<p>| <code>core/input.hpp/.cpp</code> | 输入与焦点：hitTest、方向导航、动作注册、手柄 |</p>
+<p>| <code>views/label.hpp/.cpp</code> | 文本：自动换行、单行省略号、对齐、排版缓存 |</p>
+<p>| <code>views/scrolling_frame.hpp/.cpp</code> | 纵向滚动：惯性、拖拽、滚动条、焦点自动滚动 |</p>
+<p>| <code>views/h_scrolling_frame.hpp/.cpp</code> | 横向滚动 |</p>
+<p>| <code>views/recycler.hpp/.cpp</code> | 虚拟列表：对象池、复用、视口预取与回收 |</p>
+<p>| <code>views/image.hpp/.cpp</code> | 图片：四种缩放模式、圆角 |</p>
+<p>| <code>views/progress_spinner.hpp/.cpp</code> | 加载转圈 |</p>
+<p>| <code>widgets/hints_bar.hpp/.cpp</code> | 提示栏（底栏左侧内容）：按当前焦点的动作生成条目 |</p>
+<p>| <code>views/debug_log_view.hpp/.cpp</code> | 调试日志视图：读 <code>Logger</code> 环形缓冲、<code>ImDrawList</code> 直接画（零重排）；挂在哪由宿主决定（<code>Shell</code> 已移除） |</p>
 <h3 id="sec-12">布局（Box）</h3>
 <p>以下属性全部直接透传给 Yoga：</p>
 <pre><code class="lang-cpp">Box* box = new Box(Axis::ROW);          // ROW 横向 / COLUMN 纵向
@@ -464,9 +469,9 @@ child-&gt;setMargin(8.0f);                  // 外边距
 box-&gt;addView(child);</code></pre>
 <p>视图树管理：<code>addView(view[, position])</code>、<code>removeView(view, free)</code>、<code>clearViews()</code>、 <code>getView(id)</code>。<strong>增删子节点时 <code>children</code> 与 Yoga 节点树必须同步更新</strong>， 否则布局结果会和 C++ 对象树不一致；子节点析构时会自动从父节点摘除。</p>
 <h3 id="sec-13">交互与内容控件</h3>
-<pre><code class="lang-cpp">// 输入与焦点：View 自己注册动作，提示栏会自动显示
-cell-&gt;registerAction(ControllerButton::A, &quot;播放&quot;, [](View* v) { /* ... */ });
-bool focusable = cell-&gt;isFocusable();          // 想被方向键选中就重写它
+<pre><code class="lang-cpp">// 输入与焦点：View 自己注册动作（宿主可读它们自己渲染按键提示）
+button-&gt;registerAction(ControllerButton::A, &quot;播放&quot;, [](View* v) { /* ... */ });
+bool focusable = button-&gt;isFocusable();          // 想被方向键选中就重写它
 
 // 纵向滚动
 ScrollingFrame* frame = new ScrollingFrame();
@@ -475,7 +480,7 @@ Box* content = new Box(Axis::COLUMN);
 content-&gt;setHeight(40.0f * 100);               // 内容必须显式给高度
 frame-&gt;setContentView(content);
 
-// 虚拟列表：1000 条数据只创建约 8 个 cell
+// 虚拟列表：1000 条数据只创建约 8 个 cell（MyCell 派生自 RecyclerCell）
 RecyclerFrame* list = new RecyclerFrame();
 list-&gt;setItemHeight(80.0f);
 list-&gt;setPreFetchLine(1);
@@ -490,7 +495,7 @@ image-&gt;setScalingType(ImageScalingType::FILL); // FIT / FILL / STRETCH / CENT
 // 路径相对&quot;资源目录&quot;：桌面 = 可执行文件目录（构建会复制 resources/ 过去），
 // Switch = romfs:/（资源打进 nro）。setImageFromFile 内部会解析，不用自己拼。
 image-&gt;setImageFromFile(&quot;resources/testcard.png&quot;);</code></pre>
-<p>键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回。 鼠标点击默认<strong>只聚焦不执行</strong>动作；想点一下就执行，在控件构造函数里设 <code>onPointerAction = true</code>（按钮、tab 都这么做）。列表项保持默认，避免误触发。</p>
+<p>键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回。 鼠标点击默认<strong>只聚焦不执行</strong>动作；想点一下就执行，在控件构造函数里设 <code>onPointerAction = true</code>（<code>Button</code> 就是这么做的）。列表项保持默认，避免误触发。</p>
 <h3 id="sec-14">文案（i18n）</h3>
 <p>资源放 <code>resources/i18n/&lt;locale&gt;.json</code>，key 用 <code>/</code> 分层：</p>
 <pre><code class="lang-json">{ &quot;demo&quot;: { &quot;welcome&quot;: &quot;欢迎使用 bklv&quot;, &quot;list_count&quot;: &quot;共 {} 项&quot; } }</code></pre>
@@ -505,7 +510,7 @@ bklv::setLocale(&quot;en-US&quot;);                  // 运行中切换
 bklv::getLocale();                         // 规范化后的当前语言</code></pre>
 <p>三条要记住的：</p>
 <ol><li><strong>文案在控件构造时就解析成字符串</strong>，改语言不会自动重译已有视图——</li></ol>
-<p>要重新 <code>setText()</code> 或重建视图树（<code>demo/app/pages/page_text.cpp</code> 里有一个 「切换语言」按钮演示了显式重译）。</p>
+<p>要重新 <code>setText()</code> 或重建视图树（宿主里那个 「切换语言」按钮演示了显式重译）。</p>
 <ol><li><strong>语言名是规范化的</strong>（<code>zh-Hans</code> / <code>zh-Hant</code> / <code>en-US</code> / <code>ja-JP</code> / <code>ko-KR</code>）。</li></ol>
 <p>桌面 SDL 给的是 <code>zh-CN</code>、Switch 给的是 <code>zh-Hans</code>，都经 <code>canonicalLocale()</code> 归一， 所以资源文件只需要一套命名。</p>
 <ol><li><strong>不依赖目录枚举</strong>：按名字读 <code>&lt;locale&gt;.json</code>；要拆文件就在主文件里写</li></ol>
@@ -559,8 +564,8 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 <p>界面不刷新时先怀疑&quot;漏置脏&quot;：用 <code>BKLV_FORCE_RELAYOUT=1</code> 跑一次，退回每帧全量重算， 现象消失就说明有地方改了布局状态却没 <code>invalidate()</code>（或该用 <code>requestLayout()</code>）。</p>
 <blockquote>四类 JSON（视图描述 / 控件外观 / 主题 / 文案）的完整键表、取值形式与枚举拼写， 见 <a href="json-syntax.md"><code>json-syntax.md</code></a>。</blockquote>
 <h3 id="sec-17">主题与外观</h3>
-<p>换肤不需要改代码：复制 <code>resources/theme/default/</code> 改名，改里面的 JSON，再在 <code>themes.json</code> 里登记，就多了一套皮肤。桌面用 <code>BKLV_THEME=ios ./dist/demo</code> 直接看效果。</p>
-<pre><code class="lang-json">// resources/theme/ios/widgets/button.json
+<p>换肤不需要改代码：复制 <code>resources/theme/default/</code> 改名，改里面的 JSON，再在 <code>themes.json</code> 里登记，就多了一套皮肤。桌面用 <code>BKLV_THEME=glass ./dist/embed_imgui_gl</code> 直接看效果。</p>
+<pre><code class="lang-json">// resources/theme/glass/base/button.json
 // box 段管盒模型（尺寸/内边距/圆角/底色…），layers 管绘制结构，states 管状态动效
 { &quot;box&quot;: { &quot;height&quot;: &quot;@theme/metric.control.height&quot;, &quot;padding&quot;: [15, 25, 15, 25] },
   &quot;layers&quot;: [
@@ -578,7 +583,7 @@ button-&gt;setOnClick([] { /* ... */ });
 bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
 bklv::Button* ghost = new bklv::Button(&quot;取消&quot;, &quot;ghost&quot;);  // variant -&gt; button.ghost.json
 
-app.setTheme(&quot;ios&quot;);   // 运行时换肤：重新取外观 + 重排，已建视图立即更新</code></pre>
+app.setTheme(&quot;glass&quot;);  // 运行时换肤：重新取外观 + 重排，已建视图立即更新</code></pre>
 <h4 id="sec-18">常用色（<code>color.common.*</code>）</h4>
 <p>每套主题的 <code>colors.json</code> 第一组是<strong>通用色板 + 原始色值</strong>，语义组（<code>surface</code> / <code>text</code> / <code>button</code> …）跟在后面：</p>
 <table><thead><tr><th>组</th><th>键</th><th>说明</th></tr></thead><tbody>
@@ -609,7 +614,7 @@ app.setTheme(&quot;ios&quot;);   // 运行时换肤：重新取外观 + 重排�
 <p><code>states</code> 做动效（例如聚焦时 <code>&quot;shadow.opacity&quot;: { &quot;to&quot;: 0.7 }</code>）</p>
 <ul><li>绘制档位是<strong>全局开关</strong>，两种都是多层近似：<code>fast</code>（8 层，默认）/ <code>smooth</code>（24 层高斯权重）</li></ul>
 <pre><code class="lang-cpp">  bklv::shadow::setQuality(bklv::ShadowQuality::SMOOTH);   // 或 setQualityByName(&quot;smooth&quot;)</code></pre>
-<pre><code class="lang-bash">  BKLV_SHADOW_QUALITY=smooth ./dist/demo    # 启动前用环境变量指定</code></pre>
+<pre><code class="lang-bash">  BKLV_SHADOW_QUALITY=smooth ./dist/embed_imgui_gl    # 启动前用环境变量指定</code></pre>
 <ul><li>控件自己在 <code>custom</code> 层画的东西（滑块把手）不走外观层，直接调</li></ul>
 <p><code>bklv::shadow::drawSoft(...)</code></p>
 <ul><li>真离屏高斯模糊没做：那要给三个后端各加一套离屏渲染 + 模糊 shader，</li></ul>
@@ -628,10 +633,10 @@ bklv::App app;
 
 // 想恢复 ImGui 默认行为（读写 imgui.ini）时：
 app.setIniPersistenceEnabled(true);
-// 或者用环境变量：BKLV_USE_INI=1 ./dist/demo</code></pre>
+// 或者用环境变量：BKLV_USE_INI=1 ./dist/embed_imgui_gl</code></pre>
 <p>实现位置：<code>bklv::App::run()</code> 里 <code>ImGui::CreateContext()</code> 之后、 第一次 <code>NewFrame()</code> 之前设置 <code>ImGui::GetIO().IniFilename = nullptr</code>。 这个赋值必须在那之前完成，之后改无效。</p>
 <h3 id="sec-21">日志与调试窗口</h3>
-<p>日志用 <code>BKLV_LOG_INFO(...)</code> 等宏，输出带 <code>文件:行号</code>。日志同时进控制台与 <code>Logger</code> 的环形缓冲，界面上的调试日志视图（<code>views/debug_log_view.hpp</code> 的 <code>DebugLogView</code>）读缓冲渲染； 它挂在外壳的调试层上（<code>Shell::getDebugLayer()</code>，在 HudLayer 之上），不吃输入。</p>
+<p>日志用 <code>BKLV_LOG_INFO(...)</code> 等宏，输出带 <code>文件:行号</code>。日志同时进控制台与 <code>Logger</code> 的环形缓冲，界面上的调试日志视图（<code>views/debug_log_view.hpp</code> 的 <code>DebugLogView</code>）读缓冲渲染； 它挂在宿主指定的调试层上（<code>Shell</code> 已移除，层级由宿主自己管），不吃输入。</p>
 <p><strong>不要为每条日志创建 View</strong> —— borealis 那样做会不断触发 Yoga 重排。 <code>demo</code> 界面上右上角的「显示日志」按钮（或 F1）开关日志窗口。</p>
 <h3 id="sec-22">已知的坑（都已处理）</h3>
 <ol><li><strong>字体必须惰性解析。</strong> 视图树是在 <code>RunDemo</code> 的参数里构建的，而字体在 <code>App::run()</code></li></ol>
@@ -657,7 +662,7 @@ list-&gt;setScrollOffset(120, true);</code></pre>
 <pre><code class="lang-cpp">Box* section = bklv::makeSectionHeader(&quot;图标&quot;, &quot;共 340 个字形&quot;);
 // 等价于 new AppearanceView(&quot;base/section&quot;) + 写 text/info 槽</code></pre>
 <h4 id="sec-26">顶层帧率</h4>
-<pre><code class="lang-cpp">shell-&gt;setFpsOverlayEnabled(true);   // 右上角：60.0 FPS / 目标 60 + p99 / 最坏帧</code></pre>
+<pre><code class="lang-cpp">root-&gt;addView(new FpsOverlay());       // 右上角：60.0 FPS / 目标 60 + p99 / 最坏帧（Shell 已移除，宿主自己挂）</code></pre>
 <h4 id="sec-27">外观 children 的 id 与查找</h4>
 <pre><code class="lang-json">&quot;children&quot;: [
   { &quot;id&quot;: &quot;icon&quot;,  &quot;box&quot;: { &quot;width&quot;: 24, &quot;height&quot;: 24 }, &quot;icon&quot;: &quot;@icon/star&quot; },
@@ -673,7 +678,7 @@ list-&gt;setScrollOffset(120, true);</code></pre>
 }</code></pre>
 <ul><li><code>self</code> 支持：<code>translateX/Y</code>、<code>scaleX/Y</code>、<code>alpha</code>、<code>rotate</code>、<code>skewX/Y</code>；</li><li>层目标支持分组写法（<code>&quot;bg&quot;: { &quot;fill&quot;: … }</code>），旧的 <code>&quot;bg.fill&quot;</code> 兼容；</li><li>位移/缩放/旋转都是<strong>绘制期</strong>变换：不重排、不占位，命中区域不跟随移动；</li><li>多状态同时激活时，后激活的赢；状态关闭时平滑回默认值（120ms）。</li></ul>
 <h4 id="sec-29">预设背景</h4>
-<pre><code class="lang-cpp">shell-&gt;getBackdropLayer()-&gt;addView(new PresetBackdrop(BackdropPreset::GRID));
+<pre><code class="lang-cpp">root-&gt;addView(new PresetBackdrop(BackdropPreset::GRID));   // 放在内容之下（Shell 已移除）
 // GRID / FLOATING / GRADIENT；颜色全部来自主题（surface.card / accent.base / common.grey）</code></pre>
 <h3 id="sec-30">分层约定</h3>
 <pre><code>bklv/views/*               Image / Label / ScrollingFrame / RecyclerFrame
@@ -712,19 +717,23 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <h3 id="sec-34">外观驱动控件（widgets/）</h3>
 <table>
 <thead><tr><th>类型</th><th>头文件</th><th>说明</th></tr></thead>
-<tbody><tr><td><code>AccountWidget</code></td><td><code>account.hpp</code></td><td>账号信息（头像 + 昵称），对应 borealis 的 views/widgets/account。</td></tr><tr><td><code>AppearanceView</code></td><td><code>appearance_view.hpp</code></td><td>外观驱动的控件基类：绘制结构与状态动效全部来自主题里的 JSON（core/appearance.hpp）。</td></tr><tr><td><code>BackdropManager</code></td><td><code>backdrop_manager.hpp</code></td><td>按页背景的管理者：每个页面一份背景视图，切页时交叉淡入（新的从 0 淡入、旧的垫在下面，</td></tr><tr><td><code>BottomBar</code></td><td><code>bottom_bar.hpp</code></td><td>底部栏（对应 borealis 的 views/bottom_bar）：<strong>一个控件同时装提示与状态</strong>。</td></tr><tr><td><code>Button</code></td><td><code>button.hpp</code></td><td>按钮：外观完全来自主题 JSON（<code>widgets/button.json</code>），</td></tr><tr><td><code>Cell</code> <span class=muted>DetailCell / BooleanCell / RadioCell / SelectorCell / SliderCell / InputCell</span></td><td><code>cell.hpp</code></td><td>单元格：列表里的一行（左侧标题 + 右侧内容区），对应 borealis 的 views/cells/*。</td></tr><tr><td><code>ContentStack</code></td><td><code>content_stack.hpp</code></td><td>内容层的层级下钻：<strong>往上叠一层 / 退回上一层</strong>（列表 → 详情，B 逐层返回）。</td></tr><tr><td><code>DialogBackdrop</code> <span class=muted>DialogPanel / Dialog</span></td><td><code>dialog.hpp</code></td><td>弹窗（对应 borealis 的 views/dialog）。</td></tr><tr><td><code>DropdownOption</code> <span class=muted>DropdownPanel / DropdownPopup / Dropdown</span></td><td><code>dropdown.hpp</code></td><td>下拉选择（对应 borealis 的 views/dropdown）。</td></tr><tr><td><code>TextEditModel</code> <span class=muted>EditTextDialog</span></td><td><code>edit_text_dialog.hpp</code></td><td>文本输入弹窗（对应 borealis 的 views/edit_text_dialog）。</td></tr><tr><td><code>FocusRingView</code></td><td><code>focus_ring_view.hpp</code></td><td>焦点框的绘制者：挂在外壳的浮层（HUD）上，每帧<strong>拉取</strong>当前焦点的形状画出来。</td></tr><tr><td><code>ToggleButton</code> <span class=muted>CustomButton / OptionButton / ValueButton</span></td><td><code>form_buttons.hpp</code></td><td>表单类按钮（外观全部在 resources/theme/.../base/button/*.json，代码只管行为）：</td></tr><tr><td><code>HeaderIcon</code> <span class=muted>Header</span></td><td><code>header.hpp</code></td><td>页头（对应 borealis 的 views/header，以及旧 AppletFrame 里那个 88 高的应用页头）。</td></tr><tr><td><code>HintItemView</code> <span class=muted>HintsBar</span></td><td><code>hints_bar.hpp</code></td><td>提示栏（对应 borealis 的 views/hints）：把当前焦点注册的动作显示成</td></tr><tr><td><code>ImePanel</code></td><td><code>ime_panel.hpp</code></td><td>内置输入法面板（弹层）：</td></tr><tr><td><code>Notification</code> <span class=muted>NotificationManager</span></td><td><code>notification.hpp</code></td><td>通知（Toast），对应 borealis 的 core/notification_manager。</td></tr><tr><td><code>Pager</code></td><td><code>pager.hpp</code></td><td>Pager：内容层的<strong>页面栈 / 同层换页</strong>控制器，对应 borealis 的 Activity 里</td></tr><tr><td><code>Rectangle</code></td><td><code>rectangle.hpp</code></td><td>矩形：外观完全由主题 JSON 描述的纯装饰控件（对应 borealis 的 views/rectangle）。</td></tr><tr><td><code>RecyclerItemCell</code> <span class=muted>RecyclerHeaderCell / RecyclerView</span></td><td><code>recycler_view.hpp</code></td><td>JSON 可描述的回收列表（<code>&quot;type&quot;: &quot;Recycler&quot;</code>）—— <strong>桥接层</strong>。</td></tr><tr><td><code>SelectorButton</code></td><td><code>selector_button.hpp</code></td><td>选择器按钮：组件容器 + 图标 + 文字 + 左右箭头 + 信息文字（外观 widget/button.selector）。</td></tr><tr><td><code>Shell</code></td><td><code>shell.hpp</code></td><td>转场（ContentTransition + ViewTransition）：入场/出场两个方向都在这里</td></tr><tr><td><code>Slider</code></td><td><code>slider.hpp</code></td><td>滑块（对应 borealis 的 views/slider）。</td></tr><tr><td><code>BatteryIcon</code> <span class=muted>WirelessIcon / StatusArea</span></td><td><code>status_area.hpp</code></td><td>底栏右侧的状态区（对应 borealis BottomBar 里的 电池 / 无线 / 时间）。</td></tr><tr><td><code>TabButton</code> <span class=muted>TabItem / TabFrame</span></td><td><code>tab_frame.hpp</code></td><td>TabFrame：横向 tab 栏 + 内容区（对应 borealis 的 views/tab_frame）。</td></tr><tr><td><code>ToastManager</code></td><td><code>toast.hpp</code></td><td>Toast：右上角通知浮层（外观在 resources/theme/.../base/toast/*.json）。</td></tr></tbody>
+<tbody><tr><td><code>AppearanceView</code></td><td><code>appearance_view.hpp</code></td><td>外观驱动的控件基类：绘制结构与状态动效全部来自主题里的 JSON（core/appearance.hpp）。</td></tr><tr><td><code>Button</code></td><td><code>button.hpp</code></td><td>按钮：外观完全来自主题 JSON（<code>widgets/button.json</code>），</td></tr><tr><td><code>Notification</code> <span class=muted>NotificationManager</span></td><td><code>notification.hpp</code></td><td>通知（Toast），对应 borealis 的 core/notification_manager。</td></tr></tbody>
 </table>
 
 <h3 id="sec-35">几个常用控件的要点</h3>
+<p class=muted><b>2026-10 清理</b>：<code>widgets/</code> 只保留基础件（<code>AppearanceView</code> /
+<code>Button</code> / <code>Notification</code> + 层绘制）。<code>Shell</code> / <code>Header</code> /
+<code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>Cell</code> 家族 /
+<code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> 等已移除，
+等 demo 重做时按需加回。</p>
 <table>
 <thead><tr><th>控件</th><th>要点</th></tr></thead>
 <tbody>
-<tr><td><code>Shell</code></td><td>四层外壳（内容 / 覆盖 / 背景 / Hud）：把 <code>Header</code>、<code>BottomBar</code> 挂到覆盖层，内容进内容层；<code>pushContentView</code> 做下钻。<b>顶栏/底栏只是一块区域 —— 任何主题都不许给它画底色或边框</b>（test 钉住）。</td></tr>
-<tr><td><code>Header</code></td><td>结构 <code>[图标][标题][右侧区]</code>；<code>setLargeTitle()</code> + <code>setCollapseSource(scroller)</code> 做大标题随滚动收起（只改绘制期量，零重排）。</td></tr>
-<tr><td><code>TabBar</code> / <code>Sidebar</code> / <code>TabFrame</code></td><td>底部导航条（A/点击才切页，横向可滚动）/ 左侧栏（聚焦即切页，Switch 语义）/ tab 栏 + 内容区。</td></tr>
-<tr><td><code>Button</code> / Cell 家族</td><td>外观驱动；<code>setOnClick</code> 接行为，另外可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
-<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。JSON 侧由 <code>RecyclerView</code> 桥接（<code>data</code>/<code>itemBinder</code>/<code>onEnd</code> 只写名字）。</td></tr>
-<tr><td><code>Dialog</code> / <code>Dropdown</code> / <code>EditTextDialog</code></td><td>都走 <code>App::pushOverlay/popOverlay</code> 的模态栈：焦点圈在弹层内、关闭后回到原焦点。</td></tr>
+<tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
+<tr><td><code>Button</code></td><td>目前唯一注册进 JSON 视图类型的控件（<code>"type": "Button"</code>）；<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
+<tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
+<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（在 <code>views/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
+<tr><td><code>Box</code> / <code>Label</code></td><td>布局容器与文字分别在 <code>core/box.*</code>、<code>views/label.*</code> —— 它们是基础件，不在 <code>widgets/</code> 里。</td></tr>
 </tbody>
 </table>
 
@@ -733,13 +742,13 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 
 <p>两套主题，都在 <code>resources/theme/&lt;名字&gt;/</code> 下：<code>theme.json</code>（显式 <code>files[]</code> 清单，不扫目录）
 + <code>tokens/</code>（colors / metrics）+ <code>base|widget|view/</code> 外观。复制一套改名改 JSON 就是新皮肤；
-<code>themes.json</code> 的 <code>available</code> 列出可选主题，运行时 <code>App::setTheme("ios")</code> 切换。</p>
+<code>themes.json</code> 的 <code>available</code> 列出可选主题，运行时 <code>App::setTheme("glass")</code> 切换。</p>
 
 <table>
 <thead><tr><th>主题</th><th>定位</th><th>关键做法</th></tr></thead>
 <tbody>
 <tr><td><code>default</code></td><td>纯扁平</td><td>无阴影、无玻璃、无渐变；靠 1px 描边分面；<code>color.common.shadow</code> 全透明（代码驱动的软阴影也随之关闭）</td></tr>
-<tr><td><code>ios</code></td><td>苹果风</td><td>iOS dark 系统色；分组列表（行内缩分隔线）；胶囊分段；<code>glass_surface</code> 用 #1C1C1ECC 的 material；大标题 + 底部 Tab 栏</td></tr>
+<tr><td><code>glass</code></td><td>玻璃质感</td><td>只覆盖少量 <code>tokens/</code>（配色 / 圆角），外观与 <code>files[]</code> 留空 —— 缺的逐键回退 <code>default</code>；是"最小主题"的样板</td></tr>
 </tbody>
 </table>
 
@@ -879,7 +888,7 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <tr><td><code>button.highlightText</code></td><td><code>#007a63</code></td></tr>
 <tr><td><code>button.defaultBg</code></td><td><code>#ffffff</code></td></tr>
 <tr><td><code>button.defaultText</code></td><td><code>#1f2328</code></td></tr>
-<tr><td><code>button.defaultBorder</code></td><td><code>#c9ccd2</code></td></tr>
+<tr><td><code>button.defaultBorder</code></td><td><code>#FFFFFF</code></td></tr>
 <tr><td><code>button.disabledBorder</code></td><td><code>#d7dade</code></td></tr>
 <tr><td><code>button.primaryBg</code></td><td><code>#00cfa8</code></td></tr>
 <tr><td><code>button.primaryText</code></td><td><code>#06302a</code></td></tr>
@@ -1279,9 +1288,10 @@ bklv/platforms/*           PlatformSDL3（桌面）/ PlatformSwitch（libnx）</
 <tr><td><code>"bind": "字段名"</code></td><td>数据绑定：写到该类型的主属性（Label→text，Image→src）；别的类型要显式 <code>"bindTo"</code></td><td>列表项 setIndex 时</td></tr>
 </tbody>
 </table>
-<p>能写的 <code>"type"</code>（注册表实测）：<code>Box</code>、<code>Row</code>、<code>Label</code>、<code>Image</code>、<code>ScrollingFrame</code>、<code>HScrollingFrame</code>、<code>ProgressSpinner</code>、<code>Padding</code>、<code>Rectangle</code>、<code>AppletFrame</code>、<code>Shell</code>、<code>Header</code>、<code>BottomBar</code>、<code>HintsBar</code>、<code>StatusArea</code>、<code>TabButton</code>、<code>Button</code>、<code>TabFrame</code>、<code>TabItem</code>、<code>Slider</code>、<code>Dropdown</code>、<code>RadioCell</code>、<code>BooleanCell</code>、<code>DetailCell</code>、<code>SliderCell</code>、<code>SelectorCell</code>、<code>InputCell</code>。</p>
+<p>能写的 <code>"type"</code>（注册表实测）：<code>Box</code>、<code>Row</code>、<code>Label</code>、<code>Image</code>、<code>ScrollingFrame</code>、<code>HScrollingFrame</code>、<code>ProgressSpinner</code>、<code>Padding</code>、<code>Button</code>。</p>
 
 <h3 id="sec-108">JSON 语法速查</h3>
+<blockquote><strong>2026-10 控件清理</strong>：<code>bklv/widgets</code> 现在只剩 <code>AppearanceView</code> / <code>Button</code> / <code>Notification</code> + 六个 <code>layer_draw_*</code>。本文提到的 <code>Shell</code> / <code>Header</code> / <code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>TabFrame</code> / <code>Cell</code> 家族 / <code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> / <code>StatusArea</code> 以及它们在 <code>resources/theme/default/base/**</code> 下的外观 JSON 都已删除 —— 这些段落作为 &quot;重做时的约定&quot;保留，别当成现成 API。</blockquote>
 <p>bklv 里一共有四类 JSON，各管一件事。这份文档是它们的<strong>完整语法</strong>（键名、取值形式、 枚举拼写、默认值、报错行为），全部对照代码整理，不是示意。</p>
 <table><thead><tr><th>类别</th><th>位置</th><th>用途</th><th>解析处</th></tr></thead><tbody>
 <tr><td>视图描述</td><td><code>resources/views/*.json</code>，或 <code>createFromJSONString()</code></td><td>用 JSON 搭视图树（类型 + 属性 + 子节点）</td><td><code>core/json_view.cpp</code> <code>core/attributes.cpp</code></td></tr>
@@ -1402,11 +1412,46 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>include</code></td><td>字符串路径：把另一个描述文件整棵接进来（栈深上限 32）</td></tr>
 <tr><td><code>bind</code></td><td>数据字段名 → 写到该类型的<strong>主属性</strong>上（Label → <code>text</code>，Image → <code>src</code>）</td></tr>
 <tr><td><code>bindTo</code></td><td>显式指定属性名（Box 这类没有主属性的必须写它）</td></tr>
+<tr><td><code>visibleIf</code></td><td>字符串字段名，或 <code>{ &quot;field&quot;: &quot;...&quot;, &quot;equals&quot;: &quot;...&quot; }</code>；数据为假/不等于时设为 <code>GONE</code></td></tr>
+<tr><td><code>foreach</code></td><td>容器节点上的字符串字段名；按 <code>JsonData::setList()</code> 的字符串数组重复生成 <code>children</code></td></tr>
+<tr><td><code>id</code></td><td>字符串；<code>setId()</code> 的 JSON 形式，供 <code>findView</code> / 编辑器定位使用</td></tr>
 </tbody></table>
 <h4 id="sec-119">已注册类型</h4>
-<p><code>Box</code>（默认 <code>column</code>）、<code>Row</code>、<code>Label</code>、<code>Image</code>、<code>ScrollingFrame</code>、<code>HScrollingFrame</code>、 <code>ProgressSpinner</code>、<code>Padding</code>。</p>
-<blockquote><code>RecyclerFrame</code> <strong>故意不注册</strong>：它必须先有数据源才能用，光有类型没有意义。</blockquote>
-<h4 id="sec-120">容器额外属性（<code>Box</code> / <code>Row</code> / 各类面板都继承，定义在 <code>Box::attributes()</code>）</h4>
+<p>核心：<code>Box</code>（默认 <code>column</code>）、<code>Row</code>、<code>Label</code>、<code>Image</code>、<code>ScrollingFrame</code>、 <code>HScrollingFrame</code>、<code>ProgressSpinner</code>、<code>Padding</code>。</p>
+<p>控件（<code>registerWidgetViewTypes()</code>）：<code>Rectangle</code>、<code>Shell</code> / <code>AppletFrame</code>、<code>Header</code>、 <code>BottomBar</code>、<code>HintsBar</code>、<code>StatusArea</code>、<code>TabButton</code>、<code>Button</code>、<code>TabFrame</code>、<code>TabItem</code>、 <code>Slider</code>、<code>Dropdown</code>、<code>RadioCell</code>、<code>BooleanCell</code>、<code>DetailCell</code>、<code>SliderCell</code>、 <code>SelectorCell</code>、<code>InputCell</code>、<code>Recycler</code>。</p>
+<blockquote><code>Recycler</code> 必须配合 <code>data</code> + <code>itemBinder</code> 使用；单独写类型只会建出空容器。</blockquote>
+<h4 id="sec-120">数据绑定与条件可见（<code>bind</code> / <code>visibleIf</code>）</h4>
+<pre><code class="lang-json">{ &quot;type&quot;: &quot;Label&quot;, &quot;bind&quot;: &quot;title&quot; }
+{ &quot;type&quot;: &quot;Label&quot;, &quot;visibleIf&quot;: { &quot;field&quot;: &quot;mode&quot;, &quot;equals&quot;: &quot;advanced&quot; } }</code></pre>
+<p>宿主侧：</p>
+<pre><code class="lang-cpp">auto data = std::make_shared&lt;bklv::JsonData&gt;();
+data-&gt;set(&quot;title&quot;, &quot;Hello&quot;);
+data-&gt;set(&quot;mode&quot;, &quot;basic&quot;);
+
+bklv::JsonBindingRuntime runtime;
+auto* root = bklv::createViewFromThemeWithData(&quot;json_binding&quot;, data, &amp;runtime);
+
+data-&gt;set(&quot;mode&quot;, &quot;advanced&quot;);
+runtime.refresh();   // 重新写属性 + 可见性</code></pre>
+<ul><li><code>bind</code> 把字段写到该类型的<strong>主属性</strong>（Label → <code>text</code>，Image → <code>src</code>），也可用 <code>bindTo</code> 指定；</li><li><code>visibleIf</code> 字段缺失或为假 → <code>GONE</code>；<code>equals</code> 时做字符串比较；</li><li><code>JsonBindingRuntime</code> 只持有 <code>View*</code>，必须在视图树销毁前销毁；</li></ul>
+<h4 id="sec-121">循环生成（<code>foreach</code>）</h4>
+<pre><code class="lang-json">{
+  &quot;type&quot;: &quot;Box&quot;,
+  &quot;foreach&quot;: &quot;items&quot;,
+  &quot;children&quot;: [
+    { &quot;type&quot;: &quot;Label&quot;, &quot;bind&quot;: &quot;item&quot; }
+  ]
+}</code></pre>
+<pre><code class="lang-cpp">data-&gt;setList(&quot;items&quot;, { &quot;A&quot;, &quot;B&quot;, &quot;C&quot; });
+auto* root = createViewFromThemeWithData(&quot;json_foreach&quot;, data, &amp;runtime);</code></pre>
+<ul><li><code>foreach</code> 只写在<strong>容器</strong>节点上，重复的是它的 <code>children</code>；</li><li>列表来自 <code>JsonData::setList(field, vector&lt;string&gt;)</code>；</li><li>循环内 <code>bind:&quot;item&quot;</code> / <code>visibleIf:&quot;item&quot;</code> 使用当前项；</li><li>需要数据源，<code>createViewFromTheme</code>（不带数据）会报错；</li><li>列表仍是字符串数组；对象数组/嵌套循环未实现，复杂列表用 <code>Recycler</code>。</li></ul>
+<h4 id="sec-122">JSON 行为（<code>onClick</code>）</h4>
+<p><code>Button</code> 与 <code>Cell</code> 支持：</p>
+<pre><code class="lang-json">{ &quot;type&quot;: &quot;Button&quot;, &quot;text&quot;: &quot;保存&quot;, &quot;onClick&quot;: &quot;save&quot; }</code></pre>
+<ul><li><code>onClick</code> 只写<strong>行为名</strong>，实现在 C++：</li></ul>
+<pre><code class="lang-cpp">bklv::registerJsonAction(&quot;save&quot;, [](bklv::View&amp; view) { /* ... */ });</code></pre>
+<ul><li>名字未注册时，点击会写 error 日志（不崩）；</li><li>与 <code>Recycler</code> 的 <code>data</code> / <code>itemBinder</code> 同一分工：结构归 JSON，行为归 C++。</li></ul>
+<h4 id="sec-123">容器额外属性（<code>Box</code> / <code>Row</code> / 各类面板都继承，定义在 <code>Box::attributes()</code>）</h4>
 <table><thead><tr><th>键</th><th>类型</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>axis</code></td><td>ENUM</td><td><code>row</code> / <code>column</code> —— 主轴方向</td></tr>
 <tr><td><code>direction</code></td><td>ENUM</td><td><code>inherit</code>(默认) / <code>ltr</code> / <code>rtl</code></td></tr>
@@ -1419,7 +1464,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>padding</code> <code>paddingTop</code> <code>paddingRight</code> <code>paddingBottom</code> <code>paddingLeft</code></td><td>NUMBER</td><td>内边距（像素量）；单边写在后会覆盖 <code>padding</code></td></tr>
 </tbody></table>
 <blockquote><strong><code>order</code> 不支持</strong>：这套 Yoga 没有对应接口，JSON 里写它只会得到&quot;未知属性&quot;警告。 要在视觉上换顺序就改 <code>children</code> 里的书写顺序。</blockquote>
-<h4 id="sec-121">公共属性（所有控件，定义在 <code>View::attributes()</code>）</h4>
+<h4 id="sec-124">公共属性（所有控件，定义在 <code>View::attributes()</code>）</h4>
 <table><thead><tr><th>键</th><th>类型</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>width</code> <code>height</code> <code>minWidth</code> <code>minHeight</code> <code>maxWidth</code> <code>maxHeight</code></td><td>SIZE</td><td>长度语法（含 <code>&quot;auto&quot;</code> / <code>&quot;50%&quot;</code>）</td></tr>
 <tr><td><code>margin</code> <code>marginTop</code> <code>marginRight</code> <code>marginBottom</code> <code>marginLeft</code></td><td>NUMBER</td><td>外边距（像素量，随 uiScale）</td></tr>
@@ -1433,7 +1478,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>clipsToBounds</code></td><td>BOOL</td><td>裁掉自己和子节点超出本控件矩形的部分</td></tr>
 </tbody></table>
 <blockquote><strong>定位原语</strong>：<code>absolute</code> 的子节点<strong>不参与父的 flex 排布</strong>——不占主轴空间，兄弟节点的位置 不受它影响（但它仍在 Yoga 树里，父容器尺寸变了照样重算）。四边偏移相对<strong>父容器的外框</strong>算 （父的 <code>padding</code> <strong>不</strong>参与基准，百分比也按父的外框尺寸算）： 数字是像素、<code>&quot;50%&quot;</code> 是对应边长的百分比（父宽 400 时 <code>left: &quot;50%&quot;</code> → x = 200； <code>right: &quot;50%&quot;</code> → x = 400 - 200 - 自身宽）、<code>&quot;@style/metric.a.b&quot;</code> 取主题数值 （视图 JSON 的 SIZE <strong>只认 <code>@style/</code></strong>，<code>@theme/</code> 是颜色用的）。 四边可以只写需要的那几条。值不是长度（<code>&quot;abc&quot;</code>）、百分比越界（<code>&quot;120%&quot;</code>）、 枚举值不认识（<code>&quot;position&quot;: &quot;relative-ish&quot;</code>）都会<strong>建不出控件</strong>并报错（见第 6 节）。</blockquote>
-<h4 id="sec-122"><code>Box</code> / <code>Row</code> 追加</h4>
+<h4 id="sec-125"><code>Box</code> / <code>Row</code> 追加</h4>
 <table><thead><tr><th>键</th><th>取值</th></tr></thead><tbody>
 <tr><td><code>axis</code></td><td><code>row</code> / <code>column</code>（默认）</td></tr>
 <tr><td><code>direction</code></td><td><code>inherit</code>(默认) / <code>ltr</code> / <code>rtl</code></td></tr>
@@ -1443,14 +1488,14 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>gap</code> <code>gapRow</code> <code>gapColumn</code></td><td>NUMBER</td></tr>
 <tr><td><code>padding</code> <code>paddingTop</code> <code>paddingRight</code> <code>paddingBottom</code> <code>paddingLeft</code></td><td>NUMBER</td></tr>
 </tbody></table>
-<h4 id="sec-123"><code>AppearanceView</code> / <code>Button</code> 追加（内容槽）</h4>
+<h4 id="sec-126"><code>AppearanceView</code> / <code>Button</code> 追加（内容槽）</h4>
 <table><thead><tr><th>键</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td>TEXT：文字（Button 用这个改按钮文字）</td></tr>
 <tr><td><code>icon</code></td><td>TEXT：<strong>图标字形</strong>，写 <code>@icon/star</code>（名字）或 <code>@icon/U+E000</code>（码位）</td></tr>
 <tr><td><code>info</code></td><td>TEXT：右侧信息文字</td></tr>
 <tr><td><code>iconFont</code></td><td>ENUM：<code>material</code> / <code>switch</code> —— 图标字形跟哪套字体配套（同一码位在两套字体里是不同图标）</td></tr>
 </tbody></table>
-<h4 id="sec-124"><code>Label</code> 追加</h4>
+<h4 id="sec-127"><code>Label</code> 追加</h4>
 <table><thead><tr><th>键</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>text</code></td><td>TEXT（也可写 <code>@i18n/x</code>）</td></tr>
 <tr><td><code>fontSize</code></td><td>NUMBER</td></tr>
@@ -1459,7 +1504,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>lineHeight</code></td><td>NUMBER（行高系数）</td></tr>
 <tr><td><code>horizontalAlign</code> <code>verticalAlign</code></td><td>ENUM：<code>left</code> / <code>center</code> / <code>right</code>，<code>top</code> / <code>center</code> / <code>bottom</code></td></tr>
 </tbody></table>
-<h4 id="sec-125"><code>Image</code> 追加</h4>
+<h4 id="sec-128"><code>Image</code> 追加</h4>
 <table><thead><tr><th>键</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>src</code></td><td>RESOURCE：图片路径（也可写 <code>@res/x</code>）</td></tr>
 <tr><td><code>scalingType</code></td><td>ENUM：<code>fit</code> / <code>fill</code> / <code>stretch</code> / <code>center</code>，<strong>默认 <code>fit</code> = 原比例</strong></td></tr>
@@ -1470,12 +1515,12 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 </tbody></table>
 <p><code>scale</code> / <code>offsetX</code> / <code>offsetY</code> 在 <code>scalingType: &quot;fill&quot;</code> 下<strong>无效</strong>（fill 靠自己铺满 + uv 裁切， 没有可解释的缩放/平移语义），写了会打一条警告；要缩放/平移就改用 <code>fit</code> / <code>stretch</code> / <code>center</code>。 平移可以把自己盒外的内容画出来，需要裁剪就套一层裁剪容器（<code>ScrollingFrame</code> / 带裁剪的容器）。</p>
 <blockquote>✅ <strong>枚举拼写已统一</strong>：两套 JSON 都接受 camelCase 与 snake_case，<strong>大小写、<code>_</code>、<code>-</code> 都不敏感</strong> （<code>flexEnd</code> == <code>flex_end</code> == <code>FLEX_END</code> == <code>Flex-End</code>）。下表列的是标准写法，随便挑一种写都行。</blockquote>
-<h4 id="sec-126">行为与限制</h4>
+<h4 id="sec-129">行为与限制</h4>
 <ul><li><strong>两段式</strong>：<code>ViewTemplate</code>（可缓存、与语言无关）→ <code>instantiate()</code>（解析 <code>@i18n/</code> 等）。</li></ul>
 <p>所以<strong>切语言不会自动重译已有视图</strong>；解析期就替换 <code>@i18n/</code> 会把缓存里的语言烤死，别再那么做。</p>
 <ul><li>路径要写出 <code>resources/</code> 这一层：<code>createFromJSONFile(&quot;resources/views/x.json&quot;)</code>。</li><li>上限：<strong>深度 32 / 节点 4096 / include 栈 32</strong>。</li><li>出错行为：结构错 → 返回 <code>nullptr</code> + 日志；<strong>未知属性只警告</strong>（带拼写建议），不中断。</li><li>跨「创建视图树」的操作必须 RAII（<code>std::unique_ptr&lt;View&gt;</code>），否则中途失败会泄漏半棵树。</li></ul>
 <hr>
-<h3 id="sec-127">三、控件外观 JSON</h3>
+<h3 id="sec-130">三、控件外观 JSON</h3>
 <p>文件放在 <code>resources/theme/&lt;主题&gt;/base/</code>（基础控件：单个容器/元素）或 <code>base/widget/</code> （二级控件：引用 base 组合出来的），<strong>必须</strong>在该主题 <code>theme.json</code> 的 <code>files[]</code> 里登记 （<strong>不扫目录</strong>，没登记 = 不生效 + 一条 warn）。</p>
 <p><strong>外观名 = 相对主题根的路径去掉扩展名</strong>：<code>base/button.json</code> → <code>&quot;base/button&quot;</code>； 变体是后缀：<code>base/button.json</code> + 变体 <code>primary</code> → 文件 <code>base/button.primary.json</code>。</p>
 <p>一份外观 = 三段，<code>layers</code> 必填（纯布局控件写 <code>&quot;layers&quot;: []</code>），另有一个可选的 <code>import</code>：</p>
@@ -1485,12 +1530,12 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
   &quot;layers&quot;:  [ { &quot;op&quot;: &quot;rect&quot;, &quot;…&quot;: &quot;绘制结构，按数组顺序画&quot; } ],
   &quot;states&quot;:  { &quot;focused&quot;: { &quot;bg.fill&quot;: { &quot;to&quot;: &quot;#ffffff&quot;, &quot;duration&quot;: 120 } } }
 }</code></pre>
-<h4 id="sec-128"><code>import</code>：外观引用外观</h4>
+<h4 id="sec-131"><code>import</code>：外观引用外观</h4>
 <ul><li>值可以是字符串或字符串数组；<strong>逐字段合并，当前文件优先</strong>。</li><li>对象（<code>box</code> / <code>states</code> / 单个 state）递归合并；<code>layers</code> 按 <code>id</code> 合并</li></ul>
 <p>（同 id 的层合并字段、子赢；新 id 追加在后面）；其它数组整体替换；标量覆盖。</p>
 <ul><li>循环引用 / 链深 &gt; 8 / 父级不存在 → <strong>编译失败</strong>（错误信息指出是哪个 import）。</li><li>一行里放多个内容层时：层不是流式布局（用 <code>inset</code> 排队），并给 box 写</li></ul>
 <p><code>&quot;measureContent&quot;: &quot;sum&quot;</code> 让固有宽度按行求和（默认取&quot;最宽的那一层&quot;）。</p>
-<h4 id="sec-129"><code>box</code>：盒模型 / 布局</h4>
+<h4 id="sec-132"><code>box</code>：盒模型 / 布局</h4>
 <table><thead><tr><th>键</th><th>取值</th></tr></thead><tbody>
 <tr><td><code>width</code> <code>height</code> <code>minWidth</code> <code>minHeight</code></td><td>数字 / <code>&quot;auto&quot;</code> / <code>&quot;50%&quot;</code> / 主题引用</td></tr>
 <tr><td><code>padding</code> <code>margin</code></td><td>单值 或 <code>[上, 右, 下, 左]</code></td></tr>
@@ -1503,7 +1548,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td><code>cornerRadius</code> <code>borderThickness</code></td><td>数字</td></tr>
 </tbody></table>
 <p><strong>只套用写了的字段</strong> —— 空 <code>box</code> 不会冲掉控件在代码里的默认值。 反过来，代码里<strong>显式</strong>设过的值（<code>setCornerRadius(r, explicit=true)</code>）外观覆盖不了。</p>
-<h4 id="sec-130"><code>layers</code>：绘制结构</h4>
+<h4 id="sec-133"><code>layers</code>：绘制结构</h4>
 <p>通用字段：</p>
 <table><thead><tr><th>键</th><th>适用 op</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>op</code></td><td>全部</td><td><code>rect</code>(默认) / <code>text</code> / <code>image</code> / <code>shadow</code> / <strong><code>glass</code></strong> / <code>custom</code></td></tr>
@@ -1536,7 +1581,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <p>不透明高亮底会把内容盖住（开关/单选图形消失过）。</p>
 <ol><li><code>shadow</code> 层必须在本控件的底色<strong>之前</strong>。</li><li><code>hlGlow</code> / <code>hlBorder</code> 排在最后（画在内容之上）。</li></ol>
 <p><code>custom</code> 层的<strong>内容留给 C++</strong>（<code>AppearanceView::drawCustomLayer</code>）：进度弧、滑块轨道、 开关图形这类语义绘制不该塞进 JSON，否则等于写解释器。</p>
-<h4 id="sec-131">层 import：<code>{ &quot;import&quot;: &quot;base/layer/xxx&quot; }</code></h4>
+<h4 id="sec-134">层 import：<code>{ &quot;import&quot;: &quot;base/layer/xxx&quot; }</code></h4>
 <p><code>layers</code> 数组里可以放一条<strong>只有 import</strong> 的条目（没有 <code>op</code>），它会<strong>就地展开</strong>成那个外观的 <code>layers</code> 数组（它的 <code>box</code> / <code>states</code> / <code>children</code> 不会带进来），后面的层照常排在它之后：</p>
 <pre><code class="lang-json">&quot;layers&quot;: [
   { &quot;import&quot;: &quot;base/button/frame&quot; },      // 展开成 shadow / bg / hlBg
@@ -1546,7 +1591,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <p>子级再写 <code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: true }</code> 时<strong>合成一条</strong>（子级参数覆盖父级）， 不会展开两次变成重复 id。所以“继承基外观的 states + 覆盖某个 bundle 的参数”可以直接写。</p>
 <ul><li><strong>单层 bundle 可以就地覆盖</strong>：import 旁边的字段会合并到那一层，例如</li></ul>
 <p><code>{ &quot;import&quot;: &quot;base/layer/shadow&quot;, &quot;cutout&quot;: false, &quot;offset&quot;: [0, 8] }</code>； 也可以改 <code>id</code> 在同一外观里叠两层阴影。<strong>多层 bundle 带覆盖字段会报错</strong>（语义不明确）。</p>
-<h4 id="sec-132"><code>states</code>：状态动效</h4>
+<h4 id="sec-135"><code>states</code>：状态动效</h4>
 <p>key 是 <code>&quot;&lt;层 id&gt;.&lt;属性名&gt;&quot;</code>，值是一个补间目标：</p>
 <pre><code class="lang-json">&quot;states&quot;: {
   &quot;focused&quot;: {
@@ -1561,7 +1606,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 </tbody></table>
 <p>可用属性名：<code>fill</code> <code>stroke</code> <code>color</code>/<code>textColor</code> <code>strokeWidth</code> <code>radius</code> <code>opacity</code> <code>offsetX</code> <code>offsetY</code> <code>insetTop</code> <code>insetRight</code> <code>insetBottom</code> <code>insetLeft</code> <code>fontSize</code> <code>feather</code> <code>spread</code>。</p>
 <p>可用 easing：<code>linear</code>、<code>quadraticIn/Out/InOut</code>、<code>cubicIn/Out/InOut</code>、<code>quarticOut</code>、 <code>quinticOut</code>、<code>sinusoidalIn/Out/InOut</code>、<code>exponentialOut</code>、<code>circularOut</code>、<code>backOut</code>、 <code>backInOut</code>、<code>bounceOut</code>、<code>elasticOut</code>、<code>stepped</code>。</p>
-<h4 id="sec-133">分组目标与 <code>self</code>（视图级通道）</h4>
+<h4 id="sec-136">分组目标与 <code>self</code>（视图级通道）</h4>
 <p>除了上面的扁平写法，每个状态还可以按<strong>目标</strong>分组；<code>self</code> 表示控件自身， 走<strong>视图级通道</strong>（整棵子树一起动的绘制期变换）：</p>
 <pre><code class="lang-json">&quot;states&quot;: {
   &quot;focused&quot;: {
@@ -1574,17 +1619,17 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <p><code>rotate</code> / <code>skewX</code> / <code>skewY</code>（位移乘缩放，其余是系数/弧度不缩放）；</p>
 <ul><li>层目标里的属性名与扁平写法完全一致；</li><li>旧的 <code>&quot;bg.fill&quot;: {...}</code> 继续支持（静默兼容，不告警）；</li><li>多个状态同时激活时<strong>后激活的赢</strong>；状态关闭时平滑回默认值（120ms）；</li><li>视图通道是绘制期变换：<strong>不重排、不占位</strong>，命中区域不跟随移动。</li></ul>
 <p>状态名不限于内置的 <code>focused</code> / <code>pressed</code> / <code>disabled</code>；控件自定义的（如 Cell 的 <code>selected</code>） 由控件自己触发。重算目标时会先撤同一通道正在跑的补间。</p>
-<h4 id="sec-134">变体与回退</h4>
+<h4 id="sec-137">变体与回退</h4>
 <ul><li><strong>变体</strong>：<code>setAppearanceVariant(&quot;sidebar&quot;)</code> → 读 <code>&lt;控件名&gt;.sidebar.json</code></li></ul>
 <p>（<code>tab_cell.sidebar.json</code>、<code>rectangle.card.json</code>、<code>button.primary.json</code> 都是这么来的）。 同一控件要多套尺寸就加变体文件，别在代码里改高度。</p>
 <ul><li><strong>回退链</strong>：当前主题 → <code>default</code> 主题 → 找不到文件时给空外观 + 一条 warn（不崩）。</li><li><strong>编译失败</strong>：<code>op</code> 不认识、<code>states</code> 引用了不存在的层、<code>@theme/</code> key 不存在、</li></ul>
 <p>缺 <code>layers</code> → 打 <code>error</code> 日志并返回空外观。<strong>不会静默回退成洋红/0</strong>。</p>
 <hr>
-<h3 id="sec-135">四、主题 JSON</h3>
-<h4 id="sec-136"><code>resources/theme/themes.json</code></h4>
-<pre><code class="lang-json">{ &quot;default&quot;: &quot;default&quot;, &quot;available&quot;: [&quot;default&quot;, &quot;ios&quot;] }</code></pre>
-<h4 id="sec-137"><code>&lt;主题&gt;/theme.json</code></h4>
-<pre><code class="lang-json">{ &quot;name&quot;: &quot;default&quot;, &quot;version&quot;: 1, &quot;colorScheme&quot;: &quot;dark&quot;,
+<h3 id="sec-138">四、主题 JSON</h3>
+<h4 id="sec-139"><code>resources/theme/themes.json</code></h4>
+<pre><code class="lang-json">{ &quot;default&quot;: &quot;default&quot;, &quot;available&quot;: [&quot;default&quot;, &quot;glass&quot;] }</code></pre>
+<h4 id="sec-140"><code>&lt;主题&gt;/theme.json</code></h4>
+<pre><code class="lang-json">{ &quot;name&quot;: &quot;default&quot;, &quot;schemaVersion&quot;: 1, &quot;version&quot;: 1, &quot;sound&quot;: &quot;sound.json&quot;, &quot;colorScheme&quot;: &quot;dark&quot;,
   &quot;author&quot;: &quot;beiklive&quot;, &quot;description&quot;: &quot;默认深色主题&quot;,
   &quot;files&quot;: [&quot;tokens/colors.json&quot;, &quot;tokens/metrics.json&quot;,
             &quot;base/button.json&quot;, &quot;base/widget/sidebar.json&quot;, &quot;view/page_json.json&quot;] }</code></pre>
@@ -1597,7 +1642,46 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <ul><li>查找顺序：当前主题 → default 主题 → 代码兜底（<code>trigger</code>）；</li><li>单个 Dropdown 仍可用代码覆盖：<code>dd-&gt;setPlacement(DropdownPlacement::CENTER)</code>，</li></ul>
 <p>或视图 JSON 里写 <code>&quot;placement&quot;: &quot;center&quot;</code>；</p>
 <ul><li>想让&quot;居中主题&quot;所有下拉都居中，只改这一行即可，不用改任何 C++。</li></ul>
-<h4 id="sec-138"><code>&lt;主题&gt;/colors.json</code></h4>
+<h4 id="sec-141">JSON Schema 与版本</h4>
+<p><code>docs/schema/</code> 提供四类文件的 JSON Schema（draft-07）：</p>
+<ul><li><code>view.schema.json</code></li><li><code>appearance.schema.json</code></li><li><code>theme.schema.json</code></li><li><code>sound.schema.json</code></li><li><code>i18n.schema.json</code></li></ul>
+<p>文件可在顶层写 <code>$schema</code> 指向它们（<code>$</code> 开头的键一律当元数据忽略）。 <code>theme.json</code> 另有 <code>schemaVersion</code>（整数，当前为 <code>1</code>），由 <code>ThemeData::getSchemaVersion()</code> 读取；<code>sound</code> 可指定主题内的音效文件名（缺省 <code>sound.json</code>）。 Schema 目前用于编辑器/外部校验，<strong>运行期仍以解析器报错为准</strong>。</p>
+<h4 id="sec-142">外观契约：<code>requires</code></h4>
+<p>代码需要的内容槽/几何层，可以在外观 JSON 里显式声明（<strong>只能加严，不能替代代码契约</strong>）：</p>
+<pre><code class="lang-json">{
+  &quot;layers&quot;: [
+    { &quot;op&quot;: &quot;text&quot;, &quot;id&quot;: &quot;text&quot;, &quot;data_id&quot;: &quot;text&quot; }
+  ],
+  &quot;requires&quot;: {
+    &quot;content&quot;: [&quot;text&quot;],
+    &quot;layers&quot;: [&quot;bg&quot;]
+  }
+}</code></pre>
+<ul><li><code>requires.content</code>：必须存在 <code>op=text</code> 且 <code>data_id</code> 等于该名字的层；</li><li><code>requires.layers</code>：必须存在同 <code>id</code> 的层（不校验 op）；</li><li>校验发生在 <code>import</code> 合并与编译之后；失败会写 error 日志，</li></ul>
+<p><code>validateThemeAppearances()</code> 返回失败；</p>
+<ul><li>代码侧还注册了内置契约（如 <code>base/widget/button.text</code> 必须有 <code>text</code> 槽、</li></ul>
+<p><code>base/slider/slider</code> 必须有 <code>track/fill/knob/geometry</code>、 <code>base/hint_item</code> 需要 <code>icon</code>/<code>label</code>、<code>base/header_icon</code> 需要 <code>icon</code>、 <code>base/dropdown_item</code> 与 <code>base/text_field</code> 需要 <code>text</code>）。 内容槽既可以是 <code>op=text</code>，也可以是 <code>op=image</code>（图标槽）。JSON 的 <code>requires</code> 与内置契约取并集，不能放宽；</p>
+<ul><li>glass 变体自动继承基名契约（<code>button.text.glass</code> → <code>button.text</code>）。</li></ul>
+<h4 id="sec-143"><code>&lt;主题&gt;/sound.json</code>：全局 UI 音效</h4>
+<p>主题根下的独立文件（<strong>不写进 <code>files[]</code></strong>，它不是控件外观）。缺了回退 default 主题。</p>
+<pre><code class="lang-json">{
+  &quot;triggers&quot;: {
+    &quot;click&quot;:      &quot;@res/audio/click.wav&quot;,
+    &quot;focus&quot;:      &quot;@res/audio/focus.wav&quot;,
+    &quot;focusError&quot;: &quot;@res/audio/focus_error.wav&quot;,
+    &quot;back&quot;:       &quot;@res/audio/back.wav&quot;,
+    &quot;clickError&quot;: &quot;@res/audio/click_error.wav&quot;
+  }
+}</code></pre>
+<ul><li><strong>音效跟随主题目录</strong>：<code>sound.json</code> 从当前主题目录读取（<code>ThemeData::getDirectory()</code>），</li></ul>
+<p>主题用 <code>loadThemeIntoGlobalFromDirectory()</code> 装到自定义路径时同样生效；缺文件回退 default。</p>
+<ul><li>路径三种写法：</li><li><code>@res/audio/x.wav</code>：相对 <code>resources/</code>（全局素材）；</li><li><code>@theme/audio/x.wav</code>：相对<strong>当前主题目录</strong>（主题自带素材）；</li><li>相对路径（<code>audio/x.wav</code>）：同样相对当前主题目录；绝对路径原样使用。</li><li>支持单声道/立体声 PCM WAV（8/16/24/32-bit、float32），运行期重采样到 48kHz 并缓存；</li><li>触发点大小写/下划线不敏感；不认识的触发点只警告；</li><li>文件缺失、解码失败 → 回退到代码合成音（现有 <code>Sound</code>），不影响 UI；</li><li><strong>控件级覆盖</strong>：外观 JSON 的 <code>states.click.sound</code> 优先于主题表：</li></ul>
+<pre><code class="lang-json">// base/widget/button.text.json
+&quot;states&quot;: {
+  &quot;click&quot;: { &quot;sound&quot;: &quot;@res/audio/button_alt.wav&quot; }
+}</code></pre>
+<p><code>click</code> 是<strong>事件</strong>而不是视觉状态：解析器只取 <code>sound</code>，不会生成补间。 覆盖路径同样走缓存；找不到文件时回退主题表。</p>
+<h4 id="sec-144"><code>&lt;主题&gt;/colors.json</code></h4>
 <p>点是分层分隔符：<code>&quot;button&quot;: { &quot;primaryBg&quot;: &quot;#...&quot; }</code> → <code>@theme/color.button.primaryBg</code>。 值只能是 <code>#RRGGBB</code> / <code>#RRGGBBAA</code>。<strong>不支持 key 之间互相引用</strong>，语义键仍是字面量。</p>
 <p>第一组 <code>common</code> 是通用调色板 + 原始色值：</p>
 <table><thead><tr><th>组</th><th>键</th></tr></thead><tbody>
@@ -1606,10 +1690,10 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td>半透明</td><td><code>overlay</code>（模态遮罩）<code>divider</code>（1px 分割线）<code>shadow</code>（阴影基准）</td></tr>
 <tr><td>其它</td><td><code>focusRing</code> <code>textMuted</code></td></tr>
 </tbody></table>
-<h4 id="sec-139"><code>&lt;主题&gt;/metrics.json</code></h4>
+<h4 id="sec-145"><code>&lt;主题&gt;/metrics.json</code></h4>
 <p>同构的数值表：<code>&quot;cell&quot;: { &quot;height&quot;: 70 }</code> → <code>@theme/metric.cell.height</code>。 <code>metric.*</code> 取值时乘 <code>uiScale</code>；<code>metric.anim.*</code>（毫秒）与 <code>metric.font.lineHeight</code>（系数） 是例外，不乘。</p>
 <hr>
-<h3 id="sec-140">五、文案 JSON</h3>
+<h3 id="sec-146">五、文案 JSON</h3>
 <p><code>resources/i18n/&lt;locale&gt;.json</code>，嵌套对象，key 用 <code>/</code> 取：</p>
 <pre><code class="lang-json">{
   &quot;$files&quot;: [&quot;pages&quot;],
@@ -1623,7 +1707,18 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td>装载时机</td><td><code>App::App()</code>，早于视图树构建；<strong>切语言不会自动重译已有视图</strong></td></tr>
 </tbody></table>
 <hr>
-<h3 id="sec-141">六、枚举与字段的容错规则</h3>
+<h3 id="sec-147">五·补、JSON 能力边界（明确不做/只做子集）</h3>
+<p>以下不是“漏实现”，而是当前架构的明确边界，写在这里避免误用：</p>
+<table><thead><tr><th>能力</th><th>现状</th><th>替代</th></tr></thead><tbody>
+<tr><td><code>focusable</code> / <code>tabIndex</code></td><td>不提供：可聚焦性由控件类决定，方向导航按树结构与几何位置</td><td>调整 <code>children</code> 顺序/布局，或在 C++ 自定义控件</td></tr>
+<tr><td>混合模式（blend）</td><td>不提供：ImDrawList 没有通用混合状态</td><td><code>opacity</code> / <code>glass</code> / 颜色半透明</td></tr>
+<tr><td>富文本 / 行内图标</td><td>不提供：Label 只画纯文本</td><td>多个 Label/图标层组合，或自定义 <code>custom</code> 层</td></tr>
+<tr><td>九宫格 + 圆角</td><td>同时写 <code>slice</code> 与 <code>radius</code> 时圆角优先，九宫格不生效</td><td>二选一；需要圆角九宫格用自定义层</td></tr>
+<tr><td><code>foreach</code></td><td>只支持字符串数组，不支持对象数组/嵌套循环</td><td>复杂列表用 <code>Recycler</code> + 绑定函数</td></tr>
+<tr><td>数据绑定</td><td>单向：宿主 <code>JsonData</code> → 视图；不支持视图回写/自动侦听</td><td>事件回调里手动 <code>set</code> + <code>refresh()</code></td></tr>
+<tr><td>vars 表达式</td><td>只支持数值 <code>+ - * /</code> 与括号</td><td>复杂计算写进 C++ 或主题数值</td></tr>
+</tbody></table>
+<h3 id="sec-148">六、枚举与字段的容错规则</h3>
 <table><thead><tr><th>规则</th><th>说明</th></tr></thead><tbody>
 <tr><td>拼写宽容</td><td>枚举值忽略大小写与 <code>_</code> / <code>-</code>：<code>flexEnd</code> / <code>flex_end</code> / <code>FLEX_END</code> / <code>Flex-End</code> 等价（视图描述 JSON 与外观 JSON 一样）</td></tr>
 <tr><td>视图描述 JSON 里拼错</td><td><strong>不建这个控件</strong> + 可读报错：`JSON 视图 &lt;string&gt;/justifyContent: 期望 枚举，可选值：flexStart</td><td>center</td><td>flexEnd</td><td>…，得到 &quot;spacebetwen&quot;`</td></tr>
@@ -1648,7 +1743,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td>层 <code>op</code></td><td><code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>custom</code></td></tr>
 <tr><td><code>easing</code></td><td>见第 3 节清单；拼错时警告并回退 <code>linear</code></td></tr>
 </tbody></table>
-<h3 id="sec-142">七、常见错误与排查</h3>
+<h3 id="sec-149">七、常见错误与排查</h3>
 <table><thead><tr><th>现象</th><th>原因</th></tr></thead><tbody>
 <tr><td>外观改了没反应</td><td>文件没登记进 <code>theme.json</code> 的 <code>files[]</code>（日志有 <code>主题里没有控件外观 &quot;x&quot;</code>）</td></tr>
 <tr><td>日志 <code>控件外观编译失败：… 缺少 layers 数组</code></td><td><code>layers</code> 是必填，纯 box 的外观写 <code>&quot;layers&quot;: []</code></td></tr>
@@ -1660,7 +1755,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <tr><td>枚举写错</td><td>视图描述 JSON 会<strong>建不出控件</strong>并在日志里列可选值；外观 JSON 只警告并保持原值（见第 6 节）</td></tr>
 <tr><td>切语言界面没变</td><td>文案在控件构造时已解析成字符串，需要重建视图（见 AGENTS）</td></tr>
 </tbody></table>
-<h4 id="sec-143">渐变（rect 的 <code>gradient</code>）</h4>
+<h4 id="sec-150">渐变（rect 的 <code>gradient</code>）</h4>
 <pre><code class="lang-json">{ &quot;id&quot;: &quot;bg&quot;, &quot;op&quot;: &quot;rect&quot;, &quot;radius&quot;: 10,
   &quot;gradient&quot;: {
     &quot;type&quot;: &quot;linear&quot;,
@@ -1675,7 +1770,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 </tbody></table>
 <p>报错规则（都不静默降级）：<code>at</code> 越界、<code>at</code> 不递增、停靠点数量不在 2~4、停靠点缺 <code>color</code>、 <code>type</code> 不认识 —— 都会带上「是哪个 stop / 当前值」的提示。</p>
 <p>与 <code>import</code> 合并时：<code>gradient</code> 是对象按字段合并，<code>stops</code> 是数组<strong>整体替换</strong>。 与 <code>fill</code> 的关系：写了 <code>gradient</code> 以它为准；<code>fill</code> 继续服务状态覆盖（状态里写 <code>fill</code> 的层不带渐变）。 <strong>渐变不做补间</strong>（不是标量通道），也不支持给 <code>stroke</code> 加渐变 —— 见 <a href="rect-gradient.md"><code>rect-gradient.md</code></a>。</p>
-<h4 id="sec-144">侧栏面板（<code>base/widget/sidebar.json</code>）</h4>
+<h4 id="sec-151">侧栏面板（<code>base/widget/sidebar.json</code>）</h4>
 <p>侧栏的面板观感<strong>只由 <code>box</code> 段决定</strong>（<code>Sidebar::applyPanelLook()</code> 走 <code>applyWidgetBox</code>）：</p>
 <pre><code class="lang-json">&quot;box&quot;: {
   &quot;width&quot;: &quot;@theme/metric.sidebar.width&quot;,
@@ -1690,7 +1785,7 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <ul><li><code>layers</code> 段在这里<strong>不参与绘制</strong>，但<strong>必须存在</strong>（少了会报「外观 JSON 缺少 layers 数组」）</li><li>面板投影没有对应的 box 字段，由 <code>Sidebar::draw()</code> 用 <code>shadow::drawSoft(..., cutout=true)</code> 补</li><li>条目外观是 <code>base/tab_cell.sidebar.json</code>：<code>icon</code> 层（<code>&quot;data_id&quot;: &quot;icon&quot;</code>，自动用图标字体）+</li></ul>
 <p><code>title</code> 层（<code>inset</code> 让位）+ 选中态的 <code>bg.fill</code> / <code>accent.fill</code> / <code>title.color</code> / <code>icon.color</code></p>
 <ul><li>分组用 <code>Sidebar::addSeparator()</code>（不可聚焦、不进条目索引）</li></ul>
-<h4 id="sec-145">视图过渡（<code>transitions</code>）</h4>
+<h4 id="sec-152">视图过渡（<code>transitions</code>）</h4>
 <p>外观 JSON 的顶层 <code>transitions</code> 段描述<strong>视图生命周期</strong>的动画：<code>enter</code> / <code>exit</code> / <code>show</code> / <code>hide</code>。 和 <code>states</code> 的分工：<code>states</code> 管控件内部状态（选中/聚焦/按下…），<code>transitions</code> 管出现与消失。</p>
 <pre><code class="lang-json">&quot;transitions&quot;: {
   &quot;enter&quot;: {
@@ -1728,9 +1823,9 @@ for (const compile::JsonDiagnostic&amp; d : compile::getJsonDiagnostics())
 <p>由调用方在回调里做（提前设 GONE 动画根本播不出来）</p>
 <ul><li>spec 路径收尾<strong>不复位</strong>（终值就是外观里写的，比如出场停在屏幕外）；预设路径照旧复位</li></ul>
 <p>时间账（解析期算好）：<code>totalMs = max(事件时长, 每条条目 delay + duration)</code>， 调用方拿 <code>totalMs</code> 决定&quot;这段动画播完了&quot;的时机 —— 出场播完才摘页 / 摘弹层，报早了动画会被砍。</p>
-<h3 id="sec-146">扩展图层类型（第三方）</h3>
+<h3 id="sec-153">扩展图层类型（第三方）</h3>
 <p>内置 <code>op</code> 只有 6 种：<code>rect</code> / <code>text</code> / <code>image</code> / <code>shadow</code> / <code>glass</code> / <code>custom</code>。 <strong>别人可以加自己的</strong>，而且<strong>不需要改 <code>bklv/</code> 里任何文件</strong>：写一个文件 + 注册一行， 主题里就能写 <code>&quot;op&quot;: &quot;你的名字&quot;</code>。完整可运行的样例就在本节（<code>stripe</code> 与 <code>quad</code> 两份）。</p>
-<h4 id="sec-147">推荐写法：注册模板 + 参数模式</h4>
+<h4 id="sec-154">推荐写法：注册模板 + 参数模式</h4>
 <pre><code class="lang-cpp">#include &quot;bklv/compile/layer_register.hpp&quot; // registerLayer&lt;T&gt;() 模板
 
 struct StripeLayer
@@ -1757,7 +1852,7 @@ struct StripeLayer
 
 // 在你自己的初始化里调一次（第三方程序就是在 main 里调）
 bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
-<h4 id="sec-148">参数类型（五种）</h4>
+<h4 id="sec-155">参数类型（五种）</h4>
 <table><thead><tr><th>工厂</th><th>JSON 写法</th><th>说明</th></tr></thead><tbody>
 <tr><td><code>LayerParam::number(name, def, label)</code></td><td><code>0.5</code></td><td>数字，<strong>不缩放</strong>（系数 / 角度 / 比例）</td></tr>
 <tr><td><code>LayerParam::pixels(name, def, label)</code></td><td><code>16</code> / <code>&quot;@style/metric.x&quot;</code></td><td>像素量，按 720p 乘 <code>uiScale</code></td></tr>
@@ -1778,15 +1873,15 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
     // ctx.layer.fill / .radius / .inset … 是引擎白送的通用字段（见下）
 }</code></pre>
 <p>**<code>void*</code> 是有意的**：<code>compile/</code> 不认识 ImGui 与 widgets，所以上下文里的 <code>drawList</code>（= <code>ImDrawList*</code>）与 <code>view</code>（= <code>AppearanceView*</code>）用不透明指针传， 扩展层自己转回去。</p>
-<h4 id="sec-149">引擎白送的字段（任何 op 都能用）</h4>
+<h4 id="sec-156">引擎白送的字段（任何 op 都能用）</h4>
 <p><code>fill</code> / <code>stroke</code> / <code>color</code>(<code>textColor</code>) / <code>strokeWidth</code> / <code>radius</code> / <code>opacity</code> / <code>fontSize</code> / <code>width</code> / <code>height</code> / <code>feather</code> / <code>spread</code> / <code>cutout</code> / <code>inner</code> / <code>inset</code> / <code>offset</code> / <code>gradient</code>， 外加元信息 <code>op</code> / <code>id</code> / <code>data_id</code> / <code>align</code> / <code>valign</code> / <code>scaling</code> —— 全都解析好放在 <code>ctx.layer</code> 上，绘制钩子直接读。完整清单见 <code>compile::engineLayerKeys()</code>。</p>
 <p><strong>别把这些名字再声明成参数</strong>：那样同一层会有两份值（引擎一份、参数槽一份）。注册时会警告。</p>
-<h4 id="sec-150">需要自己的结构参数时（可选 parse 钩子）</h4>
+<h4 id="sec-157">需要自己的结构参数时（可选 parse 钩子）</h4>
 <p>标量 / 颜色 / 枚举都不用写解析代码；只有数组、对象这类结构（像内置 <code>rect</code> 的 <code>gradient</code>） 才要自己写。<code>T</code> 里写了 <code>static parse</code> 就自动挂上（检测惯用法，不用手动赋给 <code>LayerType::parse</code>）：</p>
 <pre><code class="lang-cpp">static bool parse(const Json&amp; node, const ThemeData&amp; theme, AppearanceLayer&amp; out,
                   std::string&amp; error, const std::string&amp; where); // false = 整份外观编译失败</code></pre>
-<h4 id="sec-151">样例二：不规则四边形（多参数 + 钩子自己算动画）</h4>
-<p><code>demo/contrib/quad_layer.cpp</code> 是第二个样例：<strong>四个顶点各自随时间随机游走</strong>， 演示&quot;多参数 + 每帧自己算位置&quot;的写法（<code>stripe</code> 那三个参数是静态的）。</p>
+<h4 id="sec-158">样例二：不规则四边形（多参数 + 钩子自己算动画）</h4>
+<p>第二个样例（<code>quad</code>）是<strong>四个顶点各自随时间随机游走</strong>， 演示&quot;多参数 + 每帧自己算位置&quot;的写法（<code>stripe</code> 那三个参数是静态的）。</p>
 <pre><code class="lang-cpp">static std::vector&lt;bklv::compile::LayerParam&gt; params()
 {
     return {
@@ -1813,21 +1908,21 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p>（确定性、取值有界、相邻时刻连续、四顶点互不相同）。</p>
 <ul><li>幅度夹取要夹<strong>最终位移</strong>：<code>gain</code> 这种&quot;乘在后面的系数&quot;能绕过对 <code>amplitude</code> 的夹取</li></ul>
 <p>（写 <code>gain0: 9</code> 时顶点会飞到层外面）。</p>
-<h4 id="sec-152">三条硬规则</h4>
+<h4 id="sec-159">三条硬规则</h4>
 <ol><li><strong>参数名不许占用引擎保留键</strong>：<code>op</code> / <code>id</code> / <code>width</code> / <code>height</code> / <code>inset</code> / <code>align</code> / <code>valign</code> /</li></ol>
 <p><code>offset</code> / <code>opacity</code> 是层几何与通用属性，引擎会先拿它们算矩形 —— 注册时<strong>直接报错</strong> （内置 6 种豁免）。踩过的后果很隐蔽：样例曾用 <code>width</code> 表示线宽，整个层被做成 3px 宽的条， 画面上只剩左边缘几个毛刺。</p>
 <ol><li><strong>失败要报错，不要静默降级</strong>：参数类型不符、ENUM 没给候选、参数超过 8 个、参数名重复，</li></ol>
 <p>都在注册期或解析期报清楚（解析失败 = 整份外观编译失败并记日志）。</p>
 <ol><li><strong>draw 里不要再查 JSON、不要再查主题</strong>：外观值在编译期就定下来，绘制只读</li></ol>
 <p><code>ctx.layer</code> / <code>ctx.rect</code> / <code>ctx.type</code>（和内置层同一条约定）。</p>
-<h4 id="sec-153">注册之后免费得到</h4>
+<h4 id="sec-160">注册之后免费得到</h4>
 <ul><li><strong>解析</strong>：主题里写 <code>&quot;op&quot;: &quot;stripe&quot;</code> 就能编译，落到 <code>Op::EXTENSION</code> + <code>extensionType</code>；</li></ul>
 <p><strong>没注册过的 op 仍然报错</strong>（不静默放过）</p>
 <ul><li><strong>默认 id</strong>：用你的 <code>idPrefix</code>（<code>stripe0</code> / <code>stripe1</code>），<code>states</code> / <code>transitions</code> 能按 id 寻址</li><li><strong>设计器</strong>：加层菜单、中文名、检查器候选键、参数中文名、ENUM 下拉全部从注册表与参数模式读</li></ul>
 <p>→ 第三方不用改设计器</p>
 <ul><li><strong>绘制</strong>：引擎的 <code>EXTENSION</code> 分支查注册表调你的 <code>draw</code>，并把&quot;矩形 + 圆角 + 有效 alpha&quot;给你</li><li><strong>层序</strong>：内置层之间按 <strong>JSON 书写顺序</strong>（只有阴影、玻璃被提到最前）；声明</li></ul>
 <p><code>DECORATION</code> / <code>OVERLAY</code> 的扩展层会画在所有内置层之上。<strong>不按七档阶梯重排内置层</strong> —— 那会让 121 份发布外观里的 <code>hlGlow</code> / <code>hlBorder</code> 掉到文字下面（见 <code>layerSortRank</code> 的注释）</p>
-<h4 id="sec-154">注意</h4>
+<h4 id="sec-161">注意</h4>
 <ul><li>扩展层<strong>只画，不参与布局</strong>（不能改变控件尺寸或推动兄弟节点）—— 要&quot;能装子节点&quot;的组合</li></ul>
 <p>属于控件级扩展（外观 JSON 的 <code>children</code>），不是 <code>op</code>。</p>
 <ul><li><strong>别把用了扩展 op 的外观放进 <code>resources/theme/default/</code></strong>：那是随库发布的默认主题，</li></ul>
@@ -1836,7 +1931,7 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p>要整主题校验的话，注册要放在校验程序的开头（先注册、再 <code>App::setTheme()</code>）。</p>
 <ul><li>参数<strong>目前不参与 <code>states</code> / <code>transitions</code> 补间</strong>（补间通道是固定的 <code>AppearanceProp</code> 枚举）；</li></ul>
 <p>需要动起来就画在 <code>custom</code> 层里、由控件自己按时间算。</p>
-<h3 id="sec-155">外观里的子节点（<code>children</code>）</h3>
+<h3 id="sec-162">外观里的子节点（<code>children</code>）</h3>
 <p>一份外观可以<strong>自己声明子节点</strong> —— 也就是&quot;<strong>一份外观 = 一个完整控件</strong>&quot;。结构、样式全在 JSON 里， C++ 一行都不用写，也不用新加控件类。</p>
 <pre><code class="lang-json">{
   &quot;box&quot;: { &quot;axis&quot;: &quot;row&quot;, &quot;gap&quot;: 10, &quot;padding&quot;: 12, &quot;alignItems&quot;: &quot;center&quot; },
@@ -1850,7 +1945,7 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
   ]
 }</code></pre>
 <p>上面这份就是 demo 里的 <code>base/children_demo</code>：一张&quot;图标 + 标题 + 副标题&quot;的卡片。</p>
-<h4 id="sec-156">三档节点（互斥，写两个报错）</h4>
+<h4 id="sec-163">三档节点（互斥，写两个报错）</h4>
 <table><thead><tr><th>写法</th><th>建出什么</th></tr></thead><tbody>
 <tr><td><code>&quot;appearance&quot;: &quot;&lt;外观名&gt;&quot;</code></td><td>一个 <code>AppearanceView</code>（名字规则与 <code>AppearanceView</code> 一样，含 <code>.变体</code>）</td></tr>
 <tr><td>只写 <code>&quot;box&quot;</code></td><td>一个纯布局 <code>Box</code>（递归嵌套的载体，想套多深都行）</td></tr>
@@ -1859,13 +1954,13 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p>公共可选键：</p>
 <ul><li><code>&quot;box&quot;</code>：覆盖/追加盒模型字段（<strong>只覆盖写了的字段</strong>，沿用&quot;没写不动&quot;的既有约定）</li><li><code>&quot;children&quot;</code>：递归（<code>ref</code> 节点不能再写，它的子节点写在模板里）</li><li>内容槽：<code>&quot;text&quot;</code> / <code>&quot;icon&quot;</code> / <code>&quot;info&quot;</code> —— 实例化后套到 <code>AppearanceView</code> 的既有槽位上。</li></ul>
 <p><code>icon</code> 支持 <code>&quot;@icon/star&quot;</code> 这种名字（会查字形），也可以直接写字形</p>
-<h4 id="sec-157">与 <code>layers</code> 的本质区别</h4>
+<h4 id="sec-164">与 <code>layers</code> 的本质区别</h4>
 <ul><li><code>layers</code> <strong>不进布局</strong>：只是在这块矩形里画一笔笔（靠 <code>inset</code>/<code>align</code> 手排）</li><li><code>children</code> <strong>进布局</strong>：是真正的子视图，参与 flex 排版、能聚焦、能滚动</li></ul>
 <p>所以：<strong>要&quot;画装饰&quot;用 <code>layers</code>，要&quot;装控件&quot;用 <code>children</code></strong>。</p>
-<h4 id="sec-158">错误规则（全部硬错误，不静默降级）</h4>
+<h4 id="sec-165">错误规则（全部硬错误，不静默降级）</h4>
 <ul><li><code>appearance</code> 与 <code>ref</code> 同时写 -&gt; 报错</li><li>三样都没写 -&gt; 报错（不知道该建什么）</li><li><code>ref</code> 节点再写 <code>children</code> -&gt; 报错（子节点写在模板里）</li><li><strong>嵌套深度上限 16</strong>，超过报错</li><li><strong>循环引用</strong>：A 的子节点里又引用 A（或 A→B→A）-&gt; 报错并停止构建</li><li><code>box</code> 段里不认识的键：按主 <code>box</code> 段的既有行为处理（<code>children</code> 要与 <code>box</code> <strong>平级</strong>，</li></ul>
 <p>写进 <code>box</code> 里不会生效 —— 这一点有测试钉住）</p>
-<h4 id="sec-159">有什么、没什么（当前版本）</h4>
+<h4 id="sec-166">有什么、没什么（当前版本）</h4>
 <p>有：</p>
 <ul><li>三档节点、任意递归、<code>box</code> 覆盖、内容槽、循环与深度保护</li><li>子节点自己的外观由它自己负责（<code>states</code> / <code>transitions</code> 照常用）</li></ul>
 <p>没有（有意留到后面，不是忘了）：</p>
@@ -1873,7 +1968,7 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p>不会扩成树路径</p>
 <ul><li>~~<code>children</code> 的 <code>box</code> 段只认少数几个键~~ <strong>已解决</strong>：它现在与外观主 <code>box</code> 段<strong>共用同一份解析</strong></li></ul>
 <p>（<code>compile/appearance_box.cpp</code>），所以 <code>axis</code> / <code>alignItems</code> / <code>justifyContent</code> / <code>margin</code> / <code>padding</code> / <code>minWidth</code> / 背景 / 圆角 / 边框 / <code>measureContent</code> 等<strong>全套字段都支持</strong>， &quot;只覆盖写了的字段&quot;（<code>hasXxx</code> 标记）的语义也天然一致</p>
-<h3 id="sec-160">Recycler：JSON 描述列表/网格（结构归 JSON，数据与行为归 C++）</h3>
+<h3 id="sec-167">Recycler：JSON 描述列表/网格（结构归 JSON，数据与行为归 C++）</h3>
 <p>三条硬分工（这就是「JSON 只描述容器与 item 的组织方式」）：</p>
 <table><thead><tr><th>谁</th><th>负责</th><th>在哪</th></tr></thead><tbody>
 <tr><td><strong>JSON</strong></td><td>容器类型、<strong>一份</strong> item 模板、列规则、数据源<strong>名字</strong>、绑定函数<strong>名字</strong>、段头模板、预加载数值</td><td>主题 <code>view/*.json</code></td></tr>
@@ -1904,9 +1999,9 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 <p><strong>能力边界（当前）</strong>：<code>columns &gt; 1</code> 已实现（视觉行顶按行内最高项算）； <strong>未知总数</strong>的滚动条长度/焦点策略见 <code>docs/list-incremental-loading-design.md</code>（设计稿，未实现）。</p>
 
 </section>
-<section><h2 id="sec-161">运行期能力</h2>
+<section><h2 id="sec-168">运行期能力</h2>
 
-<h3 id="sec-162">帧预算：界面永不卡，任务可以晚</h3>
+<h3 id="sec-169">帧预算：界面永不卡，任务可以晚</h3>
 <p><code>App::setFrameBudgetMs(4)</code>（默认 4ms）给"可延后工作"一个每帧时间预算：
 后台回调与 delay 到期任务、纹理上传、动图换帧、SVG 栅格化、纹理缓存淘汰 —— 用完就停手、下一帧继续，
 且<b>不丢活</b>（没跑的回调放回队首、到期延迟放回表里）。布局 / update 业务 / 输入 / 绘制不吃预算。</p>
@@ -1914,7 +2009,7 @@ bklv::compile::registerLayer&lt;StripeLayer&gt;();</code></pre>
 // p50 / p95 / p99 / 最坏帧；droppedCount = 超过 16.67ms（60Hz 一帧）的帧数
 // 每个 App::run() 程序退出时还会自动打一行帧时间流水</code></pre>
 
-<h3 id="sec-163">任务与线程池（core/task.hpp）</h3>
+<h3 id="sec-170">任务与线程池（core/task.hpp）</h3>
 <pre><code>// 固定大小线程池（默认 2 worker），回调一定回到主线程执行
 task::run(work, done);
 task::runResult([path] { return decodeImageFile(path.c_str()); },
@@ -1923,7 +2018,7 @@ task::postToMain(callback);              // 工作线程里调用也安全
 task::delay(1000, [] { /* 主线程，1 秒后 */ });
 // 对象先死的情况用 core/alive.hpp 的 AliveFlag（weak_ptr）护栏</code></pre>
 
-<h3 id="sec-164">图片：异步解码 + 背压</h3>
+<h3 id="sec-171">图片：异步解码 + 背压</h3>
 <ul>
 <li><code>Image::setImageFromFileAsync(path)</code>：后台解码（线程池）→ 回主线程上传；<code>setDecodePriority()</code> 越小越先。</li>
 <li><code>pumpDecodeQueue()</code> 按 <code>getDecodeConcurrency()</code>（默认 4）限制在飞解码数；<code>pumpUploads()</code> 按
@@ -1933,7 +2028,7 @@ task::delay(1000, [] { /* 主线程，1 秒后 */ });
 <li><b>帧内同步加载是违规</b>：<code>setImageFromFile()</code> 在帧内被调用会打一条节流警告。</li>
 </ul>
 
-<h3 id="sec-165">输入 → 动作绑定</h3>
+<h3 id="sec-172">输入 → 动作绑定</h3>
 <pre><code>// 键盘 Enter/Space、手柄 A、鼠标点击都汇到同一个动作
 button->setOnClick([this] { this->save(); });
 // 额外挂一个键（hintText 就是底栏提示栏的来源，hidden=true 则不显示）
@@ -1944,7 +2039,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 有模态时只在模态子树内派发。鼠标点击走同一条动作，但默认"只选中不执行"（<code>onPointerAction=false</code>，
 防止点列表项误触发）——Button / Cell / Slider / Dropdown / TabFrame 把它置成了 true。</p>
 
-<h3 id="sec-166">其它常用能力</h3>
+<h3 id="sec-173">其它常用能力</h3>
 <table>
 <thead><tr><th>能力</th><th>入口</th></tr></thead>
 <tbody>
@@ -1954,12 +2049,12 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>i18n</td><td><code>translate("a/b")</code>（或 <code>using namespace bklv::i18n;</code> 后写 <code>"a/b"_i18n</code>），文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
-<tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>
+<tr><td>主题切换</td><td><code>App::setTheme("glass")</code>（重新套用外观 + 重排一次）</td></tr>
 </tbody>
 </table>
 
 </section>
-<section><h2 id="sec-167">约定与已知坑</h2>
+<section><h2 id="sec-174">约定与已知坑</h2>
 
 <ul>
 <li><b>零警告</b>：<code>-Wall -Wextra -Wpedantic</code>，构建出现一个 warning 就算失败（CI 也这么判）。</li>
@@ -1978,17 +2073,17 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 </ul>
 
 </section>
-<section><h2 id="sec-168">验收与 CI</h2>
+<section><h2 id="sec-175">验收与 CI</h2>
 
 <pre><code>scripts/check.sh 一共三步，任何一步失败就停：
   ① python3 scripts/check_naming.py     接口命名约定
   ② python3 scripts/check_layers.py     反向依赖 + 伞头可达范围
   ③ cmake GL / VK 双后端构建             零警告</code></pre>
-<p>渲染路径（后端本体、平台层、demo 页面）仍靠人工验收 —— 这部分是已知盲区。
+<p>渲染路径（后端本体、平台层、示例页面）仍靠人工验收 —— 这部分是已知盲区。
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 
 </section>
-<footer>生成自仓库提交 <code>4bb83dc</code>；架构与约定以 <code>AGENTS.md</code> 为准，
+<footer>生成自仓库提交 <code>c4693b5</code>；架构与约定以 <code>AGENTS.md</code> 为准，
 接口细节以 <code>docs/bklv-api.md</code> / <code>docs/json-syntax.md</code> 为准，本页是它们的合并速查版。</footer>
 </main>
 </div>

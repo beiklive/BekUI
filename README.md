@@ -2,7 +2,7 @@
 
 **bklv** 是一个跨平台 C++17 界面库：布局交给 [Yoga](https://github.com/facebook/yoga)
 算 Flexbox，绘制交给 [Dear ImGui](https://github.com/ocornut/imgui) 的 `ImDrawList`。
-本仓库既是这个库本身，也是一组用它写的 demo。
+本仓库既是这个库本身，也是一组用它写的示例程序（`examples/`）。
 
 - **视图即布局节点**：一个 `View` 持有一个 `YGNode`，尺寸与位置全部由 Yoga 递归算出，
   不需要手写坐标；绘制由 `View::draw()` 递归完成。
@@ -26,10 +26,10 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 
 | 目录 | 文件数 | 内容 |
 |---|---|---|
-| `core/` | 79 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger` / 全局状态登记表（`globals.*`，可列举·可重置）；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
-| `views/` | 24 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
-| `widgets/` | 53 | **外观驱动的控件**：`AppearanceView`（基类）、`Shell`（四层外壳）、`Pager`、`Header`/`BottomBar`/`Sidebar`/`TabFrame`/`TabBar`（底部导航）、`Button`/`SelectorButton`/`Slider`、Cell 家族（6 种）、`Dialog`/`Dropdown`/`EditTextDialog`/`Notification`、`HintsBar`/`StatusArea`/`AccountWidget`、`RecyclerView`（JSON 桥接）、六个 `layer_draw_*` 绘制钩子 |
-| `compile/` | 18 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |
+| `core/` | 97 | `View` / `Box`（Flexbox 与节点管理）/ 外观与 `ThemeData` / 焦点与输入 / `App` 帧循环 / `Platform` 抽象 / `RenderBackend` / 解码 / i18n / 任务与事件 / `Logger` / 全局状态登记表（`globals.*`，可列举·可重置）；**`core/glass/`** 是液态玻璃子系统（请求与队列、模糊计划、几何、调参、服务，以及对后端的抽象接口 `glass_backend.hpp`），它的后端实现在 `backends/gl_glass.*`、`backends/vk_glass.*`，由各图形后端持有并交给服务 |
+| `views/` | 30 | `Label`（换行·省略号·对齐）、`Image`（缩放·动图）、`ScrollingFrame`（惯性 + 滚动条）、`HScrollingFrame`、`RecyclerFrame`（对象池虚拟列表）、`Padding`、`ProgressSpinner`、`DebugLayer`/`DebugLogView`（日志面板）、`data_source`/`item_binder`（纯数据注册表） |
+| `widgets/` | 18 | **外观驱动的控件（清理后只剩基础件）**：`AppearanceView`（基类）、`appearance_children`（children 外观）、`Button`（唯一注册进 JSON 的视图类型）与 `Notification`，加六个 `layer_draw_*` 绘制钩子。其余控件（Shell / TabFrame / Cell 家族 / Dialog / Dropdown / Slider / HintsBar / StatusArea …）已移除，等 demo 重做时按需加回 |
+| `compile/` | 23 | **解析层**：`view_parse`（JSON → 视图树，两段式模板）、`theme_parse`（JSON → `ThemeData`）、外观的 box / imports / layer_fields / layer_meta / children / gradient、`layer_registry`（图层类型的唯一事实来源）+ `layer_register`（注册模板） |
 | `backends/` | 21 | OpenGL 3.2 Core、Vulkan、OpenGL ES 3、Windows 的 GL 运行时加载 |
 | `platforms/` | 9 | SDL3（桌面三平台）、libnx（Switch）、两套手柄实现与 IME |
 
@@ -37,21 +37,23 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 [`AGENTS.md`](AGENTS.md) 的「分层依赖方向」）；`docs/architecture-review.html` 里有完整的
 分层图与实测的反向依赖清单。
 
-### demo：`demo/`
+### 示例：`examples/`
 
-一个展示程序 `demo`，按 Tab 展示库的能力：**控件 / 文本 / 布局 / 列表**。
-右上角「显示日志」按钮打开 ImGui 日志窗口（可拖动、可缩放、按级别过滤）。
+原来的展示程序 `demo/` 已移除（控件一并清理、准备重做），现在仓库里只有几个
+用来验证库本身的小程序：
 
 ```
-demo/main.cpp    入口
-demo/app/        应用层：页面宿主、tab 栏、自定义控件、各页面
+examples/embed_imgui_gl/   把 bklv 嵌进宿主自己的 SDL3 + GL + ImGui 循环
+examples/multi_context/    同一个 ImGui 循环里跑两个 bklv Context（default / glass）
+examples/switch/           Switch 的最小宿主，scripts/build_switch.sh 编它
+examples/cmake_consumer/   安装后 find_package(bklv) 的消费示例
 ```
 
-这一层属于 demo 而不属于库：它用 bklv 的控件拼出「能力总览」这个具体界面。
+前两个由根 `CMakeLists.txt` 编出来（只编 GL），第三个只由 Switch 脚本使用。
+它们属于"宿主示例"而不属于库：真正验证"库能干什么"的展示程序等 demo 重做完再补。
 
-demo 编 GL 和 Vulkan 两个版本。两条渲染路径的后端代码、链接库、shader 版本都不同，
-只在一个后端上验证过的界面代码不算验证过；后端是编译期决定的，所以靠两个构建目录
-各编一份，没有运行时开关。
+后端是编译期决定的：`embed_imgui_gl` / `multi_context` 在 VK 构建下不编（宿主后端不同），
+所以要验证 Vulkan 路径得自己写一个用 `bklv::vk` 的宿主，或者等 demo 重做时的双后端版本。
 
 ## 平台支持
 
@@ -134,15 +136,17 @@ macOS 的 ImageIO 与 lunasvg 的位图都是预乘的，两条路都在解码�
 ### 运行
 
 ```bash
-./dist/demo
+./dist/embed_imgui_gl      # 宿主嵌入示例（默认编出来的两个目标之一）
+./dist/multi_context
 ```
 
-`demo` 右上角有「显示日志」按钮，点开是 ImGui 日志窗口（可拖动、可缩放、
-按级别过滤）。没有快捷键开关。
+`embed_imgui_gl` 会同时显示 bklv 的界面和宿主自己的一小块 ImGui 窗口，
+用来验证"两个 ImGui 使用者共用一个帧"；`multi_context` 在同一次循环里跑两棵
+bklv 页面树（default 与 glass 主题），日志里能看到两次主题装载。
 
 ### 资源文件
 
-`resources/` 下的素材（demo 用了一张 `testcard.png`）按**资源目录**解析，不是工作目录，
+`resources/` 下的素材（示例用了 `testcard.png`）按**资源目录**解析，不是工作目录，
 所以从哪个目录启动都能找到：
 
 | 平台 | 资源怎么到程序旁边 | 运行时路径 |
@@ -158,15 +162,19 @@ image->setImageFromFile("resources/testcard.png");
 
 `Image::setImageFromFile()` 内部就会解析，不需要自己在调用点拼路径。
 
-界面也可以用 JSON 描述（`resources/views/*.json`），demo 的 JSON 页就是整块界面来自 JSON，
-列表项模板也来自 JSON、数据由 C++ 侧的回调绑定：
+界面也可以用 JSON 描述（解析层在 `bklv/compile/view_parse.*`）。能用哪些类型取决于
+`bklv/widgets/widget_types.cpp` 里注册了什么 —— 清理后只注册了 `Button`：
 
 ```cpp
-bklv::View* view = bklv::createFromJSONFile("resources/views/page_json.json");
+bklv::View* view = bklv::createFromJSONFile("resources/views/xxx.json");  // 路径相对资源目录
 ```
 
+语法与全部字段见 [`docs/json-syntax.md`](docs/json-syntax.md)。仓库里暂时没有随包的
+示例 JSON（原来 demo 的 `resources/views/` 已随 demo 一起删除）。
+
 文案也走同一套资源目录：`resources/i18n/zh-Hans.json`、`resources/i18n/en-US.json`，
-用 `bklv::translate("demo/welcome")` 取；桌面可用 `BKLV_LOCALE=en-US` 覆盖系统语言。
+用 `bklv::translate("hints/ok")` 取（`Button` 自己的动作名就来自这条）；
+桌面可用 `BKLV_LOCALE=en-US` 覆盖系统语言。
 
 ### Linux
 
@@ -197,13 +205,13 @@ pacman -S mingw-w64-x86_64-vulkan-headers mingw-w64-x86_64-vulkan-loader
 ```bat
 build.bat                 :: GL，产物 dist\*.exe
 build.bat --vk            :: Vulkan，产物 dist\vk\*.exe
-build.bat --only=demo     :: 只编指定目标
+build.bat --only=embed_imgui_gl  :: 只编指定目标（可写 a,b 多个）
 build.bat --gl --gui      :: 不弹控制台窗口（默认保留控制台，方便看日志）
 build.bat --sdl-force     :: 删掉构建目录重新配置
 ```
 
 ```bat
-dist\demo.exe
+dist\embed_imgui_gl.exe
 ```
 
 几点 Windows 专属的注意：
@@ -250,9 +258,9 @@ Switch 不能并进 CMake：工具链（devkitA64）与编译参数和桌面完�
 所以它走独立脚本。
 
 ```bash
-./scripts/build_switch.sh            # 产出 dist/switch/demo.nro
+./scripts/build_switch.sh            # 产出 dist/switch/bklv_switch.nro
 ./scripts/build_switch.sh --clean    # 丢掉中间产物重新编译
-nxlink -s dist/switch/demo.nro       # 推到机器（需机器上开着 hbmenu 的网络加载）
+nxlink -s dist/switch/bklv_switch.nro  # 推到机器（需机器上开着 hbmenu 的网络加载）
 ```
 
 > **`dist/` 与 `build/` 都是平台相关的，不要跨平台共用同一个工作区。**
@@ -321,9 +329,9 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ### 主题（两套）
 
 - `default`：**纯扁平风格** —— 无阴影、无玻璃、无渐变，靠 1px 描边分面
-- `ios`：**苹果风** —— 系统色（#000 / #1C1C1E / 系统蓝）、分组列表、玻璃上下栏
+- `glass`：**玻璃质感** —— 只覆盖少量 tokens（配色 / 圆角），外观与 `files[]` 留空，缺的逐键回退 `default`；是最小主题的样板
 
-`resources/theme/themes.json` 的 `available` 列的就是这两套，`app.setTheme("ios")` 运行时切换。
+`resources/theme/themes.json` 的 `available` 列的就是这两套，`app.setTheme("glass")` 运行时切换。
 要做自己的皮肤：复制一套改名改 JSON、登记进 `themes.json`（名字 = 目录名，清单写在各自
 `theme.json` 的 `files[]` 里）。规矩见 `AGENTS.md` 的「主题 / 外观」与 `docs/base-widgets-map.md`。
 
@@ -337,9 +345,9 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ### 分层
 
 ```
-demo/                                 示例应用（用库）
+examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
-bklv/widgets/*                          外观驱动控件：Shell / Pager / Button / Cell / Dialog
+bklv/widgets/*                          外观驱动控件：Button / Notification（样式来自主题 JSON）
         ↓                               （样式来自主题 JSON，代码只写行为）
 bklv/views/*                            Image / Label / ScrollingFrame / RecyclerFrame
                                         只认 ImDrawList 和 ImTextureID

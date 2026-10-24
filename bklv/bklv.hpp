@@ -61,25 +61,8 @@
 #include "bklv/views/scroll_box.hpp"
 
 // ---- widgets：外观驱动的控件 ----
-#include "bklv/widgets/account.hpp"
+// 目前只留基础框架（外观解析 / 层绘制 / 通知）与 Button；其余控件已随 demo 重做一起移除。
+// Box 在 core/box.hpp，Label 在 views/label.hpp。
 #include "bklv/widgets/appearance_view.hpp"
-#include "bklv/widgets/bottom_bar.hpp"
 #include "bklv/widgets/button.hpp"
-#include "bklv/widgets/section.hpp"
-#include "bklv/widgets/selector_button.hpp"
-#include "bklv/widgets/cell.hpp"
-#include "bklv/widgets/dialog.hpp"
-#include "bklv/widgets/dropdown.hpp"
-#include "bklv/widgets/edit_text_dialog.hpp"
-#include "bklv/widgets/form_buttons.hpp"
-#include "bklv/widgets/header.hpp"
-#include "bklv/widgets/ime_panel.hpp"
-#include "bklv/widgets/hints_bar.hpp"
 #include "bklv/widgets/notification.hpp"
-#include "bklv/widgets/pager.hpp"
-#include "bklv/widgets/rectangle.hpp"
-#include "bklv/widgets/shell.hpp"
-#include "bklv/widgets/slider.hpp"
-#include "bklv/widgets/status_area.hpp"
-#include "bklv/widgets/tab_frame.hpp"
-#include "bklv/widgets/toast.hpp"

@@ -199,6 +199,16 @@ if(NOT BKLV_WITH_SDL)
     target_compile_definitions(bklv_opts INTERFACE BKLV_NO_SDL)
 endif()
 
+# Windows 头文件的两个"地雷"，必须在使用方也生效：
+#  - NOMINMAX：<windows.h> 把 min/max 定义成宏，`std::min(...)` 会变成
+#    `std::(...)`，报 C2589「"(":"::"右边的非法标记」。bklv 里 std::min/max 有
+#    三十多处，且宿主程序包含 <windows.h> 是常态，所以强制关掉宏版本。
+#  - WIN32_LEAN_AND_MEAN：少拉 winsock/mmsystem 等无关头，编译更快、冲突更少。
+# 只给 Windows：别的平台没有这些宏，加上也没有坏处，但没必要污染。
+target_compile_definitions(bklv_opts INTERFACE
+    $<$<PLATFORM_ID:Windows>:NOMINMAX;WIN32_LEAN_AND_MEAN>
+)
+
 target_compile_options(bklv_opts INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra;-Wpedantic>
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-DGL_SILENCE_DEPRECATION>
@@ -499,7 +509,7 @@ set(BKLV_CORE_SOURCES
     views/preset_backdrop.cpp
     views/scroll_box.cpp
     # widgets/：外观驱动的控件（绘制结构由主题 JSON 描述，见 core/appearance.hpp）
-    widgets/account.cpp
+    # 目前只留基础框架（外观解析/层绘制/通知）与 Button；Box 与 Label 在 core/、views/。
     widgets/appearance_view.cpp
     widgets/appearance_children.cpp
     widgets/layer_draw_rect.cpp
@@ -508,32 +518,9 @@ set(BKLV_CORE_SOURCES
     widgets/layer_draw_text.cpp
     widgets/layer_draw_image.cpp
     widgets/layer_draw_custom.cpp
-    widgets/recycler_view.cpp
     widgets/notification.cpp
-    widgets/rectangle.cpp
     widgets/button.cpp
-    widgets/section.cpp
-    widgets/toast.cpp
-    widgets/ime_panel.cpp
-    widgets/form_buttons.cpp
-    widgets/selector_button.cpp
-    widgets/header.cpp
-    widgets/bottom_bar.cpp
-    widgets/cell.cpp
-    widgets/slider.cpp
-    widgets/tab_frame.cpp
-    widgets/status_area.cpp
     widgets/widget_types.cpp
-    widgets/dialog.cpp
-    widgets/dropdown.cpp
-    widgets/focus_ring_view.cpp
-    widgets/placement.cpp
-    widgets/backdrop_manager.cpp
-    widgets/content_stack.cpp
-    widgets/shell.cpp
-    widgets/pager.cpp
-    widgets/edit_text_dialog.cpp
-    widgets/hints_bar.cpp
 )
 
 if(BKLV_WITH_SDL)

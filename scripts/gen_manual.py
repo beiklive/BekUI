@@ -123,6 +123,12 @@ class Renderer:
                     r'^(#{1,4}\s|\s*[-*]\s|\s*\d+\.\s|>|\s*\||```|\s*---+\s*$)', lines[i]):
                 para.append(lines[i].strip())
                 i += 1
+            if not para:
+                # 这行既没被上面任何分支吃掉，又匹配"段落终止"，直接当一行段落输出，
+                # 否则 i 不前进 = 死循环（踩过：表格缺分隔行时整份手册生成卡死）。
+                out.append('<p>' + inline(lines[i].strip()) + '</p>')
+                i += 1
+                continue
             out.append('<p>' + inline(' '.join(para)) + '</p>')
 
         return '\n'.join(out)
@@ -143,7 +149,7 @@ def layer_stats():
     for layer, purpose in [
         ('core', '接口层：View/Box、App 帧循环、输入焦点、外观与主题、图形与平台抽象、解码、i18n、任务、全局状态'),
         ('views', '语义控件：Label / Image / ScrollingFrame / RecyclerFrame / Padding / DebugLogView'),
-        ('widgets', '外观驱动控件：Shell / Header / BottomBar / TabBar / Button / Cell 家族 / Dialog …'),
+        ('widgets', '外观驱动控件：AppearanceView（外观解析 + 层绘制）/ Button / Notification'),
         ('compile', '解析层：JSON → 视图树 / 外观 / 主题（两段式模板）'),
         ('backends', '图形后端：OpenGL 3.2 Core / Vulkan / OpenGL ES 3'),
         ('platforms', '平台实现：SDL3（桌面三平台）/ libnx（Switch）、手柄与 IME'),
@@ -250,16 +256,16 @@ counts = {d: len(list((ROOT / 'bklv' / d).glob('*.cpp'))) + len(list((ROOT / 'bk
           for d in ('core', 'views', 'widgets', 'compile', 'backends', 'platforms')}
 sections.append(('概览', f'''
 <p><b>bklv</b> 是一个跨平台 C++17 界面库：<b>Yoga 算 Flexbox 布局</b>，<b>ImGui 的 ImDrawList 负责绘制</b>。
-目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一个 demo 程序。</p>
+目标形态是能被外部项目 <code>add_subdirectory</code> / <code>find_package</code> 引入的库，本仓库同时提供一组示例程序（<code>examples/</code>）。</p>
 
 <table>
 <thead><tr><th>项目</th><th>内容</th></tr></thead>
 <tbody>
 <tr><td>平台</td><td>macOS / Linux / Windows（SDL3）、Nintendo Switch（libnx + EGL/GLES3）</td></tr>
 <tr><td>图形后端</td><td>OpenGL 3.2 Core、Vulkan、OpenGL ES 3（编译期选择，所有功能都要双后端验证）</td></tr>
-<tr><td>主题</td><td>两套：<code>default</code>（纯扁平）与 <code>ios</code>（苹果风：系统色 / 分组列表 / 大标题 / 底部 Tab 栏 / 玻璃上下栏）</td></tr>
+<tr><td>主题</td><td>两套：<code>default</code>（纯扁平）与 <code>glass</code>（玻璃质感；缺项逐键回退 default）</td></tr>
 <tr><td>界面描述</td><td>C++ 建树，或 JSON 视图描述（<code>template</code> / <code>instantiate</code> 两段式）</td></tr>
-<tr><td>不做</td><td>XML 布局与绑定、视频、PS4/PSV（音频由应用层负责，库里只有音效合成）</td></tr>
+<tr><td>不做</td><td>XML 布局与绑定、视频、PS4/PSV（音频只做音效：JSON 音效表 + WAV，不做 BGM/流式播放）</td></tr>
 </tbody>
 </table>
 
@@ -267,11 +273,11 @@ sections.append(('概览', f'''
 
 <h3>仓库结构</h3>
 <pre><code>bklv/                库本体（自包含：代码 + 3rd/ + 自己的 CMakeLists.txt）
-  bklv.hpp           伞头：常用类型一次引入（demo 只 include 它）
+  bklv.hpp           伞头：常用类型一次引入（示例只 include 它）
   core/  views/  widgets/  compile/  backends/  platforms/
-demo/                展示程序（15 个页面 + 底部导航 + 液态玻璃）
+examples/            宿主示例（embed_imgui_gl / multi_context / switch / cmake_consumer）
 
-resources/theme/     主题 JSON（default / ios）
+resources/theme/     主题 JSON（default / glass）
 scripts/             check.sh（一次跑完命名/分层/双后端零警告构建）
 docs/                文档（本手册就是其中一份）</code></pre>
 '''))
@@ -373,15 +379,19 @@ sections.append(('内置控件', f'''
 {widget_tables()}
 
 <h3>几个常用控件的要点</h3>
+<p class=muted><b>2026-10 清理</b>：<code>widgets/</code> 只保留基础件（<code>AppearanceView</code> /
+<code>Button</code> / <code>Notification</code> + 层绘制）。<code>Shell</code> / <code>Header</code> /
+<code>BottomBar</code> / <code>TabBar</code> / <code>Sidebar</code> / <code>Cell</code> 家族 /
+<code>Dialog</code> / <code>Dropdown</code> / <code>Slider</code> / <code>HintsBar</code> 等已移除，
+等 demo 重做时按需加回。</p>
 <table>
 <thead><tr><th>控件</th><th>要点</th></tr></thead>
 <tbody>
-<tr><td><code>Shell</code></td><td>四层外壳（内容 / 覆盖 / 背景 / Hud）：把 <code>Header</code>、<code>BottomBar</code> 挂到覆盖层，内容进内容层；<code>pushContentView</code> 做下钻。<b>顶栏/底栏只是一块区域 —— 任何主题都不许给它画底色或边框</b>（test 钉住）。</td></tr>
-<tr><td><code>Header</code></td><td>结构 <code>[图标][标题][右侧区]</code>；<code>setLargeTitle()</code> + <code>setCollapseSource(scroller)</code> 做大标题随滚动收起（只改绘制期量，零重排）。</td></tr>
-<tr><td><code>TabBar</code> / <code>Sidebar</code> / <code>TabFrame</code></td><td>底部导航条（A/点击才切页，横向可滚动）/ 左侧栏（聚焦即切页，Switch 语义）/ tab 栏 + 内容区。</td></tr>
-<tr><td><code>Button</code> / Cell 家族</td><td>外观驱动；<code>setOnClick</code> 接行为，另外可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
-<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。JSON 侧由 <code>RecyclerView</code> 桥接（<code>data</code>/<code>itemBinder</code>/<code>onEnd</code> 只写名字）。</td></tr>
-<tr><td><code>Dialog</code> / <code>Dropdown</code> / <code>EditTextDialog</code></td><td>都走 <code>App::pushOverlay/popOverlay</code> 的模态栈：焦点圈在弹层内、关闭后回到原焦点。</td></tr>
+<tr><td><code>AppearanceView</code></td><td>外观驱动控件的基类：<code>box</code> 段进布局、<code>layers</code> 段进绘制、<code>states</code> 段进补间；子类只写行为与语义绘制（<code>drawCustomLayer</code>）。</td></tr>
+<tr><td><code>Button</code></td><td>目前唯一注册进 JSON 视图类型的控件（<code>"type": "Button"</code>）；<code>setOnClick</code> 接行为，另可用 <code>registerAction(键, 提示文本, listener)</code> 挂手柄键。</td></tr>
+<tr><td><code>Notification</code></td><td><code>App::notify()</code> 的落点：没有根视图时先排队，外观状态驱动出现 / 消失。</td></tr>
+<tr><td><code>RecyclerFrame</code></td><td>对象池虚拟列表（在 <code>views/</code>）：单段只写 <code>getItemCount()</code>；分段写 <code>getSectionCount()</code> 那一套。</td></tr>
+<tr><td><code>Box</code> / <code>Label</code></td><td>布局容器与文字分别在 <code>core/box.*</code>、<code>views/label.*</code> —— 它们是基础件，不在 <code>widgets/</code> 里。</td></tr>
 </tbody>
 </table>
 '''))
@@ -391,13 +401,13 @@ color_tbl, metric_tbl = token_tables()[0][1], token_tables()[1][1]
 sections.append(('主题与外观', f'''
 <p>两套主题，都在 <code>resources/theme/&lt;名字&gt;/</code> 下：<code>theme.json</code>（显式 <code>files[]</code> 清单，不扫目录）
 + <code>tokens/</code>（colors / metrics）+ <code>base|widget|view/</code> 外观。复制一套改名改 JSON 就是新皮肤；
-<code>themes.json</code> 的 <code>available</code> 列出可选主题，运行时 <code>App::setTheme("ios")</code> 切换。</p>
+<code>themes.json</code> 的 <code>available</code> 列出可选主题，运行时 <code>App::setTheme("glass")</code> 切换。</p>
 
 <table>
 <thead><tr><th>主题</th><th>定位</th><th>关键做法</th></tr></thead>
 <tbody>
 <tr><td><code>default</code></td><td>纯扁平</td><td>无阴影、无玻璃、无渐变；靠 1px 描边分面；<code>color.common.shadow</code> 全透明（代码驱动的软阴影也随之关闭）</td></tr>
-<tr><td><code>ios</code></td><td>苹果风</td><td>iOS dark 系统色；分组列表（行内缩分隔线）；胶囊分段；<code>glass_surface</code> 用 #1C1C1ECC 的 material；大标题 + 底部 Tab 栏</td></tr>
+<tr><td><code>glass</code></td><td>玻璃质感</td><td>只覆盖少量 <code>tokens/</code>（配色 / 圆角），外观与 <code>files[]</code> 留空 —— 缺的逐键回退 <code>default</code>；是"最小主题"的样板</td></tr>
 </tbody>
 </table>
 
@@ -518,7 +528,7 @@ getInputManager().setSystemAction(ImGuiKey_F1, [this] { /* 开关调试层 */ })
 <tr><td>i18n</td><td><code>translate("a/b")</code>（或 <code>using namespace bklv::i18n;</code> 后写 <code>"a/b"_i18n</code>），文案在 <code>resources/i18n/&lt;locale&gt;.json</code>；切语言要显式重译</td></tr>
 <tr><td>音效</td><td><code>audio::play(Sound::CLICK)</code>（8 种音效是代码合成的）</td></tr>
 <tr><td>截图</td><td><code>App::requestScreenshot(path, delayFrames)</code>（离屏读后缓冲，不需要系统录屏权限）</td></tr>
-<tr><td>主题切换</td><td><code>App::setTheme("ios")</code>（重新套用外观 + 重排一次）</td></tr>
+<tr><td>主题切换</td><td><code>App::setTheme("glass")</code>（重新套用外观 + 重排一次）</td></tr>
 </tbody>
 </table>
 '''))
@@ -548,7 +558,7 @@ sections.append(('验收与 CI', '''
   ① python3 scripts/check_naming.py     接口命名约定
   ② python3 scripts/check_layers.py     反向依赖 + 伞头可达范围
   ③ cmake GL / VK 双后端构建             零警告</code></pre>
-<p>渲染路径（后端本体、平台层、demo 页面）仍靠人工验收 —— 这部分是已知盲区。
+<p>渲染路径（后端本体、平台层、示例页面）仍靠人工验收 —— 这部分是已知盲区。
 要验证某条行为就写一个临时程序（无窗口，自己 include <code>bklv/</code> 的头）跑一遍。</p>
 '''))
 
@@ -687,7 +697,7 @@ footer {{ color: var(--muted); font-size: 12px; border-top: 1px solid var(--line
 <div class="wrap">
 <aside>
   <div class="brand"><b>bklv</b><span>手册</span></div>
-  <div class="version">提交 {commit} · {stamp} · 两套主题（default / ios）</div>
+  <div class="version">提交 {commit} · {stamp} · 两套主题（default / glass）</div>
   <input class="search" id="search" type="search" placeholder="过滤目录（比如 json / 布局 / 控件）">
   {toc_html()}
 </aside>

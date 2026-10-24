@@ -1396,7 +1396,6 @@ void ensureBuiltinContracts()
     };
 
     const int RECT   = (int)AppearanceLayer::Op::RECT;
-    const int CUSTOM = (int)AppearanceLayer::Op::CUSTOM;
 
     add("base/widget/button.text", { "text" });
     add("base/widget/button.list", { "text" });
@@ -1409,23 +1408,7 @@ void ensureBuiltinContracts()
     add("base/widget/button.switch_text", { "text", "info" });
     add("base/widget/button.switch_icon", { "icon", "text" },
         { { "track", RECT }, { "knob", RECT } });
-    add("base/widget/dropdown", { "title", "value" });
-    add("base/slider/slider", {}, { { "track", RECT }, { "fill", RECT }, { "knob", RECT },
-                                      { "geometry", CUSTOM } });
-    add("base/cell/cell", { "title" });
-    add("base/cell/bool", { "title" }, { { "switch", CUSTOM } });
-    add("base/cell/radio", { "title" }, { { "radio", CUSTOM } });
-    add("base/cell/detail", { "title" });
-    add("base/cell/selector", { "title" });
-    add("base/cell/input", { "title" });
-    add("base/cell/slider", { "title" });
-    add("base/widget/dialog", { "title", "text" });
-    add("base/widget/edit_text_dialog", { "title" });
     add("base/widget/notification", { "text" });
-    add("base/hint_item", { "icon", "label" });
-    add("base/header_icon", { "icon" });
-    add("base/dropdown_item", { "text" });
-    add("base/text_field", { "text" });
 }
 
 const Appearance::Contract* findContract(const std::string& name)

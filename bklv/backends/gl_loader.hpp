@@ -34,6 +34,14 @@ inline bool loadGLFunctions()
 
 #elif defined(_WIN32)
 
+// imgl3w 在 Windows 上会拉进 <windows.h>。NOMINMAX 必须在它之前定义，否则
+// min/max 变成宏，bklv 里三十多处 std::min / std::max 会全部报 C2589
+// （"(":"::"右边的非法标记）。bklv_opts 也给所有目标带了这个宏，这里再兜一层，
+// 让不走 CMake 的调用方同样安全。
+#if defined(_WIN32) && !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+
 // imgl3w 是第三方生成代码，在 -Wextra 下会报 cast-function-type
 // （GetProcAddress 的 FARPROC 强转）。子模块不能改，所以只在这里把该警告压掉，
 // 项目其余代码仍然保持零警告。

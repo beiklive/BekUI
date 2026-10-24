@@ -30,12 +30,14 @@
 | `core/ui_scale.hpp/.cpp` | UI 缩放：主题尺寸按 1280x720 写，运行时按画布宽等比放大 |
 | `core/ime.hpp/.cpp` | 文本输入：平台接管（Switch swkbd）或控件自己读键盘 |
 | `widgets/appearance_view.*` | 外观驱动控件基类：解释 box / layers、状态动效、固有尺寸测量 |
-| `widgets/rectangle.*` `widgets/button.*` `widgets/header.*` `widgets/bottom_bar.*` `widgets/slider.*` `widgets/tab_frame.*` `widgets/sidebar.*` | 外观驱动的控件（绘制结构在主题 JSON 里） |
-| `widgets/shell.*` | 应用外壳：四层结构（背景 / 内容 / 覆盖 / 浮层）+ 弹窗模态 + 内容栈下钻 + 按页背景 + 过渡层 |
-| `widgets/pager.*` | 页面控制器：工厂式懒加载、可取消预加载、失败/loading 占位、页面级记忆（焦点 + 滚动） |
-| `widgets/header.*` `widgets/bottom_bar.*` | 页头 / 底栏（宿主自己建好交给 `Shell::setHeaderView/setFooterView`） |
-| `widgets/dialog.*` `widgets/dropdown.*` `widgets/edit_text_dialog.*` | 弹窗、下拉、文本输入弹窗 |
-| `widgets/hints_bar.*` `widgets/status_area.*` | 底栏的两块内容：左侧提示、右侧状态（时钟 / Switch 电量） |
+| `widgets/button.*` | 唯一的 JSON 视图类型（`"type": "Button"`）：外观驱动 + `registerAction` 挂手柄键 |
+| `widgets/notification.*` | `App::notify()` 的通知视图（外观驱动，出现/消失状态动效） |
+| `widgets/layer_draw_*.cpp` | 六个内置层的绘制实现（rect / text / image / shadow / glass / custom） |
+
+> **2026-10 清理**：`widgets/shell.*`、`pager.*`、`header.*`、`bottom_bar.*`、`sidebar.*`、
+> `tab_frame.*`、`cell.*`、`dialog.*`、`dropdown.*`、`edit_text_dialog.*`、`slider.*`、
+> `toast.*`、`hints_bar.*`、`status_area.*`、`focus_ring_view.*` 已删除（连同主题里对应的
+> 外观 JSON）。下面提到它们的段落是对"重做时的约定"的历史记录，别当成现成 API。
 | `core/i18n.hpp/.cpp` | 文案系统：JSON 资源、三级回退、查找缓存、运行中切语言 |
 | `core/resource.hpp/.cpp` | 资源路径解析：桌面用可执行文件目录，Switch 用 `romfs:/` |
 | `core/graphics.hpp/.cpp` | **渲染后端接口** + 纹理管理，上层与图形 API 的唯一分界 |
@@ -59,7 +61,7 @@
 | `views/image.hpp/.cpp` | 图片：四种缩放模式、圆角 |
 | `views/progress_spinner.hpp/.cpp` | 加载转圈 |
 | `widgets/hints_bar.hpp/.cpp` | 提示栏（底栏左侧内容）：按当前焦点的动作生成条目 |
-| `views/debug_log_view.hpp/.cpp` | 调试日志视图：读 `Logger` 环形缓冲、`ImDrawList` 直接画（零重排），挂在 `Shell::getDebugLayer()` 上 |
+| `views/debug_log_view.hpp/.cpp` | 调试日志视图：读 `Logger` 环形缓冲、`ImDrawList` 直接画（零重排）；挂在哪由宿主决定（`Shell` 已移除） |
 
 ## 布局（Box）
 
@@ -86,9 +88,9 @@ box->addView(child);
 ## 交互与内容控件
 
 ```cpp
-// 输入与焦点：View 自己注册动作，提示栏会自动显示
-cell->registerAction(ControllerButton::A, "播放", [](View* v) { /* ... */ });
-bool focusable = cell->isFocusable();          // 想被方向键选中就重写它
+// 输入与焦点：View 自己注册动作（宿主可读它们自己渲染按键提示）
+button->registerAction(ControllerButton::A, "播放", [](View* v) { /* ... */ });
+bool focusable = button->isFocusable();          // 想被方向键选中就重写它
 
 // 纵向滚动
 ScrollingFrame* frame = new ScrollingFrame();
@@ -97,7 +99,7 @@ Box* content = new Box(Axis::COLUMN);
 content->setHeight(40.0f * 100);               // 内容必须显式给高度
 frame->setContentView(content);
 
-// 虚拟列表：1000 条数据只创建约 8 个 cell
+// 虚拟列表：1000 条数据只创建约 8 个 cell（MyCell 派生自 RecyclerCell）
 RecyclerFrame* list = new RecyclerFrame();
 list->setItemHeight(80.0f);
 list->setPreFetchLine(1);
@@ -116,7 +118,7 @@ image->setImageFromFile("resources/testcard.png");
 
 键盘：方向键或 WASD 导航，回车/空格确认，Esc 返回。
 鼠标点击默认**只聚焦不执行**动作；想点一下就执行，在控件构造函数里设
-`onPointerAction = true`（按钮、tab 都这么做）。列表项保持默认，避免误触发。
+`onPointerAction = true`（`Button` 就是这么做的）。列表项保持默认，避免误触发。
 
 ## 文案（i18n）
 
@@ -141,7 +143,7 @@ bklv::getLocale();                         // 规范化后的当前语言
 三条要记住的：
 
 1. **文案在控件构造时就解析成字符串**，改语言不会自动重译已有视图——
-   要重新 `setText()` 或重建视图树（`demo/app/pages/page_text.cpp` 里有一个
+   要重新 `setText()` 或重建视图树（宿主里那个
    「切换语言」按钮演示了显式重译）。
 2. **语言名是规范化的**（`zh-Hans` / `zh-Hant` / `en-US` / `ja-JP` / `ko-KR`）。
    桌面 SDL 给的是 `zh-CN`、Switch 给的是 `zh-Hans`，都经 `canonicalLocale()` 归一，
@@ -239,10 +241,10 @@ bklv::App::getLayoutCount();       // 累计布局次数（调试窗口状态行
 ## 主题与外观
 
 换肤不需要改代码：复制 `resources/theme/default/` 改名，改里面的 JSON，再在
-`themes.json` 里登记，就多了一套皮肤。桌面用 `BKLV_THEME=ios ./dist/demo` 直接看效果。
+`themes.json` 里登记，就多了一套皮肤。桌面用 `BKLV_THEME=glass ./dist/embed_imgui_gl` 直接看效果。
 
 ```json
-// resources/theme/ios/widgets/button.json
+// resources/theme/glass/base/button.json
 // box 段管盒模型（尺寸/内边距/圆角/底色…），layers 管绘制结构，states 管状态动效
 { "box": { "height": "@theme/metric.control.height", "padding": [15, 25, 15, 25] },
   "layers": [
@@ -263,7 +265,7 @@ button->setOnClick([] { /* ... */ });
 bklv::Rectangle* panel = new bklv::Rectangle();          // 纯装饰
 bklv::Button* ghost = new bklv::Button("取消", "ghost");  // variant -> button.ghost.json
 
-app.setTheme("ios");   // 运行时换肤：重新取外观 + 重排，已建视图立即更新
+app.setTheme("glass");  // 运行时换肤：重新取外观 + 重排，已建视图立即更新
 ```
 
 ### 常用色（`color.common.*`）
@@ -313,7 +315,7 @@ app.setTheme("ios");   // 运行时换肤：重新取外观 + 重排，已建视
   bklv::shadow::setQuality(bklv::ShadowQuality::SMOOTH);   // 或 setQualityByName("smooth")
   ```
   ```bash
-  BKLV_SHADOW_QUALITY=smooth ./dist/demo    # 启动前用环境变量指定
+  BKLV_SHADOW_QUALITY=smooth ./dist/embed_imgui_gl    # 启动前用环境变量指定
   ```
 - 控件自己在 `custom` 层画的东西（滑块把手）不走外观层，直接调
   `bklv::shadow::drawSoft(...)`
@@ -344,7 +346,7 @@ bklv::App app;
 
 // 想恢复 ImGui 默认行为（读写 imgui.ini）时：
 app.setIniPersistenceEnabled(true);
-// 或者用环境变量：BKLV_USE_INI=1 ./dist/demo
+// 或者用环境变量：BKLV_USE_INI=1 ./dist/embed_imgui_gl
 ```
 
 实现位置：`bklv::App::run()` 里 `ImGui::CreateContext()` 之后、
@@ -355,7 +357,7 @@ app.setIniPersistenceEnabled(true);
 
 日志用 `BKLV_LOG_INFO(...)` 等宏，输出带 `文件:行号`。日志同时进控制台与
 `Logger` 的环形缓冲，界面上的调试日志视图（`views/debug_log_view.hpp` 的 `DebugLogView`）读缓冲渲染；
-它挂在外壳的调试层上（`Shell::getDebugLayer()`，在 HudLayer 之上），不吃输入。
+它挂在宿主指定的调试层上（`Shell` 已移除，层级由宿主自己管），不吃输入。
 
 **不要为每条日志创建 View** —— borealis 那样做会不断触发 Yoga 重排。
 `demo` 界面上右上角的「显示日志」按钮（或 F1）开关日志窗口。
@@ -401,7 +403,7 @@ Box* section = bklv::makeSectionHeader("图标", "共 340 个字形");
 ### 顶层帧率
 
 ```cpp
-shell->setFpsOverlayEnabled(true);   // 右上角：60.0 FPS / 目标 60 + p99 / 最坏帧
+root->addView(new FpsOverlay());       // 右上角：60.0 FPS / 目标 60 + p99 / 最坏帧（Shell 已移除，宿主自己挂）
 ```
 
 ### 外观 children 的 id 与查找
@@ -436,7 +438,7 @@ view->findViewById("icon")->setVisibility(Visibility::GONE); // 不占位，文�
 ### 预设背景
 
 ```cpp
-shell->getBackdropLayer()->addView(new PresetBackdrop(BackdropPreset::GRID));
+root->addView(new PresetBackdrop(BackdropPreset::GRID));   // 放在内容之下（Shell 已移除）
 // GRID / FLOATING / GRADIENT；颜色全部来自主题（surface.card / accent.base / common.grey）
 ```
 

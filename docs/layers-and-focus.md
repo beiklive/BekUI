@@ -1,5 +1,11 @@
 # 分层外壳与焦点管理（设计讨论稿）
 
+> **2026-10 控件清理**：`bklv/widgets` 现在只剩 `AppearanceView` / `Button` / `Notification`
+> + 六个 `layer_draw_*`。本文提到的 `Shell` / `Header` / `BottomBar` / `TabBar` / `Sidebar` /
+> `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` / `StatusArea`
+> 以及它们在 `resources/theme/default/base/**` 下的外观 JSON 都已删除 —— 这些段落作为
+> "重做时的约定"保留，别当成现成 API。
+
 > 状态：**讨论稿，尚未实现**。这里记录与用户逐轮讨论后确定的方案、审查结论与待定项。
 > 讨论时间线：AppletFrame 三段式 → 四层分层 → 焦点层级切换 → 层内导航规则。
 

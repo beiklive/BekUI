@@ -1,5 +1,11 @@
 # TabFrame：统一的 Tab 容器（横向 / 纵向）
 
+> **2026-10 控件清理**：`bklv/widgets` 现在只剩 `AppearanceView` / `Button` / `Notification`
+> + 六个 `layer_draw_*`。本文提到的 `Shell` / `Header` / `BottomBar` / `TabBar` / `Sidebar` /
+> `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` / `StatusArea`
+> 以及它们在 `resources/theme/default/base/**` 下的外观 JSON 都已删除 —— 这些段落作为
+> "重做时的约定"保留，别当成现成 API。
+
 > 状态：**规格已定，实现分 P1–P5**。本文是实现的唯一口径，改行为先改这里。
 
 ## 1. 目标

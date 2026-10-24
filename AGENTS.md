@@ -1,12 +1,17 @@
 # AGENTS.md — 本项目的开发约定
 
-## 图形后端：demo 一律双版本
+## 图形后端：演示程序一律双版本
 
-**每个 demo 都要能编出 GL 和 Vulkan 两个版本**，不是二选一。
+**每个演示程序都要能编出 GL 和 Vulkan 两个版本**，不是二选一。
 
 原因：GL 和 Vulkan 是两条完全不同的渲染路径（上下文创建、shader、资源生命周期都不同），
 只在一个后端上验证过的界面代码不算验证过。双版本让「上层与图形 API 无关」这条设计
-随时可被检验——如果某个 demo 换后端跑不起来，说明它漏了抽象。
+随时可被检验——如果某个演示换后端跑不起来，说明它漏了抽象。
+
+> 现状（demo 已移除、重做中）：仓库里只剩 `examples/` 下的**宿主示例**
+> （`embed_imgui_gl` / `multi_context`），它们自带 SDL3 + GL 的宿主循环，所以在 VK 构建下
+> 不编（`if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")`）。
+> 重新写 demo 时这条双版本要求照旧适用。
 
 ### 构建
 
@@ -25,9 +30,8 @@ cmake --preset vk && cmake --build --preset vk      # 等价 -B build/vk -DBKLV_
 cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
 
-# 只编某个目标（BKLV_TARGETS 按完整名字匹配，可逗号分隔多个）；
-# 目前只有一个目标 demo，这个开关留着是为了以后加示例程序时不用改构建
-cmake -S . -B build/gl -DBKLV_GRAPHICS=gl -DBKLV_TARGETS=demo && cmake --build build/gl
+# 只编某个目标（目标名就是 add_executable 的名字；现在是 embed_imgui_gl / multi_context）
+cmake --build build/gl --target embed_imgui_gl
 ```
 
 Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参数：
@@ -35,7 +39,7 @@ Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参�
 ```bat
 build.bat                       :: GL
 build.bat --vk                  :: Vulkan
-build.bat --only=demo           :: 只编主程序
+build.bat --only=embed_imgui_gl :: 只编指定目标（a,b 可多个）
 build.bat --gl --gui            :: 不弹控制台（会看不到 BKLV_LOG_*）
 build.bat --sdl-force           :: 删掉构建目录重新配置
 ```
@@ -57,18 +61,23 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
 
 因为分目录，可执行文件名不带后缀（Windows 上带 `.exe`）。
 
-### 加新 demo 时
+### 加新示例（或重做的 demo）时
 
-在 `CMakeLists.txt` 的 `BKLV_TARGET_LIST` 里加一行，两个后端会自动各编一份；
-不要写任何依赖具体图形 API 的代码。需要图形 API 能力时，走 `RenderBackend` 接口。
+在根 `CMakeLists.txt` 末尾的 examples 段里加一个 `add_executable`，链接 `bklv::bklv`，
+再用 `bklv_set_output_dir(<目标>)` 把产物钉到 `BKLV_OUT_DIR`（不然 VS 多配置生成器会
+落到 `dist/Release/`，资源就找不到了），最后 `bklv_copy_resources(<目标>)`。
+SDL3 / OpenGL / Vulkan / ImGui 都由 `bklv::bklv` 带出来，不要在目标上重复列。
 
 ```cmake
-"demo_08_xxx|demo/demo_08_xxx.cpp|core"
-#                                ↑ core = 只依赖 bklv 库；app = 还要 demo/app 那层
+add_executable(my_demo examples/my_demo/main.cpp)
+target_link_libraries(my_demo PRIVATE bklv::bklv)
+bklv_set_output_dir(my_demo)
+bklv_copy_resources(my_demo)
 ```
 
-每个目标都链接 `bklv::bklv`；SDL3 / OpenGL / Vulkan / ImGui 都由它带出来，
-不要在目标上重复列。
+示例里**不要写任何依赖具体图形 API 的代码**；需要图形 API 能力时走 `RenderBackend` 接口。
+要在 Switch 上跑就再加 `examples/switch/` 那种最小宿主，并让 `scripts/build_switch.sh`
+的 `HOST_DIR` 指过去（它只编一个宿主，不认多个）。
 
 ### 改构建时注意
 
@@ -82,12 +91,12 @@ build.bat --sdl-force           :: 删掉构建目录重新配置
   都会把可执行文件写进同一个 `dist/`。它们的产物时间戳比 `build/gl` 的目标文件新，
   make 会认为"已是最新"而**不重新链接** —— 于是你以为在验收 A 配置，实际跑的是 B 的二进制
   （这次踩到：用 `-DBKLV_WITH_WEBP=OFF` 在 /tmp 配了一次，`dist/` 里就变成"没有 WebP"的版本）。
-  跑完额外构建目录后要 `rm -f dist/demo && cmake --build build/gl -j 8` 强制重链。
-- 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 查 core/views/widgets，
-  根 `CMakeLists.txt` 查 demo），不用等链接期。
+  跑完额外构建目录后要 `rm -f dist/embed_imgui_gl && cmake --build build/gl -j 8` 强制重链。
+- 清单漏项在 configure 阶段就会报错（`bklv/CMakeLists.txt` 按目录查 core/views/widgets），
+  不用等链接期。
 - 加了新的 `.cpp` 要加进对应的源文件列表：**库**的加 `bklv/CMakeLists.txt`
-  （`BKLV_CORE_SOURCES` / `BKLV_IMGUI_SOURCES`），**demo** 的加根 `CMakeLists.txt`
-  （`BKLV_APP_SOURCES`）。漏一个会以 `undefined reference` 的形式在链接期才暴露。
+  （`BKLV_CORE_SOURCES` / `BKLV_IMGUI_SOURCES`），**示例**的加根 `CMakeLists.txt`
+  的 examples 段（那个 `add_executable`）。漏一个会以 `undefined reference` 的形式在链接期才暴露。
   Switch 的 `scripts/build_switch.sh` 对 core / views 是按目录收集的，
   只有 backends / platforms 需要手列——新增文件时留意它是否也要加进去。
 - `bklv/3rd/yoga/yoga` **不要** `add_subdirectory`：它自己的 `cmake/project-defaults.cmake`
@@ -126,8 +135,9 @@ CMake 覆盖不了，所以 `scripts/build_switch.sh` 是唯一保留的构建�
 ② 改了脚本里的 `DEFINES`（比如开关可选解码器）**必须 `--clean` 重编**：脚本按时间戳增量
    编译，不会因为宏变了重编旧目标文件，会以"undefined reference to lunasvg::…"的形式在
    链接期暴露（那些 .o 是用 `BKLV_USE_SVG` 编的）。
-产物大小（2026-10 实测，移除测试与设计器、两套主题之后）：`demo.nro` **9.34 MB** = 代码+数据 8.47 MB（strip 后 ELF）
-+ romfs 0.87 MB（149 个资源文件：字体 524 KB / 主题 115 KB / 文案 191 KB）。
+产物大小（2026-10 实测，移除测试、设计器与 demo、两套主题之后）：`bklv_switch.nro`
+**9.46 MB** = 代码+数据 8.66 MB（strip 后 ELF）+ romfs 0.86 MB（63 个资源文件：
+字体 524 KB / 文案 191 KB / 主题 57 KB / 音效 19 KB / 两张示例图 46 KB）。
 
 桌面（macOS / Linux / Windows）上不再有 shell 构建脚本，`build.sh` 与
 `scripts/build_sdl3.sh` 已删除；SDL3 作为 `add_subdirectory` 的子项目随 CMake 一起编。
@@ -199,6 +209,15 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
 `-vulkan-loader`），已在 README 写明命令。
 
 ## 代码
+
+> **2026-10 控件大清理**：`bklv/widgets` 现在只剩基础件 —— `appearance_view` /
+> `appearance_children` / `button` / `notification` / 六个 `layer_draw_*`。
+> 下面提到 `widgets/shell.*`、`widgets/pager.*`、`widgets/header.*`、`widgets/bottom_bar.*`、
+> `widgets/sidebar.*`、`widgets/dropdown.*`、`widgets/selector_button.*`、
+> `widgets/edit_text_dialog.*`、`widgets/cell.*`、`widgets/tab_frame.*`、`widgets/slider.*`、
+> `widgets/toast.*`、`widgets/hints_bar.*`、`widgets/status_area.*`、`widgets/focus_ring_view.*`
+> 的段落，都是对**已移除控件**的历史约定（连同它们在 `resources/theme/default/base/**`
+> 下的外观一起删了）。重做这些控件时按这些约束实现，别再假设文件还在。
 
 - C++17；`bklv/3rd/yoga` 单独用 C++20 编译
 - `-Wall -Wextra -Wpedantic` 必须零警告
@@ -394,7 +413,6 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      <主题>/base/             基础控件外观（单个容器/元素）
      <主题>/base/widget/           二级控件外观（引用 base 组合出来的）
      <主题>/view/             页面与视图描述（结构 + 外观）
-     <主题>/demo/             演示专用外观（不属于基础控件；demo 页面引用）
      ```
      **名字 = 相对主题根的路径去掉扩展名**（`base/button.json` → `"base/button"`），
      变体继续用后缀拼（`base/button` + variant `"primary"` → `base/button.primary`）。
@@ -425,7 +443,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      玻璃层由解析期**提到最前**，所以主题里做"玻璃变体"的标准写法是
      `import` 基外观 + 覆盖 `bg.fill` 为透明 + 追加一层 `glass`（示例见
      `resources/theme/default/base/widget/button.text.glass.json`）；
-     **不要另开演示页面** —— demo 的做法是给每个控件追加一行玻璃版本（基础控件页）。
+     **不要另开演示页面** —— 做法是给每个控件追加一行玻璃版本（基础控件页）。
 
      外观能覆盖的只有**样式**（`fill` 染色 / `opacity` / `radius` / inset 几何）；
      `blurRadius`、`quality` 与总开关只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
@@ -437,7 +455,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      · `default`：**纯扁平风格**。不再有 `shadow` / `glass` 层，玻璃变体（`base/widget/*.glass.json`、
        `base/glass_*.json`）里的 `glass` 层已扁平化成实心/半透明 `rect`；
        `color.common.shadow` 改成全透明（代码驱动的软阴影 —— 滑块把手、侧栏 —— 随之关掉），
-       渐变示例外观也从主题里撤出、改成 demo 页面内联（同 stripe / quad 的做法）。
+       渐变示例外观也从主题里撤出、改成页面内联（同 stripe / quad 的做法）。
      · `ios`：苹果风（系统色、分组列表、玻璃上下栏）。`op: "glass"` 现在是"ios 在用"的能力。
      原 `ocean` / `my-skin` 两套已删除，仓库里所有引用都改成了 `ios`。
   ⑦a2 **容器的玻璃统一走 `base/glass_surface`**（`docs/glass-layer.md` §2b）：
@@ -548,7 +566,7 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ③ 每行只一次 `AddText`，拼接走复用缓冲（稳态零分配）；④ 面板不可见时 `View::frame` 直接返回。
   实测：30 条与 1000 条日志的顶点数/命令数**完全相同**（162/3），一帧约 2 微秒。
 - ImGui 窗口在 `App::onDrawWindows` 里下发（视图树画完之后、`ImGui::Render()` 之前）。
-  demo 的日志窗口已经是视图了；这条路留给"需要自己的 ImGui 面板"的宿主。
+  日志窗口本身已经是视图（`DebugLogView`）；这条路留给"需要自己的 ImGui 面板"的宿主。
 - **按键重复（长按连续移动）**：`core/input.hpp` 的 `KeyRepeater`——首次按下**立刻**响应，
   按住则等 `repeatDelay`（默认 250ms）后每 `repeatInterval`（默认 100ms）一次，
   和 borealis 的 `BUTTOM_REPEAT_TRIGGER` / `BUTTON_REPEAT_DELAY` 一致。
@@ -588,9 +606,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   所以页头高度不受影响。字号取 `metric.font.size.title`（ios 主题 30、default 28），
   位置取 `metric.appletFrame.headerHeight` + `metric.spacing.sm`。JSON 侧对应属性 `largeTitle`。
   **content 避让不自动**：`Shell::setHeaderInset/setFooterInset` 由宿主给（动画期间给**目标值**，
-  这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（demo 就是这么做的）。
+  这样内容只重排一次），宿主再把 insets 加到内容层的 padding 上（宿主就是这么做的）。
   栏的"折叠补间"是**宿主**的事：`Animatable` 逐帧改两栏高度 + `App::requestLayout()`，
-  补间结束才真正 GONE（demo/app/demo_app.cpp 里有一份，库侧不再提供）。
+  补间结束才真正 GONE（demo 已移除，重做时由宿主自己实现）。
 - **占位挤压用 `Padding`**（`views/padding.*`，对标 borealis 的 `brls:Padding`）：
   空视图、auto 尺寸、`grow=1`，把后面的兄弟挤到另一端；页头就是
   `[图标][标题][Padding][右侧区]`。JSON 里写 `{ "type": "Padding" }` 也能用。
@@ -747,16 +765,16 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   `glTexSubImage2D`，Vulkan 走 staging + 屏障 + `vkCmdCopyBufferToImage`）。
   没有它的后端返回 false（默认实现），上层当作"这次换帧失败"处理。
   Vulkan 那段和 `createTexture` 的上传步骤同构但**故意不共用** —— 那条路径是验证过的，动它风险更大。
-- **demo 页面的控件一行一个**：别把好几个按钮塞一行（挤在一起会截断信息文字）。
+- **页面的控件一行一个**：别把好几个按钮塞一行（挤在一起会截断信息文字）。
   用"一行 + 控件 `grow=1`"铺满；容器/按钮的宽度靠 `measureContent: "sum"` 撑开，
   不要靠手写固定宽度。
-- **页面里不要再套 `ScrollingFrame`**（demo 约定）：非自滚动页（`selfScrolling=false`）由
+- **页面里不要再套 `ScrollingFrame`**（页面约定）：非自滚动页（`selfScrolling=false`）由
   宿主的外层滚动器负责滚动，页面的外层框是 `height: auto` —— 里面再放一个
   `grow/shrink` 的滚动器拿不到确定高度，高度会算成 0，**整页内容都看不见**（图标总览页踩过）。
   要页面自己滚就把 `addPage(..., selfScrolling=true)`，宿主会按滚动器实测高度补外层框高度。
 - **页面在 `App::run()` 之前建 = 字体还没装**：`App::run()` 里才建图集并 `loadFonts()`，
   而视图树（`setRootView`）在那之前就建好了。所以任何"构建页面时就去查字体/图标表"的代码
-  在首次构建时都会拿到空表（图标总览页曾经整页空白）—— demo 因此把**起始页推迟到第一帧**再选
+  在首次构建时都会拿到空表（图标总览页曾经整页空白）—— 因此要把**起始页推迟到第一帧**再选
   （`pendingStartPage` 在 `update()` 里消费）。
 - **`AppearanceView` 是容器，`update()` 必须先 `Box::update()` 递归子树**：
   底栏里的提示栏/状态区、页头里的标题、弹窗面板里的按钮行都靠这条，
@@ -975,12 +993,12 @@ const FrameTimeSummary s = app.getFrameStats().getSummary();
 
 `App::requestScreenshot(path, delayFrames)` 会把"再渲染 N 帧之后"的那一帧从后缓冲读出来
 存成 PNG，然后退出。**不要用 macOS 的 `screencapture` 做验证**：没给屏幕录制权限时它只能
-拍到壁纸（这个坑在验证 demo 页面时踩过，白折腾很久）。
+拍到壁纸（这个坑在验证页面时踩过，白折腾很久）。
 
 实现：`RenderBackend::readPixels()`（OpenGL 后端已实现，读回时上下翻转）+ `core/image_writer.*`
 （stb_image_write，第三方头文件的警告在这一个编译单元里局部压掉）。
 
-**demo 里不要加环境变量调试开关**（曾经有 `BKLV_DEMO_PAGE` / `BKLV_DEMO_LOG(_SPAM)` /
+**示例里不要加环境变量调试开关**（曾经有 `BKLV_DEMO_PAGE` / `BKLV_DEMO_LOG(_SPAM)` /
 `BKLV_DEMO_SCROLL` / `BKLV_DEMO_CLICK` / `BKLV_DEMO_SWEEP` / `BKLV_SCREENSHOT(_FRAMES)`，
 已全部删除）。要验收就写一个临时程序（无窗口，自己 include `bklv/` 的头），要截图就在自己的临时程序里调
 `App::requestScreenshot()`；产品程序里不留"只有调试时才走"的分支。
@@ -1015,7 +1033,7 @@ CI 一个平台一份 workflow（`.github/workflows/`），**只编 GL**：
 - `windows.yml`：两个 job —— `mingw`（MSYS2 MINGW64 + 显式 `-G Ninja`，就是 `build.bat`
   那套工具链）与 `msvc`（VS 2022 生成器，专门盯住 `notes/tweeny-msvc-render.patch`
   这条只在 MSVC 下生效的补丁路径）；
-- `switch.yml`：`devkitpro/devkita64` 容器 + `scripts/build_switch.sh`，产物 `dist/switch/demo.nro`。
+- `switch.yml`：`devkitpro/devkita64` 容器 + `scripts/build_switch.sh`，产物 `dist/switch/bklv_switch.nro`。
 
 每个 workflow 自己带一份触发条件与 `concurrency`（YAML 不能跨文件共享 steps，所以重复写）。
 构建都走 `scripts/ci_build.sh gl`（参数与「出现 warning 即失败」的门禁只有那一份）；
@@ -1029,13 +1047,13 @@ vendored 的 submodule（SDL3 / Yoga / imgui / webp / lunasvg）按自己的 `-W
 
 ```
 bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists.txt
-  bklv.hpp          伞头文件：常用类型一次引入（demo 只用它）
+  bklv.hpp          伞头文件：常用类型一次引入（示例只用它）
   core/             接口层：view / box / app / platform / graphics / input / ...
   core/ui_scale.*   UI 缩放（主题尺寸按 1280x720 写，运行时按窗口宽等比放大）
   views/            语义控件：label / image / scrolling_frame / recycler / debug_log_view / ...
-  widgets/          外壳与外观驱动的控件：shell（四层外壳）/ pager（页面懒加载）/ appearance_view
-                    / rectangle / button / header / bottom_bar / slider / tab_frame / sidebar
-                    / dialog / dropdown / edit_text_dialog / hints_bar / tab_bar（底部导航）
+  widgets/          外观驱动的控件（清理后只剩基础件）：appearance_view / appearance_children
+                    / button（唯一注册进 JSON 视图类型的控件）/ notification
+                    / layer_draw_{custom,glass,image,rect,shadow,text}
   backends/         图形 API 实现：opengl / vulkan / gles3 / imgui 后端
   platforms/        平台实现：sdl3 / switch
   3rd/              vendored 依赖：imgui / yoga / tweeny / SDL / stb / json
@@ -1043,12 +1061,12 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
 resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
-demo/               展示程序：main.cpp + app/（页面 / 侧栏 / 列表项），只 include bklv/bklv.hpp
-CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo
+examples/           宿主示例：embed_imgui_gl（嵌进宿主循环）/ multi_context / switch / cmake_consumer
+CMakeLists.txt      仓库入口：判定平台、定输出目录、编 examples/
 scripts/            脚本：check.sh（本机门禁）、build_switch.sh（Switch）、命名/分层检查与文档生成
 docs/               速查文档：bklv 文件职责、API 用法、已知的坑
 notes/              设计笔记与移植评估
-resources/          运行期资源：字体 / 文案 / 主题 / demo 用的图片
+resources/          运行期资源：字体 / 文案 / 主题 / 示例用的图片
                     （桌面复制到可执行文件目录，Switch 打进 romfs）
 ```
 

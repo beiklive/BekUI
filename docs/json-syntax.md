@@ -1,5 +1,11 @@
 # JSON 语法速查
 
+> **2026-10 控件清理**：`bklv/widgets` 现在只剩 `AppearanceView` / `Button` / `Notification`
+> + 六个 `layer_draw_*`。本文提到的 `Shell` / `Header` / `BottomBar` / `TabBar` / `Sidebar` /
+> `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` / `StatusArea`
+> 以及它们在 `resources/theme/default/base/**` 下的外观 JSON 都已删除 —— 这些段落作为
+> "重做时的约定"保留，别当成现成 API。
+
 bklv 里一共有四类 JSON，各管一件事。这份文档是它们的**完整语法**（键名、取值形式、
 枚举拼写、默认值、报错行为），全部对照代码整理，不是示意。
 
@@ -547,7 +553,7 @@ key 是 `"<层 id>.<属性名>"`，值是一个补间目标：
 ### `resources/theme/themes.json`
 
 ```json
-{ "default": "default", "available": ["default", "ios"] }
+{ "default": "default", "available": ["default", "glass"] }
 ```
 
 ### `<主题>/theme.json`
@@ -951,7 +957,7 @@ static bool parse(const Json& node, const ThemeData& theme, AppearanceLayer& out
 
 ### 样例二：不规则四边形（多参数 + 钩子自己算动画）
 
-`demo/contrib/quad_layer.cpp` 是第二个样例：**四个顶点各自随时间随机游走**，
+第二个样例（`quad`）是**四个顶点各自随时间随机游走**，
 演示"多参数 + 每帧自己算位置"的写法（`stripe` 那三个参数是静态的）。
 
 ```cpp

@@ -7,6 +7,19 @@ bklv 只按需移植，不追平；两者定位与技术选型的差异见文末
 条目按优先级分组，每条都写清**要做什么**和**怎么算做完**。
 已完成的项不留在本文件里，历史见 `git log`。
 
+> **2026-10 现状变更（读旧条目时先看这里）**
+> - `demo/` 已整个移除，可执行目标改成 `examples/`（`embed_imgui_gl` / `multi_context` /
+>   `switch` / `cmake_consumer`）。下面提到 `demo/`、`demo/app/*` 的条目都是**历史记录**，
+>   等重做 demo 时再按当时的结论去落地。
+> - `bklv/widgets` 只保留基础件：`AppearanceView` / `appearance_children` / `Button` /
+>   `Notification` + 六个 `layer_draw_*`。`Shell` / `Header` / `BottomBar` / `TabBar` /
+>   `Sidebar` / `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` /
+>   `StatusArea` / `RecyclerView` 桥接等**都已删除**，对应主题外观 JSON 也一起删了。
+>   重做时按下面这些"已完成"的历史条目里记的约束重新实现。
+> - 主题只剩 `default`（纯扁平）与 `glass`（玻璃质感、逐键回退 default）；`ios` 主题已删。
+> - 仓库里不再带 `tests/`，验收靠临时程序 + `bash scripts/check.sh`（命名 / 分层 /
+>   主题资源清单 / 双后端零警告构建）。
+
 ---
 
 ## 定位

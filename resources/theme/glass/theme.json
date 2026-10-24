@@ -3,13 +3,9 @@
   "version": 1,
   "author": "bklv",
   "colorScheme": "light",
-  "description": "基于 default 的玻璃风格主题：只覆盖上下栏 / 弹层，其余回退 default",
-  "files": [
-    "base/widget/header.json",
-    "base/widget/bottom_bar.json",
-    "base/dropdown_popup.json",
-    "base/widget/dialog.json"
-  ],
+  "description": "基于 default 的玻璃风格主题：只换配色与数值，外观全部回退 default",
+  "$comment": "原来覆盖上/下栏与弹层四份外观，那些控件已移除，所以 files 为空；缺项一律回退 default。",
+  "files": [],
   "schemaVersion": 1,
   "sound": "sound.json"
 }

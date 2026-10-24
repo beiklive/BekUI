@@ -1,5 +1,11 @@
 # 基础控件页：控件 / 代码 / 路径 / JSON 外观名 对照表
 
+> **2026-10 控件清理**：`bklv/widgets` 现在只剩 `AppearanceView` / `Button` / `Notification`
+> + 六个 `layer_draw_*`。本文提到的 `Shell` / `Header` / `BottomBar` / `TabBar` / `Sidebar` /
+> `TabFrame` / `Cell` 家族 / `Dialog` / `Dropdown` / `Slider` / `HintsBar` / `StatusArea`
+> 以及它们在 `resources/theme/default/base/**` 下的外观 JSON 都已删除 —— 这些段落作为
+> "重做时的约定"保留，别当成现成 API。
+
 页面源码 `demo/app/pages/page_base_widgets.cpp`（一节 = header + 本体 + 各状态行）
 ；页面文案 `resources/i18n/zh-Hans.json` 的 `base_widgets/*`。
 

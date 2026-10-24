@@ -11,7 +11,7 @@ REM
 REM  Usage:
 REM    build.bat                    GL backend       -> dist\*.exe
 REM    build.bat --vk               Vulkan backend   -> dist\vk\*.exe
-REM    build.bat --gl --only=demo   only build the given target(s)
+REM    build.bat --gl --only=embed_imgui_gl   only build the given target(s)
 REM    build.bat --gui              no console window (you lose BKLV_LOG_*)
 REM    build.bat --sdl-force        force a full reconfigure of SDL3
 REM
@@ -60,13 +60,21 @@ if /I "!PREFIX!"=="--only=" (
     goto parse
 )
 
-REM Everything else is forwarded verbatim to cmake (for example -DBKLV_TARGETS=).
+REM Everything else is forwarded verbatim to cmake (for example -DBKLV_BUILD_EXAMPLES=OFF).
 set "BUILD_ARGS=%BUILD_ARGS% %ARG%"
 shift
 goto parse
 :parsed
 
-if defined ONLY set "BUILD_ARGS=%BUILD_ARGS% -DBKLV_TARGETS=%ONLY%"
+REM --only selects build targets, not a CMake variable: the repository only has
+REM fixed example targets now (embed_imgui_gl / multi_context), and the old
+REM -DBKLV_TARGETS cache entry is gone. Accept "a,b" as well as "a|b".
+set "TARGET_ARGS="
+if defined ONLY (
+    set "ONLY_LIST=!ONLY:,= !"
+    set "ONLY_LIST=!ONLY_LIST:| = !"
+    set "TARGET_ARGS=--target !ONLY_LIST!"
+)
 REM Always pass this explicitly: it is a CMake cache entry, so leaving it out
 REM would keep whatever --gui set the last time and silently stick.
 if "%GUI%"=="1" (
@@ -180,7 +188,7 @@ if errorlevel 1 (
 REM ---------------------------------------------------------------------------
 REM  Build
 REM ---------------------------------------------------------------------------
-"%CMAKEEXE%" --build "%BUILD_DIR%"
+"%CMAKEEXE%" --build "%BUILD_DIR%" !TARGET_ARGS!
 if errorlevel 1 (
     echo [ERROR] build failed
     exit /b 1

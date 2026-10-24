@@ -1,9 +1,9 @@
 # bklv —— 仓库构建入口
 #
-# 这里只做三件事：判定平台、定输出目录、编出 demo 程序。
+# 这里只做三件事：判定平台、定输出目录、编出 examples/ 里的示例程序。
 # **库本身的构建在 bklv/CMakeLists.txt**，那个目录是自包含的，可以整目录拷走。
 #
-# 后端是编译期决定的（见 AGENTS.md），所以「同一个 demo 编 GL 和 Vulkan 两版」
+# 后端是编译期决定的（见 AGENTS.md），所以「同一份代码编 GL 和 Vulkan 两版」
 # 靠两个构建目录实现：
 #
 #   cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl    # -> dist/
@@ -70,14 +70,9 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(BKLV_WINDOWS_GUI "Windows 上不弹控制台窗口（会看不到 BKLV_LOG_* 输出）" OFF)
-option(BKLV_BUILD_DEMO "编译 demo 主程序" ON)
 option(BKLV_BUILD_EXAMPLES "编译 examples/ 下的示例" ON)
 set(BKLV_GRAPHICS "gl" CACHE STRING "图形后端：gl 或 vk")
 set_property(CACHE BKLV_GRAPHICS PROPERTY STRINGS gl vk)
-
-# 只编指定的目标，留空=全部。按完整名字匹配，可逗号分隔多个。
-# 目前只有一个目标 demo，保留这个开关是为了以后加示例程序时不用改构建。
-set(BKLV_TARGETS "" CACHE STRING "只构建列出的目标（完整名字，逗号分隔；留空=全部）")
 
 # ---------------------------------------------------------------------------
 # 平台判定
@@ -164,140 +159,39 @@ function(bklv_copy_resources target_name)
     add_dependencies(${target_name} ${resource_target})
 endfunction()
 
-# demo：页面 / tab / 列表项这一层应用代码 + 主程序
 # ---------------------------------------------------------------------------
-#
-# 这一层属于 demo，不属于库：它用 bklv 的控件拼出「能力总览」这个具体界面。
-# 显式列源文件，不用 GLOB：加删文件比 glob 的便利更重要。
-
-set(BKLV_TARGET_NAMES "")
-if(BKLV_BUILD_DEMO)
-set(BKLV_APP_SOURCES
-    app/demo_app.cpp
-    app/card_button.cpp
-    app/pages/page_icons.cpp
-    app/pages/page_tab_frame.cpp
-    app/pages/page_button.cpp
-    app/pages/page_layout.cpp
-    app/pages/page_json_theme.cpp
-    app/pages/page_cells.cpp
-    app/pages/page_files.cpp
-    app/pages/showcase.cpp
-)
-
-set(BKLV_APP_ABS "")
-foreach(src IN LISTS BKLV_APP_SOURCES)
-    list(APPEND BKLV_APP_ABS "${CMAKE_SOURCE_DIR}/demo/${src}")
-endforeach()
-
-
-add_library(demo_app OBJECT ${BKLV_APP_ABS})
-target_link_libraries(demo_app PUBLIC bklv::bklv)
-
-# demo 自己的源码写的是 #include "app/page_host.hpp"，所以要把 demo/ 加进包含路径。
-target_include_directories(demo_app PUBLIC "${CMAKE_SOURCE_DIR}/demo")
-
-# ---------------------------------------------------------------------------
-# 目标程序
+# 状态输出
 # ---------------------------------------------------------------------------
 
-set(BKLV_TARGET_LIST
-    "demo|demo/main.cpp|app"
-)
+message(STATUS "bklv 仓库")
+message(STATUS "  平台     : ${BKLV_HOST}")
+message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
+message(STATUS "  可执行   : 由 examples/ 提供（demo 已移除，待重做）")
 
-# 清单漏项检查（同 bklv/CMakeLists.txt）：demo 下的 .cpp 必须都出现在
-# BKLV_APP_SOURCES（应用代码）或 BKLV_TARGET_LIST（各目标的入口 main.cpp）里
-set(BKLV_APP_ALLOWED ${BKLV_APP_ABS})
-foreach(entry IN LISTS BKLV_TARGET_LIST)
-    string(REPLACE "|" ";" parts "${entry}")
-    list(GET parts 1 target_src)
-    list(APPEND BKLV_APP_ALLOWED "${CMAKE_SOURCE_DIR}/${target_src}")
-endforeach()
+# ---------------------------------------------------------------------------
+# 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
+# ---------------------------------------------------------------------------
 
-file(GLOB_RECURSE _bklv_demo_found CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/demo/*.cpp")
-foreach(_file ${_bklv_demo_found})
-    if(NOT _file IN_LIST BKLV_APP_ALLOWED)
-        file(RELATIVE_PATH _rel "${CMAKE_SOURCE_DIR}" "${_file}")
-        message(FATAL_ERROR
-            "CMakeLists.txt 既没把 ${_rel} 放进 BKLV_APP_SOURCES，也没放进 BKLV_TARGET_LIST")
-    endif()
-endforeach()
-
-set(BKLV_TARGET_NAMES "")
-set(BKLV_MATCHED 0)
-
-foreach(entry IN LISTS BKLV_TARGET_LIST)
-    string(REPLACE "|" ";" parts "${entry}")
-    list(GET parts 0 target_name)
-    list(GET parts 1 target_src)
-    list(GET parts 2 target_kind)
-
-    if(NOT BKLV_TARGETS STREQUAL "")
-        string(REPLACE "," ";" BKLV_TARGETS_LIST "${BKLV_TARGETS}")
-        if(NOT target_name IN_LIST BKLV_TARGETS_LIST)
-            continue()
-        endif()
-    endif()
-    math(EXPR BKLV_MATCHED "${BKLV_MATCHED} + 1")
-
-    add_executable(${target_name} "${CMAKE_SOURCE_DIR}/${target_src}")
-
-    # SDL3 / OpenGL / Vulkan / ImGui 都由 bklv::bklv 带出来，不需要在这里重复列。
-    target_link_libraries(${target_name} PRIVATE bklv::bklv)
-
-    if(target_kind STREQUAL "app")
-        target_link_libraries(${target_name} PRIVATE demo_app)
-    endif()
-
-    # Windows 默认保留控制台，BKLV_LOG_* 才看得见（与 macOS / Linux 行为一致）。
-    if(BKLV_HOST STREQUAL "windows" AND BKLV_WINDOWS_GUI)
-        target_link_options(${target_name} PRIVATE -mwindows)
-    endif()
-
-    bklv_copy_resources(${target_name})
-
+# 多配置生成器（Visual Studio / Xcode）默认会再插一层 Release/ 子目录，
+# 而资源是按 <exe 目录>/resources 找的，落在 dist/Release 就找不到。
+# 所以逐个配置都钉到 BKLV_OUT_DIR。
+function(bklv_set_output_dir target_name)
     set_target_properties(${target_name} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BKLV_OUT_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BKLV_OUT_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${BKLV_OUT_DIR}"
-        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${BKLV_OUT_DIR}"
-    )
+        RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${BKLV_OUT_DIR}")
+endfunction()
 
-    list(APPEND BKLV_TARGET_NAMES ${target_name})
-endforeach()
-
-if(NOT BKLV_TARGETS STREQUAL "" AND BKLV_MATCHED EQUAL 0)
-    message(FATAL_ERROR
-        "BKLV_TARGETS=${BKLV_TARGETS} 没有匹配到任何目标。可用目标：\n  demo")
-endif()
-endif() # BKLV_BUILD_DEMO
-
-# ---------------------------------------------------------------------------
-# 状态输出
-# ---------------------------------------------------------------------------
-
-list(LENGTH BKLV_TARGET_NAMES BKLV_TARGET_COUNT)
-
-message(STATUS "bklv 仓库")
-message(STATUS "  平台     : ${BKLV_HOST}")
-message(STATUS "  输出目录 : ${BKLV_OUT_DIR}")
-message(STATUS "  目标     : ${BKLV_TARGET_COUNT} 个 —— ${BKLV_TARGET_NAMES}")
-
-# ---------------------------------------------------------------------------
-# 嵌入示例（仅 GL；VK 构建下宿主后端不同，示例不编）
-# ---------------------------------------------------------------------------
 if(BKLV_BUILD_EXAMPLES AND BKLV_GRAPHICS STREQUAL "gl")
     add_executable(embed_imgui_gl examples/embed_imgui_gl/main.cpp)
     target_link_libraries(embed_imgui_gl PRIVATE bklv::bklv)
-    set_target_properties(embed_imgui_gl PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}")
+    bklv_set_output_dir(embed_imgui_gl)
     bklv_copy_resources(embed_imgui_gl)
 
     add_executable(multi_context examples/multi_context/main.cpp)
     target_link_libraries(multi_context PRIVATE bklv::bklv)
-    set_target_properties(multi_context PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${BKLV_OUT_DIR}")
+    bklv_set_output_dir(multi_context)
     bklv_copy_resources(multi_context)
 endif()

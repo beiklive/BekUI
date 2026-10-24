@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 用 devkitA64 把 demo 编成 Switch 的 .nro。
+# 用 devkitA64 把 examples/switch 里的宿主编成 Switch 的 .nro。
+# （demo 已移除、重做中；产物名从 demo.nro 改成 bklv_switch.nro。）
 #
 # 用法：
 #   ./scripts/build_switch.sh              # 编译
@@ -56,6 +57,8 @@ fi
 
 OUT_DIR="${ROOT_DIR}/dist/switch"
 BUILD_DIR="${ROOT_DIR}/build/switch"
+# 宿主程序：demo 移除后由 examples/switch 里的最小宿主顶上（Box + Button + Label）。
+HOST_DIR="${ROOT_DIR}/examples/switch"
 if [[ "${CLEAN}" -eq 1 ]]; then
     rm -rf "${BUILD_DIR}"
 fi
@@ -77,11 +80,11 @@ DEFINES=(-D__SWITCH__ -DBKLV_SWITCH -DBKLV_GLES3 -DBKLV_USE_STB_IMAGE -DIMGUI_IM
     -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 
 # -I"${ROOT_DIR}"：让 #include "bklv/..." 生效
-# -I"${ROOT_DIR}/demo"：让 demo 的 #include "app/..." 生效
+# -I"${HOST_DIR}"：让宿主自己的 #include 生效（现在是 examples/switch 里的单文件宿主）
 # devkitPro 的头（portlibs / libnx）用 -isystem：libnx 自己的结构体初始化不完整，
 # 用 -Wall -Wextra 编会刷几百条 -Wmissing-field-initializers，淹没我们自己的警告。
 INCLUDES=(-I"${ROOT_DIR}"
-    -I"${ROOT_DIR}/demo"
+    -I"${HOST_DIR}"
     -I"${THIRD_DIR}/imgui"
     -I"${THIRD_DIR}/yoga"
     -I"${THIRD_DIR}/stb"
@@ -160,11 +163,16 @@ IMGUI_SOURCES=(
     "${BKLV_DIR}/backends/imgui_impl_opengl3_wrapper.cpp"
 )
 
-# demo：主程序 + app 层（页面 / tab / 列表项）
-DEMO_SOURCES=("${ROOT_DIR}/demo/main.cpp")
+# 宿主：examples/switch 里的全部 .cpp（现在是单文件）
+HOST_SOURCES=()
 while IFS= read -r -d '' f; do
-    DEMO_SOURCES+=("$f")
-done < <(find "${ROOT_DIR}/demo/app" -name '*.cpp' -print0 | sort -z)
+    HOST_SOURCES+=("$f")
+done < <(find "${HOST_DIR}" -name '*.cpp' -print0 | sort -z)
+
+if [[ ${#HOST_SOURCES[@]} -eq 0 ]]; then
+    echo "错误：${HOST_DIR} 下没有 .cpp，Switch 构建没有入口" >&2
+    exit 1
+fi
 
 # Yoga 源码（与桌面一致）
 YOGA_SOURCES=()
@@ -172,7 +180,7 @@ while IFS= read -r -d '' f; do
     YOGA_SOURCES+=("$f")
 done < <(find "${THIRD_DIR}/yoga/yoga" -type f -name '*.cpp' -print0)
 
-echo "编译 demo (Switch / devkitA64) ..."
+echo "编译 Switch 宿主 (devkitA64) ..."
 
 # 逐个编译成 .o，避免一次调用太多文件。
 OBJS=()
@@ -224,7 +232,7 @@ compile_c_one() {
     OBJS+=("${obj}")
 }
 
-for src in "${BKLV_SOURCES[@]}" "${IMGUI_SOURCES[@]}" "${DEMO_SOURCES[@]}"; do
+for src in "${BKLV_SOURCES[@]}" "${IMGUI_SOURCES[@]}" "${HOST_SOURCES[@]}"; do
     compile_one "${src}"
 done
 
@@ -256,13 +264,13 @@ LDFLAGS=(-specs="${LIBNX}/switch.specs" "${ARCH[@]}" -Wl,-Map,"${BUILD_DIR}/link
 # 顺序与 devkitPro 的 OpenGL 示例一致：libEGL 依赖 glapi 与 drm_nouveau。
 LIBS=(-L"${PORTLIBS}/lib" -L"${LIBNX}/lib" -lEGL -lglapi -ldrm_nouveau -lGLESv2 -lnx -lm)
 
-ELF="${OUT_DIR}/demo.elf"
-NRO="${OUT_DIR}/demo.nro"
+ELF="${OUT_DIR}/bklv_switch.elf"
+NRO="${OUT_DIR}/bklv_switch.nro"
 
 "${CXX}" "${OBJS[@]}" "${LDFLAGS[@]}" "${LIBS[@]}" -o "${ELF}"
 
 # 去掉调试符号：不 strip 的话 nro 会大出好几 MB（main.elf 保留符号便于调试）。
-ELF_STRIPPED="${BUILD_DIR}/demo.stripped.elf"
+ELF_STRIPPED="${BUILD_DIR}/bklv_switch.stripped.elf"
 cp "${ELF}" "${ELF_STRIPPED}"
 if [[ -x "${STRIP}" ]]; then
     "${STRIP}" --strip-all "${ELF_STRIPPED}"

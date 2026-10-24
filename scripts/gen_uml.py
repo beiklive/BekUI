@@ -248,14 +248,14 @@ def diagram_packages():
           x=740, y=30, w=240, kind="group")
 
     d.group("lib", "bklv（BekUI）—— 库本体，自包含", 60, 140, 1400, 250,
-            note="上层与图形 API 无关：demo 不写任何 GL / Vulkan 代码")
+            note="上层与图形 API 无关：示例不写任何 GL / Vulkan 代码")
     d.cls("core", "core/", ["App / View / Box / ThemeData", "Appearance / RenderBackend / Platform",
                             "task / event / input / ime / logger"],
           x=90, y=190, w=290, kind="group")
     d.cls("views", "views/", ["Label / Image / Padding / Scroll", "Recycler / DebugLogView"],
           x=410, y=190, w=230, kind="group")
-    d.cls("widgets", "widgets/", ["Shell / Header / BottomBar", "Button / Cell / Dialog / Dropdown",
-                                  "Pager / HintsBar / Notification"],
+    d.cls("widgets", "widgets/", ["AppearanceView / Button", "Notification / layer_draw_*",
+                                  "（Shell / Cell / Dialog 等已移除）"],
           x=670, y=190, w=270, kind="group")
     d.cls("backends", "backends/", ["RenderBackend 接口", "OpenGLBackend / VulkanBackend",
                                     "VulkanUiPassHook（通用钩子）"],
