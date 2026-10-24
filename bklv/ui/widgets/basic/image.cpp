@@ -1,5 +1,7 @@
 #include "bklv/ui/widgets/basic/image.hpp"
 
+#include <atomic>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -263,18 +265,27 @@ void Image::setImageFromFileAsync(const std::string& path)
     const uint64_t generation = ++this->loadGeneration;
     const std::string resolved = resourcePath(path);
 
+    // 解码队列按 key 去重（同一张图不重复解）。但"每个 Image 自己持纹理"，
+    // 所以同一个路径同时出现在两个 Image 上时，第二个请求会被队列丢掉、
+    // 永远等不到回调（现象：一屏多条图片通知，只有第一条有图，其余是黑块）。
+    // 这里给每次加载拼一个唯一后缀，让它们各自成队（小图解码很便宜，
+    // 上传仍受 getMaxUploadsPerFrame() 限速）。
+    static std::atomic<uint64_t> loadKeySeq { 0 };
+    const std::string loadKey =
+        resolved + "#" + std::to_string(loadKeySeq.fetch_add(1, std::memory_order_relaxed));
+
     // 后台：读文件 + 解码（纯 CPU/IO，不碰 GL/ImGui）
     // 回调捕获的是 weak 护栏，不是裸 this：Image 先死了就直接放弃
     std::weak_ptr<const AliveFlag::Flag> guard = this->alive.handle();
 
     // 背压 3-3：解码启动走队列（并发受 getDecodeConcurrency() 限制）
-    enqueueDecode(resolved, this->decodePriority, [this, generation, guard, resolved]() {
+    enqueueDecode(loadKey, this->decodePriority, [this, generation, guard, resolved, loadKey]() {
         task::runResult(
             [resolved] { return decodeImageFile(resolved.c_str()); },
-        [this, generation, guard, resolved](DecodedImage image) {
+        [this, generation, guard, resolved, loadKey](DecodedImage image) {
             // 背压 3-4：解码一完成只登记"待上传"，真正的上传交给 pumpUploads()
             // 按 getMaxUploadsPerFrame() 每帧消费 -> 20 张完成会摊到多帧，不会一帧传 20 张
-            notifyDecodeFinished(resolved, [this, generation, guard, image, resolved]() {
+            notifyDecodeFinished(loadKey, [this, generation, guard, image, resolved]() {
                 if (guard.expired() || !guard.lock()->isAlive())
                     return; // 视图已经销毁，别再碰它
 

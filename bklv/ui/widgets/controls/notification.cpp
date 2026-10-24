@@ -1,9 +1,10 @@
-﻿#include "bklv/ui/widgets/controls/notification.hpp"
+#include "bklv/ui/widgets/controls/notification.hpp"
 
 #include <algorithm>
 
 #include "bklv/foundation/anim/time.hpp"
 #include "bklv/ui/theme/theme_data.hpp"
+#include "bklv/ui/widgets/basic/image.hpp"
 
 namespace bklv
 {
@@ -24,17 +25,16 @@ constexpr float kRadiusDefault    = 6.0f;
 constexpr ImU32 kTextDefault = IM_COL32(255, 255, 255, 255);
 } // namespace
 
-Notification::Notification(NotificationKind kind, const std::string& text,
-    const std::string& glyphOrImagePath, float duration)
+// ---------------------------------------------------------------- 基类
+
+Notification::Notification(const std::string& text, float duration)
     : AppearanceView("base/widget/notification", false)
 {
-    this->kind        = kind;
-    this->text        = text;
-    this->glyphOrPath = glyphOrImagePath;
-    this->duration    = duration > 0.0f ? duration : 3.0f;
-    this->remaining   = this->duration;
+    this->text      = text;
+    this->duration  = duration > 0.0f ? duration : 3.0f;
+    this->remaining = this->duration;
 
-    this->setupContent();
+    this->setupBaseContent();
 
     // 卡片外观（底色 / 描边 / 阴影）在 JSON 里，内容样式在这里上：
     // applyTheme() 会同时刷新两者，换肤不用重建通知。
@@ -44,61 +44,20 @@ Notification::Notification(NotificationKind kind, const std::string& text,
     this->setTranslateX(this->slideDistance);
 }
 
-Notification::Notification(const std::string& text, float duration)
-    : Notification(NotificationKind::TEXT, text, std::string(), duration)
-{
-}
-
-Notification* Notification::withIcon(
-    const std::string& text, const std::string& glyph, float duration)
-{
-    return new Notification(NotificationKind::ICON, text, glyph, duration);
-}
-
-Notification* Notification::withImage(
-    const std::string& text, const std::string& imagePath, float duration)
-{
-    return new Notification(NotificationKind::IMAGE, text, imagePath, duration);
-}
-
-void Notification::setupContent()
+void Notification::setupBaseContent()
 {
     // 卡片本身已经带着外观层的背景/描边/内边距，这里只往里塞一行内容：
     //   [图标 或 图片] [文案]
+    // 图标/图片由派生类的 buildContent() 插到第 0 位，文案固定在后。
     this->row = new Box(Axis::ROW);
     this->row->setAlignItems(AlignItems::CENTER);
     this->addView(this->row);
-
-    if (this->kind == NotificationKind::IMAGE)
-    {
-        this->image = new Image();
-        this->image->setScalingType(ImageScalingType::FILL);
-        this->image->setImageFromFileAsync(this->glyphOrPath);
-        this->row->addView(this->image);
-    }
-    else if (this->kind == NotificationKind::ICON)
-    {
-        this->iconLabel = new Label();
-        this->iconLabel->setIconFontEnabled(true);
-        this->iconLabel->setText(this->glyphOrPath);
-        this->iconLabel->setVerticalAlign(VerticalAlign::CENTER);
-        this->row->addView(this->iconLabel);
-    }
 
     this->textLabel = new Label();
     this->textLabel->setSingleLine(true);
     this->textLabel->setText(this->text);
     this->textLabel->setVerticalAlign(VerticalAlign::CENTER);
     this->row->addView(this->textLabel);
-}
-
-void Notification::setText(const std::string& value)
-{
-    this->text = value;
-    if (this->textLabel != nullptr)
-        this->textLabel->setText(value);
-    else
-        this->setupContent();
 }
 
 void Notification::applyContentTheme()
@@ -108,28 +67,10 @@ void Notification::applyContentTheme()
     if (this->row != nullptr)
         this->row->setGap(theme.number("metric.notification.contentGap", kGapDefault));
 
-    const ImU32 textColor = theme.color("color.notification.text", kTextDefault);
-    const float fontSize  = theme.number("metric.notification.fontSize", 18.0f);
-
     if (this->textLabel != nullptr)
     {
-        this->textLabel->setFontSize(fontSize);
-        this->textLabel->setTextColor(textColor);
-    }
-
-    if (this->iconLabel != nullptr)
-    {
-        this->iconLabel->setFontSize(theme.number("metric.notification.iconSize", kIconSizeDefault));
-        this->iconLabel->setTextColor(textColor);
-    }
-
-    if (this->image != nullptr)
-    {
-        const float size = theme.number("metric.notification.imageSize", kImageSizeDefault);
-        this->image->setWidth(size);
-        this->image->setHeight(size);
-        this->image->setCornerRadius(
-            theme.number("metric.notification.imageRadius", kRadiusDefault));
+        this->textLabel->setFontSize(theme.number("metric.notification.fontSize", 18.0f));
+        this->textLabel->setTextColor(theme.color("color.notification.text", kTextDefault));
     }
 
     // 滑动距离 = 卡片宽度 + 右边距 + 余量。多给一点，保证完全移出可视区，
@@ -159,10 +100,8 @@ void Notification::dismiss()
     this->dismissed = true;
     // 记下当前高度：消失时逐步收成 0，下面那几条才会跟着往上挪，而不是"跳一下"
     this->fullHeight = this->getHeight();
-
-    // 淡出仍走外观状态（JSON 里的 shown / hidden）
-    this->setAppearanceState("shown", false);
-    this->setAppearanceState("hidden", true);
+    // 消失动效全在代码里（滑回右侧 + 高度收缩），不依赖外观 JSON 里的状态：
+    // 卡片外观只负责"长什么样"，动效由本类驱动。
 }
 
 void Notification::update()
@@ -177,8 +116,7 @@ void Notification::update()
     {
         if (this->appearProgress < 1.0f)
         {
-            this->appearProgress =
-                std::min(1.0f, this->appearProgress + delta / kAppearSeconds);
+            this->appearProgress = std::min(1.0f, this->appearProgress + delta / kAppearSeconds);
             this->setTranslateX((1.0f - this->appearProgress) * this->slideDistance);
         }
 
@@ -199,6 +137,85 @@ void Notification::update()
 
     if (this->fullHeight > 0.0f)
         this->setHeight(this->fullHeight * (1.0f - this->dismissProgress));
+}
+
+// ---------------------------------------------------------------- 图标 + 文字
+
+IconNotification::IconNotification(
+    const std::string& text, const std::string& glyph, float duration)
+    : Notification(text, duration)
+{
+    this->glyph = glyph;
+
+    // 派生类构造体里调用虚函数是安全的（此时对象已经是派生类）
+    this->buildContent();
+    this->applyTheme();
+}
+
+void IconNotification::buildContent()
+{
+    this->iconLabel = new Label();
+    this->iconLabel->setIconFontEnabled(true);
+    this->iconLabel->setText(this->glyph);
+    this->iconLabel->setVerticalAlign(VerticalAlign::CENTER);
+
+    // 插到内容行最前面：图标在左、文案在右
+    this->getContentRow()->addView(this->iconLabel, 0);
+}
+
+void IconNotification::setIcon(const std::string& glyph)
+{
+    this->glyph = glyph;
+    if (this->iconLabel != nullptr)
+        this->iconLabel->setText(glyph);
+}
+
+void IconNotification::applyContentTheme()
+{
+    Notification::applyContentTheme();
+
+    if (this->iconLabel == nullptr)
+        return;
+
+    const ThemeData& theme = getTheme();
+    this->iconLabel->setFontSize(theme.number("metric.notification.iconSize", kIconSizeDefault));
+    this->iconLabel->setTextColor(theme.color("color.notification.text", kTextDefault));
+}
+
+// ---------------------------------------------------------------- 图片 + 文字
+
+ImageNotification::ImageNotification(
+    const std::string& text, const std::string& imagePath, float duration)
+    : Notification(text, duration)
+{
+    this->imagePath = imagePath;
+
+    this->buildContent();
+    this->applyTheme();
+}
+
+void ImageNotification::buildContent()
+{
+    this->image = new Image();
+    this->image->setScalingType(ImageScalingType::FILL);
+    this->image->setImageFromFileAsync(this->imagePath);
+
+    this->getContentRow()->addView(this->image, 0);
+}
+
+void ImageNotification::applyContentTheme()
+{
+    Notification::applyContentTheme();
+
+    if (this->image == nullptr)
+        return;
+
+    const ThemeData& theme = getTheme();
+    const float size       = theme.number("metric.notification.imageSize", kImageSizeDefault);
+
+    this->image->setWidth(size);
+    this->image->setHeight(size);
+    this->image->setCornerRadius(theme.number("metric.notification.imageRadius", kRadiusDefault));
 }
 
 // ---------------------------------------------------------------- 管理器
@@ -223,21 +240,16 @@ Notification* NotificationManager::add(Notification* item)
     return item;
 }
 
-Notification* NotificationManager::notify(const std::string& text, float duration)
-{
-    return this->add(new Notification(text, duration));
-}
-
 Notification* NotificationManager::notifyIcon(
     const std::string& text, const std::string& glyph, float duration)
 {
-    return this->add(Notification::withIcon(text, glyph, duration));
+    return this->add(new IconNotification(text, glyph, duration));
 }
 
 Notification* NotificationManager::notifyImage(
     const std::string& text, const std::string& imagePath, float duration)
 {
-    return this->add(Notification::withImage(text, imagePath, duration));
+    return this->add(new ImageNotification(text, imagePath, duration));
 }
 
 void NotificationManager::cleanup()

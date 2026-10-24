@@ -813,13 +813,19 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   那套，同一个码位会画出灯泡/书本之类的东西（踩过）。
 - **通知（Toast）也是视图，动画在代码里做**（`ui/widgets/controls/notification.*`）：
   `NotificationManager`（挂右上角、绝对定位、不吃焦点）→ `Notification` × N。
-  三种内容走 `NotificationKind`：纯文字 / 图标 + 文字 / 图片 + 文字
-  （`App::notify` / `notifyIcon` / `notifyImage`，没有根视图时都先排队）。
+  **结构和 Button 家族一样**：`Notification` 是抽象基类（只管行为与卡片），
+  具体实现只有两个 —— `IconNotification`（图标 + 文字）、`ImageNotification`（图片 + 文字），
+  类型判断靠 `getKind()` 而不是 `dynamic_cast`（Switch 是 `-fno-rtti`）。
+  **没有"纯文字通知"这一类**：`App::notify(text, seconds)` 等价于带 info 图标的
+  `notifyIcon(...)`，要别的图标就显式调 `notifyIcon` / `notifyImage`
+  （没有根视图时都先排队，`setRootView` 后补发）。
   卡片只画背景 / 描边 / 阴影（`base/widget/notification.json`），内容用 `Box(Axis::ROW)` +
   `Label` / `Image` 拼真视图 —— 别用外观的 `text` 层，图标和图片没法走那条路。
   出现/消失**用 `setTranslateX` 从屏幕右侧滑**，消失时同时把自身高度收到 0，
   这样下面几条是"逐步往上挪"而不是"跳一下"。堆叠**不设上限**，各自倒计时、
   到期各自滑走，`isFinished()`（滑完 + 收完）才真正 `removeView`。
+  卡片底色走 `color.notification.background`、文字走 `color.notification.text`，
+  **两者要成对改**（改成浅色卡片却留着白字，就是白底白字看不见，踩过）。
 - **底栏/页头 `setShrink(0)`**：内容区要的比剩下的多时，该被压缩的是内容区（它会滚动），
   不是底栏（压了连图标都放不下，踩过：22px 被压成 14px）。
 - **动作分发：手柄/键盘沿父链冒泡，指针只认命中视图自己**（`View::triggerAction`）。

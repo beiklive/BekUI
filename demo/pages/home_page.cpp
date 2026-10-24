@@ -35,13 +35,13 @@ bklv::View* HomePage::build(DemoApp& app)
     actions->addView(themeButton);
     box->addView(actions);
 
-    // 三种通知各一个按钮：文字 / 图标 + 文字 / 图片 + 文字；再加一个连发，
+    // 两种通知形态各一个按钮（没有纯文字通知），再加一个连发，
     // 用来看"不设上限、一直往下堆"和逐条收回时下面的条目往上挪。
     auto* toasts = new bklv::Box(bklv::Axis::ROW);
     toasts->setGap(12.0f);
 
-    auto* textToast = new bklv::TextButton("文字通知");
-    textToast->setOnClick([&app]() { app.app().notify("Hello, BekUI demo"); });
+    auto* infoToast = new bklv::TextButton("信息通知");
+    infoToast->setOnClick([&app]() { app.app().notify("Hello, BekUI demo"); });
 
     auto* iconToast = new bklv::TextButton("图标通知");
     iconToast->setOnClick(
@@ -55,12 +55,20 @@ bklv::View* HomePage::build(DemoApp& app)
     burstButton->setOnClick(
         [&app]()
         {
-            // 5 条一起发、时长错开（4~8 秒），方便看清"到期的先收回、下面的往上挪"
+            // 5 条一起发、时长错开（4~8 秒），图标与图片交替，
+            // 方便看清"到期的先收回、下面的往上挪"
             for (int i = 0; i < 5; i++)
-                app.app().notify("队列消息 #" + std::to_string(i + 1), 4.0f + (float)i);
+            {
+                const std::string text = "队列消息 #" + std::to_string(i + 1);
+                if (i % 2 == 0)
+                    app.app().notifyImage(text, "resources/testcard.png", 4.0f + (float)i);
+                else
+                    app.app().notifyIcon(
+                        text, bklv::icon::glyph(bklv::icon::Id::INFO), 4.0f + (float)i);
+            }
         });
 
-    toasts->addView(textToast);
+    toasts->addView(infoToast);
     toasts->addView(iconToast);
     toasts->addView(imageToast);
     toasts->addView(burstButton);

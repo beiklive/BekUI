@@ -59,7 +59,7 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 demo/main.cpp               参数解析：--theme / --page / --screenshot / --frames / --size
 demo/demo_app.*             外壳：视图树、页面栈、导航（pushPage / goBack 都推迟到下一帧）
 demo/page.hpp               页面接口：getTitle() + build(DemoApp&)
-demo/pages/home_page.*      首页：导航、换肤，三种通知（文字 / 图标 / 图片）与连发 5 条
+demo/pages/home_page.*      首页：导航、换肤，两种通知（图标 / 图片）与连发 5 条
 demo/pages/settings_page.*  设置页：切换主题 / 返回上一页
 demo/style.hpp              从主题取页面底色与文字色
 ```

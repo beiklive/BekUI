@@ -10,7 +10,7 @@ demo/
   page.hpp            页面接口（getTitle / build）
   style.hpp           从主题取页面底色与文字色的小工具
   pages/
-    home_page.*       首页：导航、换肤，三种通知 + 连发 5 条（看堆叠与逐条收回）
+    home_page.*       首页：导航、换肤，两种通知（图标 / 图片）+ 连发 5 条（看堆叠与逐条收回）
     settings_page.*   设置页：演示压栈进入、出栈返回
 ```
 

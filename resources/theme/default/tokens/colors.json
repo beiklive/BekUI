@@ -130,8 +130,8 @@
     "wirelessOff": "#ffffff3c"
   },
   "notification": {
-    "background": "#1f2227f0",
-    "text": "#ffffff"
+    "background": "#ffffff",
+    "text": "#1f2328"
   },
   "debug": {
     "bounds": "#00ffcc8c",

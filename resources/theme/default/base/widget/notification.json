@@ -2,31 +2,18 @@
   "$comment": "通知卡片：只画背景 / 描边 / 阴影，内容（图标或图片 + 文案）由 Notification 用真视图拼出来。bg 留着给 hidden / shown 的 opacity 淡出用；横向滑入滑出走代码（setTranslateX），所以这里没有 offsetX 动画。",
   "box": {
     "width": "@theme/metric.notification.width",
-    "height": "auto",
+    "height": 70,
+    "alignItems": "flexStart",
+    "justifyContent": "center",
     "padding": [
-      "@theme/metric.notification.paddingY",
-      "@theme/metric.notification.paddingX",
-      "@theme/metric.notification.paddingY",
+      0,0,0,
       "@theme/metric.notification.paddingX"
-    ],
-    "alignItems": "flexStart"
-  },
-  "requires": {
-    "layers": [
-      {
-        "shadow": "shadow"
-      },
-      {
-        "bg": "rect"
-      }
     ]
   },
   "layers": [
     {
-      "import": "base/layer/shadow"
-    },
-    {
-      "import": "base/layer/border"
+      "import": "base/layer/shadow",
+      "radius": "@theme/metric.notification.radius"
     },
     {
       "import": "base/layer/bg",
@@ -36,18 +23,14 @@
       "radius": "@theme/metric.notification.radius"
     }
   ],
-  "states": {
-    "hidden": {
-      "bg.opacity": {
-        "to": 0.0,
-        "duration": 150
+  "requires": {
+    "layers": [
+      {
+        "shadow": "shadow"
+      },
+      {
+        "bg": "rect"
       }
-    },
-    "shown": {
-      "bg.opacity": {
-        "to": 1.0,
-        "duration": 150
-      }
-    }
+    ]
   }
 }

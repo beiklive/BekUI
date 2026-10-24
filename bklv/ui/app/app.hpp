@@ -224,7 +224,7 @@ class App
     // 三种形态都要能排队，所以这里不能只存 (文字, 时长)
     struct PendingNotification
     {
-        int kind = 0; // 0 = 文字，1 = 图标 + 文字，2 = 图片 + 文字
+        int kind = 1; // 1 = 图标 + 文字，2 = 图片 + 文字（没有纯文字的通知）
         std::string text;
         std::string glyphOrPath;
         float duration = 3.0f;

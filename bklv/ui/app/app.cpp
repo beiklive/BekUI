@@ -1,4 +1,4 @@
-#include "bklv/ui/app/app.hpp"
+﻿#include "bklv/ui/app/app.hpp"
 
 #include <chrono>
 #include "bklv/foundation/core/decode_queue.hpp"
@@ -6,6 +6,7 @@
 #include "bklv/foundation/core/frame_budget.hpp"
 #include "bklv/graphics/render/glass/glass_service.hpp"
 #include "bklv/foundation/core/globals.hpp"
+#include "bklv/system/media/icon_font.hpp"
 #include "bklv/system/media/image_writer.hpp"
 #include "bklv/system/media/audio.hpp"
 #include "bklv/foundation/core/services.hpp"
@@ -116,12 +117,11 @@ void App::setRootView(View* view)
         queued.swap(this->pendingNotifications);
         for (const PendingNotification& item : queued)
         {
-            if (item.kind == 1)
-                this->notifyIcon(item.text, item.glyphOrPath, item.duration);
-            else if (item.kind == 2)
+            // 只有两种形态（图标 / 图片）；纯文字的通知没有对应类
+            if (item.kind == 2)
                 this->notifyImage(item.text, item.glyphOrPath, item.duration);
             else
-                this->notify(item.text, item.duration);
+                this->notifyIcon(item.text, item.glyphOrPath, item.duration);
         }
     }
 }
@@ -228,16 +228,9 @@ NotificationManager* App::getNotifications()
 
 void App::notify(const std::string& text, float duration)
 {
-    NotificationManager* manager = this->getNotifications();
-    if (manager == nullptr)
-    {
-        // 根视图还没设好（窗口创建前 notify）：先排队，setRootView 之后补发
-        this->pendingNotifications.push_back({0, text, std::string(), duration});
-        return;
-    }
-
-    manager->notify(text, duration);
-    this->requestLayout();
+    // 没有"纯文字通知"这一类：`notify()` 等价于带一个 info 图标的 notifyIcon()。
+    // 想要别的图标就显式调 notifyIcon() / notifyImage()。
+    this->notifyIcon(text, icon::glyph(icon::Id::INFO), duration);
 }
 
 void App::notifyIcon(const std::string& text, const std::string& glyph, float duration)
