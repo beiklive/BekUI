@@ -161,6 +161,16 @@ void InputManager::update()
     const ImVec2 mouse = ImGui::GetIO().MousePos;
     this->pointerPosition = Point(mouse.x, mouse.y);
 
+    // 上一帧有视图被删除、焦点被迫清空：现在树是稳定的，补一次默认焦点。
+    // 不能在 giveFocus 的删除路径里同步做：那时调用方往往正在 clearViews()，
+    // 兄弟节点已经是野指针，同步走 getDefaultFocus() 会踩到它。
+    if (this->focusRestorePending)
+    {
+        this->focusRestorePending = false;
+        if (this->root != nullptr && this->currentFocus == nullptr)
+            this->giveFocus(this->root->getDefaultFocus());
+    }
+
     this->handleNavigation();
     this->handlePointer();
     this->handleActions();
@@ -483,6 +493,7 @@ void InputManager::resetFocusState()
     this->modals.clear();
     this->currentFocus = nullptr;
     this->gestureTarget = nullptr; // 同上：根视图一换就是野指针
+    this->focusRestorePending = false; // 换根会自己补默认焦点，不要再补一次
 
     // 跨层焦点记忆栈也一起清：它记的是旧树里的路径，留着只会得到无意义的一层
     // （按页记忆 keyedFocusRecords 不清：它是"页面 id → 路径"，解析失败会自然退默认焦点）。
@@ -939,6 +950,9 @@ void InputManager::notifyViewDeleted(View* view)
     // （Pager 删旧页 / 下钻返回释放详情页），下一帧 handlePointer 再拿它
     // dispatchGesture 就是 use-after-free —— ASAN 实测踩过。
     // 被删的视图是手势目标的祖先时也要清（因为事件是沿父链往上派的）。
+    // 注意**不要**在这里复位"按下"状态：那个状态现在只看物理鼠标（pointerHeld），
+    // 由 handlePointer 每帧更新。以前在这里把消费标记清零，导致"点一下按钮、
+    // 按钮所在页面被重建"时，鼠标一直按着就每帧重新触发一次点击。
     if (this->gestureTarget != nullptr)
     {
         for (View* v = this->gestureTarget; v != nullptr; v = v->getParent())
@@ -946,7 +960,6 @@ void InputManager::notifyViewDeleted(View* view)
             if (v == view)
             {
                 this->gestureTarget = nullptr;
-                this->pointerDown   = false; // 这个按下永远等不到 END 了
                 break;
             }
         }
@@ -966,17 +979,13 @@ void InputManager::notifyViewDeleted(View* view)
     if (!inPath)
         return;
 
-    // 从被删除节点的下一层往上找第一个还可用的祖先作为新焦点的起点。
-    View* candidate = nullptr;
-    for (View* v = this->currentFocus; v != nullptr && v != view; v = v->getParent())
-        candidate = v;
-
-    this->currentFocus = nullptr;
-
-    if (candidate != nullptr)
-        this->giveFocus(candidate->getDefaultFocus());
-    else if (this->root != nullptr)
-        this->giveFocus(this->root->getDefaultFocus());
+    // 焦点清空，兜底的默认焦点推迟到下一帧（见 update() 里的 focusRestorePending）。
+    // 这里**不能**同步找：调用方通常正在 clearViews() 删页面子树，此刻兄弟节点
+    // 已经析构、父节点的 children 里还留着野指针 —— 同步 getDefaultFocus()
+    // 会沿树走到已释放的节点上（实测崩溃栈：
+    //   ~View → notifyViewDeleted → Box::getDefaultFocus → Box::getNextFocus）。
+    this->currentFocus         = nullptr;
+    this->focusRestorePending  = true;
 }
 
 void InputManager::handlePointer()
@@ -989,25 +998,32 @@ void InputManager::handlePointer()
     const bool down  = io.MouseDown[0];
     const Point delta(io.MouseDelta.x, io.MouseDelta.y);
 
+    // 边沿看**物理**状态（pointerHeld），不看"这一按有没有被消费"。
+    // 踩过：换主题时页面被 clearViews() 重建，被点的按钮随之销毁 →
+    // notifyViewDeleted() 会清掉消费标记；若边沿也用它判定，鼠标一直按着就会
+    // 每帧重新派发一次点击（表现为点一下「切换主题」主题连续反复切换）。
+    const bool pressEdge   = down && !this->pointerHeld;
+    const bool releaseEdge = !down && this->pointerHeld;
+    this->pointerHeld      = down;
+
     // 有模态层时，命中判定从最上层模态开始：点到模态外面等于点空白，
     // 不会穿透到底下的界面（这是弹窗/下拉能"拦住输入"的关键）。
     View* hitRoot = this->hasModal() ? this->getTopModal() : this->root;
     if (hitRoot == nullptr)
     {
-        this->pointerDown   = down;
         this->gestureTarget = nullptr;
         return;
     }
 
     // ---- 手势：按下 / 按住移动 / 抬起 / 滚轮 ----
-    if (down && !this->pointerDown)
+    if (pressEdge)
     {
         View* hit           = hitRoot->hitTest(position);
         this->gestureTarget = hit;
         if (hit != nullptr)
             hit->dispatchGesture(GestureState::START, position, Point(0.0f, 0.0f));
     }
-    else if (!down && this->pointerDown)
+    else if (releaseEdge)
     {
         if (this->gestureTarget != nullptr)
         {
@@ -1034,17 +1050,8 @@ void InputManager::handlePointer()
             hit->dispatchGesture(GestureState::SCROLL, position, scroll);
     }
 
-    // ---- 点击：只处理按下那一刻 ----
-    if (!down)
-    {
-        this->pointerDown = false;
-        return;
-    }
-
-    // 只在按下的那一刻处理，按住不放不重复触发。
-    const bool pressed = !this->pointerDown;
-    this->pointerDown   = true;
-    if (!pressed)
+    // ---- 点击：只在按下的那一刻处理一次，按住不放不重复、抬起也不补一次 ----
+    if (!pressEdge)
         return;
 
     // 点击逻辑全部在 dispatchPointerClick 里（设备无关入口，无窗口测试也走同一条路）

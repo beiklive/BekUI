@@ -822,6 +822,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   所以现有控件一行都不用改。要"能点但别抢焦点"（提示条、可点的静态卡片）就覆写它并保持
   `isFocusable() == false`：`hitTest` 与手势派发都看这一条，覆写等于"点得到、也收得到手势"，
   而 `focusFromPointer()` / 方向键导航 / 焦点框仍然当它不存在。
+- **"按下"的边沿只看物理状态**（`InputManager::pointerHeld`，每帧取 `MouseDown[0]`）。
+  不要用"这一按有没有被消费"来判边沿：视图在按住期间被重建（点「切换主题」→ 页面 `clearViews()` 重建）时，
+  消费标记会随被删视图一起被重置，鼠标一直按着就会**每帧重新派发一次点击**（表现为主题连续反复切换）。
+- **删视图时不能同步找焦点**：`notifyViewDeleted()` 只把 `currentFocus` 清空并置 `focusRestorePending`，
+  由 `InputManager::update()` 在下一帧开头补默认焦点。调用方往往正在 `clearViews()` 删整棵页面子树，
+  此刻兄弟节点已经析构、父节点的 `children` 里还留着野指针，同步 `getDefaultFocus()` 会走过去崩掉
+  （实测栈：`~View → notifyViewDeleted → Box::getDefaultFocus → Box::getNextFocus`）。
 - 鼠标点击默认**只聚焦不执行**动作。想点一下就执行，在控件构造函数里设
   `onPointerAction = true`（按钮、tab 都这么做）；列表项保持默认，避免误触发
 

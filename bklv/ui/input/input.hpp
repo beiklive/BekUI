@@ -448,8 +448,15 @@ class InputManager
     std::vector<ModalEntry> modals;
     View* root         = nullptr;
 
-    bool pointerDown = false;
+    // 鼠标/触摸键的**物理**按下状态（上一帧的值）。
+    // 只用来判定"按下/抬起"的边沿 —— 不能拿"这一按有没有被消费"来判边沿：
+    // 视图在按住期间被重建（换主题重建页面）时消费标记会被清掉，
+    // 那样会在鼠标一直按着的情况下每帧重新触发一次点击。
+    bool pointerHeld   = false;
     bool pointerActive = false;
+    // 有视图删除导致焦点被清空：下一帧开头再去找默认焦点。
+    // 删除那一刻整棵子树正在析构，同步找会踩到野指针。
+    bool focusRestorePending = false;
     View* gestureTarget = nullptr;
     Point pointerPosition;
 
