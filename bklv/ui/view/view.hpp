@@ -438,6 +438,13 @@ class View
     // 外壳（Shell）会覆写成覆盖层，这样浮层里的焦点框、调试层仍然盖在模态之上。
     // 返回 nullptr 表示"就用根容器"。
     virtual Box* getOverlayHost() { return nullptr; }
+
+    // ---- 浮层宿主 ----
+    // 通知（toast）、常驻指示这类"不吃输入、也不该被内容和模态盖住"的东西挂哪一层：
+    // 默认挂根容器，外壳（Shell）覆写成浮层（HUD，在覆盖层之上、调试层之下）。
+    // 返回 nullptr 表示"就用根容器"。
+    virtual Box* getHudHost() { return nullptr; }
+
     // ---- 布局失效 ----
     // 修改任何影响布局的属性后必须调用，冒泡到根后触发一次全树重算。
     virtual void invalidate();

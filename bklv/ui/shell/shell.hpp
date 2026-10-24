@@ -47,7 +47,12 @@ class Shell : public Box
     Box* getOverlayLayer() const { return this->overlayLayer; }
 
     // 弹层挂在覆盖层，浮层（焦点框）与调试层仍然在它之上。
-    Box* getOverlayHost() override { return this->overlayLayer; }    Box* getHudLayer() const { return this->hudLayer; }
+    Box* getOverlayHost() override { return this->overlayLayer; }
+
+    // 通知这类浮层挂在 HUD 层：在覆盖层（模态）之上、调试层之下。
+    Box* getHudHost() override { return this->hudLayer; }
+
+    Box* getHudLayer() const { return this->hudLayer; }
     Box* getDebugLayer() const { return this->debugLayer; }
 
     // ---- 焦点框（流光框）----

@@ -564,6 +564,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ⑤ **模态挂在哪一层由 `View::getOverlayHost()` 决定**（默认返回 nullptr = 挂根容器）：
      `Shell` 覆写成覆盖层，这样浮层里的焦点框与调试层仍然盖在模态之上
      （挂根容器的话，焦点框会被面板挡住，看着像"焦点没进去"）。
+  ⑥ **浮层（通知）挂哪一层由 `View::getHudHost()` 决定**（默认 nullptr = 根容器）：
+     `Shell` 覆写成 HUD 层（覆盖层之上、调试层之下）。所以模态开着时 toast 照样
+     清清楚楚浮在遮罩上，不会被玻璃遮罩压暗或糊掉。
 - **音效只在用户操作时播**（`ui/input/input.cpp`）：全库只有 `playUiSound()` 一处播音，三个触发点
   —— 方向导航（focus 音，含"没有焦点时取默认焦点"那一支）、确认键 / 点击（click 音）、返回键（back 音）。
   `InputManager::giveFocus(view, playSound = false)` **默认静默**：换根 / 换页 / 弹层进出 /
@@ -821,7 +824,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   这一层必须 `setLayerIconFontKind("icon", IconFontKind::SWITCH)` —— 不指定时基类默认 Material
   那套，同一个码位会画出灯泡/书本之类的东西（踩过）。
 - **通知（Toast）也是视图，动画在代码里做**（`ui/widgets/controls/notification.*`）：
-  `NotificationManager`（挂右上角、绝对定位、不吃焦点）→ `Notification` × N。
+  `NotificationManager`（挂右上角、绝对定位、不吃焦点；挂哪一层由
+  `View::getHudHost()` 决定 —— `Shell` 给的是 HUD 层，所以在模态遮罩之上）
+  → `Notification` × N。
   **结构和 Button 家族一样**：`Notification` 是抽象基类（只管行为与卡片），
   具体实现只有两个 —— `IconNotification`（图标 + 文字）、`ImageNotification`（图片 + 文字），
   类型判断靠 `getKind()` 而不是 `dynamic_cast`（Switch 是 `-fno-rtti`）。

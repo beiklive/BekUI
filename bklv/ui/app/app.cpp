@@ -213,14 +213,18 @@ NotificationManager* App::getNotifications()
         this->notifications->setPositionRight(
             getTheme().number("metric.notification.marginRight", 16.0f));
 
-        if (Box* rootBox = this->root->asBox())
-            rootBox->addView(this->notifications);
-        else
+        // 浮层挂哪一层由宿主决定：外壳挂到 HUD（在模态之上、调试层之下），
+        // 没有外壳就退回根容器。NotificationManager 自己就是绝对定位，不参与 flex。
+        Box* rootBox = this->root->asBox();
+        if (rootBox == nullptr)
         {
             BKLV_LOG_WARNING("App::notify 失败：根视图不是容器");
             this->notifications = nullptr;
             return nullptr;
         }
+
+        Box* host = this->root->getHudHost();
+        (host != nullptr ? host : rootBox)->addView(this->notifications);
     }
 
     return this->notifications;
