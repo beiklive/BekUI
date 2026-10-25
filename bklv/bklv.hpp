@@ -90,6 +90,7 @@
 // ---- widgets（语义件）：文本 / 图片 / 容器 / 列表 / 调试覆盖层 ----
 #include "bklv/ui/widgets/basic/image.hpp"
 #include "bklv/ui/widgets/basic/label.hpp"
+#include "bklv/ui/widgets/basic/section.hpp"
 #include "bklv/ui/widgets/basic/padding.hpp"
 #include "bklv/ui/widgets/basic/progress_spinner.hpp"
 #include "bklv/ui/widgets/container/dialog.hpp"

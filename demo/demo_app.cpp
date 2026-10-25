@@ -9,6 +9,7 @@
 #include "bklv/ui/view/box.hpp"
 #include "bklv/ui/widgets/basic/label.hpp"
 #include "bklv/ui/widgets/container/tab_view.hpp"
+#include "bklv/ui/widgets/controls/hint_bar.hpp"
 #include "bklv/ui/widgets/controls/tab_bar.hpp"
 #include "style.hpp"
 #include "tabs/buttons_tab.hpp"
@@ -88,6 +89,12 @@ void DemoApp::buildShell()
 
     this->root->getContentLayer()->addView(header);
     this->root->getContentLayer()->addView(this->tabLayout);
+
+    // ---- 底栏：提示条挂覆盖层、贴底；内容层下边留出同样高度 ----
+    this->bottomBar = new bklv::BottomBar();
+    this->bottomBar->setPositionType(bklv::PositionType::ABSOLUTE);
+    this->bottomBar->setPositionBottom(0.0f);
+    this->root->getOverlayLayer()->addView(this->bottomBar);
 
     // 内容层给底栏让出高度（数值跟 base/hint/bottombar.json 的 box.height 一致）
     this->root->getContentLayer()->setPadding(0.0f, 0.0f, 100.0f, 0.0f);

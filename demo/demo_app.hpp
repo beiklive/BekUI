@@ -22,6 +22,7 @@
 
 namespace bklv
 {
+class BottomBar;
 class Box;
 class Label;
 class Shell;
@@ -82,6 +83,7 @@ class DemoApp
     bklv::TabBar* tabBar     = nullptr;
     bklv::TabView* tabs      = nullptr;
     bklv::Box* tabLayout     = nullptr;
+    bklv::BottomBar* bottomBar = nullptr;
 
     std::string themeName = "default";
     bool tabVertical      = false;

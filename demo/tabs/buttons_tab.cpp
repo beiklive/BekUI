@@ -50,7 +50,7 @@ bklv::View* buildButtonsTab(DemoApp& app)
         row->addView(normal);
         row->addView(disabled);
         row->addView(switched);
-        content->addView(makeSection("文字按钮 TextButton", row));
+        content->addView(makeSection("文字按钮", row, "TextButton"));
     }
 
     // 2) 图标按钮：只有图标，正方形
@@ -65,7 +65,7 @@ bklv::View* buildButtonsTab(DemoApp& app)
             row->addView(button);
         }
 
-        content->addView(makeSection("图标按钮 IconButton", row));
+        content->addView(makeSection("图标按钮", row, "IconButton"));
     }
 
     // 3) 图标 + 文字
@@ -80,7 +80,7 @@ bklv::View* buildButtonsTab(DemoApp& app)
 
         row->addView(favorite);
         row->addView(save);
-        content->addView(makeSection("图标 + 文字 IconTextButton", row));
+        content->addView(makeSection("图标 + 文字", row, "IconTextButton"));
     }
 
     // 4) 点击反馈与换肤
@@ -95,7 +95,7 @@ bklv::View* buildButtonsTab(DemoApp& app)
 
         row->addView(toast);
         row->addView(theme);
-        content->addView(makeSection("点击反馈", row));
+        content->addView(makeSection("点击反馈", row, "通知 / 换主题"));
     }
 
     // 5) 标签条排列（"切换 tab 类型"的开关就放在这个标签页里）
@@ -106,7 +106,7 @@ bklv::View* buildButtonsTab(DemoApp& app)
         toggle->setOnClick([&app]() { app.setTabOrientation(!app.isTabVertical()); });
 
         row->addView(toggle);
-        content->addView(makeSection("标签条排列", row));
+        content->addView(makeSection("标签条排列", row, "顶部 / 左侧"));
     }
 
     return scroll;

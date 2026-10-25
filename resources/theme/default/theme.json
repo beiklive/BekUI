@@ -11,6 +11,7 @@
     "base/layer/glass.json",
     "base/layer/shadow.json",
     "base/button/button.json",
+        "base/section/section.json",
     "base/button/button.text.json",
     "base/button/button.dialog.json",
     "base/button/button.icon.json",

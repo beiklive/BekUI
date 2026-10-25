@@ -55,7 +55,7 @@ bklv::View* buildLayoutTab(DemoApp& app)
         row->addView(makeColorRect(green, 56.0f, 120.0f));
         row->addView(makeColorRect(red, 56.0f, 80.0f));
 
-        content->addView(makeSection("横向排列 + gap 12", row));
+        content->addView(makeSection("横向排列", row, "gap 12"));
     }
 
     // 2) 纵向排列：宽度按容器拉伸
@@ -66,7 +66,7 @@ bklv::View* buildLayoutTab(DemoApp& app)
         column->addView(makeColorRect(blue, 40.0f));
         column->addView(makeColorRect(green, 64.0f));
 
-        content->addView(makeSection("纵向排列（宽度拉伸）", column));
+        content->addView(makeSection("纵向排列", column, "宽度拉伸"));
     }
 
     // 3) grow：按 1 : 2 : 3 分配剩余宽度
@@ -85,7 +85,7 @@ bklv::View* buildLayoutTab(DemoApp& app)
         row->addView(b);
         row->addView(c);
 
-        content->addView(makeSection("grow 1 : 2 : 3", row));
+        content->addView(makeSection("grow", row, "1 : 2 : 3"));
     }
 
     // 4) 内边距 + 居中
@@ -102,7 +102,7 @@ bklv::View* buildLayoutTab(DemoApp& app)
         panel->addView(makeColorRect(green, 48.0f, 48.0f));
         panel->addView(makeColorRect(red, 48.0f, 48.0f));
 
-        content->addView(makeSection("内边距 20 + 水平垂直居中", panel));
+        content->addView(makeSection("内边距 + 居中", panel, "padding 20"));
     }
 
     // 5) 主轴对齐：flexStart / center / flexEnd
@@ -131,7 +131,7 @@ bklv::View* buildLayoutTab(DemoApp& app)
             column->addView(track);
         }
 
-        content->addView(makeSection("主轴对齐 justifyContent", column));
+        content->addView(makeSection("主轴对齐", column, "justifyContent"));
     }
 
     return scroll;

@@ -55,9 +55,13 @@ class TabView : public AppearanceView
         View* page     = nullptr;
         bool hasScroll = false;
         float scroll   = 0.0f;
+        // 切走时焦点是不是在这个页面里 —— 不是的话切回来就别硬塞焦点
+        // （否则会回落到导航范围里的第一个可聚焦项，也就是标签条的第一个标签）
+        bool hadFocus = false;
     };
 
     static View* findRestorable(View* view);
+    static bool isInside(View* root, View* view);
     static void giveFocusTo(View* view);
 
     std::string memoryKey(const Entry& entry) const;

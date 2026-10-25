@@ -37,6 +37,16 @@ View* TabView::findRestorable(View* view)
     return nullptr;
 }
 
+bool TabView::isInside(View* root, View* view)
+{
+    for (View* node = view; node != nullptr; node = node->getParent())
+    {
+        if (node == root)
+            return true;
+    }
+    return false;
+}
+
 void TabView::giveFocusTo(View* view)
 {
     if (view == nullptr)
@@ -91,8 +101,12 @@ void TabView::rememberCurrent()
     if (entry.page == nullptr)
         return;
 
+    View* focus = getInputManager().getCurrentFocus();
+    entry.hadFocus = focus != nullptr && TabView::isInside(entry.page, focus);
+
     const std::string key = this->memoryKey(entry);
-    getInputManager().rememberFor(key);
+    if (entry.hadFocus)
+        getInputManager().rememberFor(key);
 
     entry.hasScroll = false;
     if (View* restorable = TabView::findRestorable(entry.page))
@@ -111,16 +125,19 @@ void TabView::restoreCurrent()
     if (entry.page == nullptr)
         return;
 
-    // 先按"默认焦点"给一个，再用记忆覆盖（没有记录时 loadFocusFor 内部会退回默认焦点）
-    TabView::giveFocusTo(entry.page);
+    // 只有"上次焦点确实在这个页面里"才恢复焦点；否则保持当前焦点不动
+    // （比如用 A 键激活标签时，焦点本来就该留在标签条上）。
+    if (entry.hadFocus)
+    {
+        TabView::giveFocusTo(entry.page);
+        getInputManager().loadFocusFor(this->memoryKey(entry));
+    }
 
     if (entry.hasScroll)
     {
         if (View* restorable = TabView::findRestorable(entry.page))
             restorable->setRestorableState(entry.scroll);
     }
-
-    getInputManager().loadFocusFor(this->memoryKey(entry));
 }
 
 void TabView::setActiveTab(int index, bool animated)
