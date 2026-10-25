@@ -1194,7 +1194,7 @@ bklv/               库本体，自包含：代码 + 3rd/ + 自己的 CMakeLists
   CMakeLists.txt    编出 bklv::bklv（INTERFACE 目标，见上）
 resources/theme/    主题：themes.json + <主题>/{theme.json, tokens/, base/, base/widget/, view/}
                     （名字 = 路径去扩展名；文件清单提前写在 theme.json 的 files[] 里）
-demo/               演示程序（最小框架）：外壳 + 页面栈 + 首页 / 设置页
+demo/               演示程序（最小框架）：外壳 + 标签页（按钮 / 布局，靠 TabView 常驻）
 examples/           宿主示例：embed_imgui_gl（嵌进宿主循环）/ multi_context / switch / cmake_consumer
 CMakeLists.txt      仓库入口：判定平台、定输出目录、编 demo/ 与 examples/
 scripts/            脚本：check.sh（本机门禁）、build_switch.sh（Switch）、命名/分层检查与文档生成

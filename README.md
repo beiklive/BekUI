@@ -52,15 +52,16 @@ bklv 是从 [borealis](https://github.com/xfangfang/borealis)（[wiliwili](https
 
 ### 演示程序：`demo/`
 
-`demo/` 是重做后的最小框架：一个外壳（顶栏返回 + 标题、内容区、底栏提示）+ 页面栈，
-新页面照着 `demo/pages/` 里的两个抄就能加。它只用公开 API，GL 与 Vulkan 两版都编。
+`demo/` 是重做后的最小框架：一个外壳（顶栏标题、内容区、底栏提示）+ **标签页**，
+标签页常驻（切走只是 `GONE`，切回来状态还在），新页面照着 `demo/tabs/` 里的两个抄就能加。
+它只用公开 API，GL 与 Vulkan 两版都编。
 
 ```
-demo/main.cpp               参数解析：--theme / --page / --screenshot / --frames / --size
-demo/demo_app.*             外壳：视图树、页面栈、导航（pushPage / goBack 都推迟到下一帧）
-demo/page.hpp               页面接口：getTitle() + build(DemoApp&)
-demo/pages/home_page.*      首页：导航、换肤，两种通知（图标 / 图片）与连发 5 条
-demo/pages/settings_page.*  设置页：切换主题 / 返回上一页
+demo/main.cpp               参数解析：--theme / --tab / --tabbar / --screenshot / --frames / --size
+demo/demo_app.*             外壳：视图树、顶栏、标签条 + TabView 装配、主题轮换
+demo/tabs/buttons_tab.*     第 1 页「按钮」：Button 家族、点击反馈、切换标签条排列
+demo/tabs/layout_tab.*      第 2 页「布局」：横排 / 竖排 / grow / 内边距居中 / 主轴对齐
+demo/layout_kit.hpp         "一节"与"彩色矩形"两个排版小工具（只在 demo 里用）
 demo/style.hpp              从主题取页面底色与文字色
 ```
 
@@ -396,7 +397,7 @@ bklv::globals::resetGlobals();               // 收尾：一轮结束（换 App 
 ### 分层
 
 ```
-demo/                                 演示程序（最小框架：外壳 + 页面栈 + 两个页面）
+demo/                                 演示程序（最小框架：外壳 + 标签页：按钮 / 布局）
 examples/                             宿主示例（嵌入 / 双 Context / Switch / 安装后消费）
         ↓
 bklv/ui/shell/*                            应用外壳：五层容器 + 焦点框（只认识 View 与焦点接口）

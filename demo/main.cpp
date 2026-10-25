@@ -2,12 +2,13 @@
 //
 // 参数：
 //   --theme <name>        启动主题（默认 default；demo 里可切 default / glass）
-//   --page <name>         启动页面：home（默认）/ settings
+//   --tab <name>          启动标签页：buttons（默认）/ layout
+//   --tabbar <top|left>   标签条排列：top（默认，顶部水平）/ left（左侧竖直）
 //   --screenshot <png>    渲染若干帧后截图存成 PNG 并退出（无人值守验证用）
 //   --frames <n>          截图前等多少帧（默认 3）
 //   --size <宽x高>        窗口尺寸（默认 1280x720）
 //
-// 页面与外壳在 demo_app.*，页面都在 demo/pages/ 下。
+// 外壳与标签页在 demo_app.*，两个标签页的内容在 demo/tabs/ 下。
 
 #include <cstdio>
 #include <cstdlib>
@@ -21,7 +22,8 @@ namespace
 
 void printUsage(const char* argv0)
 {
-    std::printf("用法：%s [--theme <name>] [--page <home|settings|tabs|tabs-left>] [--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
+    std::printf("用法：%s [--theme <name>] [--tab <buttons|layout>] [--tabbar <top|left>] "
+                "[--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
                 argv0);
 }
 
@@ -49,7 +51,8 @@ bool parseSize(const char* text, int& width, int& height)
 int main(int argc, char** argv)
 {
     std::string theme;
-    std::string page = "home";
+    std::string tab          = "buttons";
+    bool tabbarVertical      = false;
     std::string screenshotPath;
     int screenshotFrames = 3;
     int width            = 1280;
@@ -67,9 +70,20 @@ int main(int argc, char** argv)
         {
             screenshotPath = argv[++i];
         }
-        else if (std::strcmp(arg, "--page") == 0 && i + 1 < argc)
+        else if (std::strcmp(arg, "--tab") == 0 && i + 1 < argc)
         {
-            page = argv[++i];
+            tab = argv[++i];
+        }
+        else if (std::strcmp(arg, "--tabbar") == 0 && i + 1 < argc)
+        {
+            const std::string layout = argv[++i];
+            if (layout == "left" || layout == "vertical")
+                tabbarVertical = true;
+            else if (layout != "top" && layout != "horizontal")
+            {
+                std::fprintf(stderr, "--tabbar 只认 top / left\n");
+                return 2;
+            }
         }
         else if (std::strcmp(arg, "--frames") == 0 && i + 1 < argc)
         {
@@ -96,33 +110,23 @@ int main(int argc, char** argv)
         }
     }
 
+    int initialTab = 0;
+    if (tab == "layout" || tab == "1")
+        initialTab = 1;
+    else if (tab != "buttons" && tab != "0")
+    {
+        std::fprintf(stderr, "未知标签页：%s（可用 buttons / layout）\n", tab.c_str());
+        return 2;
+    }
+
     demo::DemoApp app;
+    app.setInitialTab(initialTab, tabbarVertical);
 
     // 主题要在 run() 之前装好：窗口建起来时第一帧就该是目标主题。
     if (!theme.empty() && !app.setTheme(theme))
     {
         std::fprintf(stderr, "主题打不开：%s（可用的见 resources/theme/themes.json）\n", theme.c_str());
         return 1;
-    }
-
-    if (page == "tabs")
-    {
-        // 直接压一层"标签页"演示（TabView + TabBar）
-        app.openTabs(false);
-    }
-    else if (page == "tabs-left")
-    {
-        app.openTabs(true);
-    }
-
-    else if (page == "settings")
-    {
-        app.openSettings();
-    }
-    else if (page != "home")
-    {
-        std::fprintf(stderr, "未知页面：%s（可用 home / settings / tabs / tabs-left）\n", page.c_str());
-        return 2;
     }
 
     if (!screenshotPath.empty())

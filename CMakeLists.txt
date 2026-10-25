@@ -198,8 +198,8 @@ if(BKLV_BUILD_DEMO)
     add_executable(demo
         demo/main.cpp
         demo/demo_app.cpp
-        demo/pages/home_page.cpp
-        demo/pages/settings_page.cpp demo/pages/tabs_page.cpp)
+        demo/tabs/buttons_tab.cpp
+        demo/tabs/layout_tab.cpp)
     target_link_libraries(demo PRIVATE bklv::bklv)
     bklv_set_output_dir(demo)
     bklv_copy_resources(demo)

@@ -1,37 +1,36 @@
 #pragma once
 
-// demo 的宿主外壳（最小框架）：把"窗口 + 顶栏 + 内容区 + 底栏"和"页面栈"搭好，
-// 页面只负责往内容区里塞视图。
+// demo 的外壳：顶栏（标题）+ 标签条 + 标签页内容。
+//
+// 主体是"tab + 子页面"：
+//   第 1 页「按钮」—— 按钮家族，以及"切换标签条排列"的开关
+//   第 2 页「布局」—— Box 的轴 / 间距 / 对齐 / 拉伸（用彩色矩形看几何）
+//
+// 两个标签页**常驻**（TabView 负责），切走再切回来状态还在；
+// 这是"同级切换"，跟内容层下钻（Shell 的 ContentStack）不是一回事。
 //
 // 层次：
-//   demo/main.cpp        命令行参数、构造 DemoApp、run
-//   demo/demo_app.*      外壳与页面栈（本文件）
-//   demo/page.hpp        页面接口
-//   demo/pages/*         具体页面
-//
-// 想加一个页面：继承 demo::Page 实现 build()，再从某个按钮的回调里
-// `app.pushPage(new MyPage())` 即可，不用改这里。
-//
-// 注意：页面里的按钮回调**不能直接**改页面栈 —— 回调执行时正在用那棵子树，
-// 里面一旦 clearViews() 就把自己删了。所以导航统一走 goBack() / pushPage()，
-// 它们把动作推迟到下一帧开头执行。
+//   demo/main.cpp          命令行参数、构造 DemoApp、run
+//   demo/demo_app.*        外壳 + 标签页装配（本文件）
+//   demo/tabs/*.cpp        两个标签页的内容
+//   demo/style.hpp         取色与文字规格
+//   demo/layout_kit.hpp    "一节"与"彩色矩形"两个排版小工具
 
-#include <functional>
-#include <memory>
 #include <string>
-#include <vector>
 
 #include "bklv/ui/app/app.hpp"
-#include "bklv/ui/view/box.hpp"
-#include "bklv/ui/widgets/basic/label.hpp"
-#include "bklv/ui/widgets/controls/button.hpp"
-#include "bklv/ui/widgets/controls/hint_bar.hpp"
-#include "bklv/ui/shell/shell.hpp"
+
+namespace bklv
+{
+class Box;
+class Label;
+class Shell;
+class TabBar;
+class TabView;
+} // namespace bklv
 
 namespace demo
 {
-
-class Page;
 
 class DemoApp
 {
@@ -44,27 +43,15 @@ class DemoApp
 
     bklv::App& app() { return this->application; }
 
-    // 外壳（五层容器 + 焦点框 + 内容层层级栈）。页面做“下钻”时用 pushContentView。
+    // 外壳（五层容器 + 焦点框 + 内容层层级栈）
     bklv::Shell* shell() const { return this->root; }
 
-
-    // ---- 导航（都推迟到下一帧执行，见文件头说明）----
-
-    // 压入一个页面（接管所有权）。
-    void pushPage(Page* page);
-
-    // 返回上一页；栈里只剩一页时什么都不做。
-    void goBack();
-
-    // demo 自带的两个页面入口（页面之间不互相 include，集中在这里）。
-    void openSettings();
-
-    // 压一层"标签页"演示（TabView + TabBar）
-    void openTabs(bool vertical = false);
+    // 便捷通知（走 App::notify，落在外壳的 HUD 层）
+    void notify(const std::string& text) { this->application.notify(text); }
 
     // ---- 主题 ----
 
-    // 在可用主题之间轮换（default ↔ glass），切完弹一条通知。
+    // 在可用主题之间轮换（default ↔ glass）。
     void cycleTheme();
 
     // 显式指定主题；不存在的主题返回 false 并保持原样。
@@ -72,33 +59,34 @@ class DemoApp
 
     const std::string& getThemeName() const { return this->themeName; }
 
+    // ---- 标签条 ----
+
+    // 标签条排列：false = 顶部水平，true = 左侧竖直
+    bool isTabVertical() const { return this->tabVertical; }
+    void setTabOrientation(bool vertical);
+
+    // 启动时选哪个标签页（0 = 按钮，1 = 布局）
+    void setInitialTab(int index, bool vertical);
+
     // 起窗口并进入帧循环。root 由 App 接管，退出时释放。
     int run(const std::string& title, int width, int height);
 
   private:
     void buildShell();
-    void showCurrentPage();
-    void refreshHeader();
-    // 换肤后重新取一遍底色与文字色（视图树不动，只改颜色）。
     void applyThemeColors();
-
-    // 把一次导航动作排到下一帧开头。
-    void defer(std::function<void()> action);
-
-    Page* currentPage() const;
 
     bklv::App application;
 
-    bklv::Shell* root         = nullptr;
-    bklv::Box* content        = nullptr;
-    bklv::Label* titleLabel   = nullptr;
-    bklv::BottomBar* bottomBar    = nullptr;
-    bklv::TextButton* backButton  = nullptr;
+    bklv::Shell* root        = nullptr;
+    bklv::Label* titleLabel  = nullptr;
+    bklv::TabBar* tabBar     = nullptr;
+    bklv::TabView* tabs      = nullptr;
+    bklv::Box* tabLayout     = nullptr;
 
-    std::vector<std::unique_ptr<Page>> pages;
-    // 待执行的导航动作（按插入顺序在下一帧开头依次执行）。
-    std::vector<std::function<void()>> pendingNavigation;
     std::string themeName = "default";
+    bool tabVertical      = false;
+    int initialTab        = 0;
+    bool initialVertical  = false;
 };
 
 } // namespace demo
