@@ -199,7 +199,10 @@ if(BKLV_BUILD_DEMO)
         demo/main.cpp
         demo/demo_app.cpp
         demo/tabs/buttons_tab.cpp
-        demo/tabs/layout_tab.cpp)
+        demo/tabs/layout_tab.cpp
+        demo/tabs/list_tab.cpp
+        demo/tabs/container_tab.cpp
+        demo/tabs/debug_tab.cpp)
     target_link_libraries(demo PRIVATE bklv::bklv)
     bklv_set_output_dir(demo)
     bklv_copy_resources(demo)

@@ -1,0 +1,43 @@
+{
+  "$comment": "示例专用外观（不在 base 里）：横向滚动里的一张卡 —— 固定 168 宽，图标居中、文字在底部。",
+  "box": {
+    "width": 168,
+    "height": 132,
+    "axis": "column"
+  },
+  "requires": {
+    "content": ["icon", "title"],
+    "layers": ["bg"]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "radius": 14,
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": 30,
+      "color": "@theme/color.accent.base",
+      "align": "center",
+      "valign": "center",
+      "inset": [0, 0, 26, 0]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "title",
+      "fontSize": 15,
+      "color": "@theme/color.text.primary",
+      "align": "center",
+      "valign": "bottom",
+      "inset": [0, 0, 16, 0]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "$comment": "示例专用外观（不在 base 里）：虚拟化长列表的一行 —— 左标题 + 左下副标题，整块是卡片。",
+  "box": {
+    "width": "100%",
+    "height": 72,
+    "axis": "row"
+  },
+  "requires": {
+    "content": ["title", "subtitle"],
+    "layers": ["bg"]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "radius": 10,
+      "fill": "@theme/color.surface.card",
+      "stroke": "@theme/color.border.subtle",
+      "strokeWidth": 1,
+      "inset": [4, 0, 8, 0]
+    },
+    {
+      "op": "text",
+      "id": "title",
+      "data_id": "title",
+      "fontSize": 17,
+      "color": "@theme/color.text.primary",
+      "align": "left",
+      "valign": "top",
+      "inset": [16, 0, 0, 18]
+    },
+    {
+      "op": "text",
+      "id": "subtitle",
+      "data_id": "subtitle",
+      "fontSize": 13,
+      "color": "@theme/color.text.dim",
+      "align": "left",
+      "valign": "bottom",
+      "inset": [0, 0, 16, 18]
+    }
+  ]
+}

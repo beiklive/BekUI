@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "bklv/graphics/render/glass/glass_service.hpp"
+#include "bklv/system/media/icon_font.hpp"
+#include "bklv/ui/widgets/controls/button.hpp"
 #include "bklv/ui/input/input.hpp"
 #include "bklv/ui/shell/shell.hpp"
 #include "bklv/ui/view/box.hpp"
@@ -12,8 +14,16 @@
 #include "bklv/ui/widgets/controls/hint_bar.hpp"
 #include "bklv/ui/widgets/controls/tab_bar.hpp"
 #include "style.hpp"
+#include "bklv/ui/widgets/container/dialog.hpp"
+#include "bklv/ui/widgets/debug/debug_log_view.hpp"
+#include "bklv/ui/widgets/debug/fps_overlay.hpp"
+#include "bklv/ui/widgets/debug/preset_backdrop.hpp"
+#include "bklv/ui/widgets/list/recycler.hpp"
 #include "tabs/buttons_tab.hpp"
+#include "tabs/container_tab.hpp"
+#include "tabs/debug_tab.hpp"
 #include "tabs/layout_tab.hpp"
+#include "tabs/list_tab.hpp"
 
 namespace demo
 {
@@ -25,9 +35,31 @@ namespace
 const char* const kThemes[] = { "default", "glass" };
 constexpr int kThemeCount    = static_cast<int>(sizeof(kThemes) / sizeof(kThemes[0]));
 
-// 两个标签页的标题（顶栏显示的就是它）
-const char* const kTabTitles[] = { "按钮", "布局" };
+// 五个标签页的标题（顶栏显示的就是它）
+const char* const kTabTitles[] = { "按钮", "布局", "列表", "容器", "调试" };
 constexpr int kTabCount        = static_cast<int>(sizeof(kTabTitles) / sizeof(kTabTitles[0]));
+
+// 一个"有 count 条"的最简数据源：列表只关心条数，数据在 cell 里按 index 现算。
+class CountSource : public bklv::RecyclerDataSource
+{
+  public:
+    CountSource(size_t count, std::string identifier, float itemHeight)
+        : count(count), identifier(std::move(identifier)), itemHeight(itemHeight)
+    { }
+
+    size_t getItemCount() override { return this->count; }
+
+    // 每种一眼对应一种 cell 类型：RecyclerFrame 用它去 registerCell 里查工厂
+    std::string getItemIdentifier(size_t) override { return this->identifier; }
+
+    // 行高由数据源给（不覆盖的话默认 0，2000 行会塌成零高）
+    float getItemHeight(size_t) override { return this->itemHeight; }
+
+  private:
+    size_t count = 0;
+    std::string identifier;
+    float itemHeight = 0.0f;
+};
 
 } // namespace
 
@@ -67,10 +99,16 @@ void DemoApp::buildShell()
     this->tabBar = new bklv::TabBar(bklv::TabBar::Orientation::HORIZONTAL);
     this->tabBar->addItem(kTabTitles[0], "\uE001", "buttons");
     this->tabBar->addItem(kTabTitles[1], "\uE002", "layout");
+    this->tabBar->addItem(kTabTitles[2], "\uE003", "list");
+    this->tabBar->addItem(kTabTitles[3], "\uE004", "container");
+    this->tabBar->addItem(kTabTitles[4], "\uE005", "debug");
 
     this->tabs = new bklv::TabView();
     this->tabs->addTab("buttons", buildButtonsTab(*this));
     this->tabs->addTab("layout", buildLayoutTab(*this));
+    this->tabs->addTab("list", buildListTab(*this));
+    this->tabs->addTab("container", buildContainerTab(*this));
+    this->tabs->addTab("debug", buildDebugTab(*this));
 
     // 双向同步：点/按确认切标签 → TabView 生效；TabView 被代码切 → 条与标题跟着变
     this->tabBar->setOnTabSelected([this](int index) { this->tabs->setActiveTab(index); });
@@ -120,6 +158,7 @@ void DemoApp::buildShell()
     if (this->initialVertical)
         this->setTabOrientation(true);
 
+    this->buildDebugWidgets();
     this->applyThemeColors();
 }
 
@@ -212,6 +251,221 @@ void DemoApp::cycleTheme()
     this->application.notify(std::string("主题：") + next);
 }
 
+// ---- 通知的两种形态 + 连发 -------------------------------------------------
+
+void DemoApp::notifyImage(const std::string& text)
+{
+    this->application.notifyImage(text, "resources/testcard.png");
+}
+
+void DemoApp::notifyBurst(int count)
+{
+    // 时长错开（4~8 秒），方便看清"到期的先收回、下面的往上挪"
+    for (int i = 0; i < count; ++i)
+    {
+        const float duration = 4.0f + (float)i;
+        if (i % 2 == 0)
+            this->application.notifyImage("图片通知 #" + std::to_string(i + 1), "resources/testcard.png", duration);
+        else
+            this->application.notifyIcon("图标通知 #" + std::to_string(i + 1), bklv::icon::glyph(bklv::icon::Id::INFO),
+                duration);
+    }
+}
+
+// ---- 列表页的数据源与下钻 -------------------------------------------------
+
+bklv::RecyclerDataSource* DemoApp::getLongListSource()
+{
+    if (this->longListSource == nullptr)
+        this->longListSource = std::make_unique<CountSource>(2000, "row", 72.0f);
+    return this->longListSource.get();
+}
+
+bklv::RecyclerDataSource* DemoApp::getGridSource()
+{
+    if (this->gridSource == nullptr)
+        this->gridSource = std::make_unique<CountSource>(400, "tile", 96.0f);
+    return this->gridSource.get();
+}
+
+void DemoApp::openListDetail(size_t index)
+{
+    auto* page = new bklv::Box(bklv::Axis::COLUMN);
+    page->setGap(16.0f);
+    page->setPadding(24.0f);
+    page->setBackgroundColor(pageBackgroundColor());
+
+    page->addView(makeTitle("第 " + std::to_string(index + 1) + " 条 · 详情页"));
+    page->addView(makeParagraph("这一页是往内容层压进来的（Shell::pushContentView），"
+                                "不是标签页里的一个分支。"));
+    page->addView(makeNote("入场是滑动淡入；返回时上一层会恢复它自己的滚动位置和焦点 —— "
+                           "因为 ContentStack 记了每一层的滚动值与焦点路径。"));
+
+    auto* back = new bklv::TextButton("返回（或按 B）");
+    back->setOnClick([this] {
+        if (this->root != nullptr)
+            this->root->popContentView();
+    });
+    page->addView(back);
+
+    this->root->fillLayer(page);
+    this->root->pushContentView(page, "list-detail");
+}
+
+void DemoApp::openGridDetail(size_t index)
+{
+    auto* page = new bklv::Box(bklv::Axis::COLUMN);
+    page->setGap(16.0f);
+    page->setPadding(24.0f);
+    page->setBackgroundColor(pageBackgroundColor());
+
+    page->addView(makeTitle("格 " + std::to_string(index + 1)));
+    page->addView(makeNote("网格也是同一个 RecyclerFrame，只是把 columns 设成 3。"));
+    page->addView(makeNote("点这里等于点一个格子：详情页同样走内容层下钻。"));
+
+    auto* back = new bklv::TextButton("返回");
+    back->setOnClick([this] {
+        if (this->root != nullptr)
+            this->root->popContentView();
+    });
+    page->addView(back);
+
+    this->root->fillLayer(page);
+    this->root->pushContentView(page, "grid-detail");
+}
+
+void DemoApp::openDemoDialog()
+{
+    auto* dialog = new bklv::Dialog();
+    dialog->setIcon(bklv::icon::glyph(bklv::icon::Id::WARNING));
+    dialog->setTitle("删除这一项？");
+
+    auto* body = dialog->getContentBox();
+    body->setGap(10.0f);
+    body->addView(makeParagraph("这条消息会被永久删除，无法恢复。"));
+    body->addView(makeNote("面板与遮罩都是外观：base/box/dialog 与 base/box/dialog_backdrop。"));
+    body->addView(makeNote("打开时自动把焦点拉进面板；B / Esc 关闭；底部按钮均分宽度。"));
+
+    dialog->addButton("取消");
+    dialog->addButton("删除", [this] { this->notify("已删除（示例）"); });
+
+    if (!dialog->open())
+        delete dialog;
+}
+
+// ---- 调试页 ---------------------------------------------------------------
+
+void DemoApp::buildDebugWidgets()
+{
+    if (this->root == nullptr)
+        return;
+
+    // 按页背景：铺在背景层最底下（它自己画网格/漂浮/渐变）
+    this->backdrop = new bklv::PresetBackdrop(bklv::BackdropPreset::NONE);
+    this->backdrop->setPositionType(bklv::PositionType::ABSOLUTE);
+    this->backdrop->setPositionTop(0.0f);
+    this->backdrop->setPositionRight(0.0f);
+    this->backdrop->setPositionBottom(0.0f);
+    this->backdrop->setPositionLeft(0.0f);
+    this->root->getBackdropLayer()->addView(this->backdrop);
+
+    // 应用内日志：挂调试层，默认隐藏
+    this->logView = new bklv::DebugLogView();
+    this->logView->setEnabled(false);
+    this->root->getDebugLayer()->addView(this->logView);
+
+    // FPS 浮层：挂 HUD，默认隐藏
+    this->fpsOverlay = new bklv::FpsOverlay();
+    this->fpsOverlay->setVisibility(bklv::Visibility::GONE);
+    this->root->getHudLayer()->addView(this->fpsOverlay);
+}
+
+void DemoApp::toggleLogView()
+{
+    if (this->logView != nullptr)
+        this->logView->toggle();
+}
+
+void DemoApp::toggleFpsOverlay()
+{
+    if (this->fpsOverlay == nullptr)
+        return;
+
+    const bool visible = this->fpsOverlay->getVisibility() == bklv::Visibility::VISIBLE;
+    this->fpsOverlay->setVisibility(visible ? bklv::Visibility::GONE : bklv::Visibility::VISIBLE);
+}
+
+void DemoApp::toggleDebugLayer()
+{
+    this->application.setDebugLayerEnabled(!this->application.isDebugLayerEnabled());
+}
+
+void DemoApp::cycleBackdrop()
+{
+    static const bklv::BackdropPreset presets[] = { bklv::BackdropPreset::NONE, bklv::BackdropPreset::GRID,
+        bklv::BackdropPreset::FLOATING, bklv::BackdropPreset::GRADIENT };
+
+    this->backdropIndex = (this->backdropIndex + 1) % 4;
+    if (this->backdrop != nullptr)
+        this->backdrop->setPreset(presets[this->backdropIndex]);
+}
+
+void DemoApp::cycleSafeArea()
+{
+    static const float steps[] = { 0.0f, 24.0f, 48.0f };
+
+    this->safeAreaIndex = (this->safeAreaIndex + 1) % 3;
+    const float value   = steps[this->safeAreaIndex];
+    if (this->root != nullptr)
+        this->root->setSafeAreaInsets(value, value, value, value);
+}
+
+void DemoApp::cycleGlass()
+{
+    static const bklv::glass::GlassQuality qualities[] = {
+        bklv::glass::GlassQuality::BALANCED,
+        bklv::glass::GlassQuality::FULL,
+        bklv::glass::GlassQuality::MINIMAL,
+    };
+
+    this->glassIndex = (this->glassIndex + 1) % 4;
+    if (this->root == nullptr)
+        return;
+
+    if (this->glassIndex == 0)
+    {
+        this->root->setGlassEnabled(false);
+        return;
+    }
+
+    this->root->setGlassEnabled(true);
+    this->root->setGlassQuality(qualities[this->glassIndex - 1]);
+}
+
+std::string DemoApp::describeDebugState() const
+{
+    static const char* const kBackdrops[] = { "关", "网格", "漂浮", "渐变" };
+    static const char* const kGlass[]     = { "关", "BALANCED", "FULL", "MINIMAL" };
+    static const char* const kSafeArea[]  = { "0", "24", "48" };
+
+    const bool logOn = this->logView != nullptr && this->logView->isEnabled();
+    const bool fpsOn = this->fpsOverlay != nullptr && this->fpsOverlay->getVisibility() == bklv::Visibility::VISIBLE;
+    const bool boxOn = this->application.isDebugLayerEnabled();
+
+    std::string out = "日志 ";
+    out += logOn ? "开" : "关";
+    out += " · FPS ";
+    out += fpsOn ? "开" : "关";
+    out += " · 调试边框 ";
+    out += boxOn ? "开" : "关";
+    out += " · 背景 ";
+    out += kBackdrops[this->backdropIndex % 4];
+    out += " · 安全区 ";
+    out += kSafeArea[this->safeAreaIndex % 3];
+    out += " · 玻璃 ";
+    out += kGlass[this->glassIndex % 4];
+    return out;
+}
 int DemoApp::run(const std::string& title, int width, int height)
 {
     return this->application.run(title, width, height);
