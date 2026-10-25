@@ -29,8 +29,9 @@ cmake --preset vk && cmake --build --preset vk      # 等价 -B build/vk -DBKLV_
 cmake -S . -B build/gl -DBKLV_GRAPHICS=gl && cmake --build build/gl
 cmake -S . -B build/vk -DBKLV_GRAPHICS=vk && cmake --build build/vk
 
-# 只编某个目标（目标名就是 add_executable 的名字；现在是 embed_imgui_gl / multi_context）
-cmake --build build/gl --target embed_imgui_gl
+# 只编某个目标（目标名就是 add_executable 的名字；默认只有 demo，
+# examples 要 -DBKLV_BUILD_EXAMPLES=ON 才会出现 embed_imgui_gl / multi_context）
+cmake --build build/gl --target demo
 ```
 
 Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参数：
@@ -38,7 +39,7 @@ Windows（MSYS2 / MinGW-w64）用根目录的 `build.bat`，它是同一批参�
 ```bat
 build.bat                       :: GL
 build.bat --vk                  :: Vulkan
-build.bat --only=embed_imgui_gl :: 只编指定目标（a,b 可多个）
+build.bat --only=demo           :: 只编指定目标（a,b 可多个）
 build.bat --gl --gui            :: 不弹控制台（会看不到 BKLV_LOG_*）
 build.bat --sdl-force           :: 删掉构建目录重新配置
 ```

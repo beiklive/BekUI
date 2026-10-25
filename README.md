@@ -76,8 +76,8 @@ examples/switch/           Switch 的最小宿主，scripts/build_switch.sh 编�
 examples/cmake_consumer/   安装后 find_package(bklv) 的消费示例
 ```
 
-前两个由根 `CMakeLists.txt` 编出来（只编 GL），第三个只由 Switch 脚本使用；
-它们自带宿主循环，所以验证 Vulkan 路径要用 `demo/` 的 VK 版本。
+前两个默认**不编**（`-DBKLV_BUILD_EXAMPLES=ON` 才编，且只编 GL），第三个只由 Switch
+脚本使用；它们自带宿主循环，所以验证 Vulkan 路径要用 `demo/` 的 VK 版本。
 
 ## 平台支持
 
@@ -188,7 +188,10 @@ macOS 的 ImageIO 与 lunasvg 的位图都是预乘的，两条路都在解码�
 ### 运行
 
 ```bash
-./dist/embed_imgui_gl      # 宿主嵌入示例（默认编出来的两个目标之一）
+./dist/demo                # 演示程序（默认就编这一个）
+
+# 想要那两个宿主嵌入示例：配的时候加 -DBKLV_BUILD_EXAMPLES=ON
+./dist/embed_imgui_gl
 ./dist/multi_context
 ```
 

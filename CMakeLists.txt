@@ -71,7 +71,7 @@ endif()
 
 option(BKLV_WINDOWS_GUI "Windows 上不弹控制台窗口（会看不到 BKLV_LOG_* 输出）" OFF)
 option(BKLV_BUILD_DEMO "编译 demo/ 下的演示程序" ON)
-option(BKLV_BUILD_EXAMPLES "编译 examples/ 下的示例" ON)
+option(BKLV_BUILD_EXAMPLES "编译 examples/ 下那两个宿主嵌入示例（默认关：只编 demo）" OFF)
 set(BKLV_GRAPHICS "gl" CACHE STRING "图形后端：gl 或 vk")
 set_property(CACHE BKLV_GRAPHICS PROPERTY STRINGS gl vk)
 

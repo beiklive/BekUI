@@ -19,6 +19,7 @@
       "generator": "Visual Studio 17 2022",
       "cacheVariables": {
         "BKLV_GRAPHICS": "gl",
+        "BKLV_BUILD_EXAMPLES": "OFF",
         "CMAKE_CONFIGURATION_TYPES": "Release"
       }
     },
@@ -30,6 +31,7 @@
       "generator": "Visual Studio 17 2022",
       "cacheVariables": {
         "BKLV_GRAPHICS": "vk",
+        "BKLV_BUILD_EXAMPLES": "OFF",
         "CMAKE_CONFIGURATION_TYPES": "Release"
       }
     },
@@ -41,6 +43,7 @@
       "generator": "Ninja",
       "cacheVariables": {
         "BKLV_GRAPHICS": "gl",
+        "BKLV_BUILD_EXAMPLES": "OFF",
         "BKLV_OUT_DIR": "${sourceDir}/dist-mingw",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
@@ -55,6 +58,7 @@
       "generator": "Ninja",
       "cacheVariables": {
         "BKLV_GRAPHICS": "vk",
+        "BKLV_BUILD_EXAMPLES": "OFF",
         "BKLV_OUT_DIR": "${sourceDir}/dist-mingw/vk",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
