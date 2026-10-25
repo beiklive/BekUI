@@ -56,6 +56,10 @@ void TabItem::setVertical(bool vertical)
     this->setAppearanceVariant(vertical ? "vertical" : "");
     this->applyTheme();
     this->applyLayout();
+
+    // applyTheme() 会重建外观，选中态随之清空：这里按记住的状态重新套一遍，
+    // 否则"切换排列"之后原来的选中项会变回普通项（没有药丸底色）。
+    this->setSelected(this->selected);
 }
 
 void TabItem::setSelected(bool selected)

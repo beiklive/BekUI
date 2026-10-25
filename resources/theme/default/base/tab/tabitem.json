@@ -1,8 +1,8 @@
 {
-  "$comment": "水平标签条里的一项：固定宽度 120，左图标 + 居中文字，选中态靠底色和文字色区分。",
+  "$comment": "水平标签条里的一项：112×36，圆角 10，左图标 + 紧跟的文字；选中态是浅蓝底 + 强调色文字。",
   "box": {
-    "width": 120,
-    "height": 40,
+    "width": 112,
+    "height": 36,
     "axis": "row",
     "justifyContent": "flexStart",
     "alignItems": "center"
@@ -15,7 +15,7 @@
     {
       "op": "rect",
       "id": "bg",
-      "radius": 8,
+      "radius": "@theme/metric.radius.lg",
       "fill": "@theme/color.common.transparent"
     },
     {
@@ -23,21 +23,22 @@
       "id": "icon",
       "data_id": "icon",
       "font_kind": "icon",
-      "fontSize": 20,
+      "fontSize": 18,
       "color": "@theme/color.text.dim",
-      "width": 24,
+      "width": 20,
       "align": "left",
       "valign": "center",
-      "inset": [0, 0, 0, 10]
+      "inset": [0, 0, 0, 16]
     },
     {
       "op": "text",
       "id": "label",
       "data_id": "label",
-      "fontSize": 16,
+      "fontSize": 15,
       "color": "@theme/color.text.dim",
-      "align": "center",
-      "valign": "center"
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 46]
     }
   ],
   "states": {

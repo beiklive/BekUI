@@ -1,11 +1,11 @@
 {
-  "$comment": "顶部水平标签条：高 56、底部一条 1px 分隔线。竖直版见 base/tab/tabbar.vertical。",
+  "$comment": "顶部水平标签条：高 56、左右 20 内边距、项间距 8，底部一条 1px 分隔线。竖直版见 base/tab/tabbar.vertical。",
   "box": {
     "width": "100%",
     "height": 56,
     "axis": "row",
-    "gap": 4,
-    "padding": [0, 8, 0, 8],
+    "gap": 8,
+    "padding": [0, "@theme/metric.spacing.lg", 0, "@theme/metric.spacing.lg"],
     "justifyContent": "flexStart",
     "alignItems": "center"
   },

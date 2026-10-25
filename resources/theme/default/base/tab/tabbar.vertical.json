@@ -1,16 +1,21 @@
 {
-  "$comment": "左侧竖直标签条：宽 180、右边一条 1px 分隔线，项从上往下排。",
+  "$comment": "左侧竖直标签条：宽 208、项自上而下、内边距 14/10，右边一条 1px 分隔线。",
   "import": "base/tab/tabbar",
   "box": {
-    "width": 180,
+    "width": 208,
     "height": "100%",
     "axis": "column",
-    "gap": 4,
-    "padding": [8, 0, 8, 0],
+    "gap": 6,
+    "padding": ["@theme/metric.spacing.md", "@theme/metric.spacing.sm", "@theme/metric.spacing.md", "@theme/metric.spacing.sm"],
     "justifyContent": "flexStart",
     "alignItems": "stretch"
   },
   "layers": [
+    {
+      "op": "rect",
+      "id": "surface",
+      "fill": "@theme/color.surface.card"
+    },
     {
       "op": "rect",
       "id": "separator",

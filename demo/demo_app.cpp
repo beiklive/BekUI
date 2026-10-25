@@ -166,6 +166,11 @@ void DemoApp::setInitialTab(int index, bool vertical)
         this->tabBar->setActiveIndex(start, false);
         if (this->titleLabel != nullptr)
             this->titleLabel->setText(kTabTitles[start]);
+
+        // 焦点落在"当前选中的那个标签"上：不然首帧焦点会落到第一个可聚焦控件
+        // （标签条的第一项），出现"选中在布局、焦点框在按钮"的错位。
+        if (bklv::TabItem* item = this->tabBar->getItem(start))
+            bklv::getInputManager().giveFocus(item);
     }
 
     if (this->tabBar != nullptr)
