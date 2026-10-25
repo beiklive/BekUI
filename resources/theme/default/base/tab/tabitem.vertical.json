@@ -1,0 +1,33 @@
+{
+  "$comment": "左侧竖直标签条里的一项：占满条宽、图标左、文字紧跟其后靠左。",
+  "import": "base/tab/tabitem",
+  "box": {
+    "width": "100%",
+    "height": 44,
+    "axis": "row",
+    "justifyContent": "flexStart",
+    "alignItems": "center"
+  },
+  "layers": [
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": 20,
+      "width": 24,
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 12]
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "data_id": "label",
+      "fontSize": 16,
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 48]
+    }
+  ]
+}

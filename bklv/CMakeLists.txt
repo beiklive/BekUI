@@ -535,10 +535,12 @@ set(BKLV_CORE_SOURCES
     ui/widgets/container/dialog.cpp
     ui/widgets/container/h_scrolling_frame.cpp
     ui/widgets/container/list_box.cpp
+    ui/widgets/container/tab_view.cpp
     ui/widgets/container/scroll_box.cpp
     ui/widgets/container/scrolling_frame.cpp
     ui/widgets/controls/button.cpp
     ui/widgets/controls/hint_bar.cpp
+    ui/widgets/controls/tab_bar.cpp
     ui/widgets/controls/notification.cpp
     ui/widgets/debug/debug_layer.cpp
     ui/widgets/debug/debug_log_view.cpp

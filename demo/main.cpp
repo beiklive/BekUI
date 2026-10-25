@@ -21,7 +21,7 @@ namespace
 
 void printUsage(const char* argv0)
 {
-    std::printf("用法：%s [--theme <name>] [--page <home|settings|stack>] [--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
+    std::printf("用法：%s [--theme <name>] [--page <home|settings|stack|tabs|tabs-left>] [--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
                 argv0);
 }
 
@@ -105,7 +105,16 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    if (page == "stack")
+    if (page == "tabs")
+    {
+        // 直接压一层"标签页"演示（TabView + TabBar）
+        app.openTabs(false);
+    }
+    else if (page == "tabs-left")
+    {
+        app.openTabs(true);
+    }
+    else if (page == "stack")
     {
         // 直接压一层"层级页"（用来验证内容层栈的入场/出场与焦点、滚动记忆）
         app.openStackList();
@@ -116,7 +125,7 @@ int main(int argc, char** argv)
     }
     else if (page != "home")
     {
-        std::fprintf(stderr, "未知页面：%s（可用 home / settings / stack）\n", page.c_str());
+        std::fprintf(stderr, "未知页面：%s（可用 home / settings / stack / tabs）\n", page.c_str());
         return 2;
     }
 

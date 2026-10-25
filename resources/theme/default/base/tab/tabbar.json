@@ -1,0 +1,32 @@
+{
+  "$comment": "顶部水平标签条：高 56、底部一条 1px 分隔线。竖直版见 base/tab/tabbar.vertical。",
+  "box": {
+    "width": "100%",
+    "height": 56,
+    "axis": "row",
+    "gap": 4,
+    "padding": [0, 8, 0, 8],
+    "justifyContent": "flexStart",
+    "alignItems": "center"
+  },
+  "requires": {
+    "layers": [
+      { "surface": "rect" },
+      { "separator": "rect" }
+    ]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "surface",
+      "fill": "@theme/color.surface.card"
+    },
+    {
+      "op": "rect",
+      "id": "separator",
+      "height": 1,
+      "valign": "bottom",
+      "fill": "@theme/color.border.subtle"
+    }
+  ]
+}

@@ -135,6 +135,10 @@ bklv::View* HomePage::build(DemoApp& app)
     auto* stackButton = new bklv::TextButton("层级页");
     stackButton->setOnClick([&app]() { app.openStackList(); });
 
+    auto* tabsButton = new bklv::TextButton("标签页");
+    tabsButton->setOnClick([&app]() { app.openTabs(); });
+    containers->addView(tabsButton);
+
     containers->addView(dialogButton);
     containers->addView(stackButton);
     containers->addView(listButton);

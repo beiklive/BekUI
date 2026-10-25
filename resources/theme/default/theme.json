@@ -21,6 +21,11 @@
     "base/hint/bottombar.json",
     "base/hint/hintbar.json",
     "base/hint/hintitem.json",
+    "base/tab/tabview.json",
+    "base/tab/tabbar.json",
+    "base/tab/tabbar.vertical.json",
+    "base/tab/tabitem.json",
+    "base/tab/tabitem.vertical.json",
     "base/notification/toast_base.json",
     "base/notification/toast_icon.json",
     "base/notification/toast_image.json"

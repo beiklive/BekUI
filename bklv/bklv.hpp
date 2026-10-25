@@ -84,6 +84,7 @@
 #include "bklv/ui/widgets/appearance/appearance_view.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
 #include "bklv/ui/widgets/controls/hint_bar.hpp"
+#include "bklv/ui/widgets/controls/tab_bar.hpp"
 #include "bklv/ui/widgets/controls/notification.hpp"
 
 // ---- widgets（语义件）：文本 / 图片 / 容器 / 列表 / 调试覆盖层 ----
@@ -94,6 +95,7 @@
 #include "bklv/ui/widgets/container/dialog.hpp"
 #include "bklv/ui/widgets/container/h_scrolling_frame.hpp"
 #include "bklv/ui/widgets/container/list_box.hpp"
+#include "bklv/ui/widgets/container/tab_view.hpp"
 #include "bklv/ui/widgets/container/scroll_box.hpp"
 #include "bklv/ui/widgets/container/scrolling_frame.hpp"
 #include "bklv/ui/widgets/debug/debug_layer.hpp"

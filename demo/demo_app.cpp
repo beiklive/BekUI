@@ -12,6 +12,7 @@
 #include "page.hpp"
 #include "pages/home_page.hpp"
 #include "pages/settings_page.hpp"
+#include "pages/tabs_page.hpp"
 #include "style.hpp"
 
 namespace demo
@@ -172,6 +173,13 @@ void DemoApp::goBack()
         this->pages.pop_back();
         this->showCurrentPage();
     });
+}
+
+void DemoApp::openTabs(bool vertical)
+{
+    auto* page = new TabsPage();
+    page->setVertical(vertical);
+    this->pushPage(page);
 }
 
 void DemoApp::openSettings()

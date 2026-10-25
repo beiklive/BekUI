@@ -62,6 +62,9 @@ class DemoApp
     // demo 自带的两个页面入口（页面之间不互相 include，集中在这里）。
     void openSettings();
 
+    // 压一层"标签页"演示（TabView + TabBar）
+    void openTabs(bool vertical = false);
+
     // ---- 主题 ----
 
     // 在可用主题之间轮换（default ↔ glass），切完弹一条通知。

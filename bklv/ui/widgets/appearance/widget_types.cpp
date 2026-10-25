@@ -4,7 +4,9 @@
 #include "bklv/ui/view/json_view.hpp"
 #include "bklv/ui/widgets/container/dialog.hpp"
 #include "bklv/ui/widgets/container/list_box.hpp"
+#include "bklv/ui/widgets/container/tab_view.hpp"
 #include "bklv/ui/widgets/controls/button.hpp"
+#include "bklv/ui/widgets/controls/tab_bar.hpp"
 
 namespace bklv
 {
@@ -46,6 +48,9 @@ void registerWidgetViewTypes()
     // 两个派生容器（结构在代码里，样式在 base/box/dialog、base/box/list）。
     registerViewType("Dialog", [] { return (View*)new Dialog(); });
     registerViewType("ListBox", [] { return (View*)new ListBox(); });
+    registerViewType("TabView", [] { return (View*)new TabView(); });
+    registerViewType("TabBar", [] { return (View*)new TabBar(); });
+    registerViewType("TabItem", [] { return (View*)new TabItem("", ""  , false); });
 }
 
 } // namespace bklv

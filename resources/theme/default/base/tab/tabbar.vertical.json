@@ -1,0 +1,22 @@
+{
+  "$comment": "左侧竖直标签条：宽 180、右边一条 1px 分隔线，项从上往下排。",
+  "import": "base/tab/tabbar",
+  "box": {
+    "width": 180,
+    "height": "100%",
+    "axis": "column",
+    "gap": 4,
+    "padding": [8, 0, 8, 0],
+    "justifyContent": "flexStart",
+    "alignItems": "stretch"
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "separator",
+      "width": 1,
+      "align": "right",
+      "fill": "@theme/color.border.subtle"
+    }
+  ]
+}

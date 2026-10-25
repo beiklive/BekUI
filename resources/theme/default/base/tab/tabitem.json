@@ -1,0 +1,55 @@
+{
+  "$comment": "水平标签条里的一项：固定宽度 120，左图标 + 居中文字，选中态靠底色和文字色区分。",
+  "box": {
+    "width": 120,
+    "height": 40,
+    "axis": "row",
+    "justifyContent": "flexStart",
+    "alignItems": "center"
+  },
+  "requires": {
+    "content": ["icon", "label"],
+    "layers": ["bg"]
+  },
+  "layers": [
+    {
+      "op": "rect",
+      "id": "bg",
+      "radius": 8,
+      "fill": "@theme/color.common.transparent"
+    },
+    {
+      "op": "text",
+      "id": "icon",
+      "data_id": "icon",
+      "font_kind": "icon",
+      "fontSize": 20,
+      "color": "@theme/color.text.dim",
+      "width": 24,
+      "align": "left",
+      "valign": "center",
+      "inset": [0, 0, 0, 10]
+    },
+    {
+      "op": "text",
+      "id": "label",
+      "data_id": "label",
+      "fontSize": 16,
+      "color": "@theme/color.text.dim",
+      "align": "center",
+      "valign": "center"
+    }
+  ],
+  "states": {
+    "on": {
+      "bg.fill": { "to": "@theme/color.highlight.background", "duration": 120 },
+      "icon.color": { "to": "@theme/color.accent.base", "duration": 120 },
+      "label.color": { "to": "@theme/color.accent.base", "duration": 120 }
+    },
+    "off": {
+      "bg.fill": { "to": "@theme/color.common.transparent", "duration": 120 },
+      "icon.color": { "to": "@theme/color.text.dim", "duration": 120 },
+      "label.color": { "to": "@theme/color.text.dim", "duration": 120 }
+    }
+  }
+}
