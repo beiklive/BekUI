@@ -520,6 +520,7 @@ set(BKLV_CORE_SOURCES
     graphics/render/libnx/imgui_impl_libnx.cpp
     graphics/render/vk/vulkan_backend.cpp
     # ---- 控件：外观驱动、基础件、容器、列表、调试覆盖层 ----
+    ui/shell/content_stack.cpp
     ui/shell/focus_ring_view.cpp
     ui/shell/shell.cpp
 

@@ -15,8 +15,13 @@ ListBox::ListBox(const std::string& variant)
     this->scroller->setFlexBasis(0.0f);
     this->scroller->setShrink(1.0f);
     this->scroller->setShowScrollingIndicator(true);
+    // 宽度跟着 ListBox 走：滚动器如果宽度是 auto，内容盒会按"最宽的一项"撑开，
+    // 列表就会横向溢出容器（踩过）。这里把它钉成 100%，内容盒再跟 100%。
+    this->scroller->setWidthPercentage(100.0f);
     this->addView(this->scroller);
     this->content = this->scroller->getContentBox();
+    if (this->content != nullptr)
+        this->content->setWidthPercentage(100.0f);
 
     // 空态提示：不进滚动内容（否则它自己也能被滚走），直接叠在列表上。
     this->empty = new Label();

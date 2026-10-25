@@ -44,6 +44,13 @@ class DemoApp
 
     bklv::App& app() { return this->application; }
 
+    // 外壳（五层容器 + 焦点框 + 内容层层级栈）。页面做“下钻”时用 pushContentView。
+    bklv::Shell* shell() const { return this->root; }
+
+    // 压一层列表页到内容层层级栈（demo 的'层级页'按钮与 --page stack 都用它）
+    void openStackList();
+    void openStackDetail(int index);
+
     // ---- 导航（都推迟到下一帧执行，见文件头说明）----
 
     // 压入一个页面（接管所有权）。

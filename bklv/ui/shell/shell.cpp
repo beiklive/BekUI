@@ -1,6 +1,9 @@
 #include "bklv/ui/shell/shell.hpp"
 
+#include "bklv/foundation/anim/time.hpp"
+#include "bklv/foundation/core/i18n.hpp"
 #include "bklv/foundation/core/logger.hpp"
+#include "bklv/ui/input/input.hpp"
 
 namespace bklv
 {
@@ -43,10 +46,18 @@ Shell::Shell()
     // 它自己每帧去问"当前焦点是谁、你是什么形状"，控件侧不需要任何登记。
     this->focusRingView = new FocusRingView();
     this->hudLayer->addView(this->focusRingView);
+
+    // 内容层的层级栈：内容由外壳的 pushContentView/popContentView 管，
+    // 宿主也可以绕过它直接往 getContentLayer() 里 addView（两者不冲突）。
+    this->contentStack.setHostLayer(this->contentLayer);
 }
 
 Shell::~Shell()
 {
+    // 脱离树的那几层（在栈里、但没挂着的）归 ContentStack 释放；
+    // 挂在树里的那个随 Box 的析构回收，所以先让栈清掉自己那份。
+    this->contentStack.releaseDetached();
+
     // 五个层与焦点框、过渡层都是外壳 new 的，由 Box 的析构统一释放子视图，
     // 这里只把指向它们的裸指针清掉，避免析构顺序不同导致的悬垂（调试期看得见）。
     this->focusRingView = nullptr;
@@ -170,7 +181,97 @@ void Shell::fillLayer(View* view)
 void Shell::update()
 {
     Box::update();
+
+    // 内容层转场按帧推进（出场播完的回调里会挂新层、起入场）
+    this->contentStack.step(getFrameDeltaSeconds());
+
     this->releaseTransitionHostIfEmpty();
+}
+
+// ---- 液态玻璃 ----
+
+void Shell::setGlassEnabled(bool enabled)
+{
+    glass::GlassService::getInstance().setEnabled(enabled);
+}
+
+bool Shell::isGlassEnabled() const
+{
+    return glass::GlassService::getInstance().isEnabled();
+}
+
+void Shell::setGlassQuality(glass::GlassQuality quality)
+{
+    glass::GlassService::getInstance().setQuality(quality);
+}
+
+glass::GlassQuality Shell::getGlassQuality() const
+{
+    return glass::GlassService::getInstance().getQuality();
+}
+
+glass::GlassTuning& Shell::getGlassTuning()
+{
+    return glass::GlassService::getInstance().getTuning();
+}
+
+const glass::GlassTuning& Shell::getGlassTuning() const
+{
+    return glass::GlassService::getInstance().getTuning();
+}
+
+glass::EffectCapabilities Shell::getGlassCapabilities() const
+{
+    return glass::GlassService::getInstance().getCapabilities();
+}
+
+bool Shell::isGlassSupported() const
+{
+    return glass::GlassService::getInstance().isSupported();
+}
+
+// ---- 内容层：层级导航 ----
+
+void Shell::pushContentView(View* view, const std::string& memoryKey)
+{
+    this->contentStack.push(view, memoryKey);
+}
+
+void Shell::replaceContentView(View* view, const std::string& memoryKey)
+{
+    this->contentStack.replace(view, memoryKey);
+}
+
+void Shell::popContentView(std::function<void()> onFinished)
+{
+    this->contentStack.pop(std::move(onFinished));
+}
+
+// ---- B 键路由 ----
+
+void Shell::setOnBackRequested(std::function<bool()> handler)
+{
+    this->onBackRequested = std::move(handler);
+
+    if (this->onBackRequested != nullptr && !this->backActionRegistered)
+    {
+        // 只在有 handler 时注册：动作一旦注册，底栏就会显示「⊖ 返回」
+        this->backActionId = this->registerAction(ControllerButton::BACK, translate("hints/back"),
+            [this](View*) { this->requestBack(); });
+        this->backActionRegistered = true;
+    }
+    else if (this->onBackRequested == nullptr && this->backActionRegistered)
+    {
+        this->unregisterAction(this->backActionId);
+        this->backActionRegistered = false;
+    }
+}
+
+bool Shell::requestBack()
+{
+    if (this->onBackRequested == nullptr)
+        return false;
+    return this->onBackRequested();
 }
 
 } // namespace bklv

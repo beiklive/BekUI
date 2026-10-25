@@ -445,6 +445,14 @@ class View
     // 返回 nullptr 表示"就用根容器"。
     virtual Box* getHudHost() { return nullptr; }
 
+    // ---- 可恢复状态（切层/换页时的记忆）----
+    // ContentStack 在离开一层之前会存下"第一个可恢复状态的视图"的这个值，回来时写回。
+    // 默认没有可存的东西；滚动容器（ScrollBox）覆写成自己的滚动偏移。
+    // 用虚函数而不是 dynamic_cast：Switch 工具链带 -fno-rtti。
+    virtual bool hasRestorableState() const { return false; }
+    virtual float getRestorableState() const { return 0.0f; }
+    virtual void setRestorableState(float value) { (void)value; }
+
     // ---- 布局失效 ----
     // 修改任何影响布局的属性后必须调用，冒泡到根后触发一次全树重算。
     virtual void invalidate();

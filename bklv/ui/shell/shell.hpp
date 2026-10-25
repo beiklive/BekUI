@@ -26,6 +26,8 @@
 //   app.setRootView(shell);
 
 #include "bklv/foundation/geom/geometry.hpp"
+#include "bklv/graphics/render/glass/glass_service.hpp"
+#include "bklv/ui/shell/content_stack.hpp"
 #include "bklv/ui/shell/focus_ring_view.hpp"
 #include "bklv/ui/view/box.hpp"
 
@@ -71,6 +73,72 @@ class Shell : public Box
     // 需要自己画法时（`focus_ring::Type::CUSTOM`）直接拿这个视图挂渲染器
     FocusRingView* getFocusRingView() const { return this->focusRingView; }
 
+    // ---- 液态玻璃（外观层）----
+    // 外壳是面向使用者的所有者：开关 / 档位 / 默认参数 / 能力查询都从这里走。
+    // 样式参数的优先级：**外观层 JSON 写了就用 JSON，没写才用这里的 GlassTuning**；
+    // `enabled` 与 `quality` 只由这里决定（开关与性能，不是样式）。
+    void setGlassEnabled(bool enabled);
+    bool isGlassEnabled() const;
+
+    void setGlassQuality(glass::GlassQuality quality);
+    glass::GlassQuality getGlassQuality() const;
+
+    glass::GlassTuning& getGlassTuning();
+    const glass::GlassTuning& getGlassTuning() const;
+
+    // 后端能力：拿不到就别把玻璃开关暴露给用户
+    glass::EffectCapabilities getGlassCapabilities() const;
+    bool isGlassSupported() const;
+
+    // ---- 内容层：层级导航（下钻 / 返回）----
+    // 叠一层时**旧层先出场（还挂在树上，所以看得到）→ 播完才摘它、挂新层、给焦点 → 新层入场**；
+    // 下钻出来的详情页在出场播完才释放。同级换页用 `replaceContentView()`。
+    // 层级与焦点、滚动位置的记忆由 ContentStack 负责（key 取视图的 id）。
+    void pushContentView(View* view, const std::string& memoryKey = std::string());
+    void replaceContentView(View* view, const std::string& memoryKey = std::string());
+    // 弹出栈顶并**释放**它；已经在最外层时什么都不做，只执行回调。
+    void popContentView(std::function<void()> onFinished = nullptr);
+    View* getContentView() const { return this->contentStack.getTop(); }
+    size_t getContentStackSize() const { return this->contentStack.size(); }
+
+    // 入场 / 出场分开配（秒；0 = 用主题的动画时长）
+    void setEnterTransition(ContentTransition value) { this->contentStack.setEnter(value); }
+    ContentTransition getEnterTransition() const { return this->contentStack.getEnter(); }
+    void setExitTransition(ContentTransition value) { this->contentStack.setExit(value); }
+    ContentTransition getExitTransition() const { return this->contentStack.getExit(); }
+    // 两边时长一起设（入场/出场各一段，时长相同）
+    void setTransitionDuration(float seconds) { this->contentStack.setBoth(
+        this->contentStack.getEnter(), seconds); }
+    // 报**实际**时长：外观里写了 transitions 时是 spec 的总时长（出场播完才摘页靠它）
+    float getTransitionDuration() const { return this->contentStack.getDuration(); }
+
+    // 直接对某个视图播一次入场/出场（宿主也能用；出场回调里可以接着摘/删它）
+    void playEnterTransition(View* view) { this->contentStack.playEnter(view); }
+    void playExitTransition(View* view, std::function<void()> onFinished = nullptr)
+    {
+        this->contentStack.playExit(view, std::move(onFinished));
+    }
+
+    bool isEntering() const { return this->contentStack.isEntering(); }
+    bool isExiting() const { return this->contentStack.isExiting(); }
+    bool isTransitioning() const { return this->contentStack.isActive(); }
+    // 正在出场的那个视图（入场期间是 nullptr；调试/测试用）
+    View* getOutgoingContentView() const { return this->contentStack.getOutgoing(); }
+
+    // 推进转场：update() 内部按帧间隔调；测试可以直接喂固定 dt（确定性）
+    void stepContentTransition(float deltaSeconds) { this->contentStack.step(deltaSeconds); }
+    // 立刻落位（把正在跑的那段收尾，含出场回调）
+    void finishContentTransition() { this->contentStack.finishNow(); }
+
+    // ---- B 键第 3 级（非模态）路由 ----
+    // 模态子树和内容树里都没人处理 B 时冒泡到外壳，由它决定（返回上一页 / 退出）。
+    // 注册后底栏提示会自动出现「⊖ 返回」；传 nullptr 注销。
+    // handler 返回 true 表示已处理。
+    void setOnBackRequested(std::function<bool()> handler);
+    bool hasBackRequestedHandler() const { return this->onBackRequested != nullptr; }
+    // 主动走一次 B 路由（宿主按键/快捷方式用），返回是否被处理
+    bool requestBack();
+
     // ---- 安全区：五层统一内缩（Switch 的圆角 / 刘海）----
     void setSafeAreaInsets(float top, float right, float bottom, float left);
     void setSafeAreaInsets(const EdgeInsets& insets)
@@ -110,6 +178,14 @@ class Shell : public Box
 
     FocusRingView* focusRingView = nullptr;
     Box* transitionHost          = nullptr;
+
+    // 内容层的层级栈（下钻 + 转场 + 焦点/滚动记忆）
+    ContentStack contentStack;
+
+    // B 键路由：handler 为空时不注册动作（否则底栏会一直显示「返回」）
+    std::function<bool()> onBackRequested;
+    ActionIdentifier backActionId;
+    bool backActionRegistered = false;
 
     float safeTop    = 0.0f;
     float safeRight  = 0.0f;

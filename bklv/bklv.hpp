@@ -23,6 +23,7 @@
 #include "bklv/ui/app/app.hpp"
 
 // ---- shell（应用外壳）：背景 / 内容 / 覆盖 / 浮层 / 调试 五层容器 ----
+#include "bklv/ui/shell/content_stack.hpp"
 #include "bklv/ui/shell/focus_ring_view.hpp"
 #include "bklv/ui/shell/shell.hpp"
 #include "bklv/ui/app/context.hpp"

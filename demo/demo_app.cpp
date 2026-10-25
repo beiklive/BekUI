@@ -1,10 +1,14 @@
 #include "demo_app.hpp"
 
+#include <string>
 #include <utility>
 
 #include "bklv/graphics/render/glass/glass_service.hpp"
 #include "bklv/ui/input/input.hpp"
 #include "bklv/ui/view/view.hpp"
+#include "bklv/ui/widgets/basic/label.hpp"
+#include "bklv/ui/widgets/container/list_box.hpp"
+#include "bklv/ui/widgets/controls/button.hpp"
 #include "page.hpp"
 #include "pages/home_page.hpp"
 #include "pages/settings_page.hpp"
@@ -102,8 +106,26 @@ void DemoApp::buildShell()
     // 焦点框归 Shell 所有（挂在浮层上，永远画在内容/覆盖层之上），这里只确认它开着。
     this->root->setFocusRingEnabled(true);
 
-    // 根视图兜一个 BACK：焦点在内容区时 Esc 也能返回。
-    this->root->registerAction(bklv::ControllerButton::BACK, "返回", [this](bklv::View*) { this->goBack(); });
+    // 内容层层级栈的入场/出场：两边都滑入淡出，0.22 秒（外观里写了 transitions 时以 JSON 为准）。
+    this->root->setEnterTransition(bklv::ContentTransition::SLIDE_FADE);
+    this->root->setExitTransition(bklv::ContentTransition::SLIDE_FADE);
+    this->root->setTransitionDuration(0.22f);
+
+    // 根视图兜一个 BACK：先关内容层的下钻层，再退回上一页；
+    // 模态子树与内容树都没人处理 B 时才会冒泡到这里。
+    this->root->setOnBackRequested([this]() -> bool {
+        if (this->root != nullptr && this->root->getContentStackSize() > 0)
+        {
+            this->root->popContentView();
+            return true;
+        }
+        if (this->pages.size() > 1)
+        {
+            this->goBack();
+            return true;
+        }
+        return false;
+    });
 
     this->applyThemeColors();
 }
@@ -225,6 +247,58 @@ void DemoApp::cycleTheme()
 int DemoApp::run(const std::string& title, int width, int height)
 {
     return this->application.run(title, width, height);
+}
+
+void DemoApp::openStackList()
+{
+    if (this->root == nullptr)
+        return;
+
+    auto* page = new bklv::Box(bklv::Axis::COLUMN);
+    page->setId("stack-list");
+    page->setBackgroundColor(pageBackgroundColor());
+    page->setPadding(24.0f);
+    page->setGap(12.0f);
+
+    auto* list = new bklv::ListBox();
+    list->setGrow(1.0f);
+    list->setWidthPercentage(100.0f);
+    for (int i = 1; i <= 30; i++)
+    {
+        auto* row = new bklv::TextButton("条目 " + std::to_string(i));
+        row->setOnClick([this, i]() { this->openStackDetail(i); });
+        list->addItem(row);
+    }
+
+    page->addView(makeTitle("层级页（下钻）"));
+    page->addView(makeNote("方向键滚动列表、Enter 进详情、Esc / B 返回；回来时滚动位置和焦点都还在。"));
+    page->addView(list);
+
+    // 铺满内容层：层级页盖住底下的页面（连顶栏一起）
+    this->root->fillLayer(page);
+    this->root->pushContentView(page, "stack-list");
+}
+
+void DemoApp::openStackDetail(int index)
+{
+    if (this->root == nullptr)
+        return;
+
+    auto* detail = new bklv::Box(bklv::Axis::COLUMN);
+    detail->setId("stack-detail");
+    detail->setBackgroundColor(pageBackgroundColor());
+    detail->setPadding(24.0f);
+    detail->setGap(12.0f);
+
+    auto* back = new bklv::TextButton("返回（或按 B）");
+    back->setOnClick([this]() { if (this->root != nullptr) this->root->popContentView(); });
+
+    detail->addView(makeTitle("详情 " + std::to_string(index)));
+    detail->addView(makeNote("这一层压在列表之上；返回时列表的滚动位置与焦点都会记住。"));
+    detail->addView(back);
+
+    this->root->fillLayer(detail);
+    this->root->pushContentView(detail, "stack-detail");
 }
 
 } // namespace demo

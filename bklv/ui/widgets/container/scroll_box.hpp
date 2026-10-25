@@ -44,6 +44,11 @@ class ScrollBox : public Box
     // 把某个子视图滚进可视区（焦点移动、新内容追加时用）。
     void scrollToView(View* view, bool animated = true);
 
+    // ---- 可恢复状态：切层/换页时由 ContentStack 存它、回来时写回（瞬切，不带动画）----
+    bool hasRestorableState() const override { return true; }
+    float getRestorableState() const override { return this->getScrollOffset(); }
+    void setRestorableState(float value) override { this->setScrollOffset(value, false); }
+
     std::string getClassString() const override { return "bklv::ScrollBox"; }
 
   private:
