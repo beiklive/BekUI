@@ -54,7 +54,9 @@ class Dialog : public Box
     const std::string& getIcon() const { return this->icon; }
 
     // ---- 按钮 ----
-    // 加一个对话框按钮（外观 base/button/button.dialog）。回调里通常自己调 close()。
+    // 加一个对话框按钮（外观 base/button/button.dialog）。
+    // 点下去先执行回调（可为空），然后**自动关闭**本对话框 —— 「取消」这种不传回调的
+    // 按钮因此天然就是关掉；要在关掉前做校验，就在回调里自己做。
     TextButton* addButton(const std::string& label, std::function<void()> onPress = nullptr);
     void clearButtons();
 

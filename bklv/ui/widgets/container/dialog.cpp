@@ -177,8 +177,14 @@ void Dialog::setTitle(const std::string& text)
 TextButton* Dialog::addButton(const std::string& label, std::function<void()> onPress)
 {
     auto* button = new TextButton(label, "dialog");
-    if (onPress)
-        button->setOnClick(std::move(onPress));
+
+    // 对话框的按钮点完就关窗：先跑调用方的动作（可能没有），再把自己收掉。
+    // 这样「取消」这种不传回调的按钮天然就是"关掉"，调用方不用自己接 close()。
+    button->setOnClick([this, action = std::move(onPress)] {
+        if (action)
+            action();
+        this->close();
+    });
     // 按钮在底部**均匀分配**宽度：每个都 grow=1，两个就各占一半，
     // 只有一个时自然铺满整行（不用调用方自己算宽度）。
     button->setGrow(1.0f);

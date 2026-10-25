@@ -35,6 +35,7 @@ class Box;
 class DebugLogView;
 class FpsOverlay;
 class Label;
+class Dialog;
 class PresetBackdrop;
 class RecyclerDataSource;
 class Shell;
@@ -124,6 +125,9 @@ class DemoApp
     bklv::DebugLogView* logView  = nullptr;
     bklv::FpsOverlay* fpsOverlay = nullptr;
     bklv::PresetBackdrop* backdrop = nullptr;
+
+    // 示例对话框：只建一次，反复 open()/close() 复用（避免每次开都漏一个）
+    bklv::Dialog* demoDialog = nullptr;
 
     // 列表页的数据源（RecyclerFrame 只借指针，这里持有）
     std::unique_ptr<bklv::RecyclerDataSource> longListSource;

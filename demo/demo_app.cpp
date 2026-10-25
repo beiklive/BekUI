@@ -336,21 +336,28 @@ void DemoApp::openGridDetail(size_t index)
 
 void DemoApp::openDemoDialog()
 {
-    auto* dialog = new bklv::Dialog();
-    dialog->setIcon(bklv::icon::glyph(bklv::icon::Id::WARNING));
-    dialog->setTitle("删除这一项？");
+    // 只建一次：关闭只是把对话框从弹层上摘下来（GONE），再开还是同一个对象。
+    if (this->demoDialog == nullptr)
+    {
+        auto* dialog = new bklv::Dialog();
+        dialog->setIcon(bklv::icon::glyph(bklv::icon::Id::WARNING));
+        dialog->setTitle("删除这一项？");
 
-    auto* body = dialog->getContentBox();
-    body->setGap(10.0f);
-    body->addView(makeParagraph("这条消息会被永久删除，无法恢复。"));
-    body->addView(makeNote("面板与遮罩都是外观：base/box/dialog 与 base/box/dialog_backdrop。"));
-    body->addView(makeNote("打开时自动把焦点拉进面板；B / Esc 关闭；底部按钮均分宽度。"));
+        auto* body = dialog->getContentBox();
+        body->setGap(10.0f);
+        body->addView(makeParagraph("这条消息会被永久删除，无法恢复。"));
+        body->addView(makeNote("面板与遮罩都是外观：base/box/dialog 与 base/box/dialog_backdrop。"));
+        body->addView(makeNote("打开时自动把焦点拉进面板；B / Esc 关闭；底部按钮均分宽度。"));
 
-    dialog->addButton("取消");
-    dialog->addButton("删除", [this] { this->notify("已删除（示例）"); });
+        // 两个按钮点下去都会自动关窗（Dialog::addButton 的约定），
+        // 这里只需要写"关掉之前要做什么"。
+        dialog->addButton("取消");
+        dialog->addButton("删除", [this] { this->notify("已删除（示例）"); });
 
-    if (!dialog->open())
-        delete dialog;
+        this->demoDialog = dialog;
+    }
+
+    this->demoDialog->open();
 }
 
 // ---- 调试页 ---------------------------------------------------------------
