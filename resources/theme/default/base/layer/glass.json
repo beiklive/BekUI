@@ -1,8 +1,8 @@
 {
-  "$comment": "通用玻璃层：半透明底色 + 细描边（default 主题的扁平玻璃）。别的主题可以有自己的玻璃实现，不要 import 这份。",
+  "$comment": "通用玻璃层：真实背景模糊（op=glass），fill 当染色、stroke/strokeWidth 当内缘高光。玻璃总开关与质量档由 Shell 决定；关了或后端不支持时这一层退化成半透明底。别的主题可以有自己的玻璃实现，不要 import 这份。",
   "layers": [
     {
-      "op": "rect",
+      "op": "glass",
       "id": "glass",
       "fill": "#FFFFFF33",
       "stroke": "#FFFFFF3D",
