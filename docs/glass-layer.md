@@ -119,6 +119,37 @@ class GlassPanelView : public AppearanceView
   （半径用控件自己的 `radius`，所以圆角不会错位）。这是"玻璃"最有效的一笔 ——
   borealis 的面板也靠 1px 内描边立起来。玻璃不可用时这圈描边照画（两种情况下观感一致）
 
+## 2c. 每层玻璃样式（对齐原版 `GlassStyle`）
+
+原版 imgui-liquid-glass 给每个控件类一份 `GlassStyle`（窗口 `20 / -70 / 0.3`，
+输入框 `12 / -24 / 0.24`、`blurMix 0.32`）。本库等价地把同一批字段开放给 `op: glass` 层：
+
+```json
+{
+  "op": "glass", "id": "glass",
+  "fill": "#FFFFFF12",              // 染色（alpha 0.07，太淡时降级底会抬到 0.16）
+  "blurMix": 0.32,                  // 0 = 原始底（折射最明显） / 1 = 纯模糊底
+  "refractionHeight": 12,           // 折射带宽度（像素量，随 720p 缩放）
+  "refractionAmount": -24,          // 边缘最大位移（负值 = 往外掰）
+  "depthEffect": 0.24,
+  "chromaticAberration": 0.16,
+  "lighting": {
+    "innerShadow": 0.12, "rimGlow": 0.30, "specular": 0.52,
+    "outerShadow": 0.12, "shadowExtent": 5, "specularPower": 24
+  }
+}
+```
+
+- **逐项可选**：没写的字段继续用 `Shell` 的 `GlassTuning`；写了 `0` 就是真的 0。
+- 小控件（按钮 / 通知）用 `base/layer/glass` 的这套（12 / -24 / 0.24 / 0.16 / 0.32）；
+  大面（对话框遮罩）在 `base/box/dialog_backdrop.json` 里覆盖成
+  `20 / -70 / 0.3 / 0.5 / 1.0`。**不要一个参数打天下** —— 小面上 40 / -120 会让整块变成透镜。
+- `blurRadius` / `quality` 仍是**帧级**（整帧共用一份背景模糊），不在层里。
+- **纯色 / 平滑渐变背景上看不到折射**：位移采到的还是同一个颜色。要有细节（图片/文字/网格）
+  才看得出"液态"。这是效果本身的数学，不是没生效。demo 里可以直接看：
+  `./dist/demo --backdrop checker`（高对比棋盘，边缘掰弯最明显）或
+  `--backdrop polygons`（彩色多边形随机飘动）。
+
 ### chrome 变体：给上下栏的淡玻璃
 
 ```json

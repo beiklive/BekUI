@@ -5,6 +5,8 @@
 //   GRID      深色填充 + 彩色网格（画布感）
 //   FLOATING  深色背景 + 灰色几何元素缓慢上浮（参考 GBAStation 的 DynamicBackgroundBox）
 //   GRADIENT  纵向渐变（顶部强调色偏暗 → 底部页面底色）
+//   CHECKER   高对比棋盘（专门用来检查玻璃的折射/色散：纯色底上看不到位移）
+//   POLYGONS  彩色多边形随机飘动（动态；颜色来自主题色板，看玻璃折射最直观）
 //
 // 三条约定：
 // 1) 全部是**绘制期**内容：只在 draw 里往 ImDrawList 加图元，不建子视图、不触碰布局；
@@ -24,6 +26,8 @@ enum class BackdropPreset
     GRID,
     FLOATING,
     GRADIENT,
+    CHECKER,
+    POLYGONS,
 };
 
 class PresetBackdrop : public View
@@ -54,16 +58,36 @@ class PresetBackdrop : public View
         int   shape = 0; // 0 圆 1 方 2 三角 3 十字
     };
 
+    struct PolygonItem
+    {
+        float x = 0.0f;
+        float y = 0.0f;
+        float speedX = 0.0f;
+        float speedY = 0.0f;
+        float size = 0.0f;
+        float rotation = 0.0f;
+        float rotateSpeed = 0.0f;
+        int   sides = 3; // 3..6
+        ImU32 color = 0;
+    };
+
     void ensureItems(float width, float height);
+    void ensurePolygons(float width, float height);
     void drawGrid(ImDrawList* drawList, float x, float y, float width, float height);
     void drawFloating(ImDrawList* drawList, float x, float y, float width, float height);
     void drawGradient(ImDrawList* drawList, float x, float y, float width, float height);
+    void drawChecker(ImDrawList* drawList, float x, float y, float width, float height);
+    void drawPolygons(ImDrawList* drawList, float x, float y, float width, float height);
 
     BackdropPreset            preset = BackdropPreset::GRID;
     float                     time = 0.0f;
     std::vector<FloatingItem> items;
     float                     itemWidth = 0.0f;
     float                     itemHeight = 0.0f;
+
+    std::vector<PolygonItem> polygons;
+    float                    polygonWidth = 0.0f;
+    float                    polygonHeight = 0.0f;
 };
 
 } // namespace bklv

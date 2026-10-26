@@ -1,20 +1,24 @@
 {
-  "$comment": "水平标签条里的一项：112×36，圆角 10，左图标 + 紧跟的文字；选中态是浅蓝底 + 强调色文字。",
+  "$comment": "水平标签条里的一项：112×36，圆角 15（接近胶囊），左图标 + 紧跟的文字；选中时底部一条强调色指示条。",
   "box": {
     "width": 112,
     "height": 36,
     "axis": "row",
     "justifyContent": "flexStart",
     "alignItems": "center",
-      "radius" : 15
+    "cornerRadius": 15
   },
   "requires": {
     "content": ["icon", "label"],
-    "layers": ["bg"]
+    "layers": [
+      { "shadow": "shadow" },
+      { "border": "rect" },
+      { "indicator": "rect" }
+    ]
   },
   "layers": [
     {
-      "import": "base/layer/shadow",
+      "import": "base/layer/glass",
       "radius" : 15
     },
     {

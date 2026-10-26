@@ -1,5 +1,6 @@
 #include "bklv/ui/widgets/debug/preset_backdrop.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -72,11 +73,57 @@ void PresetBackdrop::ensureItems(float width, float height)
     this->itemHeight = height;
 }
 
+void PresetBackdrop::ensurePolygons(float width, float height)
+{
+    if (!this->polygons.empty() && this->polygonWidth == width
+        && this->polygonHeight == height)
+        return;
+
+    // 固定种子：同一次运行里布局稳定，截图可复现。颜色取主题色板（换肤会跟着变）。
+    static const char* const kColorKeys[] = {
+        "color.common.red", "color.common.orange", "color.common.yellow",
+        "color.common.green", "color.common.cyan", "color.common.blue",
+        "color.common.purple", "color.common.pink",
+    };
+    static const ImU32 kFallback[] = {
+        IM_COL32(239, 83, 80, 255), IM_COL32(255, 152, 0, 255),
+        IM_COL32(255, 235, 59, 255), IM_COL32(102, 187, 106, 255),
+        IM_COL32(38, 198, 218, 255), IM_COL32(66, 165, 245, 255),
+        IM_COL32(171, 71, 188, 255), IM_COL32(236, 64, 122, 255),
+    };
+
+    std::mt19937 rng(20261107u);
+    std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+    const float scale = getUiScale();
+    const float maxSize = std::min(width, height) * 0.18f;
+
+    this->polygons.clear();
+    this->polygons.resize(24);
+    for (PolygonItem& item : this->polygons)
+    {
+        item.size        = std::min((26.0f + unit(rng) * 58.0f) * scale, maxSize);
+        item.x           = unit(rng) * width;
+        item.y           = unit(rng) * height;
+        item.speedX      = (unit(rng) * 2.0f - 1.0f) * 42.0f * scale;
+        item.speedY      = (unit(rng) * 2.0f - 1.0f) * 42.0f * scale;
+        item.rotation    = unit(rng) * 6.2831853f;
+        item.rotateSpeed = (unit(rng) * 2.0f - 1.0f) * 1.4f;
+        item.sides       = 3 + (int)(unit(rng) * 4.0f); // 3..6
+        const int colorIndex = (int)(unit(rng) * 8.0f) % 8;
+        item.color = withAlpha(getTheme().color(kColorKeys[colorIndex], kFallback[colorIndex]),
+            190 + (int)(unit(rng) * 50.0f));
+    }
+    this->polygonWidth  = width;
+    this->polygonHeight = height;
+}
+
 void PresetBackdrop::update()
 {
     View::update();
 
-    if (this->preset != BackdropPreset::FLOATING)
+    const bool floating = this->preset == BackdropPreset::FLOATING;
+    const bool polygons = this->preset == BackdropPreset::POLYGONS;
+    if (!floating && !polygons)
         return;
 
     const float dt = getFrameDeltaSeconds();
@@ -88,24 +135,59 @@ void PresetBackdrop::update()
     if (width <= 0.0f || height <= 0.0f)
         return;
 
-    this->ensureItems(width, height);
-    this->time += dt;
+    if (floating)
+    {
+        this->ensureItems(width, height);
+        this->time += dt;
 
-    for (FloatingItem& item : this->items)
+        for (FloatingItem& item : this->items)
+        {
+            item.x += item.speedX * dt;
+            item.y += item.speedY * dt;
+            item.rotation += item.rotateSpeed * dt;
+
+            if (item.y < -item.size)
+            {
+                item.y = height + item.size;
+                item.x = (float)(std::rand() % 1000) / 1000.0f * width;
+            }
+            if (item.x < -item.size)
+                item.x = width + item.size;
+            if (item.x > width + item.size)
+                item.x = -item.size;
+        }
+        return;
+    }
+
+    // POLYGONS：随机方向匀速飘、自转，撞到边就反弹（不飞出画面）
+    this->ensurePolygons(width, height);
+    for (PolygonItem& item : this->polygons)
     {
         item.x += item.speedX * dt;
         item.y += item.speedY * dt;
         item.rotation += item.rotateSpeed * dt;
 
-        if (item.y < -item.size)
+        const float radius = item.size;
+        if (item.x < radius)
         {
-            item.y = height + item.size;
-            item.x = (float)(std::rand() % 1000) / 1000.0f * width;
+            item.x      = radius;
+            item.speedX = std::abs(item.speedX);
         }
-        if (item.x < -item.size)
-            item.x = width + item.size;
-        if (item.x > width + item.size)
-            item.x = -item.size;
+        else if (item.x > width - radius)
+        {
+            item.x      = width - radius;
+            item.speedX = -std::abs(item.speedX);
+        }
+        if (item.y < radius)
+        {
+            item.y      = radius;
+            item.speedY = std::abs(item.speedY);
+        }
+        else if (item.y > height - radius)
+        {
+            item.y      = height - radius;
+            item.speedY = -std::abs(item.speedY);
+        }
     }
 }
 
@@ -205,6 +287,45 @@ void PresetBackdrop::drawGradient(ImDrawList* drawList, float x, float y, float 
         top, top, bottom, bottom);
 }
 
+void PresetBackdrop::drawChecker(ImDrawList* drawList, float x, float y, float width,
+    float height)
+{
+    // 高对比棋盘：玻璃的折射本质是"位移采样"，需要这种高频细节才看得出来。
+    const ImU32 light = getTheme().color("color.surface.card", IM_COL32(242, 243, 245, 255));
+    const ImU32 dark  = getTheme().color("color.common.black", IM_COL32(18, 20, 24, 255));
+
+    drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height), light);
+
+    const float cell = 32.0f * getUiScale();
+    for (float cy = 0.0f; cy < height; cy += cell)
+        for (float cx = 0.0f; cx < width; cx += cell)
+            if (((int)(cx / cell) + (int)(cy / cell)) % 2 == 0)
+                drawList->AddRectFilled(ImVec2(x + cx, y + cy),
+                    ImVec2(x + cx + cell, y + cy + cell), dark);
+}
+
+void PresetBackdrop::drawPolygons(ImDrawList* drawList, float x, float y, float width,
+    float height)
+{
+    const ImU32 base = getTheme().color("color.surface.card", IM_COL32(242, 243, 245, 255));
+    drawList->AddRectFilled(ImVec2(x, y), ImVec2(x + width, y + height), base);
+
+    this->ensurePolygons(width, height);
+
+    ImVec2 points[6];
+    for (const PolygonItem& item : this->polygons)
+    {
+        for (int i = 0; i < item.sides; i++)
+        {
+            const float angle = item.rotation
+                + 6.2831853f * (float)i / (float)item.sides;
+            points[i] = ImVec2(x + item.x + std::cos(angle) * item.size,
+                y + item.y + std::sin(angle) * item.size);
+        }
+        drawList->AddConvexPolyFilled(points, item.sides, item.color);
+    }
+}
+
 void PresetBackdrop::draw(ImDrawList* drawList, float x, float y, float width, float height,
     FrameContext*)
 {
@@ -216,6 +337,8 @@ void PresetBackdrop::draw(ImDrawList* drawList, float x, float y, float width, f
         case BackdropPreset::GRID:     this->drawGrid(drawList, x, y, width, height); break;
         case BackdropPreset::FLOATING: this->drawFloating(drawList, x, y, width, height); break;
         case BackdropPreset::GRADIENT: this->drawGradient(drawList, x, y, width, height); break;
+        case BackdropPreset::CHECKER:  this->drawChecker(drawList, x, y, width, height); break;
+        case BackdropPreset::POLYGONS: this->drawPolygons(drawList, x, y, width, height); break;
         case BackdropPreset::NONE:
         default: break;
     }

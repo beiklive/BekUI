@@ -82,7 +82,12 @@ float AppearanceView::getCornerRadius() const
         if (layers[index].id == "bg")
             return this->appearance.getNumber((int)index, AppearanceProp::RADIUS);
     }
-    return 0.0f;
+
+    // 没有 bg 层（只画 border / shadow 的外观，例如 tabitem）时退回 box 段的
+    // cornerRadius（也包含代码里 setCornerRadius 显式设的值）—— 否则聚焦框会被
+    // 画成直角矩形，和控件视觉上的圆角对不上。注意 box 里的键叫 cornerRadius，
+    // "radius" 只在 layers 的层里有效。
+    return View::getCornerRadius();
 }
 
 void AppearanceView::updateFocusScale()

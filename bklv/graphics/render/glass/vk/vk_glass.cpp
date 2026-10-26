@@ -104,9 +104,15 @@ void VkGlass::submit(GlassRequestQueue& queue, const GlassRequest& request,
         const float radius = std::min(
             (request.minMax.z - request.minMax.x) * 0.5f, request.radii.topLeft * request.density);
         const ImU32 tint = ImGui::ColorConvertFloat4ToU32(
-            ImVec4(tuning.tintR, tuning.tintG, tuning.tintB, std::max(tuning.tintA, 0.35f)));
+            request.style.tint.w > 0.0f
+                ? request.style.tint
+                : ImVec4(tuning.tintR, tuning.tintG, tuning.tintB,
+                      std::max(tuning.tintA, 0.35f)));
+        const float rimGlow = (request.styleFields & glass_field::kLightRimGlow)
+            ? request.style.lighting.rimGlow
+            : tuning.rimGlow;
         const ImU32 rim = ImGui::ColorConvertFloat4ToU32(
-            ImVec4(1.0f, 1.0f, 1.0f, 0.10f + tuning.rimGlow * 0.35f));
+            ImVec4(1.0f, 1.0f, 1.0f, 0.10f + rimGlow * 0.35f));
         const float density = request.density > 0.0f ? request.density : 1.0f;
         const ImVec2 min(request.minMax.x / density, request.minMax.y / density);
         const ImVec2 max(request.minMax.z / density, request.minMax.w / density);

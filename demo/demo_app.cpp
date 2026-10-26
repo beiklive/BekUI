@@ -409,12 +409,35 @@ void DemoApp::toggleDebugLayer()
 
 void DemoApp::cycleBackdrop()
 {
-    static const bklv::BackdropPreset presets[] = { bklv::BackdropPreset::NONE, bklv::BackdropPreset::GRID,
-        bklv::BackdropPreset::FLOATING, bklv::BackdropPreset::GRADIENT };
+    static const bklv::BackdropPreset presets[] = { bklv::BackdropPreset::NONE,
+        bklv::BackdropPreset::GRID, bklv::BackdropPreset::FLOATING,
+        bklv::BackdropPreset::GRADIENT, bklv::BackdropPreset::CHECKER,
+        bklv::BackdropPreset::POLYGONS };
 
-    this->backdropIndex = (this->backdropIndex + 1) % 4;
+    this->backdropIndex = (this->backdropIndex + 1) % 6;
     if (this->backdrop != nullptr)
         this->backdrop->setPreset(presets[this->backdropIndex]);
+}
+
+bool DemoApp::setBackdrop(const std::string& name)
+{
+    static const char* const names[] = { "none", "grid", "floating", "gradient", "checker",
+        "polygons" };
+    static const bklv::BackdropPreset presets[] = { bklv::BackdropPreset::NONE,
+        bklv::BackdropPreset::GRID, bklv::BackdropPreset::FLOATING,
+        bklv::BackdropPreset::GRADIENT, bklv::BackdropPreset::CHECKER,
+        bklv::BackdropPreset::POLYGONS };
+
+    for (int index = 0; index < 6; index++)
+    {
+        if (name != names[index])
+            continue;
+        this->backdropIndex = index;
+        if (this->backdrop != nullptr)
+            this->backdrop->setPreset(presets[index]);
+        return true;
+    }
+    return false;
 }
 
 void DemoApp::cycleSafeArea()
@@ -451,7 +474,7 @@ void DemoApp::cycleGlass()
 
 std::string DemoApp::describeDebugState() const
 {
-    static const char* const kBackdrops[] = { "关", "网格", "漂浮", "渐变" };
+    static const char* const kBackdrops[] = { "关", "网格", "漂浮", "渐变", "棋盘", "多边形" };
     static const char* const kGlass[]     = { "关", "BALANCED", "FULL", "MINIMAL" };
     static const char* const kSafeArea[]  = { "0", "24", "48" };
 
@@ -466,7 +489,7 @@ std::string DemoApp::describeDebugState() const
     out += " · 调试边框 ";
     out += boxOn ? "开" : "关";
     out += " · 背景 ";
-    out += kBackdrops[this->backdropIndex % 4];
+    out += kBackdrops[this->backdropIndex % 6];
     out += " · 安全区 ";
     out += kSafeArea[this->safeAreaIndex % 3];
     out += " · 玻璃 ";

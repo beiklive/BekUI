@@ -456,8 +456,13 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      `import` 基外观 + 覆盖 `bg.fill` 为透明 + 追加一行 `{ "import": "base/layer/glass" }`；
      **不要另开演示页面** —— 做法是给每个控件追加一行玻璃版本。
 
-     外观能覆盖的只有**样式**（`fill` 染色 / `opacity` / `radius` / inset 几何）；
-     `blurRadius`、`quality` 与总开关只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
+     外观能覆盖的只有**样式**：`fill` 染色 / `opacity` / `radius` / inset 几何，以及每层的
+     `blurMix` / `refractionHeight` / `refractionAmount` / `depthEffect` /
+     `chromaticAberration` / `contrast` / `whitePoint` / `chromaMultiplier` / `lighting.*`
+     （逐项可选，没写的继续用 `GlassTuning`；原版是每个控件一份 `GlassStyle`，这里等价地开放给层，
+     所以**小控件和大面要分别写**：`base/layer/glass` 用 `12 / -24 / 0.24 / 0.16 / 0.32`，
+     `base/box/dialog_backdrop.json` 用 `20 / -70 / 0.3 / 0.5 / 1.0`；一个参数打天下会让小面变透镜）。
+     `blurRadius`、`quality` 与总开关仍只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
      两个清单坑：`theme.json` 的 `files[]` 条目要**带 `.json` 后缀**（`base/glass_panel.json`，
      少了后缀会以"主题里没有控件外观"的形式静默回退）；`box.padding` 只接受**一个数**或
      **四个数**（`[上,右,下,左]`），写两个数会编译失败。
@@ -648,7 +653,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ① **单向依赖**：`FocusRingView` 每帧问 `getInputManager().getCurrentFocus()`，再问那个视图
      `getFocusOutline()` → 控件完全不知道谁在画框，换画法/换类型/开关都不用动控件。
      形状用**圆角矩形**统一表达（半径自动钳到短边一半）：矩形 r=0、胶囊 r=高/2、正圆 r=短边/2，
-     所以"聚焦到圆形控件上就变圆"是自动的（`AppearanceView` 从 bg 层读出圆角补上）。
+     所以"聚焦到圆形控件上就变圆"是自动的（`AppearanceView` 从 bg 层读圆角；没有 bg 层时退回
+     `box.cornerRadius`）。**box 里的键是 `cornerRadius`**，`radius` 只写在 `layers` 的层里，
+     写错不会生效（现在会打一条"box 有未知键"的警告）。
   ② **颜色只来自 LUT 贴图**（`resources/focus_ring_gradient.png`，512×4 横向色谱）：
      U = 弧长 + 相位，V = 描边宽度方向；跨接缝的段按 U 比例**拆成两段**画，否则 UV 被拉花。
      这是 GBAStation `nvgBoxGradientLUT` 的同款做法（那边改 NanoVG paint，这边用 ImDrawList）。

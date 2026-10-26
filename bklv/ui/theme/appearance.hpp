@@ -34,6 +34,7 @@
 
 #include <memory>
 #include <array>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -174,6 +175,32 @@ struct AppearanceLayer
     std::string align     = "left";
     std::string valign    = "center";
     std::string scaling   = "fit";
+
+    // GLASS 层：逐项覆盖折射/色散/光照/模糊混合。NaN = 没写（继续用 Shell 的
+    // GlassTuning）—— 这和"写了 0"是两件事（例如 refractionAmount=0 表示真的不折射）。
+    // 字段与 glass::GlassStyle 一一对应；blurMix 是请求级的"模糊底/原始底"混合比。
+    struct GlassOverrides
+    {
+        static constexpr float UNSET = std::numeric_limits<float>::quiet_NaN();
+
+        float blurMix             = UNSET;
+        float refractionHeight    = UNSET;
+        float refractionAmount    = UNSET;
+        float depthEffect         = UNSET;
+        float chromaticAberration = UNSET;
+        float contrast            = UNSET;
+        float whitePoint          = UNSET;
+        float chromaMultiplier    = UNSET;
+
+        float lightInnerShadow   = UNSET;
+        float lightRimGlow       = UNSET;
+        float lightSpecular      = UNSET;
+        float lightOuterShadow   = UNSET;
+        float lightShadowExtent  = UNSET;
+        float lightSpecularPower = UNSET;
+        float lightX             = UNSET;
+        float lightY             = UNSET;
+    } glass;
 
     // 扩展层的参数槽：下标与注册时声明的参数模式（compile::LayerType::params）**一一对应**。
     // 绘制钩子按 `LayerDrawContext::type->params[i].name` 取名字、按 `layer.params[i]` 取值。

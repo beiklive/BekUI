@@ -5,7 +5,7 @@
     "width": "auto",
     "axis": "row",
     "alignItems": "center",
-    "JustifyContent": "center",
+    "justifyContent": "center",
     "padding": [
       "@theme/metric.hintItem.paddingY",
       "@theme/metric.hintItem.paddingX",

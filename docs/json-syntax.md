@@ -448,6 +448,18 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 | `fill` | glass | 染色（带 alpha）。写了就覆盖 `Shell` 的 `GlassTuning` 染色；不写就用 Shell 的 |
 | `opacity` | glass | 这块玻璃的整体不透明度 |
 | `radius` | glass | 圆角（半径等于短边一半时就是胶囊/正圆） |
+| `blurMix` | glass | 0..1：折射采**模糊底**的比例（0 = 原始底、细节最清楚；1 = 纯模糊底）。不写 = 用 Shell 的 |
+| `refractionHeight` | glass | 折射带宽度（离边缘多少像素内参与折射），像素量随 720p 缩放 |
+| `refractionAmount` | glass | 边缘最大位移（像素，通常为负）；越大"掰得"越狠 |
+| `depthEffect` | glass | 深度对位移方向的影响（0..2） |
+| `chromaticAberration` | glass | 色散强度（0..1） |
+| `contrast` / `whitePoint` / `chromaMultiplier` | glass | 颜色过滤：对比 / 白场 / 色度 |
+| `lighting` | glass | 光照对象：`innerShadow` / `rimGlow` / `specular` / `outerShadow` / `shadowExtent` / `specularPower` / `lightDirection: [x, y]` |
+
+> `op: glass` 的折射/色散/光照字段是**逐项可选**的：没写的继续用 `Shell` 的 `GlassTuning`，
+> 写了才覆盖（`0` 是有效值）。原版 imgui-liquid-glass 是每个控件一份 `GlassStyle`，
+> 这里用同一套字段开放给外观层；`base/layer/glass` 给小控件（按钮/通知），
+> `base/box/dialog_backdrop` 给大面（对话框遮罩）。`blurRadius` / `quality` 仍是帧级的。
 
 **层序有三条硬约定**（`theme_test` 会遍历两套主题的每一份外观断言）：
 

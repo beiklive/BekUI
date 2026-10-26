@@ -418,6 +418,11 @@ bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue& queue)
     gl.GetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &sourceFramebuffer);
     gl.BindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)sourceFramebuffer);
     gl.BindFramebuffer(GL_DRAW_FRAMEBUFFER, self.captureFramebuffer);
+    // 抓帧前关掉 scissor：ImGui 上一条命令留下的裁剪矩形会把 BlitFramebuffer 也裁掉
+    // （macOS GL 实测如此）—— 抓出来的背景只剩滚动容器里那一条，玻璃采到条外就是黑的。
+    // 旧的 black 边/黑条就是这么来的。ColorMask 同理，别继承了别人的写入掩码。
+    gl.Disable(GL_SCISSOR_TEST);
+    gl.ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     gl.BlitFramebuffer(0, 0, self.width, self.height, 0, 0, self.width, self.height,
         GL_COLOR_BUFFER_BIT, GL_NEAREST);
     const float physicalRadius = clampFinite(
@@ -451,14 +456,21 @@ void GlGlassBackend::composite(const GlassRequest& request)
         : 0.0f;
     const float drawExtent = std::max(shadowExtent, 1.0f);
 
+    // 请求里的 clipRect 是逻辑坐标，和 ImGui 的绘制命令同一空间；这里是物理像素的
+    // scissor，所以要乘 density。少了这一步，滚动容器里的玻璃会画到容器外面去。
+    const float clipLeft   = request.clipRect.x * density;
+    const float clipTop    = request.clipRect.y * density;
+    const float clipRight  = request.clipRect.z * density;
+    const float clipBottom = request.clipRect.w * density;
+
     const float clipMinX = std::max(
-        std::max(0.0f, request.minMax.x - drawExtent), request.clipRect.x);
+        std::max(0.0f, request.minMax.x - drawExtent), clipLeft);
     const float clipMinY = std::max(
-        std::max(0.0f, request.minMax.y - drawExtent), request.clipRect.y);
+        std::max(0.0f, request.minMax.y - drawExtent), clipTop);
     const float clipMaxX = std::min(
-        std::min((float)self.width, request.minMax.z + drawExtent), request.clipRect.z);
+        std::min((float)self.width, request.minMax.z + drawExtent), clipRight);
     const float clipMaxY = std::min(
-        std::min((float)self.height, request.minMax.w + drawExtent), request.clipRect.w);
+        std::min((float)self.height, request.minMax.w + drawExtent), clipBottom);
     if (clipMaxX <= clipMinX || clipMaxY <= clipMinY)
         return;
 
@@ -561,7 +573,7 @@ void GlGlassBackend::submit(GlassRequestQueue& queue, const GlassRequest& reques
 
     GlassRequest prepared = request;
 
-    // 全局 tuning 是**底**：外观层（op: glass）在它之上覆盖**单个**字段。
+    // 全局 tuning 是**底**：外观层（op: glass）在它之上逐字段覆盖。
     //
     // 这里曾经写的是 `if (request.style.tint.w <= 0.0f) request.style = makeGlassStyle(tuning);`
     // —— 拿"有没有染色"当"整份要不要用 tuning"的判断。而外观只要写了带 alpha 的 fill 就带
@@ -569,16 +581,51 @@ void GlGlassBackend::submit(GlassRequestQueue& queue, const GlassRequest& reques
     // **设计器的「折射高度/折射强度/深度效果/色散」滑块在任何 op: glass 层上零像素变化**
     // （观感一直是 GlassStyle 的硬编码默认值）。踩过，别再退回整份覆盖。
     GlassStyle style = makeGlassStyle(tuning);
+    const uint32_t fields = prepared.styleFields;
+    if (fields & glass_field::kRefractionHeight)
+        style.refractionHeight = prepared.style.refractionHeight;
+    if (fields & glass_field::kRefractionAmount)
+        style.refractionAmount = prepared.style.refractionAmount;
+    if (fields & glass_field::kDepthEffect)
+        style.depthEffect = prepared.style.depthEffect;
+    if (fields & glass_field::kChromaticAberration)
+        style.chromaticAberration = prepared.style.chromaticAberration;
+    if (fields & glass_field::kContrast)
+        style.contrast = prepared.style.contrast;
+    if (fields & glass_field::kWhitePoint)
+        style.whitePoint = prepared.style.whitePoint;
+    if (fields & glass_field::kChromaMultiplier)
+        style.chromaMultiplier = prepared.style.chromaMultiplier;
+    if (fields & glass_field::kLightInnerShadow)
+        style.lighting.innerShadow = prepared.style.lighting.innerShadow;
+    if (fields & glass_field::kLightRimGlow)
+        style.lighting.rimGlow = prepared.style.lighting.rimGlow;
+    if (fields & glass_field::kLightSpecular)
+        style.lighting.specular = prepared.style.lighting.specular;
+    if (fields & glass_field::kLightOuterShadow)
+        style.lighting.outerShadow = prepared.style.lighting.outerShadow;
+    if (fields & glass_field::kLightShadowExtent)
+        style.lighting.shadowExtent = prepared.style.lighting.shadowExtent;
+    if (fields & glass_field::kLightSpecularPower)
+        style.lighting.specularPower = prepared.style.lighting.specularPower;
+    if (fields & glass_field::kLightDirection)
+        style.lighting.lightDirection = prepared.style.lighting.lightDirection;
     if (prepared.style.tint.w > 0.0f)
-        style.tint = prepared.style.tint; // 外观写了 fill 就只换染色，折射/光照仍跟 tuning
-    prepared.style   = style;
-    prepared.blurMix = tuning.blurMix; // 帧级旋钮：1 = 纯模糊底，调小让折射透出细节
+        style.tint = prepared.style.tint; // 外观写了 fill 就换染色
+    prepared.style = style;
+    // 帧级旋钮：1 = 纯模糊底，调小让折射透出细节；外观写了 blurMix 就用外观的
+    if (!(fields & glass_field::kBlurMix))
+        prepared.blurMix = tuning.blurMix;
 
     // 没给裁剪矩形就按整帧：空的 clipRect 会让合成那步什么都不画
     //（设计器那边一直显式填整帧，库这边替调用方兜住默认值）
     if (prepared.clipRect.z <= prepared.clipRect.x || prepared.clipRect.w <= prepared.clipRect.y)
     {
-        prepared.clipRect = ImVec4(0.0f, 0.0f, (float)frameWidth, (float)frameHeight);
+        // clipRect 是**逻辑坐标**（ImGui 绘制命令也是这个空间）；bounds 是物理像素，
+        // 合成时按 density 换算。这里兜底的"整帧"同样要除回 density。
+        const float density = prepared.density > 0.0f ? prepared.density : 1.0f;
+        prepared.clipRect = ImVec4(0.0f, 0.0f, (float)frameWidth / density,
+            (float)frameHeight / density);
     }
 
     queue.submit(prepared);

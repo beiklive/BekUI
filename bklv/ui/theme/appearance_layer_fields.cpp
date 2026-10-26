@@ -105,6 +105,89 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
             *field.target = scalePixels(*field.target);
     }
 
+    // GLASS 层：逐项覆盖折射/色散/光照/模糊混合。没写的字段保持 NaN，
+    // 绘制时再决定"用外观值还是 Shell 的 GlassTuning"（原版是每个控件一份 GlassStyle）。
+    if (layer.op == AppearanceLayer::Op::GLASS)
+    {
+        struct GlassNumber
+        {
+            const char* key;
+            float* target;
+            bool pixels; // 长度量按 720p 缩放；系数/角度不缩放
+        };
+        const GlassNumber glassNumbers[] = {
+            { "blurMix", &layer.glass.blurMix, false },
+            { "refractionHeight", &layer.glass.refractionHeight, true },
+            { "refractionAmount", &layer.glass.refractionAmount, true },
+            { "depthEffect", &layer.glass.depthEffect, false },
+            { "chromaticAberration", &layer.glass.chromaticAberration, false },
+            { "contrast", &layer.glass.contrast, false },
+            { "whitePoint", &layer.glass.whitePoint, false },
+            { "chromaMultiplier", &layer.glass.chromaMultiplier, false },
+        };
+        for (const GlassNumber& field : glassNumbers)
+        {
+            if (!node.contains(field.key))
+                continue;
+            const FieldResult result = applyNumberField(node[field.key], theme, *field.target,
+                error, where + "." + field.key);
+            if (result == FieldResult::FAILED)
+                return false;
+            if (result == FieldResult::SKIPPED)
+                continue;
+            if (field.pixels)
+                *field.target = scalePixels(*field.target);
+        }
+
+        if (node.contains("lighting"))
+        {
+            const Json& lighting = node["lighting"];
+            if (!lighting.is_object())
+            {
+                error = where + ".lighting 必须是对象";
+                return false;
+            }
+            const GlassNumber lightNumbers[] = {
+                { "innerShadow", &layer.glass.lightInnerShadow, false },
+                { "rimGlow", &layer.glass.lightRimGlow, false },
+                { "specular", &layer.glass.lightSpecular, false },
+                { "outerShadow", &layer.glass.lightOuterShadow, false },
+                { "shadowExtent", &layer.glass.lightShadowExtent, true },
+                { "specularPower", &layer.glass.lightSpecularPower, false },
+            };
+            for (const GlassNumber& field : lightNumbers)
+            {
+                if (!lighting.contains(field.key))
+                    continue;
+                const FieldResult result = applyNumberField(lighting[field.key], theme,
+                    *field.target, error, where + ".lighting." + field.key);
+                if (result == FieldResult::FAILED)
+                    return false;
+                if (result == FieldResult::SKIPPED)
+                    continue;
+                if (field.pixels)
+                    *field.target = scalePixels(*field.target);
+            }
+            if (lighting.contains("lightDirection"))
+            {
+                const Json& direction = lighting["lightDirection"];
+                if (!direction.is_array() || direction.size() != 2)
+                {
+                    error = where + ".lighting.lightDirection 必须是 [x, y]";
+                    return false;
+                }
+                for (size_t k = 0; k < 2; k++)
+                {
+                    float& target = k == 0 ? layer.glass.lightX : layer.glass.lightY;
+                    const FieldResult result = applyNumberField(direction[k], theme, target,
+                        error, where + ".lighting.lightDirection[" + std::to_string(k) + "]");
+                    if (result == FieldResult::FAILED)
+                        return false;
+                }
+            }
+        }
+    }
+
     if (node.contains("inset") && node["inset"].is_array() && node["inset"].size() == 4)
         for (size_t k = 0; k < 4; k++)
         {

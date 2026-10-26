@@ -76,4 +76,26 @@ struct GlassBackdropStyle
     GlassQuality quality = GlassQuality::AUTO;
 };
 
+// 外观层（op: glass）能逐项覆盖 GlassStyle 的哪些字段 —— 位掩码。
+// 没置位的字段继续用 GlassTuning 折出来的全局值；置位的用请求里带的那个值。
+// blurMix 不是 GlassStyle 的成员（它是"采样模糊底还是原始底"的混合比），单独一位。
+namespace glass_field
+{
+inline constexpr uint32_t kBlurMix             = 1u << 0;
+inline constexpr uint32_t kRefractionHeight    = 1u << 1;
+inline constexpr uint32_t kRefractionAmount    = 1u << 2;
+inline constexpr uint32_t kDepthEffect         = 1u << 3;
+inline constexpr uint32_t kChromaticAberration = 1u << 4;
+inline constexpr uint32_t kContrast            = 1u << 5;
+inline constexpr uint32_t kWhitePoint          = 1u << 6;
+inline constexpr uint32_t kChromaMultiplier    = 1u << 7;
+inline constexpr uint32_t kLightInnerShadow    = 1u << 8;
+inline constexpr uint32_t kLightRimGlow        = 1u << 9;
+inline constexpr uint32_t kLightSpecular       = 1u << 10;
+inline constexpr uint32_t kLightOuterShadow    = 1u << 11;
+inline constexpr uint32_t kLightShadowExtent   = 1u << 12;
+inline constexpr uint32_t kLightSpecularPower  = 1u << 13;
+inline constexpr uint32_t kLightDirection      = 1u << 14;
+} // namespace glass_field
+
 } // namespace bklv::glass

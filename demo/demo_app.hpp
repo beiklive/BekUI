@@ -81,6 +81,8 @@ class DemoApp
     void toggleFpsOverlay();
     void toggleDebugLayer();
     void cycleBackdrop();
+    // 0=none 1=grid 2=floating 3=gradient 4=checker；未知名字返回 false。
+    bool setBackdrop(const std::string& name);
     void cycleSafeArea();
     void cycleGlass();
     std::string describeDebugState() const;
@@ -138,7 +140,7 @@ class DemoApp
     int initialTab        = 0;
     bool initialVertical  = false;
 
-    int backdropIndex = 0; // 0=NONE 1=GRID 2=FLOATING 3=GRADIENT
+    int backdropIndex = 0; // 0=NONE 1=GRID 2=FLOATING 3=GRADIENT 4=CHECKER 5=POLYGONS
     int safeAreaIndex = 0; // 0 / 24 / 48
     int glassIndex    = 1; // 0=关 1=BALANCED 2=FULL 3=MINIMAL
 };

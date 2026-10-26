@@ -170,7 +170,7 @@ class AppearanceView : public Box
     // 所以"聚焦到圆形控件上就变圆"是自动的（外观里的 radius 已经写成大圆角了）。
     focus_ring::Outline getFocusOutline() const override;
 
-    // 当前外观的圆角半径（取 bg 层；没有 bg 层就是 0）
+    // 当前外观的圆角半径（取 bg 层；没有 bg 层则退回 box 段的 cornerRadius）
     float getCornerRadius() const;
 
     // 聚焦时轻微放大（画框由浮层负责，控件这边只做"变大一点"的反馈）。

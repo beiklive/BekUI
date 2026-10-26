@@ -5,7 +5,7 @@
 //   - 应用内日志（DebugLogView，挂在外壳的调试层）
 //   - FPS / 帧时间浮层（FpsOverlay，挂在 HUD）
 //   - 调试边框（DebugLayer，把所有视图的边界框出来）
-//   - 按页背景（PresetBackdrop：网格 / 漂浮 / 渐变）
+//   - 按页背景（PresetBackdrop：网格 / 漂浮 / 渐变 / 棋盘 / 多边形）
 //   - 安全区内缩（Shell::setSafeAreaInsets，模拟刘海 / 电视 overscan）
 //   - 玻璃开关与质量档（Shell::setGlassEnabled / setGlassQuality）
 //

@@ -91,7 +91,7 @@ bklv::View* buildDebugTab(DemoApp& app)
         });
 
         row->addView(cycle);
-        content->addView(makeSection("按页背景", row, "PresetBackdrop · 网格 / 漂浮 / 渐变 / 关"));
+        content->addView(makeSection("按页背景", row, "PresetBackdrop · 网格 / 漂浮 / 渐变 / 棋盘 / 多边形 / 关"));
     }
 
     // 5) 安全区

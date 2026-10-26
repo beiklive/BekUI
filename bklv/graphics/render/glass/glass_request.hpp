@@ -24,6 +24,9 @@ struct GlassRequest
     CornerRadii radii{};
     GlassShapeKind shape = GlassShapeKind::ROUNDED_RECT;
     GlassStyle style{};
+    // 外观层显式写了哪些样式字段（glass_field 的位）；后端只覆盖这些，
+    // 其余继续用 GlassTuning。0 = 整份都用全局值（旧行为）。
+    uint32_t styleFields = 0;
     ImVec4 clipRect = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
     ImVec2 deformation = ImVec2(0.0f, 0.0f);
 

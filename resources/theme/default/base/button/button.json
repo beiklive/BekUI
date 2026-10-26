@@ -13,11 +13,12 @@
   },
   "layers": [
     {
-      "import": "base/layer/shadow"
+      "import": "base/layer/glass"
     },
     {
       "import": "base/layer/bg",
-      "fill": "@theme/color.button.defaultBg"
+      "fill": "@theme/color.button.defaultBg",
+      "fill": "@theme/color.common.transparent"
     },
     {
       "import": "base/layer/border",

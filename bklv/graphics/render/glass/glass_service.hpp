@@ -31,6 +31,13 @@ struct GlassLayerOptions
     bool hasTint   = false;   // 外观写了 fill 就用它当染色（带 alpha）
     ImVec4 tint    = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
     float opacity  = 1.0f;
+
+    // 逐项覆盖折射/色散/光照/模糊混合（原版是每个控件一份 GlassStyle；
+    // 这里把同一套字段开放给外观 JSON，没写的继续用 GlassTuning）。
+    // styleFields 是 glass_field 的位；只有置位的字段才有意义。
+    uint32_t styleFields = 0;
+    GlassStyle style{};
+    float blurMix = 1.0f;
 };
 
 class GlassService

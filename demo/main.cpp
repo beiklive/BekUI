@@ -3,6 +3,7 @@
 // 参数：
 //   --theme <name>        启动主题（默认 default；demo 里可切 default / glass）
 //   --tab <name>          启动标签页：buttons（默认）/ layout / list / container / debug
+//   --backdrop <name>     启动背景：none（默认）/ grid / floating / gradient / checker / polygons
 //   --tabbar <top|left>   标签条排列：top（默认，顶部水平）/ left（左侧竖直）
 //   --screenshot <png>    渲染若干帧后截图存成 PNG 并退出（无人值守验证用）
 //   --frames <n>          截图前等多少帧（默认 3）
@@ -23,6 +24,7 @@ namespace
 void printUsage(const char* argv0)
 {
     std::printf("用法：%s [--theme <name>] [--tab <buttons|layout|list|container|debug>] [--tabbar <top|left>] "
+                "[--backdrop <none|grid|floating|gradient|checker|polygons>] "
                 "[--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
                 argv0);
 }
@@ -51,6 +53,7 @@ bool parseSize(const char* text, int& width, int& height)
 int main(int argc, char** argv)
 {
     std::string theme;
+    std::string backdrop;
     std::string tab          = "buttons";
     bool tabbarVertical      = false;
     std::string screenshotPath;
@@ -65,6 +68,10 @@ int main(int argc, char** argv)
         if (std::strcmp(arg, "--theme") == 0 && i + 1 < argc)
         {
             theme = argv[++i];
+        }
+        else if (std::strcmp(arg, "--backdrop") == 0 && i + 1 < argc)
+        {
+            backdrop = argv[++i];
         }
         else if (std::strcmp(arg, "--screenshot") == 0 && i + 1 < argc)
         {
@@ -142,6 +149,14 @@ int main(int argc, char** argv)
     {
         std::fprintf(stderr, "主题打不开：%s（可用的见 resources/theme/themes.json）\n", theme.c_str());
         return 1;
+    }
+
+    // 背景要在 run() 之前设好：第一帧就该是目标背景（玻璃也才采得到细节）
+    if (!backdrop.empty() && !app.setBackdrop(backdrop))
+    {
+        std::fprintf(stderr, "未知背景：%s（可用 none / grid / floating / gradient / checker / polygons）\n",
+            backdrop.c_str());
+        return 2;
     }
 
     if (!screenshotPath.empty())

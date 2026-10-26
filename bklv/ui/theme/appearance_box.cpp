@@ -1,6 +1,7 @@
 #include "bklv/ui/theme/appearance_box.hpp"
 
 #include "bklv/ui/theme/attributes.hpp" // enumMatches / warnUnknownEnumValue
+#include "bklv/foundation/core/logger.hpp"
 #include "bklv/foundation/json/json_policy.hpp"
 
 namespace bklv
@@ -15,7 +16,36 @@ bool parseBoxNode(const Json& boxNode, const ThemeData& theme, AppearanceBox& bo
         return true; // 没有 box 段 = 什么都不覆盖（与内联时一致）
 
     {
+        // box 段的键白名单：写错键以前是**静默忽略**（改了半天没反应，也查不到原因）。
+        // 这里只警告、不中断 —— box 是装饰性字段，第三方主题带自定义元数据不该整份失败。
+        // 最常见的坑：把图层里的 "radius" 写进 box（box 里叫 "cornerRadius"）。
+        static const char* kKnownKeys[] = { "width", "height", "minWidth", "minHeight", "gap",
+            "grow", "shrink", "cornerRadius", "borderThickness", "padding", "margin",
+            "justifyContent", "alignItems", "axis", "measureContent", "backgroundColor",
+            "borderColor" };
+        for (auto it = boxNode.begin(); it != boxNode.end(); ++it)
+        {
+            const std::string& key = it.key();
+            if (!key.empty() && key[0] == '$')
+                continue; // $comment 这类元数据键，约定忽略
 
+            bool known = false;
+            for (const char* candidate : kKnownKeys)
+                known = known || key == candidate;
+            if (known)
+                continue;
+
+            std::string message = where + " 有未知键 \"" + key
+                + "\"（合法：width / height / minWidth / minHeight / padding / margin / gap / "
+                  "grow / shrink / axis / justifyContent / alignItems / measureContent / "
+                  "cornerRadius / borderThickness / backgroundColor / borderColor）";
+            if (key == "radius")
+                message += "；圆角在 box 里叫 \"cornerRadius\"，\"radius\" 只写在 layers 的层里";
+            BKLV_LOG_WARNING("%s", message.c_str());
+        }
+    }
+
+    {
         // 长度值：数字=像素（按 720p 缩放）、"50%"=百分比、"auto"=由内容决定、
         // "@theme/metric.a.b"=主题数值
         auto readLength = [&](const Json& node, float& out, bool& percent, bool& autoFlag,

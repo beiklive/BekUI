@@ -1,12 +1,25 @@
 {
-  "$comment": "通用玻璃层：真实背景模糊（op=glass），fill 当染色、stroke/strokeWidth 当内缘高光。玻璃总开关与质量档由 Shell 决定；关了或后端不支持时这一层退化成半透明底。别的主题可以有自己的玻璃实现，不要 import 这份。",
+  "$comment": "通用玻璃层：真实背景模糊（op=glass），fill 当染色、stroke/strokeWidth 当内缘高光。折射/色散/光照/模糊混合按**原版小控件**（TextField / Slider）的取值写在层上；大面（如对话框遮罩）自己覆盖成面板那套。玻璃总开关与质量档仍由 Shell 决定；关了或后端不支持时这一层退化成半透明底。别的主题可以有自己的玻璃实现，不要 import 这份。",
   "layers": [
     {
       "op": "glass",
       "id": "glass",
-      "fill": "#FFFFFF33",
-      "stroke": "#FFFFFF3D",
-      "strokeWidth": 1
+      "fill": "#FFFFFF12",
+      "stroke": "#FFFFFF1F",
+      "strokeWidth": 1,
+      "blurMix": 0.32,
+      "refractionHeight": 12,
+      "refractionAmount": -24,
+      "depthEffect": 0.24,
+      "chromaticAberration": 0.16,
+      "lighting": {
+        "innerShadow": 0.12,
+        "rimGlow": 0.3,
+        "specular": 0.52,
+        "outerShadow": 0.12,
+        "shadowExtent": 5,
+        "specularPower": 24
+      }
     }
   ]
 }

@@ -11,12 +11,9 @@
   },
   "layers": [
     {
-      "op": "rect",
+      "import": "base/layer/glass",
       "id": "bg",
       "radius": 10,
-      "fill": "@theme/color.surface.card",
-      "stroke": "@theme/color.border.subtle",
-      "strokeWidth": 1,
       "inset": [4, 0, 8, 0]
     },
     {
