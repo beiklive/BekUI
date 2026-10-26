@@ -1,93 +1,105 @@
 {
-  "version": 4,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 24,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "base",
-      "hidden": true,
-      "binaryDir": "${sourceDir}/build/${presetName}"
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 24,
+        "patch": 0
     },
-    {
-      "name": "gl",
-      "displayName": "MSVC 2022 · OpenGL（产物到 dist/）",
-      "description": "桌面默认后端。构建目录 build/gl，生成器固定 Visual Studio 17 2022；只保留 Release 配置，避免 Debug/Release 往同一个 dist/ 写产物互相顶掉",
-      "inherits": "base",
-      "generator": "Visual Studio 17 2022",
-      "cacheVariables": {
-        "BKLV_GRAPHICS": "gl",
-        "BKLV_BUILD_EXAMPLES": "OFF",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
-      }
-    },
-    {
-      "name": "vk",
-      "displayName": "MSVC 2022 · Vulkan（产物到 dist/vk/）",
-      "description": "需要 Vulkan SDK。构建目录 build/vk，生成器固定 Visual Studio 17 2022；同样只保留 Release 配置",
-      "inherits": "base",
-      "generator": "Visual Studio 17 2022",
-      "cacheVariables": {
-        "BKLV_GRAPHICS": "vk",
-        "BKLV_BUILD_EXAMPLES": "OFF",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
-      }
-    },
-    {
-      "name": "gl-mingw",
-      "displayName": "MinGW-w64 · OpenGL（产物到 dist-mingw/）",
-      "description": "MSYS2 mingw64 工具链 + Ninja。构建目录 build/gl-mingw，产物单独放 dist-mingw/，不与 MSVC 的 dist/ 互相覆盖",
-      "inherits": "base",
-      "generator": "Ninja",
-      "cacheVariables": {
-        "BKLV_GRAPHICS": "gl",
-        "BKLV_BUILD_EXAMPLES": "OFF",
-        "BKLV_OUT_DIR": "${sourceDir}/dist-mingw",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
-        "CMAKE_CXX_COMPILER": "E:/bin/msys64/mingw64/bin/g++.exe"
-      }
-    },
-    {
-      "name": "vk-mingw",
-      "displayName": "MinGW-w64 · Vulkan（产物到 dist-mingw/vk/）",
-      "description": "MSYS2 mingw64 工具链 + Ninja。构建目录 build/vk-mingw，产物单独放 dist-mingw/vk/",
-      "inherits": "base",
-      "generator": "Ninja",
-      "cacheVariables": {
-        "BKLV_GRAPHICS": "vk",
-        "BKLV_BUILD_EXAMPLES": "OFF",
-        "BKLV_OUT_DIR": "${sourceDir}/dist-mingw/vk",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
-        "CMAKE_CXX_COMPILER": "E:/bin/msys64/mingw64/bin/g++.exe"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "gl",
-      "displayName": "构建 GL 版（MSVC 2022 · Release）",
-      "configurePreset": "gl",
-      "configuration": "Release"
-    },
-    {
-      "name": "vk",
-      "displayName": "构建 Vulkan 版（MSVC 2022 · Release）",
-      "configurePreset": "vk",
-      "configuration": "Release"
-    },
-    {
-      "name": "gl-mingw",
-      "displayName": "构建 GL 版（MinGW-w64）",
-      "configurePreset": "gl-mingw"
-    },
-    {
-      "name": "vk-mingw",
-      "displayName": "构建 Vulkan 版（MinGW-w64）",
-      "configurePreset": "vk-mingw"
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "gl",
+            "displayName": "MSVC 2022 · OpenGL（产物到 dist/）",
+            "description": "桌面默认后端。构建目录 build/gl，生成器固定 Visual Studio 17 2022；只保留 Release 配置，避免 Debug/Release 往同一个 dist/ 写产物互相顶掉",
+            "inherits": "base",
+            "generator": "Visual Studio 17 2022",
+            "cacheVariables": {
+                "BKLV_GRAPHICS": "gl",
+                "BKLV_BUILD_EXAMPLES": "OFF",
+                "CMAKE_CONFIGURATION_TYPES": "Release"
+            }
+        },
+        {
+            "name": "vk",
+            "displayName": "MSVC 2022 · Vulkan（产物到 dist/vk/）",
+            "description": "需要 Vulkan SDK。构建目录 build/vk，生成器固定 Visual Studio 17 2022；同样只保留 Release 配置",
+            "inherits": "base",
+            "generator": "Visual Studio 17 2022",
+            "cacheVariables": {
+                "BKLV_GRAPHICS": "vk",
+                "BKLV_BUILD_EXAMPLES": "OFF",
+                "CMAKE_CONFIGURATION_TYPES": "Release"
+            }
+        },
+        {
+            "name": "gl-mingw",
+            "displayName": "MinGW-w64 · OpenGL（产物到 dist-mingw/）",
+            "description": "MSYS2 mingw64 工具链 + Ninja。构建目录 build/gl-mingw，产物单独放 dist-mingw/，不与 MSVC 的 dist/ 互相覆盖",
+            "inherits": "base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "BKLV_GRAPHICS": "gl",
+                "BKLV_BUILD_EXAMPLES": "OFF",
+                "BKLV_OUT_DIR": "${sourceDir}/dist-mingw",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
+                "CMAKE_CXX_COMPILER": "E:/bin/msys64/mingw64/bin/g++.exe"
+            }
+        },
+        {
+            "name": "vk-mingw",
+            "displayName": "MinGW-w64 · Vulkan（产物到 dist-mingw/vk/）",
+            "description": "MSYS2 mingw64 工具链 + Ninja。构建目录 build/vk-mingw，产物单独放 dist-mingw/vk/",
+            "inherits": "base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "BKLV_GRAPHICS": "vk",
+                "BKLV_BUILD_EXAMPLES": "OFF",
+                "BKLV_OUT_DIR": "${sourceDir}/dist-mingw/vk",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "E:/bin/msys64/mingw64/bin/gcc.exe",
+                "CMAKE_CXX_COMPILER": "E:/bin/msys64/mingw64/bin/g++.exe"
+            }
+        },
+        {
+            "name": "Mac",
+            "displayName": "Clang 21.0.0 arm64-apple-darwin25.6.0",
+            "description": "正在使用编译器: C = /usr/bin/clang, CXX = /usr/bin/clang++",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "/usr/bin/clang",
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "gl",
+            "displayName": "构建 GL 版（MSVC 2022 · Release）",
+            "configurePreset": "gl",
+            "configuration": "Release"
+        },
+        {
+            "name": "vk",
+            "displayName": "构建 Vulkan 版（MSVC 2022 · Release）",
+            "configurePreset": "vk",
+            "configuration": "Release"
+        },
+        {
+            "name": "gl-mingw",
+            "displayName": "构建 GL 版（MinGW-w64）",
+            "configurePreset": "gl-mingw"
+        },
+        {
+            "name": "vk-mingw",
+            "displayName": "构建 Vulkan 版（MinGW-w64）",
+            "configurePreset": "vk-mingw"
+        }
+    ]
 }

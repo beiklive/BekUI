@@ -13,11 +13,25 @@
             "op": "rect",
             "id": "bar",
             "width": 3,
-            "height": 16,
+            "height": 20,
             "radius": 2,
             "align": "left",
             "valign": "center",
             "fill": "@theme/color.accent.base"
+        },
+        {
+            "op": "rect",
+            "id": "line",
+            "height": 1,
+            "align": "center",
+            "valign": "bottom",
+            "fill": "@theme/color.border.default",
+            "inset": [
+                0,
+                0,
+                1,
+                0
+            ]
         },
         {
             "op": "text",
