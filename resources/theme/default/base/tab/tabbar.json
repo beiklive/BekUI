@@ -6,7 +6,7 @@
     "axis": "row",
     "gap": 8,
     "padding": [0, "@theme/metric.spacing.lg", 0, "@theme/metric.spacing.lg"],
-    "justifyContent": "flexStart",
+    "justifyContent": "center",
     "alignItems": "center"
   },
   "requires": {
@@ -19,7 +19,7 @@
     {
       "op": "rect",
       "id": "surface",
-      "fill": "@theme/color.surface.card"
+      "fill":  "@theme/color.common.transparent"
     },
     {
       "op": "rect",

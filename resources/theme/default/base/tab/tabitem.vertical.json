@@ -7,7 +7,7 @@
     "axis": "row",
     "justifyContent": "flexStart",
     "alignItems": "center"
-  },
+  },  
   "requires": {
     "content": ["icon", "label"],
     "layers": ["bg", "indicator"]
@@ -15,56 +15,14 @@
   "layers": [
     {
       "op": "rect",
-      "id": "bg",
-      "radius": "@theme/metric.radius.lg",
-      "fill": "@theme/color.common.transparent"
-    },
-    {
-      "op": "rect",
       "id": "indicator",
       "width": 3,
-      "height": 20,
+      "height": 30,
       "radius": 2,
       "align": "left",
       "valign": "center",
       "opacity": 0,
       "fill": "@theme/color.accent.base"
-    },
-    {
-      "op": "text",
-      "id": "icon",
-      "data_id": "icon",
-      "font_kind": "icon",
-      "fontSize": 18,
-      "width": 20,
-      "color": "@theme/color.text.dim",
-      "align": "left",
-      "valign": "center",
-      "inset": [0, 0, 0, 22]
-    },
-    {
-      "op": "text",
-      "id": "label",
-      "data_id": "label",
-      "fontSize": 15,
-      "color": "@theme/color.text.dim",
-      "align": "left",
-      "valign": "center",
-      "inset": [0, 0, 0, 52]
     }
-  ],
-  "states": {
-    "on": {
-      "bg.fill": { "to": "@theme/color.highlight.background", "duration": 120 },
-      "icon.color": { "to": "@theme/color.accent.base", "duration": 120 },
-      "label.color": { "to": "@theme/color.accent.base", "duration": 120 },
-      "indicator.opacity": { "to": 1.0, "duration": 120 }
-    },
-    "off": {
-      "bg.fill": { "to": "@theme/color.common.transparent", "duration": 120 },
-      "icon.color": { "to": "@theme/color.text.dim", "duration": 120 },
-      "label.color": { "to": "@theme/color.text.dim", "duration": 120 },
-      "indicator.opacity": { "to": 0.0, "duration": 120 }
-    }
-  }
+  ]
 }

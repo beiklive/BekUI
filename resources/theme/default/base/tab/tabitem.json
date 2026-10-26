@@ -5,7 +5,8 @@
     "height": 36,
     "axis": "row",
     "justifyContent": "flexStart",
-    "alignItems": "center"
+    "alignItems": "center",
+      "radius" : 15
   },
   "requires": {
     "content": ["icon", "label"],
@@ -13,10 +14,13 @@
   },
   "layers": [
     {
-      "op": "rect",
-      "id": "bg",
-      "radius": "@theme/metric.radius.lg",
-      "fill": "@theme/color.common.transparent"
+      "import": "base/layer/shadow",
+      "radius" : 15
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.button.defaultBorder",
+      "radius" : 15
     },
     {
       "op": "text",
@@ -39,18 +43,25 @@
       "align": "left",
       "valign": "center",
       "inset": [0, 0, 0, 46]
+    },
+    {
+      "op": "rect",
+      "id": "indicator",
+      "height": 3,
+      "width": 80,
+      "radius": 2,
+      "align": "center",
+      "valign": "bottom",
+      "opacity": 0,
+      "fill": "@theme/color.accent.base"
     }
   ],
   "states": {
     "on": {
-      "bg.fill": { "to": "@theme/color.highlight.background", "duration": 120 },
-      "icon.color": { "to": "@theme/color.accent.base", "duration": 120 },
-      "label.color": { "to": "@theme/color.accent.base", "duration": 120 }
+      "indicator.opacity": { "to": 1.0, "duration": 10 }
     },
     "off": {
-      "bg.fill": { "to": "@theme/color.common.transparent", "duration": 120 },
-      "icon.color": { "to": "@theme/color.text.dim", "duration": 120 },
-      "label.color": { "to": "@theme/color.text.dim", "duration": 120 }
+      "indicator.opacity": { "to": 0.0, "duration": 10 }
     }
   }
 }
