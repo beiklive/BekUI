@@ -21,7 +21,7 @@
             "oneOf": [
               { "type": "string" },
               { "type": "object", "minProperties": 1, "maxProperties": 1,
-                "additionalProperties": { "enum": ["rect", "text", "image", "shadow", "glass", "custom"] } }
+                "additionalProperties": { "enum": ["rect", "text", "image", "shadow", "glass", "blur", "custom"] } }
             ]
           }
         }

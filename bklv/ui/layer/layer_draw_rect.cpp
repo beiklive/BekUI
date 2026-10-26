@@ -60,6 +60,8 @@ void ensureLayerDrawsRegistered()
         BKLV_LOG_ERROR("注册 shadow 的绘制钩子失败：注册表里没有这个名字");
     if (!compile::setLayerDraw("glass", drawGlass))
         BKLV_LOG_ERROR("注册 glass 的绘制钩子失败：注册表里没有这个名字");
+    if (!compile::setLayerDraw("blur", drawBlur))
+        BKLV_LOG_ERROR("注册 blur 的绘制钩子失败：注册表里没有这个名字");
     if (!compile::setLayerDraw("text", drawText))
         BKLV_LOG_ERROR("注册 text 的绘制钩子失败：注册表里没有这个名字");
     if (!compile::setLayerDraw("image", drawImage))

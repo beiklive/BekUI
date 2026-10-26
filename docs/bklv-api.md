@@ -47,7 +47,7 @@
 | `ui/theme/attributes.hpp/.cpp` | 属性值与属性表：类型检查、`@i18n/` `@style/`（主题数值）`@theme/`（主题颜色）`@res/` 前缀 |
 | `ui/theme/layer_registry.hpp/.cpp` | 图层类型表：能写哪些层、每层有哪些参数（`LayerType` / `LayerParam`） |
 | `ui/theme/appearance_layer_fields.*` / `appearance_layer_meta.*` | 层的通用字段表与 op 元信息（拼写、默认 id、对齐枚举） |
-| `ui/layer/layer_draw_*.cpp` | 六个内置层的绘制实现（rect / text / image / shadow / glass / custom） |
+| `ui/layer/layer_draw_*.cpp` | 七个内置层的绘制实现（rect / text / image / shadow / glass / blur / custom） |
 | `ui/layer/layer_register.hpp` | 第三方层的注册模板（`registerLayer<T>()`） |
 | `ui/view/view.hpp/.cpp` | 视图基类：Yoga 样式透传、布局失效、绘制模板、测量回调 |
 | `ui/view/box.hpp/.cpp` | 容器：增删子节点时同步 Yoga 树、Flexbox 属性、递归绘制 |

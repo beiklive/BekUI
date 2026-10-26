@@ -2,27 +2,7 @@
   "$comment": "对话框遮罩：整屏玻璃（高斯模糊）+ 暗色染色。玻璃总开关在 Shell::setGlassEnabled，后端不可用时自动退化成半透明底。大面用原版 GlassWindow 的折射/光照参数（小控件那套在 base/layer/glass）。",
   "layers": [
     {
-      "op": "glass",
-      "id": "glass",
-      "fill": "@theme/color.dialog.backdrop",
-      "blurMix": 1.0,
-      "refractionHeight": 20,
-      "refractionAmount": -70,
-      "depthEffect": 0.3,
-      "chromaticAberration": 0.5,
-      "lighting": {
-        "innerShadow": 0.12,
-        "rimGlow": 0.2,
-        "specular": 0.35,
-        "outerShadow": 0.14,
-        "shadowExtent": 5,
-        "specularPower": 28
-      }
+"op": "blur", "id": "blur", "radius": 8, "fill": "#FFFFFF1A" 
     }
-  ],
-  "requires": {
-    "layers": [
-      { "glass": "glass" }
-    ]
-  }
+  ]
 }

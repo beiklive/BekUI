@@ -150,6 +150,22 @@ class GlassPanelView : public AppearanceView
   `./dist/demo --backdrop checker`（高对比棋盘，边缘掰弯最明显）或
   `--backdrop polygons`（彩色多边形随机飘动）。
 
+## 2d. `blur` 层：只要高斯模糊
+
+不想要玻璃的折射/染色/高光，只要"把背景糊掉"时，用独立的 `op: "blur"` 层：
+
+```json
+{ "op": "blur", "id": "blur", "fill": "#FFFFFF26", "radius": 6 }
+```
+
+- 和 glass 共用**同一份整帧抓帧 + 模糊**（同一帧里两种层都有也只糊一次）。
+- `fill` 是可选的染色，同时也是玻璃不可用时的降级底；不写就是纯模糊。
+- 没有折射/色散/边缘高光；`radius` / `opacity` / `inset` / `width` / `height` 跟其他层一样。
+- **层序和 glass 一样被提到内容之前**（它是"底"，不是盖在内容上的滤镜）。
+- 模糊半径与总开关仍由 `Shell`（`GlassTuning`）决定，层里没有单独的 `blurRadius`。
+- 后端不可用 / 玻璃被关掉时：有 `fill` 就画一块半透明底，没有就什么都不画
+  （模糊本身没有等效替代）。
+
 ### chrome 变体：给上下栏的淡玻璃
 
 ```json

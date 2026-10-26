@@ -24,6 +24,8 @@ AppearanceLayer::Op parseOp(const std::string& text, bool& ok)
         return AppearanceLayer::Op::GLASS;
     if (enumMatches(text, "custom"))
         return AppearanceLayer::Op::CUSTOM;
+    if (enumMatches(text, "blur"))
+        return AppearanceLayer::Op::BLUR;
 
     // 未命中内置：看注册表里有没有同名的**扩展 op**（第三方在自己初始化里注册的）。
     // 有就按扩展处理（名字由调用方记进 layer.extensionType），没有才报错。

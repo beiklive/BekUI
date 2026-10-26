@@ -27,16 +27,17 @@ std::vector<LayerType>& registry()
 // 变成野指针 —— 读 type->order 拿到的是已释放内存里的垃圾值，`sortLayers` 于是把
 // 阴影/玻璃排到随机位置，表现为"同一份 JSON 有时排对有时排错"（MSVC 的堆复用最容易
 // 撞出来，MinGW 上只是恰好还读得到旧内容）。存下标就不会失效。
-std::array<int, 6> g_builtinIndexes = { -1, -1, -1, -1, -1, -1 };
+std::array<int, 7> g_builtinIndexes = { -1, -1, -1, -1, -1, -1, -1 };
 
 // 内置层注册完之后把下标表填一遍（ensureBuiltins 调用；clearLayersForTest 之后会重填）
 void cacheBuiltinIndexes()
 {
-    const AppearanceLayer::Op ops[6] = { AppearanceLayer::Op::RECT, AppearanceLayer::Op::TEXT,
+    // 顺序必须与 AppearanceLayer::Op 的枚举值一致（builtinLayer 直接用 (int)op 索引）
+    const AppearanceLayer::Op ops[7] = { AppearanceLayer::Op::RECT, AppearanceLayer::Op::TEXT,
         AppearanceLayer::Op::IMAGE, AppearanceLayer::Op::SHADOW, AppearanceLayer::Op::GLASS,
-        AppearanceLayer::Op::CUSTOM };
+        AppearanceLayer::Op::CUSTOM, AppearanceLayer::Op::BLUR };
     const std::vector<LayerType>& layers = registry();
-    for (size_t i = 0; i < 6; i++)
+    for (size_t i = 0; i < 7; i++)
     {
         g_builtinIndexes[i] = -1;
         const char* name    = layerOpName(ops[i]);
@@ -363,6 +364,7 @@ const char* layerOpName(AppearanceLayer::Op op)
         case AppearanceLayer::Op::SHADOW: return "shadow";
         case AppearanceLayer::Op::GLASS: return "glass";
         case AppearanceLayer::Op::CUSTOM: return "custom";
+        case AppearanceLayer::Op::BLUR: return "blur";
         case AppearanceLayer::Op::EXTENSION: return "extension"; // 名字在 layer.extensionType
         default: return "rect";
     }
@@ -445,6 +447,9 @@ void registerBuiltinLayers()
     add(make("custom", "自定义", "custom", LayerOrder::CONTENT,
         "自定义：语义绘制在 C++ 里（控件的 drawCustomLayer），外观只给几何与底色",
         { "fill", "inset", "width", "height", "opacity" }));
+    add(make("blur", "模糊", "blur", LayerOrder::GLASS,
+        "纯高斯模糊：只模糊背景，不做折射/染色/高光；fill 是可选的染色与降级底",
+        { "fill", "radius", "opacity", "inset", "width", "height" }));
 }
 
 } // namespace compile

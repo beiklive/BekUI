@@ -132,5 +132,85 @@ void drawGlass(const compile::LayerDrawContext& ctx)
             radius, 0, rimThickness);
 }
 
+
+// 纯背景高斯模糊：只把抓到的背景糊掉，不做折射/色散/染色/高光。
+//
+// 复用玻璃的整帧抓帧 + 模糊（一份，全帧共用），所以它和 glass 层同时存在时
+// 不会多花一次模糊。模糊半径/质量/总开关都跟 Shell 的玻璃设置走。
+void drawBlur(const compile::LayerDrawContext& ctx)
+{
+    const AppearanceLayer& layer = ctx.layer;
+    ImDrawList* drawList         = static_cast<ImDrawList*>(ctx.drawList);
+    const int index              = ctx.layerIndex;
+
+    const ImU32 fill      = ctx.instance.getColor(index, AppearanceProp::FILL);
+    const float radius    = ctx.instance.getNumber(index, AppearanceProp::RADIUS);
+    const float rect[4]   = { ctx.rect.minX, ctx.rect.minY, ctx.rect.maxX, ctx.rect.maxY };
+    const float alphaScale = ctx.rect.alpha;
+    if (alphaScale <= 0.001f)
+        return;
+
+    auto scaleAlpha = [alphaScale](ImU32 color) {
+        const unsigned int a      = (color >> 24) & 0xFFu;
+        const unsigned int scaled = (unsigned int)std::round((float)a * alphaScale);
+        return (color & 0x00FFFFFFu) | ((scaled & 0xFFu) << 24);
+    };
+
+    glass::GlassService& service = glass::getGlassService();
+
+    // 玻璃不可用：有 fill 就退化成一块半透明底（和 glass 层同一套降级思路），
+    // 没写 fill 就什么都不画 —— "模糊"本身没有可替代的视觉。
+    if (!service.isEnabled() || !service.isSupported())
+    {
+        if ((fill >> 24) != 0)
+            drawList->AddRectFilled(ImVec2(rect[0], rect[1]), ImVec2(rect[2], rect[3]),
+                scaleAlpha(fill), radius);
+        return;
+    }
+
+    const ImVec2 fbScale = ImGui::GetIO().DisplayFramebufferScale;
+    const float density  = fbScale.x > 0.0f ? fbScale.x : 1.0f;
+
+    glass::GlassLayerOptions options;
+    options.opacity = alphaScale;
+    if ((fill >> 24) != 0)
+    {
+        const ImVec4 tint = ImGui::ColorConvertU32ToFloat4(fill);
+        options.hasTint   = true;
+        options.tint      = ImVec4(tint.x, tint.y, tint.z, tint.w * alphaScale);
+    }
+
+    // 把玻璃的"花活"全部关掉，只留下采样模糊底 + 圆角 + 可选染色。
+    namespace gf = glass::glass_field;
+    options.styleFields = gf::kRefractionHeight | gf::kRefractionAmount
+        | gf::kDepthEffect | gf::kChromaticAberration
+        | gf::kContrast | gf::kWhitePoint
+        | gf::kChromaMultiplier | gf::kLightInnerShadow
+        | gf::kLightRimGlow | gf::kLightSpecular
+        | gf::kLightOuterShadow | gf::kLightShadowExtent
+        | gf::kLightSpecularPower | gf::kLightDirection
+        | gf::kBlurMix;
+    options.style.refractionHeight    = 0.0f;
+    options.style.refractionAmount    = 0.0f;
+    options.style.depthEffect         = 0.0f;
+    options.style.chromaticAberration = 0.0f;
+    options.style.contrast            = 0.0f;
+    options.style.whitePoint          = 0.0f;
+    options.style.chromaMultiplier    = 1.0f;
+    options.style.lighting.innerShadow   = 0.0f;
+    options.style.lighting.rimGlow       = 0.0f;
+    options.style.lighting.specular      = 0.0f;
+    options.style.lighting.outerShadow   = 0.0f;
+    options.style.lighting.shadowExtent  = 0.0f;
+    options.style.lighting.specularPower = 28.0f;
+    options.blurMix = 1.0f;
+
+    service.submitBackdrop(drawList,
+        ImVec4(rect[0] * density, rect[1] * density, rect[2] * density,
+            rect[3] * density),
+        glass::CornerRadii::all(radius), glass::GlassShapeKind::ROUNDED_RECT, density,
+        &options);
+}
+
 } // namespace layers
 } // namespace bklv

@@ -426,7 +426,7 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 
 | 键 | 适用 op | 说明 |
 |---|---|---|
-| `op` | 全部 | `rect`(默认) / `text` / `image` / `shadow` / **`glass`** / `custom` |
+| `op` | 全部 | `rect`(默认) / `text` / `image` / `shadow` / **`glass`** / **`blur`** / `custom` |
 | `id` | 全部 | 状态里引用它；不写 = `op+序号` |
 | `fill` | rect, shadow | 填充色（单色）。同层写了 `gradient` 时以渐变为准 |
 | `gradient` | rect | 渐变：`{ type(linear/radial), angle, center, stops[2..4]{at, color} }` |
@@ -445,7 +445,7 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 | `feather` `spread` | shadow | 羽化半径 / 额外外扩 |
 | `cutout` | shadow | BOOL：挖空控件自身圆角形状，只画外圈（这样后面加的层即使半透明也不会透出阴影） |
 | `inner` | shadow | BOOL：改成**内阴影** —— 贴内缘最暗、往内渐透的一圈带子，**没有方向**（`offset` 对它无效）。它画在底色**之后**（外投影在底色之前），且永远不会超出形状。与 `cutout` 互斥（内阴影本来就是空心的） |
-| `fill` | glass | 染色（带 alpha）。写了就覆盖 `Shell` 的 `GlassTuning` 染色；不写就用 Shell 的 |
+| `fill` | glass, blur | 染色（带 alpha）。glass：覆盖 `Shell` 的 `GlassTuning` 染色；blur：可选染色，也是降级底 |
 | `opacity` | glass | 这块玻璃的整体不透明度 |
 | `radius` | glass | 圆角（半径等于短边一半时就是胶囊/正圆） |
 | `blurMix` | glass | 0..1：折射采**模糊底**的比例（0 = 原始底、细节最清楚；1 = 纯模糊底）。不写 = 用 Shell 的 |
@@ -455,6 +455,7 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 | `chromaticAberration` | glass | 色散强度（0..1） |
 | `contrast` / `whitePoint` / `chromaMultiplier` | glass | 颜色过滤：对比 / 白场 / 色度 |
 | `lighting` | glass | 光照对象：`innerShadow` / `rimGlow` / `specular` / `outerShadow` / `shadowExtent` / `specularPower` / `lightDirection: [x, y]` |
+| （无专属字段） | blur | 只认通用几何/透明度：`fill` / `radius` / `opacity` / `inset` / `width` / `height`；模糊半径跟 `Shell` 走 |
 
 > `op: glass` 的折射/色散/光照字段是**逐项可选**的：没写的继续用 `Shell` 的 `GlassTuning`，
 > 写了才覆盖（`0` 是有效值）。原版 imgui-liquid-glass 是每个控件一份 `GlassStyle`，
@@ -463,8 +464,8 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 
 **层序有三条硬约定**（`theme_test` 会遍历两套主题的每一份外观断言）：
 
-0. **`glass` 层必须排在自己的内容层之前**：玻璃画在这一层的位置上，后面的内容层压在它上面；
-   排反了内容会被玻璃盖住。详见 [`glass-layer.md`](glass-layer.md)。
+0. **`glass` / `blur` 层必须排在自己的内容层之前**：它们画在这一层的位置上，后面的内容层压在它上面；
+   排反了内容会被盖住（解析期会把两种层一起提到阴影之后、其余层之前）。详见 [`glass-layer.md`](glass-layer.md)。
 1. `bg` / `border`（底与描边）必须在 `text` / `image` / `custom` **之前** —— 排反了聚焦时那块
    不透明高亮底会把内容盖住（开关/单选图形消失过）。
 2. `shadow` 层必须在本控件的底色**之前**。
@@ -631,7 +632,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
   （内容槽，代码按 `data_id` 找到它改文字/贴图）；
 - `requires.layers`：**按层 id 断言**，元素两种写法 ——
   字符串（只要求同 `id` 的层存在）或单键对象 `{ "id": "op" }`（同时要求 op 符合，
-  合法 op：`rect` / `text` / `image` / `shadow` / `glass` / `custom`）。
+  合法 op：`rect` / `text` / `image` / `shadow` / `glass` / `blur` / `custom`）。
   层 id 是代码与主题之间唯一的约定名（`states` 改层、过渡按 id 找层都靠它），
   所以只要代码会动这一层，就该在这里断言它存在；
 - 校验发生在 `import` 合并与编译之后；失败会写 error 日志
@@ -890,7 +891,7 @@ Schema 目前用于编辑器/外部校验，**运行期仍以解析器报错为�
 
 ## 扩展图层类型（第三方）
 
-内置 `op` 只有 6 种：`rect` / `text` / `image` / `shadow` / `glass` / `custom`。
+内置 `op` 有 7 种：`rect` / `text` / `image` / `shadow` / `glass` / `blur` / `custom`。
 **别人可以加自己的**，而且**不需要改 `bklv/` 里任何文件**：写一个文件 + 注册一行，
 主题里就能写 `"op": "你的名字"`。完整可运行的样例就在本节（`stripe` 与 `quad` 两份）。
 

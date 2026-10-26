@@ -125,6 +125,9 @@ struct AppearanceLayer
                 // 可覆盖的样式：fill(染色，带 alpha) / opacity / radius(圆角) / inset 几何；
                 // 帧级参数（blurRadius / quality）与总开关仍只由 Shell 决定（两条后端共用一份背景模糊）。
         CUSTOM, // 交给控件自己画（语义性内容：文本排版、图片缩放、进度弧、滑块轨道…）
+        BLUR,   // 纯背景高斯模糊（没有折射/染色/高光）：fill 只当可选染色，
+                // 模糊半径与开关跟随 Shell 的玻璃设置（整帧共用一份模糊）。
+                // **和玻璃一样排到内容之前**，所以它是"底"，不是盖在内容上的滤镜。
         // 注册表里注册的扩展 op（第三方在 bklv 之外加的）；名字记在 extensionType
         EXTENSION,
     };

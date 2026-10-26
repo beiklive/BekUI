@@ -1274,6 +1274,7 @@ std::shared_ptr<const Appearance> Appearance::compile(const std::string& json, c
                 if (name == "image") return (int)AppearanceLayer::Op::IMAGE;
                 if (name == "shadow") return (int)AppearanceLayer::Op::SHADOW;
                 if (name == "glass") return (int)AppearanceLayer::Op::GLASS;
+                if (name == "blur") return (int)AppearanceLayer::Op::BLUR;
                 if (name == "custom") return (int)AppearanceLayer::Op::CUSTOM;
                 return -2;
             };
