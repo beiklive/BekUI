@@ -2,6 +2,7 @@
 
 #include "bklv/foundation/core/globals.hpp"
 #include "bklv/foundation/core/logger.hpp"
+#include "bklv/foundation/geom/draw_transform.hpp"
 
 namespace bklv::glass
 {
@@ -110,10 +111,23 @@ bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBound
     drawList->AddDrawCmd();
 
     GlassRequest request;
-    request.minMax            = pixelBounds;
     request.radii             = radii;
     request.shape             = shape;
     request.density           = frameDensity > 0.0f ? frameDensity : this->density;
+
+    // 玻璃不在顶点里，`View::frame` 那句"画完整段顶点再整体变形"管不到它 ——
+    // 这里用当前节点的绘制期变换把矩形映射过去，和顶点走同一套（见 draw_transform.hpp）。
+    // pixelBounds 是物理像素，变换在逻辑坐标里做，所以先除 density、映射完再乘回去。
+    request.minMax = pixelBounds;
+    if (draw::hasPendingTransforms() && request.density > 0.0f)
+    {
+        const float toLogical = 1.0f / request.density;
+        float bounds[4]       = { pixelBounds.x * toLogical, pixelBounds.y * toLogical,
+                                  pixelBounds.z * toLogical, pixelBounds.w * toLogical };
+        draw::mapRect(bounds);
+        request.minMax = ImVec4(bounds[0] * request.density, bounds[1] * request.density,
+            bounds[2] * request.density, bounds[3] * request.density);
+    }
     // 跟着**当前绘制裁剪矩形**走：滚动容器里的玻璃不能画到容器外。
     // 这里存逻辑坐标（和 ImGui 绘制命令一致），后端合成时再乘 density 换成物理像素。
     const ImVec2 clipMin = drawList->GetClipRectMin();

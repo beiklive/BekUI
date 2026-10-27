@@ -10,6 +10,7 @@
 #include "bklv/system/media/font.hpp"
 #include "bklv/foundation/core/logger.hpp"
 #include "bklv/foundation/anim/time.hpp"
+#include "bklv/foundation/geom/draw_transform.hpp"
 
 namespace bklv
 {
@@ -712,6 +713,11 @@ void View::frame(FrameContext* ctx)
         transformed = false;
     }
 
+
+    // 变换作用域：进节点压入、出节点弹出。玻璃 / 模糊这类"把几何提交到顶点以外"的绘制
+    // 靠它拿到和顶点一致的变换（见 foundation/geom/draw_transform.hpp）。
+    const draw::TransformScope transformScope(
+        transformed ? &this->transform : nullptr, Point(x + width * 0.5f, y + height * 0.5f));
 
     this->drawBackground(ctx->drawList, x, y, width, height);
 
