@@ -467,6 +467,8 @@ bklv/system/platform/*                        PlatformSDL3 / PlatformSwitch
 - [`TODO.md`](TODO.md) —— 开发计划：库化、控件补全、技术债、与 borealis 的取舍
 - [`docs/bklv-api.md`](docs/bklv-api.md) —— bklv 速查：文件职责、Box 布局调用、
   交互与内容控件、日志约定、已知的坑
+- [`docs/page-navigation.md`](docs/page-navigation.md) —— 同级页面路由：
+  `replaceContentView` + 宿主 history，任意页面互跳、直接启动 B、B 返回 A
 - [`docs/README.md`](docs/README.md) —— 文档索引
 - [`notes/adding-render-backend.md`](notes/adding-render-backend.md) —— 加渲染后端的步骤
 - [`AGENTS.md`](AGENTS.md) —— 开发约定

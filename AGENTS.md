@@ -583,6 +583,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      不是 pointer target 时，点面板空白处会冒泡到 Dialog → 误关。做法是面板
      `setPointerTarget(true)` + 一个空 `TapGestureRecognizer` 把轻触吃掉（能点 ≠ 可聚焦）；
      点面板外仍然命中 Dialog，正常关闭。
+- **同级页面导航用 `replaceContentView` + 宿主页面名 history**：`push/pop` 是历史栈（保留页面），
+  不是父子关系；所有页面同级、只保留当前页、支持直接启动到 B 时，用
+  `replaceContentView` 并在宿主维护 `std::vector<std::string>` 历史。完整 `PageRouter`
+  与坑见 `docs/page-navigation.md`。
 - **音效只在用户操作时播**（`ui/input/input.cpp`）：全库只有 `playUiSound()` 一处播音，三个触发点
   —— 方向导航（focus 音，含"没有焦点时取默认焦点"那一支）、确认键 / 点击（click 音）、返回键（back 音）。
   `InputManager::giveFocus(view, playSound = false)` **默认静默**：换根 / 换页 / 弹层进出 /

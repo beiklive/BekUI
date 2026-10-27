@@ -17,6 +17,7 @@
 | [`json-audit.md`](json-audit.md) | **JSON 审查报告**：语法完备性（闭合/开放集）、代码解析链（主题→外观→视图）、渲染链（布局→层→绘制），以及"重做设计器前要补的三个接口" |
 | [`json-audit.html`](json-audit.html) | 同一份报告的**图文版**：五类文件与解析入口、完备性三档光谱、外观 10 步管线、视图两段式、一帧时间线、层序栈、键→产物→绘制对照（单文件、无外部依赖、自动适配深色模式） |
 | [`rect-gradient.md`](rect-gradient.md) | **`rect` 层加渐变的调研与方案**：三条路线对比（顶点色网格 / LUT 贴图 / 现成 API）、JSON 语法草案、数据模型、绘制与抗锯齿实现、与状态动效的取舍、两步工作量与像素验收 |
+| [`page-navigation.md`](page-navigation.md) | **同级页面导航**：`replaceContentView` + 宿主页面名 history，实现任意页面互跳、直接启动 B、B 返回 A；含 `PageRouter` 代码、行为对照与坑 |
 | [`glass-layer.md`](glass-layer.md) | **液态玻璃使用说明**：三层职责（Shell 管开关/帧级参数、外观 JSON 管样式、视图只声明）、`op: "glass"` 写法与三条硬要求、后端矩阵与取舍、接口、三个坑、验收数据与文件地图 |
 | [`dependencies.md`](dependencies.md) | **依赖清单**（可直接转发）：9 个 vendored 子模块及版本/许可证、各平台要装的东西、随包资源体积 |
 
