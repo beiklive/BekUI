@@ -455,12 +455,12 @@ bklv::registerJsonAction("save", [](bklv::View& view) { /* ... */ });
 | `chromaticAberration` | glass | 色散强度（0..1） |
 | `contrast` / `whitePoint` / `chromaMultiplier` | glass | 颜色过滤：对比 / 白场 / 色度 |
 | `lighting` | glass | 光照对象：`innerShadow` / `rimGlow` / `specular` / `outerShadow` / `shadowExtent` / `specularPower` / `lightDirection: [x, y]` |
-| （无专属字段） | blur | 只认通用几何/透明度：`fill` / `radius` / `opacity` / `inset` / `width` / `height`；模糊半径跟 `Shell` 走 |
+| `blurRadius` | blur | 通用几何/透明度：`fill` / `radius`（**圆角**）/ `opacity` / `inset` / `width` / `height`；`blurRadius` 是这个层单独的模糊半径（不写就跟 `Shell` 的 `GlassTuning.blurRadius`）。**`opacity: 1`（默认）= 不透明模糊面；`<1` = 叠加在底层上的模糊遮罩** |
 
 > `op: glass` 的折射/色散/光照字段是**逐项可选**的：没写的继续用 `Shell` 的 `GlassTuning`，
 > 写了才覆盖（`0` 是有效值）。原版 imgui-liquid-glass 是每个控件一份 `GlassStyle`，
 > 这里用同一套字段开放给外观层；`base/layer/glass` 给小控件（按钮/通知），
-> `base/box/dialog_backdrop` 给大面（对话框遮罩）。`blurRadius` / `quality` 仍是帧级的。
+> `base/box/dialog_backdrop` 给大面（对话框遮罩）。`quality` 仍是帧级的；`blurRadius` 可以每层覆盖（代价：多一次 blur pass）。
 
 **层序有三条硬约定**（`theme_test` 会遍历两套主题的每一份外观断言）：
 

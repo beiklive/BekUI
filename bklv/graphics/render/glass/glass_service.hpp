@@ -38,6 +38,9 @@ struct GlassLayerOptions
     uint32_t styleFields = 0;
     GlassStyle style{};
     float blurMix = 1.0f;
+    // 本层单独的高斯半径（逻辑像素）；< 0 表示用 Shell 的 GlassTuning。
+    // blur 层和 glass 层都可以写，代价是后端要为它多跑一次 blur pass。
+    float blurRadius = -1.0f;
 };
 
 class GlassService

@@ -83,6 +83,15 @@ void HScrollingFrame::update()
     const ImGuiIO* io = ImGui::GetCurrentContext() != nullptr ? &ImGui::GetIO() : nullptr;
     const float range     = this->getScrollRange();
 
+    // 模态层打开时，模态外面的滚动容器不再吃鼠标/滚轮（同 ScrollingFrame）。
+    const bool inputAllowed = !getInputManager().hasModal()
+        || getInputManager().isInsideModal(this);
+    if (!inputAllowed)
+    {
+        this->dragging = false;
+        this->velocity = 0.0f;
+    }
+
     if (this->animating)
     {
         const float diff = this->animTarget - this->contentOffsetX;
@@ -99,7 +108,8 @@ void HScrollingFrame::update()
     }
 
     // 横向用 shift + 滚轮，避免和纵向滚动抢输入。
-    if (io != nullptr && this->scrollingEnabled && std::fabs(io->MouseWheel) > 0.0f && io->KeyShift)
+    if (io != nullptr && this->scrollingEnabled && inputAllowed
+        && std::fabs(io->MouseWheel) > 0.0f && io->KeyShift)
     {
         const Rect frame = this->getFrame();
         if (io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX() && io->MousePos.y >= frame.y
@@ -113,7 +123,7 @@ void HScrollingFrame::update()
 
     // io 可能是 nullptr（没有 ImGui 上下文：无窗口测试 / 宿主程序），这一条必须和纵向那份
     // scrolling_frame.cpp 的写法一致 —— 漏掉就是空指针解引用（复制粘贴时丢过一次）。
-    if (io != nullptr && this->scrollingEnabled)
+    if (io != nullptr && this->scrollingEnabled && inputAllowed)
     {
         const bool mouseDown = io->MouseDown[0];
 

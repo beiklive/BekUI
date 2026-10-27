@@ -1,0 +1,27 @@
+{
+  "$comment": "动画演示的一行：玻璃底 + 左卡片 + 右说明/按钮。box.axis=row；左右两列在代码里用 grow=1 + flexBasis=0 均分。",
+  "box": {
+    "width": "100%",
+    "minHeight": 300,
+    "axis": "row",
+    "alignItems": "center",
+    "gap": 24,
+    "padding": 18,
+    "cornerRadius": 5
+  },
+  "layers": [
+    {
+      "import": "base/layer/glass",
+      "radius": 5
+    },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.common.transparent"
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": 5
+    }
+  ]
+}

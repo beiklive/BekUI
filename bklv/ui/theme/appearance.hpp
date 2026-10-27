@@ -187,6 +187,7 @@ struct AppearanceLayer
         static constexpr float UNSET = std::numeric_limits<float>::quiet_NaN();
 
         float blurMix             = UNSET;
+        float blurRadius          = UNSET;
         float refractionHeight    = UNSET;
         float refractionAmount    = UNSET;
         float depthEffect         = UNSET;

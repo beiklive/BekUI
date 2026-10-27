@@ -37,6 +37,8 @@ struct GlassRequest
     GlassBackdropSource backdropSource = GlassBackdropSource::FRAME;
     float density = 1.0f;
     float opacity = 1.0f;
+    // 本层单独的高斯半径（逻辑像素）；< 0 表示用帧级 GlassTuning。
+    float blurRadius = -1.0f;
     float blurMix = 1.0f;
 };
 

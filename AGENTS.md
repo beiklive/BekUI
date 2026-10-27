@@ -462,7 +462,9 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
      （逐项可选，没写的继续用 `GlassTuning`；原版是每个控件一份 `GlassStyle`，这里等价地开放给层，
      所以**小控件和大面要分别写**：`base/layer/glass` 用 `12 / -24 / 0.24 / 0.16 / 0.32`，
      `base/box/dialog_backdrop.json` 用 `20 / -70 / 0.3 / 0.5 / 1.0`；一个参数打天下会让小面变透镜）。
-     `blurRadius`、`quality` 与总开关仍只由 `Shell` 决定 —— 两条后端的"这一帧背景模糊"是整帧共用一份。
+     **`blurRadius` 可以在层里覆盖**（每层单独半径 = 后端为它多跑一次 blur pass，只重糊
+     已抓好的背景；不写就复用帧级结果）；`quality` 与总开关仍只由 `Shell` 决定。
+     注意层里的 `radius` 是圆角，不是模糊半径。
      两个清单坑：`theme.json` 的 `files[]` 条目要**带 `.json` 后缀**（`base/glass_panel.json`，
      少了后缀会以"主题里没有控件外观"的形式静默回退）；`box.padding` 只接受**一个数**或
      **四个数**（`[上,右,下,左]`），写两个数会编译失败。
@@ -573,6 +575,14 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
   ⑥ **浮层（通知）挂哪一层由 `View::getHudHost()` 决定**（默认 nullptr = 根容器）：
      `Shell` 覆写成 HUD 层（覆盖层之上、调试层之下）。所以模态开着时 toast 照样
      清清楚楚浮在遮罩上，不会被玻璃遮罩压暗或糊掉。
+  ⑦ **模态外的滚动容器不吃鼠标/滚轮**：`ScrollingFrame` / `HScrollingFrame` 每帧查
+     `hasModal()` + `isInsideModal(this)`，不在模态里就清 `dragging`/`velocity` 并跳过滚轮与拖拽。
+     少了这条，拖动对话框的遮罩会把底下页面一起滚（输入层只拦点击/手势，拦不住
+     `ScrollingFrame` 直接读 ImGui 鼠标状态那条路）。
+  ⑧ **点面板不能触发"点遮罩关闭"**：`Dialog` 的轻触手势挂在全屏 Dialog 上，面板本身
+     不是 pointer target 时，点面板空白处会冒泡到 Dialog → 误关。做法是面板
+     `setPointerTarget(true)` + 一个空 `TapGestureRecognizer` 把轻触吃掉（能点 ≠ 可聚焦）；
+     点面板外仍然命中 Dialog，正常关闭。
 - **音效只在用户操作时播**（`ui/input/input.cpp`）：全库只有 `playUiSound()` 一处播音，三个触发点
   —— 方向导航（focus 音，含"没有焦点时取默认焦点"那一支）、确认键 / 点击（click 音）、返回键（back 音）。
   `InputManager::giveFocus(view, playSound = false)` **默认静默**：换根 / 换页 / 弹层进出 /
@@ -861,7 +871,10 @@ Windows 上只有 Vulkan 构建需要额外装包（`mingw-w64-x86_64-vulkan-hea
     点遮罩关闭用的是 `TapGestureRecognizer` + `isPointerTarget()`（"能点"不等于"能当焦点"）。
     **底部按钮均匀分配**：`addButton()` 给每个按钮 `setGrow(1)`，两个按钮各占一半，
     只有一个按钮时自然铺满整行（调用方不用自己算宽度）。
-  - 遮罩的模糊来自**玻璃层**（`base/box/dialog_backdrop.json` 里一条 `op: "glass"`），
+  - 遮罩的模糊来自 **`op: "blur"` 层**（`base/box/dialog_backdrop.json`），比玻璃便宜
+    （不做折射/色散/光照，只采一次模糊底）。**`opacity` 默认 1 = 不透明模糊面**：它会把底下界面
+    替换成模糊副本，在纯色页面上看着就像"原界面没了"；对话框这种仍然要看见底层的叠层要写
+    `opacity: 0.5~0.6`（目前遮罩就是 0.55），再配 `fill` 染色。
     而 `GlassService` 默认是**关**的（库不主动改变宿主观感）：宿主 `setEnabled(true)` 才有真模糊，
     否则这一层退化成半透明底（不会消失）。demo 在启动时打开了它。
   - `ListBox`（`container/list_box.*`）**只是个容器**：`ScrollBox(Axis::COLUMN)` + 内容盒，

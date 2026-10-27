@@ -1,0 +1,27 @@
+{
+  "$comment": "Transform 动画的示例卡片：图片 + 图标/文字，卡片本身是 glass box（预览框也是 glass）。注意 glass 层按 layout 矩形合成，rotate/skew/scale 的绘制期变换只能带动内容，玻璃框本身不会跟着转/斜切。",
+  "box": {
+    "width": 240,
+    "height": 260,
+    "axis": "column",
+    "alignItems": "stretch",
+    "gap": 12,
+    "padding": 14,
+    "cornerRadius": 5
+  },
+  "layers": [
+    {
+      "import": "base/layer/glass",
+      "radius": 5
+    },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.common.transparent"
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": 5
+    }
+  ]
+}

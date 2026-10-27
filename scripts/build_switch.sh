@@ -3,7 +3,8 @@
 # （demo 已移除、重做中；产物名从 demo.nro 改成 bklv_switch.nro。）
 #
 # 用法：
-#   ./scripts/build_switch.sh              # 编译
+#   ./scripts/build_switch.sh              # 编译最小宿主（bklv_switch.nro）
+#   ./scripts/build_switch.sh --demo       # 编译 demo（bklv_demo.nro）
 #   ./scripts/build_switch.sh --clean      # 丢掉中间产物重新编译
 #
 # 依赖：devkitPro（devkitA64 + libnx）。不需要 SDL3：
@@ -21,9 +22,11 @@ BKLV_DIR="${ROOT_DIR}/bklv"
 THIRD_DIR="${BKLV_DIR}/3rd"
 
 CLEAN=0
+DEMO=0
 for arg in "$@"; do
     case "${arg}" in
         --clean|--force) CLEAN=1 ;;
+        --demo) DEMO=1 ;;
         --no-webp) WITH_WEBP=0 ;;
         --svg) WITH_SVG=1 ;;
         --no-svg) WITH_SVG=0 ;;
@@ -57,8 +60,12 @@ fi
 
 OUT_DIR="${ROOT_DIR}/dist/switch"
 BUILD_DIR="${ROOT_DIR}/build/switch"
-# 宿主程序：demo 移除后由 examples/switch 里的最小宿主顶上（Box + Button + Label）。
-HOST_DIR="${ROOT_DIR}/examples/switch"
+# 宿主程序：默认 examples/switch 的最小宿主；--demo 时编桌面 demo 的同一套页面。
+if [[ "${DEMO}" -eq 1 ]]; then
+    HOST_DIR="${ROOT_DIR}/demo"
+else
+    HOST_DIR="${ROOT_DIR}/examples/switch"
+fi
 if [[ "${CLEAN}" -eq 1 ]]; then
     rm -rf "${BUILD_DIR}"
 fi
@@ -138,7 +145,7 @@ CFLAGS=(-std=c11 -O2 "${ARCH[@]}" "${DEFINES[@]}" "${INCLUDES[@]}")
 # 平台无关的模块全都要，按目录收集（render 与 platform 有平台分支，单独列）。
 BKLV_SOURCES=()
 for _module in foundation/core foundation/geom foundation/json foundation/anim \
-                graphics/paint ui/view ui/theme ui/layer ui/widgets ui/input ui/app \
+                graphics/paint ui/view ui/theme ui/layer ui/widgets ui/input ui/app ui/shell \
                 system/media; do
     while IFS= read -r -d '' f; do
         BKLV_SOURCES+=("$f")
@@ -175,7 +182,7 @@ IMGUI_SOURCES=(
     "${BKLV_DIR}/graphics/render/gl/imgui_impl_opengl3_wrapper.cpp"
 )
 
-# 宿主：examples/switch 里的全部 .cpp（现在是单文件）
+# 宿主：选中的宿主目录里的全部 .cpp（--demo 时是 demo/ 下的入口 + tabs）
 HOST_SOURCES=()
 while IFS= read -r -d '' f; do
     HOST_SOURCES+=("$f")
@@ -276,13 +283,22 @@ LDFLAGS=(-specs="${LIBNX}/switch.specs" "${ARCH[@]}" -Wl,-Map,"${BUILD_DIR}/link
 # 顺序与 devkitPro 的 OpenGL 示例一致：libEGL 依赖 glapi 与 drm_nouveau。
 LIBS=(-L"${PORTLIBS}/lib" -L"${LIBNX}/lib" -lEGL -lglapi -ldrm_nouveau -lGLESv2 -lnx -lm)
 
-ELF="${OUT_DIR}/bklv_switch.elf"
-NRO="${OUT_DIR}/bklv_switch.nro"
+if [[ "${DEMO}" -eq 1 ]]; then
+    ELF="${OUT_DIR}/bklv_demo.elf"
+    NRO="${OUT_DIR}/bklv_demo.nro"
+else
+    ELF="${OUT_DIR}/bklv_switch.elf"
+    NRO="${OUT_DIR}/bklv_switch.nro"
+fi
 
 "${CXX}" "${OBJS[@]}" "${LDFLAGS[@]}" "${LIBS[@]}" -o "${ELF}"
 
 # 去掉调试符号：不 strip 的话 nro 会大出好几 MB（main.elf 保留符号便于调试）。
-ELF_STRIPPED="${BUILD_DIR}/bklv_switch.stripped.elf"
+if [[ "${DEMO}" -eq 1 ]]; then
+    ELF_STRIPPED="${BUILD_DIR}/bklv_demo.stripped.elf"
+else
+    ELF_STRIPPED="${BUILD_DIR}/bklv_switch.stripped.elf"
+fi
 cp "${ELF}" "${ELF_STRIPPED}"
 if [[ -x "${STRIP}" ]]; then
     "${STRIP}" --strip-all "${ELF_STRIPPED}"

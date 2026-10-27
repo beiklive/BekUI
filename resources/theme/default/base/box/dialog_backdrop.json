@@ -1,8 +1,12 @@
 {
-  "$comment": "对话框遮罩：整屏玻璃（高斯模糊）+ 暗色染色。玻璃总开关在 Shell::setGlassEnabled，后端不可用时自动退化成半透明底。大面用原版 GlassWindow 的折射/光照参数（小控件那套在 base/layer/glass）。",
+  "$comment": "对话框遮罩：整屏模糊 + 浅色磨砂染色。blur 层不做折射/高光，省性能；opacity 0.85 保留一点底层界面，1.0 是完全磨砂。注意：radius 是「圆角」，blurRadius 才是模糊半径（每层单独半径会多跑一次 blur pass）。",
   "layers": [
     {
-"op": "blur", "id": "blur", "radius": 8, "fill": "#FFFFFF1A" 
+      "op": "blur",
+      "id": "blur",
+      "fill": "#FFFFFF33",
+      "opacity": 0.95,
+      "blurRadius": 30
     }
   ]
 }

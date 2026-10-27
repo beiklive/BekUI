@@ -19,6 +19,7 @@
 #include "bklv/ui/widgets/debug/fps_overlay.hpp"
 #include "bklv/ui/widgets/debug/preset_backdrop.hpp"
 #include "bklv/ui/widgets/list/recycler.hpp"
+#include "tabs/animation_tab.hpp"
 #include "tabs/buttons_tab.hpp"
 #include "tabs/container_tab.hpp"
 #include "tabs/debug_tab.hpp"
@@ -35,8 +36,8 @@ namespace
 const char* const kThemes[] = { "default", "glass" };
 constexpr int kThemeCount    = static_cast<int>(sizeof(kThemes) / sizeof(kThemes[0]));
 
-// 五个标签页的标题（顶栏显示的就是它）
-const char* const kTabTitles[] = { "按钮", "布局", "列表", "容器", "调试" };
+// 六个标签页的标题（顶栏显示的就是它）
+const char* const kTabTitles[] = { "按钮", "布局", "列表", "容器", "调试", "动画" };
 constexpr int kTabCount        = static_cast<int>(sizeof(kTabTitles) / sizeof(kTabTitles[0]));
 
 // 一个"有 count 条"的最简数据源：列表只关心条数，数据在 cell 里按 index 现算。
@@ -102,6 +103,7 @@ void DemoApp::buildShell()
     this->tabBar->addItem(kTabTitles[2], "\uE003", "list");
     this->tabBar->addItem(kTabTitles[3], "\uE004", "container");
     this->tabBar->addItem(kTabTitles[4], "\uE005", "debug");
+    this->tabBar->addItem(kTabTitles[5], "\uE005", "animation");
 
     this->tabs = new bklv::TabView();
     this->tabs->addTab("buttons", buildButtonsTab(*this));
@@ -109,6 +111,7 @@ void DemoApp::buildShell()
     this->tabs->addTab("list", buildListTab(*this));
     this->tabs->addTab("container", buildContainerTab(*this));
     this->tabs->addTab("debug", buildDebugTab(*this));
+    this->tabs->addTab("animation", buildAnimationTab(*this));
 
     // 双向同步：点/按确认切标签 → TabView 生效；TabView 被代码切 → 条与标题跟着变
     this->tabBar->setOnTabSelected([this](int index) { this->tabs->setActiveTab(index); });

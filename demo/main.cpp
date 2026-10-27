@@ -2,14 +2,14 @@
 //
 // 参数：
 //   --theme <name>        启动主题（默认 default；demo 里可切 default / glass）
-//   --tab <name>          启动标签页：buttons（默认）/ layout / list / container / debug
+//   --tab <name>          启动标签页：buttons（默认）/ layout / list / container / debug / animation
 //   --backdrop <name>     启动背景：none（默认）/ grid / floating / gradient / checker / polygons
 //   --tabbar <top|left>   标签条排列：top（默认，顶部水平）/ left（左侧竖直）
 //   --screenshot <png>    渲染若干帧后截图存成 PNG 并退出（无人值守验证用）
 //   --frames <n>          截图前等多少帧（默认 3）
 //   --size <宽x高>        窗口尺寸（默认 1280x720）
 //
-// 外壳与标签页在 demo_app.*，五个标签页的内容在 demo/tabs/ 下。
+// 外壳与标签页在 demo_app.*，六个标签页的内容在 demo/tabs/ 下。
 
 #include <cstdio>
 #include <cstdlib>
@@ -23,7 +23,7 @@ namespace
 
 void printUsage(const char* argv0)
 {
-    std::printf("用法：%s [--theme <name>] [--tab <buttons|layout|list|container|debug>] [--tabbar <top|left>] "
+    std::printf("用法：%s [--theme <name>] [--tab <buttons|layout|list|container|debug|animation>] [--tabbar <top|left>] "
                 "[--backdrop <none|grid|floating|gradient|checker|polygons>] "
                 "[--screenshot <png>] [--frames <n>] [--size <宽x高>]\n",
                 argv0);
@@ -54,7 +54,12 @@ int main(int argc, char** argv)
 {
     std::string theme;
     std::string backdrop;
-    std::string tab          = "buttons";
+#ifdef BKLV_SWITCH
+    // Switch 上没有命令行参数；NRO 默认落在动画页，方便直接看演示。
+    std::string tab = "animation";
+#else
+    std::string tab = "buttons";
+#endif
     bool tabbarVertical      = false;
     std::string screenshotPath;
     int screenshotFrames = 3;
@@ -117,15 +122,16 @@ int main(int argc, char** argv)
         }
     }
 
-    static const char* const kTabNames[] = { "buttons", "layout", "list", "container", "debug" };
-    int initialTab                       = 0;
-    if (tab == "0" || tab == "1" || tab == "2" || tab == "3" || tab == "4")
+    static const char* const kTabNames[]
+        = { "buttons", "layout", "list", "container", "debug", "animation" };
+    int initialTab = 0;
+    if (tab == "0" || tab == "1" || tab == "2" || tab == "3" || tab == "4" || tab == "5")
     {
         initialTab = tab[0] - '0';
     }
     else
     {
-        for (int index = 0; index < 5; ++index)
+        for (int index = 0; index < 6; ++index)
         {
             if (tab == kTabNames[index])
             {
@@ -136,7 +142,9 @@ int main(int argc, char** argv)
 
         if (tab != kTabNames[initialTab])
         {
-            std::fprintf(stderr, "未知标签页：%s（可用 buttons / layout / list / container / debug）\n", tab.c_str());
+            std::fprintf(stderr,
+                "未知标签页：%s（可用 buttons / layout / list / container / debug / animation）\n",
+                tab.c_str());
             return 2;
         }
     }

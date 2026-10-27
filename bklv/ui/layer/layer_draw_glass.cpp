@@ -89,6 +89,8 @@ void drawGlass(const compile::LayerDrawContext& ctx)
     };
     glass::GlassStyle& style = options.style;
     takeNumber(layer.glass.blurMix, glass::glass_field::kBlurMix, options.blurMix);
+    if (std::isfinite(layer.glass.blurRadius))
+        options.blurRadius = layer.glass.blurRadius;
     takeNumber(layer.glass.refractionHeight, glass::glass_field::kRefractionHeight,
         style.refractionHeight);
     takeNumber(layer.glass.refractionAmount, glass::glass_field::kRefractionAmount,
@@ -179,6 +181,9 @@ void drawBlur(const compile::LayerDrawContext& ctx)
         options.hasTint   = true;
         options.tint      = ImVec4(tint.x, tint.y, tint.z, tint.w * alphaScale);
     }
+
+    if (std::isfinite(layer.glass.blurRadius))
+        options.blurRadius = layer.glass.blurRadius;
 
     // 把玻璃的"花活"全部关掉，只留下采样模糊底 + 圆角 + 可选染色。
     namespace gf = glass::glass_field;

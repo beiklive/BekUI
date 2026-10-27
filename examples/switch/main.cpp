@@ -21,7 +21,7 @@ int main(int, char**)
     root.setPadding(32.0f);
 
     // 按下时 App 会播 CLICK 音效、弹一条通知：一次点击验证输入、音频、通知三条链路。
-    bklv::Button button("BekUI");
+    bklv::TextButton button("BekUI");
     button.setOnClick([&app]() { app.notify("Hello, Switch"); });
 
     bklv::Label hint;

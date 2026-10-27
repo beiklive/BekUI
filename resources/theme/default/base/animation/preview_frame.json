@@ -1,0 +1,27 @@
+{
+  "$comment": "Transform 动画的预览框：404x404 的玻璃框，边框画出边界；内部 240x260 的示例卡片由 C++ 施加 translate/scale/skew/rotate/width/height。",
+  "box": {
+    "width": 404,
+    "height": 404,
+    "axis": "column",
+    "alignItems": "flexStart",
+    "justifyContent": "flexStart",
+    "padding": 2,
+    "cornerRadius": 5
+  },
+  "layers": [
+    {
+      "import": "base/layer/glass",
+      "radius": 5
+    },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.common.transparent"
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": 5
+    }
+  ]
+}

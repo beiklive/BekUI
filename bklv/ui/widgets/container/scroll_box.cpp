@@ -79,6 +79,14 @@ void ScrollBox::setScrollOffset(float offset, bool animated)
         static_cast<HScrollingFrame*>(this->frame)->setContentOffsetX(offset, animated);
 }
 
+void ScrollBox::setScrollingEnabled(bool enabled)
+{
+    if (this->direction == Axis::COLUMN)
+        static_cast<ScrollingFrame*>(this->frame)->setScrollingEnabled(enabled);
+    else
+        static_cast<HScrollingFrame*>(this->frame)->setScrollingEnabled(enabled);
+}
+
 void ScrollBox::setShowScrollingIndicator(bool show)
 {
     if (this->direction == Axis::COLUMN)

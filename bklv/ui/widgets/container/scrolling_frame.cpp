@@ -150,6 +150,7 @@ float ScrollingFrame::getScrollRange() const
 void ScrollingFrame::setContentOffsetY(float offset, bool animated)
 {
     const float range = this->getScrollRange();
+
     const float target = std::clamp(offset, 0.0f, range);
 
     if (!animated)
@@ -188,6 +189,16 @@ void ScrollingFrame::update()
 
     const float range = this->getScrollRange();
 
+    // 有模态层时，模态外面的滚动容器不再吃鼠标/滚轮 —— 否则拖动对话框的遮罩
+    // 会把底下页面一起滚了（对话框自己的 ScrollBox 在模态里，照常滚）。
+    const bool inputAllowed = !getInputManager().hasModal()
+        || getInputManager().isInsideModal(this);
+    if (!inputAllowed)
+    {
+        this->dragging = false;
+        this->velocity = 0.0f;
+    }
+
     // ---- 1. 缓动到目标（滚到焦点） ----
     if (this->animating)
     {
@@ -205,7 +216,8 @@ void ScrollingFrame::update()
     }
 
     // ---- 2. 鼠标滚轮 ----
-    if (io != nullptr && this->scrollingEnabled && std::fabs(io->MouseWheel) > 0.0f)
+    if (io != nullptr && this->scrollingEnabled && inputAllowed
+        && std::fabs(io->MouseWheel) > 0.0f)
     {
         const Rect frame = this->getFrame();
         if (io->MousePos.x >= frame.x && io->MousePos.x <= frame.getMaxX() && io->MousePos.y >= frame.y
@@ -218,7 +230,7 @@ void ScrollingFrame::update()
     }
 
     // ---- 3. 拖拽 ----
-    if (io != nullptr && this->scrollingEnabled)
+    if (io != nullptr && this->scrollingEnabled && inputAllowed)
     {
         const bool mouseDown = io->MouseDown[0];
 

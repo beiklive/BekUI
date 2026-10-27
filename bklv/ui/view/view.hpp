@@ -317,7 +317,10 @@ class View
     // 这类视图覆写它，同时保持 isFocusable() == false。
     //
     // hitTest 与手势派发都走这里，所以覆写它等于"点得到、也收得到手势"。
-    virtual bool isPointerTarget() const { return this->isFocusable(); }
+    // 也可以在运行时单独打开（对话框面板要挡住"点面板空白处"的点击，
+    // 不让它冒泡到 Dialog 的"点遮罩关闭"手势）。
+    virtual bool isPointerTarget() const { return this->isFocusable() || this->pointerTarget; }
+    void setPointerTarget(bool value) { this->pointerTarget = value; }
 
     // 这个 View 是否被禁用（禁用控件不参与焦点与动作）。
     // 库里有"禁用"概念的控件（Button / Cell）重写它；canFocus() 会查这一条。
@@ -548,6 +551,7 @@ class View
     Transform2D transform;           // 绘制期变换（不影响布局）
     std::vector<std::unique_ptr<GestureRecognizer>> gestures;
     bool focused = false;
+    bool pointerTarget = false; // isPointerTarget() 的附加开关（能点但不可聚焦）
     std::vector<InputAction> actions;
     ActionIdentifier nextActionIdentifier = 1;
 

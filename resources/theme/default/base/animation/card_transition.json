@@ -1,0 +1,45 @@
+{
+  "$comment": "JSON transition 示例卡片：glass box，内部图片 + 图标/文字；transitions.show 做整卡淡入 + 玻璃层 opacity 渐显。",
+  "box": {
+    "width": 240,
+    "height": 260,
+    "axis": "column",
+    "alignItems": "stretch",
+    "gap": 12,
+    "padding": 14,
+    "cornerRadius": 5
+  },
+  "layers": [
+    {
+      "import": "base/layer/glass",
+      "radius": 5
+    },
+    {
+      "import": "base/layer/bg",
+      "fill": "@theme/color.common.transparent"
+    },
+    {
+      "import": "base/layer/border",
+      "stroke": "@theme/color.border.default",
+      "radius": 5
+    }
+  ],
+  "transitions": {
+    "show": {
+      "duration": 480,
+      "easing": "quadraticOut",
+      "alpha": {
+        "from": 0.0,
+        "to": 1.0
+      },
+      "layers": {
+        "glass": {
+          "opacity": {
+            "from": 0.15,
+            "to": 1.0
+          }
+        }
+      }
+    }
+  }
+}

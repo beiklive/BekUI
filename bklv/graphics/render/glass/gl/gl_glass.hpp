@@ -53,6 +53,9 @@ class GlGlassBackend : public GlassBackend
 
     // 抓背景 + 模糊（每帧第一次用玻璃时调用）
     bool prepareBackdrop(const GlassRequestQueue& queue);
+    // 按请求决定这一块用哪份模糊：层里写了 blurRadius 就只重糊已有的 captureTexture
+    // （不重新抓帧）；没写就复用帧级结果。
+    bool prepareRequestBackdrop(const GlassRequest& request);
     // 合成一块玻璃
     void composite(const GlassRequest& request);
     void shutdown();

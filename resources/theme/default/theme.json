@@ -11,7 +11,7 @@
     "base/layer/glass.json",
     "base/layer/shadow.json",
     "base/button/button.json",
-        "base/section/section.json",
+    "base/section/section.json",
     "demo/list_row.json",
     "demo/grid_tile.json",
     "demo/card_wide.json",
@@ -32,7 +32,11 @@
     "base/tab/tabitem.vertical.json",
     "base/notification/toast_base.json",
     "base/notification/toast_icon.json",
-    "base/notification/toast_image.json"
+    "base/notification/toast_image.json",
+    "base/animation/demo_row.json",
+    "base/animation/card_transition.json",
+    "base/animation/preview_frame.json",
+    "base/animation/card_transform.json"
   ],
   "author": "beiklive",
   "description": "bklv 默认深色主题：中性灰底 + 青色强调。",

@@ -196,6 +196,10 @@ struct GlGlassBackend::Impl
     GlassUniforms glass{};
 
     bool prepared = false;
+    float globalRadius = 14.0f;
+    GlassQuality globalQuality = GlassQuality::AUTO;
+    float activeRadius = -1.0f;
+    GlassQuality activeQuality = GlassQuality::AUTO;
     bool disabled = false;
     int failedWidth = 0;
     int failedHeight = 0;
@@ -431,8 +435,12 @@ bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue& queue)
     const GlassBlurPlan plan
         = makeGlassBlurPlan(physicalRadius, queue.getBackdropStyle().quality);
 
-    self.prepared = self.renderBlur(self.captureTexture, plan);
-    self.activeSource = GlassBackdropSource::FRAME;
+    self.globalRadius  = queue.getBackdropStyle().blurRadius;
+    self.globalQuality = queue.getBackdropStyle().quality;
+    self.prepared      = self.renderBlur(self.captureTexture, plan);
+    self.activeSource  = GlassBackdropSource::FRAME;
+    self.activeRadius  = self.globalRadius;
+    self.activeQuality = self.globalQuality;
 
     return self.prepared;
 }
@@ -704,10 +712,38 @@ void renderGlassCommand(const ImDrawList*, const ImDrawCmd* command)
         const FramebufferGuard guard;
         *data->backdropPrepared = data->backend->prepareBackdrop(*data->queue);
     }
+    if (!data->backend->prepareRequestBackdrop(*data->request))
+        return;
     data->backend->composite(*data->request);
 }
 
 } // namespace
+
+bool GlGlassBackend::prepareRequestBackdrop(const GlassRequest& request)
+{
+    Impl& self = *this->impl;
+    if (!this->isReady() || !self.prepared)
+        return false;
+
+    // 目前只支持 FRAME（本帧第一次抓的那张）。PREVIOUS_CONTENT 需要在命令处重新抓帧，
+    // GL 上帧中途重抓会破坏当前帧输出，等单独设计后再接。
+    if (request.backdropSource != GlassBackdropSource::FRAME)
+        return false;
+
+    const float radius = request.blurRadius >= 0.0f ? request.blurRadius : self.globalRadius;
+    if (radius == self.activeRadius && self.globalQuality == self.activeQuality)
+        return true;
+
+    const float density = request.density > 0.0f ? request.density : 1.0f;
+    const GlassBlurPlan plan = makeGlassBlurPlan(
+        clampFinite(radius * density, 0.0f, kMaximumBlurRadius, 0.01f), self.globalQuality);
+    const FramebufferGuard guard;
+    if (!self.renderBlur(self.captureTexture, plan))
+        return false;
+    self.activeRadius  = radius;
+    self.activeQuality = self.globalQuality;
+    return true;
+}
 
 void GlGlassBackend::inject(ImDrawData& drawData, const GlassRequestQueue& queue)
 {
@@ -804,6 +840,7 @@ void GlGlassBackend::beginFrame(const GlassTuning&) { }
 void GlGlassBackend::submit(GlassRequestQueue&, const GlassRequest&, const GlassTuning&, int, int) { }
 void GlGlassBackend::prepareDrawData(ImDrawData&, const GlassRequestQueue&) { }
 bool GlGlassBackend::prepareBackdrop(const GlassRequestQueue&) { return false; }
+bool GlGlassBackend::prepareRequestBackdrop(const GlassRequest&) { return false; }
 void GlGlassBackend::composite(const GlassRequest&) { }
 void GlGlassBackend::finishFrame() { }
 void GlGlassBackend::shutdown() { }

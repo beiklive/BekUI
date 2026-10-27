@@ -107,7 +107,7 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
 
     // GLASS 层：逐项覆盖折射/色散/光照/模糊混合。没写的字段保持 NaN，
     // 绘制时再决定"用外观值还是 Shell 的 GlassTuning"（原版是每个控件一份 GlassStyle）。
-    if (layer.op == AppearanceLayer::Op::GLASS)
+    if (layer.op == AppearanceLayer::Op::GLASS || layer.op == AppearanceLayer::Op::BLUR)
     {
         struct GlassNumber
         {
@@ -117,6 +117,7 @@ bool parseLayerFields(const Json& node, const ThemeData& theme, AppearanceLayer&
         };
         const GlassNumber glassNumbers[] = {
             { "blurMix", &layer.glass.blurMix, false },
+            { "blurRadius", &layer.glass.blurRadius, true },
             { "refractionHeight", &layer.glass.refractionHeight, true },
             { "refractionAmount", &layer.glass.refractionAmount, true },
             { "depthEffect", &layer.glass.depthEffect, false },

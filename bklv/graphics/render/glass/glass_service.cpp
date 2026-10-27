@@ -121,6 +121,7 @@ bool GlassService::submitBackdrop(ImDrawList* drawList, const ImVec4& pixelBound
     request.clipRect = ImVec4(clipMin.x, clipMin.y, clipMax.x, clipMax.y);
     if (options != nullptr)
     {
+        request.blurRadius = options->blurRadius;
         // 外观层写了的样式覆盖 Shell 的默认值（没写就保持 makeGlassStyle(tuning) 的结果）
         if (options->hasTint && options->tint.w > 0.0f)
             request.style.tint = options->tint;

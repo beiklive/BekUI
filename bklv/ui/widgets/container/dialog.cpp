@@ -54,6 +54,11 @@ void Dialog::setupStructure()
 
     // ---- 面板 ----
     this->panel = new AppearanceView("base/box/dialog", false);
+    // 面板本身要能接住点击：它不可聚焦（焦点在里面的按钮上），但必须挡住
+    // "点面板空白处"的点击，否则会冒泡到 Dialog 的轻触手势 → 误关。
+    this->panel->setPointerTarget(true);
+    this->panel->addGesture(std::unique_ptr<GestureRecognizer>(
+        new TapGestureRecognizer([] {})));
     this->addView(this->panel);
 
     this->body = new Box(Axis::COLUMN);

@@ -10,11 +10,12 @@ demo/
   tabs/
     buttons_tab.*     第 1 页「按钮」：Button 家族 + 点击反馈 + 切换标签条排列
     layout_tab.*      第 2 页「布局」：横排 / 竖排 / grow / 内边距居中 / 主轴对齐
+    animation_tab.*   第 6 页「动画」：Transform 变换（Play/Reset + 滑条）+ JSON transitions.show
   layout_kit.hpp      "一节"与"彩色矩形"两个排版小工具（只在 demo 里用）
   style.hpp           从主题取页面底色与文字色的小工具
 ```
 
-两个标签页**常驻**：切走只是 `GONE`，对象和状态都在，切回来滚动位置和焦点也还是原样
+六个标签页**常驻**：切走只是 `GONE`，对象和状态都在，切回来滚动位置和焦点也还是原样
 （`TabView` 负责记忆）。这跟内容层下钻（`Shell` 的 `ContentStack`：新层压上来、旧的出场即销毁）不是一回事。
 
 ## 跑起来
@@ -32,7 +33,7 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
 | 参数 | 作用 |
 |---|---|
 | `--theme <name>` | 启动主题（`default` / `glass`） |
-| `--tab <name>` | 启动标签页：`buttons`（默认）/ `layout` |
+| `--tab <name>` | 启动标签页：`buttons`（默认）/ `layout` / `list` / `container` / `debug` / `animation` |
 | `--tabbar <top\|left>` | 标签条排列：`top`（默认，顶部水平）/ `left`（左侧竖直） |
 | `--screenshot <png>` | 渲染若干帧后截图存 PNG 并退出（无人值守验证） |
 | `--frames <n>` | 截图前等多少帧，默认 3 |
@@ -41,6 +42,7 @@ Vulkan 版把配置换成 `-DBKLV_GRAPHICS=vk`，产物落在 `dist/vk/demo.exe`
 ```bash
 ./dist/demo.exe --screenshot shot.png --frames 10
 ./dist/demo.exe --tab layout --screenshot layout.png --frames 14
+./dist/demo.exe --tab animation --screenshot animation.png --frames 20
 ./dist/demo.exe --tab layout --tabbar left
 ```
 

@@ -41,6 +41,9 @@ class ScrollBox : public Box
     // 是否显示滚动条（默认显示）
     void setShowScrollingIndicator(bool show);
 
+    // 临时关闭鼠标/滚轮滚动（拖滑条这类"指针已经另有用途"的场景用）。
+    void setScrollingEnabled(bool enabled);
+
     // 把某个子视图滚进可视区（焦点移动、新内容追加时用）。
     void scrollToView(View* view, bool animated = true);
 
