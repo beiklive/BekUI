@@ -798,6 +798,39 @@ void AppearanceView::draw(ImDrawList* drawList, float x, float y, float width, f
         float rect[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // [left, top, right, bottom]
         this->layerRect(layer, x, y, width, height, rect);
 
+        // 状态里补间的 inset：layerRect 用的是静态 inset（作为初值），这里补差值。
+        // 之前只解析不应用，导致 insetLeft 之类的位移动画完全看不到效果。
+        {
+            const float dLeft = this->appearance.getNumber(index, AppearanceProp::INSET_LEFT)
+                - layer.inset[3];
+            const float dRight = this->appearance.getNumber(index, AppearanceProp::INSET_RIGHT)
+                - layer.inset[1];
+            const float dTop = this->appearance.getNumber(index, AppearanceProp::INSET_TOP)
+                - layer.inset[0];
+            const float dBottom = this->appearance.getNumber(index, AppearanceProp::INSET_BOTTOM)
+                - layer.inset[2];
+            if (dLeft != 0.0f)
+            {
+                rect[0] += dLeft;
+                rect[2] += dLeft;
+            }
+            if (dRight != 0.0f)
+            {
+                rect[0] -= dRight;
+                rect[2] -= dRight;
+            }
+            if (dTop != 0.0f)
+            {
+                rect[1] += dTop;
+                rect[3] += dTop;
+            }
+            if (dBottom != 0.0f)
+            {
+                rect[1] -= dBottom;
+                rect[3] -= dBottom;
+            }
+        }
+
         // 状态里补间的 offsetX/offsetY：layerRect 用的是静态 offset（作为初值），
         // 这里按「动画值 - 静态值」平移绘制矩形。之前只解析不应用，导致
         // Toggle 的旋钮只有颜色变、位置不动。
